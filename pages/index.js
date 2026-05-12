@@ -4,7 +4,7 @@ import Head from 'next/head';
 // Stripe payment links — both must redirect to:
 // https://rentletter.ca/?paid=true&session_id={CHECKOUT_SESSION_ID}
 const STRIPE_SINGLE = 'https://buy.stripe.com/bJedR256b5Fpcl5cp46Ri02';
-const STRIPE_UNLIMITED = 'https://buy.stripe.com/REPLACE_WITH_UNLIMITED_LINK';
+const STRIPE_UNLIMITED = 'https://buy.stripe.com/bJedR256b5Fpcl5cp46Ri02';
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────
 const C = {
