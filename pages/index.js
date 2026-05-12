@@ -226,15 +226,24 @@ export default function Home() {
             </div>
           </header>
 
-          {/* ── HERO — short, confident ─────────────────────── */}
-          <section style={{ padding: '120px 32px 100px', maxWidth: 1100, margin: '0 auto' }}>
+          {/* ── HERO — tight, magazine-cover composition ─────── */}
+          <section style={{ padding: '60px 32px 80px', maxWidth: 1100, margin: '0 auto' }}>
+
+            {/* Tiny eyebrow tag — adds context + signals seriousness */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 32 }}>
+              <div style={{ width: 24, height: 1, background: C.ink }} />
+              <span style={{ fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                For Toronto renters · 2026
+              </span>
+            </div>
+
             <h1 style={{
               fontSize: 'clamp(48px, 9vw, 132px)',
               lineHeight: 0.95,
               letterSpacing: '-0.035em',
               color: C.ink,
               fontWeight: 800,
-              marginBottom: 40,
+              marginBottom: 28,
               maxWidth: 1000,
             }}>
               A letter that<br />
@@ -242,43 +251,61 @@ export default function Home() {
               <span style={{ color: C.red }}>apartment.</span>
             </h1>
 
-            <p style={{ fontSize: 19, lineHeight: 1.55, color: C.inkSoft, maxWidth: 520, marginBottom: 48 }}>
-              Personalized cover letter and tenant resume. Two minutes. Built for Toronto's market.
+            {/* Subhead — tight to headline, indented to feel intentional */}
+            <p style={{
+              fontSize: 18,
+              lineHeight: 1.5,
+              color: C.inkSoft,
+              maxWidth: 460,
+              marginBottom: 32,
+              fontWeight: 400,
+            }}>
+              A personalized cover letter and tenant resume in two minutes — built for the apartments worth fighting for.
             </p>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setStep('form')}
-                style={{
-                  background: C.ink, color: C.paper, border: 'none',
-                  padding: '18px 32px', fontSize: 15, fontWeight: 600,
-                  transition: 'opacity 0.2s',
-                  display: 'flex', alignItems: 'center', gap: 10,
-                }}
-                onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
-                onMouseOut={e => e.currentTarget.style.opacity = '1'}
-              >
-                Start your letter
-                <span>→</span>
-              </button>
-              <span style={{ fontSize: 14, color: C.inkMute }}>
-                From $9.99
-              </span>
+            {/* CTA group — buttons + price + trust micro-copy as one unit */}
+            <div style={{ marginBottom: 56 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap', marginBottom: 14 }}>
+                <button
+                  onClick={() => setStep('form')}
+                  style={{
+                    background: C.ink, color: C.paper, border: 'none',
+                    padding: '18px 32px', fontSize: 15, fontWeight: 600,
+                    transition: 'opacity 0.2s',
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}
+                  onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseOut={e => e.currentTarget.style.opacity = '1'}
+                >
+                  Start your letter
+                  <span>→</span>
+                </button>
+                <span style={{ fontSize: 14, color: C.inkMute }}>
+                  From <span style={{ color: C.ink, fontWeight: 600 }}>$9.99</span> · One-time
+                </span>
+              </div>
+              <p style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.02em' }}>
+                ✓ Sent to your email · ✓ PDF and Word formats · ✓ Edit before downloading
+              </p>
             </div>
-          </section>
 
-          {/* ── NUMBERS STRIP — quiet, no big colors ────────── */}
-          <section style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '40px 32px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 32 }}>
+            {/* Inline stats — feels like a magazine pull-quote, not a separate section */}
+            <div style={{
+              borderTop: `1px solid ${C.rule}`,
+              paddingTop: 32,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 28,
+            }}>
               {[
                 { n: '50+', l: 'applications per unit' },
-                { n: '25%', l: 'of renters get rejected' },
+                { n: '1 in 4', l: 'renters get rejected' },
                 { n: '10s', l: 'to make an impression' },
                 { n: '2 min', l: 'to write yours' },
               ].map(s => (
                 <div key={s.l}>
-                  <div style={{ fontSize: 34, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4 }}>{s.n}</div>
-                  <div style={{ fontSize: 13, color: C.inkMute }}>{s.l}</div>
+                  <div style={{ fontSize: 28, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4, lineHeight: 1 }}>{s.n}</div>
+                  <div style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.02em' }}>{s.l}</div>
                 </div>
               ))}
             </div>
