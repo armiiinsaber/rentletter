@@ -165,77 +165,75 @@ export default async function handler(req, res) {
 <html>
 <head>
   <meta charset="utf-8">
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 </head>
-<body style="margin: 0; padding: 0; background: #f4f1ea; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;">
-  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #f4f1ea;">
+<body style="margin: 0; padding: 0; background: #faf8f3; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;">
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #faf8f3;">
     <tr>
-      <td align="center" style="padding: 48px 24px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width: 560px; background: #f4f1ea;">
+      <td align="center" style="padding: 56px 24px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width: 560px; background: #faf8f3;">
 
-          <!-- Masthead -->
+          <!-- Header — wordmark with red bar -->
           <tr>
-            <td style="padding-bottom: 28px; border-bottom: 1px solid #d8d2c4;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
-                <tr>
-                  <td style="vertical-align: baseline;">
-                    <span style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 22px; color: #0e1a2b;">R</span><span style="font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; color: #0e1a2b; letter-spacing: 0.02em;">entletter</span><span style="font-family: 'JetBrains Mono', monospace; font-size: 9px; color: #7a8392; letter-spacing: 0.15em; margin-left: 6px;">/ CA</span>
-                  </td>
-                  <td align="right" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7a8392; letter-spacing: 0.1em; text-transform: uppercase;">
-                    Vol. 1 · Delivered
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-
-          <!-- Section marker -->
-          <tr>
-            <td style="padding-top: 40px;">
+            <td style="padding-bottom: 28px; border-bottom: 1px solid #e3ddd0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                  <td style="width: 32px; height: 1px; background: #b8412e; padding: 0; line-height: 1px; font-size: 1px;">&nbsp;</td>
-                  <td style="padding-left: 12px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7a8392; letter-spacing: 0.12em; text-transform: uppercase;">
-                    <span style="color: #b8412e;">§04</span> &nbsp; Documents enclosed
+                  <td style="vertical-align: middle; padding-right: 8px;">
+                    <div style="width: 4px; height: 24px; background: #d72027;"></div>
+                  </td>
+                  <td style="vertical-align: middle; font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 800; color: #0f0f10; letter-spacing: -0.02em;">
+                    Rentletter
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
 
-          <!-- Headline -->
+          <!-- Big headline -->
           <tr>
-            <td style="padding: 20px 0 24px;">
-              <h1 style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 48px; line-height: 1.0; letter-spacing: -0.02em; color: #0e1a2b; margin: 0;">
-                Your letter is <em style="font-style: italic;">ready,</em><br>${firstName}.
+            <td style="padding: 56px 0 24px;">
+              <h1 style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 52px; line-height: 0.95; letter-spacing: -0.03em; color: #0f0f10; margin: 0;">
+                Your letter<br>is <span style="color: #d72027;">ready,</span><br>${firstName}.
               </h1>
             </td>
           </tr>
 
           <!-- Body -->
           <tr>
-            <td style="padding-bottom: 20px;">
-              <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.65; color: #3a4658; margin: 0 0 18px;">
-                Attached are two documents — your cover letter and a one-page tenant resume — in both PDF and Word formats.
+            <td style="padding-bottom: 32px;">
+              <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; color: #3a3a3c; margin: 0 0 16px;">
+                Your cover letter and tenant resume are attached — both as PDF and Word.
               </p>
-              <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.65; color: #3a4658; margin: 0 0 18px;">
-                Send them alongside your standard rental application. In Ontario, that's Form 410.
+              <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; color: #3a3a3c; margin: 0;">
+                Send them with your standard rental application. In Ontario, that's <span style="color: #0f0f10; font-weight: 600;">Form 410</span>.
               </p>
             </td>
           </tr>
 
           <!-- Document manifest -->
           <tr>
-            <td style="padding: 8px 0 32px;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #d8d2c4; background: #fafaf5;">
+            <td style="padding-bottom: 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #0f0f10;">
                 <tr>
-                  <td style="padding: 18px 24px; border-bottom: 1px solid #d8d2c4;">
+                  <td style="padding: 28px 28px 20px;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
-                        <td style="font-family: 'Instrument Serif', Georgia, serif; font-size: 18px; color: #0e1a2b;">
-                          The Cover Letter
+                        <td style="font-family: 'Inter', sans-serif; font-size: 11px; color: #d72027; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;">
+                          Attached
                         </td>
-                        <td align="right" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7a8392; letter-spacing: 0.1em; text-transform: uppercase;">
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 0 28px 18px;">
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 700; color: #faf8f3; letter-spacing: -0.01em;">
+                          Cover letter
+                        </td>
+                        <td align="right" style="font-family: 'Inter', sans-serif; font-size: 13px; color: #86868b;">
                           PDF · DOCX
                         </td>
                       </tr>
@@ -243,13 +241,18 @@ export default async function handler(req, res) {
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding: 18px 24px;">
+                  <td style="padding: 0 28px;">
+                    <div style="height: 1px; background: #3a3a3c;"></div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 18px 28px 28px;">
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
-                        <td style="font-family: 'Instrument Serif', Georgia, serif; font-size: 18px; color: #0e1a2b;">
-                          The Tenant Resume
+                        <td style="font-family: 'Inter', sans-serif; font-size: 18px; font-weight: 700; color: #faf8f3; letter-spacing: -0.01em;">
+                          Tenant resume
                         </td>
-                        <td align="right" style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7a8392; letter-spacing: 0.1em; text-transform: uppercase;">
+                        <td align="right" style="font-family: 'Inter', sans-serif; font-size: 13px; color: #86868b;">
                           PDF · DOCX
                         </td>
                       </tr>
@@ -260,30 +263,54 @@ export default async function handler(req, res) {
             </td>
           </tr>
 
-          <!-- Notes -->
+          <!-- Tip block with red accent -->
           <tr>
-            <td style="padding-bottom: 32px;">
-              <p style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #7a8392; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 14px;">
-                A note on use
-              </p>
-              <p style="font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.65; color: #3a4658; margin: 0 0 14px;">
-                Most applicants attach the PDF when applying online, or print both for in-person viewings. The Word file is there if you want to make further edits before sending.
-              </p>
-              <p style="font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.65; color: #3a4658; margin: 0;">
-                Good luck out there.
-              </p>
+            <td style="padding-bottom: 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td style="width: 3px; background: #d72027;"></td>
+                  <td style="padding-left: 20px;">
+                    <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #d72027; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 10px;">
+                      Quick tip
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.6; color: #3a3a3c; margin: 0;">
+                      Attach the PDF when applying online. Print both for in-person viewings. The Word file is there if you want to edit before sending.
+                    </p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
           <!-- Sign-off -->
           <tr>
-            <td style="padding-top: 32px; border-top: 1px solid #d8d2c4;">
-              <p style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 18px; color: #0e1a2b; margin: 0 0 4px;">
-                — The desk at Rentletter
+            <td style="padding-top: 32px; border-top: 1px solid #e3ddd0;">
+              <p style="font-family: 'Inter', sans-serif; font-size: 16px; font-weight: 600; color: #0f0f10; margin: 0 0 4px;">
+                Good luck out there<span style="color: #d72027;">.</span>
               </p>
-              <p style="font-family: 'JetBrains Mono', monospace; font-size: 10px; color: #7a8392; letter-spacing: 0.1em; text-transform: uppercase; margin: 18px 0 0;">
-                Toronto · For informational use · Not legal advice
+              <p style="font-family: 'Inter', sans-serif; font-size: 14px; color: #86868b; margin: 6px 0 24px;">
+                — The Rentletter desk
               </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                <tr>
+                  <td>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="vertical-align: middle; padding-right: 6px;">
+                          <div style="width: 3px; height: 14px; background: #d72027;"></div>
+                        </td>
+                        <td style="vertical-align: middle; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 800; color: #0f0f10; letter-spacing: -0.01em;">
+                          Rentletter
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                  <td align="right" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #86868b;">
+                    Toronto · Not legal advice
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
 
