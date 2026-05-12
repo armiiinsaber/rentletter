@@ -229,8 +229,8 @@ export default function Home() {
           {/* ── HERO — short, confident ─────────────────────── */}
           <section style={{ padding: '120px 32px 100px', maxWidth: 1100, margin: '0 auto' }}>
             <h1 style={{
-              fontSize: 'clamp(56px, 10vw, 132px)',
-              lineHeight: 0.92,
+              fontSize: 'clamp(40px, 8vw, 132px)',
+              lineHeight: 0.95,
               letterSpacing: '-0.035em',
               color: C.ink,
               fontWeight: 800,
