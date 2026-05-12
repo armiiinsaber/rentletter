@@ -238,7 +238,7 @@ export default function Home() {
               maxWidth: 1000,
             }}>
               A letter that gets you<br />
-              the apartment<span style={{ color: C.red }}>.</span>
+              the <span style={{ color: C.red }}>apartment.</span>
             </h1>
 
             <p style={{ fontSize: 19, lineHeight: 1.55, color: C.inkSoft, maxWidth: 520, marginBottom: 48 }}>
@@ -528,7 +528,7 @@ export default function Home() {
 
           <div style={{ maxWidth: 820, margin: '0 auto', padding: '64px 32px 80px' }}>
             <h1 style={{ fontSize: 48, fontWeight: 800, color: C.ink, marginBottom: 12, letterSpacing: '-0.03em', lineHeight: 1 }}>
-              Your letter is ready<span style={{ color: C.red }}>.</span>
+              Your letter is <span style={{ color: C.red }}>ready.</span>
             </h1>
             <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 40, lineHeight: 1.55 }}>
               Read it over. Edit anything — changes save automatically.
