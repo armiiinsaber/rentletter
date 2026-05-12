@@ -3,8 +3,8 @@ import Head from 'next/head';
 
 // Stripe payment links — replace with real links after creating products
 // Both should be configured to redirect to: https://rentletter.ca/?paid=true&session_id={CHECKOUT_SESSION_ID}
-const STRIPE_SINGLE = 'https://buy.stripe.com/3cI4gs0PVebVetd2Ou6Ri00';
-const STRIPE_UNLIMITED = 'https://buy.stripe.com/3cI4gs0PVebVetd2Ou6Ri00';
+const STRIPE_SINGLE = 'https://buy.stripe.com/aFa8wIeGLebVdp9gFk6Ri01';
+const STRIPE_UNLIMITED = 'https://buy.stripe.com/bJedR256b5Fpcl5cp46Ri02';
 
 const GlobalStyle = () => (
   <>
