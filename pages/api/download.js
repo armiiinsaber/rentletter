@@ -121,11 +121,13 @@ export default async function handler(req, res) {
       const buf = await buildPdf(letter, resume || '');
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename="${safeName}_rental_letter.pdf"`);
+      res.setHeader('Content-Length', buf.length);
       return res.send(buf);
     } else {
       const buf = await buildDocx(letter, resume || '');
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
       res.setHeader('Content-Disposition', `attachment; filename="${safeName}_rental_letter.docx"`);
+      res.setHeader('Content-Length', buf.length);
       return res.send(buf);
     }
   } catch (err) {
