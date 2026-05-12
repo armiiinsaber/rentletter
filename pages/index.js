@@ -229,7 +229,7 @@ export default function Home() {
           {/* ── HERO — short, confident ─────────────────────── */}
           <section style={{ padding: '120px 32px 100px', maxWidth: 1100, margin: '0 auto' }}>
             <h1 style={{
-              fontSize: 'clamp(40px, 8vw, 132px)',
+              fontSize: 'clamp(48px, 9vw, 132px)',
               lineHeight: 0.95,
               letterSpacing: '-0.035em',
               color: C.ink,
@@ -237,8 +237,8 @@ export default function Home() {
               marginBottom: 40,
               maxWidth: 1000,
             }}>
-              A letter<br />
-              that gets you the<br />
+              A letter that<br />
+              gets you the<br />
               <span style={{ color: C.red }}>apartment.</span>
             </h1>
 
