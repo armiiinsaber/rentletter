@@ -321,8 +321,16 @@ export default async function handler(req, res) {
 </body>
 </html>`,
       attachments: [
-        { filename: `${safeName}_rental_letter.pdf`, content: pdfBuffer.toString('base64') },
-        { filename: `${safeName}_rental_letter.docx`, content: docxBuffer.toString('base64') },
+        {
+          filename: `${safeName}_rental_letter.pdf`,
+          content: pdfBuffer,
+          contentType: 'application/pdf',
+        },
+        {
+          filename: `${safeName}_rental_letter.docx`,
+          content: docxBuffer,
+          contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        },
       ],
     });
 
