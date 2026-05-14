@@ -146,6 +146,98 @@ export default function LandlordDashboard() {
     setActiveAppIdx(0);
   };
 
+  // ─── DEV: Load demo applications for instant testing ─────────
+  const loadDemoApplications = () => {
+    const demos = [
+      {
+        applicationNumber: 'RL-2026-DEMO-A001',
+        createdAt: new Date().toISOString(),
+        tenant: { fullName: 'Sarah Chen', age: '29' },
+        employment: {
+          jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
+          yearsAtJob: '4', annualIncome: 87000, monthlyIncome: 7250,
+        },
+        rental: {
+          previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
+          previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
+        },
+        apartment: {
+          address: '144 Roxborough Drive, Toronto', description: '1BR, Rosedale, $2,200/mo',
+          estimatedRent: 2200, rentToIncomeRatio: 30,
+        },
+        move: { moveInDate: 'June 15, 2026', reasonForMoving: 'Moving closer to my office on Bloor Street.' },
+        lifestyle: { personality: 'Quiet, works from home 3 days a week.', pets: null },
+        disclosures: null,
+        scorecard: {
+          incomeStability: { score: 5, note: '4 years at Loblaw Companies' },
+          rentAffordability: { score: 5, note: '30% of monthly income' },
+          rentalHistory: { score: 5, note: '2.5 years with reference available' },
+          longTermIntent: { score: 5, note: 'Move tied to job commute' },
+          disclosures: { score: 5, note: 'No items to address' },
+          overall: 5.0,
+        },
+      },
+      {
+        applicationNumber: 'RL-2026-DEMO-B002',
+        createdAt: new Date().toISOString(),
+        tenant: { fullName: 'James Okafor', age: '26' },
+        employment: {
+          jobTitle: 'Software Engineer', employer: 'Shopify',
+          yearsAtJob: '1.5', annualIncome: 95000, monthlyIncome: 7916,
+        },
+        rental: {
+          previousAddress: null, yearsAtPrevious: null,
+          previousLandlordName: null, previousLandlordContact: null,
+        },
+        apartment: {
+          address: '88 Yonge Street, Toronto', description: 'Studio, downtown, $1,850/mo',
+          estimatedRent: 1850, rentToIncomeRatio: 23,
+        },
+        move: { moveInDate: 'July 1, 2026', reasonForMoving: 'First-time renter — moving out of family home to start independent life closer to work.' },
+        lifestyle: { personality: 'Quiet evenings, occasional weekend hosting.', pets: null },
+        disclosures: 'Limited rental history as first-time renter. Can provide guarantor and employer reference.',
+        scorecard: {
+          incomeStability: { score: 4, note: '1.5 years at Shopify' },
+          rentAffordability: { score: 5, note: '23% of monthly income' },
+          rentalHistory: { score: 3, note: 'First-time renter — alternative documentation' },
+          longTermIntent: { score: 4, note: 'General life-stage move' },
+          disclosures: { score: 4, note: 'Items proactively disclosed' },
+          overall: 4.0,
+        },
+      },
+      {
+        applicationNumber: 'RL-2026-DEMO-C003',
+        createdAt: new Date().toISOString(),
+        tenant: { fullName: 'Priya Nair', age: '34' },
+        employment: {
+          jobTitle: 'Senior UX Designer', employer: 'CIBC',
+          yearsAtJob: '5', annualIncome: 115000, monthlyIncome: 9583,
+        },
+        rental: {
+          previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
+          previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
+        },
+        apartment: {
+          address: '550 Queen Street West, Toronto', description: '2BR, Queen West, $3,100/mo',
+          estimatedRent: 3100, rentToIncomeRatio: 32,
+        },
+        move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Partner and I are moving in together closer to the West End where we both work.' },
+        lifestyle: { personality: 'Stable, professional household.', pets: 'One indoor cat, 6 years old, vet records available' },
+        disclosures: null,
+        scorecard: {
+          incomeStability: { score: 5, note: '5 years at CIBC' },
+          rentAffordability: { score: 4, note: '32% of monthly income' },
+          rentalHistory: { score: 5, note: '3 years with reference available' },
+          longTermIntent: { score: 5, note: 'Move tied to partner cohabitation' },
+          disclosures: { score: 5, note: 'No items to address' },
+          overall: 4.8,
+        },
+      },
+    ];
+    setApplications(demos);
+    setActiveAppIdx(0);
+  };
+
   // ════════════════════════════════════════════════════════════
   // PAGE LAYOUT
   // ════════════════════════════════════════════════════════════
@@ -334,6 +426,21 @@ export default function LandlordDashboard() {
                 </button>
               )}
             </div>
+
+            {/* Dev demo loader */}
+            {applications.length === 0 && (
+              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 11, color: C.inkMute }}>Don't have an application number yet?</span>
+                <button onClick={loadDemoApplications}
+                  style={{
+                    background: 'transparent', color: C.red,
+                    border: `1px solid ${C.red}`,
+                    padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                  }}>
+                  Load 3 demo tenants →
+                </button>
+              </div>
+            )}
             {error && (
               <div style={{ marginTop: 12, padding: '12px 16px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
                 {error}
