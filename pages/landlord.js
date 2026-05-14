@@ -777,106 +777,554 @@ function CompareView({ applications, onRemove }) {
 }
 
 // ════════════════════════════════════════════════════════════
-// RANKED VIEW — weighted ranking
+// RANKED VIEW — the crown jewel
+// Weighted decision engine with presets, animation, and defensible output
 // ════════════════════════════════════════════════════════════
+
+const PRIORITY_PRESETS = [
+  {
+    id: 'balanced',
+    label: 'Balanced',
+    description: 'All factors weighted equally — a fair starting point.',
+    weights: { incomeStability: 1.0, rentAffordability: 1.0, rentalHistory: 1.0, longTermIntent: 1.0, disclosures: 1.0 },
+  },
+  {
+    id: 'conservative',
+    label: 'Conservative',
+    description: 'For high-value properties. Income, references, and clean disclosures matter most.',
+    weights: { incomeStability: 2.5, rentAffordability: 2.0, rentalHistory: 2.5, longTermIntent: 1.0, disclosures: 2.5 },
+  },
+  {
+    id: 'affordability',
+    label: 'Affordability-focused',
+    description: 'For value properties. Make sure they can comfortably afford rent without stretching.',
+    weights: { incomeStability: 2.0, rentAffordability: 3.0, rentalHistory: 1.5, longTermIntent: 1.5, disclosures: 2.0 },
+  },
+  {
+    id: 'longterm',
+    label: 'Long-term tenant',
+    description: 'For family homes or units you want stable for 2+ years. Stability over short-term metrics.',
+    weights: { incomeStability: 2.0, rentAffordability: 1.5, rentalHistory: 2.5, longTermIntent: 3.0, disclosures: 1.5 },
+  },
+  {
+    id: 'risk',
+    label: 'Risk-averse',
+    description: 'For first-time landlords or shared buildings. Heavy weight on history and disclosures.',
+    weights: { incomeStability: 2.0, rentAffordability: 2.0, rentalHistory: 3.0, longTermIntent: 1.5, disclosures: 3.0 },
+  },
+];
+
+const FACTOR_DEFS = [
+  { key: 'incomeStability', label: 'Income stability', short: 'income', help: 'How reliable their paycheck is. High for long tenure at stable employers.' },
+  { key: 'rentAffordability', label: 'Rent affordability', short: 'affordability', help: 'Rent vs. monthly income. Below 30% is the lending standard.' },
+  { key: 'rentalHistory', label: 'Rental history', short: 'history', help: 'Previous landlord references and length of past tenancies.' },
+  { key: 'longTermIntent', label: 'Long-term intent', short: 'commitment', help: 'How likely they are to stay 1-2+ years vs. leave early.' },
+  { key: 'disclosures', label: 'Disclosures', short: 'transparency', help: 'Honesty about credit, gaps, or other potential concerns.' },
+];
+
 function RankedView({ applications, weights, setWeights, onRemove }) {
+  const [previousOrder, setPreviousOrder] = useState({});
+  const [activePreset, setActivePreset] = useState('balanced');
+  const [recentlyChanged, setRecentlyChanged] = useState({});
+
+  // Calculate ranked applications with weighted scores + per-factor contributions
   const ranked = [...applications]
-    .map(app => ({
-      ...app,
-      weightedScore: calculateWeightedScore(app.scorecard, weights),
-    }))
+    .map(app => {
+      const score = calculateWeightedScore(app.scorecard, weights);
+      // Find which factors are pulling the score up the most
+      const contributions = FACTOR_DEFS.map(f => ({
+        key: f.key, label: f.label, short: f.short,
+        contribution: app.scorecard[f.key].score * weights[f.key],
+        rawScore: app.scorecard[f.key].score,
+        weight: weights[f.key],
+      })).sort((a, b) => b.contribution - a.contribution);
+
+      return {
+        ...app,
+        weightedScore: score,
+        topFactors: contributions.slice(0, 2),
+        weakFactor: contributions[contributions.length - 1],
+      };
+    })
     .sort((a, b) => b.weightedScore - a.weightedScore);
 
-  const factors = [
-    { key: 'incomeStability', label: 'Income stability' },
-    { key: 'rentAffordability', label: 'Rent affordability' },
-    { key: 'rentalHistory', label: 'Rental history' },
-    { key: 'longTermIntent', label: 'Long-term intent' },
-    { key: 'disclosures', label: 'Disclosures' },
-  ];
+  // Track movement for animation
+  useEffect(() => {
+    const newOrder = {};
+    ranked.forEach((app, idx) => {
+      newOrder[app.applicationNumber] = idx;
+    });
+
+    // Determine which applications changed position
+    if (Object.keys(previousOrder).length > 0) {
+      const changes = {};
+      ranked.forEach((app, idx) => {
+        const previousIdx = previousOrder[app.applicationNumber];
+        if (previousIdx !== undefined && previousIdx !== idx) {
+          changes[app.applicationNumber] = previousIdx > idx ? 'up' : 'down';
+        }
+      });
+      if (Object.keys(changes).length > 0) {
+        setRecentlyChanged(changes);
+        const timer = setTimeout(() => setRecentlyChanged({}), 1800);
+        return () => clearTimeout(timer);
+      }
+    }
+    setPreviousOrder(newOrder);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weights]);
+
+  // Generate human-readable summary of weights
+  const getPrioritySentence = () => {
+    const sorted = FACTOR_DEFS
+      .map(f => ({ ...f, weight: weights[f.key] }))
+      .sort((a, b) => b.weight - a.weight);
+
+    // Find factors that are meaningfully above average
+    const avg = Object.values(weights).reduce((a, b) => a + b, 0) / 5;
+    const high = sorted.filter(f => f.weight > avg * 1.3);
+    const low = sorted.filter(f => f.weight < avg * 0.5);
+
+    if (high.length === 0 && low.length === 0) {
+      return 'All factors weighted equally — looking for a well-rounded tenant.';
+    }
+    let parts = [];
+    if (high.length > 0) {
+      const names = high.map(f => f.short);
+      parts.push(`prioritizing ${formatList(names)}`);
+    }
+    if (low.length > 0) {
+      const names = low.map(f => f.short);
+      parts.push(`deprioritizing ${formatList(names)}`);
+    }
+    return parts.join(', ') + '.';
+  };
+
+  // Apply preset
+  const applyPreset = (preset) => {
+    setActivePreset(preset.id);
+    setWeights(preset.weights);
+  };
+
+  // Detect if current weights match a preset
+  useEffect(() => {
+    const matching = PRIORITY_PRESETS.find(p =>
+      Object.keys(p.weights).every(k => Math.abs(p.weights[k] - weights[k]) < 0.05)
+    );
+    if (matching) {
+      setActivePreset(matching.id);
+    } else {
+      setActivePreset('custom');
+    }
+  }, [weights]);
+
+  // Calculate max weight for chart visualization
+  const maxWeight = Math.max(...Object.values(weights), 1);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 32, alignItems: 'start' }}>
+    <div>
 
-      {/* Weight controls */}
-      <div style={{ background: '#fafaf5', border: `1px solid ${C.rule}`, padding: '24px 24px' }}>
-        <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>
-          Your priorities
-        </div>
-        <p style={{ fontSize: 12, color: C.inkMute, marginBottom: 24, lineHeight: 1.5 }}>
-          Slide each factor to weight what matters most to you. Rankings update instantly.
-        </p>
-
-        {factors.map(f => (
-          <div key={f.key} style={{ marginBottom: 18 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 6 }}>
-              <span>{f.label}</span>
-              <span style={{ color: C.inkSoft }}>{weights[f.key].toFixed(1)}×</span>
-            </div>
-            <input
-              type="range"
-              min="0" max="3" step="0.1"
-              value={weights[f.key]}
-              onChange={e => setWeights({ ...weights, [f.key]: parseFloat(e.target.value) })}
-              style={{ width: '100%', accentColor: C.red }}
-            />
+      {/* ── PRESETS BAR ─────────────────────────────────────── */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+          <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            Step 1 · Choose your priorities
           </div>
-        ))}
-
-        <button onClick={() => setWeights(DEFAULT_WEIGHTS)}
-          style={{
-            marginTop: 12, width: '100%',
-            background: 'transparent', border: `1px solid ${C.rule}`,
-            color: C.inkSoft, padding: '10px', fontSize: 12, fontWeight: 500,
-          }}>
-          Reset to equal weights
-        </button>
+          <div style={{ fontSize: 12, color: C.inkMute }}>
+            Pick a preset or adjust manually below
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {PRIORITY_PRESETS.map(preset => (
+            <button
+              key={preset.id}
+              onClick={() => applyPreset(preset)}
+              title={preset.description}
+              style={{
+                background: activePreset === preset.id ? C.ink : C.paper,
+                color: activePreset === preset.id ? C.paper : C.ink,
+                border: `1px solid ${activePreset === preset.id ? C.ink : C.rule}`,
+                padding: '10px 16px', fontSize: 13, fontWeight: 600,
+                transition: 'all 0.15s',
+                position: 'relative',
+              }}>
+              {preset.label}
+              {activePreset === preset.id && (
+                <span style={{ marginLeft: 8, color: C.red, fontSize: 11 }}>●</span>
+              )}
+            </button>
+          ))}
+          {activePreset === 'custom' && (
+            <span style={{
+              padding: '10px 16px', fontSize: 12,
+              color: C.red, border: `1px dashed ${C.red}`,
+              fontWeight: 600, letterSpacing: '0.05em',
+            }}>
+              Custom weights
+            </span>
+          )}
+        </div>
+        {/* Active preset description */}
+        {activePreset !== 'custom' && (
+          <p style={{ marginTop: 12, fontSize: 13, color: C.inkSoft, fontStyle: 'italic', lineHeight: 1.5 }}>
+            {PRIORITY_PRESETS.find(p => p.id === activePreset)?.description}
+          </p>
+        )}
       </div>
 
-      {/* Ranked list */}
-      <div>
-        {ranked.map((app, idx) => (
-          <div key={app.applicationNumber}
-            style={{
-              background: idx === 0 ? C.ink : '#fafaf5',
-              color: idx === 0 ? C.paper : C.ink,
-              border: idx === 0 ? `1px solid ${C.ink}` : `1px solid ${C.rule}`,
-              padding: '20px 24px', marginBottom: 12,
-              position: 'relative', overflow: 'hidden',
-            }}>
-            {idx === 0 && (
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 240 }}>
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, marginBottom: 4 }}>
-                  <span style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: idx === 0 ? C.red : C.ink }}>
-                    #{idx + 1}
-                  </span>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.01em' }}>
-                      {app.tenant.fullName}
-                    </div>
-                    <div style={{ fontSize: 12, color: idx === 0 ? '#a4adbb' : C.inkMute, marginTop: 2 }}>
-                      {app.employment.jobTitle} at {app.employment.employer} · {app.applicationNumber}
-                    </div>
+      {/* ── MAIN TWO-COLUMN LAYOUT ──────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 340px) 1fr', gap: 32, alignItems: 'start' }}
+           className="ranked-grid">
+
+        {/* ╔══ LEFT: WEIGHT CONTROLS ══════════════════════════╗ */}
+        <div style={{ background: C.paper, border: `2px solid ${C.ink}`, position: 'sticky', top: 20 }}>
+          {/* Header */}
+          <div style={{ padding: '20px 24px', borderBottom: `2px solid ${C.ink}`, background: C.ink, color: C.paper }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.red, marginBottom: 4 }}>
+              Step 2 · Fine-tune
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 700 }}>
+              Weight each factor
+            </div>
+          </div>
+
+          {/* Sliders */}
+          <div style={{ padding: '20px 24px' }}>
+            {FACTOR_DEFS.map((f, idx) => {
+              const pct = (weights[f.key] / 3) * 100;
+              const isHigh = weights[f.key] > 1.5;
+              const isLow = weights[f.key] < 0.5;
+              return (
+                <div key={f.key} style={{ marginBottom: idx === FACTOR_DEFS.length - 1 ? 0 : 22 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
+                      {f.label}
+                    </span>
+                    <span style={{
+                      fontSize: 13, fontWeight: 700,
+                      fontFamily: 'monospace',
+                      color: isHigh ? C.red : isLow ? C.inkMute : C.ink,
+                    }}>
+                      {weights[f.key].toFixed(1)}×
+                    </span>
+                  </div>
+                  {/* Visual weight bar */}
+                  <div style={{ height: 4, background: C.rule, marginBottom: 6, position: 'relative' }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${pct}%`,
+                      background: isHigh ? C.red : C.ink,
+                      transition: 'width 0.2s, background 0.2s',
+                    }} />
+                  </div>
+                  <input
+                    type="range"
+                    min="0" max="3" step="0.1"
+                    value={weights[f.key]}
+                    onChange={e => setWeights({ ...weights, [f.key]: parseFloat(e.target.value) })}
+                    style={{ width: '100%', accentColor: C.red, cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.inkMute, marginTop: 2 }}>
+                    <span>Ignore</span>
+                    <span>Normal</span>
+                    <span>Critical</span>
                   </div>
                 </div>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, lineHeight: 1, color: idx === 0 ? C.paper : C.ink }}>
-                  {app.weightedScore} <span style={{ fontSize: 13, fontWeight: 500, color: idx === 0 ? '#a4adbb' : C.inkMute }}>/ 5</span>
-                </div>
-                <div style={{ fontSize: 11, color: idx === 0 ? '#a4adbb' : C.inkMute, marginTop: 4, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-                  Weighted score
-                </div>
-              </div>
+              );
+            })}
+          </div>
+
+          {/* Priority sentence */}
+          <div style={{ padding: '18px 24px', background: '#fafaf5', borderTop: `1px solid ${C.rule}` }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+              Your weighting reads as
+            </div>
+            <p style={{ fontSize: 13, color: C.ink, lineHeight: 1.5, fontWeight: 500 }}>
+              You're {getPrioritySentence()}
+            </p>
+          </div>
+
+          <button onClick={() => applyPreset(PRIORITY_PRESETS[0])}
+            style={{
+              width: '100%', background: 'transparent',
+              border: 'none', borderTop: `1px solid ${C.rule}`,
+              padding: 14, fontSize: 12, fontWeight: 500, color: C.inkSoft,
+            }}>
+            ↺ Reset to balanced
+          </button>
+        </div>
+
+        {/* ╔══ RIGHT: RANKED CARDS ════════════════════════════╗ */}
+        <div>
+          <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+            <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Step 3 · See the ranking
+            </div>
+            <div style={{ fontSize: 12, color: C.inkMute }}>
+              {ranked.length} tenants · Ranked by your priorities
             </div>
           </div>
-        ))}
+
+          {/* The animated ranked list */}
+          <div style={{ position: 'relative' }}>
+            {ranked.map((app, idx) => {
+              const movement = recentlyChanged[app.applicationNumber];
+              const isFirst = idx === 0;
+              const isSecond = idx === 1;
+              const gap = app.weightedScore - (ranked[idx + 1]?.weightedScore ?? 0);
+
+              return (
+                <div
+                  key={app.applicationNumber}
+                  style={{
+                    background: isFirst ? C.ink : isSecond ? '#fafaf5' : C.paper,
+                    color: isFirst ? C.paper : C.ink,
+                    border: isFirst
+                      ? `2px solid ${C.red}`
+                      : isSecond
+                      ? `1px solid ${C.ink}`
+                      : `1px solid ${C.rule}`,
+                    padding: '24px 28px', marginBottom: 14,
+                    position: 'relative', overflow: 'hidden',
+                    transition: 'transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.3s, border-color 0.3s',
+                    transform: movement ? (movement === 'up' ? 'translateY(-2px)' : 'translateY(2px)') : 'translateY(0)',
+                    animation: movement === 'up' ? 'glowUp 1.5s ease-out' : movement === 'down' ? 'glowDown 1.5s ease-out' : 'none',
+                  }}>
+
+                  {/* Movement indicator */}
+                  {movement && (
+                    <div style={{
+                      position: 'absolute', top: 14, right: 14,
+                      background: movement === 'up' ? C.red : C.inkMute,
+                      color: C.paper, fontSize: 10, fontWeight: 700,
+                      letterSpacing: '0.08em', textTransform: 'uppercase',
+                      padding: '4px 10px',
+                      animation: 'fadeOut 1.8s ease-out forwards',
+                    }}>
+                      {movement === 'up' ? '↑ Moved up' : '↓ Moved down'}
+                    </div>
+                  )}
+
+                  {/* Top section: rank, name, score */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap', marginBottom: 16 }}>
+                    <div style={{ flex: 1, minWidth: 240, display: 'flex', alignItems: 'flex-start', gap: 18 }}>
+                      <div style={{
+                        fontSize: isFirst ? 48 : 36,
+                        fontWeight: 900,
+                        lineHeight: 0.9,
+                        color: isFirst ? C.red : C.inkMute,
+                        letterSpacing: '-0.04em',
+                        minWidth: isFirst ? 70 : 54,
+                        fontFamily: 'Inter, sans-serif',
+                      }}>
+                        #{idx + 1}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', marginBottom: 4 }}>
+                          {app.tenant.fullName}
+                          {isFirst && (
+                            <span style={{
+                              fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
+                              marginLeft: 12, padding: '3px 8px',
+                              background: C.red, color: C.paper,
+                              textTransform: 'uppercase',
+                              verticalAlign: 'middle',
+                            }}>
+                              Top pick
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 13, color: isFirst ? '#a4adbb' : C.inkSoft, marginBottom: 2 }}>
+                          {app.employment.jobTitle} at {app.employment.employer}
+                        </div>
+                        <div style={{ fontSize: 11, color: isFirst ? '#7a8392' : C.inkMute, fontFamily: 'monospace' }}>
+                          {app.applicationNumber}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right', minWidth: 110 }}>
+                      <div style={{ fontSize: 36, fontWeight: 800, lineHeight: 1, color: isFirst ? C.paper : C.ink, letterSpacing: '-0.02em' }}>
+                        {app.weightedScore.toFixed(1)}
+                        <span style={{ fontSize: 14, fontWeight: 500, color: isFirst ? '#a4adbb' : C.inkMute, marginLeft: 2 }}>
+                          / 5
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 10, color: isFirst ? '#a4adbb' : C.inkMute, marginTop: 4, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
+                        Weighted score
+                      </div>
+                      {idx < ranked.length - 1 && gap > 0 && (
+                        <div style={{ fontSize: 10, color: isFirst ? '#a4adbb' : C.inkMute, marginTop: 2 }}>
+                          +{gap.toFixed(1)} over next
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Why this ranking — top contributing factors */}
+                  <div style={{
+                    padding: '14px 16px',
+                    background: isFirst ? 'rgba(255,255,255,0.06)' : '#fafaf5',
+                    borderLeft: `3px solid ${C.red}`,
+                    fontSize: 12,
+                  }}>
+                    <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: isFirst ? C.red : C.red, marginBottom: 8 }}>
+                      Why this ranking
+                    </div>
+                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                      {app.topFactors.map(f => (
+                        <div key={f.key} style={{ flex: 1, minWidth: 140 }}>
+                          <div style={{ fontSize: 11, color: isFirst ? '#a4adbb' : C.inkMute, marginBottom: 2 }}>
+                            Strong: {f.label}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: isFirst ? C.paper : C.ink }}>
+                            {f.rawScore} / 5 × {f.weight.toFixed(1)} weight
+                          </div>
+                        </div>
+                      ))}
+                      {app.weakFactor && app.weakFactor.rawScore < 4 && (
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <div style={{ fontSize: 11, color: isFirst ? '#a4adbb' : C.inkMute, marginBottom: 2 }}>
+                            Weakest: {app.weakFactor.label}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: isFirst ? '#ffa8a8' : C.red }}>
+                            {app.weakFactor.rawScore} / 5 × {app.weakFactor.weight.toFixed(1)} weight
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Remove button */}
+                  <div style={{ marginTop: 14, display: 'flex', justifyContent: 'flex-end' }}>
+                    <button onClick={() => onRemove(app.applicationNumber)}
+                      style={{
+                        background: 'transparent',
+                        border: `1px solid ${isFirst ? '#3a3a3c' : C.rule}`,
+                        color: isFirst ? '#a4adbb' : C.inkSoft,
+                        padding: '6px 12px', fontSize: 11, fontWeight: 500,
+                      }}>
+                      Remove from list
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* ── DECISION SUMMARY — defensible, copyable ───── */}
+          {ranked.length >= 2 && (
+            <div style={{ marginTop: 32, background: C.paper, border: `2px solid ${C.ink}` }}>
+              <div style={{
+                padding: '14px 20px', background: C.red, color: C.paper,
+                fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <span>Step 4 · Your defensible decision</span>
+                <button
+                  onClick={() => {
+                    const summary = buildDecisionSummary(ranked, weights, activePreset);
+                    navigator.clipboard.writeText(summary);
+                    alert('Decision summary copied to clipboard');
+                  }}
+                  style={{
+                    background: C.paper, color: C.red, border: 'none',
+                    padding: '6px 12px', fontSize: 10, fontWeight: 700, letterSpacing: '0.05em',
+                  }}>
+                  Copy summary
+                </button>
+              </div>
+              <div style={{ padding: '22px 24px' }}>
+                <p style={{ fontSize: 14, lineHeight: 1.7, color: C.ink, marginBottom: 14 }}>
+                  Based on the priorities you've set <span style={{ fontStyle: 'italic', color: C.inkSoft }}>({getPrioritySentence()})</span>, the recommended tenant is{' '}
+                  <strong style={{ color: C.red }}>{ranked[0].tenant.fullName}</strong> with a weighted score of{' '}
+                  <strong>{ranked[0].weightedScore.toFixed(1)} / 5</strong>.
+                </p>
+                <p style={{ fontSize: 13, lineHeight: 1.7, color: C.inkSoft }}>
+                  Strongest factors driving this ranking:{' '}
+                  <strong style={{ color: C.ink }}>
+                    {ranked[0].topFactors.map(f => f.label.toLowerCase()).join(' and ')}
+                  </strong>
+                  {ranked[1] && (
+                    <>
+                      . Second-ranked is <strong style={{ color: C.ink }}>{ranked[1].tenant.fullName}</strong> at {ranked[1].weightedScore.toFixed(1)} / 5
+                      {' '}— gap of {(ranked[0].weightedScore - ranked[1].weightedScore).toFixed(1)} points.
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
+
+      <style jsx>{`
+        @keyframes glowUp {
+          0% { box-shadow: 0 0 0 0 rgba(215, 32, 39, 0); }
+          50% { box-shadow: 0 0 0 6px rgba(215, 32, 39, 0.25); }
+          100% { box-shadow: 0 0 0 0 rgba(215, 32, 39, 0); }
+        }
+        @keyframes glowDown {
+          0% { box-shadow: 0 0 0 0 rgba(134, 134, 139, 0); }
+          50% { box-shadow: 0 0 0 6px rgba(134, 134, 139, 0.2); }
+          100% { box-shadow: 0 0 0 0 rgba(134, 134, 139, 0); }
+        }
+        @keyframes fadeOut {
+          0%, 70% { opacity: 1; }
+          100% { opacity: 0; }
+        }
+        @media (max-width: 900px) {
+          .ranked-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
+}
+
+// ─── Helpers for RankedView ───────────────────────────────
+function formatList(arr) {
+  if (arr.length === 0) return '';
+  if (arr.length === 1) return arr[0];
+  if (arr.length === 2) return `${arr[0]} and ${arr[1]}`;
+  return arr.slice(0, -1).join(', ') + ', and ' + arr[arr.length - 1];
+}
+
+function buildDecisionSummary(ranked, weights, activePreset) {
+  const presetName = activePreset === 'custom' ? 'a custom priority weighting' : `the "${PRIORITY_PRESETS.find(p => p.id === activePreset)?.label}" priority preset`;
+  let summary = `TENANT EVALUATION — DECISION SUMMARY\n`;
+  summary += `Generated by Rentletter (rentletter.ca/landlord)\n`;
+  summary += `Date: ${new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' })}\n\n`;
+
+  summary += `METHODOLOGY\n`;
+  summary += `Tenants evaluated using ${presetName}, with the following factor weights:\n`;
+  FACTOR_DEFS.forEach(f => {
+    summary += `  - ${f.label}: ${weights[f.key].toFixed(1)}× weight\n`;
+  });
+  summary += `\n`;
+
+  summary += `RANKING (${ranked.length} applicants)\n`;
+  summary += `\n`;
+  ranked.forEach((app, idx) => {
+    summary += `#${idx + 1}  ${app.tenant.fullName} — ${app.weightedScore.toFixed(1)} / 5\n`;
+    summary += `    Application: ${app.applicationNumber}\n`;
+    summary += `    ${app.employment.jobTitle} at ${app.employment.employer}\n`;
+    summary += `    Income: $${(app.employment.annualIncome || 0).toLocaleString()} CAD/year\n`;
+    if (app.apartment.rentToIncomeRatio) summary += `    Rent-to-income: ${app.apartment.rentToIncomeRatio}%\n`;
+    summary += `    Top factors: ${app.topFactors.map(f => `${f.label} (${f.rawScore}/5)`).join(', ')}\n`;
+    summary += `\n`;
+  });
+
+  summary += `RECOMMENDATION\n`;
+  summary += `Based on the priority weighting applied, ${ranked[0].tenant.fullName} (${ranked[0].applicationNumber}) is the recommended applicant.\n`;
+  if (ranked[1]) {
+    const gap = ranked[0].weightedScore - ranked[1].weightedScore;
+    summary += `Margin over second-ranked applicant (${ranked[1].tenant.fullName}): ${gap.toFixed(1)} points.\n`;
+  }
+  summary += `\nThis evaluation reflects the priorities of the decision-maker as expressed via the weight settings above.\n`;
+  summary += `Rentletter Scorecard values are calculated from tenant-provided data and reflect honest factual assessment.\n`;
+
+  return summary;
 }
 
 // ─── HELPERS ──────────────────────────────────────────────
