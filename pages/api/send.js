@@ -136,7 +136,7 @@ async function buildPdf(letterText, resumeText, fullName) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { email, fullName, letter, resume } = req.body;
+  const { email, fullName, letter, resume, applicationNumber } = req.body;
 
   if (!email || !letter) {
     return res.status(400).json({ error: 'Missing email or letter content' });
@@ -262,6 +262,30 @@ export default async function handler(req, res) {
               </table>
             </td>
           </tr>
+
+          ${applicationNumber ? `
+          <!-- Application number — the trust signal for landlords -->
+          <tr>
+            <td style="padding-bottom: 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #0f0f10;">
+                <tr>
+                  <td style="width: 4px; background: #d72027;"></td>
+                  <td style="padding: 24px 28px;">
+                    <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #d72027; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; margin: 0 0 10px;">
+                      Your Application Number
+                    </p>
+                    <p style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 800; color: #faf8f3; letter-spacing: 0.04em; margin: 0 0 14px;">
+                      ${applicationNumber}
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55; color: #a4adbb; margin: 0;">
+                      Share this number with your landlord. They can verify your application and compare you against other tenants — for free — at <span style="color: #faf8f3; font-weight: 600;">rentletter.ca/landlord</span>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          ` : ''}
 
           <!-- Tip block with red accent -->
           <tr>
