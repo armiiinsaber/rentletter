@@ -71,21 +71,50 @@ export default function Home() {
   const [copiedResume, setCopiedResume] = useState(false);
   const [copiedAppNum, setCopiedAppNum] = useState(false);
 
+  // ── Pass state (30-day unlimited access) ──
+  const [passToken, setPassToken] = useState('');
+  const [passInfo, setPassInfo] = useState(null); // { email, daysRemaining, lettersGenerated, expiresAt }
+  const [passVerifying, setPassVerifying] = useState(false);
+  const [passActivating, setPassActivating] = useState(false);
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const isPaid = params.get('paid') === 'true';
     const sessionId = params.get('session_id');
+    const urlPass = params.get('pass');
+    const paidTier = params.get('tier'); // 'unlimited' set by us before Stripe redirect
 
+    // ─── ENTRY 1: User has a pass token in the URL ───
+    if (urlPass) {
+      verifyAndLoadPass(urlPass);
+      return;
+    }
+
+    // ─── ENTRY 2: User just paid for the 30-day pass — activate it ───
+    if (isPaid && sessionId && (paidTier === 'unlimited' || localStorage.getItem('rentletter_pending_tier') === 'unlimited')) {
+      activatePass(sessionId);
+      return;
+    }
+
+    // ─── ENTRY 3: User just paid for a single letter — generate it ───
     if (isPaid && sessionId) {
       const savedForm = localStorage.getItem('rentletter_form');
       if (savedForm) {
         const data = JSON.parse(savedForm);
         setForm(data);
         setStep('generating');
-        generateLetter(data, sessionId);
+        generateLetter(data, { stripeSessionId: sessionId });
       }
       return;
+    }
+
+    // ─── ENTRY 4: Returning user — restore previous state ───
+    // First, check if they have a pass stored locally
+    const savedPass = localStorage.getItem('rentletter_pass');
+    if (savedPass) {
+      // Verify it's still valid
+      verifyAndLoadPass(savedPass, /* silent */ true);
     }
 
     const savedLetter = localStorage.getItem('rentletter_letter');
@@ -101,6 +130,83 @@ export default function Home() {
     }
   }, []);
 
+  // ─── PASS VERIFICATION ───
+  const verifyAndLoadPass = async (token, silent = false) => {
+    if (!silent) setPassVerifying(true);
+    try {
+      const res = await fetch('/api/pass/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passToken: token }),
+      });
+      const json = await res.json();
+      if (json.valid) {
+        setPassToken(token);
+        setPassInfo({
+          email: json.email,
+          daysRemaining: json.daysRemaining,
+          lettersGenerated: json.lettersGenerated,
+          expiresAt: json.expiresAt,
+        });
+        localStorage.setItem('rentletter_pass', token);
+        // If we came from URL, clean the URL and go to form
+        if (!silent) {
+          window.history.replaceState({}, '', window.location.pathname);
+          setStep('form');
+        }
+      } else {
+        if (!silent) {
+          setError(json.error || 'Pass is invalid or expired.');
+          setStep('landing');
+        }
+        // Clear bad saved pass
+        if (silent) localStorage.removeItem('rentletter_pass');
+      }
+    } catch (e) {
+      if (!silent) {
+        setError('Could not verify pass. Please try again.');
+        setStep('landing');
+      }
+    }
+    setPassVerifying(false);
+  };
+
+  // ─── PASS ACTIVATION (after successful Stripe pass payment) ───
+  const activatePass = async (sessionId) => {
+    setPassActivating(true);
+    setStep('activating');
+    try {
+      const res = await fetch('/api/pass/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripeSessionId: sessionId }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+
+      // Pass created — save and load it
+      setPassToken(json.passToken);
+      localStorage.setItem('rentletter_pass', json.passToken);
+      localStorage.removeItem('rentletter_pending_tier');
+
+      // Load pass info for the success screen
+      await verifyAndLoadPass(json.passToken, true);
+      window.history.replaceState({}, '', window.location.pathname);
+      setStep('passSuccess');
+    } catch (e) {
+      setError(`Pass activation failed: ${e.message}. Please contact us at hello@rentletter.ca with your payment confirmation.`);
+      setStep('landing');
+    }
+    setPassActivating(false);
+  };
+
+  const clearPass = () => {
+    if (!confirm('Sign out of your 30-day pass on this device? You can re-open the access link from your email any time.')) return;
+    localStorage.removeItem('rentletter_pass');
+    setPassToken('');
+    setPassInfo(null);
+  };
+
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const isFormValid = () => {
@@ -111,6 +217,7 @@ export default function Home() {
 
   const handlePay = () => {
     localStorage.setItem('rentletter_form', JSON.stringify(form));
+    localStorage.setItem('rentletter_pending_tier', tier);
     localStorage.removeItem('rentletter_letter');
     localStorage.removeItem('rentletter_resume');
     window.location.href = tier === 'single' ? STRIPE_SINGLE : STRIPE_UNLIMITED;
@@ -188,16 +295,16 @@ export default function Home() {
     };
     setForm(demo);
     setStep('generating');
-    await generateLetter(demo, 'DEMO_MODE_BYPASS');
+    await generateLetter(demo, { stripeSessionId: 'DEMO_MODE_BYPASS' });
   };
 
-  const generateLetter = async (data, sessionId) => {
+  const generateLetter = async (data, auth = {}) => {
     setError('');
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, stripeSessionId: sessionId }),
+        body: JSON.stringify({ ...data, ...auth }),
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
@@ -212,6 +319,10 @@ export default function Home() {
       window.history.replaceState({}, '', window.location.pathname);
       setStep('result');
       if (data.email) sendEmail(data.email, data.fullName, json.letter, json.resume, json.applicationNumber);
+      // Refresh pass info if generated via pass
+      if (auth.passToken) {
+        verifyAndLoadPass(auth.passToken, true);
+      }
     } catch (e) {
       setError(e.message);
       setStep('form');
@@ -621,11 +732,20 @@ export default function Home() {
         <Head><title>Your details — Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
-          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Wordmark />
-            <button onClick={() => setStep('landing')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
-              ← Back
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {passInfo && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.inkSoft }}>
+                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: C.red }} />
+                  <span style={{ fontWeight: 600, color: C.ink }}>Pass active</span>
+                  <span style={{ color: C.inkMute }}>· {passInfo.daysRemaining}d left</span>
+                </div>
+              )}
+              <button onClick={() => setStep('landing')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
+                ← Back
+              </button>
+            </div>
           </header>
 
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '64px 32px 80px' }}>
@@ -705,35 +825,232 @@ export default function Home() {
               <Textarea label="Anything to address?" value={form.redFlags} onChange={v => update('redFlags', v)} placeholder="Bad credit, gap in history, etc." />
             </FormSection>
 
-            {/* Pricing summary */}
-            <div style={{ marginTop: 48, background: C.paper, border: `1px solid ${C.ink}`, padding: '28px 28px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
-                <span style={{ fontSize: 15, color: C.inkSoft }}>{tier === 'single' ? 'Single letter' : '30-day pass'}</span>
-                <span style={{ fontSize: 13, color: C.inkMute }}>1 ×</span>
+            {/* Pass status banner (only when active pass) */}
+            {passInfo && (
+              <div style={{ marginTop: 48, background: C.ink, color: C.paper, padding: '24px 28px', position: 'relative', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      ◯ 30-day pass active
+                    </div>
+                    <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.01em' }}>
+                      Unlimited letters
+                    </div>
+                    <div style={{ fontSize: 13, color: '#a4adbb', lineHeight: 1.55 }}>
+                      {passInfo.daysRemaining} day{passInfo.daysRemaining === 1 ? '' : 's'} remaining · {passInfo.lettersGenerated} letter{passInfo.lettersGenerated === 1 ? '' : 's'} generated · {passInfo.email}
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!isFormValid()) {
+                        setError('Please complete required fields first.');
+                        return;
+                      }
+                      localStorage.setItem('rentletter_form', JSON.stringify(form));
+                      setStep('generating');
+                      generateLetter(form, { passToken });
+                    }}
+                    disabled={!isFormValid()}
+                    style={{
+                      background: isFormValid() ? C.red : '#5a3a3c',
+                      color: C.paper, border: 'none',
+                      padding: '16px 28px', fontSize: 15, fontWeight: 700,
+                      cursor: isFormValid() ? 'pointer' : 'not-allowed',
+                      whiteSpace: 'nowrap',
+                      transition: 'background 0.2s',
+                    }}
+                    onMouseOver={e => { if (isFormValid()) e.currentTarget.style.background = C.redDark; }}
+                    onMouseOut={e => { if (isFormValid()) e.currentTarget.style.background = C.red; }}
+                  >
+                    {isFormValid() ? 'Generate letter →' : 'Fill required fields'}
+                  </button>
+                </div>
               </div>
-              <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total</span>
-                <span style={{ fontSize: 36, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>${tier === 'single' ? '9.99' : '19.99'}</span>
+            )}
+
+            {/* Pricing summary (only when no pass) */}
+            {!passInfo && (
+              <div style={{ marginTop: 48, background: C.paper, border: `1px solid ${C.ink}`, padding: '28px 28px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
+                  <span style={{ fontSize: 15, color: C.inkSoft }}>{tier === 'single' ? 'Single letter' : '30-day pass'}</span>
+                  <span style={{ fontSize: 13, color: C.inkMute }}>1 ×</span>
+                </div>
+                <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                  <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total</span>
+                  <span style={{ fontSize: 36, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>${tier === 'single' ? '9.99' : '19.99'}</span>
+                </div>
+                <button
+                  onClick={handlePay}
+                  disabled={!isFormValid()}
+                  style={{
+                    width: '100%', marginTop: 24,
+                    background: isFormValid() ? C.ink : '#c8c2b3',
+                    color: C.paper, border: 'none', padding: '18px',
+                    fontSize: 15, fontWeight: 600,
+                    cursor: isFormValid() ? 'pointer' : 'not-allowed',
+                    transition: 'opacity 0.2s',
+                  }}
+                  onMouseOver={e => { if (isFormValid()) e.currentTarget.style.opacity = '0.85'; }}
+                  onMouseOut={e => { if (isFormValid()) e.currentTarget.style.opacity = '1'; }}
+                >
+                  {isFormValid() ? `Pay $${tier === 'single' ? '9.99' : '19.99'} and continue` : 'Complete required fields'}
+                </button>
+                <p style={{ fontSize: 12, color: C.inkMute, marginTop: 14, textAlign: 'center' }}>
+                  Secure payment via Stripe · Not legal advice
+                </p>
+                {tier === 'unlimited' && (
+                  <p style={{ fontSize: 12, color: C.inkMute, marginTop: 14, textAlign: 'center', lineHeight: 1.55 }}>
+                    After payment, you'll receive an email with your unlimited access link.<br/>Use it from any device for 30 days.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // PASS ACTIVATING — after Stripe redirect for 30-day pass
+  // ════════════════════════════════════════════════════════════
+  if (step === 'activating') {
+    return (
+      <>
+        <Head><title>Activating your pass — Rentletter</title></Head>
+        <GlobalStyle />
+        <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ textAlign: 'center', maxWidth: 460 }}>
+            <div style={{ display: 'inline-flex', gap: 6, marginBottom: 36 }}>
+              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out infinite' }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.2s infinite' }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.4s infinite' }} />
+            </div>
+            <h2 style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.0, color: C.ink, letterSpacing: '-0.03em', marginBottom: 16 }}>
+              Activating your pass
+            </h2>
+            <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
+              Payment confirmed. Setting up 30 days of unlimited access. Don't close this tab.
+            </p>
+          </div>
+          <style jsx>{`
+            @keyframes pulse {
+              0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+              40% { opacity: 1; transform: scale(1); }
+            }
+          `}</style>
+        </div>
+      </>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // PASS SUCCESS — confirmation after pass activated
+  // ════════════════════════════════════════════════════════════
+  if (step === 'passSuccess') {
+    return (
+      <>
+        <Head><title>Your pass is ready — Rentletter</title></Head>
+        <GlobalStyle />
+        <div style={{ minHeight: '100vh', background: C.paper }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px' }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+              <Wordmark />
+            </div>
+          </header>
+          <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 32px 80px' }}>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
+              <div style={{ width: 24, height: 1, background: C.red }} />
+              <span style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Payment confirmed · 30-day pass active
+              </span>
+            </div>
+
+            <h1 style={{ fontSize: 'clamp(40px, 7vw, 72px)', fontWeight: 800, color: C.ink, marginBottom: 24, letterSpacing: '-0.03em', lineHeight: 1.0 }}>
+              Your unlimited access<br />
+              <span style={{ color: C.red }}>is ready.</span>
+            </h1>
+
+            <p style={{ fontSize: 17, color: C.inkSoft, marginBottom: 40, lineHeight: 1.55, maxWidth: 540 }}>
+              Generate as many cover letters and tenant resumes as you need for the next 30 days. Your access link has been emailed to you so you can use it from any device.
+            </p>
+
+            {/* Pass detail card */}
+            <div style={{ background: C.ink, color: C.paper, padding: '28px 32px', marginBottom: 32, position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>
+                Your pass details
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 24, marginBottom: 20 }}>
+                <div>
+                  <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 4 }}>Token</div>
+                  <div style={{ fontSize: 16, fontFamily: 'monospace', letterSpacing: '0.04em', fontWeight: 700 }}>{passToken}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 4 }}>Days remaining</div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{passInfo?.daysRemaining || 30}</div>
+                </div>
+                {passInfo?.email && (
+                  <div>
+                    <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 4 }}>Emailed to</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{passInfo.email}</div>
+                  </div>
+                )}
+              </div>
+              <div style={{ height: 1, background: '#3a3a3c', marginBottom: 20 }} />
+              <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 8, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
+                Your access link
+              </div>
+              <div style={{
+                fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all',
+                background: '#0a0a0b', padding: '12px 14px',
+                color: '#a4adbb', marginBottom: 16,
+              }}>
+                https://rentletter.ca/?pass={passToken}
               </div>
               <button
-                onClick={handlePay}
-                disabled={!isFormValid()}
-                style={{
-                  width: '100%', marginTop: 24,
-                  background: isFormValid() ? C.ink : '#c8c2b3',
-                  color: C.paper, border: 'none', padding: '18px',
-                  fontSize: 15, fontWeight: 600,
-                  cursor: isFormValid() ? 'pointer' : 'not-allowed',
-                  transition: 'opacity 0.2s',
+                onClick={() => {
+                  navigator.clipboard.writeText(`https://rentletter.ca/?pass=${passToken}`);
+                  alert('Access link copied');
                 }}
-                onMouseOver={e => { if (isFormValid()) e.currentTarget.style.opacity = '0.85'; }}
-                onMouseOut={e => { if (isFormValid()) e.currentTarget.style.opacity = '1'; }}
-              >
-                {isFormValid() ? `Pay $${tier === 'single' ? '9.99' : '19.99'} and continue` : 'Complete required fields'}
+                style={{
+                  background: C.paper, color: C.ink, border: 'none',
+                  padding: '10px 18px', fontSize: 13, fontWeight: 600,
+                }}>
+                Copy access link
               </button>
-              <p style={{ fontSize: 12, color: C.inkMute, marginTop: 14, textAlign: 'center' }}>
-                Secure payment via Stripe · Not legal advice
-              </p>
+            </div>
+
+            {/* CTA to start first letter */}
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => setStep('form')}
+                style={{
+                  background: C.red, color: C.paper, border: 'none',
+                  padding: '18px 32px', fontSize: 15, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 10,
+                }}
+                onMouseOver={e => e.currentTarget.style.background = C.redDark}
+                onMouseOut={e => e.currentTarget.style.background = C.red}>
+                Write your first letter <span style={{ fontSize: 18 }}>→</span>
+              </button>
+              <span style={{ fontSize: 12, color: C.inkMute }}>
+                Or save this page and come back later
+              </span>
+            </div>
+
+            <div style={{ marginTop: 56, padding: '20px 22px', background: '#fafaf5', borderLeft: `3px solid ${C.red}` }}>
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
+                A few things to know
+              </div>
+              <ul style={{ listStyle: 'none', fontSize: 13, color: C.inkSoft, lineHeight: 1.7 }}>
+                <li>— The access link works from any device. Bookmark it or save the email.</li>
+                <li>— Each letter generated gets its own unique application number you can share with landlords.</li>
+                <li>— Pass expires automatically in 30 days. No auto-renewal, no surprise charges.</li>
+                <li>— Need help? Reply to the activation email or write to hello@rentletter.ca</li>
+              </ul>
             </div>
           </div>
         </div>
@@ -783,11 +1100,38 @@ export default function Home() {
         <Head><title>Your letter — Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
-          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Wordmark />
-            <button onClick={startOver} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
-              Start fresh
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              {passInfo && (
+                <button
+                  onClick={() => {
+                    // Keep pass, but clear the current letter and go to a fresh form
+                    localStorage.removeItem('rentletter_letter');
+                    localStorage.removeItem('rentletter_resume');
+                    localStorage.removeItem('rentletter_form');
+                    localStorage.removeItem('rentletter_app_number');
+                    setLetter(''); setResume(''); setApplicationNumber('');
+                    setForm({
+                      email: '', apartmentAddress: '', apartmentDescription: '',
+                      fullName: '', age: '', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
+                      previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
+                      moveInDate: '', reasonForMoving: '', personality: '', pets: '', redFlags: '',
+                    });
+                    setStep('form');
+                  }}
+                  style={{
+                    background: C.red, color: C.paper, border: 'none',
+                    padding: '8px 16px', fontSize: 13, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 6,
+                  }}>
+                  + New letter
+                </button>
+              )}
+              <button onClick={startOver} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
+                {passInfo ? 'Clear this letter' : 'Start fresh'}
+              </button>
+            </div>
           </header>
 
           <div style={{ maxWidth: 820, margin: '0 auto', padding: '64px 32px 80px' }}>
