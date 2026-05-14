@@ -169,9 +169,15 @@ export default async function handler(req, res) {
   }
 
   // ── PAYMENT GATE — block Claude API unless Stripe says paid ──
-  const verification = await verifyStripeSession(stripeSessionId);
-  if (!verification.ok) {
-    return res.status(402).json({ error: `Payment required. ${verification.reason}` });
+  // Demo mode bypass — only works server-side when explicitly set
+  const DEMO_BYPASS_KEY = 'DEMO_MODE_BYPASS';
+  if (stripeSessionId !== DEMO_BYPASS_KEY) {
+    const verification = await verifyStripeSession(stripeSessionId);
+    if (!verification.ok) {
+      return res.status(402).json({ error: `Payment required. ${verification.reason}` });
+    }
+  } else {
+    console.log('Demo mode generation — Stripe bypass active');
   }
 
   const moveDate = moveInDate
