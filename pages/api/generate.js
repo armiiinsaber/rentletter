@@ -150,10 +150,88 @@ async function verifyStripeSession(sessionId) {
   }
 }
 
+// ─── PASS TOKEN VERIFICATION (30-day unlimited) ─────────────
+async function verifyPassToken(passToken) {
+  if (!passToken) return { ok: false, reason: 'No pass token provided' };
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    return { ok: false, reason: 'Pass system not configured' };
+  }
+
+  const normalized = String(passToken).trim().toUpperCase();
+  if (!/^[A-Z0-9]{16}$/.test(normalized)) {
+    return { ok: false, reason: 'Invalid pass token format' };
+  }
+
+  try {
+    const lookupRes = await fetch(
+      `${process.env.KV_REST_API_URL}/get/pass:${normalized}`,
+      { headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` } }
+    );
+
+    if (!lookupRes.ok) return { ok: false, reason: 'Pass lookup failed' };
+
+    const data = await lookupRes.json();
+    if (!data || !data.result) return { ok: false, reason: 'Pass not found or expired' };
+
+    let pass;
+    try {
+      pass = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+    } catch (parseErr) {
+      return { ok: false, reason: 'Pass data corrupted' };
+    }
+
+    if (new Date(pass.expiresAt).getTime() < Date.now()) {
+      return { ok: false, reason: 'Pass has expired' };
+    }
+
+    return { ok: true, pass };
+  } catch (err) {
+    console.error('Pass verification error:', err);
+    return { ok: false, reason: 'Pass verification error' };
+  }
+}
+
+async function incrementPassUsage(passToken) {
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return;
+  const normalized = String(passToken).trim().toUpperCase();
+  try {
+    const lookupRes = await fetch(
+      `${process.env.KV_REST_API_URL}/get/pass:${normalized}`,
+      { headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` } }
+    );
+    if (!lookupRes.ok) return;
+    const data = await lookupRes.json();
+    if (!data?.result) return;
+
+    const pass = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+    pass.lettersGenerated = (pass.lettersGenerated || 0) + 1;
+    pass.lastUsedAt = new Date().toISOString();
+
+    await fetch(`${process.env.KV_REST_API_URL}/set/pass:${normalized}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(pass),
+    });
+    // Reset TTL to preserve expiration
+    const ttlSec = Math.floor((new Date(pass.expiresAt).getTime() - Date.now()) / 1000);
+    if (ttlSec > 0) {
+      await fetch(`${process.env.KV_REST_API_URL}/expire/pass:${normalized}/${ttlSec}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
+      });
+    }
+  } catch (err) {
+    console.error('Increment pass usage failed:', err);
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { stripeSessionId, ...formData } = req.body;
+  const { stripeSessionId, passToken, ...formData } = req.body;
 
   const {
     apartmentAddress, apartmentDescription,
@@ -168,16 +246,31 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // ── PAYMENT GATE — block Claude API unless Stripe says paid ──
-  // Demo mode bypass — only works server-side when explicitly set
+  // ── ACCESS GATE — accept pass token, Stripe session, or demo bypass ──
   const DEMO_BYPASS_KEY = 'DEMO_MODE_BYPASS';
-  if (stripeSessionId !== DEMO_BYPASS_KEY) {
+  let accessMethod = null;
+
+  if (stripeSessionId === DEMO_BYPASS_KEY) {
+    accessMethod = 'demo';
+    console.log('Demo mode generation — bypass active');
+  } else if (passToken) {
+    // Verify the 30-day pass token
+    const passValid = await verifyPassToken(passToken);
+    if (!passValid.ok) {
+      return res.status(402).json({ error: `Pass invalid. ${passValid.reason}` });
+    }
+    accessMethod = 'pass';
+    // Increment the letter count on the pass (fire-and-forget)
+    incrementPassUsage(passToken).catch(err => console.error('Pass increment failed:', err));
+  } else if (stripeSessionId) {
+    // Single-letter Stripe verification
     const verification = await verifyStripeSession(stripeSessionId);
     if (!verification.ok) {
       return res.status(402).json({ error: `Payment required. ${verification.reason}` });
     }
+    accessMethod = 'stripe';
   } else {
-    console.log('Demo mode generation — Stripe bypass active');
+    return res.status(402).json({ error: 'Payment required. No valid access method.' });
   }
 
   const moveDate = moveInDate
