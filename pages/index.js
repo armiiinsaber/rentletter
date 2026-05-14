@@ -5,6 +5,7 @@ import Head from 'next/head';
 // https://rentletter.ca/?paid=true&session_id={CHECKOUT_SESSION_ID}
 const STRIPE_SINGLE = 'https://buy.stripe.com/aFa8wIeGLebVdp9gFk6Ri01';
 const STRIPE_UNLIMITED = 'https://buy.stripe.com/bJedR256b5Fpcl5cp46Ri02';
+
 // ─── DESIGN TOKENS ────────────────────────────────────────────
 const C = {
   paper: '#faf8f3',       // eggshell
@@ -14,6 +15,7 @@ const C = {
   inkMute: '#86868b',
   rule: '#e3ddd0',
   red: '#d72027',         // Time magazine red — used sparingly
+  redDark: '#a8161c',     // Hover / depth variant of red
 };
 
 const GlobalStyle = () => (
@@ -61,11 +63,13 @@ export default function Home() {
   });
   const [letter, setLetter] = useState('');
   const [resume, setResume] = useState('');
+  const [applicationNumber, setApplicationNumber] = useState('');
   const [error, setError] = useState('');
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [copiedLetter, setCopiedLetter] = useState(false);
   const [copiedResume, setCopiedResume] = useState(false);
+  const [copiedAppNum, setCopiedAppNum] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -87,10 +91,12 @@ export default function Home() {
     const savedLetter = localStorage.getItem('rentletter_letter');
     const savedResume = localStorage.getItem('rentletter_resume');
     const savedForm = localStorage.getItem('rentletter_form');
+    const savedAppNum = localStorage.getItem('rentletter_app_number');
     if (savedLetter && savedForm) {
       setLetter(savedLetter);
       setResume(savedResume || '');
       setForm(JSON.parse(savedForm));
+      if (savedAppNum) setApplicationNumber(savedAppNum);
       setStep('result');
     }
   }, []);
@@ -122,24 +128,28 @@ export default function Home() {
       if (json.error) throw new Error(json.error);
       setLetter(json.letter);
       setResume(json.resume);
+      if (json.applicationNumber) {
+        setApplicationNumber(json.applicationNumber);
+        localStorage.setItem('rentletter_app_number', json.applicationNumber);
+      }
       localStorage.setItem('rentletter_letter', json.letter);
       localStorage.setItem('rentletter_resume', json.resume);
       window.history.replaceState({}, '', window.location.pathname);
       setStep('result');
-      if (data.email) sendEmail(data.email, data.fullName, json.letter, json.resume);
+      if (data.email) sendEmail(data.email, data.fullName, json.letter, json.resume, json.applicationNumber);
     } catch (e) {
       setError(e.message);
       setStep('form');
     }
   };
 
-  const sendEmail = async (email, fullName, letterText, resumeText) => {
+  const sendEmail = async (email, fullName, letterText, resumeText, appNum) => {
     setEmailSending(true);
     try {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, fullName, letter: letterText, resume: resumeText }),
+        body: JSON.stringify({ email, fullName, letter: letterText, resume: resumeText, applicationNumber: appNum || applicationNumber }),
       });
       const json = await res.json();
       if (json.success) setEmailSent(true);
@@ -182,7 +192,8 @@ export default function Home() {
     localStorage.removeItem('rentletter_letter');
     localStorage.removeItem('rentletter_resume');
     localStorage.removeItem('rentletter_form');
-    setLetter(''); setResume('');
+    localStorage.removeItem('rentletter_app_number');
+    setLetter(''); setResume(''); setApplicationNumber('');
     setForm({
       email: '', apartmentAddress: '', apartmentDescription: '',
       fullName: '', age: '', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
@@ -208,6 +219,42 @@ export default function Home() {
         <GlobalStyle />
 
         <div style={{ minHeight: '100vh', background: C.paper }}>
+
+          {/* ── RED TICKER BAR — editorial market-ticker style ── */}
+          <div style={{
+            background: C.red, color: C.paper,
+            overflow: 'hidden', whiteSpace: 'nowrap',
+            borderBottom: `1px solid ${C.redDark || '#a8161c'}`,
+            position: 'relative',
+          }}>
+            <div style={{
+              display: 'inline-block',
+              padding: '10px 0',
+              animation: 'ticker 50s linear infinite',
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: '0.06em',
+              fontFamily: 'monospace',
+            }}>
+              {Array(4).fill(null).map((_, i) => (
+                <span key={i}>
+                  &nbsp;&nbsp;&nbsp;◆&nbsp;&nbsp;&nbsp;LIVE · TORONTO RENTAL MARKET
+                  &nbsp;&nbsp;&nbsp;◆&nbsp;&nbsp;&nbsp;AVG 2BR&nbsp;&nbsp;<strong>$2,720</strong>
+                  &nbsp;&nbsp;&nbsp;◆&nbsp;&nbsp;&nbsp;VACANCY RATE&nbsp;&nbsp;<strong>3.7%</strong>
+                  &nbsp;&nbsp;&nbsp;◆&nbsp;&nbsp;&nbsp;APPLICATIONS PER UNIT&nbsp;&nbsp;<strong>50+</strong>
+                  &nbsp;&nbsp;&nbsp;◆&nbsp;&nbsp;&nbsp;JULY 1 LEASE TURNOVER APPROACHING
+                  &nbsp;&nbsp;&nbsp;◆&nbsp;&nbsp;&nbsp;1 IN 4 RENTERS REJECTED FIRST APPLICATION
+                  &nbsp;&nbsp;&nbsp;◆&nbsp;&nbsp;&nbsp;
+                </span>
+              ))}
+            </div>
+            <style jsx>{`
+              @keyframes ticker {
+                0% { transform: translateX(0); }
+                100% { transform: translateX(-25%); }
+              }
+            `}</style>
+          </div>
 
           {/* ── HEADER ──────────────────────────────────────── */}
           <header style={{ borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
@@ -310,6 +357,45 @@ export default function Home() {
             </div>
           </section>
 
+          {/* ── RED PULL-QUOTE INTERRUPTION — magazine spread style ── */}
+          <section style={{ background: C.red, color: C.paper, position: 'relative', overflow: 'hidden' }}>
+            {/* Decorative oversized quote mark in corner */}
+            <div style={{
+              position: 'absolute',
+              top: -40, right: 32,
+              fontSize: 320, lineHeight: 1, fontWeight: 900,
+              color: C.redDark, opacity: 0.4,
+              fontFamily: 'Georgia, serif',
+              pointerEvents: 'none',
+              userSelect: 'none',
+            }}>
+              "
+            </div>
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '80px 32px', position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                <div style={{ width: 24, height: 1, background: C.paper }} />
+                <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', opacity: 0.85 }}>
+                  Why it works
+                </span>
+              </div>
+              <blockquote style={{
+                fontSize: 'clamp(28px, 4.5vw, 56px)',
+                lineHeight: 1.15,
+                letterSpacing: '-0.02em',
+                fontWeight: 700,
+                color: C.paper,
+                maxWidth: 920,
+                margin: 0,
+              }}>
+                Landlords don't read 50 applications.<br />
+                They <em style={{ fontStyle: 'italic' }}>skim</em> them — and pick the one that made the decision easiest.
+              </blockquote>
+              <div style={{ marginTop: 32, fontSize: 13, color: C.paper, opacity: 0.7, letterSpacing: '0.05em', textTransform: 'uppercase', fontWeight: 500 }}>
+                — The Rentletter principle
+              </div>
+            </div>
+          </section>
+
           {/* ── HOW IT WORKS — three short steps ────────────── */}
           <section style={{ padding: '100px 32px', maxWidth: 1100, margin: '0 auto' }}>
             <h2 style={{ fontSize: 14, fontWeight: 600, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 48 }}>
@@ -359,29 +445,78 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Unlimited — red bar only */}
-              <div style={{ background: C.paper, border: `1px solid ${C.ink}`, padding: '32px 28px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.inkSoft, marginBottom: 14 }}>30-day pass</div>
-                <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: C.ink, letterSpacing: '-0.03em' }}>$19.99</span>
-                  <span style={{ fontSize: 14, color: C.inkMute, marginLeft: 6 }}>CAD</span>
+              {/* Unlimited — FULL RED for editorial pop, like a magazine featured card */}
+              <div style={{ background: C.red, color: C.paper, padding: '32px 28px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+                {/* Tiny "RECOMMENDED" tag in corner */}
+                <div style={{
+                  position: 'absolute', top: 16, right: 16,
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
+                  textTransform: 'uppercase', color: C.paper,
+                  border: `1px solid ${C.paper}`, padding: '4px 10px',
+                  opacity: 0.95,
+                }}>
+                  Recommended
                 </div>
-                <div style={{ height: 1, background: C.rule, marginBottom: 20 }} />
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.paper, marginBottom: 14, opacity: 0.85 }}>30-day pass</div>
+                <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                  <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: C.paper, letterSpacing: '-0.03em' }}>$19.99</span>
+                  <span style={{ fontSize: 14, color: C.paper, opacity: 0.7, marginLeft: 6 }}>CAD</span>
+                </div>
+                <div style={{ height: 1, background: C.paper, opacity: 0.3, marginBottom: 20 }} />
                 <ul style={{ listStyle: 'none', flex: 1, marginBottom: 24 }}>
                   {['Unlimited letters', 'Unlimited resumes', 'Apply to every apartment', '30 days of access'].map(f => (
-                    <li key={f} style={{ padding: '10px 0', fontSize: 14, color: C.inkSoft, display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                      <span style={{ color: C.ink, fontSize: 11 }}>—</span> {f}
+                    <li key={f} style={{ padding: '10px 0', fontSize: 14, color: C.paper, display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                      <span style={{ color: C.paper, fontSize: 11, opacity: 0.6 }}>—</span> {f}
                     </li>
                   ))}
                 </ul>
                 <button onClick={() => { setTier('unlimited'); setStep('form'); }}
-                  style={{ background: C.ink, color: C.paper, border: 'none', padding: '14px', fontSize: 14, fontWeight: 500, transition: 'opacity 0.2s' }}
-                  onMouseOver={e => e.currentTarget.style.opacity = '0.85'}
-                  onMouseOut={e => e.currentTarget.style.opacity = '1'}>
-                  Choose pass
+                  style={{ background: C.paper, color: C.red, border: 'none', padding: '14px', fontSize: 14, fontWeight: 700, transition: 'all 0.2s' }}
+                  onMouseOver={e => { e.currentTarget.style.background = C.ink; e.currentTarget.style.color = C.paper; }}
+                  onMouseOut={e => { e.currentTarget.style.background = C.paper; e.currentTarget.style.color = C.red; }}>
+                  Choose pass →
                 </button>
               </div>
+            </div>
+          </section>
+
+          {/* ── FINAL CTA BANNER — red full-bleed last-chance ── */}
+          <section style={{ background: C.ink, color: C.paper, position: 'relative', overflow: 'hidden' }}>
+            {/* Diagonal red slash accent */}
+            <div style={{
+              position: 'absolute', top: 0, right: 0,
+              width: 240, height: '100%',
+              background: `linear-gradient(105deg, transparent 0%, transparent 50%, ${C.red} 50%, ${C.red} 100%)`,
+              pointerEvents: 'none',
+            }} />
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '72px 32px', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 40, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 300 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 24, height: 1, background: C.red }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.red }}>
+                    Two minutes from now
+                  </span>
+                </div>
+                <h2 style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: C.paper, marginBottom: 16 }}>
+                  Your application could be<br />
+                  the one they <span style={{ color: C.red }}>remember.</span>
+                </h2>
+                <p style={{ fontSize: 16, color: '#a4adbb', lineHeight: 1.55, maxWidth: 480 }}>
+                  Stop waiting for the "we went with someone else" email. Build the application landlords actually want to read.
+                </p>
+              </div>
+              <button onClick={() => setStep('form')}
+                style={{
+                  background: C.red, color: C.paper, border: 'none',
+                  padding: '22px 40px', fontSize: 16, fontWeight: 700,
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  position: 'relative', zIndex: 2,
+                  transition: 'background 0.2s',
+                }}
+                onMouseOver={e => e.currentTarget.style.background = C.redDark}
+                onMouseOut={e => e.currentTarget.style.background = C.red}>
+                Start your letter <span style={{ fontSize: 20 }}>→</span>
+              </button>
             </div>
           </section>
 
@@ -389,8 +524,11 @@ export default function Home() {
           <footer style={{ borderTop: `1px solid ${C.rule}`, padding: '32px' }}>
             <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
               <Wordmark />
-              <div style={{ fontSize: 13, color: C.inkMute }}>
-                Toronto · Not legal advice
+              <div style={{ display: 'flex', gap: 24, alignItems: 'center', fontSize: 13, color: C.inkMute, flexWrap: 'wrap' }}>
+                <a href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none', fontWeight: 500 }}>
+                  For landlords →
+                </a>
+                <span>Toronto · Not legal advice</span>
               </div>
             </div>
           </footer>
@@ -557,9 +695,47 @@ export default function Home() {
             <h1 style={{ fontSize: 48, fontWeight: 800, color: C.ink, marginBottom: 12, letterSpacing: '-0.03em', lineHeight: 1 }}>
               Your letter is <span style={{ color: C.red }}>ready.</span>
             </h1>
-            <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 40, lineHeight: 1.55 }}>
+            <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
               Read it over. Edit anything — changes save automatically.
             </p>
+
+            {/* Application Number Card — the trust signal for landlords */}
+            {applicationNumber && (
+              <div style={{
+                background: C.ink, color: C.paper,
+                padding: '24px 28px', marginBottom: 32,
+                position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Your Application Number
+                    </div>
+                    <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '0.04em', marginBottom: 10, fontFamily: 'monospace' }}>
+                      {applicationNumber}
+                    </div>
+                    <p style={{ fontSize: 13, color: '#a4adbb', lineHeight: 1.55, maxWidth: 480 }}>
+                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants — for free — at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/landlord</span>
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(applicationNumber);
+                      setCopiedAppNum(true);
+                      setTimeout(() => setCopiedAppNum(false), 2000);
+                    }}
+                    style={{
+                      background: C.paper, color: C.ink, border: 'none',
+                      padding: '10px 20px', fontSize: 13, fontWeight: 600,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {copiedAppNum ? '✓ Copied' : 'Copy number'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Email status */}
             {form.email && (
@@ -587,7 +763,7 @@ export default function Home() {
                 Word
               </button>
               {form.email && !emailSent && (
-                <button onClick={() => sendEmail(form.email, form.fullName, letter, resume)} disabled={emailSending}
+                <button onClick={() => sendEmail(form.email, form.fullName, letter, resume, applicationNumber)} disabled={emailSending}
                   style={{ background: 'transparent', color: C.paper, border: `1px solid #3a3a3c`, padding: '12px 22px', fontSize: 14, fontWeight: 500 }}>
                   {emailSending ? 'Sending...' : 'Resend email'}
                 </button>
