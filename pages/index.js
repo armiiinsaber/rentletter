@@ -116,6 +116,81 @@ export default function Home() {
     window.location.href = tier === 'single' ? STRIPE_SINGLE : STRIPE_UNLIMITED;
   };
 
+  // ─── DEV: Autofill test data + skip Stripe ─────────────────
+  const fillTestData = () => {
+    const sampleProfiles = [
+      {
+        email: 'sarah.chen.test@example.com',
+        apartmentAddress: '144 Roxborough Drive, Toronto',
+        apartmentDescription: '1BR, Rosedale, $2,200/mo',
+        fullName: 'Sarah Chen', age: '29',
+        jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
+        yearsAtJob: '4', annualIncome: '87000',
+        previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
+        previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
+        moveInDate: '2026-06-15',
+        reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute from 45 minutes to under 15. My current lease at 245 Sherbourne ends June 30.',
+        personality: 'Quiet, work from home 3 days a week, non-smoker. I keep a clean, minimal space.',
+        pets: 'None',
+        redFlags: '',
+      },
+      {
+        email: 'james.okafor.test@example.com',
+        apartmentAddress: '88 Yonge Street, Toronto',
+        apartmentDescription: 'Studio, downtown, $1,850/mo',
+        fullName: 'James Okafor', age: '26',
+        jobTitle: 'Software Engineer', employer: 'Shopify',
+        yearsAtJob: '1.5', annualIncome: '95000',
+        previousAddress: '', yearsAtPrevious: '',
+        previousLandlordName: '', previousLandlordContact: '',
+        moveInDate: '2026-07-01',
+        reasonForMoving: 'First-time renter — moving out of a family home to start independent life closer to work.',
+        personality: 'Quiet, mostly home in evenings, occasional weekend hosting (small groups).',
+        pets: 'None',
+        redFlags: 'Limited rental history as a first-time renter. Can provide guarantor and employer reference.',
+      },
+      {
+        email: 'priya.nair.test@example.com',
+        apartmentAddress: '550 Queen Street West, Toronto',
+        apartmentDescription: '2BR, Queen West, $3,100/mo',
+        fullName: 'Priya Nair', age: '34',
+        jobTitle: 'Senior UX Designer', employer: 'CIBC',
+        yearsAtJob: '5', annualIncome: '115000',
+        previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
+        previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
+        moveInDate: '2026-08-01',
+        reasonForMoving: 'Partner and I are moving in together — we both want a 2BR closer to the West End where we both work.',
+        personality: 'Stable, professional household. Both work hybrid, mostly weekday daytime presence.',
+        pets: 'One indoor cat, 6 years old, vet records available',
+        redFlags: '',
+      },
+    ];
+    const random = sampleProfiles[Math.floor(Math.random() * sampleProfiles.length)];
+    setForm(random);
+  };
+
+  const generateDemoLetter = async () => {
+    // Auto-fill, then generate WITHOUT Stripe (uses demo bypass)
+    const demo = {
+      email: 'demo@rentletter.ca',
+      apartmentAddress: '144 Roxborough Drive, Toronto',
+      apartmentDescription: '1BR, Rosedale, $2,200/mo',
+      fullName: 'Sarah Chen', age: '29',
+      jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
+      yearsAtJob: '4', annualIncome: '87000',
+      previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
+      previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
+      moveInDate: '2026-06-15',
+      reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute. Current lease at 245 Sherbourne ends June 30.',
+      personality: 'Quiet, work from home 3 days a week, non-smoker.',
+      pets: 'None',
+      redFlags: '',
+    };
+    setForm(demo);
+    setStep('generating');
+    await generateLetter(demo, 'DEMO_MODE_BYPASS');
+  };
+
   const generateLetter = async (data, sessionId) => {
     setError('');
     try {
@@ -554,6 +629,30 @@ export default function Home() {
           </header>
 
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '64px 32px 80px' }}>
+
+            {/* ── DEV TEST BAR (will be removed before public launch) ── */}
+            <div style={{
+              marginBottom: 32, padding: '14px 18px',
+              background: '#fff8e1', border: `1px solid #f5d77a`,
+              display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
+              fontSize: 12,
+            }}>
+              <span style={{ color: '#7a5d12', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 10 }}>
+                Dev mode
+              </span>
+              <button onClick={fillTestData}
+                style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
+                Fill random sample
+              </button>
+              <button onClick={generateDemoLetter}
+                style={{ background: C.red, color: C.paper, border: 'none', padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
+                Generate Sarah Chen (skip Stripe)
+              </button>
+              <span style={{ fontSize: 11, color: '#7a5d12', opacity: 0.75 }}>
+                Use these to test without paying. Remove this block before launch.
+              </span>
+            </div>
+
             <h1 style={{ fontSize: 48, fontWeight: 800, color: C.ink, marginBottom: 12, letterSpacing: '-0.03em', lineHeight: 1 }}>
               Tell us about you
             </h1>
