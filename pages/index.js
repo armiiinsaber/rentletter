@@ -637,20 +637,32 @@ export default function Home() {
 
           {/* ── PRICING ─────────────────────────────────────── */}
           <section style={{ padding: '20px 32px 100px', maxWidth: 1100, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 48 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 16 }}>
               Pricing
             </h2>
+            <p style={{ fontSize: 15, color: C.inkSoft, marginBottom: 40, maxWidth: 560, lineHeight: 1.55 }}>
+              Pick what fits your search. Both come with the full Rentletter application — Scorecard, Tiebreakers, landlord dashboard access, the works.
+            </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
-              {/* Single */}
+              {/* Single — for tenants who've already found their apartment */}
               <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: '32px 28px', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.inkSoft, marginBottom: 14 }}>Single letter</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>Single application</div>
+                <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 18 }}>
+                  Best if you've found your apartment
+                </div>
                 <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 4 }}>
                   <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: C.ink, letterSpacing: '-0.03em' }}>$9.99</span>
-                  <span style={{ fontSize: 14, color: C.inkMute, marginLeft: 6 }}>CAD</span>
+                  <span style={{ fontSize: 14, color: C.inkMute, marginLeft: 6 }}>CAD · one-time</span>
                 </div>
                 <div style={{ height: 1, background: C.rule, marginBottom: 20 }} />
                 <ul style={{ listStyle: 'none', flex: 1, marginBottom: 24 }}>
-                  {['One cover letter', 'One tenant resume', 'PDF and Word formats', 'Sent to your email'].map(f => (
+                  {[
+                    'One full Rentletter application',
+                    'Cover letter tailored to one apartment',
+                    'Tenant resume with Scorecard',
+                    'Landlord dashboard access via app number',
+                    'PDF and Word, emailed to you',
+                  ].map(f => (
                     <li key={f} style={{ padding: '10px 0', fontSize: 14, color: C.inkSoft, display: 'flex', alignItems: 'baseline', gap: 10 }}>
                       <span style={{ color: C.ink, fontSize: 11 }}>—</span> {f}
                     </li>
@@ -664,9 +676,8 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Unlimited — FULL RED for editorial pop, like a magazine featured card */}
+              {/* 30-day Search Pass — for active hunters */}
               <div style={{ background: C.red, color: C.paper, padding: '32px 28px', display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
-                {/* Tiny "RECOMMENDED" tag in corner */}
                 <div style={{
                   position: 'absolute', top: 16, right: 16,
                   fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
@@ -676,16 +687,33 @@ export default function Home() {
                 }}>
                   Recommended
                 </div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: C.paper, marginBottom: 14, opacity: 0.85 }}>30-day pass</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: C.paper, marginBottom: 6, opacity: 0.95 }}>30-day search pass</div>
+                <div style={{ fontSize: 12, color: C.paper, marginBottom: 18, opacity: 0.8 }}>
+                  Best for active apartment hunters
+                </div>
                 <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 4 }}>
                   <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: C.paper, letterSpacing: '-0.03em' }}>$19.99</span>
-                  <span style={{ fontSize: 14, color: C.paper, opacity: 0.7, marginLeft: 6 }}>CAD</span>
+                  <span style={{ fontSize: 14, color: C.paper, opacity: 0.7, marginLeft: 6 }}>CAD · no auto-renewal</span>
                 </div>
                 <div style={{ height: 1, background: C.paper, opacity: 0.3, marginBottom: 20 }} />
                 <ul style={{ listStyle: 'none', flex: 1, marginBottom: 24 }}>
-                  {['Unlimited letters', 'Unlimited resumes', 'Apply to every apartment', '30 days of access'].map(f => (
-                    <li key={f} style={{ padding: '10px 0', fontSize: 14, color: C.paper, display: 'flex', alignItems: 'baseline', gap: 10 }}>
-                      <span style={{ color: C.paper, fontSize: 11, opacity: 0.6 }}>—</span> {f}
+                  {[
+                    'Everything in Single, plus:',
+                    'Re-tailor cover letter for every apartment',
+                    'Update your profile anytime (new job, raise, co-applicant)',
+                    'Fresh application number each update',
+                    'Apply to as many places as you want',
+                    'Use from any device for 30 days',
+                  ].map((f, idx) => (
+                    <li key={f} style={{
+                      padding: '10px 0', fontSize: 14, color: C.paper,
+                      display: 'flex', alignItems: 'baseline', gap: 10,
+                      fontWeight: idx === 0 ? 700 : 400,
+                      borderBottom: idx === 0 ? `1px solid rgba(255,255,255,0.2)` : 'none',
+                      marginBottom: idx === 0 ? 4 : 0,
+                      paddingBottom: idx === 0 ? 14 : 10,
+                    }}>
+                      {idx > 0 && <span style={{ color: C.paper, fontSize: 11, opacity: 0.7 }}>+</span>} {f}
                     </li>
                   ))}
                 </ul>
@@ -697,6 +725,11 @@ export default function Home() {
                 </button>
               </div>
             </div>
+
+            {/* Honest framing footnote */}
+            <p style={{ marginTop: 24, fontSize: 12, color: C.inkMute, maxWidth: 560, lineHeight: 1.55 }}>
+              Most renters apply to 5–15 apartments over a 2–4 week search. If that's you, the pass pays for itself by the third application.
+            </p>
           </section>
 
           {/* ── FINAL CTA BANNER — red full-bleed last-chance ── */}
@@ -965,13 +998,13 @@ export default function Home() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-                      ◯ 30-day pass active
+                      ◯ 30-day search pass active
                     </div>
                     <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.01em' }}>
-                      Unlimited letters
+                      Generate a tailored application
                     </div>
                     <div style={{ fontSize: 13, color: '#a4adbb', lineHeight: 1.55 }}>
-                      {passInfo.daysRemaining} day{passInfo.daysRemaining === 1 ? '' : 's'} remaining · {passInfo.lettersGenerated} letter{passInfo.lettersGenerated === 1 ? '' : 's'} generated · {passInfo.email}
+                      {passInfo.daysRemaining} day{passInfo.daysRemaining === 1 ? '' : 's'} remaining · {passInfo.lettersGenerated} application{passInfo.lettersGenerated === 1 ? '' : 's'} generated · {passInfo.email}
                     </div>
                   </div>
                   <button
@@ -1006,7 +1039,7 @@ export default function Home() {
             {!passInfo && (
               <div style={{ marginTop: 48, background: C.paper, border: `1px solid ${C.ink}`, padding: '28px 28px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
-                  <span style={{ fontSize: 15, color: C.inkSoft }}>{tier === 'single' ? 'Single letter' : '30-day pass'}</span>
+                  <span style={{ fontSize: 15, color: C.inkSoft }}>{tier === 'single' ? 'Single application' : '30-day search pass'}</span>
                   <span style={{ fontSize: 13, color: C.inkMute }}>1 ×</span>
                 </div>
                 <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -1034,7 +1067,7 @@ export default function Home() {
                 </p>
                 {tier === 'unlimited' && (
                   <p style={{ fontSize: 12, color: C.inkMute, marginTop: 14, textAlign: 'center', lineHeight: 1.55 }}>
-                    After payment, you'll receive an email with your unlimited access link.<br/>Use it from any device for 30 days.
+                    After payment, you'll receive an email with your search pass link.<br/>Use it from any device for 30 days — re-tailor your application for every apartment.
                   </p>
                 )}
               </div>
@@ -1064,7 +1097,7 @@ export default function Home() {
               Activating your pass
             </h2>
             <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
-              Payment confirmed. Setting up 30 days of unlimited access. Don't close this tab.
+              Payment confirmed. Setting up your 30-day search pass. Don't close this tab.
             </p>
           </div>
           <style jsx>{`
@@ -1097,17 +1130,17 @@ export default function Home() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
               <div style={{ width: 24, height: 1, background: C.red }} />
               <span style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Payment confirmed · 30-day pass active
+                Payment confirmed · 30-day search pass active
               </span>
             </div>
 
             <h1 style={{ fontSize: 'clamp(40px, 7vw, 72px)', fontWeight: 800, color: C.ink, marginBottom: 24, letterSpacing: '-0.03em', lineHeight: 1.0 }}>
-              Your unlimited access<br />
+              Your search pass<br />
               <span style={{ color: C.red }}>is ready.</span>
             </h1>
 
             <p style={{ fontSize: 17, color: C.inkSoft, marginBottom: 40, lineHeight: 1.55, maxWidth: 540 }}>
-              Generate as many cover letters and tenant resumes as you need for the next 30 days. Your access link has been emailed to you so you can use it from any device.
+              Tailor a new application for every apartment you're considering. Update your profile any time your situation changes — new job, new income, found a co-applicant. Your access link has been emailed to you so you can use it from any device.
             </p>
 
             {/* Pass detail card */}
@@ -1180,7 +1213,8 @@ export default function Home() {
               </div>
               <ul style={{ listStyle: 'none', fontSize: 13, color: C.inkSoft, lineHeight: 1.7 }}>
                 <li>— The access link works from any device. Bookmark it or save the email.</li>
-                <li>— Each letter generated gets its own unique application number you can share with landlords.</li>
+                <li>— Each application gets a fresh number — landlords can verify the latest version.</li>
+                <li>— Update your profile anytime: new job, raise, found a roommate. The Scorecard recalculates.</li>
                 <li>— Pass expires automatically in 30 days. No auto-renewal, no surprise charges.</li>
                 <li>— Need help? Reply to the activation email or write to hello@rentletter.ca</li>
               </ul>
