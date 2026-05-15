@@ -235,11 +235,18 @@ export default async function handler(req, res) {
 
   const {
     apartmentAddress, apartmentDescription,
-    fullName, age,
+    fullName, age, dateOfBirth, phone,
     jobTitle, employer, yearsAtJob, annualIncome,
     previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
+    currentRent,
     moveInDate, reasonForMoving,
+    numberOfOccupants, occupantsDetails, smoker,
+    hasCoApplicant, coApplicantName, coApplicantAge, coApplicantEmployer,
+    coApplicantJobTitle, coApplicantIncome, coApplicantRelationship,
     personality, pets, redFlags,
+    hasVehicle, vehicleMakeModel, vehicleYear,
+    reference1Name, reference1Relationship, reference1Contact,
+    reference2Name, reference2Relationship, reference2Contact,
   } = formData;
 
   if (!fullName || !jobTitle || !annualIncome) {
@@ -297,16 +304,31 @@ export default async function handler(req, res) {
 
   const context = `
 TENANT PROFILE:
-- Name: ${fullName}${age ? `, age ${age}` : ''}
+- Name: ${fullName}${age ? `, age ${age}` : ''}${dateOfBirth ? ` (DOB: ${dateOfBirth})` : ''}
+${phone ? `- Phone: ${phone}` : ''}
 - Job: ${jobTitle} at ${employer}${yearsAtJob ? ` (${yearsAtJob} years)` : ''}
 - Annual income: $${annualIncomeNum.toLocaleString()} CAD
 - Monthly income (pre-tax): ${monthlyIncomeFormatted}
 ${estimatedRent ? `- Estimated rent: $${estimatedRent.toLocaleString()}/month` : ''}
 ${rentToIncomeRatio ? `- Rent-to-income ratio: ${rentToIncomeRatio}% (${rentToIncomeRatio <= 30 ? 'within 30% guideline' : rentToIncomeRatio <= 35 ? 'slightly above 30% guideline but manageable' : 'above standard guideline'})` : ''}
 
-RENTAL HISTORY:
-${previousAddress ? `- Previous address: ${previousAddress}${yearsAtPrevious ? ` (${yearsAtPrevious} years)` : ''}` : '- No previous rental in Canada / first-time renter'}
-${previousLandlordName ? `- Previous landlord: ${previousLandlordName}${previousLandlordContact ? ` (${previousLandlordContact})` : ''}` : ''}
+CURRENT RENTAL:
+${previousAddress ? `- Current address: ${previousAddress}${yearsAtPrevious ? ` (${yearsAtPrevious} years there)` : ''}` : '- No previous rental in Canada / first-time renter'}
+${currentRent ? `- Current rent: $${parseInt(currentRent).toLocaleString()}/month` : ''}
+${previousLandlordName ? `- Current/previous landlord: ${previousLandlordName}${previousLandlordContact ? ` (${previousLandlordContact})` : ''}` : ''}
+
+HOUSEHOLD:
+- Total occupants: ${numberOfOccupants || '1'}
+${occupantsDetails ? `- Occupant details: ${occupantsDetails}` : ''}
+- Smoker status: ${smoker === 'no' ? 'Non-smoker' : smoker === 'outdoor' ? 'Smokes outdoors only' : 'Smoker'}
+${hasCoApplicant ? `
+CO-APPLICANT:
+- Name: ${coApplicantName}${coApplicantAge ? `, age ${coApplicantAge}` : ''}
+- Relationship to primary applicant: ${coApplicantRelationship}
+- Job: ${coApplicantJobTitle || 'Not specified'} at ${coApplicantEmployer || 'Not specified'}
+${coApplicantIncome ? `- Annual income: $${parseInt(coApplicantIncome).toLocaleString()} CAD` : ''}
+- COMBINED HOUSEHOLD ANNUAL INCOME: $${(annualIncomeNum + (parseInt(coApplicantIncome) || 0)).toLocaleString()} CAD
+` : ''}
 
 THE APARTMENT:
 ${apartmentAddress ? `- Address: ${apartmentAddress}` : '- Address: not specified'}
@@ -320,6 +342,16 @@ PERSONAL:
 ${personality ? `- Personality/lifestyle: ${personality}` : ''}
 ${pets ? `- Pets: ${pets}` : ''}
 ${redFlags ? `- Things to address: ${redFlags}` : ''}
+
+${hasVehicle ? `VEHICLE:
+- ${vehicleMakeModel || 'Not specified'}${vehicleYear ? ` (${vehicleYear})` : ''}
+` : ''}
+
+${(reference1Name || reference2Name) ? `REFERENCES PROVIDED BY NAME:
+${reference1Name ? `- ${reference1Name}${reference1Relationship ? ` (${reference1Relationship})` : ''}${reference1Contact ? `, contact: ${reference1Contact}` : ''}` : ''}
+${reference2Name ? `- ${reference2Name}${reference2Relationship ? ` (${reference2Relationship})` : ''}${reference2Contact ? `, contact: ${reference2Contact}` : ''}` : ''}
+NOTE: Reference these by name in the Tenant Resume's References section. This is more persuasive than 'references available on request.'
+` : ''}
 `;
 
   const systemPrompt = `You are the senior rental application strategist at Rentletter, a Toronto-based service that has helped thousands of renters win competitive apartments. You combine professional copywriting with deep understanding of how landlords, property managers, and realtors actually evaluate applications.
@@ -435,18 +467,43 @@ RENTAL HISTORY
 ──────────────────────────────────────────
 REFERENCES AVAILABLE
 ──────────────────────────────────────────
+If the tenant has provided REFERENCES BY NAME in the input data, list each one with their name and relationship (do not include contact info in the document — landlord can request it). Format:
+- Sarah Johnson — Current manager at [employer]
+- David Chen — Personal reference, friend of 5 years
+If no named references are provided, list role-based references that are available on request:
 - Previous landlord [if applicable]
 - Employer (HR or direct manager)
 - Personal/character references (2 available on request)
 
+Named references are always more persuasive than "on request." Always list them by name when provided.
+
+──────────────────────────────────────────
+HOUSEHOLD (include if multi-occupant or co-applicant)
+──────────────────────────────────────────
+If the household has more than 1 occupant or a co-applicant, include this section:
+- Total occupants: [number]
+- [Brief description if provided]
+If there is a CO-APPLICANT in the input data, include their information clearly. Frame the application as joint:
+- Co-applicant: [Name], [Relationship to primary]
+- Their employment: [Job title at Employer]
+- Their income: $[X]/year
+- COMBINED household income: $[X]/year
+This matters because most rentals consider total household income for affordability calculations. Highlight the combined figure.
+
 ──────────────────────────────────────────
 LIFESTYLE
 ──────────────────────────────────────────
-Brief, factual bullets — 3-5 max. Examples:
-- Non-smoker
+Brief, factual bullets — 3-5 max. Always include smoker status. Examples:
+- Non-smoker (or "Outdoor smoking only" or "Smoker" — match the input)
 - Quiet weekday routine; works from home [X] days/week
 - No parties, no overnight commercial activity
 - Pets: [if any — frame with reassurance: "one well-trained 4-year-old cat, indoor only, full vet records available"]
+
+──────────────────────────────────────────
+VEHICLE (only if provided)
+──────────────────────────────────────────
+If vehicle information is provided, include a single line:
+- Vehicle: [Make/model] ([Year]) — relevant if parking is included with the unit
 
 ──────────────────────────────────────────
 DISCLOSURES [only include if there are real items to address]
@@ -576,7 +633,8 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
       tenant: {
         fullName,
         age: age || null,
-        // Sensitive contact info NOT stored — tenant shares directly with landlord
+        dateOfBirth: dateOfBirth || null,
+        phone: phone || null,
       },
       employment: {
         jobTitle,
@@ -590,6 +648,7 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
         yearsAtPrevious: yearsAtPrevious || null,
         previousLandlordName: previousLandlordName || null,
         previousLandlordContact: previousLandlordContact || null,
+        currentRent: currentRent ? parseInt(currentRent) : null,
       },
       apartment: {
         address: apartmentAddress || null,
@@ -601,10 +660,39 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
         moveInDate: moveDate,
         reasonForMoving,
       },
+      household: {
+        numberOfOccupants: numberOfOccupants || '1',
+        occupantsDetails: occupantsDetails || null,
+        smoker: smoker || 'no',
+      },
+      coApplicant: hasCoApplicant ? {
+        name: coApplicantName || null,
+        age: coApplicantAge || null,
+        relationship: coApplicantRelationship || null,
+        jobTitle: coApplicantJobTitle || null,
+        employer: coApplicantEmployer || null,
+        annualIncome: coApplicantIncome ? parseInt(coApplicantIncome) : null,
+      } : null,
       lifestyle: {
         personality: personality || null,
         pets: pets || null,
       },
+      vehicle: hasVehicle ? {
+        makeModel: vehicleMakeModel || null,
+        year: vehicleYear || null,
+      } : null,
+      references: [
+        ...(reference1Name ? [{
+          name: reference1Name,
+          relationship: reference1Relationship || null,
+          contact: reference1Contact || null,
+        }] : []),
+        ...(reference2Name ? [{
+          name: reference2Name,
+          relationship: reference2Relationship || null,
+          contact: reference2Contact || null,
+        }] : []),
+      ],
       disclosures: redFlags || null,
       scorecard,
     };
