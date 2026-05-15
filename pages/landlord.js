@@ -85,6 +85,43 @@ export default function LandlordDashboard() {
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
   const [activeAppIdx, setActiveAppIdx] = useState(0);
 
+  // ── FILTER STATE ──
+  const [filters, setFilters] = useState({
+    smokerStatus: 'any', // 'any' | 'non-smoker' | 'no-indoor'
+    pets: 'any', // 'any' | 'no-pets' | 'with-pets'
+    coApplicant: 'any', // 'any' | 'single' | 'with-co'
+    minIncome: 0,
+    maxRentToIncome: 100,
+  });
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  // Apply filters to applications list (used for Compare and Ranked views)
+  const filteredApplications = applications.filter(app => {
+    if (filters.smokerStatus === 'non-smoker' && app.household?.smoker !== 'no') return false;
+    if (filters.smokerStatus === 'no-indoor' && app.household?.smoker === 'yes') return false;
+    if (filters.pets === 'no-pets' && app.lifestyle?.pets && app.lifestyle.pets.toLowerCase() !== 'none' && app.lifestyle.pets.trim() !== '') return false;
+    if (filters.pets === 'with-pets' && (!app.lifestyle?.pets || app.lifestyle.pets.toLowerCase() === 'none' || app.lifestyle.pets.trim() === '')) return false;
+    if (filters.coApplicant === 'single' && app.coApplicant) return false;
+    if (filters.coApplicant === 'with-co' && !app.coApplicant) return false;
+    const totalIncome = (app.employment?.annualIncome || 0) + (app.coApplicant?.annualIncome || 0);
+    if (totalIncome < filters.minIncome) return false;
+    if (app.apartment?.rentToIncomeRatio && app.apartment.rentToIncomeRatio > filters.maxRentToIncome) return false;
+    return true;
+  });
+
+  const resetFilters = () => setFilters({
+    smokerStatus: 'any', pets: 'any', coApplicant: 'any',
+    minIncome: 0, maxRentToIncome: 100,
+  });
+
+  const activeFilterCount = [
+    filters.smokerStatus !== 'any',
+    filters.pets !== 'any',
+    filters.coApplicant !== 'any',
+    filters.minIncome > 0,
+    filters.maxRentToIncome < 100,
+  ].filter(Boolean).length;
+
   // Load saved applications from session storage
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -152,7 +189,7 @@ export default function LandlordDashboard() {
       {
         applicationNumber: 'RL-2026-DEMO-A001',
         createdAt: new Date().toISOString(),
-        tenant: { fullName: 'Sarah Chen', age: '29' },
+        tenant: { fullName: 'Sarah Chen', age: '29', dateOfBirth: '1996-08-12', phone: '(416) 555-0181' },
         employment: {
           jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
           yearsAtJob: '4', annualIncome: 87000, monthlyIncome: 7250,
@@ -160,13 +197,21 @@ export default function LandlordDashboard() {
         rental: {
           previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
           previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
+          currentRent: 1950,
         },
         apartment: {
           address: '144 Roxborough Drive, Toronto', description: '1BR, Rosedale, $2,200/mo',
           estimatedRent: 2200, rentToIncomeRatio: 30,
         },
         move: { moveInDate: 'June 15, 2026', reasonForMoving: 'Moving closer to my office on Bloor Street.' },
+        household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
+        coApplicant: null,
         lifestyle: { personality: 'Quiet, works from home 3 days a week.', pets: null },
+        vehicle: null,
+        references: [
+          { name: 'Jennifer Lee', relationship: 'Direct manager', contact: '416-555-0167' },
+          { name: 'David Park', relationship: 'Friend of 7 years', contact: 'd.park@email.com' },
+        ],
         disclosures: null,
         scorecard: {
           incomeStability: { score: 5, note: '4 years at Loblaw Companies' },
@@ -180,7 +225,7 @@ export default function LandlordDashboard() {
       {
         applicationNumber: 'RL-2026-DEMO-B002',
         createdAt: new Date().toISOString(),
-        tenant: { fullName: 'James Okafor', age: '26' },
+        tenant: { fullName: 'James Okafor', age: '26', dateOfBirth: '1999-03-22', phone: '(647) 555-0203' },
         employment: {
           jobTitle: 'Software Engineer', employer: 'Shopify',
           yearsAtJob: '1.5', annualIncome: 95000, monthlyIncome: 7916,
@@ -188,13 +233,21 @@ export default function LandlordDashboard() {
         rental: {
           previousAddress: null, yearsAtPrevious: null,
           previousLandlordName: null, previousLandlordContact: null,
+          currentRent: null,
         },
         apartment: {
           address: '88 Yonge Street, Toronto', description: 'Studio, downtown, $1,850/mo',
           estimatedRent: 1850, rentToIncomeRatio: 23,
         },
         move: { moveInDate: 'July 1, 2026', reasonForMoving: 'First-time renter — moving out of family home to start independent life closer to work.' },
+        household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
+        coApplicant: null,
         lifestyle: { personality: 'Quiet evenings, occasional weekend hosting.', pets: null },
+        vehicle: { makeModel: 'Honda Civic', year: '2020' },
+        references: [
+          { name: 'Adaobi Okafor', relationship: 'Sister, social worker', contact: 'a.okafor@email.com' },
+          { name: 'Marcus Reid', relationship: 'Manager at Shopify', contact: '416-555-0298' },
+        ],
         disclosures: 'Limited rental history as first-time renter. Can provide guarantor and employer reference.',
         scorecard: {
           incomeStability: { score: 4, note: '1.5 years at Shopify' },
@@ -208,7 +261,7 @@ export default function LandlordDashboard() {
       {
         applicationNumber: 'RL-2026-DEMO-C003',
         createdAt: new Date().toISOString(),
-        tenant: { fullName: 'Priya Nair', age: '34' },
+        tenant: { fullName: 'Priya Nair', age: '34', dateOfBirth: '1991-11-04', phone: '(437) 555-0312' },
         employment: {
           jobTitle: 'Senior UX Designer', employer: 'CIBC',
           yearsAtJob: '5', annualIncome: 115000, monthlyIncome: 9583,
@@ -216,21 +269,32 @@ export default function LandlordDashboard() {
         rental: {
           previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
           previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
+          currentRent: 2400,
         },
         apartment: {
           address: '550 Queen Street West, Toronto', description: '2BR, Queen West, $3,100/mo',
-          estimatedRent: 3100, rentToIncomeRatio: 32,
+          estimatedRent: 3100, rentToIncomeRatio: 16,
         },
         move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Partner and I are moving in together closer to the West End where we both work.' },
+        household: { numberOfOccupants: '2', occupantsDetails: 'Partner and I, both work hybrid.', smoker: 'no' },
+        coApplicant: {
+          name: 'Daniel Ross', age: '33', relationship: 'Partner of 4 years',
+          jobTitle: 'Product Manager', employer: 'RBC', annualIncome: 105000,
+        },
         lifestyle: { personality: 'Stable, professional household.', pets: 'One indoor cat, 6 years old, vet records available' },
+        vehicle: { makeModel: 'Toyota RAV4', year: '2022' },
+        references: [
+          { name: 'Sarah Martinez', relationship: 'Director at CIBC', contact: '416-555-0445' },
+          { name: 'Michael Tan', relationship: 'Previous landlord at 300 Bloor', contact: '416-555-0512' },
+        ],
         disclosures: null,
         scorecard: {
           incomeStability: { score: 5, note: '5 years at CIBC' },
-          rentAffordability: { score: 4, note: '32% of monthly income' },
+          rentAffordability: { score: 5, note: '16% of combined household income' },
           rentalHistory: { score: 5, note: '3 years with reference available' },
           longTermIntent: { score: 5, note: 'Move tied to partner cohabitation' },
           disclosures: { score: 5, note: 'No items to address' },
-          overall: 4.8,
+          overall: 5.0,
         },
       },
     ];
@@ -453,14 +517,126 @@ export default function LandlordDashboard() {
             )}
           </section>
 
+          {/* ── FILTER BAR ────────────────────────────────────── */}
+          {applications.length >= 2 && (
+            <section style={{ marginBottom: 24, borderTop: `1px solid ${C.rule}`, paddingTop: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: filtersOpen ? 20 : 0 }}>
+                <button
+                  onClick={() => setFiltersOpen(!filtersOpen)}
+                  style={{
+                    background: filtersOpen ? C.ink : 'transparent',
+                    color: filtersOpen ? C.paper : C.ink,
+                    border: `1px solid ${C.ink}`,
+                    padding: '10px 18px', fontSize: 13, fontWeight: 600,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                  }}>
+                  <span>Filters</span>
+                  {activeFilterCount > 0 && (
+                    <span style={{
+                      background: C.red, color: C.paper,
+                      padding: '2px 8px', fontSize: 11, fontWeight: 700,
+                      borderRadius: 10, minWidth: 22, textAlign: 'center',
+                    }}>
+                      {activeFilterCount}
+                    </span>
+                  )}
+                  <span style={{ fontSize: 10 }}>{filtersOpen ? '▲' : '▼'}</span>
+                </button>
+                <span style={{ fontSize: 12, color: C.inkMute }}>
+                  {filteredApplications.length} of {applications.length} match{activeFilterCount > 0 ? ' your filters' : ''}
+                </span>
+                {activeFilterCount > 0 && (
+                  <button onClick={resetFilters}
+                    style={{
+                      background: 'transparent', border: 'none',
+                      color: C.red, fontSize: 12, fontWeight: 600,
+                      textDecoration: 'underline',
+                    }}>
+                    Clear filters
+                  </button>
+                )}
+              </div>
+
+              {filtersOpen && (
+                <div style={{
+                  background: '#fafaf5', border: `1px solid ${C.rule}`,
+                  padding: '24px 28px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                  gap: 28,
+                }}>
+                  {/* Smoker status */}
+                  <FilterGroup label="Smoker status">
+                    <FilterRadio name="smoker" value="any" current={filters.smokerStatus}
+                      onChange={() => setFilters({ ...filters, smokerStatus: 'any' })}>Any</FilterRadio>
+                    <FilterRadio name="smoker" value="non-smoker" current={filters.smokerStatus}
+                      onChange={() => setFilters({ ...filters, smokerStatus: 'non-smoker' })}>Non-smokers only</FilterRadio>
+                    <FilterRadio name="smoker" value="no-indoor" current={filters.smokerStatus}
+                      onChange={() => setFilters({ ...filters, smokerStatus: 'no-indoor' })}>No indoor smoking</FilterRadio>
+                  </FilterGroup>
+
+                  {/* Pets */}
+                  <FilterGroup label="Pets">
+                    <FilterRadio name="pets" value="any" current={filters.pets}
+                      onChange={() => setFilters({ ...filters, pets: 'any' })}>Any</FilterRadio>
+                    <FilterRadio name="pets" value="no-pets" current={filters.pets}
+                      onChange={() => setFilters({ ...filters, pets: 'no-pets' })}>No pets only</FilterRadio>
+                    <FilterRadio name="pets" value="with-pets" current={filters.pets}
+                      onChange={() => setFilters({ ...filters, pets: 'with-pets' })}>Pet owners only</FilterRadio>
+                  </FilterGroup>
+
+                  {/* Co-applicant */}
+                  <FilterGroup label="Applicant type">
+                    <FilterRadio name="co" value="any" current={filters.coApplicant}
+                      onChange={() => setFilters({ ...filters, coApplicant: 'any' })}>Any</FilterRadio>
+                    <FilterRadio name="co" value="single" current={filters.coApplicant}
+                      onChange={() => setFilters({ ...filters, coApplicant: 'single' })}>Single applicants only</FilterRadio>
+                    <FilterRadio name="co" value="with-co" current={filters.coApplicant}
+                      onChange={() => setFilters({ ...filters, coApplicant: 'with-co' })}>Joint applicants only</FilterRadio>
+                  </FilterGroup>
+
+                  {/* Min income */}
+                  <FilterGroup label={`Min combined income: $${filters.minIncome.toLocaleString()}`}>
+                    <input
+                      type="range"
+                      min="0" max="200000" step="5000"
+                      value={filters.minIncome}
+                      onChange={e => setFilters({ ...filters, minIncome: parseInt(e.target.value) })}
+                      style={{ width: '100%', accentColor: C.red }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.inkMute, marginTop: 4 }}>
+                      <span>$0</span>
+                      <span>$200k+</span>
+                    </div>
+                  </FilterGroup>
+
+                  {/* Max rent-to-income */}
+                  <FilterGroup label={`Max rent-to-income: ${filters.maxRentToIncome}%`}>
+                    <input
+                      type="range"
+                      min="10" max="100" step="5"
+                      value={filters.maxRentToIncome}
+                      onChange={e => setFilters({ ...filters, maxRentToIncome: parseInt(e.target.value) })}
+                      style={{ width: '100%', accentColor: C.red }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.inkMute, marginTop: 4 }}>
+                      <span>10%</span>
+                      <span>100%</span>
+                    </div>
+                  </FilterGroup>
+                </div>
+              )}
+            </section>
+          )}
+
           {/* ── VIEW SWITCHER ────────────────────────────────── */}
           {applications.length > 0 && (
             <section style={{ marginBottom: 32, borderTop: `1px solid ${C.rule}`, paddingTop: 32 }}>
               <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.rule}`, marginBottom: 32 }}>
                 {[
                   { id: 'detail', label: 'Detail', enabled: true },
-                  { id: 'compare', label: 'Compare', enabled: applications.length >= 2 },
-                  { id: 'ranked', label: 'Ranked by weights', enabled: applications.length >= 2 },
+                  { id: 'compare', label: 'Compare', enabled: filteredApplications.length >= 2 },
+                  { id: 'ranked', label: 'Ranked by weights', enabled: filteredApplications.length >= 2 },
                 ].map(tab => (
                   <button
                     key={tab.id}
@@ -498,17 +674,17 @@ export default function LandlordDashboard() {
               )}
 
               {/* ── COMPARE VIEW ────────────────────────────── */}
-              {view === 'compare' && applications.length >= 2 && (
+              {view === 'compare' && filteredApplications.length >= 2 && (
                 <CompareView
-                  applications={applications}
+                  applications={filteredApplications}
                   onRemove={removeApplication}
                 />
               )}
 
               {/* ── RANKED VIEW ─────────────────────────────── */}
-              {view === 'ranked' && applications.length >= 2 && (
+              {view === 'ranked' && filteredApplications.length >= 2 && (
                 <RankedView
-                  applications={applications}
+                  applications={filteredApplications}
                   weights={weights}
                   setWeights={setWeights}
                   onRemove={removeApplication}
@@ -596,12 +772,32 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove }) {
               <DataRow label="Monthly income" value={`$${(app.employment.monthlyIncome || 0).toLocaleString()} CAD`} />
             </DataSection>
 
-            <DataSection title="Rental history">
+            {/* CO-APPLICANT — only if exists */}
+            {app.coApplicant && (
+              <DataSection title="Co-applicant">
+                <DataRow label="Name" value={`${app.coApplicant.name}${app.coApplicant.age ? `, age ${app.coApplicant.age}` : ''}`} />
+                <DataRow label="Relationship" value={app.coApplicant.relationship || 'Not specified'} />
+                <DataRow label="Position" value={`${app.coApplicant.jobTitle || 'Not specified'} at ${app.coApplicant.employer || 'Not specified'}`} />
+                {app.coApplicant.annualIncome && (
+                  <DataRow label="Their income" value={`$${app.coApplicant.annualIncome.toLocaleString()} CAD`} />
+                )}
+                <DataRow
+                  label="Combined household"
+                  value={`$${((app.employment.annualIncome || 0) + (app.coApplicant.annualIncome || 0)).toLocaleString()} CAD/year`}
+                  highlight
+                />
+              </DataSection>
+            )}
+
+            <DataSection title="Current rental">
               {app.rental.previousAddress ? (
                 <>
-                  <DataRow label="Previous address" value={app.rental.previousAddress} />
+                  <DataRow label="Current address" value={app.rental.previousAddress} />
                   <DataRow label="Years there" value={app.rental.yearsAtPrevious || 'Not specified'} />
-                  <DataRow label="Previous landlord" value={app.rental.previousLandlordName || 'Not specified'} />
+                  {app.rental.currentRent && (
+                    <DataRow label="Current rent" value={`$${app.rental.currentRent.toLocaleString()}/mo`} />
+                  )}
+                  <DataRow label="Current landlord" value={app.rental.previousLandlordName || 'Not specified'} />
                   <DataRow label="Contact" value={app.rental.previousLandlordContact || 'Available on request'} />
                 </>
               ) : (
@@ -615,7 +811,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove }) {
               <DataRow label="Address" value={app.apartment.address || 'Not specified'} />
               <DataRow label="Details" value={app.apartment.description || 'Not specified'} />
               {app.apartment.rentToIncomeRatio && (
-                <DataRow label="Rent-to-income" value={`${app.apartment.rentToIncomeRatio}%`} highlight={app.apartment.rentToIncomeRatio <= 30} />
+                <DataRow label="Rent-to-income" value={`${app.apartment.rentToIncomeRatio}%${app.coApplicant ? ' (combined)' : ''}`} highlight={app.apartment.rentToIncomeRatio <= 30} />
               )}
             </DataSection>
 
@@ -624,10 +820,50 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove }) {
               <DataRow label="Reason" value={app.move.reasonForMoving || 'Not specified'} multiline />
             </DataSection>
 
+            {/* HOUSEHOLD */}
+            {app.household && (
+              <DataSection title="Household">
+                <DataRow label="Occupants" value={app.household.numberOfOccupants || '1'} />
+                <DataRow
+                  label="Smoker"
+                  value={
+                    app.household.smoker === 'no' ? 'Non-smoker' :
+                    app.household.smoker === 'outdoor' ? 'Outdoor only' :
+                    app.household.smoker === 'yes' ? 'Yes' : '—'
+                  }
+                  highlight={app.household.smoker === 'no'}
+                />
+                {app.household.occupantsDetails && (
+                  <DataRow label="Details" value={app.household.occupantsDetails} multiline />
+                )}
+              </DataSection>
+            )}
+
             {(app.lifestyle.personality || app.lifestyle.pets) && (
               <DataSection title="Lifestyle">
                 {app.lifestyle.personality && <DataRow label="Personality" value={app.lifestyle.personality} multiline />}
                 {app.lifestyle.pets && <DataRow label="Pets" value={app.lifestyle.pets} />}
+              </DataSection>
+            )}
+
+            {/* VEHICLE */}
+            {app.vehicle && (
+              <DataSection title="Vehicle">
+                <DataRow label="Make/Model" value={`${app.vehicle.makeModel || 'Not specified'}${app.vehicle.year ? ` (${app.vehicle.year})` : ''}`} />
+              </DataSection>
+            )}
+
+            {/* REFERENCES */}
+            {app.references && app.references.length > 0 && (
+              <DataSection title="References (named)">
+                {app.references.map((ref, idx) => (
+                  <div key={idx} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: idx < app.references.length - 1 ? `1px solid ${C.rule}` : 'none' }}>
+                    <div style={{ fontSize: 13, color: C.ink, fontWeight: 600 }}>{ref.name}</div>
+                    <div style={{ fontSize: 12, color: C.inkSoft }}>
+                      {ref.relationship}{ref.contact ? ` · ${ref.contact}` : ''}
+                    </div>
+                  </div>
+                ))}
               </DataSection>
             )}
 
@@ -687,15 +923,27 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove }) {
 // ════════════════════════════════════════════════════════════
 function CompareView({ applications, onRemove }) {
   const factors = [
-    { label: 'Income (annual)', get: a => `$${(a.employment.annualIncome || 0).toLocaleString()}` },
-    { label: 'Income (monthly)', get: a => `$${(a.employment.monthlyIncome || 0).toLocaleString()}` },
+    { label: 'Annual income', get: a => `$${(a.employment.annualIncome || 0).toLocaleString()}` },
+    { label: 'Combined household income', get: a => {
+      const total = (a.employment.annualIncome || 0) + (a.coApplicant?.annualIncome || 0);
+      return a.coApplicant ? `$${total.toLocaleString()} (joint)` : `$${total.toLocaleString()}`;
+    }},
     { label: 'Job tenure', get: a => a.employment.yearsAtJob ? `${a.employment.yearsAtJob} years` : '—' },
     { label: 'Employer', get: a => a.employment.employer },
     { label: 'Rental history', get: a => a.rental.previousAddress ? `${a.rental.yearsAtPrevious || '?'} yrs` : 'First-time' },
+    { label: 'Current rent', get: a => a.rental?.currentRent ? `$${a.rental.currentRent.toLocaleString()}` : '—' },
     { label: 'Previous landlord', get: a => a.rental.previousLandlordName || '—' },
     { label: 'Rent-to-income', get: a => a.apartment.rentToIncomeRatio ? `${a.apartment.rentToIncomeRatio}%` : '—' },
     { label: 'Move-in date', get: a => a.move.moveInDate },
+    { label: 'Occupants', get: a => a.household?.numberOfOccupants || '1' },
+    { label: 'Smoker', get: a => {
+      const s = a.household?.smoker;
+      return s === 'no' ? 'Non-smoker' : s === 'outdoor' ? 'Outdoor' : s === 'yes' ? 'Yes' : '—';
+    }},
+    { label: 'Co-applicant', get: a => a.coApplicant ? `${a.coApplicant.name} (${a.coApplicant.relationship || '—'})` : 'Single' },
     { label: 'Pets', get: a => a.lifestyle.pets || 'None' },
+    { label: 'Vehicle', get: a => a.vehicle ? `${a.vehicle.makeModel || 'Yes'}${a.vehicle.year ? ` (${a.vehicle.year})` : ''}` : 'None' },
+    { label: 'Named references', get: a => a.references && a.references.length > 0 ? `${a.references.length} provided` : 'On request' },
     { label: 'Disclosures', get: a => a.disclosures ? 'Yes — see detail' : 'None' },
   ];
 
@@ -1403,5 +1651,37 @@ function ScoreBadge({ score, small }) {
     }}>
       {score} <span style={{ fontSize: small ? 10 : 11, fontWeight: 500, opacity: 0.7 }}>/ 5</span>
     </div>
+  );
+}
+
+// ─── Filter helpers ─────────────────────────────────────
+function FilterGroup({ label, children }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.ink, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+        {label}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function FilterRadio({ name, value, current, onChange, children }) {
+  const selected = current === value;
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', padding: '2px 0' }}>
+      <input
+        type="radio"
+        name={name}
+        checked={selected}
+        onChange={onChange}
+        style={{ accentColor: C.red, cursor: 'pointer' }}
+      />
+      <span style={{ fontSize: 13, color: selected ? C.ink : C.inkSoft, fontWeight: selected ? 600 : 400 }}>
+        {children}
+      </span>
+    </label>
   );
 }
