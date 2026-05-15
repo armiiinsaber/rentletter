@@ -55,11 +55,28 @@ export default function Home() {
   const [form, setForm] = useState({
     email: '',
     apartmentAddress: '', apartmentDescription: '',
-    fullName: '', age: '',
+    // Tier 1 — required (basic identity + landlord-needed)
+    fullName: '', age: '', dateOfBirth: '', phone: '',
+    // Tier 1 — employment (existing)
     jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
+    // Tier 1 — current rental (expanded)
     previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
+    currentRent: '',
     moveInDate: '', reasonForMoving: '',
+    // Tier 1 — household details
+    numberOfOccupants: '1', occupantsDetails: '',
+    smoker: 'no',
+    // Tier 1 — co-applicant (progressive disclosure)
+    hasCoApplicant: false,
+    coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
+    coApplicantIncome: '', coApplicantRelationship: '',
+    // Tier 1 — existing lifestyle/disclosures
     personality: '', pets: '', redFlags: '',
+    // Tier 2 — optional but landlord-helpful
+    hasVehicle: false,
+    vehicleMakeModel: '', vehicleYear: '',
+    reference1Name: '', reference1Relationship: '', reference1Contact: '',
+    reference2Name: '', reference2Relationship: '', reference2Contact: '',
   });
   const [letter, setLetter] = useState('');
   const [resume, setResume] = useState('');
@@ -373,6 +390,27 @@ export default function Home() {
     setTimeout(() => setter(false), 2000);
   };
 
+  // Default empty form — used for initial state + resets
+  const EMPTY_FORM = {
+    email: '',
+    apartmentAddress: '', apartmentDescription: '',
+    fullName: '', age: '', dateOfBirth: '', phone: '',
+    jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
+    previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
+    currentRent: '',
+    moveInDate: '', reasonForMoving: '',
+    numberOfOccupants: '1', occupantsDetails: '',
+    smoker: 'no',
+    hasCoApplicant: false,
+    coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
+    coApplicantIncome: '', coApplicantRelationship: '',
+    personality: '', pets: '', redFlags: '',
+    hasVehicle: false,
+    vehicleMakeModel: '', vehicleYear: '',
+    reference1Name: '', reference1Relationship: '', reference1Contact: '',
+    reference2Name: '', reference2Relationship: '', reference2Contact: '',
+  };
+
   const startOver = () => {
     if (!confirm('Clear this letter and start fresh?')) return;
     localStorage.removeItem('rentletter_letter');
@@ -380,12 +418,7 @@ export default function Home() {
     localStorage.removeItem('rentletter_form');
     localStorage.removeItem('rentletter_app_number');
     setLetter(''); setResume(''); setApplicationNumber('');
-    setForm({
-      email: '', apartmentAddress: '', apartmentDescription: '',
-      fullName: '', age: '', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
-      previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
-      moveInDate: '', reasonForMoving: '', personality: '', pets: '', redFlags: '',
-    });
+    setForm(EMPTY_FORM);
     setStep('landing');
   };
 
@@ -786,6 +819,18 @@ export default function Home() {
               </div>
             )}
 
+            {/* Privacy-first positioning note */}
+            <div style={{
+              marginBottom: 40, padding: '18px 22px',
+              background: '#fafaf5', borderLeft: `3px solid ${C.red}`,
+              fontSize: 13, color: C.inkSoft, lineHeight: 1.6,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Designed to be privacy-first
+              </div>
+              We collect what landlords need to make a good decision — not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with Ontario Human Rights Code best practices.
+            </div>
+
             <FormSection num="01" title="Where to send it" required>
               <Field label="Email" value={form.email} onChange={v => update('email', v)} placeholder="you@example.com" type="email" />
             </FormSection>
@@ -797,20 +842,29 @@ export default function Home() {
 
             <FormSection num="03" title="About you" required>
               <Field label="Full name" value={form.fullName} onChange={v => update('fullName', v)} placeholder="Jane Doe" />
-              <Field label="Age" value={form.age} onChange={v => update('age', v)} placeholder="28" type="number" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                <Field label="Age" value={form.age} onChange={v => update('age', v)} placeholder="28" type="number" />
+                <Field label="Date of birth" value={form.dateOfBirth} onChange={v => update('dateOfBirth', v)} type="date" />
+              </div>
+              <Field label="Phone" value={form.phone} onChange={v => update('phone', v)} placeholder="(416) 555-0142" type="tel" />
             </FormSection>
 
             <FormSection num="04" title="Employment" required>
               <Field label="Job title" value={form.jobTitle} onChange={v => update('jobTitle', v)} placeholder="Software engineer" />
               <Field label="Employer" value={form.employer} onChange={v => update('employer', v)} placeholder="Shopify" />
-              <Field label="Years at this job" value={form.yearsAtJob} onChange={v => update('yearsAtJob', v)} placeholder="3" />
-              <Field label="Annual income (CAD)" value={form.annualIncome} onChange={v => update('annualIncome', v)} placeholder="85,000" type="number" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                <Field label="Years at this job" value={form.yearsAtJob} onChange={v => update('yearsAtJob', v)} placeholder="3" />
+                <Field label="Annual income (CAD)" value={form.annualIncome} onChange={v => update('annualIncome', v)} placeholder="85,000" type="number" />
+              </div>
             </FormSection>
 
-            <FormSection num="05" title="Rental history">
-              <Field label="Previous address" value={form.previousAddress} onChange={v => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
-              <Field label="Years there" value={form.yearsAtPrevious} onChange={v => update('yearsAtPrevious', v)} placeholder="2" />
-              <Field label="Previous landlord name" value={form.previousLandlordName} onChange={v => update('previousLandlordName', v)} placeholder="John Smith" />
+            <FormSection num="05" title="Current rental">
+              <Field label="Current address" value={form.previousAddress} onChange={v => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                <Field label="Years there" value={form.yearsAtPrevious} onChange={v => update('yearsAtPrevious', v)} placeholder="2" />
+                <Field label="Current rent (CAD/mo)" value={form.currentRent} onChange={v => update('currentRent', v)} placeholder="2,200" type="number" />
+              </div>
+              <Field label="Current landlord name" value={form.previousLandlordName} onChange={v => update('previousLandlordName', v)} placeholder="John Smith" />
               <Field label="Landlord contact" value={form.previousLandlordContact} onChange={v => update('previousLandlordContact', v)} placeholder="phone or email" />
             </FormSection>
 
@@ -819,10 +873,89 @@ export default function Home() {
               <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={v => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
             </FormSection>
 
-            <FormSection num="07" title="Personal">
-              <Textarea label="Lifestyle and habits" value={form.personality} onChange={v => update('personality', v)} placeholder="Quiet, work from home most days, non-smoker." />
-              <Field label="Pets" value={form.pets} onChange={v => update('pets', v)} placeholder="One small cat, indoor only" />
-              <Textarea label="Anything to address?" value={form.redFlags} onChange={v => update('redFlags', v)} placeholder="Bad credit, gap in history, etc." />
+            <FormSection num="07" title="Household">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                <Field label="Total occupants" value={form.numberOfOccupants} onChange={v => update('numberOfOccupants', v)} placeholder="2" type="number" />
+                <SelectField
+                  label="Smoker?"
+                  value={form.smoker}
+                  onChange={v => update('smoker', v)}
+                  options={[
+                    { value: 'no', label: 'Non-smoker' },
+                    { value: 'outdoor', label: 'Outdoor only' },
+                    { value: 'yes', label: 'Yes' },
+                  ]}
+                />
+              </div>
+              <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={v => update('occupantsDetails', v)} placeholder="One roommate (also on this application), no children." />
+
+              {/* Co-applicant toggle */}
+              <ToggleField
+                label="Applying with a partner or roommate?"
+                value={form.hasCoApplicant}
+                onChange={v => update('hasCoApplicant', v)}
+              />
+              {form.hasCoApplicant && (
+                <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
+                    Co-applicant
+                  </div>
+                  <Field label="Full name" value={form.coApplicantName} onChange={v => update('coApplicantName', v)} placeholder="Alex Smith" />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                    <Field label="Age" value={form.coApplicantAge} onChange={v => update('coApplicantAge', v)} placeholder="30" type="number" />
+                    <Field label="Relationship" value={form.coApplicantRelationship} onChange={v => update('coApplicantRelationship', v)} placeholder="Partner / Roommate" />
+                  </div>
+                  <Field label="Job title" value={form.coApplicantJobTitle} onChange={v => update('coApplicantJobTitle', v)} placeholder="Designer" />
+                  <Field label="Employer" value={form.coApplicantEmployer} onChange={v => update('coApplicantEmployer', v)} placeholder="Figma" />
+                  <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={v => update('coApplicantIncome', v)} placeholder="75,000" type="number" />
+                </div>
+              )}
+            </FormSection>
+
+            <FormSection num="08" title="Lifestyle">
+              <Textarea label="Lifestyle and habits" value={form.personality} onChange={v => update('personality', v)} placeholder="Quiet, work from home most days, like to cook and read." />
+              <Field label="Pets" value={form.pets} onChange={v => update('pets', v)} placeholder="One small cat, indoor only, vet records available" />
+              <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={form.redFlags} onChange={v => update('redFlags', v)} placeholder="Limited Canadian credit history due to recent move..." />
+            </FormSection>
+
+            <FormSection num="09" title="References (optional but recommended)">
+              <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 18, lineHeight: 1.55 }}>
+                Two people who can vouch for you. Mentioning these by name on your application is more persuasive than saying "references available."
+              </p>
+              <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}`, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+                  Reference 1
+                </div>
+                <Field label="Full name" value={form.reference1Name} onChange={v => update('reference1Name', v)} placeholder="Sarah Johnson" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                  <Field label="Relationship" value={form.reference1Relationship} onChange={v => update('reference1Relationship', v)} placeholder="Current manager" />
+                  <Field label="Phone or email" value={form.reference1Contact} onChange={v => update('reference1Contact', v)} placeholder="416-555-0142" />
+                </div>
+              </div>
+              <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}` }}>
+                <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+                  Reference 2
+                </div>
+                <Field label="Full name" value={form.reference2Name} onChange={v => update('reference2Name', v)} placeholder="David Chen" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                  <Field label="Relationship" value={form.reference2Relationship} onChange={v => update('reference2Relationship', v)} placeholder="Friend of 5 years" />
+                  <Field label="Phone or email" value={form.reference2Contact} onChange={v => update('reference2Contact', v)} placeholder="dchen@email.com" />
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection num="10" title="Vehicle (if parking matters)">
+              <ToggleField
+                label="Do you have a vehicle?"
+                value={form.hasVehicle}
+                onChange={v => update('hasVehicle', v)}
+              />
+              {form.hasVehicle && (
+                <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4 }}>
+                  <Field label="Make and model" value={form.vehicleMakeModel} onChange={v => update('vehicleMakeModel', v)} placeholder="Honda Civic" />
+                  <Field label="Year" value={form.vehicleYear} onChange={v => update('vehicleYear', v)} placeholder="2020" type="number" />
+                </div>
+              )}
             </FormSection>
 
             {/* Pass status banner (only when active pass) */}
@@ -1112,12 +1245,7 @@ export default function Home() {
                     localStorage.removeItem('rentletter_form');
                     localStorage.removeItem('rentletter_app_number');
                     setLetter(''); setResume(''); setApplicationNumber('');
-                    setForm({
-                      email: '', apartmentAddress: '', apartmentDescription: '',
-                      fullName: '', age: '', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
-                      previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
-                      moveInDate: '', reasonForMoving: '', personality: '', pets: '', redFlags: '',
-                    });
+                    setForm(EMPTY_FORM);
                     setStep('form');
                   }}
                   style={{
@@ -1307,6 +1435,62 @@ function Textarea({ label, value, onChange, placeholder }) {
         }}
         onFocus={e => e.target.style.borderBottomColor = C.ink}
         onBlur={e => e.target.style.borderBottomColor = C.rule} />
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: '100%', padding: '14px 0', fontSize: 16,
+          border: 'none', borderBottom: `1px solid ${C.rule}`,
+          background: 'transparent', color: C.ink,
+          outline: 'none', appearance: 'none',
+          fontFamily: "'Inter', sans-serif",
+          cursor: 'pointer',
+        }}
+        onFocus={e => e.target.style.borderBottomColor = C.ink}
+        onBlur={e => e.target.style.borderBottomColor = C.rule}>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function ToggleField({ label, value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0' }}>
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        style={{
+          width: 44, height: 24,
+          background: value ? C.red : C.rule,
+          border: 'none',
+          borderRadius: 12,
+          position: 'relative',
+          cursor: 'pointer',
+          transition: 'background 0.2s',
+          padding: 0,
+        }}>
+        <span style={{
+          position: 'absolute',
+          top: 2, left: value ? 22 : 2,
+          width: 20, height: 20, borderRadius: '50%',
+          background: C.paper,
+          transition: 'left 0.2s',
+        }} />
+      </button>
+      <span style={{ fontSize: 14, color: C.ink, fontWeight: 500, cursor: 'pointer' }} onClick={() => onChange(!value)}>
+        {label}
+      </span>
     </div>
   );
 }
