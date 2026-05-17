@@ -3,8 +3,15 @@ import Head from 'next/head';
 
 // Stripe payment links — both must redirect to:
 // https://rentletter.ca/?paid=true&session_id={CHECKOUT_SESSION_ID}
-const STRIPE_SINGLE = 'https://buy.stripe.com/aFa8wIeGLebVdp9gFk6Ri01';
+// SINGLE is on LAUNCH PROMO at $0.99 until July 1, 2026 (regular price $9.99)
+const STRIPE_SINGLE = 'https://buy.stripe.com/bJe28k9mr6Jtbh10Gm6Ri03';
 const STRIPE_UNLIMITED = 'https://buy.stripe.com/bJedR256b5Fpcl5cp46Ri02';
+
+// ── PROMO CONFIG ──
+const PROMO_END_DATE = new Date('2026-07-01T05:00:00Z'); // July 1, 2026 00:00 ET
+const PROMO_PRICE = '0.99';
+const REGULAR_PRICE = '9.99';
+const isPromoActive = () => new Date() < PROMO_END_DATE;
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────
 const C = {
@@ -475,6 +482,34 @@ export default function Home() {
             `}</style>
           </div>
 
+          {/* ── LAUNCH PROMO BANNER (auto-disappears July 1) ── */}
+          {isPromoActive() && (
+            <div style={{
+              background: C.ink, color: C.paper,
+              padding: '14px 32px',
+              display: 'flex', justifyContent: 'center', alignItems: 'center',
+              gap: 16, flexWrap: 'wrap',
+              borderBottom: `1px solid #1a1a1c`,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{
+                  background: C.red, color: C.paper,
+                  fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
+                  textTransform: 'uppercase', padding: '4px 10px',
+                }}>
+                  Launch week
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 500 }}>
+                  <span style={{ textDecoration: 'line-through', color: C.inkMute, marginRight: 6 }}>${REGULAR_PRICE}</span>
+                  <span style={{ fontWeight: 800 }}>${PROMO_PRICE}</span> single applications until <span style={{ fontWeight: 700, color: C.red }}>June 30</span>
+                </span>
+              </div>
+              <span style={{ fontSize: 11, color: '#a4adbb' }}>
+                No promo code · Returns to ${REGULAR_PRICE} July 1
+              </span>
+            </div>
+          )}
+
           {/* ── HEADER ──────────────────────────────────────── */}
           <header style={{ borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
             <div style={{ maxWidth: 1200, margin: '0 auto', padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -546,7 +581,14 @@ export default function Home() {
                   <span>→</span>
                 </button>
                 <span style={{ fontSize: 14, color: C.inkMute }}>
-                  From <span style={{ color: C.ink, fontWeight: 600 }}>$9.99</span> · One-time
+                  {isPromoActive() ? (
+                    <>
+                      <span style={{ textDecoration: 'line-through', color: C.inkMute, marginRight: 6 }}>${REGULAR_PRICE}</span>
+                      <span style={{ color: C.red, fontWeight: 700 }}>${PROMO_PRICE}</span> · Launch promo
+                    </>
+                  ) : (
+                    <>From <span style={{ color: C.ink, fontWeight: 600 }}>${REGULAR_PRICE}</span> · One-time</>
+                  )}
                 </span>
               </div>
               <p style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.02em' }}>
@@ -645,15 +687,40 @@ export default function Home() {
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
               {/* Single — for tenants who've already found their apartment */}
-              <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: '32px 28px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: '32px 28px', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+                {isPromoActive() && (
+                  <div style={{
+                    position: 'absolute', top: 16, right: 16,
+                    fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
+                    textTransform: 'uppercase', color: C.paper,
+                    background: C.red, padding: '4px 10px',
+                  }}>
+                    Launch promo
+                  </div>
+                )}
                 <div style={{ fontSize: 14, fontWeight: 600, color: C.inkSoft, marginBottom: 6 }}>Single application</div>
                 <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 18 }}>
                   Best if you've found your apartment
                 </div>
-                <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                  <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: C.ink, letterSpacing: '-0.03em' }}>$9.99</span>
-                  <span style={{ fontSize: 14, color: C.inkMute, marginLeft: 6 }}>CAD · one-time</span>
+                <div style={{ marginBottom: isPromoActive() ? 8 : 24, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                  {isPromoActive() ? (
+                    <>
+                      <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: C.red, letterSpacing: '-0.03em' }}>${PROMO_PRICE}</span>
+                      <span style={{ fontSize: 22, fontWeight: 600, color: C.inkMute, textDecoration: 'line-through', letterSpacing: '-0.02em' }}>${REGULAR_PRICE}</span>
+                      <span style={{ fontSize: 13, color: C.inkMute, marginLeft: 2 }}>CAD</span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1, color: C.ink, letterSpacing: '-0.03em' }}>${REGULAR_PRICE}</span>
+                      <span style={{ fontSize: 14, color: C.inkMute, marginLeft: 6 }}>CAD · one-time</span>
+                    </>
+                  )}
                 </div>
+                {isPromoActive() && (
+                  <div style={{ fontSize: 12, color: C.red, fontWeight: 600, marginBottom: 20, letterSpacing: '0.02em' }}>
+                    Until June 30 · Returns to ${REGULAR_PRICE} July 1
+                  </div>
+                )}
                 <div style={{ height: 1, background: C.rule, marginBottom: 20 }} />
                 <ul style={{ listStyle: 'none', flex: 1, marginBottom: 24 }}>
                   {[
@@ -733,25 +800,26 @@ export default function Home() {
           </section>
 
           {/* ── FINAL CTA BANNER — red full-bleed last-chance ── */}
-          <section style={{ background: C.ink, color: C.paper, position: 'relative', overflow: 'hidden' }}>
-            {/* Diagonal red slash accent */}
-            <div style={{
+          <section style={{ background: C.ink, color: C.paper, position: 'relative', overflow: 'hidden' }} className="final-cta">
+            {/* Diagonal red slash accent — shrinks on mobile so it doesn't crash headline */}
+            <div className="cta-slash" style={{
               position: 'absolute', top: 0, right: 0,
               width: 240, height: '100%',
               background: `linear-gradient(105deg, transparent 0%, transparent 50%, ${C.red} 50%, ${C.red} 100%)`,
               pointerEvents: 'none',
             }} />
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: '72px 32px', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 40, flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: 300 }}>
+            <div className="cta-inner" style={{ maxWidth: 1100, margin: '0 auto', padding: '72px 32px', position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 40, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 280 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
                   <div style={{ width: 24, height: 1, background: C.red }} />
                   <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.red }}>
                     Two minutes from now
                   </span>
                 </div>
-                <h2 style={{ fontSize: 'clamp(32px, 5vw, 56px)', fontWeight: 800, lineHeight: 1.05, letterSpacing: '-0.03em', color: C.paper, marginBottom: 16 }}>
-                  Your application could be<br />
-                  the one they <span style={{ color: C.red }}>remember.</span>
+                <h2 className="cta-headline" style={{ fontSize: 'clamp(28px, 5vw, 56px)', fontWeight: 800, lineHeight: 1.1, letterSpacing: '-0.03em', color: C.paper, marginBottom: 16 }}>
+                  Your application<br />
+                  could be the one<br />
+                  they <span style={{ color: C.red }}>remember.</span>
                 </h2>
                 <p style={{ fontSize: 16, color: '#a4adbb', lineHeight: 1.55, maxWidth: 480 }}>
                   Stop waiting for the "we went with someone else" email. Build the application landlords actually want to read.
@@ -770,6 +838,25 @@ export default function Home() {
                 Start your letter <span style={{ fontSize: 20 }}>→</span>
               </button>
             </div>
+            <style jsx>{`
+              @media (max-width: 720px) {
+                :global(.cta-slash) {
+                  width: 80px !important;
+                }
+                :global(.cta-headline) {
+                  font-size: 32px !important;
+                  line-height: 1.1 !important;
+                }
+              }
+              @media (max-width: 480px) {
+                :global(.cta-slash) {
+                  width: 56px !important;
+                }
+                :global(.cta-headline) {
+                  font-size: 28px !important;
+                }
+              }
+            `}</style>
           </section>
 
           {/* ── FOOTER ──────────────────────────────────────── */}
@@ -1044,8 +1131,20 @@ export default function Home() {
                 </div>
                 <div style={{ marginTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total</span>
-                  <span style={{ fontSize: 36, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>${tier === 'single' ? '9.99' : '19.99'}</span>
+                  {tier === 'single' && isPromoActive() ? (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+                      <span style={{ fontSize: 18, fontWeight: 600, color: C.inkMute, textDecoration: 'line-through' }}>${REGULAR_PRICE}</span>
+                      <span style={{ fontSize: 36, fontWeight: 800, color: C.red, letterSpacing: '-0.02em' }}>${PROMO_PRICE}</span>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 36, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>${tier === 'single' ? REGULAR_PRICE : '19.99'}</span>
+                  )}
                 </div>
+                {tier === 'single' && isPromoActive() && (
+                  <div style={{ marginTop: 8, fontSize: 12, color: C.red, fontWeight: 600, textAlign: 'right' }}>
+                    Launch promo — saves ${(parseFloat(REGULAR_PRICE) - parseFloat(PROMO_PRICE)).toFixed(2)}
+                  </div>
+                )}
                 <button
                   onClick={handlePay}
                   disabled={!isFormValid()}
@@ -1060,7 +1159,9 @@ export default function Home() {
                   onMouseOver={e => { if (isFormValid()) e.currentTarget.style.opacity = '0.85'; }}
                   onMouseOut={e => { if (isFormValid()) e.currentTarget.style.opacity = '1'; }}
                 >
-                  {isFormValid() ? `Pay $${tier === 'single' ? '9.99' : '19.99'} and continue` : 'Complete required fields'}
+                  {isFormValid()
+                    ? `Pay $${tier === 'single' ? (isPromoActive() ? PROMO_PRICE : REGULAR_PRICE) : '19.99'} and continue`
+                    : 'Complete required fields'}
                 </button>
                 <p style={{ fontSize: 12, color: C.inkMute, marginTop: 14, textAlign: 'center' }}>
                   Secure payment via Stripe · Not legal advice
