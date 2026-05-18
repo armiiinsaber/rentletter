@@ -136,7 +136,7 @@ async function buildPdf(letterText, resumeText, fullName) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { email, fullName, letter, resume, applicationNumber } = req.body;
+  const { email, fullName, letter, resume, applicationNumber, ownerToken } = req.body;
 
   if (!email || !letter) {
     return res.status(400).json({ error: 'Missing email or letter content' });
@@ -266,7 +266,7 @@ export default async function handler(req, res) {
           ${applicationNumber ? `
           <!-- Application number — the trust signal for landlords -->
           <tr>
-            <td style="padding-bottom: 40px;">
+            <td style="padding-bottom: 24px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #0f0f10;">
                 <tr>
                   <td style="width: 4px; background: #d72027;"></td>
@@ -278,8 +278,43 @@ export default async function handler(req, res) {
                       ${applicationNumber}
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55; color: #a4adbb; margin: 0;">
-                      Share this number with your landlord. They can verify your application and compare you against other tenants — for free — at <span style="color: #faf8f3; font-weight: 600;">rentletter.ca/landlord</span>
+                      Share this number with your landlord. They can verify your application and compare you against other tenants &mdash; for free &mdash; at <span style="color: #faf8f3; font-weight: 600;">rentletter.ca/landlord</span>
                     </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          ` : ''}
+
+          ${ownerToken && applicationNumber ? `
+          <!-- Owner token / manage application -->
+          <tr>
+            <td style="padding-bottom: 40px;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #faf8f3; border: 1px solid #e3ddd0;">
+                <tr>
+                  <td style="padding: 20px 24px;">
+                    <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #d72027; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 10px;">
+                      Manage your application
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
+                      See who's looked you up. Revoke access any time. Your owner token below is the key &mdash; save this email or keep it somewhere private.
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
+                      Owner token
+                    </p>
+                    <p style="font-family: 'Courier New', monospace; font-size: 14px; color: #0f0f10; letter-spacing: 0.04em; word-break: break-all; background: #ffffff; border: 1px solid #e3ddd0; padding: 10px 12px; margin: 0 0 16px;">
+                      ${ownerToken}
+                    </p>
+                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                      <tr>
+                        <td style="background: #0f0f10;">
+                          <a href="https://rentletter.ca/my-application?app=${applicationNumber}&token=${ownerToken}" style="display: inline-block; padding: 12px 22px; color: #faf8f3; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; letter-spacing: 0.02em;">
+                            Open my dashboard &rarr;
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
                   </td>
                 </tr>
               </table>
