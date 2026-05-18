@@ -101,6 +101,13 @@ export default function Home() {
   const [passVerifying, setPassVerifying] = useState(false);
   const [passActivating, setPassActivating] = useState(false);
 
+  // ── Email verification state ──
+  const [verifyCodeSent, setVerifyCodeSent] = useState(false);
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyError, setVerifyError] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verificationToken, setVerificationToken] = useState('');
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -124,11 +131,12 @@ export default function Home() {
     // ─── ENTRY 3: User just paid for a single letter — generate it ───
     if (isPaid && sessionId) {
       const savedForm = localStorage.getItem('rentletter_form');
+      const vToken = localStorage.getItem('rentletter_verification_token');
       if (savedForm) {
         const data = JSON.parse(savedForm);
         setForm(data);
         setStep('generating');
-        generateLetter(data, { stripeSessionId: sessionId });
+        generateLetter(data, { stripeSessionId: sessionId, verificationToken: vToken });
       }
       return;
     }
@@ -239,12 +247,99 @@ export default function Home() {
       && form.annualIncome && form.moveInDate && form.reasonForMoving;
   };
 
-  const handlePay = () => {
+  const handlePay = async () => {
+    // First: require email verification (skip if we already have a fresh token from this session)
+    const storedToken = typeof window !== 'undefined' ? localStorage.getItem('rentletter_verification_token') : null;
+    const storedEmail = typeof window !== 'undefined' ? localStorage.getItem('rentletter_verified_email') : null;
+
+    if (!storedToken || storedEmail !== form.email.trim().toLowerCase()) {
+      // Need to verify email first
+      if (!form.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+        setError('Please enter a valid email at the top of the form.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+      // Send code and move to verify step
+      setStep('verifyEmail');
+      setVerifyError('');
+      setVerifyCode('');
+      setVerifyLoading(true);
+      try {
+        const res = await fetch('/api/verify/send-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email.trim() }),
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error);
+        setVerifyCodeSent(true);
+      } catch (e) {
+        setVerifyError(e.message);
+        setVerifyCodeSent(false);
+      }
+      setVerifyLoading(false);
+      return;
+    }
+
+    // Email already verified — go to Stripe
+    setVerificationToken(storedToken);
     localStorage.setItem('rentletter_form', JSON.stringify(form));
     localStorage.setItem('rentletter_pending_tier', tier);
     localStorage.removeItem('rentletter_letter');
     localStorage.removeItem('rentletter_resume');
     window.location.href = tier === 'single' ? STRIPE_SINGLE : STRIPE_UNLIMITED;
+  };
+
+  // Verify the 6-digit code the tenant entered
+  const submitVerificationCode = async () => {
+    setVerifyError('');
+    if (!/^\d{6}$/.test(verifyCode.trim())) {
+      setVerifyError('Code must be 6 digits.');
+      return;
+    }
+    setVerifyLoading(true);
+    try {
+      const res = await fetch('/api/verify/check-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email.trim(), code: verifyCode.trim() }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      // Store the verified email + token
+      setVerificationToken(json.verificationToken);
+      localStorage.setItem('rentletter_verification_token', json.verificationToken);
+      localStorage.setItem('rentletter_verified_email', json.verifiedEmail);
+      // Continue to Stripe
+      localStorage.setItem('rentletter_form', JSON.stringify(form));
+      localStorage.setItem('rentletter_pending_tier', tier);
+      localStorage.removeItem('rentletter_letter');
+      localStorage.removeItem('rentletter_resume');
+      window.location.href = tier === 'single' ? STRIPE_SINGLE : STRIPE_UNLIMITED;
+    } catch (e) {
+      setVerifyError(e.message);
+    }
+    setVerifyLoading(false);
+  };
+
+  // Resend the verification code
+  const resendVerificationCode = async () => {
+    setVerifyError('');
+    setVerifyLoading(true);
+    try {
+      const res = await fetch('/api/verify/send-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: form.email.trim() }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setVerifyCodeSent(true);
+      setVerifyCode('');
+    } catch (e) {
+      setVerifyError(e.message);
+    }
+    setVerifyLoading(false);
   };
 
   // ─── DEV: Autofill test data + skip Stripe ─────────────────
@@ -337,6 +432,9 @@ export default function Home() {
       if (json.applicationNumber) {
         setApplicationNumber(json.applicationNumber);
         localStorage.setItem('rentletter_app_number', json.applicationNumber);
+      }
+      if (json.ownerToken) {
+        localStorage.setItem('rentletter_owner_token', json.ownerToken);
       }
       localStorage.setItem('rentletter_letter', json.letter);
       localStorage.setItem('rentletter_resume', json.resume);
@@ -1102,7 +1200,7 @@ export default function Home() {
                       }
                       localStorage.setItem('rentletter_form', JSON.stringify(form));
                       setStep('generating');
-                      generateLetter(form, { passToken });
+                      generateLetter(form, { passToken, verificationToken: localStorage.getItem('rentletter_verification_token') });
                     }}
                     disabled={!isFormValid()}
                     style={{
@@ -1173,6 +1271,102 @@ export default function Home() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // VERIFY EMAIL — 6-digit code entry before Stripe
+  // ════════════════════════════════════════════════════════════
+  if (step === 'verifyEmail') {
+    return (
+      <>
+        <Head><title>Verify your email — Rentletter</title></Head>
+        <GlobalStyle />
+        <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', flexDirection: 'column' }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Wordmark />
+            <button onClick={() => setStep('form')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
+              ← Back to form
+            </button>
+          </header>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+            <div style={{ maxWidth: 460, width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+                <div style={{ width: 24, height: 1, background: C.red }} />
+                <span style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  Step 1 of 2 · Verify your email
+                </span>
+              </div>
+              <h2 style={{ fontSize: 36, fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 16 }}>
+                Check your email<br />for a 6-digit code.
+              </h2>
+              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.55, marginBottom: 28 }}>
+                We sent a verification code to <strong style={{ color: C.ink }}>{form.email}</strong>. Enter it below to continue to payment. This is how we keep applications real for landlords.
+              </p>
+
+              <label style={{ display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 10 }}>
+                Verification code
+              </label>
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                value={verifyCode}
+                onChange={e => setVerifyCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={e => e.key === 'Enter' && submitVerificationCode()}
+                placeholder="123456"
+                autoFocus
+                style={{
+                  width: '100%', padding: '18px 20px',
+                  fontSize: 24, fontWeight: 700,
+                  fontFamily: "'Courier New', monospace",
+                  letterSpacing: '0.4em', textAlign: 'center',
+                  border: `1px solid ${C.ink}`, background: C.paper, color: C.ink,
+                  outline: 'none',
+                }}
+              />
+
+              {verifyError && (
+                <div style={{ marginTop: 12, padding: '10px 14px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
+                  {verifyError}
+                </div>
+              )}
+
+              <button
+                onClick={submitVerificationCode}
+                disabled={verifyLoading || verifyCode.length !== 6}
+                style={{
+                  width: '100%', marginTop: 16,
+                  background: (verifyLoading || verifyCode.length !== 6) ? '#c8c2b3' : C.ink,
+                  color: C.paper, border: 'none', padding: '18px',
+                  fontSize: 15, fontWeight: 600,
+                  cursor: (verifyLoading || verifyCode.length !== 6) ? 'not-allowed' : 'pointer',
+                  transition: 'opacity 0.2s',
+                }}>
+                {verifyLoading ? 'Checking...' : 'Verify and continue to payment →'}
+              </button>
+
+              <div style={{ marginTop: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 12, color: C.inkMute }}>
+                <button onClick={() => setStep('form')}
+                  style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+                  Wrong email? Edit form
+                </button>
+                <button
+                  onClick={resendVerificationCode}
+                  disabled={verifyLoading}
+                  style={{ background: 'transparent', border: 'none', color: C.red, fontSize: 12, fontWeight: 600, cursor: verifyLoading ? 'not-allowed' : 'pointer', textDecoration: 'underline' }}>
+                  Resend code
+                </button>
+              </div>
+
+              <div style={{ marginTop: 36, padding: '14px 16px', background: '#fafaf5', borderLeft: `3px solid ${C.red}`, fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
+                <strong style={{ color: C.ink }}>Why?</strong> Landlords need to trust that Rentletter applications are real. A verified email makes every application more credible — and protects you from anyone impersonating you.
+              </div>
+            </div>
           </div>
         </div>
       </>
@@ -1424,6 +1618,14 @@ export default function Home() {
                     <p style={{ fontSize: 13, color: '#a4adbb', lineHeight: 1.55, maxWidth: 480 }}>
                       Share this number with your landlord or realtor. They can verify your application and compare you against other tenants — for free — at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/landlord</span>
                     </p>
+                    <a href="/my-application"
+                      style={{
+                        display: 'inline-block', marginTop: 14,
+                        fontSize: 12, fontWeight: 600,
+                        color: C.paper, textDecoration: 'underline',
+                      }}>
+                      → See who viewed your application or revoke it
+                    </a>
                   </div>
                   <button
                     onClick={() => {
