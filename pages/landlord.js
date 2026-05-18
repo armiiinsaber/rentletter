@@ -1589,6 +1589,23 @@ export default function LandlordDashboard() {
   const [weights, setWeights] = useState(DEFAULT_WEIGHTS);
   const [activeAppIdx, setActiveAppIdx] = useState(0);
 
+  // ── UNIT CONTEXT (the unit being rented out) ──
+  // Lets the dashboard show "Fits your unit?" for each applicant.
+  const [unit, setUnit] = useState({
+    address: '',
+    monthlyRent: '',
+    bedrooms: '',
+    allowsPets: 'any',     // 'any' | 'yes' | 'no'
+    allowsSmoking: 'no',   // 'yes' | 'no'
+    parkingIncluded: 'no', // 'yes' | 'no'
+  });
+  const [unitCardExpanded, setUnitCardExpanded] = useState(false);
+  const unitIsSet = !!(unit.address || unit.monthlyRent || unit.bedrooms);
+
+  // ── AI rationale generation state ──
+  const [rationaleLoading, setRationaleLoading] = useState({}); // keyed by appNumber
+  const [rationaleError, setRationaleError] = useState('');
+
   // ── SHORTLIST + NOTES state (keyed by application number) ──
   // status: 'none' | 'shortlist' | 'reject'
   const [decisions, setDecisions] = useState({});
@@ -1624,7 +1641,11 @@ export default function LandlordDashboard() {
   const setDecisionStatus = (appNum, status) => {
     setDecisions(prev => ({
       ...prev,
-      [appNum]: { ...(prev[appNum] || { notes: '' }), status },
+      [appNum]: {
+        ...(prev[appNum] || { notes: '', reasonCode: '' }),
+        status,
+        statusChangedAt: new Date().toISOString(),
+      },
     }));
   };
   const setDecisionNotes = (appNum, notes) => {
@@ -1633,7 +1654,13 @@ export default function LandlordDashboard() {
       [appNum]: { ...(prev[appNum] || { status: 'none' }), notes },
     }));
   };
-  const getDecision = (appNum) => decisions[appNum] || { status: 'none', notes: '' };
+  const setDecisionReason = (appNum, reasonCode) => {
+    setDecisions(prev => ({
+      ...prev,
+      [appNum]: { ...(prev[appNum] || { status: 'none', notes: '' }), reasonCode },
+    }));
+  };
+  const getDecision = (appNum) => decisions[appNum] || { status: 'none', notes: '', reasonCode: '', statusChangedAt: null };
 
   // Apply filters to applications list (used for Compare and Ranked views)
   const filteredApplications = applications.filter(app => {
@@ -1717,6 +1744,12 @@ export default function LandlordDashboard() {
         try { setDecisions(JSON.parse(savedDecisions)); } catch (e) {}
       }
     }
+
+    // Unit context (independent of sign-in)
+    const savedUnit = sessionStorage.getItem('landlord_unit');
+    if (savedUnit) {
+      try { setUnit(JSON.parse(savedUnit)); } catch (e) {}
+    }
   }, []);
 
   // Save to session storage as a backup (works signed-out too)
@@ -1729,6 +1762,11 @@ export default function LandlordDashboard() {
     if (typeof window === 'undefined') return;
     sessionStorage.setItem('landlord_decisions', JSON.stringify(decisions));
   }, [decisions]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    sessionStorage.setItem('landlord_unit', JSON.stringify(unit));
+  }, [unit]);
 
   // When signed in, also sync to server (debounced)
   useEffect(() => {
@@ -2089,6 +2127,88 @@ export default function LandlordDashboard() {
             </div>
           </section>
 
+          {/* ── UNIT CONTEXT CARD ─────────────────────────────── */}
+          <section style={{ marginBottom: 24 }}>
+            <div style={{
+              background: unitIsSet ? C.ink : C.paper,
+              border: `1px solid ${unitIsSet ? C.ink : C.rule}`,
+              padding: unitCardExpanded ? '20px 24px' : '14px 20px',
+              transition: 'padding 0.2s',
+            }}>
+              <div style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                flexWrap: 'wrap', gap: 12,
+                cursor: 'pointer',
+              }}
+                onClick={() => setUnitCardExpanded(!unitCardExpanded)}>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                  <div style={{
+                    fontSize: 11, fontWeight: 700,
+                    color: unitIsSet ? C.red : C.inkMute,
+                    letterSpacing: '0.1em', textTransform: 'uppercase',
+                    marginBottom: 4,
+                  }}>
+                    {unitIsSet ? 'Unit you\'re renting' : 'Set the unit you\'re renting →'}
+                  </div>
+                  <div style={{
+                    fontSize: 14, fontWeight: 600,
+                    color: unitIsSet ? C.paper : C.ink,
+                  }}>
+                    {unitIsSet
+                      ? `${unit.address || 'Unnamed unit'}${unit.monthlyRent ? ` · $${unit.monthlyRent}/mo` : ''}${unit.bedrooms ? ` · ${unit.bedrooms} bed` : ''}`
+                      : 'Adds "fits your unit?" matching for each applicant.'}
+                  </div>
+                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setUnitCardExpanded(!unitCardExpanded); }}
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${unitIsSet ? C.paper : C.rule}`,
+                    color: unitIsSet ? C.paper : C.inkSoft,
+                    padding: '6px 12px', fontSize: 11, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}>
+                  {unitCardExpanded ? 'Close' : (unitIsSet ? 'Edit' : 'Set up')}
+                </button>
+              </div>
+              {unitCardExpanded && (
+                <div style={{
+                  marginTop: 16, paddingTop: 16,
+                  borderTop: `1px solid ${unitIsSet ? '#3a3a3c' : C.rule}`,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: 14,
+                }}>
+                  <UnitField label="Address (or building name)" value={unit.address}
+                    onChange={v => setUnit({ ...unit, address: v })} dark={unitIsSet} placeholder="88 Bay Street" />
+                  <UnitField label="Monthly rent (CAD)" value={unit.monthlyRent}
+                    onChange={v => setUnit({ ...unit, monthlyRent: v.replace(/[^\d]/g, '') })} dark={unitIsSet} placeholder="2400" inputMode="numeric" />
+                  <UnitField label="Bedrooms" value={unit.bedrooms}
+                    onChange={v => setUnit({ ...unit, bedrooms: v })} dark={unitIsSet} placeholder="2" />
+                  <UnitSelect label="Allows pets" value={unit.allowsPets}
+                    options={[
+                      { v: 'any', l: 'Either way' },
+                      { v: 'yes', l: 'Yes — pets allowed' },
+                      { v: 'no', l: 'No — no pets' },
+                    ]}
+                    onChange={v => setUnit({ ...unit, allowsPets: v })} dark={unitIsSet} />
+                  <UnitSelect label="Allows smoking" value={unit.allowsSmoking}
+                    options={[
+                      { v: 'no', l: 'No smoking' },
+                      { v: 'yes', l: 'Smoking allowed' },
+                    ]}
+                    onChange={v => setUnit({ ...unit, allowsSmoking: v })} dark={unitIsSet} />
+                  <UnitSelect label="Parking included" value={unit.parkingIncluded}
+                    options={[
+                      { v: 'no', l: 'No parking' },
+                      { v: 'yes', l: 'Parking included' },
+                    ]}
+                    onChange={v => setUnit({ ...unit, parkingIncluded: v })} dark={unitIsSet} />
+                </div>
+              )}
+            </div>
+          </section>
+
           {/* ── INPUT BAR ────────────────────────────────────── */}
           <section style={{ marginBottom: 32 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 12 }}>
@@ -2411,7 +2531,13 @@ export default function LandlordDashboard() {
                   getDecision={getDecision}
                   setDecisionStatus={setDecisionStatus}
                   setDecisionNotes={setDecisionNotes}
+                  setDecisionReason={setDecisionReason}
                   setMethodologyOpen={setMethodologyOpen}
+                  unit={unit}
+                  rationaleLoading={rationaleLoading}
+                  setRationaleLoading={setRationaleLoading}
+                  rationaleError={rationaleError}
+                  setRationaleError={setRationaleError}
                 />
               )}
 
@@ -2733,10 +2859,49 @@ Looking forward to it,`}
 // ════════════════════════════════════════════════════════════
 // DETAIL VIEW — single tenant deep dive
 // ════════════════════════════════════════════════════════════
-function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecision, setDecisionStatus, setDecisionNotes, setMethodologyOpen }) {
+function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecision, setDecisionStatus, setDecisionNotes, setDecisionReason, setMethodologyOpen, unit, rationaleLoading, setRationaleLoading, rationaleError, setRationaleError }) {
   const app = applications[activeIdx];
   if (!app) return null;
   const decision = getDecision(app.applicationNumber);
+  const fitChecks = computeUnitFit(app, unit);
+  const fitSummary = unitFitSummary(fitChecks);
+
+  // AI rationale generator
+  const generateRationale = async () => {
+    setRationaleError('');
+    setRationaleLoading(prev => ({ ...prev, [app.applicationNumber]: true }));
+    try {
+      const res = await fetch('/api/landlord/reasoning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          application: app,
+          decision: decision.status,
+          unit,
+          existingNotes: decision.notes || '',
+        }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      const existing = decision.notes || '';
+      const combined = existing ? `${existing}\n\n${json.rationale}` : json.rationale;
+      setDecisionNotes(app.applicationNumber, combined);
+    } catch (e) {
+      setRationaleError(e.message || 'Could not generate rationale.');
+    }
+    setRationaleLoading(prev => ({ ...prev, [app.applicationNumber]: false }));
+  };
+
+  const REASON_OPTIONS = [
+    { v: '', l: '— Select a reason —' },
+    { v: 'income_strength', l: 'Income stability' },
+    { v: 'affordability', l: 'Rent affordability' },
+    { v: 'rental_history', l: 'Strong rental history / references' },
+    { v: 'long_term_fit', l: 'Long-term fit for the unit' },
+    { v: 'disclosures', l: 'Disclosures / transparency' },
+    { v: 'unit_fit', l: 'Best fit for this specific unit' },
+    { v: 'other', l: 'Other (see notes)' },
+  ];
 
   return (
     <div>
@@ -2890,16 +3055,105 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
           </div>
         </div>
 
-        {/* NOTES (NEW) */}
-        <div style={{ padding: '18px 28px', borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
-          <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-            Private notes (only you see these)
+        {/* UNIT-FIT PANEL — only renders if the landlord set up unit context */}
+        {fitChecks.length > 0 && (
+          <div style={{
+            padding: '18px 28px', borderBottom: `1px solid ${C.rule}`,
+            background: C.paper,
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Fit for your unit
+              </div>
+              {fitSummary && (
+                <span style={{
+                  background: fitSummary.color, color: C.paper,
+                  padding: '3px 10px', fontSize: 10, fontWeight: 700,
+                  letterSpacing: '0.08em', textTransform: 'uppercase',
+                }}>
+                  {fitSummary.label}
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+              {fitChecks.map((check, idx) => {
+                const icon = check.status === 'pass' ? '✓' : check.status === 'fail' ? '✗' : check.status === 'warn' ? '!' : '?';
+                const color = check.status === 'pass' ? C.green : check.status === 'fail' ? C.red : check.status === 'warn' ? '#a8161c' : C.inkMute;
+                return (
+                  <div key={idx} style={{
+                    padding: '10px 12px',
+                    background: '#fafaf5',
+                    borderLeft: `3px solid ${color}`,
+                    display: 'flex', alignItems: 'flex-start', gap: 10,
+                  }}>
+                    <div style={{
+                      width: 20, height: 20, borderRadius: '50%',
+                      background: color, color: C.paper,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13, fontWeight: 700, flexShrink: 0,
+                    }}>
+                      {icon}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 2 }}>
+                        {check.label}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.inkSoft, lineHeight: 1.4 }}>
+                        {check.note}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        )}
+
+        {/* NOTES + DECISION RATIONALE (audit trail) */}
+        <div style={{ padding: '18px 28px', borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, flexWrap: 'wrap', gap: 10 }}>
+            <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              Decision rationale (your audit trail)
+            </div>
+            {decision.status !== 'none' && (
+              <button
+                onClick={generateRationale}
+                disabled={rationaleLoading[app.applicationNumber]}
+                style={{
+                  background: C.red, color: C.paper, border: 'none',
+                  padding: '6px 12px', fontSize: 11, fontWeight: 700,
+                  cursor: rationaleLoading[app.applicationNumber] ? 'wait' : 'pointer',
+                  opacity: rationaleLoading[app.applicationNumber] ? 0.6 : 1,
+                  letterSpacing: '0.04em', textTransform: 'uppercase',
+                }}>
+                {rationaleLoading[app.applicationNumber] ? 'Generating...' : '✨ Generate AI rationale'}
+              </button>
+            )}
+          </div>
+
+          {decision.status !== 'none' && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Primary reason for this {decision.status === 'shortlist' ? 'shortlisting' : 'rejection'}
+              </div>
+              <select
+                value={decision.reasonCode || ''}
+                onChange={e => setDecisionReason(app.applicationNumber, e.target.value)}
+                style={{
+                  width: '100%', padding: '8px 10px', fontSize: 12,
+                  border: `1px solid ${C.rule}`, background: C.paper, color: C.ink,
+                  outline: 'none',
+                }}>
+                {REASON_OPTIONS.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+              </select>
+            </div>
+          )}
+
           <textarea
             value={decision.notes}
             onChange={e => setDecisionNotes(app.applicationNumber, e.target.value)}
-            placeholder="e.g., Spoke with Sarah Friday — confirmed move-in date works. Waiting on landlord ref."
-            rows={2}
+            placeholder="Why are you leaning this direction? (For your records — useful if a rejected applicant later files a complaint with the LTB or HRTO.)"
+            rows={3}
             style={{
               width: '100%', padding: '10px 12px',
               border: `1px solid ${C.rule}`, background: C.paper, color: C.ink,
@@ -2909,6 +3163,16 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
             onFocus={e => e.target.style.borderColor = C.ink}
             onBlur={e => e.target.style.borderColor = C.rule}
           />
+          {rationaleError && (
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 12, color: C.ink }}>
+              {rationaleError}
+            </div>
+          )}
+          {decision.statusChangedAt && (
+            <div style={{ marginTop: 8, fontSize: 10, color: C.inkMute, letterSpacing: '0.02em' }}>
+              Decision logged: {new Date(decision.statusChangedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}
+            </div>
+          )}
         </div>
 
         {/* Two-column body */}
@@ -3193,6 +3457,93 @@ function CompareView({ applications, onRemove, getDecision, setDecisionStatus })
 // RANKED VIEW — the crown jewel
 // Weighted decision engine with presets, animation, and defensible output
 // ════════════════════════════════════════════════════════════
+
+// ── Unit-fit helper ────────────────────────────────────────
+// Compares an applicant against the landlord's unit context.
+// Returns an array of { label, status: 'pass'|'fail'|'warn'|'unknown', note }
+function computeUnitFit(app, unit) {
+  if (!unit || (!unit.address && !unit.monthlyRent && !unit.bedrooms)) return [];
+
+  const checks = [];
+
+  // Rent affordability against the unit's actual rent
+  if (unit.monthlyRent) {
+    const unitRent = parseInt(unit.monthlyRent);
+    const monthlyIncome = (app.employment?.annualIncome || 0) / 12 + (app.coApplicant?.annualIncome || 0) / 12;
+    if (monthlyIncome > 0) {
+      const ratio = Math.round((unitRent / monthlyIncome) * 100);
+      let status = 'pass';
+      let note = `Rent is ${ratio}% of household income`;
+      if (ratio > 40) { status = 'fail'; note = `${ratio}% rent-to-income — over 40% threshold`; }
+      else if (ratio > 30) { status = 'warn'; note = `${ratio}% rent-to-income — slightly stretched`; }
+      checks.push({ label: 'Affordable for them', status, note });
+    }
+  }
+
+  // Pets policy
+  if (unit.allowsPets === 'no') {
+    const pets = app.lifestyle?.pets;
+    const hasPets = pets && pets.toLowerCase() !== 'none' && pets.trim() !== '';
+    checks.push({
+      label: 'No-pets policy',
+      status: hasPets ? 'fail' : 'pass',
+      note: hasPets ? `Applicant has: ${pets.slice(0, 40)}` : 'Applicant reports no pets',
+    });
+  } else if (unit.allowsPets === 'yes') {
+    const pets = app.lifestyle?.pets;
+    const hasPets = pets && pets.toLowerCase() !== 'none' && pets.trim() !== '';
+    checks.push({
+      label: 'Pet policy',
+      status: 'pass',
+      note: hasPets ? `Has pets (allowed): ${pets.slice(0, 40)}` : 'No pets (also fine)',
+    });
+  }
+
+  // Smoking policy
+  if (unit.allowsSmoking === 'no') {
+    const smoker = app.household?.smoker;
+    if (smoker === 'yes') {
+      checks.push({ label: 'Non-smoking unit', status: 'fail', note: 'Applicant smokes' });
+    } else if (smoker === 'outdoor') {
+      checks.push({ label: 'Non-smoking unit', status: 'warn', note: 'Outdoor smoker only' });
+    } else {
+      checks.push({ label: 'Non-smoking unit', status: 'pass', note: 'Non-smoker' });
+    }
+  }
+
+  // Parking
+  if (unit.parkingIncluded === 'no' && app.vehicle?.makeModel) {
+    checks.push({
+      label: 'No parking included',
+      status: 'warn',
+      note: `Applicant has ${app.vehicle.makeModel} — may need street parking`,
+    });
+  }
+
+  // Occupancy fit (rough — bedrooms vs occupants)
+  if (unit.bedrooms) {
+    const beds = parseFloat(unit.bedrooms);
+    const occupants = parseInt(app.household?.numberOfOccupants || '1');
+    if (!isNaN(beds) && !isNaN(occupants)) {
+      let status = 'pass';
+      let note = `${occupants} occupant${occupants === 1 ? '' : 's'} for ${beds}BR`;
+      // Reasonable rule: occupants should not exceed beds + 1
+      if (occupants > beds + 1) { status = 'warn'; note = `${occupants} occupants in ${beds}BR — tight`; }
+      checks.push({ label: 'Occupancy fit', status, note });
+    }
+  }
+
+  return checks;
+}
+
+function unitFitSummary(checks) {
+  if (!checks.length) return null;
+  const fails = checks.filter(c => c.status === 'fail').length;
+  const warns = checks.filter(c => c.status === 'warn').length;
+  if (fails > 0) return { label: 'Does not fit', color: '#d72027' };
+  if (warns > 0) return { label: 'Fits with caveats', color: '#a8161c' };
+  return { label: 'Strong fit for your unit', color: '#2d7d4a' };
+}
 
 const PRIORITY_PRESETS = [
   {
@@ -3918,6 +4269,56 @@ function ScoreBadge({ score, small }) {
       display: 'inline-flex', alignItems: 'baseline', gap: 4,
     }}>
       {score} <span style={{ fontSize: small ? 10 : 11, fontWeight: 500, opacity: 0.7 }}>/ 5</span>
+    </div>
+  );
+}
+
+// ─── Unit context helpers ───────────────────────────────
+function UnitField({ label, value, onChange, placeholder, dark, inputMode }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: dark ? '#a4adbb' : C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+        {label}
+      </div>
+      <input
+        value={value || ''}
+        onChange={e => onChange(e.target.value)}
+        placeholder={placeholder}
+        inputMode={inputMode}
+        style={{
+          width: '100%',
+          padding: '8px 10px',
+          fontSize: 13,
+          border: `1px solid ${dark ? '#3a3a3c' : C.rule}`,
+          background: dark ? '#1a1a1c' : C.paper,
+          color: dark ? C.paper : C.ink,
+          outline: 'none',
+        }}
+      />
+    </div>
+  );
+}
+
+function UnitSelect({ label, value, onChange, options, dark }) {
+  return (
+    <div>
+      <div style={{ fontSize: 10, fontWeight: 700, color: dark ? '#a4adbb' : C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+        {label}
+      </div>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '8px 10px',
+          fontSize: 13,
+          border: `1px solid ${dark ? '#3a3a3c' : C.rule}`,
+          background: dark ? '#1a1a1c' : C.paper,
+          color: dark ? C.paper : C.ink,
+          outline: 'none',
+        }}>
+        {options.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
     </div>
   );
 }
