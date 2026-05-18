@@ -2696,30 +2696,39 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
               )}
             </button>
           ))}
-        </div>
-        {/* Custom weights pill — fixed-height slot so layout doesn't jump when it appears/disappears */}
-        <div style={{ marginTop: 10, minHeight: 30 }}>
-          {activePreset === 'custom' && (
-            <span style={{
-              display: 'inline-block',
-              padding: '6px 14px', fontSize: 11,
-              color: C.red, border: `1px dashed ${C.red}`,
-              fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
+          {/* Custom Weights — always visible, sibling preset button */}
+          <button
+            onClick={() => setActivePreset('custom')}
+            title="Set each weight manually"
+            style={{
+              background: activePreset === 'custom' ? C.ink : C.paper,
+              color: activePreset === 'custom' ? C.paper : C.red,
+              border: `1px ${activePreset === 'custom' ? 'solid' : 'dashed'} ${activePreset === 'custom' ? C.ink : C.red}`,
+              padding: '10px 12px', fontSize: 13, fontWeight: 600,
+              transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+              position: 'relative',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              minWidth: 0,
+              textAlign: 'center',
             }}>
-              Custom weights
-            </span>
-          )}
+            Custom Weights
+            {activePreset === 'custom' && (
+              <span style={{ marginLeft: 6, color: C.red, fontSize: 10 }}>●</span>
+            )}
+          </button>
         </div>
         {/* Active preset description — fixed slot below, doesn't shift the grid */}
-        {activePreset !== 'custom' && (
-          <p style={{
-            marginTop: 4, fontSize: 13, color: C.inkSoft,
-            fontStyle: 'italic', lineHeight: 1.5,
-            minHeight: 36, // reserve space so the layout doesn't bounce when switching presets
-          }}>
-            {PRIORITY_PRESETS.find(p => p.id === activePreset)?.description}
-          </p>
-        )}
+        <p style={{
+          marginTop: 14, fontSize: 13, color: C.inkSoft,
+          fontStyle: 'italic', lineHeight: 1.5,
+          minHeight: 36,
+        }}>
+          {activePreset === 'custom'
+            ? 'Set each factor weight yourself using the sliders below.'
+            : PRIORITY_PRESETS.find(p => p.id === activePreset)?.description}
+        </p>
       </div>
 
       {/* ── MAIN TWO-COLUMN LAYOUT ──────────────────────────── */}
@@ -2748,29 +2757,22 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
               const pct = (safeStopIdx / (WEIGHT_STOPS.length - 1)) * 100;
               const isHigh = safeStopIdx >= 3; // Heavy or Critical
               const isLow = safeStopIdx <= 1;  // Ignore or Light
+              const fillColor = isHigh ? C.red : C.ink;
               return (
-                <div key={f.key} style={{ marginBottom: idx === FACTOR_DEFS.length - 1 ? 0 : 22 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
+                <div key={f.key} style={{ marginBottom: idx === FACTOR_DEFS.length - 1 ? 0 : 26 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>
                       {f.label}
                     </span>
                     <span style={{
                       fontSize: 12, fontWeight: 700,
-                      letterSpacing: '0.04em', textTransform: 'uppercase',
+                      letterSpacing: '0.05em', textTransform: 'uppercase',
                       color: isHigh ? C.red : isLow ? C.inkMute : C.ink,
                     }}>
                       {stop.label}
                     </span>
                   </div>
-                  {/* Visual weight bar */}
-                  <div style={{ height: 4, background: C.rule, marginBottom: 8, position: 'relative' }}>
-                    <div style={{
-                      height: '100%',
-                      width: `${pct}%`,
-                      background: isHigh ? C.red : C.ink,
-                      transition: 'width 0.2s, background 0.2s',
-                    }} />
-                  </div>
+                  {/* Single chunky slider — track + thumb, no duplicate bars */}
                   <input
                     type="range"
                     min="0"
@@ -2781,19 +2783,67 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                       const newStop = WEIGHT_STOPS[parseInt(e.target.value)];
                       setWeights({ ...weights, [f.key]: newStop.value });
                     }}
-                    style={{ width: '100%', accentColor: C.red, cursor: 'pointer' }}
+                    className={`rl-slider rl-slider-${f.key}`}
+                    style={{
+                      width: '100%',
+                      WebkitAppearance: 'none',
+                      appearance: 'none',
+                      height: 28,
+                      background: 'transparent',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      margin: 0,
+                      padding: 0,
+                    }}
                   />
-                  {/* All 5 stop labels evenly distributed */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.inkMute, marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                    {WEIGHT_STOPS.map((s, i) => (
-                      <span key={s.value} style={{
-                        color: i === safeStopIdx ? (isHigh ? C.red : C.ink) : C.inkMute,
-                        fontWeight: i === safeStopIdx ? 700 : 500,
-                      }}>
-                        {s.shortLabel}
-                      </span>
-                    ))}
-                  </div>
+                  {/* Per-slider injected CSS so each one's fill color matches its current intensity */}
+                  <style dangerouslySetInnerHTML={{ __html: `
+                    .rl-slider-${f.key} {
+                      --fill: ${fillColor};
+                      --pct: ${pct}%;
+                    }
+                    .rl-slider-${f.key}::-webkit-slider-runnable-track {
+                      height: 8px;
+                      border-radius: 4px;
+                      background: linear-gradient(to right, var(--fill) 0%, var(--fill) var(--pct), ${C.rule} var(--pct), ${C.rule} 100%);
+                    }
+                    .rl-slider-${f.key}::-moz-range-track {
+                      height: 8px;
+                      border-radius: 4px;
+                      background: ${C.rule};
+                    }
+                    .rl-slider-${f.key}::-moz-range-progress {
+                      height: 8px;
+                      border-radius: 4px;
+                      background: var(--fill);
+                    }
+                    .rl-slider-${f.key}::-webkit-slider-thumb {
+                      -webkit-appearance: none;
+                      appearance: none;
+                      width: 28px;
+                      height: 28px;
+                      border-radius: 50%;
+                      background: ${C.paper};
+                      border: 3px solid var(--fill);
+                      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+                      cursor: grab;
+                      margin-top: -10px;
+                      transition: transform 0.1s;
+                    }
+                    .rl-slider-${f.key}::-webkit-slider-thumb:active {
+                      cursor: grabbing;
+                      transform: scale(1.1);
+                    }
+                    .rl-slider-${f.key}::-moz-range-thumb {
+                      width: 28px;
+                      height: 28px;
+                      border-radius: 50%;
+                      background: ${C.paper};
+                      border: 3px solid var(--fill);
+                      box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+                      cursor: grab;
+                    }
+                  `}} />
                 </div>
               );
             })}
