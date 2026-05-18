@@ -190,32 +190,6 @@ async function verifyPassToken(passToken) {
     return { ok: false, reason: 'Pass verification error' };
   }
 }
-
-// Verify the email verification token (issued after the tenant entered their 6-digit code)
-async function verifyEmailToken(token) {
-  if (!token) return { ok: false, reason: 'No verification token' };
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    return { ok: false, reason: 'Verification system unavailable' };
-  }
-  const clean = String(token).trim();
-  if (!/^[a-f0-9]{48}$/.test(clean)) return { ok: false, reason: 'Invalid token format' };
-
-  try {
-    const lookupRes = await fetch(
-      `${process.env.KV_REST_API_URL}/get/vtoken:${clean}`,
-      { headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` } }
-    );
-    if (!lookupRes.ok) return { ok: false, reason: 'Verification lookup failed' };
-    const data = await lookupRes.json();
-    if (!data?.result) return { ok: false, reason: 'Token expired or not found' };
-    const record = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
-    return { ok: true, email: record.email };
-  } catch (e) {
-    console.error('verifyEmailToken error:', e);
-    return { ok: false, reason: 'Verification error' };
-  }
-}
-
 async function incrementPassUsage(passToken) {  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return;
   const normalized = String(passToken).trim().toUpperCase();
   try {
@@ -255,7 +229,7 @@ async function incrementPassUsage(passToken) {  if (!process.env.KV_REST_API_URL
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { stripeSessionId, passToken, verificationToken, ...formData } = req.body;
+  const { stripeSessionId, passToken, ...formData } = req.body;
 
   const {
     email,
@@ -303,23 +277,6 @@ export default async function handler(req, res) {
     accessMethod = 'stripe';
   } else {
     return res.status(402).json({ error: 'Payment required. No valid access method.' });
-  }
-
-  // ── EMAIL VERIFICATION GATE — skip for demo, required for everyone else ──
-  let verifiedEmail = null;
-  if (accessMethod !== 'demo') {
-    if (!verificationToken) {
-      return res.status(401).json({ error: 'Email verification required. Please verify your email before generating.' });
-    }
-    const vCheck = await verifyEmailToken(verificationToken);
-    if (!vCheck.ok) {
-      return res.status(401).json({ error: `Email verification invalid. ${vCheck.reason}` });
-    }
-    verifiedEmail = vCheck.email;
-    // Optionally check that the verified email matches the form email
-    if (email && verifiedEmail !== email.trim().toLowerCase()) {
-      return res.status(401).json({ error: 'Verified email does not match the email on the form.' });
-    }
   }
 
   const moveDate = moveInDate
