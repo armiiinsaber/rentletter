@@ -191,8 +191,32 @@ async function verifyPassToken(passToken) {
   }
 }
 
-async function incrementPassUsage(passToken) {
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return;
+// Verify the email verification token (issued after the tenant entered their 6-digit code)
+async function verifyEmailToken(token) {
+  if (!token) return { ok: false, reason: 'No verification token' };
+  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
+    return { ok: false, reason: 'Verification system unavailable' };
+  }
+  const clean = String(token).trim();
+  if (!/^[a-f0-9]{48}$/.test(clean)) return { ok: false, reason: 'Invalid token format' };
+
+  try {
+    const lookupRes = await fetch(
+      `${process.env.KV_REST_API_URL}/get/vtoken:${clean}`,
+      { headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` } }
+    );
+    if (!lookupRes.ok) return { ok: false, reason: 'Verification lookup failed' };
+    const data = await lookupRes.json();
+    if (!data?.result) return { ok: false, reason: 'Token expired or not found' };
+    const record = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
+    return { ok: true, email: record.email };
+  } catch (e) {
+    console.error('verifyEmailToken error:', e);
+    return { ok: false, reason: 'Verification error' };
+  }
+}
+
+async function incrementPassUsage(passToken) {  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return;
   const normalized = String(passToken).trim().toUpperCase();
   try {
     const lookupRes = await fetch(
@@ -231,9 +255,10 @@ async function incrementPassUsage(passToken) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { stripeSessionId, passToken, ...formData } = req.body;
+  const { stripeSessionId, passToken, verificationToken, ...formData } = req.body;
 
   const {
+    email,
     apartmentAddress, apartmentDescription,
     fullName, age, dateOfBirth, phone,
     jobTitle, employer, yearsAtJob, annualIncome,
@@ -278,6 +303,23 @@ export default async function handler(req, res) {
     accessMethod = 'stripe';
   } else {
     return res.status(402).json({ error: 'Payment required. No valid access method.' });
+  }
+
+  // ── EMAIL VERIFICATION GATE — skip for demo, required for everyone else ──
+  let verifiedEmail = null;
+  if (accessMethod !== 'demo') {
+    if (!verificationToken) {
+      return res.status(401).json({ error: 'Email verification required. Please verify your email before generating.' });
+    }
+    const vCheck = await verifyEmailToken(verificationToken);
+    if (!vCheck.ok) {
+      return res.status(401).json({ error: `Email verification invalid. ${vCheck.reason}` });
+    }
+    verifiedEmail = vCheck.email;
+    // Optionally check that the verified email matches the form email
+    if (email && verifiedEmail !== email.trim().toLowerCase()) {
+      return res.status(401).json({ error: 'Verified email does not match the email on the form.' });
+    }
   }
 
   const moveDate = moveInDate
@@ -630,6 +672,7 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
     const applicationData = {
       applicationNumber,
       createdAt: new Date().toISOString(),
+      email: email || null,
       tenant: {
         fullName,
         age: age || null,
@@ -695,6 +738,9 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
       ],
       disclosures: redFlags || null,
       scorecard,
+      // ── Owner token: a secret only the tenant knows; lets them view audit log & revoke ──
+      ownerToken: generateOwnerToken(),
+      revoked: false,
     };
 
     // Store async — don't block the response if KV fails
@@ -702,9 +748,20 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
       console.error('Background store failed:', err)
     );
 
-    return res.status(200).json({ letter, resume, applicationNumber });
+    return res.status(200).json({
+      letter, resume, applicationNumber,
+      ownerToken: applicationData.ownerToken,
+    });
   } catch (err) {
     console.error('Generation error:', err);
     return res.status(500).json({ error: 'Failed to generate letter. Please try again.' });
   }
+}
+
+// Generate a 32-char owner token the tenant uses to manage their application
+function generateOwnerToken() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for (let i = 0; i < 32; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
 }
