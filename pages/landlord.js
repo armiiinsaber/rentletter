@@ -2416,14 +2416,50 @@ export default function LandlordDashboard() {
               )}
 
               {/* ── COMPARE VIEW ────────────────────────────── */}
-              {view === 'compare' && filteredApplications.length >= 2 && (
-                <CompareView
-                  applications={filteredApplications}
-                  onRemove={removeApplication}
-                  getDecision={getDecision}
-                  setDecisionStatus={setDecisionStatus}
-                />
-              )}
+              {view === 'compare' && (() => {
+                // Auto-filter Compare to shortlisted-only if any shortlisted exist
+                const shortlistedApps = filteredApplications.filter(
+                  a => decisions[a.applicationNumber]?.status === 'shortlist'
+                );
+                const hasShortlist = shortlistedApps.length > 0;
+                const compareList = hasShortlist ? shortlistedApps : filteredApplications;
+
+                if (compareList.length < 2) {
+                  return (
+                    <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.rule}`, background: '#fafaf5' }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>
+                        {hasShortlist ? 'Shortlist 2 or more applicants to compare them.' : 'Add 2 or more applications to compare.'}
+                      </div>
+                      <div style={{ fontSize: 12, color: C.inkMute }}>
+                        {hasShortlist
+                          ? `You currently have ${shortlistedApps.length} shortlisted applicant${shortlistedApps.length === 1 ? '' : 's'}.`
+                          : 'Look up application numbers above, then shortlist your top candidates.'}
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    {hasShortlist && (
+                      <div style={{
+                        marginBottom: 16, padding: '10px 14px',
+                        background: '#f0f7f3', borderLeft: `3px solid ${C.green}`,
+                        fontSize: 12, color: C.inkSoft, display: 'flex', alignItems: 'center', gap: 8,
+                      }}>
+                        <span style={{ color: C.green, fontWeight: 700 }}>✓ Showing {shortlistedApps.length} shortlisted applicant{shortlistedApps.length === 1 ? '' : 's'} only.</span>
+                        <span style={{ color: C.inkMute }}>Remove from shortlist to take them out of this view.</span>
+                      </div>
+                    )}
+                    <CompareView
+                      applications={compareList}
+                      onRemove={removeApplication}
+                      getDecision={getDecision}
+                      setDecisionStatus={setDecisionStatus}
+                    />
+                  </>
+                );
+              })()}
 
               {/* ── RANKED VIEW ─────────────────────────────── */}
               {view === 'ranked' && filteredApplications.length >= 2 && (
@@ -3036,7 +3072,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
 // ════════════════════════════════════════════════════════════
 // COMPARE VIEW — side-by-side table
 // ════════════════════════════════════════════════════════════
-function CompareView({ applications, onRemove }) {
+function CompareView({ applications, onRemove, getDecision, setDecisionStatus }) {
   const factors = [
     { label: 'Annual income', get: a => `$${(a.employment.annualIncome || 0).toLocaleString()}` },
     { label: 'Combined household income', get: a => {
@@ -3076,23 +3112,37 @@ function CompareView({ applications, onRemove }) {
         <thead>
           <tr>
             <th style={{ ...thStyle, textAlign: 'left', width: 200 }}></th>
-            {applications.map(app => (
-              <th key={app.applicationNumber} style={thStyle}>
-                <div style={{ marginBottom: 8 }}>
-                  <ScoreBadge score={app.scorecard.overall} small />
-                </div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 2 }}>
-                  {app.tenant.fullName}
-                </div>
-                <div style={{ fontSize: 10, color: C.inkMute, fontFamily: 'monospace', marginBottom: 8 }}>
-                  {app.applicationNumber}
-                </div>
-                <button onClick={() => onRemove(app.applicationNumber)}
-                  style={{ background: 'transparent', border: `1px solid ${C.rule}`, color: C.inkSoft, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}>
-                  Remove
-                </button>
-              </th>
-            ))}
+            {applications.map(app => {
+              const dec = getDecision ? getDecision(app.applicationNumber) : { status: 'none' };
+              const isShortlisted = dec.status === 'shortlist';
+              return (
+                <th key={app.applicationNumber} style={thStyle}>
+                  <div style={{ marginBottom: 8 }}>
+                    <ScoreBadge score={app.scorecard.overall} small />
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 2 }}>
+                    {app.tenant.fullName}
+                  </div>
+                  <div style={{ fontSize: 10, color: C.inkMute, fontFamily: 'monospace', marginBottom: 8 }}>
+                    {app.applicationNumber}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                    {isShortlisted && setDecisionStatus ? (
+                      <button onClick={() => setDecisionStatus(app.applicationNumber, 'none')}
+                        title="Take off shortlist (keeps the applicant loaded)"
+                        style={{ background: 'transparent', border: `1px solid ${C.green}`, color: C.green, padding: '4px 10px', fontSize: 11, fontWeight: 600 }}>
+                        ✓ On shortlist — remove
+                      </button>
+                    ) : (
+                      <button onClick={() => onRemove(app.applicationNumber)}
+                        style={{ background: 'transparent', border: `1px solid ${C.rule}`, color: C.inkSoft, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </th>
+              );
+            })}
           </tr>
         </thead>
 
