@@ -440,7 +440,7 @@ export default function Home() {
       localStorage.setItem('rentletter_resume', json.resume);
       window.history.replaceState({}, '', window.location.pathname);
       setStep('result');
-      if (data.email) sendEmail(data.email, data.fullName, json.letter, json.resume, json.applicationNumber);
+      if (data.email) sendEmail(data.email, data.fullName, json.letter, json.resume, json.applicationNumber, json.ownerToken);
       // Refresh pass info if generated via pass
       if (auth.passToken) {
         verifyAndLoadPass(auth.passToken, true);
@@ -451,13 +451,20 @@ export default function Home() {
     }
   };
 
-  const sendEmail = async (email, fullName, letterText, resumeText, appNum) => {
+  const sendEmail = async (email, fullName, letterText, resumeText, appNum, ownerTok) => {
     setEmailSending(true);
     try {
       const res = await fetch('/api/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, fullName, letter: letterText, resume: resumeText, applicationNumber: appNum || applicationNumber }),
+        body: JSON.stringify({
+          email,
+          fullName,
+          letter: letterText,
+          resume: resumeText,
+          applicationNumber: appNum || applicationNumber,
+          ownerToken: ownerTok || (typeof window !== 'undefined' ? localStorage.getItem('rentletter_owner_token') : null),
+        }),
       });
       const json = await res.json();
       if (json.success) setEmailSent(true);
