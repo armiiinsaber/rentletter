@@ -1936,7 +1936,7 @@ export default function LandlordDashboard() {
 
 Thanks for your interest in the unit. To make screening fair and quick for every applicant, I'm asking everyone to submit through Rentletter.
 
-It's a free 10-minute form that gives me a standardized application with verified format. You'll get a unique application number to share back with me.
+It's a 10-minute form that gives me a standardized application with a verified format. You'll get a unique application number to share back with me.
 
 → rentletter.ca
 
@@ -1959,7 +1959,7 @@ Looking forward to it,`}
                     Copy to clipboard
                   </button>
                   <a
-                    href={`mailto:?subject=Your%20rental%20application&body=${encodeURIComponent(`Hi,\n\nThanks for your interest in the unit. To make screening fair and quick for every applicant, I'm asking everyone to submit through Rentletter.\n\nIt's a free 10-minute form that gives me a standardized application with verified format. You'll get a unique application number to share back with me.\n\n→ rentletter.ca\n\nOnce you're done, just reply with your application number (looks like RL-2026-XXXX-XXXX) and I'll review.\n\nLooking forward to it,`)}`}
+                    href={`mailto:?subject=Your%20rental%20application&body=${encodeURIComponent(`Hi,\n\nThanks for your interest in the unit. To make screening fair and quick for every applicant, I'm asking everyone to submit through Rentletter.\n\nIt's a 10-minute form that gives me a standardized application with a verified format. You'll get a unique application number to share back with me.\n\n→ rentletter.ca\n\nOnce you're done, just reply with your application number (looks like RL-2026-XXXX-XXXX) and I'll review.\n\nLooking forward to it,`)}`}
                     style={{
                       background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`,
                       padding: '11px 22px', fontSize: 13, fontWeight: 600,
@@ -2104,21 +2104,20 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
               {app.employment.jobTitle} at {app.employment.employer}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
-              <ScoreBadge score={app.scorecard.overall} />
-              <button onClick={() => setMethodologyOpen(true)}
-                style={{
-                  background: 'transparent', border: 'none',
-                  color: C.inkMute, fontSize: 10, fontWeight: 500,
-                  textDecoration: 'underline', cursor: 'pointer', padding: 0,
-                }}>
-                How is this calculated?
-              </button>
-            </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <ScoreBadge score={app.scorecard.overall} />
             <button onClick={() => onRemove(app.applicationNumber)}
               style={{ background: 'transparent', border: `1px solid ${C.rule}`, color: C.inkSoft, padding: '8px 14px', fontSize: 12, fontWeight: 500 }}>
               Remove
+            </button>
+            <button onClick={() => setMethodologyOpen(true)}
+              style={{
+                background: 'transparent', border: 'none',
+                color: C.inkMute, fontSize: 11, fontWeight: 500,
+                textDecoration: 'underline', cursor: 'pointer', padding: 0,
+                width: '100%', textAlign: 'right', marginTop: 2,
+              }}>
+              How is this calculated?
             </button>
           </div>
         </div>
@@ -2129,7 +2128,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
           borderBottom: `1px solid ${C.rule}`,
           background: C.paper,
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
           gap: 24,
           alignItems: 'center',
         }}>
@@ -2169,11 +2168,11 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
           </div>
 
           {/* DECISION */}
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
               Your decision
             </div>
-            <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 2fr', gap: 6 }}>
               {[
                 { val: 'none', label: '—', bg: 'transparent', color: C.inkSoft },
                 { val: 'shortlist', label: '✓ Shortlist', bg: C.green, color: C.paper },
@@ -2185,12 +2184,13 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
                     key={opt.val}
                     onClick={() => setDecisionStatus(app.applicationNumber, opt.val)}
                     style={{
-                      flex: 1,
                       background: selected ? opt.bg : 'transparent',
                       color: selected ? opt.color : C.inkSoft,
                       border: `1px solid ${selected ? opt.bg : C.rule}`,
-                      padding: '8px 12px', fontSize: 12, fontWeight: 600,
+                      padding: '8px 6px', fontSize: 12, fontWeight: 600,
                       cursor: 'pointer', transition: 'all 0.15s',
+                      whiteSpace: 'nowrap',
+                      minWidth: 0,
                     }}>
                     {opt.label}
                   </button>
@@ -2643,7 +2643,11 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
             Pick a preset or adjust manually below
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+          gap: 8,
+        }}>
           {PRIORITY_PRESETS.map(preset => (
             <button
               key={preset.id}
@@ -2653,29 +2657,41 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                 background: activePreset === preset.id ? C.ink : C.paper,
                 color: activePreset === preset.id ? C.paper : C.ink,
                 border: `1px solid ${activePreset === preset.id ? C.ink : C.rule}`,
-                padding: '10px 16px', fontSize: 13, fontWeight: 600,
-                transition: 'all 0.15s',
+                padding: '10px 12px', fontSize: 13, fontWeight: 600,
+                transition: 'background 0.15s, color 0.15s, border-color 0.15s',
                 position: 'relative',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                minWidth: 0,
+                textAlign: 'center',
               }}>
               {preset.label}
               {activePreset === preset.id && (
-                <span style={{ marginLeft: 8, color: C.red, fontSize: 11 }}>●</span>
+                <span style={{ marginLeft: 6, color: C.red, fontSize: 10 }}>●</span>
               )}
             </button>
           ))}
-          {activePreset === 'custom' && (
+        </div>
+        {activePreset === 'custom' && (
+          <div style={{ marginTop: 8 }}>
             <span style={{
-              padding: '10px 16px', fontSize: 12,
+              display: 'inline-block',
+              padding: '6px 14px', fontSize: 11,
               color: C.red, border: `1px dashed ${C.red}`,
-              fontWeight: 600, letterSpacing: '0.05em',
+              fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase',
             }}>
               Custom weights
             </span>
-          )}
-        </div>
-        {/* Active preset description */}
+          </div>
+        )}
+        {/* Active preset description — fixed slot below, doesn't shift the grid */}
         {activePreset !== 'custom' && (
-          <p style={{ marginTop: 12, fontSize: 13, color: C.inkSoft, fontStyle: 'italic', lineHeight: 1.5 }}>
+          <p style={{
+            marginTop: 14, fontSize: 13, color: C.inkSoft,
+            fontStyle: 'italic', lineHeight: 1.5,
+            minHeight: 36, // reserve space so the layout doesn't bounce when switching presets
+          }}>
             {PRIORITY_PRESETS.find(p => p.id === activePreset)?.description}
           </p>
         )}
