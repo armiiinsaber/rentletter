@@ -1126,7 +1126,8 @@ export default function LandlordDashboard() {
   // Send a magic-link sign-in email
   const requestSigninLink = async () => {
     setSigninError('');
-    if (!signinEmailInput || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(signinEmailInput)) {
+    const cleaned = String(signinEmailInput || '').trim();
+    if (!cleaned || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)) {
       setSigninError('Enter a valid email.');
       return;
     }
@@ -1135,13 +1136,13 @@ export default function LandlordDashboard() {
       const r = await fetch('/api/landlord/auth/send-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: signinEmailInput.trim() }),
+        body: JSON.stringify({ email: cleaned }),
       });
       const json = await r.json();
       if (json.error) throw new Error(json.error);
       setSigninLinkSent(true);
     } catch (e) {
-      setSigninError(e.message);
+      setSigninError(e.message || 'Could not send sign-in link.');
     }
     setSigninLoading(false);
   };
@@ -1838,7 +1839,9 @@ export default function LandlordDashboard() {
                       Your email
                     </label>
                     <input
-                      type="email"
+                      type="text"
+                      inputMode="email"
+                      autoComplete="email"
                       value={signinEmailInput}
                       onChange={e => setSigninEmailInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && requestSigninLink()}
@@ -2501,27 +2504,48 @@ const PRIORITY_PRESETS = [
     id: 'conservative',
     label: 'Conservative',
     description: 'For high-value properties. Income, references, and clean disclosures matter most.',
-    weights: { incomeStability: 2.5, rentAffordability: 2.0, rentalHistory: 2.5, longTermIntent: 1.0, disclosures: 2.5 },
+    weights: { incomeStability: 3.0, rentAffordability: 2.0, rentalHistory: 3.0, longTermIntent: 1.0, disclosures: 3.0 },
   },
   {
     id: 'affordability',
     label: 'Affordability-focused',
     description: 'For value properties. Make sure they can comfortably afford rent without stretching.',
-    weights: { incomeStability: 2.0, rentAffordability: 3.0, rentalHistory: 1.5, longTermIntent: 1.5, disclosures: 2.0 },
+    weights: { incomeStability: 2.0, rentAffordability: 3.0, rentalHistory: 2.0, longTermIntent: 2.0, disclosures: 2.0 },
   },
   {
     id: 'longterm',
     label: 'Long-term tenant',
     description: 'For family homes or units you want stable for 2+ years. Stability over short-term metrics.',
-    weights: { incomeStability: 2.0, rentAffordability: 1.5, rentalHistory: 2.5, longTermIntent: 3.0, disclosures: 1.5 },
+    weights: { incomeStability: 2.0, rentAffordability: 2.0, rentalHistory: 3.0, longTermIntent: 3.0, disclosures: 2.0 },
   },
   {
     id: 'risk',
     label: 'Risk-averse',
     description: 'For first-time landlords or shared buildings. Heavy weight on history and disclosures.',
-    weights: { incomeStability: 2.0, rentAffordability: 2.0, rentalHistory: 3.0, longTermIntent: 1.5, disclosures: 3.0 },
+    weights: { incomeStability: 2.0, rentAffordability: 2.0, rentalHistory: 3.0, longTermIntent: 2.0, disclosures: 3.0 },
   },
 ];
+
+// ── 5 discrete weight stops ────────────────────────────────────
+// Values are mapped to the existing 0-3 weight scale used by calculateWeightedScore.
+const WEIGHT_STOPS = [
+  { value: 0,   label: 'Ignore',   shortLabel: 'Ignore' },
+  { value: 0.5, label: 'Light',    shortLabel: 'Light' },
+  { value: 1.0, label: 'Normal',   shortLabel: 'Normal' },
+  { value: 2.0, label: 'Heavy',    shortLabel: 'Heavy' },
+  { value: 3.0, label: 'Critical', shortLabel: 'Critical' },
+];
+
+// Snap any continuous weight to the nearest of our 5 stops
+function snapToStop(value) {
+  let nearest = WEIGHT_STOPS[0];
+  let minDiff = Math.abs(value - nearest.value);
+  for (let i = 1; i < WEIGHT_STOPS.length; i++) {
+    const diff = Math.abs(value - WEIGHT_STOPS[i].value);
+    if (diff < minDiff) { minDiff = diff; nearest = WEIGHT_STOPS[i]; }
+  }
+  return nearest;
+}
 
 const FACTOR_DEFS = [
   { key: 'incomeStability', label: 'Income stability', short: 'income', help: 'How reliable their paycheck is. High for long tenure at stable employers.' },
@@ -2673,8 +2697,9 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
             </button>
           ))}
         </div>
-        {activePreset === 'custom' && (
-          <div style={{ marginTop: 8 }}>
+        {/* Custom weights pill — fixed-height slot so layout doesn't jump when it appears/disappears */}
+        <div style={{ marginTop: 10, minHeight: 30 }}>
+          {activePreset === 'custom' && (
             <span style={{
               display: 'inline-block',
               padding: '6px 14px', fontSize: 11,
@@ -2683,12 +2708,12 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
             }}>
               Custom weights
             </span>
-          </div>
-        )}
+          )}
+        </div>
         {/* Active preset description — fixed slot below, doesn't shift the grid */}
         {activePreset !== 'custom' && (
           <p style={{
-            marginTop: 14, fontSize: 13, color: C.inkSoft,
+            marginTop: 4, fontSize: 13, color: C.inkSoft,
             fontStyle: 'italic', lineHeight: 1.5,
             minHeight: 36, // reserve space so the layout doesn't bounce when switching presets
           }}>
@@ -2716,9 +2741,13 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
           {/* Sliders */}
           <div style={{ padding: '20px 24px' }}>
             {FACTOR_DEFS.map((f, idx) => {
-              const pct = (weights[f.key] / 3) * 100;
-              const isHigh = weights[f.key] > 1.5;
-              const isLow = weights[f.key] < 0.5;
+              const currentValue = weights[f.key];
+              const currentStopIdx = WEIGHT_STOPS.findIndex(s => Math.abs(s.value - currentValue) < 0.05);
+              const safeStopIdx = currentStopIdx >= 0 ? currentStopIdx : 2; // default to Normal
+              const stop = WEIGHT_STOPS[safeStopIdx];
+              const pct = (safeStopIdx / (WEIGHT_STOPS.length - 1)) * 100;
+              const isHigh = safeStopIdx >= 3; // Heavy or Critical
+              const isLow = safeStopIdx <= 1;  // Ignore or Light
               return (
                 <div key={f.key} style={{ marginBottom: idx === FACTOR_DEFS.length - 1 ? 0 : 22 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
@@ -2726,15 +2755,15 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                       {f.label}
                     </span>
                     <span style={{
-                      fontSize: 13, fontWeight: 700,
-                      fontFamily: 'monospace',
+                      fontSize: 12, fontWeight: 700,
+                      letterSpacing: '0.04em', textTransform: 'uppercase',
                       color: isHigh ? C.red : isLow ? C.inkMute : C.ink,
                     }}>
-                      {weights[f.key].toFixed(1)}×
+                      {stop.label}
                     </span>
                   </div>
                   {/* Visual weight bar */}
-                  <div style={{ height: 4, background: C.rule, marginBottom: 6, position: 'relative' }}>
+                  <div style={{ height: 4, background: C.rule, marginBottom: 8, position: 'relative' }}>
                     <div style={{
                       height: '100%',
                       width: `${pct}%`,
@@ -2744,15 +2773,26 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                   </div>
                   <input
                     type="range"
-                    min="0" max="3" step="0.1"
-                    value={weights[f.key]}
-                    onChange={e => setWeights({ ...weights, [f.key]: parseFloat(e.target.value) })}
+                    min="0"
+                    max={WEIGHT_STOPS.length - 1}
+                    step="1"
+                    value={safeStopIdx}
+                    onChange={e => {
+                      const newStop = WEIGHT_STOPS[parseInt(e.target.value)];
+                      setWeights({ ...weights, [f.key]: newStop.value });
+                    }}
                     style={{ width: '100%', accentColor: C.red, cursor: 'pointer' }}
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.inkMute, marginTop: 2 }}>
-                    <span>Ignore</span>
-                    <span>Normal</span>
-                    <span>Critical</span>
+                  {/* All 5 stop labels evenly distributed */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.inkMute, marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                    {WEIGHT_STOPS.map((s, i) => (
+                      <span key={s.value} style={{
+                        color: i === safeStopIdx ? (isHigh ? C.red : C.ink) : C.inkMute,
+                        fontWeight: i === safeStopIdx ? 700 : 500,
+                      }}>
+                        {s.shortLabel}
+                      </span>
+                    ))}
                   </div>
                 </div>
               );
