@@ -1539,9 +1539,22 @@ const GlobalStyle = () => (
     button { cursor: pointer; }
     input:focus { outline: none; }
     ::selection { background: ${C.red}; color: ${C.paper}; }
+
+    /* ── Surfaces — always applied ── */
+    .rl-card  { border-radius: 12px; box-shadow: 0 1px 2px rgba(15,15,16,.06), 0 8px 24px rgba(15,15,16,.08); overflow: hidden; }
+    .rl-modal { border-radius: 14px; box-shadow: 0 4px 8px rgba(15,15,16,.08), 0 32px 80px rgba(15,15,16,.28); overflow: hidden; }
+
     @media (prefers-reduced-motion: no-preference) {
-      .rl-hover-lift { transition: transform 160ms ease, box-shadow 160ms ease; }
-      .rl-hover-lift:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(15,15,16,0.11); }
+      /* ─ CARD LIFT ─ */
+      .rl-card-lift { transition: transform 220ms ease, box-shadow 220ms ease; }
+      .rl-card-lift:hover { transform: translateY(-4px); box-shadow: 0 2px 4px rgba(15,15,16,.06), 0 20px 48px rgba(15,15,16,.16); }
+
+      /* ─ BUTTON MICRO-INTERACTIONS ─ */
+      .rl-btn { transition: transform 200ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease; }
+      .rl-btn:not(:disabled):hover  { transform: scale(1.02) translateY(-1px); box-shadow: 0 4px 20px rgba(15,15,16,.18); }
+      .rl-btn:not(:disabled):active { transform: scale(0.98); box-shadow: none; transition-duration: 80ms; }
+      .rl-btn .rl-arrow { display: inline-block; transition: transform 200ms ease; }
+      .rl-btn:not(:disabled):hover .rl-arrow { transform: translateX(4px); }
     }
   `}</style>
 );
@@ -3820,7 +3833,7 @@ export default function LandlordDashboard() {
             const listingIsSet = !!(u.address || u.monthlyRent || u.bedrooms);
             return (
               <section style={{ marginBottom: 20 }}>
-                <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: 'clamp(14px, 3vw, 20px) clamp(16px, 3vw, 22px)' }}>
+                <div className="rl-card rl-card-lift" style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: 'clamp(14px, 3vw, 20px) clamp(16px, 3vw, 22px)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.inkMute, marginBottom: 8 }}>
@@ -3862,7 +3875,7 @@ export default function LandlordDashboard() {
                     </div>
                     <button
                       onClick={() => setPreferencesOpen(true)}
-                      className="rl-hover-lift"
+                      className="rl-btn"
                       style={{
                         background: 'transparent', color: C.ink, border: `1px solid ${C.rule}`,
                         padding: '8px 16px', fontSize: 12, fontWeight: 600,
@@ -3883,7 +3896,7 @@ export default function LandlordDashboard() {
             const inviteUrl = activeListing.inviteToken ? `https://rentletter.ca/apply/${activeListing.inviteToken}` : null;
             return (
               <section style={{ marginBottom: 20 }}>
-                <div style={{ background: C.ink, color: C.paper, padding: 'clamp(16px, 3vw, 22px) clamp(18px, 3vw, 24px)' }}>
+                <div className="rl-card" style={{ background: C.ink, color: C.paper, padding: 'clamp(16px, 3vw, 22px) clamp(18px, 3vw, 24px)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0b8bb', marginBottom: 6 }}>
@@ -3905,7 +3918,7 @@ export default function LandlordDashboard() {
                       <button
                         onClick={createOrGetInviteLink}
                         disabled={inviteLoading}
-                        className="rl-hover-lift"
+                        className="rl-btn"
                         style={{
                           background: inviteCopied ? '#2d7d4a' : C.red, color: C.paper, border: 'none',
                           padding: '12px 18px', fontSize: 13, fontWeight: 700,
@@ -4411,11 +4424,11 @@ export default function LandlordDashboard() {
                 zIndex: 100,
               }}>
               <div onClick={e => e.stopPropagation()}
+                className="rl-modal"
                 style={{
                   background: C.paper,
                   maxWidth: 640, width: '100%',
                   maxHeight: '90vh', overflowY: 'auto',
-                  boxShadow: '0 24px 64px rgba(15, 15, 16, 0.22)',
                   border: `1px solid ${C.rule}`,
                 }}>
                 {/* Header */}
@@ -4876,7 +4889,7 @@ export default function LandlordDashboard() {
                     <button
                       onClick={sendShortlistToLandlord}
                       disabled={sendToLandlordLoading || !sendToLandlordEmail || !realtorProfile.fullName}
-                      className="rl-hover-lift"
+                      className="rl-btn"
                       style={{
                         width: '100%',
                         background: (sendToLandlordLoading || !sendToLandlordEmail || !realtorProfile.fullName) ? '#c8c2b3' : C.red,

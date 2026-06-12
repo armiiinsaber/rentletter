@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import ChatWidget from '../components/ChatWidget';
 
@@ -42,29 +42,61 @@ const GlobalStyle = () => (
     input:focus, textarea:focus { outline: none; }
     ::selection { background: ${C.red}; color: ${C.paper}; }
 
-    /* ── Motion — all inside prefers-reduced-motion so they vanish for users who opt out ── */
+    /* ── Surfaces — always applied ── */
+    .rl-card { border-radius: 12px; box-shadow: 0 1px 2px rgba(15,15,16,.06), 0 8px 24px rgba(15,15,16,.08); overflow: hidden; }
+
+    /* ── Baselines (visible without motion / JS) ── */
+    .rl-rule-draw { width: 24px; }
+    .rl-step-bar  { display: block; height: 2px; }
+    .rl-line-wrap { display: contents; }
+
+    /* ── All motion inside this guard — collapses to static for opt-out users ── */
     @media (prefers-reduced-motion: no-preference) {
-      @keyframes rl-fade-up { from { opacity: 0; transform: translateY(10px) } to { opacity: 1; transform: none } }
-      @keyframes rl-draw    { from { width: 0 }                               to { width: 24px } }
 
-      /* Hero load animations */
-      .rl-fade-up       { animation: rl-fade-up 380ms ease both; }
-      .rl-fade-up-delay { animation: rl-fade-up 380ms ease 140ms both; }
+      /* KEYFRAMES */
+      @keyframes rl-draw     { from { width: 0 }                                 to { width: 24px } }
+      @keyframes rl-slide-up { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: none } }
+      @keyframes rl-fade-seq { from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: none } }
 
-      /* Red eyebrow rule draws in on load */
-      .rl-rule-draw { animation: rl-draw 480ms cubic-bezier(0.16,1,0.3,1) both; }
+      /* ─ RED RULE ─ */
+      .rl-rule-draw { animation: rl-draw 500ms cubic-bezier(0.16,1,0.3,1) both; }
 
-      /* Scroll-reveal — JS adds .rl-vis via IntersectionObserver */
-      .rl-reveal { opacity: 0; transform: translateY(12px); transition: opacity 420ms ease, transform 420ms ease; }
+      /* ─ HERO TEXT LINES — slide up from overflow clip ─ */
+      .rl-line-wrap { overflow: hidden; display: block; }
+      .rl-line      { display: block; animation: rl-slide-up 580ms cubic-bezier(0.22,1,0.36,1) both; }
+
+      /* ─ HERO SUPPORTING ELEMENTS — sequential fade-up ─ */
+      .rl-hero-seq { animation: rl-fade-seq 440ms cubic-bezier(0.22,1,0.36,1) both; }
+
+      /* ─ SCROLL REVEAL ─ */
+      .rl-reveal { opacity: 0; transform: translateY(24px); transition: opacity 560ms ease, transform 620ms cubic-bezier(0.22,1,0.36,1); }
       .rl-reveal.rl-vis { opacity: 1; transform: none; }
 
-      /* Hover lift — cards and buttons */
-      .rl-hover-lift { transition: transform 160ms ease, box-shadow 160ms ease; }
-      .rl-hover-lift:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(15,15,16,0.09); }
-    }
+      /* ─ STEPS — parent gets .rl-vis, CSS staggers children ─ */
+      .rl-steps .rl-step { opacity: 0; transform: translateY(24px); transition: opacity 520ms ease, transform 580ms cubic-bezier(0.22,1,0.36,1); }
+      .rl-steps.rl-vis .rl-step:nth-child(1) { opacity: 1; transform: none; }
+      .rl-steps.rl-vis .rl-step:nth-child(2) { opacity: 1; transform: none; transition-delay: 100ms; }
+      .rl-steps.rl-vis .rl-step:nth-child(3) { opacity: 1; transform: none; transition-delay: 200ms; }
+      .rl-steps.rl-vis .rl-step:nth-child(4) { opacity: 1; transform: none; transition-delay: 300ms; }
 
-    /* Baseline (no animation) for draw rule so it's always 24px wide */
-    .rl-rule-draw { width: 24px; }
+      /* step bar sweeps left-to-right as step reveals */
+      .rl-step-bar { transform: scaleX(0); transform-origin: left; transition: transform 420ms cubic-bezier(0.22,1,0.36,1); }
+      .rl-steps.rl-vis .rl-step:nth-child(1) .rl-step-bar { transform: scaleX(1); }
+      .rl-steps.rl-vis .rl-step:nth-child(2) .rl-step-bar { transform: scaleX(1); transition-delay: 100ms; }
+      .rl-steps.rl-vis .rl-step:nth-child(3) .rl-step-bar { transform: scaleX(1); transition-delay: 200ms; }
+      .rl-steps.rl-vis .rl-step:nth-child(4) .rl-step-bar { transform: scaleX(1); transition-delay: 300ms; }
+
+      /* ─ BUTTON MICRO-INTERACTIONS — spring scale, press state, arrow nudge ─ */
+      .rl-btn { transition: transform 200ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease; }
+      .rl-btn:hover  { transform: scale(1.02) translateY(-1px); box-shadow: 0 4px 20px rgba(15,15,16,.18); }
+      .rl-btn:active { transform: scale(0.98); box-shadow: none; transition-duration: 80ms; }
+      .rl-btn .rl-arrow { display: inline-block; transition: transform 200ms ease; }
+      .rl-btn:hover .rl-arrow { transform: translateX(4px); }
+
+      /* ─ CARD LIFT ─ */
+      .rl-card-lift { transition: transform 220ms ease, box-shadow 220ms ease; }
+      .rl-card-lift:hover { transform: translateY(-4px); box-shadow: 0 2px 4px rgba(15,15,16,.06), 0 20px 48px rgba(15,15,16,.16); }
+    }
   `}</style>
 );
 
@@ -77,6 +109,43 @@ const Wordmark = ({ size = 'sm' }) => {
       <span style={{ fontSize: isLg ? 24 : 17, color: C.ink, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
         Rentletter
       </span>
+    </div>
+  );
+};
+
+// ─── COUNT-UP STAT — DOM-mutated to avoid hydration mismatch ───────────────
+const StatCounter = ({ numStr, label }) => {
+  const match = numStr.match(/^(\d+)\s+(.+)$/);
+  const target = match ? parseInt(match[1], 10) : 0;
+  const suffix = match ? ' ' + match[2] : numStr;
+  const wrapRef = useRef(null);
+  const numRef  = useRef(null);
+  useEffect(() => {
+    const el = wrapRef.current;
+    const numEl = numRef.current;
+    if (!el || !numEl) return;
+    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    const obs = new IntersectionObserver(([entry]) => {
+      if (!entry.isIntersecting) return;
+      obs.unobserve(el);
+      const dur = 800, t0 = performance.now();
+      numEl.textContent = '0' + suffix;
+      const tick = (now) => {
+        const t = Math.min((now - t0) / dur, 1);
+        numEl.textContent = Math.ceil((1 - Math.pow(1 - t, 3)) * target) + suffix;
+        if (t < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }, { threshold: 0.5 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [target, suffix]);
+  return (
+    <div ref={wrapRef}>
+      <div ref={numRef} style={{ fontSize: 28, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4, lineHeight: 1 }}>
+        {target}{suffix}
+      </div>
+      <div style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.02em' }}>{label}</div>
     </div>
   );
 };
@@ -220,12 +289,31 @@ export default function Home() {
     }
   }, []);
 
-  // ─── SCROLL REVEAL — attach IntersectionObserver to .rl-reveal elements ───
+  // ─── HERO TILT — mouse-tracked 3-D tilt, skipped on touch + reduced-motion ───
+  const tiltRef = useRef(null);
+  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 });
+  const [skipTilt, setSkipTilt] = useState(true);
+  useEffect(() => {
+    setSkipTilt(
+      window.matchMedia('(pointer: coarse)').matches ||
+      !window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+    );
+  }, []);
+  const handleTiltMove = (e) => {
+    if (!tiltRef.current) return;
+    const r = tiltRef.current.getBoundingClientRect();
+    const dx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+    const dy = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    setHeroTilt({ x: dy * -2.5, y: dx * 2.5 });
+  };
+  const handleTiltLeave = () => setHeroTilt({ x: 0, y: 0 });
+
+  // ─── SCROLL REVEAL — .rl-reveal sections + .rl-steps parent ───
   useEffect(() => {
     if (step !== 'landing') return;
     if (typeof window === 'undefined') return;
     if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const els = document.querySelectorAll('.rl-reveal');
+    const els = document.querySelectorAll('.rl-reveal, .rl-steps');
     if (!els.length) return;
     const obs = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('rl-vis'); obs.unobserve(e.target); } }),
@@ -599,8 +687,9 @@ export default function Home() {
             }}>
 
               {/* LEFT — text */}
-              <div className="rl-fade-up">
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+              <div>
+                {/* Eyebrow — first element, red rule draws simultaneously */}
+                <div className="rl-hero-seq" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
                   <div className="rl-rule-draw" style={{ height: 1, background: C.red }} />
                   <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                     For Toronto Realtors · 2026
@@ -609,17 +698,19 @@ export default function Home() {
 
                 <h1 style={{
                   fontSize: 'clamp(38px, 5.5vw, 64px)',
-                  lineHeight: 1.02,
+                  lineHeight: 1.08,
                   letterSpacing: '-0.03em',
                   color: C.ink,
                   fontWeight: 800,
                   marginBottom: 24,
                 }}>
-                  A simpler way to<br />
-                  handle <span style={{ color: C.red }}>rental<br />applications.</span>
+                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '200ms' }}>A simpler way to</span></span>{' '}
+                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '280ms' }}>handle <span style={{ color: C.red }}>rental</span></span></span>{' '}
+                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '360ms' }}><span style={{ color: C.red }}>applications.</span></span></span>
                 </h1>
 
-                <p style={{
+                <p className="rl-hero-seq" style={{
+                  animationDelay: '520ms',
                   fontSize: 'clamp(15px, 1.6vw, 17px)',
                   lineHeight: 1.55,
                   color: C.inkSoft,
@@ -630,27 +721,29 @@ export default function Home() {
                   Send applicants a link — standardized applications land in your dashboard automatically. Shortlist, document decisions, and send a polished report to your landlord client in one click.
                 </p>
 
-                <div style={{ marginBottom: 32 }}>
+                <div className="rl-hero-seq" style={{ animationDelay: '640ms', marginBottom: 32 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
                     <a
                       href="/landlord"
-                      className="rl-hover-lift"
+                      className="rl-btn"
                       style={{
                         background: C.ink, color: C.paper, textDecoration: 'none',
+                        borderRadius: 8,
                         padding: '16px 28px', fontSize: 14, fontWeight: 600,
                         display: 'inline-flex', alignItems: 'center', gap: 8,
                         letterSpacing: '-0.005em',
                       }}
                     >
                       Try the dashboard
-                      <span>→</span>
+                      <span className="rl-arrow">→</span>
                     </a>
                     <a
                       href="mailto:hello@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Armin%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!"
-                      className="rl-hover-lift"
+                      className="rl-btn"
                       style={{
                         background: 'transparent', color: C.ink,
                         border: `1px solid ${C.rule}`, textDecoration: 'none',
+                        borderRadius: 8,
                         padding: '16px 28px', fontSize: 14, fontWeight: 500,
                         display: 'inline-flex', alignItems: 'center', gap: 8,
                       }}
@@ -664,42 +757,52 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* RIGHT — dashboard screenshot */}
-              <div className="rl-fade-up-delay" style={{ position: 'relative' }}>
-                <div style={{
-                  background: C.paperDeep,
-                  border: `1px solid ${C.rule}`,
-                  aspectRatio: '4 / 3',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}>
-                  {/* Placeholder (rendered first, so img sits on top of it if it loads) */}
+              {/* RIGHT — dashboard screenshot in browser-chrome frame */}
+              <div className="rl-hero-seq" style={{ animationDelay: '300ms', position: 'relative' }}>
+                {/* Mouse-tilt container — events captured here, transform on inner div */}
+                <div
+                  ref={tiltRef}
+                  onMouseMove={skipTilt ? undefined : handleTiltMove}
+                  onMouseLeave={skipTilt ? undefined : handleTiltLeave}
+                >
                   <div style={{
-                    position: 'absolute', inset: 0,
-                    display: 'flex', flexDirection: 'column',
-                    alignItems: 'center', justifyContent: 'center',
-                    padding: 32, gap: 12,
-                    background: C.paperDeep,
+                    transform: skipTilt ? undefined : `perspective(1000px) rotateX(${heroTilt.x}deg) rotateY(${heroTilt.y}deg)`,
+                    transition: skipTilt ? undefined : ((heroTilt.x === 0 && heroTilt.y === 0) ? 'transform 600ms cubic-bezier(0.22,1,0.36,1)' : 'transform 80ms ease'),
+                    willChange: skipTilt ? undefined : 'transform',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    background: '#1c1c1e',
+                    boxShadow: '0 2px 4px rgba(15,15,16,.10), 0 24px 64px rgba(15,15,16,.22)',
                   }}>
-                    <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-                      Dashboard preview
+                    {/* Chrome bar */}
+                    <div style={{ background: '#2c2c2e', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ display: 'flex', gap: 5 }}>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }} />
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
+                      </div>
+                      <div style={{ flex: 1, background: '#3c3c3e', borderRadius: 5, padding: '4px 12px', fontSize: 11, color: '#8e8e93', letterSpacing: '0.01em' }}>
+                        rentletter.ca/landlord
+                      </div>
                     </div>
-                    <div style={{ fontSize: 13, color: C.inkSoft, textAlign: 'center', maxWidth: 280, lineHeight: 1.55 }}>
-                      Add <code style={{ background: C.paper, padding: '1px 5px', fontSize: 12 }}>/public/dashboard-hero.png</code> to replace this.
+                    {/* Screenshot area */}
+                    <div style={{ aspectRatio: '4 / 3', position: 'relative', overflow: 'hidden', background: C.paperDeep }}>
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12, background: C.paperDeep }}>
+                        <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
+                          Dashboard preview
+                        </div>
+                        <div style={{ fontSize: 13, color: C.inkSoft, textAlign: 'center', maxWidth: 280, lineHeight: 1.55 }}>
+                          Add <code style={{ background: C.paper, padding: '1px 5px', fontSize: 12 }}>/public/dashboard-hero.png</code> to replace this.
+                        </div>
+                      </div>
+                      <img
+                        src="/dashboard-hero.png"
+                        alt="Rentletter dashboard"
+                        style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top left', display: 'block' }}
+                        onError={e => { e.currentTarget.style.display = 'none'; }}
+                      />
                     </div>
                   </div>
-                  {/* Image on top — covers placeholder if it loads, hides itself on error */}
-                  <img
-                    src="/dashboard-hero.png"
-                    alt="Rentletter dashboard"
-                    style={{
-                      position: 'absolute', inset: 0,
-                      width: '100%', height: '100%',
-                      objectFit: 'cover', objectPosition: 'top left',
-                      display: 'block',
-                    }}
-                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                  />
                 </div>
                 <div style={{ marginTop: 12, fontSize: 11, color: C.inkMute, letterSpacing: '0.02em' }}>
                   Rentletter dashboard — multi-listing screening
@@ -707,7 +810,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Stats row — full width below the two columns */}
+            {/* Stats row — count-up animation when scrolled into view */}
             <div className="rl-reveal" style={{
               marginTop: 'clamp(48px, 8vw, 80px)',
               borderTop: `1px solid ${C.rule}`,
@@ -716,16 +819,9 @@ export default function Home() {
               gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: 28,
             }}>
-              {[
-                { n: '3 days', l: 'avg. screening time today' },
-                { n: '30 min', l: 'with Rentletter' },
-                { n: '1 link', l: 'per listing' },
-              ].map(s => (
-                <div key={s.l}>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4, lineHeight: 1 }}>{s.n}</div>
-                  <div style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.02em' }}>{s.l}</div>
-                </div>
-              ))}
+              <StatCounter numStr="3 days"  label="avg. screening time today" />
+              <StatCounter numStr="30 min"  label="with Rentletter" />
+              <StatCounter numStr="1 link"  label="per listing" />
             </div>
           </section>
 
@@ -748,8 +844,8 @@ export default function Home() {
           </section>
 
           {/* ── HOW IT WORKS ── */}
-          <section className="rl-reveal" style={{ padding: 'clamp(60px, 10vw, 100px) 32px', maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 48 }}>
+          <section style={{ padding: 'clamp(60px, 10vw, 100px) 32px', maxWidth: 1100, margin: '0 auto' }}>
+            <div className="rl-reveal" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 48 }}>
               <h2 style={{ fontSize: 14, fontWeight: 600, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
                 How it works
               </h2>
@@ -757,14 +853,17 @@ export default function Home() {
                 Rentletter organizes your applicants. Run credit checks wherever you already do.
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'clamp(24px, 4vw, 48px)' }}>
+            {/* rl-steps: JS adds .rl-vis when section enters view; CSS staggers each .rl-step child */}
+            <div className="rl-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'clamp(24px, 4vw, 48px)' }}>
               {[
-                { n: '01', t: 'Create your listing', d: 'Add the unit. We generate a link tied to that listing.' },
-                { n: '02', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route to your dashboard automatically.' },
-                { n: '03', t: 'Review and shortlist', d: 'Compare candidates side-by-side. Score, shortlist, document every decision.' },
-                { n: '04', t: 'Send to your landlord', d: 'One click — a co-branded report with your name on it, free for you.' },
-              ].map((s, i) => (
-                <div key={s.n} className="rl-hover-lift" style={{ borderTop: `2px solid ${i === 0 ? C.red : C.rule}`, paddingTop: 20 }}>
+                { n: '01', t: 'Create your listing', d: 'Add the unit. We generate a link tied to that listing.', red: true },
+                { n: '02', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route to your dashboard automatically.', red: false },
+                { n: '03', t: 'Review and shortlist', d: 'Compare candidates side-by-side. Score, shortlist, document every decision.', red: false },
+                { n: '04', t: 'Send to your landlord', d: 'One click — a co-branded report with your name on it, free for you.', red: false },
+              ].map(s => (
+                <div key={s.n} className="rl-step" style={{ paddingTop: 20, position: 'relative' }}>
+                  {/* Bar sweeps left-to-right as step reveals */}
+                  <div className="rl-step-bar" style={{ background: s.red ? C.red : C.rule, position: 'absolute', top: 0, left: 0, right: 0 }} />
                   <div style={{ fontSize: 11, color: C.red, marginBottom: 14, fontWeight: 700, letterSpacing: '0.08em' }}>{s.n}</div>
                   <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 8, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{s.t}</h3>
                   <p style={{ fontSize: 14, lineHeight: 1.55, color: C.inkSoft }}>{s.d}</p>
@@ -782,16 +881,18 @@ export default function Home() {
               Free during launch. No credit card. No setup.
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="/landlord" className="rl-hover-lift" style={{
+              <a href="/landlord" className="rl-btn" style={{
                 background: C.ink, color: C.paper, textDecoration: 'none',
+                borderRadius: 8,
                 padding: '16px 32px', fontSize: 15, fontWeight: 700,
                 display: 'inline-flex', alignItems: 'center', gap: 8,
               }}>
-                Try the dashboard →
+                Try the dashboard <span className="rl-arrow">→</span>
               </a>
-              <a href="mailto:hello@rentletter.ca?subject=Demo%20request%20-%20Rentletter" className="rl-hover-lift" style={{
+              <a href="mailto:hello@rentletter.ca?subject=Demo%20request%20-%20Rentletter" className="rl-btn" style={{
                 background: 'transparent', color: C.ink,
                 border: `1px solid ${C.rule}`, textDecoration: 'none',
+                borderRadius: 8,
                 padding: '16px 32px', fontSize: 15, fontWeight: 500,
               }}>
                 Book a 15-min demo
