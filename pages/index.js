@@ -1108,7 +1108,7 @@ export default function Home() {
               </span>
             </div>
 
-            <h1 style={{ fontSize: 48, fontWeight: 800, color: C.ink, marginBottom: 12, letterSpacing: '-0.03em', lineHeight: 1 }}>
+            <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.04 }}>
               Tell us about you
             </h1>
             <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 56, lineHeight: 1.55 }}>
@@ -1356,7 +1356,7 @@ export default function Home() {
               <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.2s infinite' }} />
               <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.4s infinite' }} />
             </div>
-            <h2 style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.0, color: C.ink, letterSpacing: '-0.03em', marginBottom: 16 }}>
+            <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 40px)', lineHeight: 1.05, color: C.ink, letterSpacing: '-0.025em', marginBottom: 16 }}>
               Activating your pass
             </h2>
             <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
@@ -1506,7 +1506,7 @@ export default function Home() {
               <span style={{ display: 'inline-block', width: 8, height: 8, background: C.ink, animation: 'pulse 1.4s ease-in-out 0.2s infinite' }} />
               <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.4s infinite' }} />
             </div>
-            <h2 style={{ fontSize: 40, fontWeight: 800, lineHeight: 1.0, color: C.ink, letterSpacing: '-0.03em', marginBottom: 16 }}>
+            <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 40px)', lineHeight: 1.05, color: C.ink, letterSpacing: '-0.025em', marginBottom: 16 }}>
               Writing your letter
             </h2>
             <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
@@ -1564,11 +1564,11 @@ export default function Home() {
             </div>
           </header>
 
-          <div style={{ maxWidth: 820, margin: '0 auto', padding: '64px 32px 80px' }}>
-            <h1 style={{ fontSize: 48, fontWeight: 800, color: C.ink, marginBottom: 12, letterSpacing: '-0.03em', lineHeight: 1 }}>
+          <div style={{ maxWidth: 820, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px) 64px' }}>
+            <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.04, textWrap: 'balance' }}>
               {letter
                 ? <>Your letter is <span style={{ color: C.red }}>ready.</span></>
-                : <>Your application is <span style={{ color: C.red }}>submitted.</span></>}
+                : <>Your application is <span style={{ color: C.red, whiteSpace: 'nowrap' }}>submitted.</span></>}
             </h1>
             <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
               {letter
