@@ -717,8 +717,8 @@ export default function Home() {
                 Where we fit
               </div>
               <p className="rl-serif" style={{ fontSize: 'clamp(21px, 3vw, 30px)', lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0 }}>
-                Rentletter organizes your applicants.{' '}
-                <span style={{ color: C.inkMute }}>Run credit checks wherever you already do.</span>
+                Rentletter organizes your applicants —{' '}
+                <span style={{ color: C.inkMute }}>from the first inquiry to the shortlist you hand your landlord.</span>
               </p>
             </div>
           </section>
@@ -730,7 +730,7 @@ export default function Home() {
                 fontSize: 'clamp(26px, 4vw, 44px)', lineHeight: 1.18, letterSpacing: '-0.02em',
                 color: C.paper, borderLeft: `3px solid ${C.red}`, paddingLeft: 'clamp(20px, 3vw, 32px)', margin: 0, maxWidth: 900,
               }}>
-                Standardized applications. Documented decisions. <span style={{ color: C.inkInverse }}>One dashboard.</span>
+                Standardized applications. Documented decisions.<br /><span style={{ color: C.inkInverse }}>One dashboard.</span>
               </blockquote>
             </div>
           </section>

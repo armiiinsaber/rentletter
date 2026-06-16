@@ -43,22 +43,23 @@ export default function Terms() {
           </Section>
 
           <Section title="2. What we provide">
-            <P>Rentletter offers two services:</P>
+            <P>Rentletter is a tenant-screening dashboard for realtors, landlords, and property managers. With an account you can:</P>
             <UL>
-              <LI><strong>Tenant service</strong> — for a one-time fee, we generate an AI-assisted rental cover letter and tenant resume based on information you provide, deliver them by email in PDF and Word formats, and assign a unique application number that landlords can use to look up your profile.</LI>
-              <LI><strong>Landlord service</strong> — free for landlords, realtors, and investors. Sign in by email to look up Rentletter application numbers, organize and shortlist applicants, generate AI-assisted decision rationale, and export your shortlist.</LI>
+              <LI>Create listings and share a standardized application link for each one.</LI>
+              <LI>Receive applications in a single comparable format, and shortlist, score, and document your decisions.</LI>
+              <LI>Generate optional AI-assisted decision rationale and send a co-branded shortlist to your landlord client.</LI>
             </UL>
-            <P>We may add, change, or remove features at any time.</P>
+            <P>Prospective tenants apply free through a link you share with them; they are never charged to apply. We may add, change, or remove features at any time.</P>
           </Section>
 
           <Section title="3. Pricing and payments">
-            <P>Current pricing (subject to change):</P>
+            <P>Current pricing for the screening dashboard (subject to change):</P>
             <UL>
-              <LI><strong>Single application</strong> — CAD $0.99 (launch promotion until July 1, 2026). After July 1, 2026: CAD $9.99.</LI>
-              <LI><strong>30-day pass</strong> — CAD $19.99. Allows updates and re-tailoring of the application for 30 days.</LI>
-              <LI><strong>Landlord service</strong> — Free.</LI>
+              <LI><strong>Founding members</strong> — the first 50 realtor accounts are free, permanently.</LI>
+              <LI><strong>New accounts</strong> — a 7-day free trial, then CAD $49.99/month (HST included). No setup fee; cancel any time.</LI>
+              <LI><strong>Tenant applications</strong> — free. Tenants are not charged to apply through a link you share.</LI>
             </UL>
-            <P>Payments are processed by Stripe Inc. Charges appear on your statement as "Rentletter" or "STRIPE *RENTLETTER". All prices are in Canadian dollars and exclude applicable taxes unless stated.</P>
+            <P>Where optional paid features are offered, the price is shown at checkout before you confirm. Payments are processed by Stripe Inc. and appear on your statement as "Rentletter" or "STRIPE *RENTLETTER". All prices are in Canadian dollars.</P>
             <P>By providing payment information, you confirm you are authorized to use the payment method.</P>
           </Section>
 
