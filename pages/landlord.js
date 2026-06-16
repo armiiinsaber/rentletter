@@ -3305,8 +3305,8 @@ export default function LandlordDashboard() {
 
             return (
               <section style={{ marginBottom: 32 }}>
-                <div style={{
-                  background: C.ink, color: C.paper,
+                <div className="rl-card" style={{
+                  background: C.ink, color: C.paper, border: 'none',
                   padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)',
                   position: 'relative',
                 }}>
@@ -3343,17 +3343,17 @@ export default function LandlordDashboard() {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
                     gap: 10, marginBottom: 24, maxWidth: 540,
                   }}>
-                    <div style={{ padding: '14px 12px', background: '#1a1a1c', borderLeft: `3px solid ${C.green}` }}>
-                      <div style={{ fontSize: 24, fontWeight: 800, color: C.green, lineHeight: 1 }}>{shortlistedCount}</div>
-                      <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 4, letterSpacing: '0.04em' }}>SHORTLISTED</div>
+                    <div style={{ padding: '14px 16px', background: '#1a1a1c', borderRadius: R.ctrl, borderLeft: `3px solid ${C.green}` }}>
+                      <div className="rl-serif" style={{ fontSize: 28, color: C.green, lineHeight: 1 }}>{shortlistedCount}</div>
+                      <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 5, letterSpacing: '0.06em' }}>SHORTLISTED</div>
                     </div>
-                    <div style={{ padding: '14px 12px', background: '#1a1a1c', borderLeft: `3px solid ${C.inkMute}` }}>
-                      <div style={{ fontSize: 24, fontWeight: 800, color: C.paper, lineHeight: 1 }}>{undecidedCount}</div>
-                      <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 4, letterSpacing: '0.04em' }}>TO REVIEW</div>
+                    <div style={{ padding: '14px 16px', background: '#1a1a1c', borderRadius: R.ctrl, borderLeft: `3px solid ${C.inkMute}` }}>
+                      <div className="rl-serif" style={{ fontSize: 28, color: C.paper, lineHeight: 1 }}>{undecidedCount}</div>
+                      <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 5, letterSpacing: '0.06em' }}>TO REVIEW</div>
                     </div>
-                    <div style={{ padding: '14px 12px', background: '#1a1a1c', borderLeft: `3px solid ${C.red}` }}>
-                      <div style={{ fontSize: 24, fontWeight: 800, color: '#f0b8bb', lineHeight: 1 }}>{rejectedCount}</div>
-                      <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 4, letterSpacing: '0.04em' }}>REJECTED</div>
+                    <div style={{ padding: '14px 16px', background: '#1a1a1c', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}` }}>
+                      <div className="rl-serif" style={{ fontSize: 28, color: '#f0b8bb', lineHeight: 1 }}>{rejectedCount}</div>
+                      <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 5, letterSpacing: '0.06em' }}>REJECTED</div>
                     </div>
                   </div>
 
@@ -3374,8 +3374,9 @@ export default function LandlordDashboard() {
                           setView('review');
                           setWelcomeBackDismissed(true);
                         }}
+                        className="rl-btn"
                         style={{
-                          background: C.red, color: C.paper, border: 'none',
+                          background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl,
                           padding: '16px 20px', fontSize: 15, fontWeight: 700,
                           cursor: 'pointer', minHeight: 56, textAlign: 'left',
                         }}>
@@ -3388,8 +3389,9 @@ export default function LandlordDashboard() {
                     {shortlistedCount > 0 && (
                       <button
                         onClick={() => { setView('compare'); setWelcomeBackDismissed(true); }}
+                        className="rl-btn"
                         style={{
-                          background: C.green, color: C.paper, border: 'none',
+                          background: C.green, color: C.paper, border: 'none', borderRadius: R.ctrl,
                           padding: '16px 20px', fontSize: 15, fontWeight: 700,
                           cursor: 'pointer', minHeight: 56, textAlign: 'left',
                         }}>
@@ -3401,9 +3403,10 @@ export default function LandlordDashboard() {
                     )}
                     <button
                       onClick={() => setWelcomeBackDismissed(true)}
+                      className="rl-btn"
                       style={{
                         background: 'transparent', color: C.paper,
-                        border: `1px solid ${C.paper}`,
+                        border: `1px solid rgba(250,248,243,0.4)`, borderRadius: R.ctrl,
                         padding: '16px 20px', fontSize: 15, fontWeight: 600,
                         cursor: 'pointer', minHeight: 56, textAlign: 'left',
                       }}>
@@ -3608,10 +3611,8 @@ export default function LandlordDashboard() {
           {/* ── LISTINGS SWITCHER — only shown when user has 2+ listings OR is a realtor ── */}
           {sessionToken && (listings.length > 1 || realtorProfile.isRealtor) && (
             <section style={{ marginBottom: 16 }}>
-              <div style={{
-                background: C.paper,
-                border: `1px solid ${C.rule}`,
-                position: 'relative',
+              <div className="rl-card" style={{
+                position: 'relative', overflow: 'hidden',
               }}>
                 {/* Active listing display + switcher */}
                 <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap' }}>
@@ -3635,24 +3636,21 @@ export default function LandlordDashboard() {
                         {Object.values(decisions).filter(d => d?.status === 'shortlist').length > 0 && ` · ${Object.values(decisions).filter(d => d?.status === 'shortlist').length} shortlisted`}
                       </div>
                     </div>
-                    <span style={{
-                      fontSize: 14, color: C.inkSoft, fontWeight: 600,
-                      transform: listingsSwitcherOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                      transition: 'transform 0.2s',
-                    }}>
-                      ▾
+                    <span className={`rl-chev${listingsSwitcherOpen ? ' rl-chev-open' : ''}`} style={{ color: C.inkSoft, display: 'inline-flex' }}>
+                      <Icon name="chevronD" size={18} />
                     </span>
                   </button>
                   <button
                     onClick={() => createNewListing()}
                     title="Add new listing"
+                    className="rl-btn"
                     style={{
-                      background: C.red, color: C.paper, border: 'none',
-                      padding: '14px 20px', fontSize: 13, fontWeight: 700,
-                      cursor: 'pointer', letterSpacing: '0.02em',
-                      whiteSpace: 'nowrap',
+                      background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl,
+                      margin: 10, padding: '12px 18px', fontSize: 13, fontWeight: 600,
+                      cursor: 'pointer', whiteSpace: 'nowrap',
+                      display: 'inline-flex', alignItems: 'center', gap: 7,
                     }}>
-                    + New listing
+                    <Icon name="plus" size={15} /> New listing
                   </button>
                 </div>
 
@@ -3995,24 +3993,26 @@ export default function LandlordDashboard() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: filtersOpen ? 20 : 0 }}>
                 <button
                   onClick={() => setFiltersOpen(!filtersOpen)}
+                  className="rl-btn"
                   style={{
-                    background: filtersOpen ? C.ink : 'transparent',
+                    background: filtersOpen ? C.ink : C.card,
                     color: filtersOpen ? C.paper : C.ink,
-                    border: `1px solid ${C.ink}`,
+                    border: `1px solid ${filtersOpen ? C.ink : C.ruleDark}`, borderRadius: R.ctrl,
                     padding: '10px 18px', fontSize: 13, fontWeight: 600,
                     display: 'flex', alignItems: 'center', gap: 10,
                   }}>
+                  <span style={{ display: 'inline-flex' }}><Icon name="list" size={15} /></span>
                   <span>Filters</span>
                   {activeFilterCount > 0 && (
                     <span style={{
                       background: C.red, color: C.paper,
                       padding: '2px 8px', fontSize: 11, fontWeight: 700,
-                      borderRadius: 10, minWidth: 22, textAlign: 'center',
+                      borderRadius: R.pill, minWidth: 22, textAlign: 'center',
                     }}>
                       {activeFilterCount}
                     </span>
                   )}
-                  <span style={{ fontSize: 10 }}>{filtersOpen ? '▲' : '▼'}</span>
+                  <span className={`rl-chev${filtersOpen ? ' rl-chev-open' : ''}`} style={{ display: 'inline-flex' }}><Icon name="chevronD" size={15} /></span>
                 </button>
                 <span style={{ fontSize: 12, color: C.inkMute }}>
                   {filteredApplications.length} of {applications.length} match{activeFilterCount > 0 ? ' your filters' : ''}
@@ -4030,8 +4030,8 @@ export default function LandlordDashboard() {
               </div>
 
               {filtersOpen && (
-                <div style={{
-                  background: '#fafaf5', border: `1px solid ${C.rule}`,
+                <div className="rl-card" style={{
+                  background: C.paperDeep,
                   padding: 'clamp(16px, 4vw, 24px) clamp(16px, 4vw, 28px)',
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',

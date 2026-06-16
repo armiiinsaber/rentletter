@@ -861,7 +861,7 @@ export default function Home() {
               <div style={{
                 background: C.ink, color: C.paper,
                 padding: '20px 24px',
-                marginBottom: 28,
+                marginBottom: 28, borderRadius: R.card,
                 borderLeft: `4px solid ${C.red}`,
               }}>
                 <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 6 }}>
@@ -888,19 +888,19 @@ export default function Home() {
             {/* ── DEV TEST BAR (will be removed before public launch) ── */}
             <div style={{
               marginBottom: 32, padding: '14px 18px',
-              background: '#fff8e1', border: `1px solid #f5d77a`,
+              background: '#fff8e1', border: `1px solid #f5d77a`, borderRadius: R.ctrl,
               display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
               fontSize: 12,
             }}>
               <span style={{ color: '#7a5d12', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 10 }}>
                 Dev mode
               </span>
-              <button onClick={fillTestData}
-                style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
+              <button onClick={fillTestData} className="rl-btn"
+                style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
                 Fill random sample
               </button>
-              <button onClick={generateDemoLetter}
-                style={{ background: C.red, color: C.paper, border: 'none', padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
+              <button onClick={generateDemoLetter} className="rl-btn"
+                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
                 Generate Sarah Chen (skip Stripe)
               </button>
               <span style={{ fontSize: 11, color: '#7a5d12', opacity: 0.75 }}>
@@ -916,7 +916,7 @@ export default function Home() {
             </p>
 
             {error && (
-              <div style={{ background: '#fef2f0', borderLeft: `3px solid ${C.red}`, padding: '14px 18px', marginBottom: 32, color: C.ink, fontSize: 14 }}>
+              <div style={{ background: C.redTint, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, padding: '14px 18px', marginBottom: 32, color: C.ink, fontSize: 14 }}>
                 {error}
               </div>
             )}
@@ -924,7 +924,7 @@ export default function Home() {
             {/* Privacy-first positioning note */}
             <div style={{
               marginBottom: 40, padding: '18px 22px',
-              background: '#fafaf5', borderLeft: `3px solid ${C.red}`,
+              background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl,
               fontSize: 13, color: C.inkSoft, lineHeight: 1.6,
             }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
@@ -1062,7 +1062,7 @@ export default function Home() {
 
             {/* Pass status banner (only when active pass) */}
             {passInfo && (
-              <div style={{ marginTop: 48, background: C.ink, color: C.paper, padding: '24px 28px', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ marginTop: 48, background: C.ink, color: C.paper, borderRadius: R.card, padding: '24px 28px', position: 'relative', overflow: 'hidden' }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
@@ -1087,16 +1087,14 @@ export default function Home() {
                       generateLetter(form, { passToken });
                     }}
                     disabled={!isFormValid()}
+                    className="rl-btn"
                     style={{
                       background: isFormValid() ? C.red : '#5a3a3c',
-                      color: C.paper, border: 'none',
+                      color: C.paper, border: 'none', borderRadius: R.ctrl,
                       padding: '16px 28px', fontSize: 15, fontWeight: 700,
                       cursor: isFormValid() ? 'pointer' : 'not-allowed',
                       whiteSpace: 'nowrap',
-                      transition: 'background 0.2s',
                     }}
-                    onMouseOver={e => { if (isFormValid()) e.currentTarget.style.background = C.redDark; }}
-                    onMouseOut={e => { if (isFormValid()) e.currentTarget.style.background = C.red; }}
                   >
                     {isFormValid() ? 'Generate letter →' : 'Fill required fields'}
                   </button>
@@ -1106,7 +1104,7 @@ export default function Home() {
 
             {/* Generate button — free for all tenants */}
             {!passInfo && (
-              <div style={{ marginTop: 48, background: C.paper, border: `1px solid ${C.ink}`, padding: '28px 28px' }}>
+              <div className="rl-card" style={{ marginTop: 48, padding: '28px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
                   <span style={{ fontSize: 15, color: C.inkSoft }}>Your professional rental application</span>
                   <span style={{ fontSize: 13, color: C.green, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Free</span>
@@ -1117,16 +1115,14 @@ export default function Home() {
                 <button
                   onClick={handlePay}
                   disabled={!isFormValid()}
+                  className="rl-btn"
                   style={{
                     width: '100%', marginTop: 24,
                     background: isFormValid() ? C.ink : '#c8c2b3',
-                    color: C.paper, border: 'none', padding: '18px',
+                    color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '18px',
                     fontSize: 15, fontWeight: 600,
                     cursor: isFormValid() ? 'pointer' : 'not-allowed',
-                    transition: 'opacity 0.2s',
                   }}
-                  onMouseOver={e => { if (isFormValid()) e.currentTarget.style.opacity = '0.85'; }}
-                  onMouseOut={e => { if (isFormValid()) e.currentTarget.style.opacity = '1'; }}
                 >
                   {isFormValid()
                     ? 'Generate my application →'
@@ -1212,7 +1208,7 @@ export default function Home() {
             </p>
 
             {/* Pass detail card */}
-            <div style={{ background: C.ink, color: C.paper, padding: '28px 32px', marginBottom: 32, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: '28px 32px', marginBottom: 32, position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
               <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>
                 Your pass details
@@ -1239,7 +1235,7 @@ export default function Home() {
               </div>
               <div style={{
                 fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all',
-                background: '#0a0a0b', padding: '12px 14px',
+                background: '#0a0a0b', borderRadius: R.ctrl, padding: '12px 14px',
                 color: '#a4adbb', marginBottom: 16,
               }}>
                 https://rentletter.ca/?pass={passToken}
@@ -1249,9 +1245,10 @@ export default function Home() {
                   navigator.clipboard.writeText(`https://rentletter.ca/?pass=${passToken}`);
                   alert('Access link copied');
                 }}
+                className="rl-btn"
                 style={{
-                  background: C.paper, color: C.ink, border: 'none',
-                  padding: '10px 18px', fontSize: 13, fontWeight: 600,
+                  background: C.paper, color: C.ink, border: 'none', borderRadius: R.ctrl,
+                  padding: '11px 18px', fontSize: 13, fontWeight: 600,
                 }}>
                 Copy access link
               </button>
@@ -1275,7 +1272,7 @@ export default function Home() {
               </span>
             </div>
 
-            <div style={{ marginTop: 56, padding: '20px 22px', background: '#fafaf5', borderLeft: `3px solid ${C.red}` }}>
+            <div style={{ marginTop: 56, padding: '20px 22px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl }}>
               <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                 A few things to know
               </div>
@@ -1352,12 +1349,13 @@ export default function Home() {
                     setForm(EMPTY_FORM);
                     setStep('form');
                   }}
+                  className="rl-btn"
                   style={{
-                    background: C.red, color: C.paper, border: 'none',
-                    padding: '8px 16px', fontSize: 13, fontWeight: 600,
+                    background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl,
+                    padding: '9px 16px', fontSize: 13, fontWeight: 600,
                     display: 'flex', alignItems: 'center', gap: 6,
                   }}>
-                  + New letter
+                  <Icon name="plus" size={14} /> New letter
                 </button>
               )}
               <button onClick={startOver} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
@@ -1381,8 +1379,8 @@ export default function Home() {
             {/* Application Number Card — the trust signal for landlords */}
             {applicationNumber && (
               <div style={{
-                background: C.ink, color: C.paper,
-                padding: '24px 28px', marginBottom: 32,
+                background: C.ink, color: C.paper, borderRadius: R.card,
+                padding: '24px 28px', marginBottom: 24,
                 position: 'relative', overflow: 'hidden',
               }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
@@ -1391,10 +1389,10 @@ export default function Home() {
                     <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
                       Your Application Number
                     </div>
-                    <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: '0.04em', marginBottom: 10, fontFamily: 'monospace' }}>
+                    <div className="rl-serif" style={{ fontSize: 26, letterSpacing: '0.02em', marginBottom: 10, fontFamily: 'monospace' }}>
                       {applicationNumber}
                     </div>
-                    <p style={{ fontSize: 13, color: '#a4adbb', lineHeight: 1.55, maxWidth: 480 }}>
+                    <p style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.55, maxWidth: 480 }}>
                       Share this number with your landlord or realtor. They can verify your application and compare you against other tenants — for free — at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/landlord</span>
                     </p>
                     <a href="/my-application"
@@ -1412,13 +1410,14 @@ export default function Home() {
                       setCopiedAppNum(true);
                       setTimeout(() => setCopiedAppNum(false), 2000);
                     }}
+                    className="rl-btn"
                     style={{
-                      background: C.paper, color: C.ink, border: 'none',
-                      padding: '10px 20px', fontSize: 13, fontWeight: 600,
-                      whiteSpace: 'nowrap',
+                      background: C.paper, color: C.ink, border: 'none', borderRadius: R.ctrl,
+                      padding: '11px 20px', fontSize: 13, fontWeight: 600,
+                      whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 7,
                     }}
                   >
-                    {copiedAppNum ? '✓ Copied' : 'Copy number'}
+                    <Icon name={copiedAppNum ? 'check' : 'copy'} size={15} strokeWidth={copiedAppNum ? 2.5 : 1.5} /> {copiedAppNum ? 'Copied' : 'Copy number'}
                   </button>
                 </div>
               </div>
@@ -1427,9 +1426,10 @@ export default function Home() {
             {/* Email status */}
             {form.email && (
               <div style={{
-                background: emailSent ? '#f0f5f1' : '#faf6e8',
+                background: emailSent ? C.greenTint : C.amberTint,
                 border: `1px solid ${emailSent ? '#c8d8cc' : '#e0d5a8'}`,
-                padding: '14px 18px', marginBottom: 28, fontSize: 14,
+                borderRadius: R.ctrl,
+                padding: '14px 18px', marginBottom: 24, fontSize: 14,
                 color: emailSent ? '#2d5a3f' : '#665a1f',
               }}>
                 {emailSending ? `Delivering to ${form.email}...` : emailSent ? `Sent to ${form.email}` : `Will email to ${form.email}`}
@@ -1437,21 +1437,21 @@ export default function Home() {
             )}
 
             {/* Download bar */}
-            <div style={{ background: C.ink, color: C.paper, padding: '20px 24px', marginBottom: 32, display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: '#a4adbb', flex: 1, minWidth: 180 }}>
+            <div style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: '18px 24px', marginBottom: 24, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: 14, fontWeight: 500, color: C.inkInverse, flex: 1, minWidth: 140 }}>
                 Download
               </span>
-              <button onClick={() => downloadFile('pdf')}
-                style={{ background: C.red, color: C.paper, border: 'none', padding: '12px 22px', fontSize: 14, fontWeight: 600 }}>
-                PDF
+              <button onClick={() => downloadFile('pdf')} className="rl-btn"
+                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 22px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                <Icon name="doc" size={15} /> PDF
               </button>
-              <button onClick={() => downloadFile('docx')}
-                style={{ background: C.paper, color: C.ink, border: 'none', padding: '12px 22px', fontSize: 14, fontWeight: 600 }}>
-                Word
+              <button onClick={() => downloadFile('docx')} className="rl-btn"
+                style={{ background: C.paper, color: C.ink, border: 'none', borderRadius: R.ctrl, padding: '11px 22px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                <Icon name="doc" size={15} /> Word
               </button>
               {form.email && !emailSent && (
-                <button onClick={() => sendEmail(form.email, form.fullName, letter, resume, applicationNumber)} disabled={emailSending}
-                  style={{ background: 'transparent', color: C.paper, border: `1px solid #3a3a3c`, padding: '12px 22px', fontSize: 14, fontWeight: 500 }}>
+                <button onClick={() => sendEmail(form.email, form.fullName, letter, resume, applicationNumber)} disabled={emailSending} className="rl-btn"
+                  style={{ background: 'transparent', color: C.paper, border: `1px solid #3a3a3c`, borderRadius: R.ctrl, padding: '11px 22px', fontSize: 14, fontWeight: 500 }}>
                   {emailSending ? 'Sending...' : 'Resend email'}
                 </button>
               )}
@@ -1459,44 +1459,44 @@ export default function Home() {
 
             {/* Cover Letter — only render if we have one (user paid or used demo) */}
             {letter && (
-              <div style={{ background: '#fafaf5', border: `1px solid ${C.rule}`, marginBottom: 24 }}>
+              <div className="rl-card" style={{ marginBottom: 24, overflow: 'hidden' }}>
                 <div style={{ padding: '20px 24px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: `1px solid ${C.rule}` }}>
-                  <h2 style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>Cover letter</h2>
-                  <button onClick={() => copyText(letter, setCopiedLetter)}
-                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
-                    {copiedLetter ? '✓ Copied' : 'Copy'}
+                  <h2 className="rl-serif" style={{ fontSize: 22, color: C.ink, letterSpacing: '-0.01em' }}>Cover letter</h2>
+                  <button onClick={() => copyText(letter, setCopiedLetter)} className="rl-btn"
+                    style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <Icon name={copiedLetter ? 'check' : 'copy'} size={14} strokeWidth={copiedLetter ? 2.5 : 1.5} /> {copiedLetter ? 'Copied' : 'Copy'}
                   </button>
                 </div>
                 <textarea value={letter} onChange={e => updateLetter(e.target.value)}
                   style={{
                     width: '100%', minHeight: 460, padding: 24,
                     fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7,
-                    color: C.ink, background: '#fafaf5',
+                    color: C.ink, background: C.card,
                     border: 'none', outline: 'none', resize: 'vertical',
                   }} />
               </div>
             )}
 
             {/* Resume */}
-            <div style={{ background: '#fafaf5', border: `1px solid ${C.rule}`, marginBottom: 24 }}>
+            <div className="rl-card" style={{ marginBottom: 24, overflow: 'hidden' }}>
               <div style={{ padding: '20px 24px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: `1px solid ${C.rule}` }}>
-                <h2 style={{ fontSize: 22, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>Tenant resume</h2>
-                <button onClick={() => copyText(resume, setCopiedResume)}
-                  style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, padding: '8px 16px', fontSize: 13, fontWeight: 500 }}>
-                  {copiedResume ? '✓ Copied' : 'Copy'}
+                <h2 className="rl-serif" style={{ fontSize: 22, color: C.ink, letterSpacing: '-0.01em' }}>Tenant resume</h2>
+                <button onClick={() => copyText(resume, setCopiedResume)} className="rl-btn"
+                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name={copiedResume ? 'check' : 'copy'} size={14} strokeWidth={copiedResume ? 2.5 : 1.5} /> {copiedResume ? 'Copied' : 'Copy'}
                 </button>
               </div>
               <textarea value={resume} onChange={e => updateResume(e.target.value)}
                 style={{
                   width: '100%', minHeight: 320, padding: 24,
                   fontFamily: "'Inter', sans-serif", fontSize: 13, lineHeight: 1.7,
-                  color: C.ink, background: '#fafaf5',
+                  color: C.ink, background: C.card,
                   border: 'none', outline: 'none', resize: 'vertical',
                 }} />
             </div>
 
-            <button onClick={startOver}
-              style={{ marginTop: 24, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, padding: '14px 28px', fontSize: 14, fontWeight: 500 }}>
+            <button onClick={startOver} className="rl-btn"
+              style={{ marginTop: 8, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, padding: '14px 28px', fontSize: 14, fontWeight: 500 }}>
               Start a new letter
             </button>
           </div>
