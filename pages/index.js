@@ -574,11 +574,11 @@ export default function Home() {
           </ScrollHeader>
 
           {/* ── HERO ──────────────────────────────────────── */}
-          <section style={{ padding: 'clamp(56px, 9vw, 104px) clamp(20px, 4vw, 32px) clamp(56px, 8vw, 88px)', maxWidth: 1200, margin: '0 auto' }}>
+          <section style={{ padding: 'clamp(44px, 7vw, 96px) clamp(20px, 4vw, 32px) clamp(48px, 7vw, 80px)', maxWidth: 1200, margin: '0 auto' }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))',
-              gap: 'clamp(32px, 5vw, 72px)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
+              gap: 'clamp(28px, 4vw, 64px)',
               alignItems: 'center',
             }}>
 
@@ -701,12 +701,13 @@ export default function Home() {
               borderTop: `1px solid ${C.rule}`,
               paddingTop: 36,
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-              gap: 28,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 'clamp(20px, 3vw, 32px)',
             }}>
               <StatCounter numStr="3 days"  label="Typical screening time today" />
               <StatCounter numStr="30 min"  label="The same job, on Rentletter" />
               <StatCounter numStr="1 link"  label="Shared per listing" />
+              <StatCounter numStr="0 fees"  label="Charged to your applicants" />
             </div>
           </section>
 
@@ -747,16 +748,16 @@ export default function Home() {
             </div>
             <div className="rl-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'clamp(20px, 3vw, 36px)' }}>
               {[
-                { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your screening preferences. We generate a secure link tied to that listing.', red: true },
-                { n: '02', icon: 'link', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route into your dashboard automatically.', red: false },
-                { n: '03', icon: 'list', t: 'Review and shortlist', d: 'Compare candidates side by side. Score, shortlist, and document every decision.', red: false },
-                { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co-branded report with your name on it — free for you.', red: false },
+                { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your screening preferences. We generate a secure link tied to that listing.' },
+                { n: '02', icon: 'link', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route into your dashboard automatically.' },
+                { n: '03', icon: 'list', t: 'Review and shortlist', d: 'Compare candidates side by side. Score, shortlist, and document every decision.' },
+                { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co-branded report with your name on it — free for you.' },
               ].map(s => (
                 <div key={s.n} className="rl-step" style={{ paddingTop: 22, position: 'relative' }}>
-                  <span className="rl-step-bar" style={{ background: s.red ? C.red : C.ruleDark, position: 'absolute', top: 0, left: 0, right: 0 }} />
+                  <span className="rl-step-bar" style={{ background: C.red, position: 'absolute', top: 0, left: 0, right: 0 }} />
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                    <span style={{ width: 38, height: 38, borderRadius: R.ctrl, background: s.red ? C.red : C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon name={s.icon} size={19} color={s.red ? C.paper : C.ink} />
+                    <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.red, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: SH.rest }}>
+                      <Icon name={s.icon} size={20} color={C.paper} />
                     </span>
                     <span className="rl-serif" style={{ fontSize: 22, color: C.rule }}>{s.n}</span>
                   </div>
@@ -764,6 +765,56 @@ export default function Home() {
                   <p style={{ fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>{s.d}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* ── OTHER AUDIENCES — self-serve landlords + property managers + tenants ── */}
+          <section className="rl-reveal" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'clamp(14px, 2vw, 20px)' }}>
+              {/* Self-serve landlord / PM */}
+              <div className="rl-card rl-card-lift" style={{ padding: 'clamp(22px, 3vw, 28px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="home" size={20} color={C.ink} />
+                </span>
+                <div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 6 }}>
+                    Renting your own units?
+                  </h3>
+                  <p style={{ fontSize: 14, lineHeight: 1.6, color: C.inkSoft, margin: 0 }}>
+                    Landlords and property managers handling it themselves — without a realtor — get the same dashboard. Keep the commission, run a clean process.
+                  </p>
+                </div>
+                <a href="/landlord" className="rl-btn" style={{
+                  alignSelf: 'flex-start', marginTop: 2,
+                  background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
+                  padding: '11px 18px', fontSize: 14, fontWeight: 600, textDecoration: 'none',
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                }}>
+                  Open the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+                </a>
+              </div>
+              {/* Tenant */}
+              <div className="rl-card rl-card-lift" style={{ padding: 'clamp(22px, 3vw, 28px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="user" size={20} color={C.ink} />
+                </span>
+                <div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 6 }}>
+                    Applying for a unit?
+                  </h3>
+                  <p style={{ fontSize: 14, lineHeight: 1.6, color: C.inkSoft, margin: 0 }}>
+                    Tenants submit a standardized application and get a shareable number — free. Usually you'll arrive through a link from your realtor or landlord.
+                  </p>
+                </div>
+                <button onClick={() => setStep('form')} className="rl-btn" style={{
+                  alignSelf: 'flex-start', marginTop: 2,
+                  background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
+                  padding: '11px 18px', fontSize: 14, fontWeight: 600,
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                }}>
+                  Submit your application <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+                </button>
+              </div>
             </div>
           </section>
 
@@ -811,13 +862,8 @@ export default function Home() {
                 <FooterCol title="Company" links={[['Compliance', '/compliance'], ['Privacy', '/privacy'], ['Terms', '/terms']]} />
                 <FooterCol title="Contact" links={[['info@rentletter.ca', 'mailto:info@rentletter.ca']]} />
               </div>
-              <div style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', fontSize: 12.5, color: C.inkMute }}>
-                <span>Tenant applying for a unit?{' '}
-                  <button onClick={() => setStep('form')} style={{ color: C.ink, fontSize: 12.5, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3, padding: 0 }}>Submit your application →</button>
-                </span>
-                <span>Managing your own units?{' '}
-                  <a href="/landlord" style={{ color: C.ink, fontSize: 12.5, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>The dashboard works for you too →</a>
-                </span>
+              <div style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, fontSize: 12.5, color: C.inkMute }}>
+                © {new Date().getFullYear()} Rentletter · Toronto, Canada · Not legal advice
               </div>
             </div>
           </footer>
