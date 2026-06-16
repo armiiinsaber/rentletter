@@ -7,20 +7,17 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import ChatWidget from '../../components/ChatWidget';
+import { C as THEME, R, SH } from '../../components/theme';
+import { GlobalStyle, Icon } from '../../components/ui';
 
+// Shared brand tokens, extended with the legacy "info" keys (the fit-against-
+// preferences blocks) — re-toned onto the paper palette so the report stays
+// on-brand (paper/ink/red), no off-brand blue.
 const C = {
-  paper: '#faf8f3',
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',
-  redDark: '#a8161c',
-  green: '#2d7d4a',
-  info: '#eef2f6',
-  infoBorder: '#c8d3df',
-  infoInk: '#3d4a5c',
+  ...THEME,
+  info: THEME.paperDeep,
+  infoBorder: THEME.rule,
+  infoInk: THEME.inkSoft,
 };
 
 // Compute fit between an applicant and the landlord's stated preferences.
@@ -199,8 +196,9 @@ export default function LandlordShortlistView() {
         <title>{data.realtor.name ? `Shortlist from ${data.realtor.name} — Rentletter` : 'Your shortlist — Rentletter'}</title>
         <meta name="robots" content="noindex" />
       </Head>
+      <GlobalStyle />
 
-      <div style={{ minHeight: '100vh', background: C.paper, fontFamily: "-apple-system, 'Inter', sans-serif", color: C.ink }}>
+      <div style={{ minHeight: '100vh', background: C.paper, color: C.ink }}>
 
         {/* REALTOR BRANDING HEADER */}
         <header style={{ background: C.ink, color: C.paper, padding: 'clamp(24px, 5vw, 36px) 0' }}>
@@ -226,13 +224,13 @@ export default function LandlordShortlistView() {
                 </div>
               </div>
               {data.realtor.phone && (
-                <a href={`tel:${data.realtor.phone}`} style={{
-                  background: C.red, color: C.paper, textDecoration: 'none',
-                  padding: '14px 22px', fontSize: 14, fontWeight: 700,
-                  letterSpacing: '0.01em', whiteSpace: 'nowrap',
+                <a href={`tel:${data.realtor.phone}`} className="rl-btn" style={{
+                  background: C.red, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                  padding: '14px 22px', fontSize: 14, fontWeight: 600,
+                  whiteSpace: 'nowrap',
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
-                  📞 Call your realtor
+                  <Icon name="phone" size={16} /> Call your realtor
                 </a>
               )}
             </div>
@@ -247,7 +245,7 @@ export default function LandlordShortlistView() {
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Your shortlist
             </div>
-            <h2 style={{ fontSize: 'clamp(28px, 5vw, 44px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 12 }}>
+            <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 44px)', letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 12 }}>
               {activeApplicants.length} candidate{activeApplicants.length === 1 ? '' : 's'} to consider.
             </h2>
             {data.unit && (data.unit.address || data.unit.monthlyRent) && (
@@ -277,7 +275,7 @@ export default function LandlordShortlistView() {
             if (items.length === 0 && !prefs.notes) return null;
 
             return (
-              <div style={{ marginBottom: 32, padding: 'clamp(16px, 3vw, 22px)', background: C.info, borderLeft: `4px solid ${C.infoBorder}` }}>
+              <div style={{ marginBottom: 32, padding: 'clamp(18px, 3vw, 24px)', background: C.info, borderRadius: R.card, borderLeft: `4px solid ${C.inkSoft}` }}>
                 <div style={{ fontSize: 10, color: C.infoInk, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
                   Your stated preferences
                 </div>
@@ -346,10 +344,8 @@ export default function LandlordShortlistView() {
                 const isTopPick = dec.priority === 'top';
                 const myNote = landlordNotes[app.applicationNumber];
                 return (
-                  <div key={app.applicationNumber}
+                  <div key={app.applicationNumber} className="rl-card rl-card-lift"
                     style={{
-                      background: C.paper,
-                      border: `1px solid ${C.rule}`,
                       borderLeft: isTopPick ? `4px solid ${C.red}` : `1px solid ${C.rule}`,
                       padding: 'clamp(18px, 3vw, 24px)',
                       marginBottom: 14,
@@ -369,7 +365,7 @@ export default function LandlordShortlistView() {
                         </div>
                       </div>
                       {app.scorecard?.overall != null && (
-                        <div style={{ background: C.ink, color: C.paper, padding: '6px 12px', fontSize: 13, fontWeight: 700 }}>
+                        <div style={{ background: C.ink, color: C.paper, padding: '6px 13px', borderRadius: R.pill, fontSize: 13, fontWeight: 700 }}>
                           {app.scorecard.overall}/5
                         </div>
                       )}
@@ -386,26 +382,26 @@ export default function LandlordShortlistView() {
                       const fit = computeFit(app, data.preferences);
                       if (fit.matches.length === 0 && fit.misses.length === 0 && fit.unknowns.length === 0) return null;
                       return (
-                        <div style={{ background: C.info, padding: 12, marginBottom: 12, borderLeft: `3px solid ${C.infoBorder}` }}>
-                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.infoInk, marginBottom: 6 }}>
+                        <div style={{ background: C.info, padding: 14, borderRadius: R.ctrl, marginBottom: 12, borderLeft: `3px solid ${C.inkSoft}` }}>
+                          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.infoInk, marginBottom: 8 }}>
                             Fit against your preferences
                           </div>
                           {fit.matches.map((m, i) => (
-                            <div key={'m' + i} style={{ fontSize: 12, color: C.green, lineHeight: 1.5, marginBottom: 2 }}>✓ {m}</div>
+                            <div key={'m' + i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12.5, color: C.green, lineHeight: 1.5, marginBottom: 4 }}><span style={{ marginTop: 1 }}><Icon name="check" size={14} color={C.green} strokeWidth={2.5} /></span>{m}</div>
                           ))}
                           {fit.misses.map((m, i) => (
-                            <div key={'x' + i} style={{ fontSize: 12, color: C.red, lineHeight: 1.5, marginBottom: 2 }}>✗ {m}</div>
+                            <div key={'x' + i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12.5, color: C.red, lineHeight: 1.5, marginBottom: 4 }}><span style={{ marginTop: 1 }}><Icon name="x" size={14} color={C.red} strokeWidth={2.5} /></span>{m}</div>
                           ))}
                           {fit.unknowns.map((m, i) => (
-                            <div key={'u' + i} style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 2 }}>? {m}</div>
+                            <div key={'u' + i} style={{ display: 'flex', gap: 7, alignItems: 'flex-start', fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 4 }}><span style={{ marginTop: 1 }}><Icon name="question" size={14} color={C.inkMute} strokeWidth={2} /></span>{m}</div>
                           ))}
                         </div>
                       );
                     })()}
                     {/* Realtor's note */}
                     {dec.notes && (
-                      <div style={{ background: C.paperDeep, padding: 12, fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 12, borderLeft: `3px solid ${C.ink}` }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.inkSoft, marginBottom: 4 }}>
+                      <div style={{ background: C.paperDeep, padding: 14, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 12, borderLeft: `3px solid ${C.ink}` }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.inkSoft, marginBottom: 5 }}>
                           Note from {data.realtor.name || 'your realtor'}
                         </div>
                         {dec.notes}
@@ -413,8 +409,8 @@ export default function LandlordShortlistView() {
                     )}
                     {/* Landlord's own note */}
                     {myNote && (
-                      <div style={{ background: '#f7f4eb', padding: 12, fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 12, borderLeft: `3px solid ${C.green}` }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.green, marginBottom: 4 }}>
+                      <div style={{ background: C.greenTint, padding: 14, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 12, borderLeft: `3px solid ${C.green}` }}>
+                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.green, marginBottom: 5 }}>
                           Your note (your realtor can see this)
                         </div>
                         {myNote.text}
@@ -424,22 +420,24 @@ export default function LandlordShortlistView() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                       <button
                         onClick={() => { setActiveAppNumber(app.applicationNumber); setView('detail'); }}
-                        style={{ background: C.ink, color: C.paper, border: 'none', padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
-                        See full details →
+                        className="rl-btn"
+                        style={{ background: C.ink, color: C.paper, borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                        See full details <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
                       </button>
                       <button
                         onClick={() => { setNoteDraft(myNote?.text || ''); setNoteEditOpen(app.applicationNumber); }}
-                        style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
-                        {myNote ? '✎ Edit my note' : '+ Add my note'}
+                        className="rl-btn"
+                        style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '11px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                        <Icon name="edit" size={14} /> {myNote ? 'Edit my note' : 'Add my note'}
                       </button>
                       {app.tenant?.email && (
-                        <a href={`mailto:${app.tenant.email}`} style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.rule}`, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 40, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-                          ✉ Email
+                        <a href={`mailto:${app.tenant.email}`} className="rl-btn" style={{ background: C.card, color: C.ink, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '11px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                          <Icon name="mail" size={15} /> Email
                         </a>
                       )}
                       {app.tenant?.phone && (
-                        <a href={`tel:${app.tenant.phone}`} style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.rule}`, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 40, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-                          📞 Call
+                        <a href={`tel:${app.tenant.phone}`} className="rl-btn" style={{ background: C.card, color: C.ink, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '11px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                          <Icon name="phone" size={15} /> Call
                         </a>
                       )}
                       <button
@@ -448,7 +446,7 @@ export default function LandlordShortlistView() {
                             handleAction('remove', app.applicationNumber);
                           }
                         }}
-                        style={{ background: 'transparent', color: C.inkSoft, border: 'none', padding: '10px 12px', fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+                        style={{ background: 'transparent', color: C.inkMute, border: 'none', padding: '11px 12px', fontSize: 12.5, cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 }}>
                         Remove from my list
                       </button>
                     </div>
@@ -560,15 +558,15 @@ export default function LandlordShortlistView() {
             </p>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {data.realtor.email && (
-                <a href={`mailto:${data.realtor.email}`}
-                  style={{ background: C.red, color: C.paper, textDecoration: 'none', padding: '14px 22px', fontSize: 14, fontWeight: 700 }}>
-                  ✉ Email {data.realtor.name || 'realtor'}
+                <a href={`mailto:${data.realtor.email}`} className="rl-btn"
+                  style={{ background: C.red, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl, padding: '14px 22px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Icon name="mail" size={16} /> Email {data.realtor.name || 'realtor'}
                 </a>
               )}
               {data.realtor.phone && (
-                <a href={`tel:${data.realtor.phone}`}
-                  style={{ background: 'transparent', color: C.paper, border: `1px solid ${C.paper}`, textDecoration: 'none', padding: '14px 22px', fontSize: 14, fontWeight: 700 }}>
-                  📞 Call {data.realtor.phone}
+                <a href={`tel:${data.realtor.phone}`} className="rl-btn"
+                  style={{ background: 'transparent', color: C.paper, border: `1px solid rgba(250,248,243,0.4)`, textDecoration: 'none', borderRadius: R.ctrl, padding: '14px 22px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Icon name="phone" size={16} /> Call {data.realtor.phone}
                 </a>
               )}
             </div>
@@ -584,8 +582,8 @@ export default function LandlordShortlistView() {
         {noteEditOpen && (
           <div onClick={() => setNoteEditOpen(null)}
             style={{ position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 100 }}>
-            <div onClick={e => e.stopPropagation()}
-              style={{ background: C.paper, maxWidth: 480, width: '100%', border: `1px solid ${C.rule}` }}>
+            <div onClick={e => e.stopPropagation()} className="rl-modal"
+              style={{ maxWidth: 480, width: '100%' }}>
               <div style={{ padding: 24, borderBottom: `1px solid ${C.rule}` }}>
                 <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
                   Your note
@@ -603,15 +601,15 @@ export default function LandlordShortlistView() {
                   onChange={e => setNoteDraft(e.target.value)}
                   placeholder="e.g., I'd like to interview this candidate first. Concerned about the move-in date — can they start earlier?"
                   rows={5}
-                  style={{ width: '100%', padding: 12, fontSize: 14, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', fontFamily: 'inherit', resize: 'vertical', marginBottom: 14 }}
+                  style={{ width: '100%', padding: 14, fontSize: 14, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, outline: 'none', fontFamily: 'inherit', resize: 'vertical', marginBottom: 14, lineHeight: 1.55 }}
                 />
                 <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                  <button onClick={() => setNoteEditOpen(null)}
-                    style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, padding: '12px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={() => setNoteEditOpen(null)} className="rl-btn"
+                    style={{ background: C.card, color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '12px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                     Cancel
                   </button>
-                  <button onClick={() => { handleAction('note', noteEditOpen, noteDraft); setNoteEditOpen(null); }}
-                    style={{ background: C.red, color: C.paper, border: 'none', padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  <button onClick={() => { handleAction('note', noteEditOpen, noteDraft); setNoteEditOpen(null); }} className="rl-btn"
+                    style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
                     Save note
                   </button>
                 </div>
@@ -730,7 +728,7 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
 
 function Stat({ label, value }) {
   return (
-    <div style={{ padding: 14, background: C.paperDeep, borderLeft: `3px solid ${C.red}` }}>
+    <div style={{ padding: 16, background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}` }}>
       <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>{label}</div>
       <div style={{ fontSize: 15, color: C.ink, fontWeight: 700 }}>{value}</div>
     </div>

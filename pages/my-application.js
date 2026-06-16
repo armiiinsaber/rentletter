@@ -1,27 +1,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
-
-// ─── DESIGN TOKENS ────────────────────────────────────────────
-const C = {
-  paper: '#faf8f3',
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',
-  redDark: '#a8161c',
-  green: '#2d7d4a',
-};
-
-function Wordmark() {
-  return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-      <div style={{ width: 3, height: 20, background: C.red }} />
-      <span style={{ fontSize: 17, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>Rentletter</span>
-    </div>
-  );
-}
+import { C, R } from '../components/theme';
+import { GlobalStyle, Wordmark, ScrollHeader, Icon } from '../components/ui';
 
 export default function MyApplication() {
   const [step, setStep] = useState('input'); // 'input' | 'loaded'
@@ -114,23 +94,24 @@ export default function MyApplication() {
     return (
       <>
         <Head><title>Manage your application — Rentletter</title></Head>
+        <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', flexDirection: 'column' }}>
-          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <a href="/" style={{ textDecoration: 'none' }}><Wordmark /></a>
-            <a href="/" style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500, textDecoration: 'none' }}>
-              ← Home
+          <ScrollHeader>
+            <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
+            <a href="/" style={{ color: C.inkSoft, fontSize: 13, fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={14} /></span> Home
             </a>
-          </header>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
+          </ScrollHeader>
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(24px, 5vw, 48px) clamp(20px, 4vw, 32px)' }}>
             <div style={{ maxWidth: 520, width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-                <div style={{ width: 24, height: 1, background: C.red }} />
-                <span style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+                <span style={{ width: 28, height: 2, background: C.red, borderRadius: 1 }} />
+                <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
                   My application
                 </span>
               </div>
-              <h1 style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 18 }}>
-                See who viewed your<br />application. Revoke it<br />if you need to.
+              <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 18 }}>
+                See who viewed your application. Revoke it if you need to.
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.55, marginBottom: 32 }}>
                 Enter your application number and owner token. You received both when you first generated your Rentletter application — check your confirmation email.
@@ -144,9 +125,9 @@ export default function MyApplication() {
                 onChange={e => setAppNumber(e.target.value.toUpperCase())}
                 placeholder="RL-2026-XXXX-XXXX"
                 style={{
-                  width: '100%', padding: '14px 16px', fontSize: 15,
+                  width: '100%', padding: '15px 16px', fontSize: 15,
                   fontFamily: 'monospace', letterSpacing: '0.04em',
-                  border: `1px solid ${C.ink}`, background: C.paper, color: C.ink,
+                  border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink,
                   outline: 'none', marginBottom: 20,
                 }}
               />
@@ -159,15 +140,15 @@ export default function MyApplication() {
                 onChange={e => setOwnerToken(e.target.value.toUpperCase())}
                 placeholder="32-character code"
                 style={{
-                  width: '100%', padding: '14px 16px', fontSize: 14,
+                  width: '100%', padding: '15px 16px', fontSize: 14,
                   fontFamily: 'monospace', letterSpacing: '0.02em',
-                  border: `1px solid ${C.ink}`, background: C.paper, color: C.ink,
+                  border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink,
                   outline: 'none', marginBottom: 16,
                 }}
               />
 
               {error && (
-                <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
+                <div style={{ marginBottom: 14, padding: '11px 14px', background: C.redTint, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink }}>
                   {error}
                 </div>
               )}
@@ -175,11 +156,12 @@ export default function MyApplication() {
               <button
                 onClick={() => loadAudit(appNumber, ownerToken)}
                 disabled={loading || !appNumber || !ownerToken}
+                className="rl-btn"
                 style={{
                   width: '100%',
                   background: (loading || !appNumber || !ownerToken) ? '#c8c2b3' : C.ink,
-                  color: C.paper, border: 'none', padding: '16px',
-                  fontSize: 14, fontWeight: 600,
+                  color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '16px',
+                  fontSize: 15, fontWeight: 600,
                   cursor: (loading || !appNumber || !ownerToken) ? 'not-allowed' : 'pointer',
                 }}>
                 {loading ? 'Loading...' : 'View my application →'}
@@ -201,16 +183,17 @@ export default function MyApplication() {
   return (
     <>
       <Head><title>My application — Rentletter</title></Head>
+      <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
-        <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <a href="/" style={{ textDecoration: 'none' }}><Wordmark /></a>
+        <ScrollHeader maxWidth={760}>
+          <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
           <button onClick={() => { setStep('input'); setData(null); setOwnerToken(''); localStorage.removeItem('rentletter_owner_token'); }}
-            style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+            style={{ background: 'transparent', color: C.inkSoft, fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
             Sign out
           </button>
-        </header>
+        </ScrollHeader>
 
-        <div style={{ maxWidth: 760, margin: '0 auto', padding: '48px 32px 80px' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', padding: 'clamp(32px, 5vw, 48px) clamp(20px, 4vw, 32px) 64px' }}>
 
           {/* Application card */}
           <div style={{ marginBottom: 32 }}>
@@ -303,11 +286,11 @@ export default function MyApplication() {
               Lookup history
             </h2>
             {(data?.lookups || []).length === 0 ? (
-              <div style={{ padding: '32px 24px', background: '#fafaf5', border: `1px dashed ${C.rule}`, textAlign: 'center', fontSize: 14, color: C.inkSoft }}>
+              <div style={{ padding: '32px 24px', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, textAlign: 'center', fontSize: 14, color: C.inkSoft }}>
                 No one has looked up your application yet. Share your number with the landlords you're applying to.
               </div>
             ) : (
-              <div style={{ border: `1px solid ${C.rule}` }}>
+              <div className="rl-card" style={{ overflow: 'hidden' }}>
                 {[...(data.lookups || [])].reverse().map((entry, idx) => (
                   <div key={idx} style={{
                     padding: '14px 18px',
@@ -340,7 +323,7 @@ export default function MyApplication() {
           </div>
 
           {error && (
-            <div style={{ marginTop: 20, padding: '12px 16px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
+            <div style={{ marginTop: 20, padding: '12px 16px', background: C.redTint, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink }}>
               {error}
             </div>
           )}

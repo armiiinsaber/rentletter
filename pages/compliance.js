@@ -4,17 +4,8 @@
 
 import Head from 'next/head';
 import Link from 'next/link';
-
-const C = {
-  paper: '#faf8f3',
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',
-  green: '#2d7d4a',
-};
+import { C, R } from '../components/theme';
+import { GlobalStyle, Wordmark, ScrollHeader } from '../components/ui';
 
 export default function CompliancePage() {
   return (
@@ -23,23 +14,18 @@ export default function CompliancePage() {
         <title>Compliance & Fair Housing — Rentletter</title>
         <meta name="description" content="How Rentletter helps Canadian property managers meet HRTO and provincial human rights obligations during tenant screening." />
       </Head>
+      <GlobalStyle />
 
-      <div style={{ minHeight: '100vh', background: C.paper, fontFamily: "-apple-system, 'Inter', sans-serif", color: C.ink }}>
+      <div style={{ minHeight: '100vh', background: C.paper, color: C.ink }}>
 
         {/* TOP NAV */}
-        <header style={{ background: C.paper, borderBottom: `1px solid ${C.rule}`, padding: '20px 0' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(20px, 4vw, 32px)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <Link href="/" style={{ color: C.ink, textDecoration: 'none', fontWeight: 800, fontSize: 18, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 3, height: 16, background: C.red, display: 'inline-block' }} />
-              Rentletter
-            </Link>
-            <div style={{ display: 'flex', gap: 22, alignItems: 'center', fontSize: 13 }}>
-              <Link href="/realtors" style={{ color: C.inkSoft, textDecoration: 'none' }}>For realtors</Link>
-              <Link href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none' }}>Dashboard</Link>
-              <Link href="/privacy" style={{ color: C.inkSoft, textDecoration: 'none' }}>Privacy</Link>
-            </div>
+        <ScrollHeader maxWidth={1100}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></Link>
+          <div style={{ display: 'flex', gap: 'clamp(16px, 2vw, 24px)', alignItems: 'center', fontSize: 13.5 }}>
+            <Link href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none', fontWeight: 500 }}>Dashboard</Link>
+            <Link href="/privacy" style={{ color: C.inkSoft, textDecoration: 'none', fontWeight: 500 }}>Privacy</Link>
           </div>
-        </header>
+        </ScrollHeader>
 
         {/* HERO */}
         <section style={{ padding: 'clamp(48px, 8vw, 90px) 0 clamp(36px, 6vw, 60px)', borderBottom: `1px solid ${C.rule}` }}>
@@ -47,7 +33,7 @@ export default function CompliancePage() {
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16 }}>
               Compliance overview · for property managers & legal teams
             </div>
-            <h1 style={{ fontSize: 'clamp(34px, 5.5vw, 52px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 20 }}>
+            <h1 className="rl-serif" style={{ fontSize: 'clamp(34px, 5.5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 20 }}>
               Built to help Canadian landlords and property managers screen tenants defensibly.
             </h1>
             <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: C.inkSoft, lineHeight: 1.65 }}>
@@ -114,7 +100,7 @@ export default function CompliancePage() {
               <li style={li}>A pilot deployment with a sandboxed environment scoped to a subset of your portfolio</li>
               <li style={li}>White-label branding so deliverables to your owners or stakeholders carry your brand</li>
             </ul>
-            <p style={{ marginTop: 16 }}>Contact <a href="mailto:hello@rentletter.ca" style={{ color: C.red, textDecoration: 'underline' }}>hello@rentletter.ca</a> for institutional evaluations.</p>
+            <p style={{ marginTop: 16 }}>Contact <a href="mailto:info@rentletter.ca" style={{ color: C.red, textDecoration: 'underline' }}>info@rentletter.ca</a> for institutional evaluations.</p>
           </Section>
 
           <Section title="Not legal advice">
@@ -124,7 +110,7 @@ export default function CompliancePage() {
           </Section>
 
           <div style={{ marginTop: 40, paddingTop: 20, borderTop: `1px solid ${C.rule}`, fontSize: 12, color: C.inkMute }}>
-            Last updated: May 2026 · For institutional inquiries: <a href="mailto:hello@rentletter.ca" style={{ color: C.inkSoft, textDecoration: 'underline' }}>hello@rentletter.ca</a>
+            Last updated: May 2026 · For institutional inquiries: <a href="mailto:info@rentletter.ca" style={{ color: C.inkSoft, textDecoration: 'underline' }}>info@rentletter.ca</a>
           </div>
         </main>
       </div>

@@ -1,24 +1,18 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import ChatWidget from '../components/ChatWidget';
+import { C as THEME, R, SH, EASE, FONT } from '../components/theme';
+import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
 
-// ─── DESIGN TOKENS (matching main site) ──────────────────────
+// ─── DESIGN TOKENS ──────────────────────────────────────────
+// Shared brand tokens, extended with the legacy "info" keys this page used
+// for policy/notice boxes — now re-toned onto the paper palette so the blue
+// no longer breaks the paper/ink/red brand.
 const C = {
-  paper: '#faf8f3',
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',
-  redDark: '#a8161c',
-  green: '#2d7d4a',
-  // Info/policy box color — muted blue-grey to differentiate from
-  // interactive (paper/paperDeep) and confirmation (green) boxes.
-  // Use for HRTO notices, "tenants self-report" disclaimers, privacy notes, etc.
-  info: '#eef2f6',
-  infoBorder: '#c8d3df',
-  infoInk: '#3d4a5c',
+  ...THEME,
+  info: THEME.paperDeep,
+  infoBorder: THEME.rule,
+  infoInk: THEME.inkSoft,
 };
 
 
@@ -1525,49 +1519,6 @@ const MIXED_DEMOS = [
 ];
 
 
-const GlobalStyle = () => (
-  <style jsx global>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      background: ${C.paper}; color: ${C.ink};
-      font-family: 'Inter', -apple-system, sans-serif;
-      overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
-    }
-    button, input, textarea, select { font-family: 'Inter', sans-serif; }
-    button { cursor: pointer; }
-    input:focus { outline: none; }
-    ::selection { background: ${C.red}; color: ${C.paper}; }
-
-    /* ── Surfaces — always applied ── */
-    .rl-card  { border-radius: 12px; box-shadow: 0 1px 2px rgba(15,15,16,.06), 0 8px 24px rgba(15,15,16,.08); overflow: hidden; }
-    .rl-modal { border-radius: 14px; box-shadow: 0 4px 8px rgba(15,15,16,.08), 0 32px 80px rgba(15,15,16,.28); overflow: hidden; }
-
-    @media (prefers-reduced-motion: no-preference) {
-      /* ─ CARD LIFT ─ */
-      .rl-card-lift { transition: transform 220ms ease, box-shadow 220ms ease; }
-      .rl-card-lift:hover { transform: translateY(-4px); box-shadow: 0 2px 4px rgba(15,15,16,.06), 0 20px 48px rgba(15,15,16,.16); }
-
-      /* ─ BUTTON MICRO-INTERACTIONS ─ */
-      .rl-btn { transition: transform 200ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease; }
-      .rl-btn:not(:disabled):hover  { transform: scale(1.02) translateY(-1px); box-shadow: 0 4px 20px rgba(15,15,16,.18); }
-      .rl-btn:not(:disabled):active { transform: scale(0.98); box-shadow: none; transition-duration: 80ms; }
-      .rl-btn .rl-arrow { display: inline-block; transition: transform 200ms ease; }
-      .rl-btn:not(:disabled):hover .rl-arrow { transform: translateX(4px); }
-    }
-  `}</style>
-);
-
-const Wordmark = () => (
-  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-    <div style={{ width: 3, height: 20, background: C.red }} />
-    <span style={{ fontSize: 17, color: C.ink, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
-      Rentletter
-    </span>
-  </div>
-);
-
 // ─── STAR DISPLAY ────────────────────────────────────────────
 const Stars = ({ score, size = 14 }) => {
   const full = Math.floor(score);
@@ -2984,119 +2935,94 @@ export default function LandlordDashboard() {
           </div>
         )}
 
-        {/* ── RED COMMAND BAR at top ────────────────────────── */}
+        {/* ── TOP STRIP ─────────────────────────────────────── */}
         <div style={{
-          background: C.red, color: C.paper,
-          padding: '8px 32px', fontSize: 11,
-          fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase',
+          background: C.ink, color: C.inkInverse,
+          padding: '9px clamp(20px, 4vw, 32px)', fontSize: 12,
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexWrap: 'wrap', gap: 12,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{
-              display: 'inline-block', width: 6, height: 6, borderRadius: '50%',
-              background: C.paper, animation: 'pulseRed 2s ease-in-out infinite',
-            }} />
-            Landlord Dashboard · Live
-          </div>
-          <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-            <span style={{ opacity: 0.85 }}>Free for landlords + realtors</span>
-            <a href="/" style={{ color: C.paper, textDecoration: 'none', opacity: 0.85 }}>
-              ← Back to Rentletter
-            </a>
-          </div>
-          <style jsx>{`
-            @keyframes pulseRed {
-              0%, 100% { opacity: 1; transform: scale(1); }
-              50% { opacity: 0.4; transform: scale(0.85); }
-            }
-          `}</style>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span className="rl-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, display: 'inline-block' }} />
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.red }}>Dashboard</span>
+            <span style={{ color: C.inkInverse }}>Free for realtors during launch</span>
+          </span>
+          <a href="/" style={{ color: C.inkInverse, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+            <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={14} /></span> Back to Rentletter
+          </a>
         </div>
 
         {/* ── HEADER ─────────────────────────────────────────── */}
-        <header style={{ borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
-          <div style={{ maxWidth: 1400, margin: '0 auto', padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <a href="/" style={{ textDecoration: 'none' }}>
+        <ScrollHeader maxWidth={1400}>
+            <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}>
               <Wordmark />
             </a>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: C.inkMute }}>
-              <span style={{ fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                {applications.length > 0
-                  ? `${applications.length} application${applications.length === 1 ? '' : 's'} loaded`
-                  : 'Ready to verify'}
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: C.inkMute, flexWrap: 'wrap' }}>
               {signedInEmail ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: C.green, fontWeight: 600 }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
-                    Signed in · {signedInEmail}
+                <>
+                  {/* Account identity */}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, color: C.inkSoft, fontWeight: 500 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
+                    {signedInEmail}
                   </span>
-                  {/* Realtor profile pill — only shown if user identified as realtor */}
+                  {/* Realtor profile pill */}
                   {realtorProfile.isRealtor && (
-                    <button
-                      onClick={() => setRealtorEditOpen(true)}
-                      title="Edit your realtor profile"
+                    <button onClick={() => setRealtorEditOpen(true)} className="rl-btn" title="Edit your realtor profile"
                       style={{
-                        fontSize: 11, fontWeight: 600, letterSpacing: '0.03em',
-                        padding: '3px 10px',
+                        fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: R.pill,
                         background: C.ink, color: C.paper,
-                        border: 'none', cursor: 'pointer',
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
                       }}>
-                      <span style={{ fontSize: 10, opacity: 0.7, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Realtor</span>
+                      <span style={{ fontSize: 9, opacity: 0.65, letterSpacing: '0.1em', textTransform: 'uppercase' }}>Realtor</span>
                       {realtorProfile.fullName || 'Add details'}
                       {realtorProfile.brokerage && (
-                        <span style={{ opacity: 0.7 }}>· {realtorProfile.brokerage.length > 24 ? realtorProfile.brokerage.slice(0, 24) + '…' : realtorProfile.brokerage}</span>
+                        <span style={{ opacity: 0.65 }}>· {realtorProfile.brokerage.length > 22 ? realtorProfile.brokerage.slice(0, 22) + '…' : realtorProfile.brokerage}</span>
                       )}
                     </button>
                   )}
                   {/* Sync status pill */}
                   <span style={{
-                    fontSize: 11, fontWeight: 600, letterSpacing: '0.04em',
-                    padding: '3px 8px',
-                    background: syncStatus === 'synced' ? '#f0f7f3' : syncStatus === 'syncing' ? '#fafaf5' : syncStatus === 'error' ? '#fef2f0' : 'transparent',
-                    color: syncStatus === 'synced' ? C.green : syncStatus === 'syncing' ? C.inkSoft : syncStatus === 'error' ? C.red : C.inkMute,
-                    border: `1px solid ${syncStatus === 'synced' ? C.green : syncStatus === 'syncing' ? C.rule : syncStatus === 'error' ? C.red : C.rule}`,
+                    fontSize: 12, fontWeight: 600, padding: '5px 11px', borderRadius: R.pill,
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    background: syncStatus === 'synced' ? C.greenTint : syncStatus === 'error' ? C.redTint : C.paperDeep,
+                    color: syncStatus === 'synced' ? C.green : syncStatus === 'error' ? C.red : C.inkMute,
+                    border: `1px solid ${syncStatus === 'synced' ? C.green : syncStatus === 'error' ? C.red : C.rule}`,
                   }}>
-                    {syncStatus === 'synced' && '✓ Saved'}
+                    {syncStatus === 'synced' && <><Icon name="check" size={13} color={C.green} strokeWidth={2} /> Saved</>}
                     {syncStatus === 'syncing' && 'Saving…'}
-                    {syncStatus === 'error' && '⚠ Not saved'}
+                    {syncStatus === 'error' && <><Icon name="x" size={13} color={C.red} strokeWidth={2} /> Not saved</>}
                     {syncStatus === 'idle' && '—'}
                   </span>
                   {(syncStatus === 'error' || syncStatus === 'idle') && (
-                    <button onClick={forceSyncNow}
-                      style={{ background: C.red, color: C.paper, border: 'none', padding: '6px 12px', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                    <button onClick={forceSyncNow} className="rl-btn"
+                      style={{ background: C.red, color: C.paper, padding: '6px 12px', fontSize: 12, fontWeight: 700, borderRadius: R.ctrl }}>
                       Save now
                     </button>
                   )}
-                  <button onClick={checkServerState}
-                    title="Diagnostic: check what's actually saved on the server"
-                    style={{ background: 'transparent', border: `1px solid ${C.rule}`, color: C.inkSoft, padding: '6px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                    🔍 Check server
+                  <button onClick={checkServerState} className="rl-btn" title="Diagnostic: check what's actually saved on the server"
+                    style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, padding: '6px 10px', fontSize: 12, fontWeight: 600, borderRadius: R.ctrl, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <Icon name="search" size={13} color={C.inkSoft} /> Check
                   </button>
                   <button onClick={signOut}
-                    style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 12, cursor: 'pointer', textDecoration: 'underline' }}>
+                    style={{ background: 'transparent', color: C.inkMute, fontSize: 12.5, textDecoration: 'underline', textUnderlineOffset: 2 }}>
                     Sign out
                   </button>
-                </div>
+                </>
               ) : (
                 <button onClick={() => { setSigninLinkSent(false); setSigninEmailInput(''); setSigninError(''); setSigninModalOpen(true); }}
-                  style={{
-                    background: C.ink, color: C.paper, border: 'none',
-                    padding: '10px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                    display: 'inline-flex', alignItems: 'center', gap: 8,
-                    letterSpacing: '-0.005em',
+                  className="rl-btn" style={{
+                    background: C.ink, color: C.paper, padding: '11px 18px', fontSize: 13, fontWeight: 600,
+                    borderRadius: R.ctrl, display: 'inline-flex', alignItems: 'center', gap: 8,
                   }}>
-                  ✉ Sign in and save on all devices
+                  <Icon name="mail" size={15} /> Sign in &amp; save on all devices
                 </button>
               )}
             </div>
-          </div>
-        </header>
+        </ScrollHeader>
 
         <div style={{
           maxWidth: 1400, margin: '0 auto',
-          padding: (applications.length === 0 && !workspaceLoading) ? '0' : 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 80px',
+          padding: (applications.length === 0 && !workspaceLoading) ? '0' : 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 40px',
           minWidth: 0,
         }}>
 
@@ -3243,80 +3169,83 @@ export default function LandlordDashboard() {
             <section style={{ padding: 'clamp(12px, 2.5vw, 18px) clamp(16px, 4vw, 32px) 0' }}>
               {accountStatus.status === 'founder' && (
                 <div style={{
-                  background: C.paper, border: `1px solid ${C.green}`,
-                  padding: 'clamp(12px, 3vw, 16px) clamp(16px, 4vw, 20px)',
-                  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap',
+                  background: C.greenTint, border: `1px solid ${C.green}`, borderRadius: R.card,
+                  padding: 'clamp(13px, 3vw, 17px) clamp(16px, 4vw, 22px)',
+                  display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
                 }}>
-                  <div style={{
-                    background: C.green, color: C.paper,
-                    padding: '4px 10px', fontSize: 10, fontWeight: 800,
+                  <span style={{
+                    background: C.green, color: C.paper, borderRadius: R.pill,
+                    padding: '5px 12px', fontSize: 10, fontWeight: 800,
                     letterSpacing: '0.1em', textTransform: 'uppercase',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
                   }}>
-                    Founding member{accountStatus.signupNumber ? ` · #${accountStatus.signupNumber} of 50` : ''}
-                  </div>
-                  <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
+                    <Icon name="check" size={13} strokeWidth={2.5} /> Founding member{accountStatus.signupNumber ? ` · #${accountStatus.signupNumber} of 50` : ''}
+                  </span>
+                  <span style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
                     You're one of the first realtors on Rentletter. Free forever — thank you for being early.
-                  </div>
+                  </span>
                 </div>
               )}
 
               {accountStatus.status === 'trial' && (
                 <div style={{
-                  background: '#fffaf0',
-                  border: `1px solid #d4a574`,
-                  borderLeft: `4px solid #c78638`,
-                  padding: 'clamp(12px, 3vw, 16px) clamp(16px, 4vw, 20px)',
+                  background: C.amberTint,
+                  border: `1px solid ${C.amber}`,
+                  borderLeft: `4px solid ${C.amber}`,
+                  borderRadius: R.card,
+                  padding: 'clamp(13px, 3vw, 17px) clamp(16px, 4vw, 22px)',
                   display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
                   justifyContent: 'space-between',
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0, flex: 1 }}>
-                    <div style={{
-                      background: '#c78638', color: C.paper,
-                      padding: '4px 10px', fontSize: 10, fontWeight: 800,
-                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                    <span style={{
+                      background: C.amber, color: C.paper, borderRadius: R.pill,
+                      padding: '5px 12px', fontSize: 10, fontWeight: 800,
+                      letterSpacing: '0.1em', textTransform: 'uppercase', whiteSpace: 'nowrap',
                     }}>
                       Trial · {accountStatus.daysLeft} {accountStatus.daysLeft === 1 ? 'day' : 'days'} left
-                    </div>
-                    <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
+                    </span>
+                    <span style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
                       $49.99/month (HST included) when your trial ends.
-                    </div>
+                    </span>
                   </div>
-                  <a
-                    href="mailto:hello@rentletter.ca?subject=Subscribe%20to%20Rentletter&body=Hi%20Armin%2C%0A%0AI%27d%20like%20to%20subscribe%20to%20Rentletter%20at%20%2449.99%2Fmonth.%0A%0AMy%20email%3A%20%0AMy%20brokerage%3A%20%0A%0AThanks!"
+                  <a className="rl-btn"
+                    href="mailto:info@rentletter.ca?subject=Subscribe%20to%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AI%27d%20like%20to%20subscribe%20to%20Rentletter%20at%20%2449.99%2Fmonth.%0A%0AMy%20email%3A%20%0AMy%20brokerage%3A%20%0A%0AThanks!"
                     style={{
-                      background: C.ink, color: C.paper, textDecoration: 'none',
-                      padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                      whiteSpace: 'nowrap',
+                      background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                      padding: '11px 20px', fontSize: 13, fontWeight: 600,
+                      whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 8,
                     }}>
-                    Subscribe →
+                    Subscribe <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
                   </a>
                 </div>
               )}
 
               {accountStatus.status === 'lapsed' && accountStatus.locked && (
                 <div style={{
-                  background: '#fef2f0',
+                  background: C.redTint,
                   border: `1px solid ${C.red}`,
                   borderLeft: `4px solid ${C.red}`,
-                  padding: 'clamp(14px, 3vw, 18px) clamp(16px, 4vw, 22px)',
+                  borderRadius: R.card,
+                  padding: 'clamp(16px, 3vw, 22px) clamp(18px, 4vw, 24px)',
                 }}>
-                  <div style={{ fontSize: 10, color: C.red, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
+                  <div style={{ fontSize: 10, color: C.red, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
                     Trial ended
                   </div>
-                  <div style={{ fontSize: 15, color: C.ink, fontWeight: 700, marginBottom: 6 }}>
+                  <div className="rl-serif" style={{ fontSize: 'clamp(20px, 3vw, 26px)', color: C.ink, letterSpacing: '-0.015em', marginBottom: 8 }}>
                     Your 7-day trial has ended.
                   </div>
-                  <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
+                  <div style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.6, marginBottom: 16, maxWidth: 560 }}>
                     To keep using Rentletter, subscribe for $49.99/month (HST included). Email us and we'll set you up — your listings and applicants are saved.
                   </div>
-                  <a
-                    href="mailto:hello@rentletter.ca?subject=Subscribe%20to%20Rentletter&body=Hi%20Armin%2C%0A%0AMy%20trial%20has%20ended%20and%20I%27d%20like%20to%20subscribe%20to%20Rentletter%20at%20%2449.99%2Fmonth.%0A%0AMy%20email%3A%20%0AMy%20brokerage%3A%20%0A%0AThanks!"
+                  <a className="rl-btn"
+                    href="mailto:info@rentletter.ca?subject=Subscribe%20to%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AMy%20trial%20has%20ended%20and%20I%27d%20like%20to%20subscribe%20to%20Rentletter%20at%20%2449.99%2Fmonth.%0A%0AMy%20email%3A%20%0AMy%20brokerage%3A%20%0A%0AThanks!"
                     style={{
-                      background: C.red, color: C.paper, textDecoration: 'none',
-                      padding: '12px 22px', fontSize: 14, fontWeight: 700,
-                      display: 'inline-block',
+                      background: C.red, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                      padding: '13px 24px', fontSize: 14, fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
                     }}>
-                    Email hello@rentletter.ca to subscribe →
+                    <Icon name="mail" size={16} /> Email info@rentletter.ca to subscribe
                   </a>
                 </div>
               )}
@@ -3832,11 +3761,12 @@ export default function LandlordDashboard() {
             const u = activeListing.unit || unit;
             const listingIsSet = !!(u.address || u.monthlyRent || u.bedrooms);
             return (
-              <section style={{ marginBottom: 20 }}>
-                <div className="rl-card rl-card-lift" style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: 'clamp(14px, 3vw, 20px) clamp(16px, 3vw, 22px)' }}>
+              <section style={{ marginBottom: 16 }}>
+                <div className="rl-card rl-card-lift" style={{ padding: 'clamp(16px, 3vw, 22px) clamp(18px, 3vw, 24px)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.inkMute, marginBottom: 8 }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.inkMute, marginBottom: 10 }}>
+                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>1</span>
                         Listing setup
                       </div>
                       {listingIsSet ? (
@@ -3853,17 +3783,17 @@ export default function LandlordDashboard() {
                       {prefsCount > 0 && (
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                           {prefs.minAnnualIncome && (
-                            <span style={{ fontSize: 11, color: C.inkSoft, background: C.paperDeep, padding: '3px 8px', border: `1px solid ${C.rule}` }}>
+                            <span style={{ fontSize: 11.5, color: C.inkSoft, background: C.paperDeep, padding: '4px 11px', borderRadius: R.pill, border: `1px solid ${C.rule}` }}>
                               Min income ${Number(prefs.minAnnualIncome).toLocaleString()}
                             </span>
                           )}
                           {prefs.petsPolicy && prefs.petsPolicy !== 'case-by-case' && (
-                            <span style={{ fontSize: 11, color: C.inkSoft, background: C.paperDeep, padding: '3px 8px', border: `1px solid ${C.rule}` }}>
+                            <span style={{ fontSize: 11.5, color: C.inkSoft, background: C.paperDeep, padding: '4px 11px', borderRadius: R.pill, border: `1px solid ${C.rule}` }}>
                               Pets: {prefs.petsPolicy === 'yes' ? 'allowed' : 'not allowed'}
                             </span>
                           )}
                           {prefs.smokingAllowed === false && (
-                            <span style={{ fontSize: 11, color: C.inkSoft, background: C.paperDeep, padding: '3px 8px', border: `1px solid ${C.rule}` }}>
+                            <span style={{ fontSize: 11.5, color: C.inkSoft, background: C.paperDeep, padding: '4px 11px', borderRadius: R.pill, border: `1px solid ${C.rule}` }}>
                               No smoking
                             </span>
                           )}
@@ -3877,11 +3807,12 @@ export default function LandlordDashboard() {
                       onClick={() => setPreferencesOpen(true)}
                       className="rl-btn"
                       style={{
-                        background: 'transparent', color: C.ink, border: `1px solid ${C.rule}`,
-                        padding: '8px 16px', fontSize: 12, fontWeight: 600,
-                        cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                        background: C.ink, color: C.paper, borderRadius: R.ctrl,
+                        padding: '9px 18px', fontSize: 13, fontWeight: 600,
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                        display: 'inline-flex', alignItems: 'center', gap: 7,
                       }}>
-                      Edit
+                      <Icon name="edit" size={14} /> Edit
                     </button>
                   </div>
                 </div>
@@ -3895,22 +3826,23 @@ export default function LandlordDashboard() {
             if (!activeListing) return null;
             const inviteUrl = activeListing.inviteToken ? `https://rentletter.ca/apply/${activeListing.inviteToken}` : null;
             return (
-              <section style={{ marginBottom: 20 }}>
-                <div className="rl-card" style={{ background: C.ink, color: C.paper, padding: 'clamp(16px, 3vw, 22px) clamp(18px, 3vw, 24px)' }}>
+              <section style={{ marginBottom: 16 }}>
+                <div className="rl-card" style={{ background: C.ink, color: C.paper, padding: 'clamp(18px, 3vw, 24px) clamp(18px, 3vw, 24px)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0b8bb', marginBottom: 6 }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0b8bb', marginBottom: 10 }}>
+                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: C.red, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>2</span>
                         Invite tenants to apply
                       </div>
-                      <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6, color: C.paper }}>
+                      <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6, color: C.paper }}>
                         Listing-specific application link
                       </div>
-                      <div style={{ fontSize: 12, color: '#c8c2b3', lineHeight: 1.55 }}>
+                      <div style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.6, maxWidth: 540 }}>
                         Share this link with prospective tenants. They'll see this listing's info, fill the application, and their RL number will appear here automatically.
                       </div>
                       {inviteUrl && (
-                        <div style={{ marginTop: 12, padding: '10px 14px', background: '#1a1a1c', fontFamily: 'monospace', fontSize: 12, color: '#faf8f3', wordBreak: 'break-all', borderLeft: `3px solid ${C.red}` }}>
-                          {inviteUrl}
+                        <div style={{ marginTop: 14, padding: '12px 16px', background: '#1a1a1c', borderRadius: R.ctrl, fontFamily: 'monospace', fontSize: 12.5, color: C.paper, wordBreak: 'break-all', borderLeft: `3px solid ${C.red}`, display: 'flex', alignItems: 'center', gap: 9 }}>
+                          <Icon name="link" size={15} color="#f0b8bb" /> {inviteUrl}
                         </div>
                       )}
                     </div>
@@ -3920,12 +3852,19 @@ export default function LandlordDashboard() {
                         disabled={inviteLoading}
                         className="rl-btn"
                         style={{
-                          background: inviteCopied ? '#2d7d4a' : C.red, color: C.paper, border: 'none',
-                          padding: '12px 18px', fontSize: 13, fontWeight: 700,
+                          background: inviteCopied ? C.green : C.red, color: C.paper, borderRadius: R.ctrl,
+                          padding: '13px 20px', fontSize: 13, fontWeight: 600,
                           cursor: inviteLoading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
                           opacity: inviteLoading ? 0.6 : 1,
+                          display: 'inline-flex', alignItems: 'center', gap: 8,
                         }}>
-                        {inviteLoading ? 'Creating...' : inviteCopied ? '✓ Copied' : (inviteUrl ? 'Copy link' : '+ Get invite link')}
+                        {inviteLoading
+                          ? 'Creating…'
+                          : inviteCopied
+                            ? <><Icon name="check" size={15} strokeWidth={2.5} /> Copied</>
+                            : inviteUrl
+                              ? <><Icon name="copy" size={15} /> Copy link</>
+                              : <><Icon name="plus" size={15} /> Get invite link</>}
                       </button>
                     </div>
                   </div>
@@ -3941,17 +3880,18 @@ export default function LandlordDashboard() {
             const shareUrl = `https://rentletter.ca/shortlist/${activeListing.shareToken}`;
             const shortlistedCount = applications.filter(a => decisions[a.applicationNumber]?.status === 'shortlist').length;
             return (
-              <section style={{ marginBottom: 20 }}>
-                <div style={{ background: C.green, color: C.paper, padding: 'clamp(16px, 3vw, 22px) clamp(18px, 3vw, 24px)' }}>
+              <section style={{ marginBottom: 16 }}>
+                <div className="rl-card" style={{ background: C.green, color: C.paper, border: 'none', padding: 'clamp(18px, 3vw, 24px) clamp(18px, 3vw, 24px)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.9, marginBottom: 6 }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.92, marginBottom: 10 }}>
+                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: 'rgba(255,255,255,0.25)', color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name="check" size={12} strokeWidth={3} /></span>
                         Shared with landlord client
                       </div>
-                      <div style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 4 }}>
+                      <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 4 }}>
                         {activeListing.sharedWithEmail}
                       </div>
-                      <div style={{ fontSize: 12, opacity: 0.85, lineHeight: 1.5 }}>
+                      <div style={{ fontSize: 12.5, opacity: 0.9, lineHeight: 1.55 }}>
                         {shortlistedCount} candidate{shortlistedCount === 1 ? '' : 's'} currently shortlisted ·
                         Sent {activeListing.sharedAt ? new Date(activeListing.sharedAt).toLocaleDateString('en-CA', { dateStyle: 'medium' }) : 'recently'}
                       </div>
@@ -3959,13 +3899,15 @@ export default function LandlordDashboard() {
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                       <button
                         onClick={() => { navigator.clipboard.writeText(shareUrl); alert('Share link copied to clipboard.'); }}
-                        style={{ background: 'transparent', color: C.paper, border: `1px solid ${C.paper}`, padding: '10px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        Copy link
+                        className="rl-btn"
+                        style={{ background: 'transparent', color: C.paper, border: `1px solid rgba(255,255,255,0.5)`, borderRadius: R.ctrl, padding: '11px 16px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                        <Icon name="copy" size={14} /> Copy link
                       </button>
                       <button
                         onClick={() => { setSendToLandlordEmail(activeListing.sharedWithEmail); setSendToLandlordNote(''); setSendToLandlordSent(false); setSendToLandlordOpen(true); }}
-                        style={{ background: C.paper, color: C.green, border: 'none', padding: '10px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                        Send update →
+                        className="rl-btn"
+                        style={{ background: C.paper, color: C.green, borderRadius: R.ctrl, padding: '11px 16px', fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                        <Icon name="send" size={14} color={C.green} /> Send update
                       </button>
                     </div>
                   </div>
@@ -3988,21 +3930,22 @@ export default function LandlordDashboard() {
                 onKeyDown={e => e.key === 'Enter' && lookupApplication()}
                 style={{
                   flex: 1, minWidth: 280,
-                  padding: '16px 20px', fontSize: 16,
+                  padding: '15px 18px', fontSize: 16,
                   fontFamily: 'monospace', letterSpacing: '0.04em',
-                  border: `1px solid ${C.ink}`,
-                  background: C.paper, color: C.ink,
+                  border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
+                  background: C.card, color: C.ink,
                 }}
               />
               <button
                 onClick={lookupApplication}
                 disabled={loading || !appNumberInput.trim()}
+                className="rl-btn"
                 style={{
-                  background: C.ink, color: C.paper, border: 'none',
+                  background: C.ink, color: C.paper, borderRadius: R.ctrl,
                   padding: '0 32px', fontSize: 14, fontWeight: 600,
                   cursor: (loading || !appNumberInput.trim()) ? 'not-allowed' : 'pointer',
                   opacity: (loading || !appNumberInput.trim()) ? 0.5 : 1,
-                  minHeight: 52,
+                  minHeight: 52, display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}
               >
                 {loading ? 'Loading...' : 'Look up →'}
@@ -4394,7 +4337,7 @@ export default function LandlordDashboard() {
               <a href="/faq" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>FAQ</a>
               <a href="/privacy" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>Privacy</a>
               <a href="/terms" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>Terms</a>
-              <a href="mailto:hello@rentletter.ca" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>Contact</a>
+              <a href="mailto:info@rentletter.ca" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>Contact</a>
               <span style={{ fontSize: 12, color: C.inkMute }}>Toronto · Not legal advice</span>
             </div>
           </footer>

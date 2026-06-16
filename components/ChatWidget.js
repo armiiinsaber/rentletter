@@ -66,14 +66,14 @@ export default function ChatWidget() {
       try { json = bodyText ? JSON.parse(bodyText) : null; } catch (e) {}
 
       if (!r.ok) {
-        setError(json?.error || 'Something went wrong. Try again or email hello@rentletter.ca.');
+        setError(json?.error || 'Something went wrong. Try again or email info@rentletter.ca.');
       } else if (json?.reply) {
         setMessages([...newMessages, { role: 'assistant', content: json.reply }]);
       } else {
         setError('No response. Please try again.');
       }
     } catch (e) {
-      setError('Connection issue. Please try again or email hello@rentletter.ca.');
+      setError('Connection issue. Please try again or email info@rentletter.ca.');
       console.error('[chat] send error:', e);
     }
     setLoading(false);
@@ -129,6 +129,7 @@ export default function ChatWidget() {
             background: COLORS.paper,
             boxShadow: '0 24px 64px rgba(15, 15, 16, 0.22), 0 4px 12px rgba(15, 15, 16, 0.06)',
             border: `1px solid ${COLORS.rule}`,
+            borderRadius: 18,
             display: 'flex',
             flexDirection: 'column',
             zIndex: 9999,
@@ -207,8 +208,9 @@ export default function ChatWidget() {
             {error && (
               <div style={{
                 padding: '10px 12px',
-                background: '#fef2f0',
+                background: '#fdf0ef',
                 borderLeft: `3px solid ${COLORS.red}`,
+                borderRadius: 8,
                 fontSize: 12, color: COLORS.ink, lineHeight: 1.5,
               }}>
                 {error}
@@ -233,9 +235,10 @@ export default function ChatWidget() {
                 rows={1}
                 style={{
                   flex: 1,
-                  padding: '10px 12px',
+                  padding: '11px 14px',
                   fontSize: 14,
                   border: `1px solid ${COLORS.rule}`,
+                  borderRadius: 10,
                   background: COLORS.paper,
                   color: COLORS.ink,
                   outline: 'none',
@@ -252,18 +255,19 @@ export default function ChatWidget() {
                   background: (loading || !input.trim()) ? '#c8c2b3' : COLORS.red,
                   color: COLORS.paper,
                   border: 'none',
-                  padding: '10px 14px',
+                  borderRadius: 10,
+                  padding: '10px 16px',
                   fontSize: 13,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   cursor: (loading || !input.trim()) ? 'not-allowed' : 'pointer',
-                  minHeight: 38,
+                  minHeight: 40,
                   whiteSpace: 'nowrap',
                 }}>
                 Send
               </button>
             </div>
             <div style={{ fontSize: 10, color: COLORS.inkMute, marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
-              AI assistant — general info only, not legal or financial advice. For account help, email <a href="mailto:hello@rentletter.ca" style={{ color: COLORS.inkSoft }}>hello@rentletter.ca</a>.
+              AI assistant — general info only, not legal or financial advice. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.
             </div>
           </div>
 

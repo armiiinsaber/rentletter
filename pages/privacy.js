@@ -4,16 +4,8 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import ChatWidget from '../components/ChatWidget';
-
-const C = {
-  paper: '#faf8f3',
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',
-};
+import { C, R } from '../components/theme';
+import { GlobalStyle, Wordmark, ScrollHeader, Icon } from '../components/ui';
 
 export default function PrivacyPolicy() {
   return (
@@ -22,27 +14,23 @@ export default function PrivacyPolicy() {
         <title>Privacy Policy — Rentletter</title>
         <meta name="description" content="How Rentletter collects, uses, and protects your personal information. PIPEDA-compliant." />
       </Head>
+      <GlobalStyle />
 
-      <div style={{ minHeight: '100vh', background: C.paper, fontFamily: "-apple-system, 'Inter', sans-serif", color: C.ink }}>
+      <div style={{ minHeight: '100vh', background: C.paper, color: C.ink }}>
 
-        <header style={{ background: C.red, color: C.paper, padding: '20px 0', borderBottom: `1px solid ${C.rule}` }}>
-          <div style={{ maxWidth: 880, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <Link href="/" style={{ color: C.paper, textDecoration: 'none', fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 3, height: 16, background: C.paper, display: 'inline-block' }} />
-              Rentletter
-            </Link>
-            <Link href="/" style={{ color: C.paper, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none', opacity: 0.9 }}>
-              ← Back to home
-            </Link>
-          </div>
-        </header>
+        <ScrollHeader maxWidth={880}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></Link>
+          <Link href="/" style={{ color: C.inkSoft, fontSize: 13, fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={14} /></span> Back to home
+          </Link>
+        </ScrollHeader>
 
         <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(40px, 8vw, 80px) clamp(20px, 4vw, 40px)' }}>
 
           <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 14 }}>
             Privacy Policy
           </div>
-          <h1 style={{ fontSize: 'clamp(34px, 6vw, 48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+          <h1 className="rl-serif" style={{ fontSize: 'clamp(34px, 6vw, 48px)', letterSpacing: '-0.025em', lineHeight: 1.05, marginBottom: 16 }}>
             How we handle your information.
           </h1>
           <p style={{ fontSize: 14, color: C.inkSoft, marginBottom: 40, lineHeight: 1.6 }}>
@@ -124,7 +112,7 @@ export default function PrivacyPolicy() {
               <LI><strong>Audit logs</strong> — same retention as the underlying application.</LI>
               <LI><strong>Aggregate analytics</strong> — retained indefinitely but not linked to identifiable individuals.</LI>
             </UL>
-            <P>You can request earlier deletion at any time by emailing <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A>.</P>
+            <P>You can request earlier deletion at any time by emailing <A href="mailto:info@rentletter.ca">info@rentletter.ca</A>.</P>
           </Section>
 
           <Section title="6. Your rights under PIPEDA">
@@ -136,7 +124,7 @@ export default function PrivacyPolicy() {
               <LI><strong>Deletion</strong> — request that we delete your information (we will comply unless we are legally required to retain it).</LI>
               <LI><strong>Complaint</strong> — file a complaint with the Office of the Privacy Commissioner of Canada if you believe we have violated your privacy rights.</LI>
             </UL>
-            <P>To exercise these rights, email <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A>. We will respond within 30 days. Tenants can also use the self-serve revocation tool linked in their confirmation email.</P>
+            <P>To exercise these rights, email <A href="mailto:info@rentletter.ca">info@rentletter.ca</A>. We will respond within 30 days. Tenants can also use the self-serve revocation tool linked in their confirmation email.</P>
             <P>If you are unsatisfied with our response, you may contact the Office of the Privacy Commissioner of Canada at <A href="https://www.priv.gc.ca" target="_blank" rel="noopener noreferrer">priv.gc.ca</A>.</P>
           </Section>
 
@@ -153,7 +141,7 @@ export default function PrivacyPolicy() {
           </Section>
 
           <Section title="8. Children">
-            <P>Rentletter is intended for adults (18+) who are legally entitled to rent residential property in Canada. We do not knowingly collect information from anyone under 18. If you believe a minor has provided us with personal information, please email <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A> and we will delete it.</P>
+            <P>Rentletter is intended for adults (18+) who are legally entitled to rent residential property in Canada. We do not knowingly collect information from anyone under 18. If you believe a minor has provided us with personal information, please email <A href="mailto:info@rentletter.ca">info@rentletter.ca</A> and we will delete it.</P>
           </Section>
 
           <Section title="9. International users">
@@ -175,7 +163,7 @@ export default function PrivacyPolicy() {
           <Section title="13. Contact">
             <P>Questions, requests, or complaints about this Privacy Policy or our handling of your information:</P>
             <P style={{ marginLeft: 20, marginTop: 14 }}>
-              <strong>Email:</strong> <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A><br />
+              <strong>Email:</strong> <A href="mailto:info@rentletter.ca">info@rentletter.ca</A><br />
               <strong>Mailing address:</strong> Available on request.
             </P>
           </Section>

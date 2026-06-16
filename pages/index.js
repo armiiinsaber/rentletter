@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import ChatWidget from '../components/ChatWidget';
+import { C, R, SH, EASE, FONT } from '../components/theme';
+import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
 
 // Stripe payment links — both must redirect to:
 // https://rentletter.ca/?paid=true&session_id={CHECKOUT_SESSION_ID}
@@ -13,105 +15,6 @@ const PROMO_END_DATE = new Date('2026-07-01T05:00:00Z'); // July 1, 2026 00:00 E
 const PROMO_PRICE = '0.99';
 const REGULAR_PRICE = '9.99';
 const isPromoActive = () => new Date() < PROMO_END_DATE;
-
-// ─── DESIGN TOKENS ────────────────────────────────────────────
-const C = {
-  paper: '#faf8f3',       // eggshell
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',         // near-black
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',         // Time magazine red — used sparingly
-  redDark: '#a8161c',     // Hover / depth variant of red
-};
-
-const GlobalStyle = () => (
-  <style jsx global>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      background: ${C.paper}; color: ${C.ink};
-      font-family: 'Inter', -apple-system, sans-serif;
-      overflow-x: hidden;
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
-    }
-    button, input, textarea, select { font-family: 'Inter', sans-serif; }
-    button { cursor: pointer; }
-    input:focus, textarea:focus { outline: none; }
-    ::selection { background: ${C.red}; color: ${C.paper}; }
-
-    /* ── Surfaces — always applied ── */
-    .rl-card { border-radius: 12px; box-shadow: 0 1px 2px rgba(15,15,16,.06), 0 8px 24px rgba(15,15,16,.08); overflow: hidden; }
-
-    /* ── Baselines (visible without motion / JS) ── */
-    .rl-rule-draw { width: 24px; }
-    .rl-step-bar  { display: block; height: 2px; }
-    .rl-line-wrap { display: contents; }
-
-    /* ── All motion inside this guard — collapses to static for opt-out users ── */
-    @media (prefers-reduced-motion: no-preference) {
-
-      /* KEYFRAMES */
-      @keyframes rl-draw     { from { width: 0 }                                 to { width: 24px } }
-      @keyframes rl-slide-up { from { opacity: 0; transform: translateY(28px) } to { opacity: 1; transform: none } }
-      @keyframes rl-fade-seq { from { opacity: 0; transform: translateY(20px) } to { opacity: 1; transform: none } }
-
-      /* ─ RED RULE ─ */
-      .rl-rule-draw { animation: rl-draw 500ms cubic-bezier(0.16,1,0.3,1) both; }
-
-      /* ─ HERO TEXT LINES — slide up from overflow clip ─ */
-      .rl-line-wrap { overflow: hidden; display: block; }
-      .rl-line      { display: block; animation: rl-slide-up 580ms cubic-bezier(0.22,1,0.36,1) both; }
-
-      /* ─ HERO SUPPORTING ELEMENTS — sequential fade-up ─ */
-      .rl-hero-seq { animation: rl-fade-seq 440ms cubic-bezier(0.22,1,0.36,1) both; }
-
-      /* ─ SCROLL REVEAL ─ */
-      .rl-reveal { opacity: 0; transform: translateY(24px); transition: opacity 560ms ease, transform 620ms cubic-bezier(0.22,1,0.36,1); }
-      .rl-reveal.rl-vis { opacity: 1; transform: none; }
-
-      /* ─ STEPS — parent gets .rl-vis, CSS staggers children ─ */
-      .rl-steps .rl-step { opacity: 0; transform: translateY(24px); transition: opacity 520ms ease, transform 580ms cubic-bezier(0.22,1,0.36,1); }
-      .rl-steps.rl-vis .rl-step:nth-child(1) { opacity: 1; transform: none; }
-      .rl-steps.rl-vis .rl-step:nth-child(2) { opacity: 1; transform: none; transition-delay: 100ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(3) { opacity: 1; transform: none; transition-delay: 200ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(4) { opacity: 1; transform: none; transition-delay: 300ms; }
-
-      /* step bar sweeps left-to-right as step reveals */
-      .rl-step-bar { transform: scaleX(0); transform-origin: left; transition: transform 420ms cubic-bezier(0.22,1,0.36,1); }
-      .rl-steps.rl-vis .rl-step:nth-child(1) .rl-step-bar { transform: scaleX(1); }
-      .rl-steps.rl-vis .rl-step:nth-child(2) .rl-step-bar { transform: scaleX(1); transition-delay: 100ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(3) .rl-step-bar { transform: scaleX(1); transition-delay: 200ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(4) .rl-step-bar { transform: scaleX(1); transition-delay: 300ms; }
-
-      /* ─ BUTTON MICRO-INTERACTIONS — spring scale, press state, arrow nudge ─ */
-      .rl-btn { transition: transform 200ms cubic-bezier(0.34,1.56,0.64,1), box-shadow 200ms ease; }
-      .rl-btn:hover  { transform: scale(1.02) translateY(-1px); box-shadow: 0 4px 20px rgba(15,15,16,.18); }
-      .rl-btn:active { transform: scale(0.98); box-shadow: none; transition-duration: 80ms; }
-      .rl-btn .rl-arrow { display: inline-block; transition: transform 200ms ease; }
-      .rl-btn:hover .rl-arrow { transform: translateX(4px); }
-
-      /* ─ CARD LIFT ─ */
-      .rl-card-lift { transition: transform 220ms ease, box-shadow 220ms ease; }
-      .rl-card-lift:hover { transform: translateY(-4px); box-shadow: 0 2px 4px rgba(15,15,16,.06), 0 20px 48px rgba(15,15,16,.16); }
-    }
-  `}</style>
-);
-
-// ─── BRAND WORDMARK — Time-magazine red bar + bold sans ──────
-const Wordmark = ({ size = 'sm' }) => {
-  const isLg = size === 'lg';
-  return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: isLg ? 10 : 7 }}>
-      <div style={{ width: isLg ? 5 : 3, height: isLg ? 30 : 20, background: C.red }} />
-      <span style={{ fontSize: isLg ? 24 : 17, color: C.ink, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1 }}>
-        Rentletter
-      </span>
-    </div>
-  );
-};
 
 // ─── COUNT-UP STAT — DOM-mutated to avoid hydration mismatch ───────────────
 const StatCounter = ({ numStr, label }) => {
@@ -142,10 +45,10 @@ const StatCounter = ({ numStr, label }) => {
   }, [target, suffix]);
   return (
     <div ref={wrapRef}>
-      <div ref={numRef} style={{ fontSize: 28, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4, lineHeight: 1 }}>
+      <div ref={numRef} className="rl-serif" style={{ fontSize: 'clamp(34px, 5vw, 44px)', color: C.ink, letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1 }}>
         {target}{suffix}
       </div>
-      <div style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.02em' }}>{label}</div>
+      <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.4 }}>{label}</div>
     </div>
   );
 };
@@ -387,7 +290,7 @@ export default function Home() {
       window.history.replaceState({}, '', window.location.pathname);
       setStep('passSuccess');
     } catch (e) {
-      setError(`Pass activation failed: ${e.message}. Please contact us at hello@rentletter.ca with your payment confirmation.`);
+      setError(`Pass activation failed: ${e.message}. Please contact us at info@rentletter.ca with your payment confirmation.`);
       setStep('landing');
     }
     setPassActivating(false);
@@ -639,284 +542,283 @@ export default function Home() {
           {/* ── LAUNCH BANNER ── */}
           <div style={{
             background: C.ink, color: C.paper,
-            padding: '12px 32px',
+            padding: '11px 24px',
             display: 'flex', justifyContent: 'center', alignItems: 'center',
-            gap: 14, flexWrap: 'wrap',
+            gap: 12, flexWrap: 'wrap',
           }}>
-            <span style={{
-              background: C.red, color: C.paper,
-              fontSize: 10, fontWeight: 700, letterSpacing: '0.12em',
-              textTransform: 'uppercase', padding: '4px 10px',
-            }}>
-              Launch
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+              <span className="rl-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, display: 'inline-block' }} />
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.red }}>
+                Launch
+              </span>
             </span>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: C.inkInverse }}>
               Free for Toronto realtors during launch · No credit card
             </span>
           </div>
 
           {/* ── HEADER ──────────────────────────────────────── */}
-          <header style={{ borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto', padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-              <Wordmark />
-              <div style={{ display: 'flex', gap: 22, alignItems: 'center', flexWrap: 'wrap' }}>
-                <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
-                  FAQ
-                </a>
-                <a href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>
-                  Sign in
-                </a>
-                <a href="/landlord" style={{
-                  background: C.ink, color: C.paper, textDecoration: 'none',
-                  padding: '10px 18px', fontSize: 13, fontWeight: 700,
-                  letterSpacing: '-0.005em',
-                }}>
-                  Try the dashboard →
-                </a>
-              </div>
+          <ScrollHeader>
+            <Wordmark />
+            <div style={{ display: 'flex', gap: 'clamp(14px, 2vw, 26px)', alignItems: 'center', flexWrap: 'wrap' }}>
+              <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
+              <a href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</a>
+              <a href="/landlord" className="rl-btn" style={{
+                background: C.ink, color: C.paper, textDecoration: 'none',
+                padding: '11px 18px', fontSize: 13, fontWeight: 600, borderRadius: R.ctrl,
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+              }}>
+                Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+              </a>
             </div>
-          </header>
+          </ScrollHeader>
 
           {/* ── HERO ──────────────────────────────────────── */}
-          <section style={{ padding: 'clamp(60px, 10vw, 100px) 32px 80px', maxWidth: 1200, margin: '0 auto' }}>
+          <section style={{ padding: 'clamp(56px, 9vw, 104px) clamp(20px, 4vw, 32px) clamp(56px, 8vw, 88px)', maxWidth: 1200, margin: '0 auto' }}>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))',
-              gap: 'clamp(28px, 5vw, 64px)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 400px), 1fr))',
+              gap: 'clamp(32px, 5vw, 72px)',
               alignItems: 'center',
             }}>
 
               {/* LEFT — text */}
               <div>
-                {/* Eyebrow — first element, red rule draws simultaneously */}
-                <div className="rl-hero-seq" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-                  <div className="rl-rule-draw" style={{ height: 1, background: C.red }} />
-                  <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>
+                <div className="rl-hero-seq" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+                  <span className="rl-rule-draw" style={{ height: 2, background: C.red, borderRadius: 1, display: 'block' }} />
+                  <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
                     For Toronto Realtors · 2026
                   </span>
                 </div>
 
-                <h1 style={{
-                  fontSize: 'clamp(38px, 5.5vw, 64px)',
-                  lineHeight: 1.08,
-                  letterSpacing: '-0.03em',
+                <h1 className="rl-serif" style={{
+                  fontSize: 'clamp(42px, 6vw, 72px)',
+                  lineHeight: 1.02,
+                  letterSpacing: '-0.025em',
                   color: C.ink,
-                  fontWeight: 800,
-                  marginBottom: 24,
+                  marginBottom: 26,
                 }}>
-                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '200ms' }}>A simpler way to</span></span>{' '}
-                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '280ms' }}>handle <span style={{ color: C.red }}>rental</span></span></span>{' '}
-                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '360ms' }}><span style={{ color: C.red }}>applications.</span></span></span>
+                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '180ms' }}>A simpler way to</span></span>
+                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '270ms' }}>handle <span style={{ color: C.red }}>rental</span></span></span>
+                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '360ms', color: C.red }}>applications.</span></span>
                 </h1>
 
                 <p className="rl-hero-seq" style={{
-                  animationDelay: '520ms',
-                  fontSize: 'clamp(15px, 1.6vw, 17px)',
-                  lineHeight: 1.55,
+                  animationDelay: '540ms',
+                  fontSize: 'clamp(16px, 1.7vw, 19px)',
+                  lineHeight: 1.6,
                   color: C.inkSoft,
-                  marginBottom: 32,
-                  fontWeight: 400,
-                  maxWidth: 520,
+                  marginBottom: 34,
+                  maxWidth: 540,
                 }}>
-                  Send applicants a link — standardized applications land in your dashboard automatically. Shortlist, document decisions, and send a polished report to your landlord client in one click.
+                  Send applicants one link. Standardized applications land in your dashboard automatically. Shortlist, document your decisions, and send a polished report to your landlord client.
                 </p>
 
-                <div className="rl-hero-seq" style={{ animationDelay: '640ms', marginBottom: 32 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 14 }}>
-                    <a
-                      href="/landlord"
-                      className="rl-btn"
-                      style={{
-                        background: C.ink, color: C.paper, textDecoration: 'none',
-                        borderRadius: 8,
-                        padding: '16px 28px', fontSize: 14, fontWeight: 600,
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
-                        letterSpacing: '-0.005em',
-                      }}
-                    >
-                      Try the dashboard
-                      <span className="rl-arrow">→</span>
+                <div className="rl-hero-seq" style={{ animationDelay: '660ms' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+                    <a href="/landlord" className="rl-btn" style={{
+                      background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                      padding: '16px 28px', fontSize: 15, fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', gap: 9,
+                    }}>
+                      Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
                     </a>
-                    <a
-                      href="mailto:hello@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Armin%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!"
-                      className="rl-btn"
-                      style={{
-                        background: 'transparent', color: C.ink,
-                        border: `1px solid ${C.rule}`, textDecoration: 'none',
-                        borderRadius: 8,
-                        padding: '16px 28px', fontSize: 14, fontWeight: 500,
+                    <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!"
+                      className="rl-btn" style={{
+                        background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, textDecoration: 'none',
+                        borderRadius: R.ctrl, padding: '16px 28px', fontSize: 15, fontWeight: 500,
                         display: 'inline-flex', alignItems: 'center', gap: 8,
-                      }}
-                    >
+                      }}>
                       Book a 15-min demo
                     </a>
                   </div>
-                  <p style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.02em' }}>
-                    Free during launch · No credit card · No setup
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    {['Free during launch', 'No credit card', 'No setup'].map(t => (
+                      <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkMute }}>
+                        <span style={{ color: C.green, display: 'inline-flex' }}><Icon name="check" size={15} color={C.green} strokeWidth={2} /></span>{t}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               {/* RIGHT — dashboard screenshot in browser-chrome frame */}
               <div className="rl-hero-seq" style={{ animationDelay: '300ms', position: 'relative' }}>
-                {/* Mouse-tilt container — events captured here, transform on inner div */}
-                <div
-                  ref={tiltRef}
+                <div ref={tiltRef}
                   onMouseMove={skipTilt ? undefined : handleTiltMove}
-                  onMouseLeave={skipTilt ? undefined : handleTiltLeave}
-                >
+                  onMouseLeave={skipTilt ? undefined : handleTiltLeave}>
                   <div style={{
-                    transform: skipTilt ? undefined : `perspective(1000px) rotateX(${heroTilt.x}deg) rotateY(${heroTilt.y}deg)`,
-                    transition: skipTilt ? undefined : ((heroTilt.x === 0 && heroTilt.y === 0) ? 'transform 600ms cubic-bezier(0.22,1,0.36,1)' : 'transform 80ms ease'),
+                    transform: skipTilt ? undefined : `perspective(1100px) rotateX(${heroTilt.x}deg) rotateY(${heroTilt.y}deg)`,
+                    transition: skipTilt ? undefined : ((heroTilt.x === 0 && heroTilt.y === 0) ? `transform 600ms ${EASE}` : 'transform 80ms ease'),
                     willChange: skipTilt ? undefined : 'transform',
-                    borderRadius: 12,
-                    overflow: 'hidden',
-                    background: '#1c1c1e',
-                    boxShadow: '0 2px 4px rgba(15,15,16,.10), 0 24px 64px rgba(15,15,16,.22)',
+                    borderRadius: R.card, overflow: 'hidden', background: '#1c1c1e',
+                    boxShadow: SH.modal,
                   }}>
                     {/* Chrome bar */}
-                    <div style={{ background: '#2c2c2e', padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ display: 'flex', gap: 5 }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#ff5f57' }} />
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#febc2e' }} />
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#28c840' }} />
+                    <div style={{ background: '#2c2c2e', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#ff5f57' }} />
+                        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#febc2e' }} />
+                        <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
                       </div>
-                      <div style={{ flex: 1, background: '#3c3c3e', borderRadius: 5, padding: '4px 12px', fontSize: 11, color: '#8e8e93', letterSpacing: '0.01em' }}>
-                        rentletter.ca/landlord
+                      <div style={{ flex: 1, background: '#3c3c3e', borderRadius: 6, padding: '5px 12px', fontSize: 11, color: '#9a9a9f', letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <Icon name="shield" size={12} color="#9a9a9f" /> rentletter.ca/landlord
                       </div>
                     </div>
-                    {/* Screenshot area */}
+                    {/* Screenshot area — graceful designed placeholder behind /dashboard-hero.png */}
                     <div style={{ aspectRatio: '4 / 3', position: 'relative', overflow: 'hidden', background: C.paperDeep }}>
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12, background: C.paperDeep }}>
-                        <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase' }}>
-                          Dashboard preview
+                      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', padding: 'clamp(18px, 4%, 28px)', gap: 12, background: `linear-gradient(160deg, ${C.card}, ${C.paperDeep})` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 10, color: C.red, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Maple & Birch · 2BR</span>
+                          <span style={{ fontSize: 9, color: C.green, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', border: `1px solid ${C.green}`, borderRadius: R.pill, padding: '2px 8px' }}>Founder</span>
                         </div>
-                        <div style={{ fontSize: 13, color: C.inkSoft, textAlign: 'center', maxWidth: 280, lineHeight: 1.55 }}>
-                          Add <code style={{ background: C.paper, padding: '1px 5px', fontSize: 12 }}>/public/dashboard-hero.png</code> to replace this.
-                        </div>
+                        <div style={{ height: 1, background: C.rule }} />
+                        {[['Priya N.', '4.6', true], ['James O.', '4.2', false], ['Sarah C.', '3.9', false]].map(([n, s, top], i) => (
+                          <div key={i} style={{ background: C.card, border: `1px solid ${C.rule}`, borderLeft: top ? `3px solid ${C.red}` : `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: SH.rest }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                              <span style={{ width: 26, height: 26, borderRadius: '50%', background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: C.inkSoft }}><Icon name="user" size={14} color={C.inkSoft} /></span>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{n}{top && <span style={{ color: C.red, fontWeight: 600 }}> · Top pick</span>}</span>
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: C.ink, background: C.paperDeep, borderRadius: R.pill, padding: '2px 9px' }}>{s}</span>
+                          </div>
+                        ))}
                       </div>
-                      <img
-                        src="/dashboard-hero.png"
-                        alt="Rentletter dashboard"
+                      <img src="/dashboard-hero.png" alt="Rentletter dashboard"
                         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top left', display: 'block' }}
-                        onError={e => { e.currentTarget.style.display = 'none'; }}
-                      />
+                        onError={e => { e.currentTarget.style.display = 'none'; }} />
                     </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 12, fontSize: 11, color: C.inkMute, letterSpacing: '0.02em' }}>
-                  Rentletter dashboard — multi-listing screening
+                <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute }}>
+                  The Rentletter dashboard — one workspace per listing.
                 </div>
               </div>
             </div>
 
             {/* Stats row — count-up animation when scrolled into view */}
             <div className="rl-reveal" style={{
-              marginTop: 'clamp(48px, 8vw, 80px)',
+              marginTop: 'clamp(52px, 8vw, 88px)',
               borderTop: `1px solid ${C.rule}`,
-              paddingTop: 32,
+              paddingTop: 36,
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
               gap: 28,
             }}>
-              <StatCounter numStr="3 days"  label="avg. screening time today" />
-              <StatCounter numStr="30 min"  label="with Rentletter" />
-              <StatCounter numStr="1 link"  label="per listing" />
+              <StatCounter numStr="3 days"  label="Typical screening time today" />
+              <StatCounter numStr="30 min"  label="The same job, on Rentletter" />
+              <StatCounter numStr="1 link"  label="Shared per listing" />
+            </div>
+          </section>
+
+          {/* ── DIFFERENTIATOR — its own quiet statement ── */}
+          <section className="rl-reveal" style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.card }}>
+            <div style={{ maxWidth: 880, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 16 }}>
+                Where we fit
+              </div>
+              <p className="rl-serif" style={{ fontSize: 'clamp(21px, 3vw, 30px)', lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0 }}>
+                Rentletter organizes your applicants.{' '}
+                <span style={{ color: C.inkMute }}>Run credit checks wherever you already do.</span>
+              </p>
             </div>
           </section>
 
           {/* ── PULL-QUOTE ── */}
           <section className="rl-reveal" style={{ background: C.ink, color: C.paper }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(40px, 7vw, 72px) 32px' }}>
-              <blockquote style={{
-                fontSize: 'clamp(22px, 3.5vw, 38px)',
-                lineHeight: 1.2,
-                letterSpacing: '-0.02em',
-                fontWeight: 700,
-                color: C.paper,
-                borderLeft: `3px solid ${C.red}`,
-                paddingLeft: 28,
-                margin: 0,
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(52px, 8vw, 88px) clamp(20px, 4vw, 32px)' }}>
+              <blockquote className="rl-serif" style={{
+                fontSize: 'clamp(26px, 4vw, 44px)', lineHeight: 1.18, letterSpacing: '-0.02em',
+                color: C.paper, borderLeft: `3px solid ${C.red}`, paddingLeft: 'clamp(20px, 3vw, 32px)', margin: 0, maxWidth: 900,
               }}>
-                Standardized applications. Documented decisions. One dashboard.
+                Standardized applications. Documented decisions. <span style={{ color: C.inkInverse }}>One dashboard.</span>
               </blockquote>
             </div>
           </section>
 
           {/* ── HOW IT WORKS ── */}
-          <section style={{ padding: 'clamp(60px, 10vw, 100px) 32px', maxWidth: 1100, margin: '0 auto' }}>
-            <div className="rl-reveal" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 48 }}>
-              <h2 style={{ fontSize: 14, fontWeight: 600, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', margin: 0 }}>
+          <section style={{ padding: 'clamp(64px, 10vw, 112px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
+            <div className="rl-reveal" style={{ marginBottom: 'clamp(40px, 6vw, 64px)', maxWidth: 640 }}>
+              <h2 style={{ fontSize: 12, fontWeight: 700, color: C.red, letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 18px' }}>
                 How it works
               </h2>
-              <p style={{ fontSize: 13, color: C.inkMute, margin: 0, maxWidth: 380, textAlign: 'right', lineHeight: 1.5 }}>
-                Rentletter organizes your applicants. Run credit checks wherever you already do.
+              <p className="rl-serif" style={{ fontSize: 'clamp(26px, 3.6vw, 38px)', lineHeight: 1.12, letterSpacing: '-0.02em', color: C.ink, margin: 0 }}>
+                From listing to landlord in four steps.
               </p>
             </div>
-            {/* rl-steps: JS adds .rl-vis when section enters view; CSS staggers each .rl-step child */}
-            <div className="rl-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'clamp(24px, 4vw, 48px)' }}>
+            <div className="rl-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'clamp(20px, 3vw, 36px)' }}>
               {[
-                { n: '01', t: 'Create your listing', d: 'Add the unit. We generate a link tied to that listing.', red: true },
-                { n: '02', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route to your dashboard automatically.', red: false },
-                { n: '03', t: 'Review and shortlist', d: 'Compare candidates side-by-side. Score, shortlist, document every decision.', red: false },
-                { n: '04', t: 'Send to your landlord', d: 'One click — a co-branded report with your name on it, free for you.', red: false },
+                { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your screening preferences. We generate a secure link tied to that listing.', red: true },
+                { n: '02', icon: 'link', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route into your dashboard automatically.', red: false },
+                { n: '03', icon: 'list', t: 'Review and shortlist', d: 'Compare candidates side by side. Score, shortlist, and document every decision.', red: false },
+                { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co-branded report with your name on it — free for you.', red: false },
               ].map(s => (
-                <div key={s.n} className="rl-step" style={{ paddingTop: 20, position: 'relative' }}>
-                  {/* Bar sweeps left-to-right as step reveals */}
-                  <div className="rl-step-bar" style={{ background: s.red ? C.red : C.rule, position: 'absolute', top: 0, left: 0, right: 0 }} />
-                  <div style={{ fontSize: 11, color: C.red, marginBottom: 14, fontWeight: 700, letterSpacing: '0.08em' }}>{s.n}</div>
+                <div key={s.n} className="rl-step" style={{ paddingTop: 22, position: 'relative' }}>
+                  <span className="rl-step-bar" style={{ background: s.red ? C.red : C.ruleDark, position: 'absolute', top: 0, left: 0, right: 0 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                    <span style={{ width: 38, height: 38, borderRadius: R.ctrl, background: s.red ? C.red : C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name={s.icon} size={19} color={s.red ? C.paper : C.ink} />
+                    </span>
+                    <span className="rl-serif" style={{ fontSize: 22, color: C.rule }}>{s.n}</span>
+                  </div>
                   <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 8, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{s.t}</h3>
-                  <p style={{ fontSize: 14, lineHeight: 1.55, color: C.inkSoft }}>{s.d}</p>
+                  <p style={{ fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>{s.d}</p>
                 </div>
               ))}
             </div>
           </section>
 
           {/* ── BOTTOM CTA ── */}
-          <section className="rl-reveal" style={{ padding: 'clamp(60px, 10vw, 100px) 32px', maxWidth: 720, margin: '0 auto', textAlign: 'center' }}>
-            <h2 style={{ fontSize: 'clamp(30px, 5vw, 48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 16, color: C.ink }}>
-              Set up your first listing.
-            </h2>
-            <p style={{ fontSize: 15, lineHeight: 1.6, color: C.inkSoft, marginBottom: 32 }}>
-              Free during launch. No credit card. No setup.
-            </p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              <a href="/landlord" className="rl-btn" style={{
-                background: C.ink, color: C.paper, textDecoration: 'none',
-                borderRadius: 8,
-                padding: '16px 32px', fontSize: 15, fontWeight: 700,
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-              }}>
-                Try the dashboard <span className="rl-arrow">→</span>
-              </a>
-              <a href="mailto:hello@rentletter.ca?subject=Demo%20request%20-%20Rentletter" className="rl-btn" style={{
-                background: 'transparent', color: C.ink,
-                border: `1px solid ${C.rule}`, textDecoration: 'none',
-                borderRadius: 8,
-                padding: '16px 32px', fontSize: 15, fontWeight: 500,
-              }}>
-                Book a 15-min demo
-              </a>
+          <section className="rl-reveal" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px) clamp(72px, 10vw, 112px)' }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', background: C.ink, borderRadius: R.modal, padding: 'clamp(40px, 7vw, 72px) clamp(24px, 5vw, 64px)', position: 'relative', overflow: 'hidden' }}>
+              <span style={{ position: 'absolute', top: 0, left: 0, width: 6, height: '100%', background: C.red }} />
+              <div style={{ maxWidth: 620 }}>
+                <h2 className="rl-serif" style={{ fontSize: 'clamp(32px, 5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 18, color: C.paper }}>
+                  Set up your first listing.
+                </h2>
+                <p style={{ fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.6, color: C.inkInverse, marginBottom: 32 }}>
+                  Free for Toronto realtors during launch. No credit card, no setup — your first applicant link is ready in minutes.
+                </p>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <a href="/landlord" className="rl-btn" style={{
+                    background: C.red, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                    padding: '16px 32px', fontSize: 15, fontWeight: 600,
+                    display: 'inline-flex', alignItems: 'center', gap: 9,
+                  }}>
+                    Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                  </a>
+                  <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter" className="rl-btn" style={{
+                    background: 'transparent', color: C.paper, border: `1px solid rgba(250,248,243,0.3)`, textDecoration: 'none',
+                    borderRadius: R.ctrl, padding: '16px 32px', fontSize: 15, fontWeight: 500,
+                  }}>
+                    Book a 15-min demo
+                  </a>
+                </div>
+              </div>
             </div>
           </section>
 
           {/* ── FOOTER ── */}
-          <footer style={{ padding: '40px 32px', borderTop: `1px solid ${C.rule}` }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
-              <Wordmark size="sm" />
-              <div style={{ display: 'flex', gap: 22, fontSize: 12, flexWrap: 'wrap' }}>
-                <a href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none' }}>Dashboard</a>
-                <a href="/compliance" style={{ color: C.inkSoft, textDecoration: 'none' }}>Compliance</a>
-                <a href="/privacy" style={{ color: C.inkSoft, textDecoration: 'none' }}>Privacy</a>
-                <a href="/terms" style={{ color: C.inkSoft, textDecoration: 'none' }}>Terms</a>
-                <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none' }}>FAQ</a>
-                <a href="mailto:hello@rentletter.ca" style={{ color: C.inkSoft, textDecoration: 'none' }}>hello@rentletter.ca</a>
+          <footer style={{ padding: 'clamp(48px, 7vw, 72px) clamp(20px, 4vw, 32px) 48px', borderTop: `1px solid ${C.rule}`, background: C.card }}>
+            <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'clamp(28px, 4vw, 48px)', alignItems: 'start' }}>
+                <div style={{ minWidth: 180 }}>
+                  <Wordmark size="sm" />
+                  <p style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.6, marginTop: 14, maxWidth: 260 }}>
+                    Rental application screening for Canadian realtors. Built in Toronto.
+                  </p>
+                </div>
+                <FooterCol title="Product" links={[['Dashboard', '/landlord'], ['Book a demo', 'mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter'], ['FAQ', '/faq']]} />
+                <FooterCol title="Company" links={[['Compliance', '/compliance'], ['Privacy', '/privacy'], ['Terms', '/terms']]} />
+                <FooterCol title="Contact" links={[['info@rentletter.ca', 'mailto:info@rentletter.ca']]} />
               </div>
-            </div>
-            {/* Tenant + landlord/PM secondary links */}
-            <div style={{ maxWidth: 1200, margin: '24px auto 0', display: 'flex', justifyContent: 'center', gap: 32, flexWrap: 'wrap', fontSize: 11, color: C.inkMute }}>
-              <span>Tenant applying for a unit? <button onClick={() => setStep('form')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 11, textDecoration: 'underline', cursor: 'pointer', padding: 0 }}>Submit your application →</button></span>
-              <span>Managing your own units? <a href="/landlord" style={{ color: C.inkSoft, fontSize: 11, textDecoration: 'underline' }}>The dashboard works for you too →</a></span>
+              <div style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', gap: 24, flexWrap: 'wrap', fontSize: 12.5, color: C.inkMute }}>
+                <span>Tenant applying for a unit?{' '}
+                  <button onClick={() => setStep('form')} style={{ color: C.ink, fontSize: 12.5, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3, padding: 0 }}>Submit your application →</button>
+                </span>
+                <span>Managing your own units?{' '}
+                  <a href="/landlord" style={{ color: C.ink, fontSize: 12.5, fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}>The dashboard works for you too →</a>
+                </span>
+              </div>
             </div>
           </footer>
         </div>
@@ -1382,7 +1284,7 @@ export default function Home() {
                 <li>— Each application gets a fresh number — landlords can verify the latest version.</li>
                 <li>— Update your profile anytime: new job, raise, found a roommate. The Scorecard recalculates.</li>
                 <li>— Pass expires automatically in 30 days. No auto-renewal, no surprise charges.</li>
-                <li>— Need help? Reply to the activation email or write to hello@rentletter.ca</li>
+                <li>— Need help? Reply to the activation email or write to info@rentletter.ca</li>
               </ul>
             </div>
           </div>
@@ -1605,6 +1507,20 @@ export default function Home() {
   }
 
   return null;
+}
+
+// ─── FOOTER COLUMN ────────────────────────────────────────────
+function FooterCol({ title, links }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>{title}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+        {links.map(([label, href]) => (
+          <a key={label} href={href} style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 13.5, lineHeight: 1.3 }}>{label}</a>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ─── FORM COMPONENTS ──────────────────────────────────────────

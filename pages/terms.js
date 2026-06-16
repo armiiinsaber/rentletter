@@ -4,16 +4,8 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import ChatWidget from '../components/ChatWidget';
-
-const C = {
-  paper: '#faf8f3',
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',
-};
+import { C, R } from '../components/theme';
+import { GlobalStyle, Wordmark, ScrollHeader, Icon } from '../components/ui';
 
 export default function Terms() {
   return (
@@ -22,27 +14,23 @@ export default function Terms() {
         <title>Terms of Service — Rentletter</title>
         <meta name="description" content="The terms that govern your use of Rentletter." />
       </Head>
+      <GlobalStyle />
 
-      <div style={{ minHeight: '100vh', background: C.paper, fontFamily: "-apple-system, 'Inter', sans-serif", color: C.ink }}>
+      <div style={{ minHeight: '100vh', background: C.paper, color: C.ink }}>
 
-        <header style={{ background: C.red, color: C.paper, padding: '20px 0', borderBottom: `1px solid ${C.rule}` }}>
-          <div style={{ maxWidth: 880, margin: '0 auto', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <Link href="/" style={{ color: C.paper, textDecoration: 'none', fontWeight: 700, fontSize: 18, letterSpacing: '-0.02em', display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ width: 3, height: 16, background: C.paper, display: 'inline-block' }} />
-              Rentletter
-            </Link>
-            <Link href="/" style={{ color: C.paper, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', textDecoration: 'none', opacity: 0.9 }}>
-              ← Back to home
-            </Link>
-          </div>
-        </header>
+        <ScrollHeader maxWidth={880}>
+          <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></Link>
+          <Link href="/" style={{ color: C.inkSoft, fontSize: 13, fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+            <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={14} /></span> Back to home
+          </Link>
+        </ScrollHeader>
 
         <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(40px, 8vw, 80px) clamp(20px, 4vw, 40px)' }}>
 
           <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 14 }}>
             Terms of Service
           </div>
-          <h1 style={{ fontSize: 'clamp(34px, 6vw, 48px)', fontWeight: 800, letterSpacing: '-0.03em', lineHeight: 1.1, marginBottom: 16 }}>
+          <h1 className="rl-serif" style={{ fontSize: 'clamp(34px, 6vw, 48px)', letterSpacing: '-0.025em', lineHeight: 1.05, marginBottom: 16 }}>
             The terms of using Rentletter.
           </h1>
           <p style={{ fontSize: 14, color: C.inkSoft, marginBottom: 40, lineHeight: 1.6 }}>
@@ -82,7 +70,7 @@ export default function Terms() {
               <LI>You were charged but no application was generated.</LI>
               <LI>Duplicate charges due to a payment system error.</LI>
             </UL>
-            <P>To request a refund, email <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A> within 7 days of the charge with your receipt and a description of the issue. We will respond within 24 hours.</P>
+            <P>To request a refund, email <A href="mailto:info@rentletter.ca">info@rentletter.ca</A> within 7 days of the charge with your receipt and a description of the issue. We will respond within 24 hours.</P>
           </Section>
 
           <Section title="5. Your account and your data">
@@ -126,7 +114,7 @@ export default function Terms() {
             <UL>
               <LI><strong>Cover letters</strong> are AI-drafted based on inputs you provide. You should review every letter before sending it to a landlord. You are responsible for the accuracy of the content.</LI>
               <LI><strong>Decision rationale</strong> for landlords is AI-drafted as a starting point. It is not legal advice. Verify all facts (especially references) before relying on the rationale.</LI>
-              <LI><strong>The AI chat assistant</strong> provides general information about Rentletter only. It does not provide legal, financial, or professional advice. We are not bound by statements made by the chatbot that are inconsistent with these Terms, our Privacy Policy, or other official Rentletter documentation. For account-specific questions, always confirm via <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A>.</LI>
+              <LI><strong>The AI chat assistant</strong> provides general information about Rentletter only. It does not provide legal, financial, or professional advice. We are not bound by statements made by the chatbot that are inconsistent with these Terms, our Privacy Policy, or other official Rentletter documentation. For account-specific questions, always confirm via <A href="mailto:info@rentletter.ca">info@rentletter.ca</A>.</LI>
               <LI>AI may produce inaccurate, incomplete, or unexpected output. You are responsible for verifying any AI-generated content before relying on it.</LI>
             </UL>
           </Section>
@@ -173,7 +161,7 @@ export default function Terms() {
           </Section>
 
           <Section title="13. Termination">
-            <P>You may stop using the Service at any time. Tenants can revoke their application via the "Manage your application" link in their confirmation email. Landlords can sign out and request workspace deletion via <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A>.</P>
+            <P>You may stop using the Service at any time. Tenants can revoke their application via the "Manage your application" link in their confirmation email. Landlords can sign out and request workspace deletion via <A href="mailto:info@rentletter.ca">info@rentletter.ca</A>.</P>
             <P>We may suspend or terminate your access at any time, with or without notice, for any reason, including violation of these Terms.</P>
             <P>Sections that by their nature should survive termination — including liability, indemnification, intellectual property, and governing law — will survive.</P>
           </Section>
@@ -181,7 +169,7 @@ export default function Terms() {
           <Section title="14. Governing law and disputes">
             <P>These Terms are governed by the laws of the Province of Ontario and the federal laws of Canada applicable in Ontario, without regard to conflict-of-law principles.</P>
             <P>Any dispute arising from these Terms or the Service will be resolved in the courts of Ontario, and you consent to the exclusive jurisdiction of those courts.</P>
-            <P>You agree to first attempt to resolve any dispute by contacting us at <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A>. We will respond within a reasonable time and attempt to resolve the matter in good faith.</P>
+            <P>You agree to first attempt to resolve any dispute by contacting us at <A href="mailto:info@rentletter.ca">info@rentletter.ca</A>. We will respond within a reasonable time and attempt to resolve the matter in good faith.</P>
           </Section>
 
           <Section title="15. Changes to these Terms">
@@ -199,7 +187,7 @@ export default function Terms() {
           <Section title="18. Contact">
             <P>Questions about these Terms:</P>
             <P style={{ marginLeft: 20, marginTop: 14 }}>
-              <strong>Email:</strong> <A href="mailto:hello@rentletter.ca">hello@rentletter.ca</A>
+              <strong>Email:</strong> <A href="mailto:info@rentletter.ca">info@rentletter.ca</A>
             </P>
           </Section>
 
