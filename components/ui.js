@@ -146,6 +146,32 @@ export const ScrollHeader = ({ children, maxWidth = 1200 }) => {
   );
 };
 
+// ─── SCROLL FADE ─────────────────────────────────────────────
+// Fades and lifts its children away as the page scrolls down (opacity 1→0
+// over `distance` px). Opacity/transform only; static for reduced-motion.
+export const ScrollFade = ({ children, distance = 220, style }) => {
+  const ref = useRef(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const t = Math.min(Math.max(window.scrollY / distance, 0), 1);
+        el.style.opacity = String(1 - t);
+        el.style.transform = `translateY(${-12 * t}px)`;
+        el.style.pointerEvents = t > 0.85 ? 'none' : 'auto';
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); cancelAnimationFrame(raf); };
+  }, [distance]);
+  return <div ref={ref} style={{ transition: 'opacity 120ms linear', willChange: 'opacity, transform', ...style }}>{children}</div>;
+};
+
 // ─── SCROLL REVEAL HOOK ──────────────────────────────────────
 // Adds .rl-vis to every .rl-reveal / .rl-steps element as it enters view, once.
 // No-ops for reduced-motion (elements are already visible via the static base).

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import ChatWidget from '../components/ChatWidget';
 import { C as THEME, R, SH, EASE, FONT } from '../components/theme';
-import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
+import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade } from '../components/ui';
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 // Shared brand tokens, extended with the legacy "info" keys this page used
@@ -3168,23 +3168,25 @@ export default function LandlordDashboard() {
           {accountStatus && (
             <section style={{ padding: 'clamp(12px, 2.5vw, 18px) clamp(16px, 4vw, 32px) 0' }}>
               {accountStatus.status === 'founder' && (
-                <div style={{
-                  background: C.greenTint, border: `1px solid ${C.green}`, borderRadius: R.card,
-                  padding: 'clamp(13px, 3vw, 17px) clamp(16px, 4vw, 22px)',
-                  display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-                }}>
-                  <span style={{
-                    background: C.green, color: C.paper, borderRadius: R.pill,
-                    padding: '5px 12px', fontSize: 10, fontWeight: 800,
-                    letterSpacing: '0.1em', textTransform: 'uppercase',
-                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                <ScrollFade>
+                  <div style={{
+                    background: C.greenTint, border: `1px solid ${C.green}`, borderRadius: R.card,
+                    padding: 'clamp(13px, 3vw, 17px) clamp(16px, 4vw, 22px)',
+                    display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
                   }}>
-                    <Icon name="check" size={13} strokeWidth={2.5} /> Founding member{accountStatus.signupNumber ? ` · #${accountStatus.signupNumber} of 50` : ''}
-                  </span>
-                  <span style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
-                    You're one of the first realtors on Rentletter. Free forever — thank you for being early.
-                  </span>
-                </div>
+                    <span style={{
+                      background: C.green, color: C.paper, borderRadius: R.pill,
+                      padding: '5px 12px', fontSize: 10, fontWeight: 800,
+                      letterSpacing: '0.1em', textTransform: 'uppercase',
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                    }}>
+                      <Icon name="check" size={13} strokeWidth={2.5} /> Founding member{accountStatus.signupNumber ? ` · #${accountStatus.signupNumber} of 50` : ''}
+                    </span>
+                    <span style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
+                      You're one of the first realtors on Rentletter. Free forever — thank you for being early.
+                    </span>
+                  </div>
+                </ScrollFade>
               )}
 
               {accountStatus.status === 'trial' && (
@@ -3533,28 +3535,26 @@ export default function LandlordDashboard() {
           <>
           <div style={{ padding: applications.length === 0 ? '0 32px 80px' : '40px 32px 80px' }}>
 
-          {/* ── HUMAN RIGHTS / COMPLIANCE BANNER ────────────────── */}
-          <section style={{ marginBottom: 24 }}>
-            <div style={{
-              background: '#fafaf5', border: `1px solid ${C.rule}`,
-              padding: '16px 20px',
-              display: 'flex', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap',
-            }}>
-              <div style={{
-                background: C.ink, color: C.paper,
-                padding: '4px 10px', fontSize: 10, fontWeight: 700,
-                letterSpacing: '0.1em', textTransform: 'uppercase', flexShrink: 0,
+          {/* ── HUMAN RIGHTS / COMPLIANCE — collapsed, unobtrusive ── */}
+          <section style={{ marginBottom: 20 }}>
+            <details style={{ background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, overflow: 'hidden' }}>
+              <summary style={{
+                listStyle: 'none', cursor: 'pointer',
+                padding: '11px 16px', fontSize: 12.5, color: C.inkSoft, fontWeight: 500,
+                display: 'flex', alignItems: 'center', gap: 9,
               }}>
-                Compliance reminder
-              </div>
-              <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, flex: 1, minWidth: 280 }}>
+                <Icon name="shield" size={15} color={C.inkMute} />
+                <span style={{ flex: 1 }}>Ontario Human Rights Code — screening reminder</span>
+                <span style={{ fontSize: 11, color: C.inkMute }}>Read</span>
+              </summary>
+              <div style={{ padding: '0 16px 16px', fontSize: 13, color: C.inkSoft, lineHeight: 1.6, borderTop: `1px solid ${C.rule}`, paddingTop: 14 }}>
                 Under the Ontario Human Rights Code, landlords cannot screen on race, ancestry, place of origin, citizenship, ethnic origin, creed, sex, sexual orientation, gender identity, age, marital status, family status, disability, or receipt of public assistance. Rentletter helps you focus on financial fit, history, and stated intent — never on protected grounds.
                 {' '}
                 <a href="https://www.ohrc.on.ca/en/policy-human-rights-and-rental-housing" target="_blank" rel="noopener noreferrer" style={{ color: C.red, textDecoration: 'underline', fontWeight: 600, whiteSpace: 'nowrap' }}>
                   OHRC policy →
                 </a>
               </div>
-            </div>
+            </details>
           </section>
 
           {/* ── UNSIGNED WORK-AT-RISK BANNER ──────────────────── */}
@@ -3827,46 +3827,44 @@ export default function LandlordDashboard() {
             const inviteUrl = activeListing.inviteToken ? `https://rentletter.ca/apply/${activeListing.inviteToken}` : null;
             return (
               <section style={{ marginBottom: 16 }}>
-                <div className="rl-card" style={{ background: C.ink, color: C.paper, padding: 'clamp(18px, 3vw, 24px) clamp(18px, 3vw, 24px)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14, flexWrap: 'wrap' }}>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0b8bb', marginBottom: 10 }}>
-                        <span style={{ width: 18, height: 18, borderRadius: '50%', background: C.red, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>2</span>
-                        Invite tenants to apply
+                <div className="rl-card" style={{ background: C.ink, color: C.paper, padding: 'clamp(18px, 3vw, 24px)' }}>
+                  {/* Header + description — full width */}
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#f0b8bb', marginBottom: 10 }}>
+                    <span style={{ width: 18, height: 18, borderRadius: '50%', background: C.red, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 800 }}>2</span>
+                    Invite tenants to apply
+                  </div>
+                  <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6, color: C.paper }}>
+                    Listing-specific application link
+                  </div>
+                  <div style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.6 }}>
+                    Share this link with prospective tenants. They'll see this listing's info, fill the application, and their RL number will appear here automatically.
+                  </div>
+                  {/* Link + action — one aligned row, link fills the width */}
+                  <div style={{ marginTop: 16, display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
+                    {inviteUrl && (
+                      <div style={{ flex: 1, minWidth: 240, padding: '13px 16px', background: '#1a1a1c', borderRadius: R.ctrl, fontFamily: 'monospace', fontSize: 12.5, color: C.paper, wordBreak: 'break-all', borderLeft: `3px solid ${C.red}`, display: 'flex', alignItems: 'center', gap: 9 }}>
+                        <Icon name="link" size={15} color="#f0b8bb" /> <span style={{ minWidth: 0 }}>{inviteUrl}</span>
                       </div>
-                      <div style={{ fontSize: 17, fontWeight: 700, letterSpacing: '-0.01em', marginBottom: 6, color: C.paper }}>
-                        Listing-specific application link
-                      </div>
-                      <div style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.6, maxWidth: 540 }}>
-                        Share this link with prospective tenants. They'll see this listing's info, fill the application, and their RL number will appear here automatically.
-                      </div>
-                      {inviteUrl && (
-                        <div style={{ marginTop: 14, padding: '12px 16px', background: '#1a1a1c', borderRadius: R.ctrl, fontFamily: 'monospace', fontSize: 12.5, color: C.paper, wordBreak: 'break-all', borderLeft: `3px solid ${C.red}`, display: 'flex', alignItems: 'center', gap: 9 }}>
-                          <Icon name="link" size={15} color="#f0b8bb" /> {inviteUrl}
-                        </div>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button
-                        onClick={createOrGetInviteLink}
-                        disabled={inviteLoading}
-                        className="rl-btn"
-                        style={{
-                          background: inviteCopied ? C.green : C.red, color: C.paper, borderRadius: R.ctrl,
-                          padding: '13px 20px', fontSize: 13, fontWeight: 600,
-                          cursor: inviteLoading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
-                          opacity: inviteLoading ? 0.6 : 1,
-                          display: 'inline-flex', alignItems: 'center', gap: 8,
-                        }}>
-                        {inviteLoading
-                          ? 'Creating…'
-                          : inviteCopied
-                            ? <><Icon name="check" size={15} strokeWidth={2.5} /> Copied</>
-                            : inviteUrl
-                              ? <><Icon name="copy" size={15} /> Copy link</>
-                              : <><Icon name="plus" size={15} /> Get invite link</>}
-                      </button>
-                    </div>
+                    )}
+                    <button
+                      onClick={createOrGetInviteLink}
+                      disabled={inviteLoading}
+                      className="rl-btn"
+                      style={{
+                        background: inviteCopied ? C.green : C.red, color: C.paper, borderRadius: R.ctrl,
+                        padding: '13px 22px', fontSize: 13, fontWeight: 600, minHeight: 48,
+                        cursor: inviteLoading ? 'wait' : 'pointer', whiteSpace: 'nowrap',
+                        opacity: inviteLoading ? 0.6 : 1, flex: inviteUrl ? '0 0 auto' : '1',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                      }}>
+                      {inviteLoading
+                        ? 'Creating…'
+                        : inviteCopied
+                          ? <><Icon name="check" size={15} strokeWidth={2.5} /> Copied</>
+                          : inviteUrl
+                            ? <><Icon name="copy" size={15} /> Copy link</>
+                            : <><Icon name="plus" size={15} /> Get invite link</>}
+                    </button>
                   </div>
                 </div>
               </section>
@@ -3951,11 +3949,11 @@ export default function LandlordDashboard() {
                 {loading ? 'Loading...' : 'Look up →'}
               </button>
               {applications.length > 0 && (
-                <button onClick={clearAll}
+                <button onClick={clearAll} className="rl-btn"
                   style={{
-                    background: 'transparent', color: C.inkSoft,
-                    border: `1px solid ${C.rule}`,
-                    padding: '0 20px', fontSize: 13, fontWeight: 500,
+                    background: C.card, color: C.inkSoft,
+                    border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
+                    padding: '0 20px', fontSize: 13, fontWeight: 500, minHeight: 52,
                   }}>
                   Clear all
                 </button>
@@ -4131,9 +4129,10 @@ export default function LandlordDashboard() {
                     // Switch view to a sensible default for the mode
                     setView(!simpleMode ? 'review' : 'detail');
                   }}
+                  className="rl-btn"
                   style={{
-                    background: 'transparent', border: `1px solid ${C.rule}`,
-                    color: C.inkSoft, padding: '8px 14px', fontSize: 12, fontWeight: 500,
+                    background: C.card, border: `1px solid ${C.ruleDark}`, borderRadius: R.pill,
+                    color: C.inkSoft, padding: '8px 16px', fontSize: 12, fontWeight: 500,
                     cursor: 'pointer',
                   }}>
                   {simpleMode ? 'Switch to detailed view →' : 'Switch to simple view →'}
@@ -4223,7 +4222,7 @@ export default function LandlordDashboard() {
 
                 if (compareList.length < 2) {
                   return (
-                    <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.rule}`, background: '#fafaf5' }}>
+                    <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
                       <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>
                         {hasShortlist ? 'Shortlist 2 or more applicants to compare them.' : 'Add 2 or more applications to compare.'}
                       </div>
@@ -4328,7 +4327,7 @@ export default function LandlordDashboard() {
           )}
 
           {/* ── FOOTER NOTE ─────────────────────────────────── */}
-          <footer style={{ marginTop: 80, paddingTop: 32, borderTop: `1px solid ${C.rule}` }}>
+          <footer style={{ marginTop: 48, paddingTop: 28, borderTop: `1px solid ${C.rule}` }}>
             <p style={{ fontSize: 12, color: C.inkMute, maxWidth: 760, lineHeight: 1.6, marginBottom: 18 }}>
               Rentletter applications are generated by tenants and stored privately. The Scorecard reflects honest, factual assessment based on tenant inputs — not promotional self-rating. Free for landlords and realtors. If you find this useful, share it with other landlords.
             </p>
@@ -5010,7 +5009,7 @@ export default function LandlordDashboard() {
 function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, onJumpToReview }) {
   if (!applications.length) {
     return (
-      <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.rule}`, background: '#fafaf5' }}>
+      <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
         <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>
           No applicants to show.
         </div>
@@ -5452,53 +5451,53 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
         )}
       </div>
 
-      {/* THE THREE BIG BUTTONS */}
+      {/* THE THREE DECISION BUTTONS — always one even row, even at 375px */}
       <div style={{
         marginTop: 20,
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-        gap: 10,
+        gridTemplateColumns: 'repeat(3, 1fr)',
+        gap: 'clamp(8px, 2vw, 12px)',
       }}>
         <button
           onClick={() => decide('reject')}
+          className="rl-btn"
           style={{
-            background: decision.status === 'reject' ? C.red : C.paper,
+            background: decision.status === 'reject' ? C.red : C.card,
             color: decision.status === 'reject' ? C.paper : C.red,
-            border: `2px solid ${C.red}`,
-            padding: '20px 16px',
-            fontSize: 17, fontWeight: 700,
-            cursor: 'pointer',
-            minHeight: 64,
-            transition: 'all 0.15s',
+            border: `1.5px solid ${C.red}`, borderRadius: R.card,
+            padding: 'clamp(14px, 3vw, 20px) 8px',
+            fontSize: 'clamp(14px, 3.5vw, 17px)', fontWeight: 700,
+            cursor: 'pointer', minHeight: 60,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
           }}>
-          ✗ No
+          <Icon name="x" size={18} strokeWidth={2.5} /> No
         </button>
         <button
           onClick={skip}
+          className="rl-btn"
           style={{
-            background: C.paper, color: C.inkSoft,
-            border: `2px solid ${C.rule}`,
-            padding: '20px 16px',
-            fontSize: 17, fontWeight: 700,
-            cursor: 'pointer',
-            minHeight: 64,
-            transition: 'all 0.15s',
+            background: C.card, color: C.inkSoft,
+            border: `1.5px solid ${C.ruleDark}`, borderRadius: R.card,
+            padding: 'clamp(14px, 3vw, 20px) 8px',
+            fontSize: 'clamp(14px, 3.5vw, 17px)', fontWeight: 700,
+            cursor: 'pointer', minHeight: 60,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}>
           Skip
         </button>
         <button
           onClick={() => decide('shortlist')}
+          className="rl-btn"
           style={{
-            background: decision.status === 'shortlist' ? C.green : C.paper,
+            background: decision.status === 'shortlist' ? C.green : C.card,
             color: decision.status === 'shortlist' ? C.paper : C.green,
-            border: `2px solid ${C.green}`,
-            padding: '20px 16px',
-            fontSize: 17, fontWeight: 700,
-            cursor: 'pointer',
-            minHeight: 64,
-            transition: 'all 0.15s',
+            border: `1.5px solid ${C.green}`, borderRadius: R.card,
+            padding: 'clamp(14px, 3vw, 20px) 8px',
+            fontSize: 'clamp(14px, 3.5vw, 17px)', fontWeight: 700,
+            cursor: 'pointer', minHeight: 60,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
           }}>
-          ✓ Yes
+          <Icon name="check" size={18} strokeWidth={2.5} /> Yes
         </button>
       </div>
 
@@ -5587,116 +5586,70 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
 
   return (
     <div>
-      {/* Application tabs (only show if multiple) */}
+      {/* Applicant picker — dropdown (replaces the all-names-at-once button grid) */}
       {applications.length > 1 && (() => {
-        // Sort: shortlisted first, then undecided, then rejected. Stable order within each group.
-        const sortedWithIdx = applications.map((a, idx) => ({ a, idx, dec: getDecision(a.applicationNumber) }));
-        const shortlisted = sortedWithIdx.filter(x => x.dec.status === 'shortlist');
-        const undecided = sortedWithIdx.filter(x => x.dec.status === 'none' || !x.dec.status);
-        const rejected = sortedWithIdx.filter(x => x.dec.status === 'reject');
-        const hasShortlist = shortlisted.length > 0;
+        // Order options: shortlisted first, then undecided, then rejected.
+        const withIdx = applications.map((a, idx) => ({ a, idx, dec: getDecision(a.applicationNumber) }));
+        const rank = s => (s === 'shortlist' ? 0 : s === 'reject' ? 2 : 1);
+        const ordered = [...withIdx].sort((x, y) => rank(x.dec.status) - rank(y.dec.status));
+        const statusLabel = s => (s === 'shortlist' ? '★ Shortlisted' : s === 'reject' ? '✕ Rejected' : 'Not yet decided');
+        const shortlistedCount = withIdx.filter(x => x.dec.status === 'shortlist').length;
+        const dec = getDecision(app.applicationNumber);
+        const accent = dec.status === 'shortlist' ? C.green : dec.status === 'reject' ? C.red : C.ruleDark;
 
         return (
-          <div style={{ marginBottom: 28 }}>
-            {/* SHORTLISTED ROW — bold, prominent, top of the strip */}
-            {hasShortlist && (
-              <div style={{ marginBottom: 16 }}>
-                <div style={{
-                  fontSize: 11, color: C.green, fontWeight: 700,
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
-                  marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8,
-                }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.green, display: 'inline-block' }} />
-                  Your favourites ({shortlisted.length})
-                </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {shortlisted.map(({ a, idx }) => (
-                    <button
-                      key={a.applicationNumber}
-                      onClick={() => setActiveIdx(idx)}
-                      style={{
-                        background: activeIdx === idx ? C.green : C.paper,
-                        color: activeIdx === idx ? C.paper : C.ink,
-                        border: `2px solid ${C.green}`,
-                        padding: '10px 16px', fontSize: 14, fontWeight: 700,
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        cursor: 'pointer', minHeight: 44,
-                      }}>
-                      <span style={{ fontSize: 12 }}>✓</span>
-                      {a.tenant.fullName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* UNDECIDED ROW (only if there are some, and at least one favourite exists to keep them visually separated) */}
-            {undecided.length > 0 && (
-              <div style={{ marginBottom: rejected.length > 0 ? 12 : 0 }}>
-                {hasShortlist && (
-                  <div style={{
-                    fontSize: 11, color: C.inkMute, fontWeight: 700,
-                    letterSpacing: '0.1em', textTransform: 'uppercase',
-                    marginBottom: 10,
+          <div style={{ marginBottom: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+              <label htmlFor="rl-applicant-picker" style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                Reviewing applicant
+              </label>
+              <span style={{ fontSize: 12, color: C.inkMute }}>
+                {activeIdx + 1} of {applications.length}{shortlistedCount > 0 ? ` · ${shortlistedCount} shortlisted` : ''}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'stretch', flexWrap: 'wrap' }}>
+              <div style={{ position: 'relative', flex: 1, minWidth: 220 }}>
+                <select
+                  id="rl-applicant-picker"
+                  value={activeIdx}
+                  onChange={e => setActiveIdx(Number(e.target.value))}
+                  style={{
+                    width: '100%', appearance: 'none', cursor: 'pointer',
+                    padding: '14px 44px 14px 16px', fontSize: 15, fontWeight: 600,
+                    color: C.ink, background: C.card,
+                    border: `1.5px solid ${accent}`, borderRadius: R.ctrl, outline: 'none',
                   }}>
-                    Not yet decided ({undecided.length})
-                  </div>
-                )}
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {undecided.map(({ a, idx }) => (
-                    <button
-                      key={a.applicationNumber}
-                      onClick={() => setActiveIdx(idx)}
-                      style={{
-                        background: activeIdx === idx ? C.ink : 'transparent',
-                        color: activeIdx === idx ? C.paper : C.inkSoft,
-                        border: `1px solid ${activeIdx === idx ? C.ink : C.rule}`,
-                        padding: '8px 14px', fontSize: 13, fontWeight: 500,
-                        cursor: 'pointer',
-                      }}>
-                      {a.tenant.fullName}
-                    </button>
+                  {ordered.map(({ a, idx, dec }) => (
+                    <option key={a.applicationNumber} value={idx}>
+                      {a.tenant.fullName} — {statusLabel(dec.status)}
+                    </option>
                   ))}
-                </div>
+                </select>
+                <span style={{ position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', display: 'inline-flex' }}>
+                  <Icon name="chevronD" size={18} color={C.inkSoft} />
+                </span>
               </div>
-            )}
-
-            {/* REJECTED ROW — dim, struck-through, low visual priority */}
-            {rejected.length > 0 && (
-              <div>
-                <div style={{
-                  fontSize: 11, color: C.inkMute, fontWeight: 600,
-                  letterSpacing: '0.08em', textTransform: 'uppercase',
-                  marginBottom: 8,
-                }}>
-                  Rejected ({rejected.length})
-                </div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {rejected.map(({ a, idx }) => (
-                    <button
-                      key={a.applicationNumber}
-                      onClick={() => setActiveIdx(idx)}
-                      style={{
-                        background: activeIdx === idx ? C.inkSoft : 'transparent',
-                        color: activeIdx === idx ? C.paper : C.inkMute,
-                        border: `1px solid ${activeIdx === idx ? C.inkSoft : C.rule}`,
-                        padding: '6px 12px', fontSize: 12, fontWeight: 400,
-                        textDecoration: 'line-through',
-                        opacity: 0.7,
-                        cursor: 'pointer',
-                      }}>
-                      {a.tenant.fullName}
-                    </button>
-                  ))}
-                </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => setActiveIdx(activeIdx === 0 ? applications.length - 1 : activeIdx - 1)}
+                  className="rl-btn" aria-label="Previous applicant"
+                  style={{ background: C.card, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '0 16px', minHeight: 50, color: C.ink, display: 'inline-flex', alignItems: 'center' }}>
+                  <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                </button>
+                <button
+                  onClick={() => setActiveIdx(activeIdx === applications.length - 1 ? 0 : activeIdx + 1)}
+                  className="rl-btn" aria-label="Next applicant"
+                  style={{ background: C.card, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '0 16px', minHeight: 50, color: C.ink, display: 'inline-flex', alignItems: 'center' }}>
+                  <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                </button>
               </div>
-            )}
+            </div>
           </div>
         );
       })()}
 
       {/* Card */}
-      <div style={{ border: `1px solid ${C.rule}`, background: '#fafaf5' }}>
+      <div className="rl-card" style={{ overflow: 'hidden' }}>
         {/* Top bar with name + actions */}
         <div style={{ padding: 'clamp(18px, 4vw, 24px) clamp(16px, 4vw, 28px)', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
           <div>
@@ -6954,16 +6907,17 @@ const tdLabelStyle = {
 
 function DataSection({ title, highlightRed, children }) {
   return (
-    <div style={{ marginBottom: 28, paddingBottom: 28, borderBottom: `1px solid ${C.rule}` }}>
+    <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${C.rule}` }}>
       <div style={{
-        fontSize: 11, fontWeight: 600,
-        color: highlightRed ? C.red : C.inkMute,
-        letterSpacing: '0.08em', textTransform: 'uppercase',
-        marginBottom: 16,
+        fontSize: 12.5, fontWeight: 800,
+        color: highlightRed ? C.red : C.ink,
+        letterSpacing: '0.04em', textTransform: 'uppercase',
+        marginBottom: 16, display: 'flex', alignItems: 'center', gap: 9,
       }}>
+        <span style={{ width: 4, height: 13, borderRadius: 2, background: highlightRed ? C.red : C.ruleDark, display: 'inline-block' }} />
         {title}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {children}
       </div>
     </div>
@@ -6974,21 +6928,21 @@ function DataRow({ label, value, multiline, highlight }) {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: multiline ? '1fr' : 'minmax(0, 110px) minmax(0, 1fr)',
-      gap: multiline ? 4 : 12,
+      gridTemplateColumns: multiline ? '1fr' : 'minmax(0, 130px) minmax(0, 1fr)',
+      gap: multiline ? 5 : 14,
       width: '100%',
       minWidth: 0,
     }}>
       <div style={{
-        fontSize: 12, color: C.inkMute, fontWeight: 500,
+        fontSize: 12.5, color: C.inkMute, fontWeight: 600,
         minWidth: 0,
         overflowWrap: 'break-word',
       }}>
         {label}
       </div>
       <div style={{
-        fontSize: 13, color: highlight ? C.green : C.ink,
-        fontWeight: highlight ? 600 : 400,
+        fontSize: 13.5, color: highlight ? C.green : C.ink,
+        fontWeight: highlight ? 700 : 500,
         lineHeight: 1.55,
         minWidth: 0,
         overflowWrap: 'break-word',
@@ -7009,8 +6963,8 @@ function ScoreBadge({ score, small }) {
 
   return (
     <div style={{
-      background: color, color: C.paper,
-      padding: small ? '4px 10px' : '6px 14px',
+      background: color, color: C.paper, borderRadius: R.pill,
+      padding: small ? '4px 11px' : '6px 15px',
       fontSize: small ? 12 : 14, fontWeight: 700,
       display: 'inline-flex', alignItems: 'baseline', gap: 4,
     }}>
