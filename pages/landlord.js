@@ -3071,7 +3071,7 @@ export default function LandlordDashboard() {
                     }}
                   />
                   {signinError && (
-                    <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink, textAlign: 'left' }}>
+                    <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink, textAlign: 'left' }}>
                       {signinError}
                     </div>
                   )}
@@ -3106,6 +3106,7 @@ export default function LandlordDashboard() {
               <div style={{
                 background: C.green,
                 color: C.paper,
+                borderRadius: R.card,
                 padding: 'clamp(16px, 4vw, 22px) clamp(18px, 4vw, 26px)',
                 display: 'flex', alignItems: 'center', gap: 14,
                 flexWrap: 'wrap',
@@ -3148,6 +3149,7 @@ export default function LandlordDashboard() {
               <div style={{
                 background: '#fef2f0',
                 border: `1px solid ${C.red}`,
+                borderRadius: R.ctrl,
                 borderLeft: `4px solid ${C.red}`,
                 padding: '14px 16px',
                 display: 'flex', alignItems: 'flex-start', gap: 12,
@@ -3423,7 +3425,7 @@ export default function LandlordDashboard() {
 
           {/* ── INTRO HERO — red full-bleed magazine cover when empty ── */}
           {!workspaceLoading && applications.length === 0 && (
-            <section style={{ background: C.red, color: C.paper, position: 'relative', overflow: 'hidden', marginBottom: 0 }}>
+            <section style={{ background: C.red, color: C.paper, position: 'relative', overflow: 'hidden', marginBottom: 0, borderRadius: R.card }}>
               {/* Oversized number decorations */}
               <div style={{
                 position: 'absolute',
@@ -3567,6 +3569,7 @@ export default function LandlordDashboard() {
               <div style={{
                 background: '#fef7e6',
                 border: `1px solid #f0c95a`,
+                borderRadius: R.ctrl,
                 borderLeft: `4px solid #d4941a`,
                 padding: 'clamp(14px, 3vw, 18px) clamp(16px, 4vw, 22px)',
                 display: 'flex',
@@ -3660,6 +3663,7 @@ export default function LandlordDashboard() {
                     position: 'absolute', top: '100%', left: 0, right: 0,
                     background: C.paper,
                     border: `1px solid ${C.rule}`, borderTop: 'none',
+                    borderRadius: `0 0 ${R.card}px ${R.card}px`, overflow: 'hidden',
                     boxShadow: '0 12px 36px rgba(15, 15, 16, 0.12)',
                     zIndex: 20,
                     maxHeight: 380, overflowY: 'auto',
@@ -3976,7 +3980,7 @@ export default function LandlordDashboard() {
               </div>
             )}
             {error && (
-              <div style={{ marginTop: 12, padding: '12px 16px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
+              <div style={{ marginTop: 12, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
                 {error}
               </div>
             )}
@@ -4245,7 +4249,7 @@ export default function LandlordDashboard() {
                       }}>
                         <div style={{
                           flex: 1, minWidth: 220,
-                          padding: '10px 14px',
+                          padding: '10px 14px', borderRadius: R.ctrl,
                           background: '#f0f7f3', borderLeft: `3px solid ${C.green}`,
                           fontSize: 13, color: C.inkSoft,
                         }}>
@@ -4421,7 +4425,7 @@ export default function LandlordDashboard() {
                 </div>
 
                 {/* OHRC notice — info-color box */}
-                <div style={{ margin: '16px clamp(20px, 4vw, 28px)', padding: '12px 14px', background: C.info, borderLeft: `4px solid ${C.infoBorder}`, fontSize: 12, color: C.infoInk, lineHeight: 1.55 }}>
+                <div style={{ margin: '16px clamp(20px, 4vw, 28px)', padding: '12px 14px', background: C.info, borderRadius: R.ctrl, borderLeft: `4px solid ${C.infoBorder}`, fontSize: 12, color: C.infoInk, lineHeight: 1.55 }}>
                   <strong>Why some fields aren't here:</strong> Ontario's Human Rights Code prohibits screening tenants on gender, age, family status, race, religion, disability, or receipt of public assistance. The fields below are legally screenable criteria. Stating discriminatory preferences in writing can trigger HRTO complaints — for both you and your landlord client.
                 </div>
 
@@ -4658,6 +4662,7 @@ export default function LandlordDashboard() {
                 background: C.paper,
                 maxWidth: 520, width: '100%',
                 maxHeight: '90vh', overflowY: 'auto',
+                borderRadius: R.modal,
                 boxShadow: '0 24px 64px rgba(15, 15, 16, 0.22)',
                 border: `1px solid ${C.rule}`,
               }}>
@@ -4745,6 +4750,7 @@ export default function LandlordDashboard() {
                 background: C.paper,
                 maxWidth: 540, width: '100%',
                 maxHeight: '90vh', overflowY: 'auto',
+                borderRadius: R.modal,
                 boxShadow: '0 24px 64px rgba(15, 15, 16, 0.22)',
                 border: `1px solid ${C.rule}`,
               }}>
@@ -4780,7 +4786,7 @@ export default function LandlordDashboard() {
                 ) : (
                   <>
                     {(!realtorProfile.isRealtor || !realtorProfile.fullName) && (
-                      <div style={{ background: '#fafaf5', border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: C.ink, lineHeight: 1.55 }}>
+                      <div style={{ background: '#fafaf5', border: `1px solid ${C.rule}`, borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, padding: '12px 14px', marginBottom: 16, fontSize: 13, color: C.ink, lineHeight: 1.55 }}>
                         Set up your realtor profile first so the landlord knows who's sending this.
                         <button onClick={() => { setSendToLandlordOpen(false); setRealtorEditOpen(true); }}
                           style={{ background: 'transparent', border: 'none', color: C.red, fontWeight: 700, fontSize: 13, cursor: 'pointer', padding: 0, marginLeft: 6, textDecoration: 'underline' }}>
@@ -4822,7 +4828,7 @@ export default function LandlordDashboard() {
                       }}
                     />
 
-                    <div style={{ background: C.paperDeep, padding: 14, marginBottom: 16, fontSize: 12, color: C.inkSoft, lineHeight: 1.6 }}>
+                    <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: 14, marginBottom: 16, fontSize: 12, color: C.inkSoft, lineHeight: 1.6 }}>
                       Will include: {applications.filter(a => decisions?.[a.applicationNumber]?.status === 'shortlist').length} shortlisted candidate{applications.filter(a => decisions?.[a.applicationNumber]?.status === 'shortlist').length === 1 ? '' : 's'}
                       {unit?.address && ` · for ${String(unit.address).slice(0, 60)}`}
                       {realtorProfile.fullName && ` · branded as ${realtorProfile.fullName}${realtorProfile.brokerage ? ` (${realtorProfile.brokerage})` : ''}`}
@@ -4866,6 +4872,7 @@ export default function LandlordDashboard() {
               onClick={e => e.stopPropagation()}
               style={{
                 background: C.paper, maxWidth: 480, width: '100%',
+                borderRadius: R.modal, overflow: 'hidden',
               }}>
               <div style={{ padding: '28px 32px', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
                 <div>
@@ -4904,7 +4911,7 @@ export default function LandlordDashboard() {
                   }}
                 />
                 {signinError && (
-                  <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
+                  <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
                     {signinError}
                   </div>
                 )}
@@ -4951,6 +4958,7 @@ export default function LandlordDashboard() {
               style={{
                 background: C.info, maxWidth: 700, width: '100%',
                 maxHeight: '90vh', overflowY: 'auto',
+                borderRadius: R.modal,
                 borderLeft: `4px solid ${C.infoBorder}`,
               }}>
               <div style={{ padding: '28px 32px', borderBottom: `1px solid ${C.infoBorder}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
@@ -5039,6 +5047,7 @@ function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, o
             <div key={app.applicationNumber} style={{
               background: statusBg,
               border: `1px solid ${C.rule}`,
+              borderRadius: R.card,
               borderLeft: `4px solid ${statusBorderColor}`,
               padding: 'clamp(14px, 3vw, 18px)',
               display: 'grid',
@@ -5136,7 +5145,7 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
   // ─── END OF STACK SUMMARY ─────────────────────────────
   if (reviewIdx >= total) {
     return (
-      <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: 'clamp(32px, 6vw, 60px) clamp(20px, 4vw, 40px)', textAlign: 'center' }}>
+      <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(32px, 6vw, 60px) clamp(20px, 4vw, 40px)', textAlign: 'center' }}>
         <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 16 }}>
           You're done reviewing.
         </div>
@@ -5155,15 +5164,15 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
           gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
           gap: 12, maxWidth: 520, margin: '0 auto 32px',
         }}>
-          <div style={{ padding: '18px 14px', background: '#f0f7f3', borderLeft: `4px solid ${C.green}` }}>
+          <div style={{ padding: '18px 14px', background: '#f0f7f3', borderRadius: R.ctrl, borderLeft: `4px solid ${C.green}` }}>
             <div style={{ fontSize: 28, fontWeight: 800, color: C.green }}>{shortlistedCount}</div>
             <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, marginTop: 2 }}>Shortlisted</div>
           </div>
-          <div style={{ padding: '18px 14px', background: '#fafaf5', borderLeft: `4px solid ${C.inkMute}` }}>
+          <div style={{ padding: '18px 14px', background: '#fafaf5', borderRadius: R.ctrl, borderLeft: `4px solid ${C.inkMute}` }}>
             <div style={{ fontSize: 28, fontWeight: 800, color: C.inkMute }}>{undecidedCount}</div>
             <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, marginTop: 2 }}>Skipped</div>
           </div>
-          <div style={{ padding: '18px 14px', background: '#fef2f0', borderLeft: `4px solid ${C.red}` }}>
+          <div style={{ padding: '18px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `4px solid ${C.red}` }}>
             <div style={{ fontSize: 28, fontWeight: 800, color: C.red }}>{rejectedCount}</div>
             <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, marginTop: 2 }}>Rejected</div>
           </div>
@@ -5248,11 +5257,12 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
             ✓ {shortlistedCount} favourite{shortlistedCount === 1 ? '' : 's'} so far
           </span>
         </div>
-        <div style={{ height: 4, background: C.rule, position: 'relative' }}>
+        <div style={{ height: 4, background: C.rule, position: 'relative', borderRadius: R.pill, overflow: 'hidden' }}>
           <div style={{
             position: 'absolute', left: 0, top: 0, bottom: 0,
             width: `${((reviewIdx + 1) / total) * 100}%`,
             background: C.red,
+            borderRadius: R.pill,
             transition: 'width 0.2s',
           }} />
         </div>
@@ -5261,6 +5271,7 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
       {/* THE CARD */}
       <div style={{
         background: C.paper, border: `1px solid ${C.rule}`,
+        borderRadius: R.card, overflow: 'hidden',
         padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)',
       }}>
         {/* Name + score */}
@@ -5292,7 +5303,7 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
         {/* Score as dots + label */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-          padding: '14px 18px', background: '#fafaf5',
+          padding: '14px 18px', background: '#fafaf5', borderRadius: R.ctrl,
           marginBottom: 20,
         }}>
           <div style={{ fontSize: 26, color: C.red, letterSpacing: 4, lineHeight: 1 }}>
@@ -5314,7 +5325,7 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
         {fitSummary && (
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '10px 16px', marginBottom: 20,
+            padding: '10px 16px', marginBottom: 20, borderRadius: R.pill,
             background: fitSummary.color, color: C.paper,
             fontSize: 13, fontWeight: 700, letterSpacing: '0.02em',
           }}>
@@ -5382,7 +5393,7 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
                     return (
                       <div key={idx} style={{
                         display: 'flex', alignItems: 'flex-start', gap: 12,
-                        padding: '10px 12px', background: '#fafaf5', borderLeft: `3px solid ${color}`,
+                        padding: '10px 12px', background: '#fafaf5', borderRadius: R.ctrl, borderLeft: `3px solid ${color}`,
                       }}>
                         <div style={{
                           width: 22, height: 22, borderRadius: '50%',
@@ -5795,7 +5806,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
                 return (
                   <div key={idx} style={{
                     padding: '10px 12px',
-                    background: '#fafaf5',
+                    background: '#fafaf5', borderRadius: R.ctrl,
                     borderLeft: `3px solid ${color}`,
                     display: 'flex', alignItems: 'flex-start', gap: 10,
                   }}>
@@ -5850,7 +5861,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
             onBlur={e => e.target.style.borderColor = C.rule}
           />
           {rationaleError && (
-            <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef2f0', borderLeft: `3px solid ${C.red}`, fontSize: 12, color: C.ink }}>
+            <div style={{ marginTop: 8, padding: '8px 12px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 12, color: C.ink }}>
               {rationaleError}
             </div>
           )}
@@ -6004,7 +6015,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
               </div>
             ))}
 
-            <div style={{ marginTop: 24, padding: 20, background: C.ink, color: C.paper }}>
+            <div style={{ marginTop: 24, padding: 20, background: C.ink, color: C.paper, borderRadius: R.card }}>
               <div style={{ fontSize: 11, color: '#a4adbb', fontWeight: 500, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Overall score
               </div>
@@ -6474,7 +6485,7 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
            className="ranked-grid">
 
         {/* ╔══ LEFT: WEIGHT CONTROLS ══════════════════════════╗ */}
-        <div style={{ background: C.paper, border: `2px solid ${C.ink}`, position: 'sticky', top: 20 }}>
+        <div style={{ background: C.paper, border: `2px solid ${C.ink}`, borderRadius: R.card, overflow: 'hidden', position: 'sticky', top: 20 }}>
           {/* Header */}
           <div style={{ padding: '20px 24px', borderBottom: `2px solid ${C.ink}`, background: C.ink, color: C.paper }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.red, marginBottom: 4 }}>
@@ -6600,7 +6611,7 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
           <button onClick={() => applyPreset(PRIORITY_PRESETS[0])}
             style={{
               width: '100%', background: 'transparent',
-              border: 'none', borderTop: `1px solid ${C.rule}`,
+              border: 'none', borderTop: `1px solid ${C.rule}`, borderRadius: 0,
               padding: 14, fontSize: 12, fontWeight: 500, color: C.inkSoft,
             }}>
             ↺ Reset to balanced
@@ -6638,6 +6649,7 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                       ? `1px solid ${C.ink}`
                       : `1px solid ${C.rule}`,
                     padding: '24px 28px', marginBottom: 14,
+                    borderRadius: R.card,
                     position: 'relative', overflow: 'hidden',
                     transition: 'transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1), background 0.3s, border-color 0.3s',
                     transform: movement ? (movement === 'up' ? 'translateY(-2px)' : 'translateY(2px)') : 'translateY(0)',
@@ -6651,7 +6663,7 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                       background: movement === 'up' ? C.red : C.inkMute,
                       color: C.paper, fontSize: 10, fontWeight: 700,
                       letterSpacing: '0.08em', textTransform: 'uppercase',
-                      padding: '4px 10px',
+                      padding: '4px 10px', borderRadius: R.pill,
                       animation: 'fadeOut 1.8s ease-out forwards',
                     }}>
                       {movement === 'up' ? '↑ Moved up' : '↓ Moved down'}
@@ -6680,7 +6692,7 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                               fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
                               marginLeft: 12, padding: '3px 8px',
                               background: C.red, color: C.paper,
-                              textTransform: 'uppercase',
+                              textTransform: 'uppercase', borderRadius: R.pill,
                               verticalAlign: 'middle',
                             }}>
                               Top pick
@@ -6718,6 +6730,7 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
                     padding: '14px 16px',
                     background: isFirst ? 'rgba(255,255,255,0.06)' : '#fafaf5',
                     borderLeft: `3px solid ${C.red}`,
+                    borderRadius: R.ctrl,
                     fontSize: 12,
                   }}>
                     <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: isFirst ? C.red : C.red, marginBottom: 8 }}>
@@ -6766,7 +6779,7 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
 
           {/* ── DECISION SUMMARY — defensible, copyable ───── */}
           {ranked.length >= 2 && (
-            <div style={{ marginTop: 32, background: C.paper, border: `2px solid ${C.ink}` }}>
+            <div style={{ marginTop: 32, background: C.paper, border: `2px solid ${C.ink}`, borderRadius: R.card, overflow: 'hidden' }}>
               <div style={{
                 padding: '14px 20px', background: C.red, color: C.paper,
                 fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',

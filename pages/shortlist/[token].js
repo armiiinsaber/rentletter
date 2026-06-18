@@ -531,7 +531,7 @@ export default function LandlordShortlistView() {
               </div>
               {showRemoved && removedApplicants.map(app => (
                 <div key={app.applicationNumber}
-                  style={{ padding: 14, marginBottom: 8, background: C.paperDeep, opacity: 0.7, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+                  style={{ padding: 14, marginBottom: 8, background: C.paperDeep, borderRadius: R.ctrl, opacity: 0.7, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, textDecoration: 'line-through' }}>{app.tenant?.fullName}</div>
                     <div style={{ fontSize: 12, color: C.inkSoft }}>{app.applicationNumber}</div>
@@ -546,7 +546,7 @@ export default function LandlordShortlistView() {
           )}
 
           {/* Bottom — call-to-action to realtor */}
-          <section style={{ marginTop: 60, padding: 'clamp(24px, 5vw, 40px)', background: C.ink, color: C.paper }}>
+          <section style={{ marginTop: 60, padding: 'clamp(24px, 5vw, 40px)', background: C.ink, color: C.paper, borderRadius: R.card }}>
             <div style={{ fontSize: 11, color: '#f0b8bb', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Ready to decide?
             </div>
@@ -644,7 +644,7 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
       </div>
 
       {decision?.notes && (
-        <div style={{ background: C.paperDeep, padding: 16, marginBottom: 20, borderLeft: `3px solid ${C.ink}` }}>
+        <div style={{ background: C.paperDeep, padding: 16, marginBottom: 20, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ink}` }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.inkSoft, marginBottom: 6 }}>
             Note from your realtor
           </div>
@@ -653,7 +653,7 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
       )}
 
       {landlordNote && (
-        <div style={{ background: '#f7f4eb', padding: 16, marginBottom: 20, borderLeft: `3px solid ${C.green}` }}>
+        <div style={{ background: '#f7f4eb', padding: 16, marginBottom: 20, borderRadius: R.ctrl, borderLeft: `3px solid ${C.green}` }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.green, marginBottom: 6 }}>
             Your note
           </div>
@@ -673,7 +673,7 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
       {Array.isArray(a.references) && a.references.length > 0 && (
         <Section title="References">
           {a.references.map((r, i) => (
-            <div key={i} style={{ padding: 14, background: C.paperDeep, marginBottom: 8 }}>
+            <div key={i} style={{ padding: 14, background: C.paperDeep, marginBottom: 8, borderRadius: R.ctrl }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{r.name}</div>
               <div style={{ fontSize: 13, color: C.inkSoft }}>
                 {r.role} {r.relationship && `· ${r.relationship}`}
@@ -693,7 +693,7 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
       {/* Cover letter */}
       {a.coverLetter && (
         <Section title="Cover letter">
-          <div style={{ padding: 18, background: C.paper, border: `1px solid ${C.rule}`, fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: C.ink }}>
+          <div style={{ padding: 18, background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, fontSize: 14, lineHeight: 1.7, whiteSpace: 'pre-wrap', color: C.ink }}>
             {a.coverLetter}
           </div>
         </Section>

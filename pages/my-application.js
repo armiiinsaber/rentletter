@@ -167,7 +167,7 @@ export default function MyApplication() {
                 {loading ? 'Loading...' : 'View my application →'}
               </button>
 
-              <div style={{ marginTop: 32, padding: '14px 16px', background: '#fafaf5', borderLeft: `3px solid ${C.red}`, fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
+              <div style={{ marginTop: 32, padding: '14px 16px', background: '#fafaf5', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
                 <strong style={{ color: C.ink }}>Don't have your owner token?</strong> Check the confirmation email we sent when you generated your application. Search your inbox for "Rentletter."
               </div>
             </div>
@@ -222,7 +222,7 @@ export default function MyApplication() {
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 14,
             marginBottom: 32,
           }}>
-            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: '20px' }}>
+            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: '20px' }}>
               <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Lookups
               </div>
@@ -230,7 +230,7 @@ export default function MyApplication() {
                 {data?.lookupCount || 0}
               </div>
             </div>
-            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: '20px' }}>
+            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: '20px' }}>
               <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Status
               </div>
@@ -238,7 +238,7 @@ export default function MyApplication() {
                 {data?.revoked ? '✗ Revoked' : '✓ Active'}
               </div>
             </div>
-            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, padding: '20px' }}>
+            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: '20px' }}>
               <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Created
               </div>
@@ -249,7 +249,7 @@ export default function MyApplication() {
           </div>
 
           {/* Revoke/un-revoke control */}
-          <div style={{ background: C.ink, color: C.paper, padding: '24px 28px', marginBottom: 32, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ background: C.ink, color: C.paper, padding: '24px 28px', marginBottom: 32, position: 'relative', overflow: 'hidden', borderRadius: R.card }}>
             <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
               <div style={{ flex: 1, minWidth: 240 }}>

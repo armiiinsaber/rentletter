@@ -25,6 +25,11 @@ export const GlobalStyle = () => (
     }
     button, input, textarea, select { font-family: ${FONT.sans}; }
     button { cursor: pointer; border: none; background: none; }
+    /* Zero sharp edges — every control gets a soft radius unless it sets its
+       own inline (pills, circles, and bespoke radii keep theirs since inline
+       styles only override the properties they declare). */
+    button, input, textarea, select { border-radius: ${R.ctrl}px; }
+    input[type="range"] { border-radius: ${R.pill}px; }
     input:focus, textarea:focus, select:focus { outline: none; }
     a { color: inherit; }
     ::selection { background: ${C.red}; color: ${C.paper}; }

@@ -148,6 +148,7 @@ function Stat({ label, value, highlight }) {
     <div style={{
       background: highlight ? '#d72027' : '#1a1a1c',
       padding: '16px 18px',
+      borderRadius: 8,
       borderLeft: highlight ? '3px solid #faf8f3' : '3px solid #d72027',
     }}>
       <div style={{ fontSize: 10, color: highlight ? '#faf8f3' : '#c8c2b3', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, opacity: highlight ? 0.9 : 1 }}>
@@ -166,7 +167,7 @@ function Section({ title, children }) {
       <h2 style={{ fontSize: 11, color: '#d72027', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
         {title}
       </h2>
-      <div style={{ background: '#1a1a1c', padding: '12px 16px' }}>
+      <div style={{ background: '#1a1a1c', padding: '12px 16px', borderRadius: 12 }}>
         {children}
       </div>
     </section>
