@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import ChatWidget from '../components/ChatWidget';
 import { C as THEME, R, SH, EASE, FONT } from '../components/theme';
-import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade } from '../components/ui';
+import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade, useReveal } from '../components/ui';
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 // Shared brand tokens, extended with the legacy "info" keys this page used
@@ -1830,6 +1830,10 @@ export default function LandlordDashboard() {
     localStorage.setItem('landlord_simple_mode', String(simpleMode));
   }, [simpleMode]);
 
+  // Subtle scroll-reveal entrance animations (matches the homepage). Re-scans
+  // whenever the visible content changes. No-ops under prefers-reduced-motion.
+  useReveal(`${view}-${applications.length}-${workspaceLoading}-${signedInEmail}`);
+
   // Reset review queue when applications change OR when entering review mode
   useEffect(() => {
     if (reviewIdx >= applications.length) {
@@ -2884,8 +2888,8 @@ export default function LandlordDashboard() {
   return (
     <>
       <Head>
-        <title>Landlord Dashboard — Rentletter</title>
-        <meta name="description" content="Verify, compare, and rank tenant applications. Free for landlords and realtors." />
+        <title>Realtor Dashboard — Rentletter</title>
+        <meta name="description" content="Verify, compare, and rank tenant applications. Built for realtors." />
       </Head>
       <GlobalStyle />
 
@@ -3283,7 +3287,7 @@ export default function LandlordDashboard() {
             const undecidedCount = applications.length - shortlistedCount - rejectedCount;
 
             return (
-              <section style={{ marginBottom: 8 }}>
+              <section className="rl-reveal" style={{ marginBottom: 8 }}>
                 <div className="rl-card" style={{
                   background: C.ink, color: C.paper, border: 'none',
                   padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)',
@@ -4135,7 +4139,7 @@ export default function LandlordDashboard() {
 
           {/* ── VIEW SWITCHER ────────────────────────────────── */}
           {applications.length > 0 && (
-            <section style={{ marginBottom: 32, borderTop: `1px solid ${C.rule}`, paddingTop: 24 }}>
+            <section className="rl-reveal" style={{ marginBottom: 32, borderTop: `1px solid ${C.rule}`, paddingTop: 24 }}>
 
               {/* SIMPLE / DETAILED MODE TOGGLE */}
               <div style={{
@@ -6029,7 +6033,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
           {/* RIGHT: Landlord Scorecard */}
           <div style={{ padding: 'clamp(16px, 4vw, 28px)', background: C.paper, minWidth: 0 }}>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-              The Landlord Scorecard
+              The Rentletter Scorecard
             </div>
             <p style={{ fontSize: 12, color: C.inkMute, marginBottom: 24, lineHeight: 1.5 }}>
               Calculated by Rentletter from the tenant's inputs. Honest, not promotional.
