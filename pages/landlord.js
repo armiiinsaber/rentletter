@@ -1923,48 +1923,6 @@ export default function LandlordDashboard() {
     }
   };
 
-  // DIAGNOSTIC: Check what the server actually has saved for this user.
-  // Surfaces the result in an alert so we can see if there's a save vs. load mismatch.
-  const checkServerState = async () => {
-    if (!sessionToken) {
-      alert('You must be signed in first.');
-      return;
-    }
-    try {
-      const r = await fetch('/api/landlord/workspace', {
-        method: 'GET',
-        headers: { 'x-rl-session': sessionToken },
-      });
-      const bodyText = await r.text();
-      let json = null;
-      try { json = bodyText ? JSON.parse(bodyText) : null; } catch (e) {}
-      if (!r.ok) {
-        alert(`Server fetch failed: HTTP ${r.status}\n${bodyText?.slice(0, 200) || ''}`);
-        return;
-      }
-      const apps = Array.isArray(json?.applications) ? json.applications : [];
-      const decs = json?.decisions && typeof json.decisions === 'object' ? json.decisions : {};
-      const unitData = json?.unit;
-      const shortlistedCount = apps.filter(a => decs[a.applicationNumber]?.status === 'shortlist').length;
-      const updatedAt = json?.updatedAt ? new Date(json.updatedAt).toLocaleString() : 'never';
-      const localShortlistCount = applications.filter(a => decisions[a.applicationNumber]?.status === 'shortlist').length;
-      alert(
-        `SERVER STATE (signed in as ${signedInEmail}):\n\n` +
-        `Applications on server: ${apps.length}\n` +
-        `Shortlisted on server: ${shortlistedCount}\n` +
-        `Decisions on server: ${Object.keys(decs).length}\n` +
-        `Unit set on server: ${unitData ? 'yes' : 'no'}\n` +
-        `Server last updated: ${updatedAt}\n\n` +
-        `LOCAL STATE (this device):\n\n` +
-        `Applications on this device: ${applications.length}\n` +
-        `Shortlisted on this device: ${localShortlistCount}\n` +
-        `Sync status: ${syncStatus}`
-      );
-    } catch (e) {
-      alert(`Could not check server: ${e?.message || e}`);
-    }
-  };
-
   // ─── LISTINGS MANAGEMENT ────────────────────────
   // Build a default listing wrapping current flat data (used during migration)
   const makeListing = (overrides = {}) => ({
@@ -2782,34 +2740,6 @@ export default function LandlordDashboard() {
     setSendToLandlordLoading(false);
   };
 
-  // ─── DEV: Load demo applications for instant testing ─────────
-  // ─── DEV: Neighborhood-specific demo scenarios ───────────────
-  // Each scenario loads tenants matched to that property type.
-  // Loading a new scenario clears any existing decisions to keep things clean.
-  const loadDemoApplications = (scenario = 'mixed') => {
-    let demos = [];
-
-    if (scenario === 'student') {
-      demos = STUDENT_HOUSING_DEMOS;
-    } else if (scenario === 'luxury') {
-      demos = LUXURY_RENTAL_DEMOS;
-    } else if (scenario === 'family') {
-      demos = FAMILY_HOME_DEMOS;
-    } else if (scenario === 'creative') {
-      demos = CREATIVE_SCENE_DEMOS;
-    } else {
-      demos = MIXED_DEMOS;
-    }
-
-    setApplications(demos);
-    setActiveAppIdx(0);
-    // Loading a new scenario = fresh start. Clear any leftover decisions/review progress.
-    setDecisions({});
-    setReviewIdx(0);
-    setReviewExpanded(false);
-    setView(simpleMode ? 'review' : 'detail');
-  };
-
   // ─── PMC SANDBOX LOADER ───
   // Populates a realistic property-management-company workspace:
   // 3 listings (student, luxury, family), each pre-populated with applicants and decisions.
@@ -2999,10 +2929,6 @@ export default function LandlordDashboard() {
                       Save now
                     </button>
                   )}
-                  <button onClick={checkServerState} className="rl-btn" title="Diagnostic: check what's actually saved on the server"
-                    style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, padding: '6px 10px', fontSize: 12, fontWeight: 600, borderRadius: R.ctrl, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <Icon name="search" size={13} color={C.inkSoft} /> Check
-                  </button>
                   <button onClick={signOut}
                     style={{ background: 'transparent', color: C.inkMute, fontSize: 12.5, textDecoration: 'underline', textUnderlineOffset: 2 }}>
                     Sign out
@@ -3966,23 +3892,9 @@ export default function LandlordDashboard() {
               )}
             </div>
 
-            {/* Sample data loader — single button, single realistic Toronto scenario */}
-            {applications.length === 0 && (
-              <div style={{ marginTop: 14 }}>
-                <button onClick={() => loadDemoApplications('mixed')}
-                  style={{
-                    background: 'transparent', color: C.inkSoft,
-                    border: `1px solid ${C.rule}`,
-                    padding: '12px 18px', fontSize: 13, fontWeight: 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseOver={e => { e.currentTarget.style.borderColor = C.ink; e.currentTarget.style.color = C.ink; }}
-                  onMouseOut={e => { e.currentTarget.style.borderColor = C.rule; e.currentTarget.style.color = C.inkSoft; }}>
-                  Load sample data to explore
-                </button>
-              </div>
-            )}
+            {/* Sample/demo data is never loaded into a signed-in workspace. The
+                only place to explore fake applicants is the homepage demo entry
+                point (→ /landlord?demo=pmc), which runs in a non-syncing sandbox. */}
             {error && (
               <div style={{ marginTop: 12, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
                 {error}

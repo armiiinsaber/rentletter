@@ -843,8 +843,14 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute }}>
-                  The Rentletter dashboard — one workspace per listing.
+                <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span>The Rentletter dashboard — one workspace per listing.</span>
+                  <a href="/demo" className="rl-btn" style={{
+                    color: C.red, fontWeight: 700, textDecoration: 'none',
+                    display: 'inline-flex', alignItems: 'center', gap: 5,
+                  }}>
+                    Explore the live demo <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
+                  </a>
                 </div>
               </div>
             </div>

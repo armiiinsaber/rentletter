@@ -5,8 +5,8 @@
   "devFiles": [],
   "ampDevFiles": [],
   "lowPriorityFiles": [
-    "static/oMKWIfPYN2PIXUE50b0cv/_buildManifest.js",
-    "static/oMKWIfPYN2PIXUE50b0cv/_ssgManifest.js"
+    "static/-C5mnHqpyyoEcjXFEWdJf/_buildManifest.js",
+    "static/-C5mnHqpyyoEcjXFEWdJf/_ssgManifest.js"
   ],
   "rootMainFiles": [],
   "rootMainFilesTree": {},
@@ -16,7 +16,7 @@
       "static/chunks/framework-fa6c84e9c8ad66b6.js",
       "static/chunks/main-a82bb3d43f6099c4.js",
       "static/chunks/597-3238cf599d8a6ef8.js",
-      "static/chunks/pages/index-1029e4832e63b8a8.js"
+      "static/chunks/pages/index-ec261b62c2bdfaf6.js"
     ],
     "/_app": [
       "static/chunks/webpack-8cac0b4b405cede1.js",
@@ -62,7 +62,7 @@
       "static/chunks/framework-fa6c84e9c8ad66b6.js",
       "static/chunks/main-a82bb3d43f6099c4.js",
       "static/chunks/597-3238cf599d8a6ef8.js",
-      "static/chunks/pages/landlord-48d57864e4360320.js"
+      "static/chunks/pages/landlord-1e14d7857192ed14.js"
     ],
     "/my-application": [
       "static/chunks/webpack-8cac0b4b405cede1.js",

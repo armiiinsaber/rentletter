@@ -93,15 +93,15 @@
   "dataRoutes": [
     {
       "page": "/admin/stats",
-      "dataRouteRegex": "^/_next/data/oMKWIfPYN2PIXUE50b0cv/admin/stats\\.json$"
+      "dataRouteRegex": "^/_next/data/\\-C5mnHqpyyoEcjXFEWdJf/admin/stats\\.json$"
     },
     {
       "page": "/demo",
-      "dataRouteRegex": "^/_next/data/oMKWIfPYN2PIXUE50b0cv/demo\\.json$"
+      "dataRouteRegex": "^/_next/data/\\-C5mnHqpyyoEcjXFEWdJf/demo\\.json$"
     },
     {
       "page": "/realtors",
-      "dataRouteRegex": "^/_next/data/oMKWIfPYN2PIXUE50b0cv/realtors\\.json$"
+      "dataRouteRegex": "^/_next/data/\\-C5mnHqpyyoEcjXFEWdJf/realtors\\.json$"
     }
   ],
   "rsc": {
