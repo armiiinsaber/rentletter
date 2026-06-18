@@ -2228,11 +2228,16 @@ export default function LandlordDashboard() {
   // Send a sign-in request. The server returns a session token immediately so THIS device
   // is signed in without needing the email. The email is also sent so the user can sign in
   // on OTHER devices later (phone, etc.)
+  // Frontend email validation for the sign-in screen. Trim + standard format
+  // regex; the server still re-validates. Used to gate the "Sign in" button.
+  const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e || '').trim());
+  const signinEmailValid = isValidEmail(signinEmailInput);
+
   const requestSigninLink = async () => {
     setSigninError('');
     const cleaned = String(signinEmailInput || '').trim();
-    if (!cleaned || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleaned)) {
-      setSigninError('Enter a valid email.');
+    if (!isValidEmail(cleaned)) {
+      setSigninError('Enter a valid email address.');
       return;
     }
     setSigninLoading(true);
@@ -3051,20 +3056,20 @@ export default function LandlordDashboard() {
                       textAlign: 'center',
                     }}
                   />
-                  {signinError && (
+                  {(signinError || (signinEmailInput.trim() && !signinEmailValid)) && (
                     <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink, textAlign: 'left' }}>
-                      {signinError}
+                      {signinError || 'Enter a valid email address.'}
                     </div>
                   )}
                   <button
                     onClick={requestSigninLink}
-                    disabled={signinLoading || !signinEmailInput}
+                    disabled={signinLoading || !signinEmailValid}
                     style={{
                       width: '100%',
-                      background: (signinLoading || !signinEmailInput) ? '#c8c2b3' : C.red,
+                      background: (signinLoading || !signinEmailValid) ? '#c8c2b3' : C.red,
                       color: C.paper, border: 'none', padding: '18px',
                       fontSize: 16, fontWeight: 700,
-                      cursor: (signinLoading || !signinEmailInput) ? 'not-allowed' : 'pointer',
+                      cursor: (signinLoading || !signinEmailValid) ? 'not-allowed' : 'pointer',
                       letterSpacing: '0.01em', minHeight: 56,
                     }}>
                     {signinLoading ? 'Signing you in...' : 'Sign in →'}
@@ -4946,20 +4951,20 @@ export default function LandlordDashboard() {
                     outline: 'none', marginBottom: 14,
                   }}
                 />
-                {signinError && (
+                {(signinError || (signinEmailInput.trim() && !signinEmailValid)) && (
                   <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
-                    {signinError}
+                    {signinError || 'Enter a valid email address.'}
                   </div>
                 )}
                 <button
                   onClick={requestSigninLink}
-                  disabled={signinLoading || !signinEmailInput}
+                  disabled={signinLoading || !signinEmailValid}
                   style={{
                     width: '100%',
-                    background: (signinLoading || !signinEmailInput) ? '#c8c2b3' : C.red,
+                    background: (signinLoading || !signinEmailValid) ? '#c8c2b3' : C.red,
                     color: C.paper, border: 'none', padding: '16px',
                     fontSize: 15, fontWeight: 700,
-                    cursor: (signinLoading || !signinEmailInput) ? 'not-allowed' : 'pointer',
+                    cursor: (signinLoading || !signinEmailValid) ? 'not-allowed' : 'pointer',
                     letterSpacing: '0.01em',
                   }}>
                   {signinLoading ? 'Signing you in...' : 'Sign in →'}
