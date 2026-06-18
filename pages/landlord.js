@@ -3404,8 +3404,59 @@ export default function LandlordDashboard() {
             );
           })()}
 
-          {/* ── INTRO HERO — red full-bleed magazine cover when empty ── */}
-          {!workspaceLoading && applications.length === 0 && (
+          {/* ── GUIDED ONBOARDING — signed-in realtor with no applicants yet ── */}
+          {sessionToken && realtorProfile.isRealtor && applications.length === 0 && !workspaceLoading && (
+            <section className="rl-reveal" style={{ marginBottom: 28 }}>
+              <div className="rl-card" style={{ overflow: 'hidden' }}>
+                <div style={{ padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)', borderBottom: `1px solid ${C.rule}` }}>
+                  <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
+                    Getting started
+                  </div>
+                  <h2 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 10 }}>
+                    {activeListingId ? 'Share your invite link to get applicants.' : 'Add your first listing.'}
+                  </h2>
+                  <p style={{ fontSize: 'clamp(14px, 3vw, 16px)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 560, marginBottom: 22 }}>
+                    {activeListingId
+                      ? 'Your listing is set up. Send its invite link to prospective tenants — their applications will appear here automatically.'
+                      : 'A listing holds one unit, its invite link, and every application that comes in. Create one to get your shareable link.'}
+                  </p>
+                  <button
+                    onClick={() => activeListingId ? setPreferencesOpen(true) : createNewListing()}
+                    className="rl-btn"
+                    style={{
+                      background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl,
+                      padding: '15px 26px', fontSize: 15, fontWeight: 700, cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 9, minHeight: 52,
+                    }}>
+                    <Icon name="plus" size={17} />
+                    {activeListingId ? 'Open listing setup' : 'Add your first listing'}
+                  </button>
+                </div>
+                {/* How it works — four steps */}
+                <ol style={{ listStyle: 'none', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 0, margin: 0 }}>
+                  {[
+                    { n: '1', t: 'Add a listing', d: 'Enter the unit address, rent, and your landlord client\'s preferences.' },
+                    { n: '2', t: 'Share the invite link', d: 'Send one link to prospective tenants. No accounts needed.' },
+                    { n: '3', t: 'Applicants appear here', d: 'Standardized applications land in this dashboard automatically.' },
+                    { n: '4', t: 'Review & shortlist', d: 'Mark your top picks, add notes, and send a report to your landlord.' },
+                  ].map((s, i) => (
+                    <li key={s.n} style={{
+                      padding: 'clamp(18px, 4vw, 24px) clamp(20px, 4vw, 28px)',
+                      borderTop: `1px solid ${C.rule}`,
+                      borderLeft: i % 2 === 1 ? `1px solid ${C.rule}` : 'none',
+                    }}>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', marginBottom: 8 }}>STEP {s.n}</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{s.t}</div>
+                      <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>{s.d}</div>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </section>
+          )}
+
+          {/* ── INTRO HERO — red full-bleed magazine cover (logged-out visitors) ── */}
+          {!sessionToken && !workspaceLoading && applications.length === 0 && (
             <section style={{ background: C.red, color: C.paper, position: 'relative', overflow: 'hidden', marginBottom: 0, borderRadius: R.card }}>
               {/* Oversized number decorations */}
               <div style={{
@@ -3481,8 +3532,8 @@ export default function LandlordDashboard() {
             </section>
           )}
 
-          {/* ── How it works (only when no apps loaded) ── */}
-          {!workspaceLoading && applications.length === 0 && (
+          {/* ── How it works (logged-out visitors, no apps loaded) ── */}
+          {!sessionToken && !workspaceLoading && applications.length === 0 && (
             <section style={{ padding: '48px 32px 40px', maxWidth: 860, margin: '0 auto' }}>
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 24 }}>
                 Getting started
