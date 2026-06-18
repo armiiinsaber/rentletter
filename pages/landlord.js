@@ -1994,16 +1994,20 @@ export default function LandlordDashboard() {
     setWelcomeBackDismissed(false); // re-show welcome for new context
   };
 
-  // Create a new empty listing and switch to it
-  const createNewListing = (name) => {
+  // "New listing" → open the Listing Setup modal in CREATE mode. A draft listing
+  // is created up-front and switched to (so the modal's existing unit/preferences
+  // bindings work), but Cancel discards it entirely — so cancelling creates
+  // nothing, and only Save (gated on address + rent + bedrooms) keeps it.
+  const createNewListing = () => {
     // Save current state to the current listing first
     const updatedListings = listings.map(l =>
       l.id === activeListingId
         ? { ...l, applications, decisions, unit }
         : l
     );
-    const newListing = makeListing({ name: name || `Listing ${listings.length + 1}` });
+    const newListing = makeListing({ name: 'New listing' });
     setListings([...updatedListings, newListing]);
+    setPreCreateListingId(activeListingId);
     setActiveListingId(newListing.id);
     setApplications([]);
     setDecisions({});
@@ -2012,6 +2016,47 @@ export default function LandlordDashboard() {
     setView('review');
     setListingsSwitcherOpen(false);
     setWelcomeBackDismissed(true); // skip welcome for empty new listing
+    setCreatingListing(true);
+    setPreferencesOpen(true);
+  };
+
+  // Commit the draft listing created by "New listing" (unit is already mirrored
+  // into the listing by the auto-sync effect; just name it from its address).
+  const saveListingSetup = () => {
+    if (creatingListing) {
+      const name = (unit.address && unit.address.trim()) ? unit.address.trim() : 'New listing';
+      setListings(prev => prev.map(l => l.id === activeListingId ? { ...l, name, unit } : l));
+      setCreatingListing(false);
+      setPreCreateListingId(null);
+      setWelcomeBackDismissed(false); // show the guided dashboard for the new listing
+    }
+    setPreferencesOpen(false);
+  };
+
+  // Close the Listing Setup modal. In create mode this discards the draft listing
+  // and restores the previously-active listing, so cancelling creates nothing.
+  const cancelListingSetup = () => {
+    if (creatingListing) {
+      const remaining = listings.filter(l => l.id !== activeListingId);
+      setListings(remaining);
+      const restore = remaining.find(l => l.id === preCreateListingId) || remaining[remaining.length - 1] || null;
+      if (restore) {
+        setActiveListingId(restore.id);
+        setApplications(restore.applications || []);
+        setDecisions(restore.decisions || {});
+        setUnit(restore.unit || { address: '', monthlyRent: '', bedrooms: '', allowsPets: 'any', allowsSmoking: 'no', parkingIncluded: 'no' });
+      } else {
+        setActiveListingId(null);
+        setApplications([]);
+        setDecisions({});
+        setUnit({ address: '', monthlyRent: '', bedrooms: '', allowsPets: 'any', allowsSmoking: 'no', parkingIncluded: 'no' });
+      }
+      setReviewIdx(0);
+      setView('review');
+      setCreatingListing(false);
+      setPreCreateListingId(null);
+    }
+    setPreferencesOpen(false);
   };
 
   // Rename a listing
@@ -2454,6 +2499,12 @@ export default function LandlordDashboard() {
 
   // ── Landlord preferences modal state ──
   const [preferencesOpen, setPreferencesOpen] = useState(false);
+  // When the preferences modal is opened in CREATE mode (via "New listing"),
+  // a draft listing is created up-front; Cancel discards it (so cancel = create
+  // nothing) and Save commits it. preCreateListingId remembers which listing to
+  // restore to if the user cancels.
+  const [creatingListing, setCreatingListing] = useState(false);
+  const [preCreateListingId, setPreCreateListingId] = useState(null);
 
   // ── Account status (founder / trial / lapsed) ──
   // Fetched after sign-in. Drives the dashboard banner + paywall.
@@ -4277,7 +4328,7 @@ export default function LandlordDashboard() {
           const activeListing = listings.find(l => l.id === activeListingId);
           return (
             <div
-              onClick={() => setPreferencesOpen(false)}
+              onClick={cancelListingSetup}
               style={{
                 position: 'fixed', inset: 0,
                 background: 'rgba(15, 15, 16, 0.5)',
@@ -4296,11 +4347,16 @@ export default function LandlordDashboard() {
                 {/* Header */}
                 <div style={{ padding: 'clamp(20px, 4vw, 28px)', borderBottom: `1px solid ${C.rule}` }}>
                   <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
-                    Listing setup
+                    {creatingListing ? 'New listing' : 'Listing setup'}
                   </div>
                   <h3 style={{ fontSize: 'clamp(20px, 4vw, 26px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 0, lineHeight: 1.2 }}>
                     Unit basics and landlord preferences
                   </h3>
+                  {creatingListing && (
+                    <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
+                      Add the unit's address, monthly rent, and bedrooms to create the listing. Cancel won't create anything.
+                    </p>
+                  )}
                 </div>
 
                 {/* UNIT BASICS */}
@@ -4537,9 +4593,13 @@ export default function LandlordDashboard() {
                 </div>
 
                 {/* Footer */}
+                {(() => {
+                  // In create mode, require address + monthly rent + bedrooms before the listing can be saved.
+                  const canSave = !creatingListing || !!(unit.address && unit.address.trim() && unit.monthlyRent && unit.bedrooms && String(unit.bedrooms).trim());
+                  return (
                 <div style={{ padding: 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                   <button
-                    onClick={() => setPreferencesOpen(false)}
+                    onClick={cancelListingSetup}
                     style={{
                       background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`,
                       padding: '12px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer',
@@ -4547,14 +4607,19 @@ export default function LandlordDashboard() {
                     Cancel
                   </button>
                   <button
-                    onClick={() => setPreferencesOpen(false)}
+                    onClick={saveListingSetup}
+                    disabled={!canSave}
+                    title={canSave ? '' : 'Add address, monthly rent, and bedrooms first'}
                     style={{
-                      background: C.red, color: C.paper, border: 'none',
-                      padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                      background: canSave ? C.red : C.ruleDark, color: C.paper, border: 'none',
+                      padding: '12px 24px', fontSize: 13, fontWeight: 700,
+                      cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.7,
                     }}>
-                    Save
+                    {creatingListing ? 'Create listing' : 'Save'}
                   </button>
                 </div>
+                  );
+                })()}
               </div>
             </div>
           );
