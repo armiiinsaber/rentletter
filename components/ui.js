@@ -14,15 +14,23 @@ export const GlobalStyle = () => (
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+      -webkit-text-size-adjust: 100%;
+    }
     body {
       background: ${C.paper};
       color: ${C.ink};
       font-family: ${FONT.sans};
       overflow-x: hidden;
+      max-width: 100%;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
     }
+    #__next { overflow-x: hidden; max-width: 100%; }
+    /* Media never forces the page wider than the viewport */
+    img, svg, video, canvas, iframe { max-width: 100%; }
     button, input, textarea, select { font-family: ${FONT.sans}; }
     button { cursor: pointer; border: none; background: none; }
     /* Zero sharp edges — every control gets a soft radius unless it sets its
