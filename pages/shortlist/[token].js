@@ -707,13 +707,13 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
         </button>
         {a.tenant?.email && (
           <a href={`mailto:${a.tenant.email}`}
-            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
             ✉ Email candidate
           </a>
         )}
         {a.tenant?.phone && (
           <a href={`tel:${a.tenant.phone}`}
-            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
             📞 Call candidate
           </a>
         )}

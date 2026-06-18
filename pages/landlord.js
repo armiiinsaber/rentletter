@@ -3306,7 +3306,7 @@ export default function LandlordDashboard() {
             const undecidedCount = applications.length - shortlistedCount - rejectedCount;
 
             return (
-              <section style={{ marginBottom: 32 }}>
+              <section style={{ marginBottom: 8 }}>
                 <div className="rl-card" style={{
                   background: C.ink, color: C.paper, border: 'none',
                   padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)',
@@ -3345,6 +3345,10 @@ export default function LandlordDashboard() {
                     gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))',
                     gap: 10, marginBottom: 24, maxWidth: 540,
                   }}>
+                    <div style={{ padding: '14px 16px', background: '#1a1a1c', borderRadius: R.ctrl, borderLeft: `3px solid ${C.inkInverse}` }}>
+                      <div className="rl-serif" style={{ fontSize: 28, color: C.paper, lineHeight: 1 }}>{applications.length}</div>
+                      <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 5, letterSpacing: '0.06em' }}>APPLICANTS</div>
+                    </div>
                     <div style={{ padding: '14px 16px', background: '#1a1a1c', borderRadius: R.ctrl, borderLeft: `3px solid ${C.green}` }}>
                       <div className="rl-serif" style={{ fontSize: 28, color: C.green, lineHeight: 1 }}>{shortlistedCount}</div>
                       <div style={{ fontSize: 11, color: '#c8c2b3', marginTop: 5, letterSpacing: '0.06em' }}>SHORTLISTED</div>
@@ -3538,7 +3542,7 @@ export default function LandlordDashboard() {
           {/* Hidden when trial has lapsed — banner above explains how to subscribe */}
           {!workspaceLoading && !(accountStatus?.locked) && (
           <>
-          <div style={{ padding: applications.length === 0 ? '0 32px 80px' : '40px 32px 80px' }}>
+          <div style={{ padding: applications.length === 0 ? '0 clamp(16px, 4vw, 32px) 40px' : '20px clamp(16px, 4vw, 32px) 0' }}>
 
           {/* ── HUMAN RIGHTS / COMPLIANCE — collapsed, unobtrusive ── */}
           <section style={{ marginBottom: 20 }}>
@@ -5164,6 +5168,10 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
           gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
           gap: 12, maxWidth: 520, margin: '0 auto 32px',
         }}>
+          <div style={{ padding: '18px 14px', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `4px solid ${C.ink}` }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color: C.ink }}>{total}</div>
+            <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, marginTop: 2 }}>Applicants</div>
+          </div>
           <div style={{ padding: '18px 14px', background: '#f0f7f3', borderRadius: R.ctrl, borderLeft: `4px solid ${C.green}` }}>
             <div style={{ fontSize: 28, fontWeight: 800, color: C.green }}>{shortlistedCount}</div>
             <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, marginTop: 2 }}>Shortlisted</div>
@@ -5336,15 +5344,15 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
           </div>
         )}
 
-        {/* Quick contact row */}
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 20 }}>
+        {/* Quick contact row — balanced, full-width action buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, marginBottom: 20 }}>
           {app.tenant?.phone && (
             <a href={`tel:${app.tenant.phone.replace(/\D/g, '')}`}
               style={{
                 background: C.ink, color: C.paper, textDecoration: 'none',
                 padding: '12px 18px', fontSize: 15, fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                minHeight: 44,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                minHeight: 48, borderRadius: R.ctrl,
               }}>
               📞 Call {app.tenant.phone}
             </a>
@@ -5356,8 +5364,8 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
                 border: `1px solid ${C.ink}`,
                 textDecoration: 'none',
                 padding: '11px 18px', fontSize: 15, fontWeight: 600,
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                minHeight: 44,
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                minHeight: 48, borderRadius: R.ctrl,
               }}>
               ✉ Email
             </a>
@@ -5723,6 +5731,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
                     background: C.ink, color: C.paper, textDecoration: 'none',
                     padding: '8px 14px', fontSize: 13, fontWeight: 600,
                     display: 'inline-flex', alignItems: 'center', gap: 6,
+                    borderRadius: R.ctrl,
                   }}>
                   📞 {app.tenant.phone}
                 </a>
@@ -5734,6 +5743,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
                     border: `1px solid ${C.ink}`,
                     padding: '7px 14px', fontSize: 13, fontWeight: 600,
                     display: 'inline-flex', alignItems: 'center', gap: 6,
+                    borderRadius: R.ctrl,
                   }}>
                   ✉ Email
                 </a>
@@ -6470,8 +6480,8 @@ function RankedView({ applications, weights, setWeights, onRemove }) {
         </div>
         {/* Active preset description — fixed slot below, doesn't shift the grid */}
         <p style={{
-          marginTop: 14, fontSize: 13, color: C.inkSoft,
-          fontStyle: 'italic', lineHeight: 1.5,
+          margin: '16px auto', maxWidth: 560, fontSize: 13, color: C.inkSoft,
+          fontStyle: 'italic', lineHeight: 1.5, textAlign: 'center',
           minHeight: 36,
         }}>
           {activePreset === 'custom'
