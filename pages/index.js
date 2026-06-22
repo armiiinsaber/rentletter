@@ -65,9 +65,11 @@ const HERO_APPLICANTS = [
   { id: 'sarah', initials: 'SC', color: '#b07818', name: 'Sarah Chen',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Income 30% of rent', true], ['Non-smoker', true]] },
   { id: 'james', initials: 'JO', color: '#3a6ea5', name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income comfortably clears', true], ['Tenure under 2 yrs', false]] },
   { id: 'priya', initials: 'PN', color: '#2d7d4a', name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income comfortably clears', true], ['5 yrs at employer', true]] },
+  { id: 'david', initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Income clears 30%', true], ['4 yr tenure', true]] },
+  { id: 'amara', initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['Income meets minimum', true], ['New to the city', false]] },
 ];
-const HERO_ARRIVAL = ['sarah', 'james', 'priya'];                 // as they applied
-const HERO_RANKED  = ['priya', 'james', 'sarah'];                 // by score, desc
+const HERO_ARRIVAL = ['sarah', 'james', 'priya'];                 // as they applied (review scene)
+const HERO_RANKED  = ['priya', 'james', 'sarah', 'david', 'amara']; // by score, desc (top 5)
 const HERO_BY_ID = Object.fromEntries(HERO_APPLICANTS.map(a => [a.id, a]));
 
 function HeroAvatar({ a, size = 30 }) {
@@ -172,15 +174,16 @@ function HeroDemo() {
         })}
       </div>
 
-      {/* ── SHORTLIST SCENE ── */}
+      {/* ── SHORTLIST SCENE ── (tighter gap so all 5 rows + the send bar fit cleanly) */}
       <div style={{
         ...sceneBase,
+        gap: 'clamp(6px, 1.3%, 9px)',
         opacity: shortlistVisible ? 1 : 0,
         transform: shortlistVisible ? 'none' : 'translateY(6px)',
         pointerEvents: 'none',
       }} aria-hidden={!shortlistVisible}>
         <div style={head}>
-          <span style={eyebrow}>Your shortlist · top 3</span>
+          <span style={eyebrow}>Your shortlist · top 5</span>
           <span style={{ fontSize: 'clamp(8px, 2.2vw, 10px)', color: C.green, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${C.green}`, borderRadius: R.pill, padding: '1px 7px' }}>Ranked</span>
         </div>
         <div style={{ height: 1, background: C.rule }} />
@@ -210,9 +213,9 @@ function HeroDemo() {
             </div>
           );
         })}
-        {/* Send-to-landlord bar */}
+        {/* Send-to-landlord bar — sits directly under the 5 ranked rows (no dead gap above). */}
         <div style={{
-          marginTop: 'auto', background: C.ink, color: C.paper, borderRadius: R.ctrl,
+          background: C.ink, color: C.paper, borderRadius: R.ctrl,
           padding: 'clamp(7px, 2%, 10px) clamp(10px, 2.6%, 14px)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         }}>
@@ -872,7 +875,7 @@ export default function Home() {
                       </div>
                     </div>
                     {/* Animated, looping product demo — built in code (no screenshot) */}
-                    <div style={{ aspectRatio: '4 / 3', position: 'relative', overflow: 'hidden', background: `linear-gradient(160deg, ${C.card}, ${C.paperDeep})` }}>
+                    <div style={{ aspectRatio: '4 / 3', minHeight: 372, maxHeight: 408, position: 'relative', overflow: 'hidden', background: `linear-gradient(160deg, ${C.card}, ${C.paperDeep})` }}>
                       <HeroDemo />
                     </div>
                   </div>
