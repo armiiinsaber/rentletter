@@ -1607,10 +1607,10 @@ export default function LandlordDashboard() {
   const [realtorEditOpen, setRealtorEditOpen] = useState(false);
 
   // ── DEMO/SANDBOX MODE ──
-  // This page IS the public sample dashboard (/demo/dashboard). It is demo-only:
-  // demo mode is ON from the first render so the sign-in gate never shows, and
-  // the sample tenants are loaded client-side with NO session, NO Supabase, and
-  // NO redirect. The real realtor dashboard lives at /landlord.
+  // This page IS the public sample dashboard (/demo/dashboard). Demo mode is ON
+  // from the first render so the sign-in gate never shows AND the dashboard content
+  // wrapper (which requires session/loading/demo) renders; the mount effect then
+  // loads the sample tenants client-side, with NO session, NO Supabase, NO redirect.
   const [demoMode, setDemoMode] = useState(true);
 
   // ── AI rationale generation state ──
@@ -2991,8 +2991,9 @@ export default function LandlordDashboard() {
             </section>
           )}
 
-          {/* All dashboard content below only renders when signed in OR loading */}
-          {(sessionToken || workspaceLoading) && (
+          {/* All dashboard content below only renders when signed in, loading, OR
+              in demo mode (the /demo sample dashboard has no session). */}
+          {(sessionToken || workspaceLoading || demoMode) && (
           <>
 
           {/* ── JUST-SIGNED-IN CELEBRATION ──────────────── */}
