@@ -1,0 +1,112 @@
+// pages/signup.js
+// Realtor sign up (email + password) via Supabase Auth. Email confirmation is
+// ON, so on success we show a "check your email" state. The confirmation link
+// routes through /auth/callback, which establishes the session and lands on the
+// dashboard. The DB trigger creates the profile + assigns founder/trial on
+// confirmation.
+import { useState } from 'react';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
+import { isValidEmail } from '../lib/validation';
+import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
+import { C } from '../components/theme';
+
+export default function SignUp() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [touched, setTouched] = useState(false);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const emailValid = isValidEmail(email);
+  const passwordValid = password.length >= 8;
+  const canSubmit = emailValid && passwordValid && !loading;
+
+  const submit = async (e) => {
+    e?.preventDefault();
+    setTouched(true);
+    if (!canSubmit) return;
+    setLoading(true);
+    setError('');
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const emailRedirectTo = `${window.location.origin}/auth/callback?next=/landlord`;
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: { emailRedirectTo },
+      });
+      if (signUpError) {
+        setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+      // With confirmation ON, no session is returned until the email is confirmed.
+      // (If the email already exists, Supabase returns an obfuscated identities-empty user.)
+      if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+        setError('An account with this email already exists. Try signing in instead.');
+        setLoading(false);
+        return;
+      }
+      setSent(true);
+      setLoading(false);
+    } catch (err) {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <AuthShell
+        title="Confirm your email"
+        eyebrow="Almost there"
+        heading="Check your email."
+        sub="We sent a confirmation link to your inbox. Click it to activate your account and sign in."
+        footer={<>Wrong address? <a href="/signup" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Start over</a></>}
+      >
+        <div style={authNoticeStyle}>
+          Confirmation sent to <strong>{email.trim()}</strong>. The link expires soon — if it doesn't arrive, check spam or try again.
+        </div>
+        <a href="/signin" style={{ ...authButtonStyle(true), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
+          Go to sign in
+        </a>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell
+      title="Sign up"
+      eyebrow="Realtor dashboard"
+      heading="Create your account."
+      sub="Organize your applicants, shortlist your top picks, and send a polished report to your landlord client."
+      footer={<>Already have an account? <a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Sign in</a></>}
+    >
+      <form onSubmit={submit} noValidate>
+        {error && <div style={authErrorStyle}>{error}</div>}
+        <label style={{ ...authLabelStyle, marginTop: 0 }} htmlFor="email">Email</label>
+        <input
+          id="email" type="email" inputMode="email" autoComplete="email"
+          value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => setTouched(true)}
+          placeholder="you@brokerage.com" style={authInputStyle}
+        />
+        {touched && email.trim() && !emailValid && (
+          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Enter a valid email address.</div>
+        )}
+        <label style={authLabelStyle} htmlFor="password">Password</label>
+        <input
+          id="password" type="password" autoComplete="new-password"
+          value={password} onChange={(e) => setPassword(e.target.value)} onBlur={() => setTouched(true)}
+          placeholder="At least 8 characters" style={authInputStyle}
+        />
+        {touched && password.length > 0 && !passwordValid && (
+          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Use at least 8 characters.</div>
+        )}
+        <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
+          {loading ? 'Creating account…' : 'Create account →'}
+        </button>
+      </form>
+    </AuthShell>
+  );
+}
