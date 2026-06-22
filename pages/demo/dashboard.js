@@ -21,1501 +21,221 @@ const C = {
 // Each scenario represents 8 applicants you'd see for that property type.
 // ════════════════════════════════════════════════════════════
 
-const STUDENT_HOUSING_DEMOS = [
+// ════════════════════════════════════════════════════════════
+// DEMO DATA — a believable, MIXED cross-section of Canadian renters.
+// Demo-only (sample data shown on /demo/dashboard). Same field shape the
+// dashboard already renders. Respectful, non-stereotyped; varied occupation,
+// income, age, household type, employer and neighbourhood.
+// ════════════════════════════════════════════════════════════
+const MIXED_RENTERS = [
   {
-    applicationNumber: 'RL-2026-STU-001', createdAt: new Date().toISOString(),
-    email: 'aisha.khan@email.com',
-    tenant: { fullName: 'Aisha Khan', age: '24', dateOfBirth: '2001-06-30', phone: '(437) 555-0991' },
-    employment: { jobTitle: 'PhD Candidate + Research Assistant', employer: 'University of Toronto', yearsAtJob: '2', annualIncome: 42000, monthlyIncome: 3500 },
-    rental: { previousAddress: '40 Harbord Street, Toronto', yearsAtPrevious: '2', previousLandlordName: 'Andrew Singh', previousLandlordContact: '416-555-0102', currentRent: 1100 },
-    apartment: { address: '212 Madison Avenue, Toronto', description: 'Bachelor near UofT, $1,400/mo', estimatedRent: 1400, rentToIncomeRatio: 40 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Starting third year of PhD, current shared housing situation ending.' },
+    applicationNumber: 'RL-2026-1A2B-3C4D', createdAt: new Date(Date.now() - 86400000 * 1).toISOString(),
+    email: 'priya.sharma@email.com',
+    tenant: { fullName: 'Priya Sharma', age: '31', dateOfBirth: '1994-08-14', phone: '(416) 555-0142' },
+    employment: { jobTitle: 'Registered Nurse', employer: 'Sunnybrook Health Sciences Centre', yearsAtJob: '5', annualIncome: 92000, monthlyIncome: 7667 },
+    rental: { previousAddress: '54 Boston Ave, Toronto', yearsAtPrevious: '4', previousLandlordName: 'Gail Mercer', previousLandlordContact: '416-555-0110', currentRent: 1950 },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 34 },
+    move: { moveInDate: 'October 1, 2026', reasonForMoving: 'Current building is being sold; looking for a longer-term home closer to the hospital.' },
     household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
     coApplicant: null,
-    lifestyle: { personality: 'Quiet, mostly at lab or library. No parties, non-drinker.', pets: null },
-    vehicle: null,
+    lifestyle: { personality: 'Quiet, works rotating shifts. Keeps to herself, tidy.', pets: 'One indoor cat, spayed, vet records available' },
+    vehicle: { makeModel: 'Honda Civic', year: '2019' },
     references: [
-          { name: 'Dr. Hiroshi Tanaka', relationship: 'PhD supervisor, UofT', contact: 'h.tanaka@utoronto.ca' },
-          { name: 'Andrew Singh', relationship: 'Previous landlord (2 years)', contact: '416-555-0102' }
-        ],
-    disclosures: 'Income reflects PhD stipend. Parents in Karachi co-signing as guarantors with verified assets, documentation available.',
-    scorecard: {
-      incomeStability: { score: 4, note: 'PhD funding confirmed through 2028' },
-      rentAffordability: { score: 3, note: '40% of stipend, but guarantor provided' },
-      rentalHistory: { score: 5, note: '2 years with previous landlord reference' },
-      longTermIntent: { score: 5, note: 'PhD program 3+ more years in Toronto' },
-      disclosures: { score: 4, note: 'Income limitation addressed with guarantor' },
-      overall: 4.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-STU-002', createdAt: new Date().toISOString(),
-    email: 'mohammed.alrashid@email.com',
-    tenant: { fullName: 'Mohammed Al-Rashid', age: '21', dateOfBirth: '2004-03-12', phone: '(647) 555-0512' },
-    employment: { jobTitle: 'Undergraduate Student (Computer Science, Year 3)', employer: 'University of Toronto', yearsAtJob: '3', annualIncome: 18000, monthlyIncome: 1500 },
-    rental: { previousAddress: 'Family home, Mississauga', yearsAtPrevious: '21', previousLandlordName: 'N/A — parents home', previousLandlordContact: null, currentRent: null },
-    apartment: { address: '395 Huron Street, Toronto', description: 'Shared 3BR near UofT, $950/room', estimatedRent: 950, rentToIncomeRatio: 63 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Moving out of family home for first time to be closer to campus for senior-year coursework.' },
-    household: { numberOfOccupants: '3', occupantsDetails: 'Two confirmed roommates (signed application separately)', smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Studious. Mostly at the library or coding. Religious observance, no parties.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Dr. Sarah Lin', relationship: 'Academic advisor, UofT CS', contact: 's.lin@utoronto.ca' },
-          { name: 'Hassan Al-Rashid', relationship: 'Father (guarantor)', contact: '905-555-0388' }
-        ],
-    disclosures: 'First-time renter. Father co-signing as guarantor — civil engineer, 22 years at SNC-Lavalin, full income documentation available.',
-    scorecard: {
-      incomeStability: { score: 2, note: 'Part-time TA income only — relies on parental support' },
-      rentAffordability: { score: 3, note: 'Room rent 63% of own income, but guarantor + parents covering' },
-      rentalHistory: { score: 3, note: 'First-time renter, alternative documentation' },
-      longTermIntent: { score: 4, note: '1 year through graduation, possibly longer for grad school' },
-      disclosures: { score: 5, note: 'Guarantor proactively offered' },
-      overall: 3.4,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-STU-003', createdAt: new Date().toISOString(),
-    email: 'emily.park@email.com',
-    tenant: { fullName: 'Emily Park', age: '22', dateOfBirth: '2003-11-08', phone: '(416) 555-0119' },
-    employment: { jobTitle: "Master\'s Student + TA", employer: 'University of Toronto', yearsAtJob: '1', annualIncome: 32000, monthlyIncome: 2667 },
-    rental: { previousAddress: '256 McCaul Street, Toronto', yearsAtPrevious: '4', previousLandlordName: 'Christine Mok', previousLandlordContact: '416-555-0245', currentRent: 1300 },
-    apartment: { address: '108 Howland Avenue, Toronto', description: '1BR basement near UofT, $1,500/mo', estimatedRent: 1500, rentToIncomeRatio: 56 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Starting Masters program at OISE — current basement apartment lease ending.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Quiet, studious. Cooks at home most nights. Generally home in evenings.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Christine Mok', relationship: 'Previous landlord (4 years undergrad)', contact: '416-555-0245' },
-          { name: 'Prof. Rajesh Kumar', relationship: 'OISE program advisor', contact: 'r.kumar@oise.utoronto.ca' }
-        ],
-    disclosures: 'Income reflects TA stipend + part-time work. OSAP loan covering tuition. Strong rental history of 4 years.',
-    scorecard: {
-      incomeStability: { score: 3, note: 'TA stipend + part-time work, ~$32K total' },
-      rentAffordability: { score: 2, note: '56% of monthly income — needs guarantor or co-signer' },
-      rentalHistory: { score: 5, note: '4 years with same previous landlord' },
-      longTermIntent: { score: 4, note: '2-year Masters program' },
-      disclosures: { score: 4, note: 'Income limitation acknowledged' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-STU-004', createdAt: new Date().toISOString(),
-    email: 'liam.oconnor@email.com',
-    tenant: { fullName: "Liam O'Connor", age: '20', dateOfBirth: '2005-04-22', phone: '(437) 555-0744' },
-    employment: { jobTitle: 'Undergraduate Student (Engineering, Year 2)', employer: 'University of Toronto', yearsAtJob: '2', annualIncome: 22000, monthlyIncome: 1833 },
-    rental: { previousAddress: 'Residence — Chestnut Hall', yearsAtPrevious: '1', previousLandlordName: 'UofT Residence Services', previousLandlordContact: 'res.life@utoronto.ca', currentRent: 1600 },
-    apartment: { address: '550 Spadina Avenue, Toronto', description: '2BR shared, $1,150/room', estimatedRent: 1150, rentToIncomeRatio: 63 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Moving out of residence into shared apartment with classmate.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'Sharing with classmate Tom Riley (separate application)', smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Studious engineer. Co-op term in 2026, will work 4 months that year.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'UofT Residence Don', relationship: 'Residence supervisor', contact: 'res.life@utoronto.ca' },
-          { name: 'Dr. James Reed', relationship: 'Academic advisor', contact: 'j.reed@utoronto.ca' }
-        ],
-    disclosures: 'First-time apartment renter (came from residence). Co-op income starting Sept 2026 expected to add $20K. Mother co-signing as guarantor.',
-    scorecard: {
-      incomeStability: { score: 2, note: 'Part-time tutoring + summer work' },
-      rentAffordability: { score: 3, note: '63% of own income, guarantor covers gap' },
-      rentalHistory: { score: 3, note: '1 year in residence — not equivalent' },
-      longTermIntent: { score: 5, note: '3 more years undergrad + potential grad' },
-      disclosures: { score: 5, note: 'Co-op income trajectory disclosed' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-STU-005', createdAt: new Date().toISOString(),
-    email: 'zara.williams@email.com',
-    tenant: { fullName: 'Zara Williams', age: '25', dateOfBirth: '2000-09-15', phone: '(416) 555-0823' },
-    employment: { jobTitle: 'PhD Candidate (Chemistry)', employer: 'University of Toronto', yearsAtJob: '3', annualIncome: 38000, monthlyIncome: 3167 },
-    rental: { previousAddress: '88 Beverley Street, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Marina Romano', previousLandlordContact: '416-555-0667', currentRent: 1250 },
-    apartment: { address: '212 Madison Avenue, Toronto', description: '1BR, Annex, $1,650/mo', estimatedRent: 1650, rentToIncomeRatio: 52 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Lab moved buildings — need a place closer to the new lab on Spadina.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Lab-focused. Often there until late evening. Very quiet at home.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Marina Romano', relationship: 'Current landlord (3 years)', contact: '416-555-0667' },
-          { name: 'Dr. Pierre Lemieux', relationship: 'PhD supervisor, Chemistry', contact: 'p.lemieux@utoronto.ca' }
-        ],
+      { name: 'Gail Mercer', relationship: 'Previous landlord (4 years)', contact: '416-555-0110' },
+      { name: 'Donna Reyes', relationship: 'Nurse manager, Sunnybrook', contact: 'd.reyes@email.com' },
+    ],
     disclosures: null,
     scorecard: {
-      incomeStability: { score: 4, note: '3 years stable PhD funding' },
-      rentAffordability: { score: 3, note: '52% of stipend but accustomed to managing' },
-      rentalHistory: { score: 5, note: '3 years current landlord, reference confirmed' },
-      longTermIntent: { score: 5, note: 'PhD continues 2-3 more years' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.4,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-STU-006', createdAt: new Date().toISOString(),
-    email: 'jinho.park@email.com',
-    tenant: { fullName: 'Jin-ho Park', age: '23', dateOfBirth: '2002-08-04', phone: '(647) 555-0394' },
-    employment: { jobTitle: 'Korean Exchange Student (Business)', employer: 'Rotman School of Management (UofT)', yearsAtJob: '1', annualIncome: 0, monthlyIncome: 0 },
-    rental: { previousAddress: 'Seoul, South Korea', yearsAtPrevious: '4', previousLandlordName: 'N/A — family home', previousLandlordContact: null, currentRent: null },
-    apartment: { address: '700 Bay Street, Toronto', description: '1BR condo, downtown, $2,200/mo', estimatedRent: 2200, rentToIncomeRatio: 0 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'One-year MBA exchange program at Rotman.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: "Focused, quiet. Doesn\'t party — comes from conservative family.", pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Prof. Min-jun Lee', relationship: 'Home institution professor, SKKU', contact: 'mlee@skku.edu' },
-          { name: 'Yong-su Park', relationship: 'Father (guarantor)', contact: '+82-10-555-0102' }
-        ],
-    disclosures: 'International student — no Canadian credit. Family wires full year of rent upfront ($26,400) via bank transfer. Father is a Samsung executive, 25 years tenure, documentation in Korean + English available.',
-    scorecard: {
-      incomeStability: { score: 3, note: 'No employment income — full rent paid upfront' },
-      rentAffordability: { score: 5, note: 'Year of rent paid in advance' },
-      rentalHistory: { score: 4, note: '4 years in family home, residence experience' },
-      longTermIntent: { score: 3, note: '1-year exchange program' },
-      disclosures: { score: 4, note: 'International status addressed with prepayment' },
-      overall: 3.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-STU-007', createdAt: new Date().toISOString(),
-    email: 'sophia.tanaka@email.com',
-    tenant: { fullName: 'Sophia Tanaka', age: '23', dateOfBirth: '2002-10-19', phone: '(437) 555-0511' },
-    employment: { jobTitle: "Master\'s Student (Public Health) + TA", employer: 'University of Toronto', yearsAtJob: '1', annualIncome: 28000, monthlyIncome: 2333 },
-    rental: { previousAddress: '180 St. George Street, Toronto', yearsAtPrevious: '1', previousLandlordName: 'Tom Greene', previousLandlordContact: '416-555-0822', currentRent: 1400 },
-    apartment: { address: '108 Howland Avenue, Toronto', description: 'Shared 2BR near UofT, $1,300/room', estimatedRent: 1300, rentToIncomeRatio: 56 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Continuing MPH program — current sublet ending.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'Sharing with confirmed roommate Aanya Patel (separate application)', smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Public health student — clean, organized, quiet roommate.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Tom Greene', relationship: 'Current landlord, 1 year', contact: '416-555-0822' },
-          { name: 'Dr. Linda Yu', relationship: 'MPH program coordinator', contact: 'l.yu@dlsph.utoronto.ca' }
-        ],
-    disclosures: 'TA stipend covers basic needs. Has small line of credit through parents to cover rent fluctuations.',
-    scorecard: {
-      incomeStability: { score: 3, note: 'TA + part-time research role' },
-      rentAffordability: { score: 2, note: '56% of income, parental support backup' },
-      rentalHistory: { score: 4, note: '1 year current with previous-housing references' },
-      longTermIntent: { score: 4, note: '~18 more months in program' },
-      disclosures: { score: 4, note: 'Income limitations acknowledged' },
-      overall: 3.4,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-STU-008', createdAt: new Date().toISOString(),
-    email: 'david.nguyen@email.com',
-    tenant: { fullName: 'David Nguyen', age: '24', dateOfBirth: '2001-12-03', phone: '(416) 555-0203' },
-    employment: { jobTitle: 'Medical Student (Year 3)', employer: 'University of Toronto Faculty of Medicine', yearsAtJob: '2', annualIncome: 25000, monthlyIncome: 2083 },
-    rental: { previousAddress: '78 Russell Street, Toronto', yearsAtPrevious: '2', previousLandlordName: 'Property Manager — Akelius', previousLandlordContact: 'tenant.relations@akelius.ca', currentRent: 1450 },
-    apartment: { address: '88 Henry Street, Toronto', description: '1BR, Kensington, $1,650/mo', estimatedRent: 1650, rentToIncomeRatio: 79 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Current building going condo conversion.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Med student — long days at the hospital. Rarely home except to sleep.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Dr. Anil Patel', relationship: 'Clerkship supervisor, UofT Medicine', contact: 'a.patel@medportal.ca' },
-          { name: 'Akelius Property Manager', relationship: 'Current property manager', contact: 'tenant.relations@akelius.ca' }
-        ],
-    disclosures: 'Income reflects part-time research + summer work. OSAP + LOC covers tuition and living. Will become licensed physician in 2 years.',
-    scorecard: {
-      incomeStability: { score: 3, note: 'Variable student income, MD trajectory in 2 years' },
-      rentAffordability: { score: 1, note: '79% of current income — leveraged on guaranteed future income' },
-      rentalHistory: { score: 4, note: '2 years with property manager reference' },
-      longTermIntent: { score: 5, note: '2 more years med school + 5 residency in Toronto' },
-      disclosures: { score: 3, note: 'Income stretch heavily disclosed' },
-      overall: 3.2,
-    },
-  }
-];
-
-const LUXURY_RENTAL_DEMOS = [
-  {
-    applicationNumber: 'RL-2026-LUX-001', createdAt: new Date().toISOString(),
-    email: 'priya.nair@email.com',
-    tenant: { fullName: 'Priya Nair', age: '34', dateOfBirth: '1991-11-04', phone: '(437) 555-0312' },
-    employment: { jobTitle: 'Senior UX Designer', employer: 'CIBC', yearsAtJob: '5', annualIncome: 115000, monthlyIncome: 9583 },
-    rental: { previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3', previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199', currentRent: 2400 },
-    apartment: { address: '78 Davenport Road, Toronto', description: '2BR luxury, Yorkville, $4,200/mo', estimatedRent: 4200, rentToIncomeRatio: 22 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Partner and I are upgrading from Annex to Yorkville.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'Partner and I, both work hybrid.', smoker: 'no' },
-    coApplicant: { name: 'Daniel Ross', age: '33', relationship: 'Partner of 4 years', jobTitle: 'Product Manager', employer: 'RBC', annualIncome: 140000 },
-    lifestyle: { personality: 'Stable, professional household. Both work hybrid.', pets: 'One indoor cat, 6 years old, vet records available' },
-    vehicle: { makeModel: 'Tesla Model Y', year: '2023' },
-    references: [
-          { name: 'Sarah Martinez', relationship: 'Director at CIBC', contact: '416-555-0445' },
-          { name: 'David Wong', relationship: 'Previous landlord (3 years)', contact: '647-555-0199' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: '5 years at CIBC + partner 7 years at RBC' },
-      rentAffordability: { score: 5, note: '22% of combined household income' },
-      rentalHistory: { score: 5, note: '3 years with previous landlord reference' },
-      longTermIntent: { score: 4, note: 'Both partners established but career mobility means relocation risk in 2-3 years' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-LUX-002', createdAt: new Date().toISOString(),
-    email: 'marcus.thompson@email.com',
-    tenant: { fullName: 'Marcus Thompson', age: '38', dateOfBirth: '1987-07-14', phone: '(416) 555-0844' },
-    employment: { jobTitle: 'General Contractor (sole proprietor)', employer: 'Thompson Renovations Ltd.', yearsAtJob: '8', annualIncome: 185000, monthlyIncome: 15417 },
-    rental: { previousAddress: '12 Burlington Street, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Helen Yamamoto', previousLandlordContact: '416-555-0556', currentRent: 2800 },
-    apartment: { address: '188 Cumberland Street, Toronto', description: '2BR, Yorkville, $4,500/mo', estimatedRent: 4500, rentToIncomeRatio: 29 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Custody arrangement updated — need a 2BR so my two kids can stay with me on weekends.' },
-    household: { numberOfOccupants: '1', occupantsDetails: 'Primary occupant. Two children (ages 8 and 10) on alternate weekends.', smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Up early for job sites. Home most evenings. Quiet.', pets: null },
-    vehicle: { makeModel: 'Range Rover Sport', year: '2023' },
-    references: [
-          { name: 'Helen Yamamoto', relationship: 'Current landlord (3 years)', contact: '416-555-0556' },
-          { name: 'David Reilly', relationship: 'Long-time client', contact: '416-555-0234' }
-        ],
-    disclosures: 'Credit score dipped in 2024 due to divorce. Current credit rebuilt (580 to 720 in 18 months). Self-employed income verified by 3 years CRA returns.',
-    scorecard: {
-      incomeStability: { score: 5, note: '8 years licensed contractor, $185K verified' },
-      rentAffordability: { score: 5, note: '29% of income' },
-      rentalHistory: { score: 5, note: '3 years with current landlord reference' },
-      longTermIntent: { score: 5, note: 'Custody arrangement requires stable address' },
-      disclosures: { score: 3, note: 'Credit history disclosed with documentation' },
+      incomeStability: { score: 5, note: '5 years permanent full-time at a major hospital' },
+      rentAffordability: { score: 4, note: '34% of monthly income' },
+      rentalHistory: { score: 5, note: '4 years, landlord reference confirmed' },
+      longTermIntent: { score: 4, note: 'Wants a stable long-term home near work' },
+      disclosures: { score: 5, note: 'Nothing to address' },
       overall: 4.6,
     },
   },
   {
-    applicationNumber: 'RL-2026-LUX-003', createdAt: new Date().toISOString(),
-    email: 'dr..elsayed@email.com',
-    tenant: { fullName: 'Dr. Yasmin El-Sayed', age: '36', dateOfBirth: '1989-02-28', phone: '(416) 555-0901' },
-    employment: { jobTitle: 'Surgeon (Orthopaedic)', employer: 'Mount Sinai Hospital', yearsAtJob: '7', annualIncome: 425000, monthlyIncome: 35417 },
-    rental: { previousAddress: '210 Avenue Road, Toronto', yearsAtPrevious: '4', previousLandlordName: 'Albany Property Group', previousLandlordContact: '416-555-0445', currentRent: 3500 },
-    apartment: { address: '128 Hazelton Avenue, Toronto', description: '2BR + den, Yorkville, $5,200/mo', estimatedRent: 5200, rentToIncomeRatio: 15 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Moving from a townhouse rental to be closer to Mount Sinai.' },
+    applicationNumber: 'RL-2026-2B3C-4D5E', createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    email: 'marc.tremblay@email.com',
+    tenant: { fullName: 'Marc Tremblay', age: '38', dateOfBirth: '1987-03-22', phone: '(647) 555-0233' },
+    employment: { jobTitle: 'Red Seal Electrician', employer: 'PowerLine Electric', yearsAtJob: '9', annualIncome: 85000, monthlyIncome: 7083 },
+    rental: { previousAddress: '12 Pinegrove Rd, Scarborough', yearsAtPrevious: '6', previousLandlordName: 'Anil Kapoor', previousLandlordContact: '416-555-0188', currentRent: 2200 },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 20 },
+    move: { moveInDate: 'September 15, 2026', reasonForMoving: 'Growing family; need a second bedroom and want to stay in the east end.' },
+    household: { numberOfOccupants: '3', occupantsDetails: 'Couple with one child (age 4)', smoker: 'no' },
+    coApplicant: { name: 'Janelle Tremblay', age: '36', relationship: 'Spouse', jobTitle: 'Dental Hygienist', employer: 'Beaches Dental', annualIncome: 74000 },
+    lifestyle: { personality: 'Easygoing family, home most evenings and weekends.', pets: null },
+    vehicle: { makeModel: 'Ford F-150 (work truck)', year: '2021' },
+    references: [
+      { name: 'Anil Kapoor', relationship: 'Current landlord (6 years)', contact: '416-555-0188' },
+      { name: 'Steve Whitfield', relationship: 'Foreman, PowerLine Electric', contact: '647-555-0901' },
+    ],
+    disclosures: null,
+    scorecard: {
+      incomeStability: { score: 5, note: '9 years in a licensed trade; dual income' },
+      rentAffordability: { score: 5, note: '20% of combined household income' },
+      rentalHistory: { score: 4, note: '6 years, strong landlord reference' },
+      longTermIntent: { score: 5, note: 'Family settling in the east end long-term' },
+      disclosures: { score: 5, note: 'Nothing to address' },
+      overall: 4.8,
+    },
+  },
+  {
+    applicationNumber: 'RL-2026-3C4D-5E6F', createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
+    email: 'wei.chen@email.com',
+    tenant: { fullName: 'Wei Chen', age: '27', dateOfBirth: '1998-11-05', phone: '(437) 555-0377' },
+    employment: { jobTitle: 'Software Developer', employer: 'Shopify', yearsAtJob: '1.5', annualIncome: 115000, monthlyIncome: 9583 },
+    rental: { previousAddress: '88 Blue Jays Way, Toronto', yearsAtPrevious: '2', previousLandlordName: 'Harbourview Property Mgmt', previousLandlordContact: 'leasing@email.com', currentRent: 2400 },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 27 },
+    move: { moveInDate: 'October 1, 2026', reasonForMoving: 'Wants a quieter neighbourhood and a home office now that work is hybrid.' },
     household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
     coApplicant: null,
-    lifestyle: { personality: 'Surgeon — long hospital hours. Rarely home except to sleep. Extremely quiet.', pets: null },
-    vehicle: { makeModel: 'BMW X5', year: '2024' },
-    references: [
-          { name: 'Dr. Robert Chen', relationship: 'Department Chief, Mount Sinai Ortho', contact: 'r.chen@sinaihealth.ca' },
-          { name: 'Albany Property Group', relationship: 'Current landlord (4 years)', contact: '416-555-0445' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: '7 years at Mount Sinai, $425K verified' },
-      rentAffordability: { score: 5, note: '15% of monthly income' },
-      rentalHistory: { score: 5, note: '4 years with property group reference' },
-      longTermIntent: { score: 4, note: 'Strong settled career, though surgeons can be poached to other hospitals/cities' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-LUX-004', createdAt: new Date().toISOString(),
-    email: 'alexander.volkov@email.com',
-    tenant: { fullName: 'Alexander Volkov', age: '42', dateOfBirth: '1983-05-17', phone: '(647) 555-0212' },
-    employment: { jobTitle: 'Investment Banker (Managing Director)', employer: 'TD Securities', yearsAtJob: '12', annualIncome: 320000, monthlyIncome: 26667 },
-    rental: { previousAddress: '199 Yonge Street, Toronto', yearsAtPrevious: '5', previousLandlordName: 'Concert Properties', previousLandlordContact: '416-555-0667', currentRent: 4100 },
-    apartment: { address: '155 Yorkville Avenue, Toronto', description: '3BR penthouse, Yorkville, $7,200/mo', estimatedRent: 7200, rentToIncomeRatio: 27 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: "Wife and I want more space — current 2BR doesn\'t suit our growing professional needs." },
-    household: { numberOfOccupants: '2', occupantsDetails: 'My wife Elena and me.', smoker: 'no' },
-    coApplicant: { name: 'Elena Volkov', age: '39', relationship: 'Spouse', jobTitle: 'Partner, Corporate Law', employer: 'Stikeman Elliott LLP', annualIncome: 480000 },
-    lifestyle: { personality: 'Both professionals. Home is quiet — we travel often.', pets: null },
-    vehicle: { makeModel: 'Porsche Cayenne', year: '2024' },
-    references: [
-          { name: 'Concert Properties Manager', relationship: 'Current landlord (5 years)', contact: '416-555-0667' },
-          { name: 'James Hartford', relationship: 'Managing Partner, TD Securities', contact: 'j.hartford@tdsecurities.com' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: '12 years at TD + spouse partnership at Stikeman' },
-      rentAffordability: { score: 5, note: '27% of $800K combined household income' },
-      rentalHistory: { score: 5, note: '5 years current, exceptional record' },
-      longTermIntent: { score: 4, note: 'Career-stable but Volkov family travels often — primary residence may shift internationally' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-LUX-005', createdAt: new Date().toISOString(),
-    email: 'sarah.chen@email.com',
-    tenant: { fullName: 'Sarah Chen', age: '29', dateOfBirth: '1996-08-12', phone: '(416) 555-0181' },
-    employment: { jobTitle: 'VP of Marketing', employer: 'Loblaw Companies', yearsAtJob: '4', annualIncome: 187000, monthlyIncome: 15583 },
-    rental: { previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5', previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142', currentRent: 2450 },
-    apartment: { address: '8 Cumberland Street, Toronto', description: '1BR + den, Yorkville, $3,800/mo', estimatedRent: 3800, rentToIncomeRatio: 24 },
-    move: { moveInDate: 'June 15, 2026', reasonForMoving: 'Recent promotion to VP — moving closer to head office on Bloor.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Quiet, works from home 3 days a week. Travels for business often.', pets: null },
+    lifestyle: { personality: 'Works hybrid, codes evenings, no parties. Cooks at home.', pets: null },
     vehicle: null,
     references: [
-          { name: 'Galen Weston', relationship: 'CEO, Loblaw Companies', contact: 'g.weston@loblaw.ca' },
-          { name: 'Michael Park', relationship: 'Current landlord (2.5 years)', contact: '416-555-0142' }
-        ],
-    disclosures: null,
+      { name: 'Harbourview Property Mgmt', relationship: 'Current landlord (2 years)', contact: 'leasing@email.com' },
+      { name: 'Rachel Adeyemi', relationship: 'Engineering manager, Shopify', contact: 'r.adeyemi@email.com' },
+    ],
+    disclosures: 'Relatively short tenure at current employer (18 months) — offer letter and recent pay stubs available.',
     scorecard: {
-      incomeStability: { score: 5, note: '4 years at Loblaw, recent VP promotion' },
-      rentAffordability: { score: 5, note: '24% of monthly income' },
-      rentalHistory: { score: 5, note: '2.5 years with reference available' },
-      longTermIntent: { score: 4, note: 'Career trajectory tied to Toronto HQ, though VP-level roles can lead to interprovince transfers' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-LUX-006', createdAt: new Date().toISOString(),
-    email: 'robert.hartwell@email.com',
-    tenant: { fullName: 'Robert Hartwell', age: '45', dateOfBirth: '1980-01-22', phone: '(416) 555-0334' },
-    employment: { jobTitle: 'Hedge Fund Partner', employer: 'West Face Capital', yearsAtJob: '15', annualIncome: 540000, monthlyIncome: 45000 },
-    rental: { previousAddress: '88 Scollard Street, Toronto', yearsAtPrevious: '6', previousLandlordName: 'Halmont Properties', previousLandlordContact: '416-555-0778', currentRent: 5200 },
-    apartment: { address: '188 Cumberland Street, Toronto', description: '3BR + den, Yorkville, $8,500/mo', estimatedRent: 8500, rentToIncomeRatio: 19 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Children moved out — downsizing from 5BR house to a luxury 3BR with shorter commute.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'My wife and me.', smoker: 'no' },
-    coApplicant: { name: 'Diana Hartwell', age: '43', relationship: 'Spouse', jobTitle: 'Board Director', employer: 'Several public companies', annualIncome: 280000 },
-    lifestyle: { personality: 'Quiet, private. Travel internationally 6+ weeks per year.', pets: null },
-    vehicle: { makeModel: 'Mercedes-Benz S-Class', year: '2024' },
-    references: [
-          { name: 'Halmont Properties Manager', relationship: 'Current landlord (6 years)', contact: '416-555-0778' },
-          { name: 'Anthony Munk', relationship: 'Senior Partner, West Face', contact: 'a.munk@westfacecapital.com' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: '15 years at West Face, partner-level income' },
-      rentAffordability: { score: 5, note: '19% of $820K combined income' },
-      rentalHistory: { score: 4, note: '6 years current, but only one landlord reference on file' },
-      longTermIntent: { score: 5, note: 'Empty-nesters, long-term tenancy expected' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-LUX-007', createdAt: new Date().toISOString(),
-    email: 'olivia.beaumont@email.com',
-    tenant: { fullName: 'Olivia Beaumont', age: '32', dateOfBirth: '1993-04-08', phone: '(647) 555-0556' },
-    employment: { jobTitle: 'Founder + CEO', employer: 'Beaumont Wellness (acquired by HelloFresh 2024)', yearsAtJob: '6', annualIncome: 220000, monthlyIncome: 18333 },
-    rental: { previousAddress: '50 Wellesley Street East, Toronto', yearsAtPrevious: '4', previousLandlordName: 'Anita Kapoor', previousLandlordContact: '416-555-0119', currentRent: 2900 },
-    apartment: { address: '120 Bloor Street East, Toronto', description: '2BR, Yorkville, $4,800/mo', estimatedRent: 4800, rentToIncomeRatio: 26 },
-    move: { moveInDate: 'August 15, 2026', reasonForMoving: 'Selling my house in Forest Hill, transitioning to rental for next 2-3 years while traveling more.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'outdoor' },
-    coApplicant: null,
-    lifestyle: { personality: 'Travel often (CEO of acquired company). Home is quiet, no parties.', pets: 'One small indoor poodle, 4 years old, trained and licensed.' },
-    vehicle: { makeModel: 'Audi Q5', year: '2023' },
-    references: [
-          { name: 'Anita Kapoor', relationship: 'Previous landlord (4 years)', contact: '416-555-0119' },
-          { name: 'David Berman', relationship: 'Board chair, HelloFresh Canada', contact: 'd.berman@hellofresh.com' }
-        ],
-    disclosures: 'Recently sold the company — net worth from acquisition adds $4.2M in liquid assets, separate from $220K W-2 income.',
-    scorecard: {
-      incomeStability: { score: 5, note: 'Strong W-2 + $4M+ liquid post-acquisition' },
-      rentAffordability: { score: 5, note: '26% of W-2 alone, vast cushion' },
-      rentalHistory: { score: 5, note: '4 years previous landlord reference' },
-      longTermIntent: { score: 4, note: '2-3 year horizon stated, may extend' },
-      disclosures: { score: 5, note: 'Asset documentation provided' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-LUX-008', createdAt: new Date().toISOString(),
-    email: 'ryan.oreilly@email.com',
-    tenant: { fullName: "Ryan & Jennifer Park-O'Reilly", age: '34 & 36', dateOfBirth: '1991-09-22 (Ryan)', phone: '(416) 555-0445' },
-    employment: { jobTitle: 'Plastic Surgeon (Ryan)', employer: 'Toronto Plastic Surgery (private practice)', yearsAtJob: '4', annualIncome: 380000, monthlyIncome: 31667 },
-    rental: { previousAddress: '101 Roxborough Street West, Toronto', yearsAtPrevious: '5', previousLandlordName: 'Forest Hill Properties', previousLandlordContact: '416-555-0231', currentRent: 4200 },
-    apartment: { address: '230 Bay Street, Toronto', description: '3BR, Bay/Bloor luxury, $6,500/mo', estimatedRent: 6500, rentToIncomeRatio: 21 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Wife pregnant with twins — need a larger condo closer to my downtown practice.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'My wife Jennifer (lawyer) and me. Twins arriving October.', smoker: 'no' },
-    coApplicant: { name: "Jennifer Park-O\'Reilly", age: '36', relationship: 'Spouse', jobTitle: 'Real Estate Lawyer', employer: 'Aird & Berlis LLP', annualIncome: 245000 },
-    lifestyle: { personality: 'Both professionals. Home is quiet — twins arriving will be the main change.', pets: null },
-    vehicle: { makeModel: 'Volvo XC90', year: '2024' },
-    references: [
-          { name: 'Forest Hill Properties', relationship: 'Current landlord (5 years)', contact: '416-555-0231' },
-          { name: 'Dr. Andrew Yim', relationship: 'Partner, Toronto Plastic Surgery', contact: 'a.yim@tpsurgery.ca' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: '4 years private practice + spouse senior associate' },
-      rentAffordability: { score: 5, note: '21% of $625K combined income' },
-      rentalHistory: { score: 5, note: '5 years with current landlord reference' },
-      longTermIntent: { score: 4, note: 'New babies suggest stability, but tight downtown 3BR may not suit twins after age 2' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  }
-];
-
-const FAMILY_HOME_DEMOS = [
-  {
-    applicationNumber: 'RL-2026-FAM-001', createdAt: new Date().toISOString(),
-    email: 'david.liu@email.com',
-    tenant: { fullName: 'David Liu', age: '33', dateOfBirth: '1992-04-15', phone: '(647) 555-0445' },
-    employment: { jobTitle: 'Grade 4 Teacher', employer: 'Toronto District School Board', yearsAtJob: '7', annualIncome: 82000, monthlyIncome: 6833 },
-    rental: { previousAddress: '155 Beecroft Road, North York', yearsAtPrevious: '3', previousLandlordName: 'Robert Chen', previousLandlordContact: '416-555-0772', currentRent: 2100 },
-    apartment: { address: '88 Annette Street, Toronto', description: '2BR + den, Junction, $2,650/mo', estimatedRent: 2650, rentToIncomeRatio: 22 },
-    move: { moveInDate: 'July 15, 2026', reasonForMoving: 'New baby — we need a 2BR with space for a nursery. Closer to my school.' },
-    household: { numberOfOccupants: '3', occupantsDetails: 'My partner Emma, our 4-month-old, and me.', smoker: 'no' },
-    coApplicant: { name: 'Emma Liu', age: '31', relationship: 'Spouse', jobTitle: 'Freelance Editor', employer: 'Penguin Random House + others', annualIncome: 65000 },
-    lifestyle: { personality: 'Family-focused. Both work from home some days. No parties.', pets: null },
-    vehicle: { makeModel: 'Subaru Outback', year: '2021' },
-    references: [
-          { name: 'Robert Chen', relationship: 'Current landlord (3 years)', contact: '416-555-0772' },
-          { name: 'Principal Maria Costa', relationship: 'TDSB principal', contact: 'm.costa@tdsb.on.ca' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 4, note: '7 years at TDSB stable, but spouse income is freelance (more variable)' },
-      rentAffordability: { score: 5, note: '22% of combined income' },
-      rentalHistory: { score: 5, note: '3 years with current landlord reference' },
-      longTermIntent: { score: 5, note: 'New baby — looking for 3+ year tenancy' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-FAM-002', createdAt: new Date().toISOString(),
-    email: 'hassan.abdelrahman@email.com',
-    tenant: { fullName: 'Hassan & Fatima Abdelrahman', age: '35 & 33', dateOfBirth: '1990-06-12', phone: '(416) 555-0237' },
-    employment: { jobTitle: 'Civil Engineer (Hassan)', employer: 'WSP Canada', yearsAtJob: '8', annualIncome: 105000, monthlyIncome: 8750 },
-    rental: { previousAddress: '88 Elmhurst Avenue, North York', yearsAtPrevious: '5', previousLandlordName: 'Park Lane Holdings', previousLandlordContact: '416-555-0991', currentRent: 2400 },
-    apartment: { address: '156 Glen Manor Drive, Toronto', description: '3BR house, The Beaches, $3,800/mo', estimatedRent: 3800, rentToIncomeRatio: 27 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Twins starting school in September — need to be in the right catchment for Williamson Road PS.' },
-    household: { numberOfOccupants: '4', occupantsDetails: 'Wife Fatima (pharmacist), twins (age 5), me.', smoker: 'no' },
-    coApplicant: { name: 'Fatima Abdelrahman', age: '33', relationship: 'Spouse', jobTitle: 'Pharmacist', employer: 'Shoppers Drug Mart', annualIncome: 82000 },
-    lifestyle: { personality: 'Family of four. Twins start kindergarten in September. Quiet household.', pets: null },
-    vehicle: { makeModel: 'Toyota Sienna', year: '2022' },
-    references: [
-          { name: 'Park Lane Holdings', relationship: 'Current landlord (5 years)', contact: '416-555-0991' },
-          { name: 'Dr. Ahmad Hussein', relationship: 'Family friend, character ref', contact: '416-555-0445' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: 'Engineer 8yr + pharmacist 6yr' },
-      rentAffordability: { score: 5, note: '27% of combined income' },
-      rentalHistory: { score: 5, note: '5 years with current landlord reference' },
-      longTermIntent: { score: 4, note: 'Twins starting kindergarten, but family may want to buy within 2-3 years' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-FAM-003', createdAt: new Date().toISOString(),
-    email: 'catherine.macleod@email.com',
-    tenant: { fullName: 'Catherine MacLeod', age: '41', dateOfBirth: '1984-03-28', phone: '(416) 555-0789' },
-    employment: { jobTitle: 'Senior HR Director', employer: 'TELUS', yearsAtJob: '12', annualIncome: 145000, monthlyIncome: 12083 },
-    rental: { previousAddress: '99 Hambly Avenue, Toronto', yearsAtPrevious: '8', previousLandlordName: 'James Wright', previousLandlordContact: '416-555-0123', currentRent: 2800 },
-    apartment: { address: '34 Glenmount Avenue, Toronto', description: '3BR semi-detached, East York, $3,400/mo', estimatedRent: 3400, rentToIncomeRatio: 28 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Recent separation — staying in the same neighbourhood so kids can keep their school and friends.' },
-    household: { numberOfOccupants: '2', occupantsDetails: "Me and my 11-year-old daughter (50/50 custody, so she's here half the time).", smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Established household. Daughter is in grade 6, plays piano.', pets: 'One older indoor cat, 12 years old.' },
-    vehicle: { makeModel: 'Mazda CX-5', year: '2020' },
-    references: [
-          { name: 'James Wright', relationship: 'Previous landlord (8 years)', contact: '416-555-0123' },
-          { name: 'Janet Kim', relationship: 'VP HR, TELUS', contact: 'j.kim@telus.com' }
-        ],
-    disclosures: 'Recent separation — formal custody agreement in place. Income, savings, and credit are mine alone (separated finances years ago).',
-    scorecard: {
-      incomeStability: { score: 5, note: '12 years at TELUS, senior leadership' },
-      rentAffordability: { score: 5, note: '28% of monthly income' },
-      rentalHistory: { score: 5, note: '8 years previous landlord, exceptional' },
-      longTermIntent: { score: 5, note: "Daughter\'s school stability is top priority" },
-      disclosures: { score: 4, note: 'Separation context proactively shared' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-FAM-004', createdAt: new Date().toISOString(),
-    email: 'mark.patel@email.com',
-    tenant: { fullName: 'Mark & Sarah Patel', age: '37 & 35', dateOfBirth: '1988-07-20', phone: '(905) 555-0444' },
-    employment: { jobTitle: 'Civil Servant — Director (Mark)', employer: 'Ministry of Health (Ontario)', yearsAtJob: '11', annualIncome: 132000, monthlyIncome: 11000 },
-    rental: { previousAddress: '88 Glengarry Avenue, North York', yearsAtPrevious: '4', previousLandlordName: 'Lambourne Property Management', previousLandlordContact: '416-555-0667', currentRent: 2600 },
-    apartment: { address: '40 Hillcrest Drive, Toronto', description: '3BR detached house, Wychwood, $4,200/mo', estimatedRent: 4200, rentToIncomeRatio: 24 },
-    move: { moveInDate: 'August 15, 2026', reasonForMoving: 'Outgrew our current rental — kids are 6 and 9, need more space and a yard.' },
-    household: { numberOfOccupants: '4', occupantsDetails: 'Wife Sarah (teacher), two kids ages 6 and 9.', smoker: 'no' },
-    coApplicant: { name: 'Sarah Patel', age: '35', relationship: 'Spouse', jobTitle: 'Special Education Teacher', employer: 'Toronto District School Board', annualIncome: 78000 },
-    lifestyle: { personality: 'Family of four. Kids in soccer and music lessons. Quiet evenings.', pets: 'One Golden Retriever, 4 years old, trained, full vet records.' },
-    vehicle: { makeModel: 'Honda Pilot', year: '2022' },
-    references: [
-          { name: 'Lambourne Property Management', relationship: 'Current landlord (4 years)', contact: '416-555-0667' },
-          { name: 'Dr. Sarah Allen', relationship: 'Director, Ministry of Health', contact: 'sarah.allen@ontario.ca' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: '11 years public service + spouse 8 years TDSB' },
-      rentAffordability: { score: 5, note: '24% of combined income' },
-      rentalHistory: { score: 5, note: '4 years with current property management ref' },
-      longTermIntent: { score: 5, note: 'Kids growing — looking for 3+ year house' },
-      disclosures: { score: 4, note: 'Strong profile overall, no specific disclosures but pet adds wear-and-tear consideration' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-FAM-005', createdAt: new Date().toISOString(),
-    email: 'anika.bose@email.com',
-    tenant: { fullName: 'Anika & Vijay Bose', age: '34 & 36', dateOfBirth: '1991-11-08', phone: '(416) 555-0223' },
-    employment: { jobTitle: 'Family Doctor (Anika)', employer: 'Sunnybrook Family Medicine', yearsAtJob: '5', annualIncome: 198000, monthlyIncome: 16500 },
-    rental: { previousAddress: '199 Sunnybrook Boulevard, Toronto', yearsAtPrevious: '6', previousLandlordName: 'Concert Real Estate', previousLandlordContact: '416-555-0890', currentRent: 3200 },
-    apartment: { address: '180 Bayview Avenue, Toronto', description: '4BR house, Leaside, $5,800/mo', estimatedRent: 5800, rentToIncomeRatio: 22 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Expecting third child — current 3BR will not be enough. Want to stay near Sunnybrook.' },
-    household: { numberOfOccupants: '4', occupantsDetails: 'Vijay (architect), two kids (4 and 6), baby arriving August. Plus me.', smoker: 'no' },
-    coApplicant: { name: 'Vijay Bose', age: '36', relationship: 'Spouse', jobTitle: 'Architect (Partner)', employer: 'WZMH Architects', annualIncome: 125000 },
-    lifestyle: { personality: 'Active family. Kids in school and daycare. Quiet professionals.', pets: 'One small indoor dog, 3 years old, trained.' },
-    vehicle: { makeModel: 'Mercedes-Benz GLB', year: '2023' },
-    references: [
-          { name: 'Concert Real Estate', relationship: 'Current landlord (6 years)', contact: '416-555-0890' },
-          { name: 'Dr. Patricia Lee', relationship: 'Sunnybrook Department Chief', contact: 'p.lee@sunnybrook.ca' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 5, note: '5 years at Sunnybrook + spouse partner-level architect' },
-      rentAffordability: { score: 4, note: '22% of combined income is comfortable, but with 3 kids + dog incidentals add up' },
-      rentalHistory: { score: 5, note: '6 years with current landlord reference' },
-      longTermIntent: { score: 5, note: 'Growing family, multi-year tenancy expected' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-FAM-006', createdAt: new Date().toISOString(),
-    email: 'tyler.brennan@email.com',
-    tenant: { fullName: 'Tyler & Emma Brennan', age: '38 & 36', dateOfBirth: '1987-05-04', phone: '(905) 555-0667' },
-    employment: { jobTitle: 'Electrician (IBEW Local 353)', employer: 'Black & McDonald Limited', yearsAtJob: '14', annualIncome: 115000, monthlyIncome: 9583 },
-    rental: { previousAddress: '88 Maple Avenue, Newmarket', yearsAtPrevious: '7', previousLandlordName: 'Bayview Property Management', previousLandlordContact: '905-555-0102', currentRent: 2200 },
-    apartment: { address: '420 Bathurst Manor Boulevard, Toronto', description: '3BR townhome, Bathurst Manor, $3,400/mo', estimatedRent: 3400, rentToIncomeRatio: 24 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Moving in from Newmarket — wife is starting a new role in Toronto, and we want to shorten commute.' },
-    household: { numberOfOccupants: '4', occupantsDetails: 'Wife Emma (HR coordinator), two kids (age 7 and 10).', smoker: 'outdoor' },
-    coApplicant: { name: 'Emma Brennan', age: '36', relationship: 'Spouse', jobTitle: 'HR Coordinator', employer: 'Sun Life Financial', annualIncome: 72000 },
-    lifestyle: { personality: 'Working family. I do shift work; wife is 9-to-5. Kids in elementary school.', pets: 'One Beagle (6 years), one indoor cat (10 years).' },
-    vehicle: { makeModel: 'Ford F-150 (work truck)', year: '2020' },
-    references: [
-          { name: 'Bayview Property Management', relationship: 'Current landlord (7 years)', contact: '905-555-0102' },
-          { name: 'Manny Rodrigues', relationship: 'Foreman, Black & McDonald', contact: 'm.rodrigues@bmlimited.com' }
-        ],
-    disclosures: 'Outdoor smoker only — never inside the home.',
-    scorecard: {
-      incomeStability: { score: 5, note: '14 years union electrician, stable trade' },
-      rentAffordability: { score: 5, note: '24% of combined income' },
-      rentalHistory: { score: 5, note: '7 years with property manager reference' },
-      longTermIntent: { score: 5, note: 'School-aged kids, looking for stability' },
-      disclosures: { score: 4, note: 'Outdoor smoking proactively disclosed' },
-      overall: 4.8,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-FAM-007', createdAt: new Date().toISOString(),
-    email: 'rosa.mendoza@email.com',
-    tenant: { fullName: 'Rosa & Carlos Mendoza', age: '40 & 42', dateOfBirth: '1985-08-12', phone: '(416) 555-0890' },
-    employment: { jobTitle: 'Restaurant Owner (Rosa)', employer: 'La Carnita (multiple locations)', yearsAtJob: '10', annualIncome: 95000, monthlyIncome: 7917 },
-    rental: { previousAddress: '290 College Street, Toronto', yearsAtPrevious: '6', previousLandlordName: 'Rita Vega', previousLandlordContact: '416-555-0779', currentRent: 2400 },
-    apartment: { address: '92 Pricefield Road, Toronto', description: '3BR, Summerhill, $4,100/mo', estimatedRent: 4100, rentToIncomeRatio: 26 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Business has grown — we can afford a bigger place. Want our daughter to attend Whitney Junior PS.' },
-    household: { numberOfOccupants: '3', occupantsDetails: 'My husband Carlos (chef), our 9-year-old daughter, me.', smoker: 'no' },
-    coApplicant: { name: 'Carlos Mendoza', age: '42', relationship: 'Spouse', jobTitle: 'Executive Chef', employer: 'La Carnita', annualIncome: 95000 },
-    lifestyle: { personality: 'Restaurant family — long days. Daughter at after-school program. Quiet at home.', pets: null },
-    vehicle: { makeModel: 'Honda Odyssey', year: '2021' },
-    references: [
-          { name: 'Rita Vega', relationship: 'Current landlord (6 years)', contact: '416-555-0779' },
-          { name: 'Andrew Carrillo', relationship: 'Co-founder, La Carnita', contact: 'a.carrillo@lacarnita.com' }
-        ],
-    disclosures: 'Income is split between salary and business profits — full T4 + business returns available.',
-    scorecard: {
-      incomeStability: { score: 4, note: 'Self-employed 10 years, business stable' },
-      rentAffordability: { score: 5, note: '26% of combined business income' },
-      rentalHistory: { score: 5, note: '6 years with current landlord reference' },
-      longTermIntent: { score: 5, note: 'School-aged daughter, multi-year tenancy' },
-      disclosures: { score: 4, note: 'Mixed income documented' },
-      overall: 4.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-FAM-008', createdAt: new Date().toISOString(),
-    email: 'jonathan.wright@email.com',
-    tenant: { fullName: 'Jonathan Wright', age: '44', dateOfBirth: '1981-02-15', phone: '(416) 555-0998' },
-    employment: { jobTitle: 'Software Architect', employer: 'Royal Bank of Canada', yearsAtJob: '15', annualIncome: 175000, monthlyIncome: 14583 },
-    rental: { previousAddress: '88 Pleasant Avenue, Toronto', yearsAtPrevious: '9', previousLandlordName: 'Annette Park', previousLandlordContact: '416-555-0223', currentRent: 3100 },
-    apartment: { address: '156 Crescent Road, Toronto', description: '4BR house, Rosedale, $5,400/mo', estimatedRent: 5400, rentToIncomeRatio: 26 },
-    move: { moveInDate: 'August 15, 2026', reasonForMoving: 'My ex-wife and I are co-parenting — I need a house where my three kids can each have their own room for their weeks with me.' },
-    household: { numberOfOccupants: '4', occupantsDetails: 'Three kids (ages 8, 11, 14) on alternate weeks. Me solo otherwise.', smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Established professional. Cooks at home, hosts family weekends.', pets: 'One older Labrador, 10 years old.' },
-    vehicle: { makeModel: 'Tesla Model S', year: '2022' },
-    references: [
-          { name: 'Annette Park', relationship: 'Current landlord (9 years)', contact: '416-555-0223' },
-          { name: 'Janice Lim', relationship: 'VP Technology, RBC', contact: 'j.lim@rbc.com' }
-        ],
-    disclosures: 'Recent divorce — finances separated, credit and savings are mine alone. Custody agreement is amicable, 50/50 with three kids.',
-    scorecard: {
-      incomeStability: { score: 5, note: '15 years at RBC, stable career' },
-      rentAffordability: { score: 5, note: '26% of monthly income' },
-      rentalHistory: { score: 5, note: '9 years with current landlord (exceptional)' },
-      longTermIntent: { score: 5, note: 'Custody requires stable Toronto home' },
-      disclosures: { score: 4, note: 'Family situation disclosed' },
-      overall: 4.8,
-    },
-  }
-];
-
-const CREATIVE_SCENE_DEMOS = [
-  {
-    applicationNumber: 'RL-2026-CRE-001', createdAt: new Date().toISOString(),
-    email: 'tyler.brennan@email.com',
-    tenant: { fullName: 'Tyler Brennan', age: '28', dateOfBirth: '1997-01-08', phone: '(416) 555-0667' },
-    employment: { jobTitle: 'Bartender + Session Musician', employer: 'The Cameron House + freelance gigs', yearsAtJob: '3', annualIncome: 58000, monthlyIncome: 4833 },
-    rental: { previousAddress: '650 King Street West, Toronto', yearsAtPrevious: '1', previousLandlordName: 'Property Manager — Akelius', previousLandlordContact: 'tenant.relations@akelius.ca', currentRent: 1800 },
-    apartment: { address: '92 Ossington Avenue, Toronto', description: '1BR, Trinity Bellwoods, $1,950/mo', estimatedRent: 1950, rentToIncomeRatio: 40 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Current building is being converted to short-term rentals.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'outdoor' },
-    coApplicant: null,
-    lifestyle: { personality: 'Works evenings. Quiet during the day. Practices guitar with headphones.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Roy Murphy', relationship: 'Owner, The Cameron House', contact: '416-555-0233' },
-          { name: 'Sara Wynn', relationship: 'Bandmate of 5 years', contact: 's.wynn@email.com' }
-        ],
-    disclosures: 'Income variable — combines bartending and freelance music. 12 months of bank statements show consistent deposits.',
-    scorecard: {
-      incomeStability: { score: 3, note: '3 years bartending + steady gig income' },
-      rentAffordability: { score: 3, note: '40% of monthly income' },
-      rentalHistory: { score: 4, note: '1 year at current address' },
-      longTermIntent: { score: 4, note: 'Embedded in Toronto music scene' },
-      disclosures: { score: 4, note: 'Income variability documented' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-CRE-002', createdAt: new Date().toISOString(),
-    email: 'yuki.tanaka@email.com',
-    tenant: { fullName: 'Yuki Tanaka', age: '23', dateOfBirth: '2002-05-29', phone: '(437) 555-0210' },
-    employment: { jobTitle: 'Graphic Designer (Junior)', employer: 'Razer Studios', yearsAtJob: '1', annualIncome: 52000, monthlyIncome: 4333 },
-    rental: { previousAddress: '110 Lippincott Street, Toronto', yearsAtPrevious: '1.5', previousLandlordName: 'Patricia Romero', previousLandlordContact: '416-555-0901', currentRent: 1600 },
-    apartment: { address: '300 Bathurst Street, Toronto', description: '2BR, Trinity Bellwoods, $2,400/mo', estimatedRent: 2400, rentToIncomeRatio: 27 },
-    move: { moveInDate: 'August 15, 2026', reasonForMoving: 'Current 3-bedroom is breaking up — moving into a 2BR with one of my current roommates.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'Long-time roommate Hana Sato and me.', smoker: 'no' },
-    coApplicant: { name: 'Hana Sato', age: '24', relationship: 'Roommate of 2 years', jobTitle: 'UX Researcher', employer: 'TELUS Health', annualIncome: 58000 },
-    lifestyle: { personality: 'Both early-career creatives. Work hybrid.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Patricia Romero', relationship: 'Current landlord (1.5 years)', contact: '416-555-0901' },
-          { name: 'Karim Hassan', relationship: 'My manager, Razer', contact: 'k.hassan@razer.com' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 4, note: '1yr + roommate 2yr at TELUS Health' },
-      rentAffordability: { score: 5, note: '27% of combined income' },
-      rentalHistory: { score: 4, note: '1.5 years with current landlord ref' },
-      longTermIntent: { score: 4, note: 'Stable career start' },
-      disclosures: { score: 5, note: 'No items to address' },
-      overall: 4.4,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-CRE-003', createdAt: new Date().toISOString(),
-    email: 'imani.johnson@email.com',
-    tenant: { fullName: 'Imani Johnson', age: '30', dateOfBirth: '1995-08-19', phone: '(647) 555-0334' },
-    employment: { jobTitle: 'Visual Artist + Part-Time Curator', employer: 'AGO + freelance commissions', yearsAtJob: '4', annualIncome: 48000, monthlyIncome: 4000 },
-    rental: { previousAddress: '99 Robinson Street, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Marcus Stein', previousLandlordContact: '416-555-0445', currentRent: 1450 },
-    apartment: { address: '88 Shaw Street, Toronto', description: '1BR with studio space, Trinity Bellwoods, $1,850/mo', estimatedRent: 1850, rentToIncomeRatio: 46 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Current studio space too small — need somewhere I can paint AND live.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Studio at home. Working artist — paints during the day, exhibitions in evenings/weekends.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Marcus Stein', relationship: 'Current landlord (3 years)', contact: '416-555-0445' },
-          { name: 'Lisa Brown', relationship: 'Curator at AGO', contact: 'l.brown@ago.ca' }
-        ],
-    disclosures: 'Mixed income — AGO part-time ($30K) + commissions/exhibitions ($18K average). Three years of tax returns available.',
-    scorecard: {
-      incomeStability: { score: 3, note: '4 years mixed art/curator income, stable' },
-      rentAffordability: { score: 3, note: '46% of income — tight but managing' },
-      rentalHistory: { score: 5, note: '3 years with current landlord ref' },
-      longTermIntent: { score: 5, note: 'Embedded in Toronto art scene' },
-      disclosures: { score: 4, note: 'Mixed income transparently documented' },
+      incomeStability: { score: 4, note: 'Strong income; 18 months at current employer' },
+      rentAffordability: { score: 5, note: '27% of monthly income' },
+      rentalHistory: { score: 3, note: '2 years with a property manager, limited personal reference' },
+      longTermIntent: { score: 3, note: 'Open-ended; comfortable with a 1-year lease' },
+      disclosures: { score: 5, note: 'Proactively addressed short tenure' },
       overall: 4.0,
     },
   },
   {
-    applicationNumber: 'RL-2026-CRE-004', createdAt: new Date().toISOString(),
-    email: 'marco.rossi@email.com',
-    tenant: { fullName: 'Marco Rossi', age: '32', dateOfBirth: '1993-11-22', phone: '(416) 555-0188' },
-    employment: { jobTitle: 'Freelance Filmmaker + Cinematographer', employer: 'Various productions (CBC, Netflix, indie)', yearsAtJob: '7', annualIncome: 78000, monthlyIncome: 6500 },
-    rental: { previousAddress: '188 Bellwoods Avenue, Toronto', yearsAtPrevious: '4', previousLandlordName: 'Andrea Costa', previousLandlordContact: '416-555-0723', currentRent: 1900 },
-    apartment: { address: '78 Argyle Street, Toronto', description: '1BR, West Queen West, $2,150/mo', estimatedRent: 2150, rentToIncomeRatio: 33 },
-    move: { moveInDate: 'July 15, 2026', reasonForMoving: 'Current landlord is selling. Need to stay in the neighbourhood for client access.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
+    applicationNumber: 'RL-2026-4D5E-6F70', createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    email: 'tasha.okafor@email.com',
+    tenant: { fullName: 'Tasha Okafor', age: '34', dateOfBirth: '1991-06-19', phone: '(905) 555-0414' },
+    employment: { jobTitle: 'Store Manager', employer: 'Canadian Tire', yearsAtJob: '7', annualIncome: 61000, monthlyIncome: 5083 },
+    rental: { previousAddress: '300 Burnhamthorpe Rd, Mississauga', yearsAtPrevious: '5', previousLandlordName: 'Westdale Properties', previousLandlordContact: '905-555-0260', currentRent: 2100 },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 51 },
+    move: { moveInDate: 'November 1, 2026', reasonForMoving: 'Relocating closer to her kids new school and her store.' },
+    household: { numberOfOccupants: '3', occupantsDetails: 'Single parent with two children (ages 7 and 9)', smoker: 'no' },
     coApplicant: null,
-    lifestyle: { personality: 'Travel for shoots, but home base is critical. Quiet, organized.', pets: null },
-    vehicle: { makeModel: 'Volkswagen Jetta', year: '2019' },
+    lifestyle: { personality: 'Organized, home-focused. Kids in school and activities.', pets: null },
+    vehicle: { makeModel: 'Toyota RAV4', year: '2018' },
     references: [
-          { name: 'Andrea Costa', relationship: 'Current landlord (4 years)', contact: '416-555-0723' },
-          { name: 'Robert Lim', relationship: 'Producer, CBC Originals', contact: 'r.lim@cbc.ca' }
-        ],
-    disclosures: 'Income reflects 3-year average — freelance varies from $60K to $95K. Two years of CRA returns + signed letters from agencies showing pipeline.',
+      { name: 'Westdale Properties', relationship: 'Current landlord (5 years)', contact: '905-555-0260' },
+      { name: 'Greg Lalonde', relationship: 'District manager, Canadian Tire', contact: '905-555-0712' },
+    ],
+    disclosures: 'One late rent payment two years ago during a job transition; caught up the same month. Can provide guarantor if helpful.',
     scorecard: {
-      incomeStability: { score: 4, note: '7 years freelance, 3-yr avg $78K' },
-      rentAffordability: { score: 4, note: '33% of average income' },
-      rentalHistory: { score: 5, note: '4 years with current landlord ref' },
-      longTermIntent: { score: 4, note: 'Established in Toronto film scene' },
-      disclosures: { score: 4, note: 'Income variability documented' },
-      overall: 4.2,
+      incomeStability: { score: 3, note: '7 years with one employer; single income' },
+      rentAffordability: { score: 2, note: '51% of income on rent alone — stretched without a guarantor' },
+      rentalHistory: { score: 4, note: '5 years, one disclosed late payment since resolved' },
+      longTermIntent: { score: 4, note: 'Moving for school stability; likely long-term' },
+      disclosures: { score: 4, note: 'Disclosed the late payment and offered a guarantor' },
+      overall: 3.4,
     },
   },
   {
-    applicationNumber: 'RL-2026-CRE-005', createdAt: new Date().toISOString(),
-    email: 'anna.kowalski@email.com',
-    tenant: { fullName: 'Anna Kowalski', age: '27', dateOfBirth: '1998-04-11', phone: '(437) 555-0445' },
-    employment: { jobTitle: 'Tattoo Artist', employer: 'Black Line Studio (booth rental)', yearsAtJob: '4', annualIncome: 72000, monthlyIncome: 6000 },
-    rental: { previousAddress: '88 Ossington Avenue, Toronto', yearsAtPrevious: '2', previousLandlordName: 'Robert Yoon', previousLandlordContact: '416-555-0998', currentRent: 1700 },
-    apartment: { address: '156 Dovercourt Road, Toronto', description: '1BR, Dovercourt, $1,800/mo', estimatedRent: 1800, rentToIncomeRatio: 30 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Want a quieter street — current place is on a busy corner.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'outdoor' },
-    coApplicant: null,
-    lifestyle: { personality: 'Works booth rental at a tattoo studio. Mostly daytime. Comes home, hangs out, paints at home in evenings.', pets: null },
-    vehicle: null,
+    applicationNumber: 'RL-2026-5E6F-7081', createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+    email: 'david.kowalski@email.com',
+    tenant: { fullName: 'David Kowalski', age: '41', dateOfBirth: '1984-02-28', phone: '(416) 555-0529' },
+    employment: { jobTitle: 'Secondary School Teacher', employer: 'Toronto District School Board', yearsAtJob: '12', annualIncome: 79000, monthlyIncome: 6583 },
+    rental: { previousAddress: '21 Wedgewood Dr, North York', yearsAtPrevious: '8', previousLandlordName: 'Maria Santos', previousLandlordContact: '416-555-0333', currentRent: 2300 },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 27 },
+    move: { moveInDate: 'August 15, 2026', reasonForMoving: 'Downsizing after kids changed schools; want to be near transit.' },
+    household: { numberOfOccupants: '3', occupantsDetails: 'Couple with one teenager', smoker: 'no' },
+    coApplicant: { name: 'Aisha Mohamed', age: '39', relationship: 'Spouse', jobTitle: 'Library Technician (part-time)', employer: 'Toronto Public Library', annualIncome: 38000 },
+    lifestyle: { personality: 'Quiet household, long-term renters, no parties.', pets: 'One older dog, well-trained' },
+    vehicle: { makeModel: 'Subaru Outback', year: '2017' },
     references: [
-          { name: 'Robert Yoon', relationship: 'Current landlord (2 years)', contact: '416-555-0998' },
-          { name: 'Mark Sanders', relationship: 'Studio owner, Black Line', contact: 'm.sanders@blacklinetattoo.ca' }
-        ],
-    disclosures: 'Self-employed tattoo artist, booth rental. T2125 self-employment returns available. Strong client base built over 4 years.',
-    scorecard: {
-      incomeStability: { score: 4, note: '4 years tattooing, strong returning clients' },
-      rentAffordability: { score: 5, note: '30% of monthly income' },
-      rentalHistory: { score: 4, note: '2 years current landlord, ref strong' },
-      longTermIntent: { score: 4, note: 'Embedded in Toronto art/tattoo scene' },
-      disclosures: { score: 4, note: 'Self-employed income documented' },
-      overall: 4.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-CRE-006', createdAt: new Date().toISOString(),
-    email: 'liam.murphy@email.com',
-    tenant: { fullName: "Liam Murphy & James O'Donnell", age: '29 & 31', dateOfBirth: '1996-09-15', phone: '(416) 555-0667' },
-    employment: { jobTitle: 'Indie Music Producer (Liam)', employer: 'Self-employed (own studio)', yearsAtJob: '5', annualIncome: 65000, monthlyIncome: 5417 },
-    rental: { previousAddress: '650 Queen Street West, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Property Manager — Akelius', previousLandlordContact: 'tenant.relations@akelius.ca', currentRent: 2200 },
-    apartment: { address: '230 Lansdowne Avenue, Toronto', description: '2BR with sound-proofed studio, Bloordale, $2,650/mo', estimatedRent: 2650, rentToIncomeRatio: 26 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Looking for a 2BR where we can have a proper home studio set up.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'Partner James (sound engineer at Studio Mix) and me.', smoker: 'no' },
-    coApplicant: { name: "James O\'Donnell", age: '31', relationship: 'Partner of 6 years', jobTitle: 'Sound Engineer', employer: 'Studio Mix Toronto', annualIncome: 58000 },
-    lifestyle: { personality: 'Music production duo. Quiet recording during the day. Sound-proofed studio.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Property Manager — Akelius', relationship: 'Current property manager (3 years)', contact: 'tenant.relations@akelius.ca' },
-          { name: 'Marcus White', relationship: 'Owner, Studio Mix Toronto', contact: 'm.white@studiomix.ca' }
-        ],
+      { name: 'Maria Santos', relationship: 'Previous landlord (8 years)', contact: '416-555-0333' },
+      { name: 'Paul Nguyen', relationship: 'Vice-principal, TDSB', contact: 'p.nguyen@email.com' },
+    ],
     disclosures: null,
     scorecard: {
-      incomeStability: { score: 4, note: '5yr self-employed producer + partner 4yr studio job' },
-      rentAffordability: { score: 5, note: '26% of combined income' },
-      rentalHistory: { score: 5, note: '3 years current with property manager ref' },
-      longTermIntent: { score: 5, note: 'Career embedded in Toronto music scene' },
-      disclosures: { score: 5, note: 'No items to address' },
+      incomeStability: { score: 5, note: '12 years public-sector tenure; dual income' },
+      rentAffordability: { score: 5, note: '27% of combined household income' },
+      rentalHistory: { score: 4, note: '8 years with one landlord, excellent reference' },
+      longTermIntent: { score: 5, note: 'Long-term renters by track record' },
+      disclosures: { score: 5, note: 'Nothing to address' },
       overall: 4.8,
     },
   },
   {
-    applicationNumber: 'RL-2026-CRE-007', createdAt: new Date().toISOString(),
-    email: 'sofia.vasquez@email.com',
-    tenant: { fullName: 'Sofia Vasquez', age: '26', dateOfBirth: '1999-07-30', phone: '(647) 555-0223' },
-    employment: { jobTitle: 'Stylist (Fashion Editorial)', employer: 'Freelance (Vogue Canada, Flare, brands)', yearsAtJob: '4', annualIncome: 62000, monthlyIncome: 5167 },
-    rental: { previousAddress: '388 Adelaide Street West, Toronto', yearsAtPrevious: '2', previousLandlordName: 'Mariana Costa', previousLandlordContact: '416-555-0334', currentRent: 1850 },
-    apartment: { address: '92 Niagara Street, Toronto', description: '1BR loft, King West, $2,200/mo', estimatedRent: 2200, rentToIncomeRatio: 35 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Loft for the natural light — important for my work and Instagram presence.' },
+    applicationNumber: 'RL-2026-6F70-8192', createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
+    email: 'sofia.russo@email.com',
+    tenant: { fullName: 'Sofia Russo', age: '45', dateOfBirth: '1980-09-30', phone: '(647) 555-0648' },
+    employment: { jobTitle: 'Owner / Operator', employer: "Sofia's Cafe (small business)", yearsAtJob: '8', annualIncome: 68000, monthlyIncome: 5667 },
+    rental: { previousAddress: '160 Donlands Ave, East York', yearsAtPrevious: '10', previousLandlordName: 'Frank Iannuzzi', previousLandlordContact: '416-555-0451', currentRent: 1700 },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 46 },
+    move: { moveInDate: 'October 15, 2026', reasonForMoving: 'Long-time apartment is no longer available; wants to stay near her cafe.' },
     household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
     coApplicant: null,
-    lifestyle: { personality: 'Travels for shoots. Home is quiet — usually working out of laptop or doing client fittings.', pets: null },
-    vehicle: null,
+    lifestyle: { personality: 'Early riser, runs a neighbourhood cafe. Calm, reliable.', pets: null },
+    vehicle: { makeModel: 'Mazda CX-5', year: '2016' },
     references: [
-          { name: 'Mariana Costa', relationship: 'Current landlord (2 years)', contact: '416-555-0334' },
-          { name: 'Aniko Black', relationship: 'Editor-in-Chief, Flare', contact: 'a.black@flarecanada.com' }
-        ],
-    disclosures: 'Income mix: editorial styling (60%) + brand campaigns (40%). 12 months of stripe deposits + agency 1099s available.',
+      { name: 'Frank Iannuzzi', relationship: 'Previous landlord (10 years)', contact: '416-555-0451' },
+      { name: 'Lena Park', relationship: 'Accountant', contact: 'l.park@email.com' },
+    ],
+    disclosures: 'Self-employed — income varies by season. Two years of Notice of Assessment and business statements available.',
     scorecard: {
-      incomeStability: { score: 3, note: '4 years freelance styling, growing' },
-      rentAffordability: { score: 4, note: '35% of income' },
-      rentalHistory: { score: 5, note: '2 years current landlord, ref strong' },
-      longTermIntent: { score: 4, note: 'Career rooted in Toronto fashion scene' },
-      disclosures: { score: 4, note: 'Mixed income transparent' },
-      overall: 4.0,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-CRE-008', createdAt: new Date().toISOString(),
-    email: 'akira.watanabe@email.com',
-    tenant: { fullName: 'Akira Watanabe', age: '34', dateOfBirth: '1991-12-04', phone: '(437) 555-0667' },
-    employment: { jobTitle: 'DJ / Music Producer', employer: 'Self-employed (residencies + tours)', yearsAtJob: '7', annualIncome: 95000, monthlyIncome: 7917 },
-    rental: { previousAddress: '88 Niagara Street, Toronto', yearsAtPrevious: '5', previousLandlordName: 'Park West Properties', previousLandlordContact: '416-555-0119', currentRent: 2200 },
-    apartment: { address: '125 Stewart Street, Toronto', description: '1BR + studio, King West, $2,650/mo', estimatedRent: 2650, rentToIncomeRatio: 33 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Current place sold. Want to stay in the area for my regular residency at Lavelle.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Performs Friday/Saturday nights. Home recording during weekdays. Sound-proofed studio.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Park West Properties', relationship: 'Current landlord (5 years)', contact: '416-555-0119' },
-          { name: 'Daniel Park', relationship: 'Co-founder, Lavelle', contact: 'd.park@lavelle.ca' }
-        ],
-    disclosures: 'Self-employed: residency income + bookings + production fees. 5-year T1 history shows consistent $80K-$110K range. Manager can vouch for upcoming 2026 bookings.',
-    scorecard: {
-      incomeStability: { score: 4, note: '7 years performing + steady residencies' },
-      rentAffordability: { score: 5, note: '33% of stable income' },
-      rentalHistory: { score: 5, note: '5 years current landlord, ref strong' },
-      longTermIntent: { score: 5, note: 'Career rooted in Toronto nightlife' },
-      disclosures: { score: 4, note: 'Self-employed income documented thoroughly' },
-      overall: 4.6,
-    },
-  }
-];
-
-const MIXED_DEMOS = [
-  {
-    applicationNumber: 'RL-2026-MIX-001', createdAt: new Date().toISOString(),
-    email: 'daniel.vance@email.com',
-    tenant: { fullName: 'Daniel Vance', age: '29', dateOfBirth: '1996-04-18', phone: '(416) 555-0801' },
-    employment: { jobTitle: 'Senior Quant Trader', employer: 'TD Securities', yearsAtJob: '2.5', annualIncome: 285000, monthlyIncome: 23750 },
-    rental: { previousAddress: null, yearsAtPrevious: null, previousLandlordName: null, previousLandlordContact: null, currentRent: null },
-    apartment: { address: '199 Yonge Street, Toronto', description: '1BR luxury condo, downtown core, $3,400/mo', estimatedRent: 3400, rentToIncomeRatio: 14 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Moving out of family home in Markham — first apartment, ready to live downtown near work.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Works long hours, mostly home to sleep. Quiet, no parties.', pets: null },
-    vehicle: { makeModel: 'BMW M3', year: '2024' },
-    references: [
-          { name: 'Sarah Klein', relationship: 'Managing Director, TD Securities', contact: 's.klein@tdsecurities.com' },
-          { name: 'Rakesh Vance', relationship: 'Father (character reference)', contact: '905-555-0344' }
-        ],
-    disclosures: 'First-time renter — coming from family home. Strong income trajectory and bonus structure.',
-    scorecard: {
-      incomeStability: { score: 5, note: 'Top-tier income, 2.5 years at TD Securities' },
-      rentAffordability: { score: 5, note: '14% of monthly income — vast buffer' },
-      rentalHistory: { score: 2, note: 'No previous rental history — first-time renter' },
-      longTermIntent: { score: 2, note: 'Young, mobile career path, may relocate to NYC/Chicago' },
-      disclosures: { score: 4, note: 'First-time renter status disclosed openly' },
+      incomeStability: { score: 3, note: 'Self-employed; income varies but 8-year track record' },
+      rentAffordability: { score: 3, note: '46% of declared income — verify with NOAs' },
+      rentalHistory: { score: 4, note: '10 years with one landlord, strong reference' },
+      longTermIntent: { score: 4, note: 'Roots in the neighbourhood via her business' },
+      disclosures: { score: 4, note: 'Offered NOAs and business statements upfront' },
       overall: 3.6,
     },
   },
   {
-    applicationNumber: 'RL-2026-MIX-002', createdAt: new Date().toISOString(),
-    email: 'jessica.wu@email.com',
-    tenant: { fullName: 'Jessica Wu', age: '31', dateOfBirth: '1994-08-22', phone: '(647) 555-0234' },
-    employment: { jobTitle: 'Investment Banking VP', employer: 'Goldman Sachs Canada', yearsAtJob: '1', annualIncome: 340000, monthlyIncome: 28333 },
-    rental: { previousAddress: '88 Park Avenue West, Toronto', yearsAtPrevious: '1', previousLandlordName: 'Corporate housing (short-term)', previousLandlordContact: 'corp@cushwake.ca', currentRent: 3800 },
-    apartment: { address: '188 Cumberland Street, Toronto', description: '2BR Yorkville luxury, $4,800/mo', estimatedRent: 4800, rentToIncomeRatio: 17 },
-    move: { moveInDate: 'August 15, 2026', reasonForMoving: 'Corporate-housing contract ending — need to find a real apartment.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
+    applicationNumber: 'RL-2026-7081-92A3', createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
+    email: 'omar.haddad@email.com',
+    tenant: { fullName: 'Omar Haddad', age: '26', dateOfBirth: '1999-12-11', phone: '(437) 555-0763' },
+    employment: { jobTitle: 'PhD Candidate + Research Assistant', employer: 'York University', yearsAtJob: '2', annualIncome: 34000, monthlyIncome: 2833 },
+    rental: { previousAddress: '55 Sentinel Rd, North York', yearsAtPrevious: '2', previousLandlordName: 'Campus Living Co.', previousLandlordContact: 'rentals@email.com', currentRent: 950 },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 92 },
+    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Sharing a larger unit with a fellow grad student to cut commute time.' },
+    household: { numberOfOccupants: '2', occupantsDetails: 'Two graduate students sharing', smoker: 'no' },
     coApplicant: null,
-    lifestyle: { personality: 'Investment banking hours. Home is for sleep.', pets: null },
+    lifestyle: { personality: 'Studious, mostly on campus or at the library. No parties.', pets: null },
     vehicle: null,
     references: [
-          { name: 'Andrew Lee', relationship: 'Partner, Goldman Sachs', contact: 'a.lee@goldman.com' },
-          { name: 'Corporate Housing Manager', relationship: 'Cushman & Wakefield', contact: 'corp@cushwake.ca' }
-        ],
-    disclosures: 'Came from NYC office 12 months ago — limited Canadian credit, but employer letter and US history available.',
+      { name: 'Campus Living Co.', relationship: 'Current landlord (2 years)', contact: 'rentals@email.com' },
+      { name: 'Dr. Helen Brar', relationship: 'PhD supervisor, York University', contact: 'h.brar@email.com' },
+    ],
+    disclosures: 'Stipend-based income. Parent is co-signing as guarantor with verified income; documentation available.',
     scorecard: {
-      incomeStability: { score: 5, note: 'IB VP at Goldman, $340K confirmed' },
-      rentAffordability: { score: 5, note: '17% of monthly income' },
-      rentalHistory: { score: 2, note: 'Only corporate housing in Toronto — no traditional rental history here' },
-      longTermIntent: { score: 2, note: 'Recently relocated from NYC, IB roles globally mobile' },
-      disclosures: { score: 4, note: 'Credit thin-file disclosed, US history offered' },
+      incomeStability: { score: 2, note: 'Stipend income; relies on a guarantor' },
+      rentAffordability: { score: 2, note: 'Rent is 92% of own income — guarantor required' },
+      rentalHistory: { score: 3, note: '2 years in student housing' },
+      longTermIntent: { score: 3, note: 'Likely 2-3 more years in the program' },
+      disclosures: { score: 5, note: 'Guarantor offered proactively' },
+      overall: 3.0,
+    },
+  },
+  {
+    applicationNumber: 'RL-2026-8192-A3B4', createdAt: new Date(Date.now() - 86400000 * 6).toISOString(),
+    email: 'lucia.fernandez@email.com',
+    tenant: { fullName: 'Lucia Fernandez', age: '33', dateOfBirth: '1992-04-07', phone: '(647) 555-0884' },
+    employment: { jobTitle: 'Mechanical Engineer (signed offer)', employer: 'Magna International', yearsAtJob: '0', annualIncome: 98000, monthlyIncome: 8167 },
+    rental: { previousAddress: 'Madrid, Spain', yearsAtPrevious: '5', previousLandlordName: 'Inmobiliaria Centro', previousLandlordContact: 'contacto@email.com', currentRent: null },
+    apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 32 },
+    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Recently relocated to Canada for a new engineering role; settling with her partner.' },
+    household: { numberOfOccupants: '2', occupantsDetails: 'Couple, newly arrived in Canada', smoker: 'no' },
+    coApplicant: { name: 'Diego Fernandez', age: '34', relationship: 'Spouse', jobTitle: 'Graphic Designer (job searching)', employer: 'Freelance / seeking employment', annualIncome: 0 },
+    lifestyle: { personality: 'New to the city, quiet, eager to settle into a long-term home.', pets: null },
+    vehicle: null,
+    references: [
+      { name: 'Inmobiliaria Centro', relationship: 'Previous landlord, Madrid (5 years)', contact: 'contacto@email.com' },
+      { name: 'James Okoro', relationship: 'Hiring manager, Magna International', contact: 'j.okoro@email.com' },
+    ],
+    disclosures: 'Newcomer to Canada — limited local rental and credit history. Signed employment offer, first and last month, and international references available.',
+    scorecard: {
+      incomeStability: { score: 4, note: 'Signed full-time offer; partner currently job searching' },
+      rentAffordability: { score: 4, note: '32% of primary income' },
+      rentalHistory: { score: 2, note: 'Strong international history; limited Canadian record' },
+      longTermIntent: { score: 4, note: 'Relocated for a permanent role; settling long-term' },
+      disclosures: { score: 4, note: 'Offered offer letter, first/last, and references upfront' },
       overall: 3.6,
     },
   },
-  {
-    applicationNumber: 'RL-2026-MIX-003', createdAt: new Date().toISOString(),
-    email: 'michael.ostrowski@email.com',
-    tenant: { fullName: 'Michael Ostrowski', age: '34', dateOfBirth: '1991-12-09', phone: '(416) 555-0667' },
-    employment: { jobTitle: 'Tech Founder (Series B)', employer: 'Lumen Health Inc.', yearsAtJob: '4', annualIncome: 220000, monthlyIncome: 18333 },
-    rental: { previousAddress: '101 King Street West, Toronto', yearsAtPrevious: '0.5', previousLandlordName: 'Airbnb host', previousLandlordContact: 'host@airbnb.ca', currentRent: 4500 },
-    apartment: { address: '50 Wellesley Street East, Toronto', description: '2BR + den condo, $4,200/mo', estimatedRent: 4200, rentToIncomeRatio: 23 },
-    move: { moveInDate: 'July 15, 2026', reasonForMoving: 'Living out of Airbnbs for 6 months while between sublets — ready for stability.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Works from home most days. Has occasional remote-team visitors.', pets: null },
-    vehicle: { makeModel: 'Tesla Model Y', year: '2023' },
-    references: [
-          { name: 'Karen Wong', relationship: 'Board Chair, Lumen Health', contact: 'k.wong@lumenhealth.io' },
-          { name: 'Jaime Park', relationship: 'Previous co-founder', contact: 'jaime@parkventures.com' }
-        ],
-    disclosures: 'Highly variable founder income — $220K base + equity. 6 months of nomadic living between sublets.',
-    scorecard: {
-      incomeStability: { score: 5, note: 'Founder of well-funded Series B startup, $220K base' },
-      rentAffordability: { score: 5, note: '23% of monthly income, plus $2M+ liquid equity' },
-      rentalHistory: { score: 2, note: 'Last 6 months on Airbnb, no current landlord' },
-      longTermIntent: { score: 2, note: 'Startup might require relocation if next round leads to expansion' },
-      disclosures: { score: 4, note: 'Nomadic lifestyle and variable income disclosed' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-004', createdAt: new Date().toISOString(),
-    email: 'aisha.mahmood@email.com',
-    tenant: { fullName: 'Aisha Mahmood', age: '27', dateOfBirth: '1998-03-15', phone: '(437) 555-0119' },
-    employment: { jobTitle: 'Corporate Lawyer (1st-year associate)', employer: 'McCarthy Tétrault LLP', yearsAtJob: '1', annualIncome: 195000, monthlyIncome: 16250 },
-    rental: { previousAddress: 'Family home, Mississauga', yearsAtPrevious: '21', previousLandlordName: 'Parents', previousLandlordContact: 'mahmood.family@email.com', currentRent: null },
-    apartment: { address: '320 King Street West, Toronto', description: '1BR luxury near Bay Street, $3,200/mo', estimatedRent: 3200, rentToIncomeRatio: 20 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Just called to the Ontario bar — moving out of family home for the first time.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Quiet, religious, no parties. Home most evenings working remotely.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Sandra Khoury', relationship: 'Partner, McCarthy Tétrault', contact: 's.khoury@mccarthy.ca' },
-          { name: 'Anwar Mahmood', relationship: 'Father (engineer, 23 years at WSP)', contact: '905-555-0455' }
-        ],
-    disclosures: 'First-time renter coming from family home. Father willing to co-sign as guarantor.',
-    scorecard: {
-      incomeStability: { score: 5, note: '1st-year associate at top-tier firm, $195K + bonus' },
-      rentAffordability: { score: 5, note: '20% of monthly income' },
-      rentalHistory: { score: 2, note: 'No rental history — coming from family home' },
-      longTermIntent: { score: 2, note: 'Big-law associate, future could include partnership move or BigLaw shuffle' },
-      disclosures: { score: 4, note: 'First-time renter status disclosed with guarantor offer' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-005', createdAt: new Date().toISOString(),
-    email: 'carlos.mendoza@email.com',
-    tenant: { fullName: 'Carlos Mendoza', age: '32', dateOfBirth: '1993-06-04', phone: '(416) 555-0399' },
-    employment: { jobTitle: 'Plastic Surgeon (recently licensed)', employer: 'Toronto Aesthetic Group', yearsAtJob: '0.5', annualIncome: 380000, monthlyIncome: 31667 },
-    rental: { previousAddress: null, yearsAtPrevious: null, previousLandlordName: null, previousLandlordContact: null, currentRent: null },
-    apartment: { address: '256 King Street East, Toronto', description: '2BR condo near St. Mike\'s Hospital, $4,300/mo', estimatedRent: 4300, rentToIncomeRatio: 14 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Just completed fellowship in Boston — moving back to Toronto for new practice role.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Long hospital hours. Home is quiet.', pets: null },
-    vehicle: { makeModel: 'Audi Q5', year: '2024' },
-    references: [
-          { name: 'Dr. Jennifer Roy', relationship: 'Senior Partner, Toronto Aesthetic Group', contact: 'j.roy@aestheticgroup.ca' },
-          { name: 'Dr. Robert Henderson', relationship: 'Fellowship director, MGH Boston', contact: 'r.henderson@partners.org' }
-        ],
-    disclosures: 'Just relocated from Boston after 2-year fellowship — no current Canadian rental history. Strong recent US history available.',
-    scorecard: {
-      incomeStability: { score: 5, note: 'New private practice partner, $380K guaranteed' },
-      rentAffordability: { score: 5, note: '14% of monthly income' },
-      rentalHistory: { score: 2, note: 'Recent return from Boston — no current Canadian rental record' },
-      longTermIntent: { score: 2, note: 'New practice partnership but medicine careers can require hospital changes' },
-      disclosures: { score: 4, note: 'US-only recent rental history disclosed proactively' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-006', createdAt: new Date().toISOString(),
-    email: 'margaret.odonnell@email.com',
-    tenant: { fullName: 'Margaret O\'Donnell', age: '52', dateOfBirth: '1973-09-12', phone: '(416) 555-0444' },
-    employment: { jobTitle: 'Senior Administrative Assistant', employer: 'University Health Network', yearsAtJob: '18', annualIncome: 78000, monthlyIncome: 6500 },
-    rental: { previousAddress: '88 College Street, Toronto', yearsAtPrevious: '12', previousLandlordName: 'Frank Romano', previousLandlordContact: '416-555-0234', currentRent: 2100 },
-    apartment: { address: '120 Carlton Street, Toronto', description: '1BR Cabbagetown, $2,400/mo', estimatedRent: 2400, rentToIncomeRatio: 37 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Current building going condo — landlord has been incredibly fair for 12 years but is selling.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Lives alone, quiet, plant lover. Walks to UHN every morning.', pets: 'One cat, 14 years old' },
-    vehicle: null,
-    references: [
-          { name: 'Frank Romano', relationship: 'Current landlord (12 years)', contact: '416-555-0234' },
-          { name: 'Patricia Wong', relationship: 'UHN HR Director', contact: 'p.wong@uhn.ca' }
-        ],
-    disclosures: '37% rent-to-income ratio is high — but I\'ve managed comfortably at this level for years.',
-    scorecard: {
-      incomeStability: { score: 3, note: '$78K solid public-sector pay, 18 years stable' },
-      rentAffordability: { score: 3, note: '37% of income — tight by guideline but managed for years' },
-      rentalHistory: { score: 5, note: '12 years with same landlord — exceptional reference' },
-      longTermIntent: { score: 5, note: 'Long-term Cabbagetown resident — wants to stay 10+ years' },
-      disclosures: { score: 5, note: 'Affordability ratio disclosed proactively' },
-      overall: 4.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-007', createdAt: new Date().toISOString(),
-    email: 'robert.lim@email.com',
-    tenant: { fullName: 'Robert & Susan Lim', age: '58 & 56', dateOfBirth: '1967-02-28', phone: '(416) 555-0922' },
-    employment: { jobTitle: 'High School Principal (Robert)', employer: 'Toronto District School Board', yearsAtJob: '22', annualIncome: 138000, monthlyIncome: 11500 },
-    rental: { previousAddress: '88 Glenholme Avenue, Toronto', yearsAtPrevious: '15', previousLandlordName: 'Estate of M. Hoffman', previousLandlordContact: 'estate.contact@email.com', currentRent: 2800 },
-    apartment: { address: '156 Glen Park Avenue, Toronto', description: '3BR house Cedarvale, $3,500/mo', estimatedRent: 3500, rentToIncomeRatio: 30 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: '15 years in current house — landlord passed away, estate is selling. Want to stay in the area.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'Wife Susan (retired teacher), one adult son occasionally visiting from grad school', smoker: 'no' },
-    coApplicant: { name: 'Susan Lim', age: '56', relationship: 'Spouse', jobTitle: 'Retired Teacher', employer: 'TDSB (retired 2024)', annualIncome: 42000 },
-    lifestyle: { personality: 'Quiet empty-nesters. Cooking, walking, book club. No parties.', pets: 'One dog, 8 years old, well-trained Lab' },
-    vehicle: { makeModel: 'Honda CR-V', year: '2019' },
-    references: [
-          { name: 'Estate of M. Hoffman', relationship: 'Previous landlord (15 years, now estate)', contact: 'estate.contact@email.com' },
-          { name: 'Dr. Karen Mathieson', relationship: 'TDSB Superintendent', contact: 'k.mathieson@tdsb.on.ca' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 3, note: 'Strong combined household but mid by luxury standards' },
-      rentAffordability: { score: 3, note: '30% of $180K combined income' },
-      rentalHistory: { score: 5, note: '15 years with same landlord — never missed a payment' },
-      longTermIntent: { score: 5, note: 'Empty-nesters, want to stay in Cedarvale 10+ years' },
-      disclosures: { score: 5, note: 'No items to disclose' },
-      overall: 4.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-008', createdAt: new Date().toISOString(),
-    email: 'thelma.reyes@email.com',
-    tenant: { fullName: 'Thelma Reyes', age: '47', dateOfBirth: '1978-11-04', phone: '(647) 555-0801' },
-    employment: { jobTitle: 'Registered Nurse', employer: 'Mount Sinai Hospital', yearsAtJob: '14', annualIncome: 92000, monthlyIncome: 7667 },
-    rental: { previousAddress: '290 Bathurst Street, Toronto', yearsAtPrevious: '11', previousLandlordName: 'Anita Kapoor', previousLandlordContact: '416-555-0119', currentRent: 1950 },
-    apartment: { address: '88 Henry Street, Toronto', description: '2BR Kensington area, $2,800/mo', estimatedRent: 2800, rentToIncomeRatio: 36 },
-    move: { moveInDate: 'July 15, 2026', reasonForMoving: '11 years in current place. Landlord retiring and selling. Want to stay in walkable downtown.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'Me and my mother (who I care for part-time)', smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Shift worker. Quiet at home, cooking and reading. Mom in early 70s, mobile but I\'m her support.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Anita Kapoor', relationship: 'Current landlord (11 years)', contact: '416-555-0119' },
-          { name: 'Dr. James Patterson', relationship: 'Mount Sinai nursing supervisor', contact: 'j.patterson@sinaihealth.ca' }
-        ],
-    disclosures: '36% rent-to-income is high — but I\'ve never had any issues making payments. Mother contributes occasionally.',
-    scorecard: {
-      incomeStability: { score: 3, note: '14 years stable RN income, $92K' },
-      rentAffordability: { score: 3, note: '36% of monthly income — tight but proven' },
-      rentalHistory: { score: 5, note: '11 years with same landlord, exceptional reference' },
-      longTermIntent: { score: 5, note: 'Caregiving for mother, want stable home long-term' },
-      disclosures: { score: 5, note: 'Affordability concern disclosed openly' },
-      overall: 4.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-009', createdAt: new Date().toISOString(),
-    email: 'patrick.chen@email.com',
-    tenant: { fullName: 'Patrick & Diane Chen', age: '45 & 44', dateOfBirth: '1980-05-20', phone: '(416) 555-0556' },
-    employment: { jobTitle: 'Senior Software Developer (Patrick)', employer: 'Royal Bank of Canada', yearsAtJob: '13', annualIncome: 158000, monthlyIncome: 13167 },
-    rental: { previousAddress: '420 Sherbourne Street, Toronto', yearsAtPrevious: '10', previousLandlordName: 'Wing-On Lee', previousLandlordContact: '416-555-0998', currentRent: 2600 },
-    apartment: { address: '88 Greensides Avenue, Toronto', description: '3BR semi-detached, Wychwood, $3,800/mo', estimatedRent: 3800, rentToIncomeRatio: 28 },
-    move: { moveInDate: 'August 15, 2026', reasonForMoving: 'Family of 4. Want to stay in the same school catchment for our kids.' },
-    household: { numberOfOccupants: '4', occupantsDetails: 'Wife Diane (part-time teacher), two kids (ages 9 and 12)', smoker: 'no' },
-    coApplicant: { name: 'Diane Chen', age: '44', relationship: 'Spouse', jobTitle: 'Part-time Teacher', employer: 'TDSB', annualIncome: 35000 },
-    lifestyle: { personality: 'Family-focused. Kids in piano, soccer. Quiet evenings.', pets: 'One indoor cat, 6 years old' },
-    vehicle: { makeModel: 'Toyota Highlander', year: '2020' },
-    references: [
-          { name: 'Wing-On Lee', relationship: 'Current landlord (10 years)', contact: '416-555-0998' },
-          { name: 'Anna Macedo', relationship: 'VP Technology, RBC', contact: 'a.macedo@rbc.com' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 3, note: 'Strong combined household, $193K — mid by tech standards' },
-      rentAffordability: { score: 3, note: '28% of combined income — comfortable' },
-      rentalHistory: { score: 5, note: '10 years with same landlord — kids grew up here' },
-      longTermIntent: { score: 5, note: 'Kids in school catchment — multi-year stability required' },
-      disclosures: { score: 5, note: 'No items to disclose' },
-      overall: 4.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-010', createdAt: new Date().toISOString(),
-    email: 'helen.kowalski@email.com',
-    tenant: { fullName: 'Helen Kowalski', age: '63', dateOfBirth: '1962-07-08', phone: '(416) 555-0712' },
-    employment: { jobTitle: 'Retired Civil Servant (former Director, MOH)', employer: 'Ontario Public Service (Pensioner)', yearsAtJob: '32', annualIncome: 76000, monthlyIncome: 6333 },
-    rental: { previousAddress: '88 Coxwell Avenue, Toronto', yearsAtPrevious: '20', previousLandlordName: 'Family Brennan', previousLandlordContact: 'brennan.family@email.com', currentRent: 1850 },
-    apartment: { address: '156 Carlaw Avenue, Toronto', description: '1BR Leslieville, $2,200/mo', estimatedRent: 2200, rentToIncomeRatio: 35 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: '20 years in current building. Owner family is selling building to developer. Heartbroken but moving on.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Retired, well-established life. Volunteering, reading, gardening, grandkids on weekends.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Mike Brennan', relationship: 'Previous landlord (20 years)', contact: 'brennan.family@email.com' },
-          { name: 'Dr. Sarah Cohen', relationship: 'Former colleague, MOH', contact: 's.cohen@ontario.ca' }
-        ],
-    disclosures: '35% rent-to-income is high but I have $310K in retirement savings and OAS+CPP income on top of pension.',
-    scorecard: {
-      incomeStability: { score: 3, note: 'Pension income $76K — fixed but indexed to inflation' },
-      rentAffordability: { score: 3, note: '35% of pension income — but $310K retirement buffer' },
-      rentalHistory: { score: 5, note: '20 years with same family of landlords' },
-      longTermIntent: { score: 5, note: 'Retired and rooted in Toronto — wants final long-term home' },
-      disclosures: { score: 5, note: 'Affordability + retirement assets disclosed openly' },
-      overall: 4.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-011', createdAt: new Date().toISOString(),
-    email: 'jamal.whitfield@email.com',
-    tenant: { fullName: 'Jamal Whitfield', age: '24', dateOfBirth: '2001-10-15', phone: '(437) 555-0445' },
-    employment: { jobTitle: 'Software Engineer (recent grad)', employer: 'Shopify', yearsAtJob: '0.5', annualIncome: 95000, monthlyIncome: 7917 },
-    rental: { previousAddress: 'Family home, Brampton', yearsAtPrevious: '24', previousLandlordName: 'Parents', previousLandlordContact: 'whitfield.family@email.com', currentRent: null },
-    apartment: { address: '180 Front Street West, Toronto', description: '1BR Liberty Village, $2,400/mo', estimatedRent: 2400, rentToIncomeRatio: 30 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Recently started at Shopify after graduating from Waterloo. First time on my own.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Quiet, mostly home gaming and coding. No parties.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Sarah Liu', relationship: 'Engineering Manager, Shopify', contact: 's.liu@shopify.com' },
-          { name: 'Marcus Whitfield', relationship: 'Father (sergeant, Peel Regional Police)', contact: '905-555-0223' }
-        ],
-    disclosures: 'First-time renter — coming from family home in Brampton. Father offered to co-sign as guarantor.',
-    scorecard: {
-      incomeStability: { score: 4, note: '$95K + bonus at Shopify — early career but strong trajectory' },
-      rentAffordability: { score: 4, note: '30% of monthly income' },
-      rentalHistory: { score: 1, note: 'No rental history — first apartment' },
-      longTermIntent: { score: 4, note: 'Tech career rooted in Toronto, wants 2-3 years stability' },
-      disclosures: { score: 5, note: 'Proactively offered guarantor + acknowledged first-timer status' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-012', createdAt: new Date().toISOString(),
-    email: 'priya.chandra@email.com',
-    tenant: { fullName: 'Priya Chandrasekhar', age: '23', dateOfBirth: '2002-04-30', phone: '(647) 555-0667' },
-    employment: { jobTitle: 'Marketing Associate (1st job)', employer: 'Procter & Gamble Canada', yearsAtJob: '0.5', annualIncome: 68000, monthlyIncome: 5667 },
-    rental: { previousAddress: 'University of Waterloo residence', yearsAtPrevious: '1', previousLandlordName: 'UW Housing Office', previousLandlordContact: 'housing@uwaterloo.ca', currentRent: null },
-    apartment: { address: '88 Eastern Avenue, Toronto', description: '2BR shared, Corktown, $1,400/room', estimatedRent: 1400, rentToIncomeRatio: 25 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Graduated 4 months ago. Lived in residence for 4 years. Sharing with classmate Anjali.' },
-    household: { numberOfOccupants: '2', occupantsDetails: 'My friend Anjali Khan (separate application — also entry-level professional)', smoker: 'no' },
-    coApplicant: { name: 'Anjali Khan', age: '23', relationship: 'Friend / co-tenant', jobTitle: 'Junior Analyst', employer: 'KPMG', annualIncome: 65000 },
-    lifestyle: { personality: 'Quiet, focused on building career. Yoga, cooking, occasional book club.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Dr. Lisa Tremblay', relationship: 'P&G Manager (4 months)', contact: 'l.tremblay@pg.com' },
-          { name: 'Vivek Chandrasekhar', relationship: 'Father (engineer, OPG, 21 years)', contact: '905-555-0119' }
-        ],
-    disclosures: 'First-time renter — only residence experience. Parents available as guarantors.',
-    scorecard: {
-      incomeStability: { score: 4, note: 'New grad, strong CPG employer' },
-      rentAffordability: { score: 4, note: '25% of own income, plus roommate income' },
-      rentalHistory: { score: 1, note: '4 years residence only — no traditional rental history' },
-      longTermIntent: { score: 4, note: 'P&G typically 2-3 year postings, then moves up' },
-      disclosures: { score: 5, note: 'Career stage disclosed openly with guarantor offer' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-013', createdAt: new Date().toISOString(),
-    email: 'ethan.brennan@email.com',
-    tenant: { fullName: 'Ethan Brennan', age: '22', dateOfBirth: '2003-01-18', phone: '(416) 555-0833' },
-    employment: { jobTitle: 'Graduate Student (Computer Science Master\'s)', employer: 'University of Toronto', yearsAtJob: '0.5', annualIncome: 35000, monthlyIncome: 2917 },
-    rental: { previousAddress: 'Family home, Newmarket', yearsAtPrevious: '22', previousLandlordName: 'Parents', previousLandlordContact: 'brennan.family.ca@email.com', currentRent: null },
-    apartment: { address: '256 McCaul Street, Toronto', description: '1BR near UofT, $1,650/mo', estimatedRent: 1650, rentToIncomeRatio: 57 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Starting Master\'s at UofT this fall. Family home is too far to commute.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Studious, mostly at the lab. Lab + library + home only.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Dr. Anwar Khan', relationship: 'UofT thesis supervisor', contact: 'a.khan@cs.toronto.edu' },
-          { name: 'Patricia Brennan', relationship: 'Mother (paralegal, 14 years at Aird & Berlis)', contact: '905-555-0234' }
-        ],
-    disclosures: 'TA + RA stipend only. Parents are co-signing as guarantors. 2-year program then PhD planned.',
-    scorecard: {
-      incomeStability: { score: 4, note: 'Graduate stipend $35K secured 2 years' },
-      rentAffordability: { score: 4, note: '57% of own income — guarantor covering gap' },
-      rentalHistory: { score: 1, note: 'No rental history' },
-      longTermIntent: { score: 4, note: '2-year Master\'s, planning to continue to PhD' },
-      disclosures: { score: 5, note: 'Affordability disclosed openly with guarantor + program details' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-014', createdAt: new Date().toISOString(),
-    email: 'sasha.petrov@email.com',
-    tenant: { fullName: 'Sasha Petrov', age: '26', dateOfBirth: '1999-08-05', phone: '(437) 555-0223' },
-    employment: { jobTitle: 'Software Developer (newcomer to Canada)', employer: 'EA Sports Toronto', yearsAtJob: '0.5', annualIncome: 88000, monthlyIncome: 7333 },
-    rental: { previousAddress: 'Moscow, Russia', yearsAtPrevious: '6', previousLandlordName: 'Family apartment (owned)', previousLandlordContact: null, currentRent: null },
-    apartment: { address: '255 Front Street East, Toronto', description: '1BR Distillery District, $2,300/mo', estimatedRent: 2300, rentToIncomeRatio: 31 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Just immigrated to Canada (Express Entry, PR holder). Starting at EA Sports.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Quiet, working hybrid. Cooking at home most nights. New to Toronto, exploring.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Dmitri Volkov', relationship: 'EA Engineering Manager (hired me)', contact: 'd.volkov@ea.com' },
-          { name: 'Anna Petrova', relationship: 'Mother (in Moscow)', contact: '+7-495-555-0119' }
-        ],
-    disclosures: 'New immigrant — no Canadian credit yet. Has $45K in liquid savings + family wire transfer support.',
-    scorecard: {
-      incomeStability: { score: 4, note: 'New EA hire, $88K + relocation package' },
-      rentAffordability: { score: 4, note: '31% of monthly income, savings buffer' },
-      rentalHistory: { score: 1, note: 'Family-owned home in Russia, no rental history' },
-      longTermIntent: { score: 4, note: 'New PR holder rooted in Toronto for the long term' },
-      disclosures: { score: 5, note: 'Immigration + credit + history transparently disclosed' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-015', createdAt: new Date().toISOString(),
-    email: 'olivia.hartman@email.com',
-    tenant: { fullName: 'Olivia Hartman', age: '23', dateOfBirth: '2002-12-14', phone: '(416) 555-0667' },
-    employment: { jobTitle: 'Junior Architect', employer: 'Quadrangle Architects', yearsAtJob: '0.5', annualIncome: 62000, monthlyIncome: 5167 },
-    rental: { previousAddress: 'Family home, Burlington', yearsAtPrevious: '23', previousLandlordName: 'Parents', previousLandlordContact: 'hartman.family@email.com', currentRent: null },
-    apartment: { address: '550 Queen Street West, Toronto', description: '1BR loft, Trinity Bellwoods, $2,000/mo', estimatedRent: 2000, rentToIncomeRatio: 39 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Started full-time at Quadrangle 5 months ago after undergrad. Time to leave the parents\' house.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Creative, quiet. Loves trying restaurants, gallery openings on weekends.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Marcus Quattrocchi', relationship: 'Principal, Quadrangle Architects', contact: 'm.quattrocchi@quadrangle.ca' },
-          { name: 'Edward Hartman', relationship: 'Father (psychiatrist, 28 years private practice)', contact: '905-555-0445' }
-        ],
-    disclosures: 'First-time renter from family home. 39% rent-to-income — stretching, but father is co-signing.',
-    scorecard: {
-      incomeStability: { score: 4, note: 'Junior at established architecture firm, $62K + raises ahead' },
-      rentAffordability: { score: 4, note: '39% stretched, guarantor covers gap' },
-      rentalHistory: { score: 1, note: 'No rental history' },
-      longTermIntent: { score: 4, note: 'Architecture careers reward staying — wants 3+ year base' },
-      disclosures: { score: 5, note: 'Stretched affordability + first-timer status disclosed' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-016', createdAt: new Date().toISOString(),
-    email: 'marco.ferraro@email.com',
-    tenant: { fullName: 'Marco Ferraro', age: '34', dateOfBirth: '1991-03-22', phone: '(416) 555-0890' },
-    employment: { jobTitle: 'Freelance Film Director', employer: 'Self-employed (Netflix, CBC, indie)', yearsAtJob: '8', annualIncome: 75000, monthlyIncome: 6250 },
-    rental: { previousAddress: '88 Bellwoods Avenue, Toronto', yearsAtPrevious: '5', previousLandlordName: 'Andrea Costa', previousLandlordContact: '416-555-0723', currentRent: 1900 },
-    apartment: { address: '420 Adelaide Street West, Toronto', description: '1BR + studio, King West, $2,300/mo', estimatedRent: 2300, rentToIncomeRatio: 37 },
-    move: { moveInDate: 'July 15, 2026', reasonForMoving: 'Building is being torn down for condos. Need new place near production hub.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Travels for shoots 6-8 weeks/year. Quiet otherwise — editing room at home.', pets: null },
-    vehicle: { makeModel: 'Honda Civic', year: '2018' },
-    references: [
-          { name: 'Andrea Costa', relationship: 'Current landlord (5 years)', contact: '416-555-0723' },
-          { name: 'Sarah Birmingham', relationship: 'Producer, Three Floor Productions', contact: 's.birmingham@threefloor.ca' }
-        ],
-    disclosures: 'Income varies $60K-$95K depending on project flow. 3 years of CRA returns available + signed letters from 4 production companies for 2026.',
-    scorecard: {
-      incomeStability: { score: 2, note: '8 years freelance — 3-yr avg $75K, but variability is high' },
-      rentAffordability: { score: 2, note: '37% of average income — tight on lean months' },
-      rentalHistory: { score: 4, note: '5 years with current landlord — strong reference' },
-      longTermIntent: { score: 4, note: 'Career embedded in Toronto film scene' },
-      disclosures: { score: 4, note: 'Income variability extensively documented' },
-      overall: 3.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-017', createdAt: new Date().toISOString(),
-    email: 'imani.joseph@email.com',
-    tenant: { fullName: 'Imani Joseph', age: '29', dateOfBirth: '1996-06-11', phone: '(647) 555-0334' },
-    employment: { jobTitle: 'Visual Artist + Part-Time Curator', employer: 'AGO + commissions', yearsAtJob: '5', annualIncome: 52000, monthlyIncome: 4333 },
-    rental: { previousAddress: '180 Robinson Street, Toronto', yearsAtPrevious: '4', previousLandlordName: 'Marcus Stein', previousLandlordContact: '416-555-0445', currentRent: 1450 },
-    apartment: { address: '88 Shaw Street, Toronto', description: '1BR with studio space, Trinity Bellwoods, $1,950/mo', estimatedRent: 1950, rentToIncomeRatio: 45 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Current building going condo. Need new place with room to paint.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Studio at home. Painting days, gallery evenings/weekends.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Marcus Stein', relationship: 'Current landlord (4 years)', contact: '416-555-0445' },
-          { name: 'Lisa Brown', relationship: 'Curator, AGO', contact: 'l.brown@ago.ca' }
-        ],
-    disclosures: 'Mixed income — AGO part-time ($30K) + commissions/exhibitions ($22K avg). Three years tax returns ready.',
-    scorecard: {
-      incomeStability: { score: 2, note: 'Mixed art/curator income — $52K, lumpy' },
-      rentAffordability: { score: 2, note: '45% of income — tight, manages by absorbing dry spells' },
-      rentalHistory: { score: 4, note: '4 years with current landlord — strong reference' },
-      longTermIntent: { score: 4, note: 'Embedded in Toronto art scene long-term' },
-      disclosures: { score: 4, note: 'Mixed income openly documented' },
-      overall: 3.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-018', createdAt: new Date().toISOString(),
-    email: 'tyler.brennan.mix@email.com',
-    tenant: { fullName: 'Tyler Brennan', age: '28', dateOfBirth: '1997-01-08', phone: '(416) 555-0188' },
-    employment: { jobTitle: 'Bartender + Session Musician', employer: 'The Cameron House + freelance gigs', yearsAtJob: '4', annualIncome: 58000, monthlyIncome: 4833 },
-    rental: { previousAddress: '88 Ossington Avenue, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Property Manager — Akelius', previousLandlordContact: 'tenant.relations@akelius.ca', currentRent: 1900 },
-    apartment: { address: '660 King Street West, Toronto', description: '1BR, West Queen West, $2,100/mo', estimatedRent: 2100, rentToIncomeRatio: 43 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Building converting to short-term rentals.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'outdoor' },
-    coApplicant: null,
-    lifestyle: { personality: 'Evenings working. Quiet at home. Practices guitar with headphones.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Roy Murphy', relationship: 'Owner, The Cameron House', contact: '416-555-0233' },
-          { name: 'Property Manager — Akelius', relationship: 'Current landlord (3 years)', contact: 'tenant.relations@akelius.ca' }
-        ],
-    disclosures: 'Variable income — bartending base + gig income. 12 months of bank statements show consistent deposits despite variability.',
-    scorecard: {
-      incomeStability: { score: 2, note: 'Mixed bartending + gig income, ~$58K' },
-      rentAffordability: { score: 2, note: '43% of monthly income — tight' },
-      rentalHistory: { score: 4, note: '3 years with current property manager' },
-      longTermIntent: { score: 4, note: 'Career embedded in Toronto music scene' },
-      disclosures: { score: 4, note: 'Income variability documented thoroughly' },
-      overall: 3.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-019', createdAt: new Date().toISOString(),
-    email: 'anna.kowalska@email.com',
-    tenant: { fullName: 'Anna Kowalska', age: '30', dateOfBirth: '1995-09-18', phone: '(437) 555-0445' },
-    employment: { jobTitle: 'Tattoo Artist', employer: 'Black Line Studio (booth rental)', yearsAtJob: '5', annualIncome: 70000, monthlyIncome: 5833 },
-    rental: { previousAddress: '88 Dovercourt Road, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Robert Yoon', previousLandlordContact: '416-555-0998', currentRent: 1700 },
-    apartment: { address: '156 Lansdowne Avenue, Toronto', description: '1BR Bloordale, $1,900/mo', estimatedRent: 1900, rentToIncomeRatio: 33 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Want a quieter street and bigger kitchen.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'outdoor' },
-    coApplicant: null,
-    lifestyle: { personality: 'Works booth rental — daytime mostly. Paints at home in evenings.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Robert Yoon', relationship: 'Current landlord (3 years)', contact: '416-555-0998' },
-          { name: 'Mark Sanders', relationship: 'Studio owner, Black Line', contact: 'm.sanders@blacklinetattoo.ca' }
-        ],
-    disclosures: 'Self-employed booth rental, $70K avg. T2125 returns available. Strong returning-client base.',
-    scorecard: {
-      incomeStability: { score: 2, note: 'Self-employed 5 years, ~$70K but variable' },
-      rentAffordability: { score: 2, note: '33% of average income' },
-      rentalHistory: { score: 4, note: '3 years with current landlord — strong reference' },
-      longTermIntent: { score: 4, note: 'Embedded in Toronto tattoo/art scene' },
-      disclosures: { score: 4, note: 'Self-employed income documented' },
-      overall: 3.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-020', createdAt: new Date().toISOString(),
-    email: 'daniel.kim@email.com',
-    tenant: { fullName: 'Daniel Kim', age: '36', dateOfBirth: '1989-04-25', phone: '(416) 555-0556' },
-    employment: { jobTitle: 'Freelance Photographer (commercial + weddings)', employer: 'Self-employed', yearsAtJob: '12', annualIncome: 82000, monthlyIncome: 6833 },
-    rental: { previousAddress: '290 Niagara Street, Toronto', yearsAtPrevious: '6', previousLandlordName: 'Sophie Tremblay', previousLandlordContact: '416-555-0334', currentRent: 2050 },
-    apartment: { address: '88 Strachan Avenue, Toronto', description: '1BR + studio loft, King West, $2,400/mo', estimatedRent: 2400, rentToIncomeRatio: 35 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Current landlord retiring and selling.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Travels for shoots. Studio at home. Quiet, organized.', pets: null },
-    vehicle: { makeModel: 'Subaru Outback', year: '2019' },
-    references: [
-          { name: 'Sophie Tremblay', relationship: 'Current landlord (6 years)', contact: '416-555-0334' },
-          { name: 'Christopher Williams', relationship: 'Art Director (regular client)', contact: 'c.williams@adagencyca.com' }
-        ],
-    disclosures: 'Self-employed 12 years. Annual income $70K-$95K. CRA returns available.',
-    scorecard: {
-      incomeStability: { score: 2, note: '12 years self-employed, $82K avg but seasonal' },
-      rentAffordability: { score: 2, note: '35% of average — wedding season helps' },
-      rentalHistory: { score: 4, note: '6 years with current landlord — strong reference' },
-      longTermIntent: { score: 4, note: 'Career rooted in Toronto, established client base' },
-      disclosures: { score: 4, note: 'Self-employed income openly documented' },
-      overall: 3.2,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-021', createdAt: new Date().toISOString(),
-    email: 'vincent.russo@email.com',
-    tenant: { fullName: 'Vincent Russo', age: '38', dateOfBirth: '1987-02-14', phone: '(647) 555-0119' },
-    employment: { jobTitle: 'Sales Director', employer: 'CBRE Real Estate', yearsAtJob: '7', annualIncome: 165000, monthlyIncome: 13750 },
-    rental: { previousAddress: '88 King Street West, Toronto', yearsAtPrevious: '4', previousLandlordName: 'Park Place Properties', previousLandlordContact: '416-555-0445', currentRent: 2800 },
-    apartment: { address: '200 Bay Street, Toronto', description: '2BR Financial District, $3,800/mo', estimatedRent: 3800, rentToIncomeRatio: 28 },
-    move: { moveInDate: 'July 1, 2026', reasonForMoving: 'Career upgrade, moving closer to office.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Quiet professional.', pets: null },
-    vehicle: { makeModel: 'BMW X3', year: '2022' },
-    references: [
-          { name: 'Park Place Properties', relationship: 'Current landlord (4 years)', contact: '416-555-0445' },
-          { name: 'Sandra Chen', relationship: 'CBRE VP', contact: 's.chen@cbre.com' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 4, note: '7 years at CBRE, $165K' },
-      rentAffordability: { score: 4, note: '28% of monthly income' },
-      rentalHistory: { score: 4, note: '4 years current — solid reference' },
-      longTermIntent: { score: 4, note: 'Stable career, 3+ year horizon' },
-      disclosures: { score: 2, note: 'No disclosures provided — unclear background' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-022', createdAt: new Date().toISOString(),
-    email: 'anastasia.volkov@email.com',
-    tenant: { fullName: 'Anastasia Volkov', age: '32', dateOfBirth: '1993-06-30', phone: '(437) 555-0223' },
-    employment: { jobTitle: 'Marketing Manager', employer: 'Sephora Canada', yearsAtJob: '5', annualIncome: 110000, monthlyIncome: 9167 },
-    rental: { previousAddress: '88 Queen Street East, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Property Manager — Killam', previousLandlordContact: 'tenant.relations@killam.ca', currentRent: 2600 },
-    apartment: { address: '156 Front Street West, Toronto', description: '1BR + den condo, $3,300/mo', estimatedRent: 3300, rentToIncomeRatio: 30 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Moving for shorter commute.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Works hybrid, quiet at home.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'Killam Property Management', relationship: 'Current landlord (3 years)', contact: 'tenant.relations@killam.ca' },
-          { name: 'Maria Lopez', relationship: 'Sephora Director', contact: 'm.lopez@sephora.ca' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 4, note: '5 years at Sephora, $110K' },
-      rentAffordability: { score: 4, note: '30% of income' },
-      rentalHistory: { score: 4, note: '3 years with property manager' },
-      longTermIntent: { score: 4, note: 'Career-stable in Toronto' },
-      disclosures: { score: 2, note: 'Application contains no disclosures section — applicant declined to add context' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-023', createdAt: new Date().toISOString(),
-    email: 'brendan.walsh@email.com',
-    tenant: { fullName: 'Brendan Walsh', age: '41', dateOfBirth: '1984-09-09', phone: '(416) 555-0777' },
-    employment: { jobTitle: 'Operations Manager', employer: 'Magna International', yearsAtJob: '11', annualIncome: 132000, monthlyIncome: 11000 },
-    rental: { previousAddress: '88 Royal York Road, Toronto', yearsAtPrevious: '6', previousLandlordName: 'Greenfield Properties', previousLandlordContact: '416-555-0223', currentRent: 2900 },
-    apartment: { address: '156 Bloor Street West, Toronto', description: '2BR Annex, $3,600/mo', estimatedRent: 3600, rentToIncomeRatio: 27 },
-    move: { moveInDate: 'July 15, 2026', reasonForMoving: 'Family change, downsizing.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Quiet, works shift schedule.', pets: null },
-    vehicle: { makeModel: 'Ford Edge', year: '2020' },
-    references: [
-          { name: 'Greenfield Properties', relationship: 'Current landlord (6 years)', contact: '416-555-0223' },
-          { name: 'Dave Tanaka', relationship: 'Magna Plant Manager', contact: 'd.tanaka@magna.com' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 4, note: '11 years at Magna, $132K' },
-      rentAffordability: { score: 4, note: '27% of income' },
-      rentalHistory: { score: 4, note: '6 years with current landlord' },
-      longTermIntent: { score: 4, note: 'Long Magna career — Toronto-based' },
-      disclosures: { score: 2, note: 'Reason for moving vague — no context on family change' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-024', createdAt: new Date().toISOString(),
-    email: 'sophie.tremblay@email.com',
-    tenant: { fullName: 'Sophie Tremblay', age: '35', dateOfBirth: '1990-11-12', phone: '(416) 555-0556' },
-    employment: { jobTitle: 'Senior Designer', employer: 'Bensimon Byrne (agency)', yearsAtJob: '6', annualIncome: 98000, monthlyIncome: 8167 },
-    rental: { previousAddress: '290 Bathurst Street, Toronto', yearsAtPrevious: '4', previousLandlordName: 'James Chen', previousLandlordContact: '416-555-0998', currentRent: 2300 },
-    apartment: { address: '180 Queen Street West, Toronto', description: '1BR loft, Queen West, $2,750/mo', estimatedRent: 2750, rentToIncomeRatio: 34 },
-    move: { moveInDate: 'August 1, 2026', reasonForMoving: 'Looking for a change of scenery.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Designer life — works hybrid.', pets: null },
-    vehicle: null,
-    references: [
-          { name: 'James Chen', relationship: 'Current landlord (4 years)', contact: '416-555-0998' },
-          { name: 'Anita Singh', relationship: 'Creative Director, Bensimon Byrne', contact: 'a.singh@bensimon.ca' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 4, note: '6 years at agency, $98K' },
-      rentAffordability: { score: 4, note: '34% — slightly stretched but proven' },
-      rentalHistory: { score: 4, note: '4 years with current landlord' },
-      longTermIntent: { score: 4, note: 'Career rooted in Toronto creative scene' },
-      disclosures: { score: 2, note: 'Reason for moving generic — no detail or context' },
-      overall: 3.6,
-    },
-  },
-  {
-    applicationNumber: 'RL-2026-MIX-025', createdAt: new Date().toISOString(),
-    email: 'connor.davies@email.com',
-    tenant: { fullName: 'Connor Davies', age: '29', dateOfBirth: '1996-08-25', phone: '(437) 555-0801' },
-    employment: { jobTitle: 'Project Manager', employer: 'Aecon Construction', yearsAtJob: '4', annualIncome: 115000, monthlyIncome: 9583 },
-    rental: { previousAddress: '88 College Street, Toronto', yearsAtPrevious: '3', previousLandlordName: 'Riverview Properties', previousLandlordContact: '416-555-0667', currentRent: 2400 },
-    apartment: { address: '320 Front Street East, Toronto', description: '1BR Distillery, $3,000/mo', estimatedRent: 3000, rentToIncomeRatio: 31 },
-    move: { moveInDate: 'September 1, 2026', reasonForMoving: 'Personal preference.' },
-    household: { numberOfOccupants: '1', occupantsDetails: null, smoker: 'no' },
-    coApplicant: null,
-    lifestyle: { personality: 'Construction project manager — variable hours.', pets: null },
-    vehicle: { makeModel: 'Ford F-150', year: '2021' },
-    references: [
-          { name: 'Riverview Properties', relationship: 'Current landlord (3 years)', contact: '416-555-0667' },
-          { name: 'Mark Phillips', relationship: 'Aecon Senior PM', contact: 'm.phillips@aecon.com' }
-        ],
-    disclosures: null,
-    scorecard: {
-      incomeStability: { score: 4, note: '4 years at Aecon, $115K' },
-      rentAffordability: { score: 4, note: '31% of monthly income' },
-      rentalHistory: { score: 4, note: '3 years with current landlord' },
-      longTermIntent: { score: 4, note: 'Toronto-rooted construction career' },
-      disclosures: { score: 2, note: 'Move reason "personal preference" — no real context' },
-      overall: 3.6,
-    },
-  }
 ];
 
 
@@ -2709,86 +1429,38 @@ export default function LandlordDashboard() {
     setSendToLandlordLoading(false);
   };
 
-  // ─── PMC SANDBOX LOADER ───
-  // Populates a realistic property-management-company workspace:
-  // 3 listings (student, luxury, family), each pre-populated with applicants and decisions.
-  // Triggered by ?demo=pmc in the URL. Used for sales demos to PMCs/operators.
+  // ─── DEMO SANDBOX LOADER ───
+  // One listing pre-populated with a mixed cross-section of sample applicants.
+  // The demo starts with ZERO decisions — the visitor reviews under All applicants
+  // and favourites/rejects themselves, which is the only way My shortlist fills.
+  // Runs on the /demo/dashboard route. No session, no Supabase, no writes.
   const loadPMCDemo = () => {
-    // Build decisions for each demo set — varied accept/reject/shortlist patterns to look real
-    const buildDecisions = (apps, pattern) => {
-      const result = {};
-      apps.forEach((a, idx) => {
-        const action = pattern[idx % pattern.length];
-        if (action === 'shortlist') {
-          result[a.applicationNumber] = {
-            status: 'shortlist',
-            priority: idx === 0 || idx === 2 ? 'top' : 'normal',
-            notes: idx === 0 ? 'Strong income, references checked, available for early move-in.' : '',
-            statusChangedAt: new Date(Date.now() - (Math.random() * 86400000 * 3)).toISOString(),
-            reasonCode: 'fit',
-          };
-        } else if (action === 'reject') {
-          result[a.applicationNumber] = {
-            status: 'reject',
-            priority: null,
-            notes: '',
-            statusChangedAt: new Date(Date.now() - (Math.random() * 86400000 * 5)).toISOString(),
-            reasonCode: 'income_insufficient',
-          };
-        }
-        // 'none' = no decision yet, leave undefined
-      });
-      return result;
+    const listing = {
+      id: 'L_demo_mixed',
+      name: '210 Carlaw Ave, Unit 4',
+      applications: MIXED_RENTERS,
+      decisions: {}, // start undecided — the visitor makes every call
+      unit: { address: '210 Carlaw Ave, Unit 4, Toronto', monthlyRent: '2600', bedrooms: '2', allowsPets: 'yes', allowsSmoking: 'no', parkingIncluded: 'no' },
+      createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
     };
 
-    // 3 listings, each pre-built
-    const studentListing = {
-      id: 'L_demo_student',
-      name: '124 Spadina Ave (Student Housing)',
-      applications: STUDENT_HOUSING_DEMOS,
-      decisions: buildDecisions(STUDENT_HOUSING_DEMOS, ['shortlist', 'reject', 'shortlist', 'none', 'reject', 'shortlist', 'none', 'reject']),
-      unit: { address: '124 Spadina Ave, Unit 802', monthlyRent: '1850', bedrooms: '1', allowsPets: 'no', allowsSmoking: 'no', parkingIncluded: 'no' },
-      createdAt: new Date(Date.now() - 86400000 * 7).toISOString(),
-    };
-
-    const luxuryListing = {
-      id: 'L_demo_luxury',
-      name: '88 Bloor East (Luxury Condo)',
-      applications: LUXURY_RENTAL_DEMOS,
-      decisions: buildDecisions(LUXURY_RENTAL_DEMOS, ['shortlist', 'shortlist', 'none', 'reject', 'shortlist', 'none', 'reject', 'none']),
-      unit: { address: '88 Bloor East, Unit 2401', monthlyRent: '4200', bedrooms: '2', allowsPets: 'yes', allowsSmoking: 'no', parkingIncluded: 'yes' },
-      createdAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-    };
-
-    const familyListing = {
-      id: 'L_demo_family',
-      name: '42 Maple Crescent (Family Home)',
-      applications: FAMILY_HOME_DEMOS,
-      decisions: buildDecisions(FAMILY_HOME_DEMOS, ['shortlist', 'reject', 'none', 'shortlist', 'none', 'reject', 'shortlist', 'reject']),
-      unit: { address: '42 Maple Crescent, North York', monthlyRent: '3650', bedrooms: '3', allowsPets: 'yes', allowsSmoking: 'no', parkingIncluded: 'yes' },
-      createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    };
-
-    const demoListings = [studentListing, luxuryListing, familyListing];
-
-    // Set realtor/PM profile so all branding features show
+    // Set realtor profile so co-branding features render.
     setRealtorProfile({
       isRealtor: true,
-      fullName: 'Demo Property Manager',
-      brokerage: 'Sample Property Management Co.',
+      fullName: 'Demo Realtor',
+      brokerage: 'Sample Realty',
       phone: '(416) 555-0123',
       licenseNumber: '',
     });
     setRealtorOnboardingShown(true);
 
-    // Hydrate the listings + active one
-    setListings(demoListings);
-    setActiveListingId(studentListing.id);
-    setApplications(studentListing.applications);
-    setDecisions(studentListing.decisions);
-    setUnit(studentListing.unit);
+    // Hydrate the single listing — and crucially, NO decisions.
+    setListings([listing]);
+    setActiveListingId(listing.id);
+    setApplications(listing.applications);
+    setDecisions({}); // My shortlist starts empty
+    setUnit(listing.unit);
 
-    // Skip empty-state stuff
     setReviewIdx(0);
     setView('review');
     setWorkspaceReady(true);
@@ -4251,15 +2923,34 @@ export default function LandlordDashboard() {
               })()}
 
               {/* ── RANKED VIEW (detailed) or SIMPLE LIST (simple) ── */}
-              {view === 'ranked' && simpleMode && (
-                <AllApplicantsList
-                  applications={filteredApplications}
-                  decisions={decisions}
-                  unit={unit}
-                  setDecisionStatus={setDecisionStatus}
-                  onJumpToReview={(idx) => { setReviewIdx(idx); setView('review'); }}
-                />
-              )}
+              {view === 'ranked' && simpleMode && (() => {
+                // "My shortlist" = the applicants the user has favourited. Empty
+                // until they pick, then it fills with their shortlisted picks.
+                const shortlisted = filteredApplications.filter(a => decisions[a.applicationNumber]?.status === 'shortlist');
+                if (shortlisted.length === 0) {
+                  return (
+                    <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>Your shortlist is empty.</div>
+                      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5 }}>
+                        Review applicants under “All applicants” and tap the favourite (✓) button. Your picks appear here.
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <AllApplicantsList
+                    applications={shortlisted}
+                    decisions={decisions}
+                    unit={unit}
+                    setDecisionStatus={setDecisionStatus}
+                    onJumpToReview={(idx, app) => {
+                      const realIdx = applications.findIndex(a => a.applicationNumber === app.applicationNumber);
+                      setReviewIdx(realIdx >= 0 ? realIdx : 0);
+                      setView('review');
+                    }}
+                  />
+                );
+              })()}
               {view === 'ranked' && !simpleMode && filteredApplications.length >= 2 && (
                 <RankedView
                   applications={filteredApplications}
@@ -5012,7 +3703,7 @@ function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, o
               minWidth: 0,
             }}>
               <div
-                onClick={() => onJumpToReview(idx)}
+                onClick={() => onJumpToReview(idx, app)}
                 style={{ cursor: 'pointer', minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 4 }}>
                   <div style={{ fontSize: 'clamp(16px, 4vw, 18px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>
