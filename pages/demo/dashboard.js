@@ -2809,32 +2809,31 @@ export default function LandlordDashboard() {
 
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
 
-        {/* ── DEMO MODE BANNER — shown when ?demo=pmc is in the URL ── */}
+        {/* ── DEMO MODE BAR — the single top bar for the /demo sample dashboard ── */}
         {demoMode && (
           <div style={{
             background: C.ink, color: C.paper,
-            padding: '10px 32px', fontSize: 12, fontWeight: 600,
-            letterSpacing: '0.06em', textAlign: 'center',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            flexWrap: 'wrap', gap: 12,
+            padding: '9px clamp(14px, 4vw, 24px)',
+            display: 'flex', justifyContent: 'center', alignItems: 'center',
+            gap: 'clamp(8px, 2vw, 14px)', flexWrap: 'wrap', textAlign: 'center',
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span style={{
-                display: 'inline-block', padding: '2px 8px',
-                background: C.red, color: C.paper, fontSize: 9, fontWeight: 800,
-                letterSpacing: '0.12em', textTransform: 'uppercase',
-              }}>
-                Sandbox
-              </span>
-              <span style={{ opacity: 0.85 }}>Live demo with sample data. Nothing is saved.</span>
-            </div>
-            <a href="/" style={{ color: C.paper, opacity: 0.85, textDecoration: 'underline', fontSize: 12 }}>
+            <span style={{
+              display: 'inline-block', padding: '3px 10px', borderRadius: R.pill,
+              background: C.red, color: C.paper, fontSize: 9.5, fontWeight: 800,
+              letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+            }}>
+              Sandbox
+            </span>
+            <span style={{ fontSize: 12.5, fontWeight: 500, opacity: 0.9 }}>Sample data — nothing is saved.</span>
+            <a href="/" style={{ color: C.paper, fontWeight: 600, fontSize: 12.5, textDecoration: 'underline', whiteSpace: 'nowrap' }}>
               Exit demo →
             </a>
           </div>
         )}
 
         {/* ── TOP STRIP ─────────────────────────────────────── */}
+        {/* Hidden in demo mode so the sample dashboard shows a single clean bar. */}
+        {!demoMode && (
         <div style={{
           background: C.ink, color: C.inkInverse,
           padding: '9px clamp(20px, 4vw, 32px)', fontSize: 12,
@@ -2850,6 +2849,7 @@ export default function LandlordDashboard() {
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={14} /></span> Back to Rentletter
           </a>
         </div>
+        )}
 
         {/* ── HEADER ─────────────────────────────────────────── */}
         <ScrollHeader maxWidth={1400}>
@@ -3492,6 +3492,8 @@ export default function LandlordDashboard() {
           <div style={{ padding: applications.length === 0 ? '0 clamp(16px, 4vw, 32px) 40px' : '20px clamp(16px, 4vw, 32px) 0' }}>
 
           {/* ── HUMAN RIGHTS / COMPLIANCE — collapsed, unobtrusive ── */}
+          {/* Hidden in demo mode only; the real dashboard always shows it. */}
+          {!demoMode && (
           <section style={{ marginBottom: 20 }}>
             <details style={{ background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, overflow: 'hidden' }}>
               <summary style={{
@@ -3512,10 +3514,12 @@ export default function LandlordDashboard() {
               </div>
             </details>
           </section>
+          )}
 
           {/* ── UNSIGNED WORK-AT-RISK BANNER ──────────────────── */}
-          {/* Only shows when: user has done some work, is NOT signed in, hasn't dismissed */}
-          {applications.length > 0 && !sessionToken && !unsignedBannerDismissed && (
+          {/* Only shows when: user has done some work, is NOT signed in, hasn't dismissed.
+              Never in demo mode (the sample dashboard has no real work to lose). */}
+          {applications.length > 0 && !sessionToken && !unsignedBannerDismissed && !demoMode && (
             <section style={{ marginBottom: 20 }}>
               <div style={{
                 background: '#fef7e6',
