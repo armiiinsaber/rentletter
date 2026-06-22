@@ -1607,9 +1607,11 @@ export default function LandlordDashboard() {
   const [realtorEditOpen, setRealtorEditOpen] = useState(false);
 
   // ── DEMO/SANDBOX MODE ──
-  // When ?demo=pmc is in the URL, we bypass sign-in, pre-load demo data,
-  // and disable backend sync. Used for sales demos to property managers.
-  const [demoMode, setDemoMode] = useState(false);
+  // This page IS the public sample dashboard (/demo/dashboard). It is demo-only:
+  // demo mode is ON from the first render so the sign-in gate never shows, and
+  // the sample tenants are loaded client-side with NO session, NO Supabase, and
+  // NO redirect. The real realtor dashboard lives at /landlord.
+  const [demoMode, setDemoMode] = useState(true);
 
   // ── AI rationale generation state ──
   const [rationaleLoading, setRationaleLoading] = useState({}); // keyed by appNumber
@@ -1719,109 +1721,16 @@ export default function LandlordDashboard() {
     filters.decision !== 'any',
   ].filter(Boolean).length;
 
-  // Load saved applications + decisions from session storage on mount, plus magic-link detection
+  // DEMO-ONLY ROUTE (/demo/dashboard): always load the sample tenants on mount and
+  // bypass sign-in entirely. No query param required, no session, no Supabase, no
+  // redirect — this route exists purely to showcase the dashboard with fake data
+  // to logged-out visitors. The real realtor dashboard lives at /landlord.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
-    // Detect magic-link sign-in token in URL (for sign-in on a DIFFERENT device than where the email was requested)
-    const params = new URLSearchParams(window.location.search);
-    const signinTok = params.get('signin');
-    // Pre-select realtor mode if user came from the realtors landing page
-    const fromRealtors = params.get('from') === 'realtors';
-    if (fromRealtors) {
-      setRealtorProfile(prev => ({ ...prev, isRealtor: true }));
-    }
-    // Demo/sandbox mode for sales calls — pre-populate dashboard, bypass sign-in
-    const demoParam = params.get('demo');
-    if (demoParam === 'pmc') {
-      setDemoMode(true);
-      // Use setTimeout to ensure state initializes before loading demo
-      setTimeout(() => loadPMCDemo(), 0);
-      return; // Skip everything else in this effect
-    }
-    if (signinTok) {
-      setWorkspaceLoading(true);
-
-      (async () => {
-        const safetyTimer = setTimeout(() => {
-          console.error('[verify-link] Safety timeout');
-          setError('Sign-in is taking longer than expected. Please refresh and try again.');
-          setWorkspaceReady(true);
-          setWorkspaceLoading(false);
-        }, 15000);
-        try {
-          const r = await fetch('/api/landlord/auth/verify-link', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ linkToken: signinTok }),
-          });
-          const bodyText = await r.text();
-          let json = null;
-          try { json = bodyText ? JSON.parse(bodyText) : null; } catch (e) {
-            throw new Error(`Server returned ${r.status}. ${bodyText ? bodyText.slice(0, 100) : ''}`);
-          }
-          if (!r.ok) {
-            throw new Error(json?.error || `Sign-in failed (HTTP ${r.status})`);
-          }
-          if (!json?.sessionToken || !json?.email) {
-            throw new Error('Sign-in response missing token or email.');
-          }
-          setSessionToken(json.sessionToken);
-          setSignedInEmail(json.email);
-          localStorage.setItem('rentletter_landlord_session', json.sessionToken);
-          localStorage.setItem('rentletter_landlord_email', json.email);
-          window.history.replaceState({}, '', '/landlord');
-          setJustSignedIn(true);
-          setTimeout(() => setJustSignedIn(false), 5000);
-          // Load the user's workspace from server. This device starts fresh — no merge.
-          await loadWorkspace(json.sessionToken);
-          console.log('[verify-link] Signed in as', json.email);
-        } catch (e) {
-          console.error('[verify-link] Magic link failed:', e?.message || e);
-          setError(`Sign-in link failed: ${e?.message || 'unknown error'}. Please request a new one from your other device.`);
-          setWorkspaceReady(true);
-          setWorkspaceLoading(false);
-        } finally {
-          clearTimeout(safetyTimer);
-        }
-      })();
-      return;
-    }
-
-    // Otherwise check for existing session
-    const storedSession = localStorage.getItem('rentletter_landlord_session');
-    const storedEmail = localStorage.getItem('rentletter_landlord_email');
-    if (storedSession && storedEmail) {
-      setSessionToken(storedSession);
-      setSignedInEmail(storedEmail);
-      setWorkspaceLoading(true);
-      loadWorkspace(storedSession);
-      // workspaceReady will be set to true at the end of loadWorkspace
-    } else {
-      // Fall back to session-only storage
-      const saved = sessionStorage.getItem('landlord_apps');
-      if (saved) {
-        try { setApplications(JSON.parse(saved)); } catch (e) {}
-      }
-      const savedDecisions = sessionStorage.getItem('landlord_decisions');
-      if (savedDecisions) {
-        try { setDecisions(JSON.parse(savedDecisions)); } catch (e) {}
-      }
-      // No server load needed — mark ready immediately so future sign-in syncs properly
-      setWorkspaceReady(true);
-    }
-
-    // Unit context (independent of sign-in)
-    const savedUnit = sessionStorage.getItem('landlord_unit');
-    if (savedUnit) {
-      try { setUnit(JSON.parse(savedUnit)); } catch (e) {}
-    }
-
-    // Simple-mode preference (persists across visits — local to browser, not synced)
-    const savedSimple = localStorage.getItem('landlord_simple_mode');
-    if (savedSimple !== null) {
-      setSimpleMode(savedSimple === 'true');
-    }
+    setDemoMode(true);
+    // Defer one tick so initial state is in place before the sample data loads.
+    const t = setTimeout(() => loadPMCDemo(), 0);
+    return () => clearTimeout(t);
   }, []);
 
   // Persist simple mode
@@ -2893,7 +2802,7 @@ export default function LandlordDashboard() {
   return (
     <>
       <Head>
-        <title>Realtor Dashboard — Rentletter</title>
+        <title>Sample Dashboard (Demo) — Rentletter</title>
         <meta name="description" content="Verify, compare, and rank tenant applications. Built for realtors." />
       </Head>
       <GlobalStyle />
