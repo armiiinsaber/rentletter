@@ -68,7 +68,7 @@ const HERO_APPLICANTS = [
   { id: 'david', initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Income clears 30%', true], ['4 yr tenure', true]] },
   { id: 'amara', initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['Income meets minimum', true], ['New to the city', false]] },
 ];
-const HERO_ARRIVAL = ['sarah', 'james', 'priya'];                 // as they applied (review scene)
+const HERO_ARRIVAL = ['sarah', 'james', 'david', 'amara', 'priya']; // as they applied (review scene, all 5)
 const HERO_RANKED  = ['priya', 'james', 'sarah', 'david', 'amara']; // by score, desc (top 5)
 const HERO_BY_ID = Object.fromEntries(HERO_APPLICANTS.map(a => [a.id, a]));
 
@@ -84,7 +84,9 @@ function HeroAvatar({ a, size = 30 }) {
 }
 
 function HeroDemo() {
-  const [step, setStep] = useState(0); // 0,1,2 = review highlight; 3 = shortlist
+  // Steps 0..4 = review-highlight each of the 5 arrival cards; step 5 = shortlist.
+  const REVIEW_STEPS = HERO_ARRIVAL.length; // 5
+  const [step, setStep] = useState(0);
   const [still, setStill] = useState(false);
 
   useEffect(() => {
@@ -93,15 +95,16 @@ function HeroDemo() {
       setStill(true);
       return;
     }
-    const durations = [1700, 1700, 1900, 3800];
+    // One duration per step: 5 review highlights + the shortlist hold.
+    const durations = [1400, 1400, 1400, 1400, 1600, 3600];
     let t;
-    const tick = (s) => { t = setTimeout(() => { const n = (s + 1) % 4; setStep(n); tick(n); }, durations[s]); };
+    const tick = (s) => { t = setTimeout(() => { const n = (s + 1) % durations.length; setStep(n); tick(n); }, durations[s]); };
     tick(0);
     return () => clearTimeout(t);
-  }, []);
+  }, [REVIEW_STEPS]);
 
-  const reviewVisible = !still && step < 3;
-  const shortlistVisible = still || step === 3;
+  const reviewVisible = !still && step < REVIEW_STEPS;
+  const shortlistVisible = still || step === REVIEW_STEPS;
 
   const sceneBase = {
     position: 'absolute', inset: 0, padding: 'clamp(14px, 4.5%, 22px)',
@@ -142,7 +145,7 @@ function HeroDemo() {
               borderLeft: active ? `3px solid ${C.red}` : `1px solid ${C.rule}`,
               transform: active ? 'translateY(-1px) scale(1.015)' : 'none',
               boxShadow: active ? SH.raised : SH.rest,
-              opacity: (!still && step > i && step < 3) ? 0.55 : 1,
+              opacity: (!still && step > i && step < REVIEW_STEPS) ? 0.55 : 1,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                 <HeroAvatar a={a} size={28} />
