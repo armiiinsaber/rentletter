@@ -878,7 +878,7 @@ export default function Home() {
                       </div>
                     </div>
                     {/* Animated, looping product demo — built in code (no screenshot) */}
-                    <div style={{ aspectRatio: '4 / 3', minHeight: 372, maxHeight: 408, position: 'relative', overflow: 'hidden', background: `linear-gradient(160deg, ${C.card}, ${C.paperDeep})` }}>
+                    <div style={{ width: '100%', aspectRatio: '4 / 3', minHeight: 372, maxHeight: 408, position: 'relative', overflow: 'hidden', background: `linear-gradient(160deg, ${C.card}, ${C.paperDeep})` }}>
                       <HeroDemo />
                     </div>
                   </div>
