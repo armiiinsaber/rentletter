@@ -734,7 +734,7 @@ export default function Home() {
             <Wordmark />
             <div style={{ display: 'flex', gap: 'clamp(14px, 2vw, 26px)', alignItems: 'center', flexWrap: 'wrap' }}>
               <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
-              <a href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</a>
+              <a href="/signin" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</a>
               <a href="/landlord" className="rl-btn" style={{
                 background: C.ink, color: C.paper, textDecoration: 'none',
                 padding: '11px 18px', fontSize: 13, fontWeight: 600, borderRadius: R.ctrl,
