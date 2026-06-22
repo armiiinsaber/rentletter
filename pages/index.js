@@ -3,6 +3,7 @@ import Head from 'next/head';
 import ChatWidget from '../components/ChatWidget';
 import { C, R, SH, EASE, FONT } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
+import { getSupabaseBrowserClient } from '../lib/supabase/client';
 
 // Stripe payment links — both must redirect to:
 // https://rentletter.ca/?paid=true&session_id={CHECKOUT_SESSION_ID}
@@ -273,6 +274,25 @@ export default function Home() {
   const [passInfo, setPassInfo] = useState(null); // { email, daysRemaining, lettersGenerated, expiresAt }
   const [passVerifying, setPassVerifying] = useState(false);
   const [passActivating, setPassActivating] = useState(false);
+
+  // Demo CTAs are shown to LOGGED-OUT visitors only. Default hidden until we
+  // confirm there's no Supabase session, so signed-in realtors never see the
+  // sample-dashboard option anywhere on the homepage.
+  const [loggedOut, setLoggedOut] = useState(false);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data } = await supabase.auth.getSession();
+        if (mounted) setLoggedOut(!data?.session);
+      } catch (e) {
+        // Auth not configured / unreachable → treat as a logged-out visitor.
+        if (mounted) setLoggedOut(true);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -803,7 +823,21 @@ export default function Home() {
                       }}>
                       Book a 15-min demo
                     </a>
+                    {loggedOut && (
+                      <a href="/demo" className="rl-btn" style={{
+                        background: 'transparent', color: C.red, border: `1px dashed ${C.red}`, textDecoration: 'none',
+                        borderRadius: R.ctrl, padding: '16px 24px', fontSize: 15, fontWeight: 600,
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                      }}>
+                        See a sample dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                      </a>
+                    )}
                   </div>
+                  {loggedOut && (
+                    <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 18 }}>
+                      The sample dashboard is preloaded with example tenants — not real data.
+                    </div>
+                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                     {['Free during launch', 'No credit card', 'No setup'].map(t => (
                       <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkMute }}>
@@ -843,14 +877,8 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                  <span>The Rentletter dashboard — one workspace per listing.</span>
-                  <a href="/demo" className="rl-btn" style={{
-                    color: C.red, fontWeight: 700, textDecoration: 'none',
-                    display: 'inline-flex', alignItems: 'center', gap: 5,
-                  }}>
-                    Explore the live demo <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
-                  </a>
+                <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute }}>
+                  The Rentletter dashboard — one workspace per listing.
                 </div>
               </div>
             </div>
