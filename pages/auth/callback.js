@@ -3,13 +3,17 @@
 // recovery). Exchanges the PKCE ?code for a cookie session server-side, then
 // redirects to ?next (defaults to the dashboard). The PKCE code verifier was
 // stored as a cookie by the browser client at signUp / resetPasswordForEmail.
-import { getSupabaseServerClient } from '../../lib/supabase/server';
+import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
 
 export async function getServerSideProps(ctx) {
   const code = typeof ctx.query.code === 'string' ? ctx.query.code : null;
   const rawNext = typeof ctx.query.next === 'string' ? ctx.query.next : '';
   // Only allow internal redirect targets.
   const next = rawNext.startsWith('/') ? rawNext : '/landlord';
+
+  if (!isSupabaseConfigured()) {
+    return { redirect: { destination: '/signin?error=Sign-in%20is%20temporarily%20unavailable.', permanent: false } };
+  }
 
   if (code) {
     const supabase = getSupabaseServerClient(ctx.req, ctx.res);

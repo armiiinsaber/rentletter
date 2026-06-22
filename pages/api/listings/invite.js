@@ -5,7 +5,7 @@
 // routes are left untouched. Also persists invite_token/invite_url back onto the
 // Supabase listing row (RLS, realtor owns it).
 import crypto from 'crypto';
-import { getSupabaseServerClient } from '../../../lib/supabase/server';
+import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 
 function kvBase() {
   return (process.env.KV_REST_API_URL || '').replace(/\/+$/, '');
@@ -13,6 +13,7 @@ function kvBase() {
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!isSupabaseConfigured()) return res.status(503).json({ error: 'Service temporarily unavailable.' });
 
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user }, error: userErr } = await supabase.auth.getUser();

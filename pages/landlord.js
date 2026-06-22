@@ -8,13 +8,16 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon } from '../components/ui';
 import { C, R, SH } from '../components/theme';
-import { getSupabaseServerClient } from '../lib/supabase/server';
+import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ProfileEditorModal from '../components/dashboard/ProfileEditorModal';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
 
 export async function getServerSideProps(ctx) {
+  if (!isSupabaseConfigured()) {
+    return { redirect: { destination: '/signin?error=Sign-in%20is%20temporarily%20unavailable.', permanent: false } };
+  }
   const supabase = getSupabaseServerClient(ctx.req, ctx.res);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
