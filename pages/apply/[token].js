@@ -106,32 +106,48 @@ export default function ApplyPage() {
       const applicationNumber = json.applicationNumber;
       const ownerToken = json.ownerToken;
 
-      // 2. Tag this submission to the realtor's invite (fire-and-forget).
-      fetch('/api/landlord/tag-invite-submission', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, applicationNumber }),
-      }).catch((e) => console.error('[apply] tag-invite failed', e));
-
-      // 3. Best-effort: email the tenant their number + owner token.
-      if (form.email) {
-        fetch('/api/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: form.email,
-            fullName: form.fullName,
-            letter: '',
-            resume: json.resume || '',
-            applicationNumber,
-            ownerToken,
-          }),
-        }).catch((e) => console.error('[apply] email send failed', e));
-      }
-
+      // Show the tenant their RL immediately — the steps below are best-effort and
+      // must never block or break the tenant's confirmation.
       setResult({ applicationNumber, ownerToken });
       setStatus('done');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // Background: tag the invite (KV), then mirror into Supabase (the bridge —
+      // mirror runs AFTER tag so the RL is present in invite_submissions:{token}),
+      // then email the tenant. All non-blocking.
+      (async () => {
+        try {
+          // 2. Tag this submission to the realtor's invite (KV).
+          await fetch('/api/landlord/tag-invite-submission', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, applicationNumber }),
+          });
+          // 3. Mirror into Supabase so it appears under the listing in the dashboard.
+          await fetch('/api/applications/mirror', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, applicationNumber }),
+          });
+        } catch (e) {
+          console.error('[apply] tag/mirror failed (non-fatal)', e);
+        }
+        // 4. Best-effort: email the tenant their number + owner token.
+        if (form.email) {
+          fetch('/api/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: form.email,
+              fullName: form.fullName,
+              letter: '',
+              resume: json.resume || '',
+              applicationNumber,
+              ownerToken,
+            }),
+          }).catch((e) => console.error('[apply] email send failed', e));
+        }
+      })();
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.');
       setStatus('ready');
