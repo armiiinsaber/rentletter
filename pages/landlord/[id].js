@@ -14,7 +14,6 @@ import { getSupabaseAdminClient } from '../../lib/supabase/admin';
 import { fetchListingApplicants } from '../../lib/supabaseBridge';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
-import ProfileEditorModal from '../../components/dashboard/ProfileEditorModal';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 
 export async function getServerSideProps(ctx) {
@@ -67,7 +66,6 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   const [listing, setListing] = useState(initialListing);
   const [applicants, setApplicants] = useState(initialApplicants || []);
   const [tab, setTab] = useState('all'); // 'all' | 'shortlist'
-  const [profileOpen, setProfileOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -257,7 +255,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
-        <DashboardHeader profile={profile} onEditProfile={() => setProfileOpen(true)} />
+        <DashboardHeader profile={profile} />
 
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
           <a href="/landlord" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkSoft, textDecoration: 'none', marginBottom: 18 }}>
@@ -566,9 +564,6 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           )}
         </div>
 
-        {profileOpen && (
-          <ProfileEditorModal profile={profile} onClose={() => setProfileOpen(false)} onSaved={(p) => setProfile(p)} />
-        )}
         {editOpen && (
           <ListingSetupModal mode="edit" initial={listing} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
         )}

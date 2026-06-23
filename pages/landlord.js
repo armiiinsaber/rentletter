@@ -11,7 +11,6 @@ import { C, R, SH } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
-import ProfileEditorModal from '../components/dashboard/ProfileEditorModal';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
 
 export async function getServerSideProps(ctx) {
@@ -41,7 +40,6 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   const [listings, setListings] = useState(initialListings);
-  const [profileOpen, setProfileOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -76,7 +74,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
-        <DashboardHeader profile={profile} onEditProfile={() => setProfileOpen(true)} />
+        <DashboardHeader profile={profile} />
 
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
 
@@ -164,9 +162,6 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           </p>
         </div>
 
-        {profileOpen && (
-          <ProfileEditorModal profile={profile} onClose={() => setProfileOpen(false)} onSaved={(p) => setProfile(p)} />
-        )}
         {modalOpen && (
           <ListingSetupModal mode="create" onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
         )}
