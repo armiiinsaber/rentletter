@@ -2788,10 +2788,17 @@ export default function LandlordDashboard() {
               {view === 'ranked' && simpleMode && (() => {
                 // "My shortlist" = the applicants the user has favourited. Empty
                 // until they pick, then it fills with their shortlisted picks.
-                // Ranked high→low by scorecard overall (same order the PDF + copy-text use).
+                // Single sorted array consumed by the compare view, mobile cards,
+                // PDF and copy-text — strongest first. Mirrors the real dashboard's
+                // rankShortlist: top-priority first, then scorecard overall desc.
                 const shortlisted = filteredApplications
                   .filter(a => decisions[a.applicationNumber]?.status === 'shortlist')
-                  .sort((a, b) => (b.scorecard?.overall ?? 0) - (a.scorecard?.overall ?? 0));
+                  .sort((a, b) => {
+                    const pa = decisions[a.applicationNumber]?.priority === 'top' ? 0 : 1;
+                    const pb = decisions[b.applicationNumber]?.priority === 'top' ? 0 : 1;
+                    if (pa !== pb) return pa - pb;
+                    return (b.scorecard?.overall ?? 0) - (a.scorecard?.overall ?? 0);
+                  });
                 if (shortlisted.length === 0) {
                   return (
                     <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
