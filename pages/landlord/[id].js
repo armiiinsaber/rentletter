@@ -1,13 +1,17 @@
 // pages/landlord/[id].js
-// Listing DETAIL — Supabase-backed (RLS), gated. Shows listing info + landlord
+// Listing DETAIL — Supabase-backed (RLS), gated. Listing info + landlord
 // preferences, edit/delete, the tenant invite link (KV via /api/listings/invite),
-// and an empty applicants state (tenant→listing flow arrives in Stage 2).
+// and the listing's APPLICANTS (Supabase: listing_applicants ⨝ applications).
+// Decisions (favourite/reject/priority/notes) persist to listing_applicants under
+// realtor RLS, so they survive sign-out/sign-in.
 import { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
+import { getSupabaseAdminClient } from '../../lib/supabase/admin';
+import { fetchListingApplicants } from '../../lib/supabaseBridge';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ProfileEditorModal from '../../components/dashboard/ProfileEditorModal';
@@ -30,7 +34,16 @@ export async function getServerSideProps(ctx) {
   if (!listing) {
     return { redirect: { destination: '/landlord', permanent: false } };
   }
-  return { props: { initialProfile: profile || { id: user.id, email: user.email }, initialListing: listing } };
+  // Ownership confirmed by RLS above → read applicant bodies with the service-role
+  // client (applications has no realtor RLS). owner_token is stripped in the helper.
+  let initialApplicants = [];
+  try {
+    const admin = getSupabaseAdminClient();
+    initialApplicants = await fetchListingApplicants(admin, listing.id);
+  } catch (e) {
+    console.error('[listing gSSP] applicants read failed:', e?.message || e);
+  }
+  return { props: { initialProfile: profile || { id: user.id, email: user.email }, initialListing: listing, initialApplicants } };
 }
 
 const Row = ({ label, value }) => (
@@ -42,10 +55,18 @@ const Row = ({ label, value }) => (
 
 const yn = (b) => (b ? 'Yes' : 'No');
 
-export default function ListingDetail({ initialProfile, initialListing }) {
+function initialsOf(name) {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '—';
+  return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
+}
+
+export default function ListingDetail({ initialProfile, initialListing, initialApplicants }) {
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   const [listing, setListing] = useState(initialListing);
+  const [applicants, setApplicants] = useState(initialApplicants || []);
+  const [tab, setTab] = useState('all'); // 'all' | 'shortlist'
   const [profileOpen, setProfileOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -53,6 +74,8 @@ export default function ListingDetail({ initialProfile, initialListing }) {
   const [inviteUrl, setInviteUrl] = useState(initialListing.invite_url || '');
   const [inviteLoading, setInviteLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [addRL, setAddRL] = useState('');
+  const [addLoading, setAddLoading] = useState(false);
 
   const saveEdit = async (values) => {
     setSaving(true);
@@ -87,8 +110,7 @@ export default function ListingDetail({ initialProfile, initialListing }) {
     setError('');
     try {
       const r = await fetch('/api/listings/invite', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId: listing.id, regenerate }),
       });
       const j = await r.json();
@@ -108,6 +130,57 @@ export default function ListingDetail({ initialProfile, initialListing }) {
     setTimeout(() => setCopied(false), 1800);
   };
 
+  // Refresh applicants from Supabase (after adding by RL).
+  const refreshApplicants = async () => {
+    try {
+      const r = await fetch(`/api/listings/applicants?listingId=${encodeURIComponent(listing.id)}`);
+      const j = await r.json();
+      if (r.ok && Array.isArray(j.applicants)) setApplicants(j.applicants);
+    } catch (e) { /* keep current */ }
+  };
+
+  const addApplicant = async () => {
+    const num = addRL.trim().toUpperCase();
+    if (!num) return;
+    setAddLoading(true);
+    setError('');
+    try {
+      const r = await fetch('/api/listings/add-applicant', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId: listing.id, applicationNumber: num }),
+      });
+      const j = await r.json();
+      if (!r.ok) { setError(j?.error || 'Could not add that application number.'); setAddLoading(false); return; }
+      setAddRL('');
+      await refreshApplicants();
+    } catch (e) {
+      setError('Could not add that application number.');
+    }
+    setAddLoading(false);
+  };
+
+  // Persist a decision to listing_applicants (realtor RLS). Optimistic local update.
+  const setDecision = async (linkId, patch) => {
+    const changedAt = new Date().toISOString();
+    setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? { ...a, ...patch, decisionChangedAt: changedAt } : a)));
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const dbPatch = { decision_changed_at: changedAt };
+      if ('decisionStatus' in patch) dbPatch.decision_status = patch.decisionStatus;
+      if ('decisionPriority' in patch) dbPatch.decision_priority = patch.decisionPriority;
+      if ('decisionNotes' in patch) dbPatch.decision_notes = patch.decisionNotes;
+      const { error: upErr } = await supabase.from('listing_applicants').update(dbPatch).eq('id', linkId);
+      if (upErr) setError('Could not save your decision: ' + upErr.message);
+    } catch (e) {
+      setError('Could not save your decision.');
+    }
+  };
+
+  const toggleShortlist = (a) =>
+    setDecision(a.linkId, { decisionStatus: a.decisionStatus === 'shortlist' ? 'none' : 'shortlist', decisionPriority: a.decisionStatus === 'shortlist' ? null : a.decisionPriority });
+  const toggleReject = (a) =>
+    setDecision(a.linkId, { decisionStatus: a.decisionStatus === 'reject' ? 'none' : 'reject', decisionPriority: null });
+
   const l = listing;
   const employment = [
     l.pref_employment_full_time && 'Full-time',
@@ -115,6 +188,9 @@ export default function ListingDetail({ initialProfile, initialListing }) {
     l.pref_employment_self_employed && 'Self-employed',
     l.pref_employment_part_time && 'Part-time',
   ].filter(Boolean).join(', ') || '—';
+
+  const shortlist = applicants.filter((a) => a.decisionStatus === 'shortlist');
+  const visible = tab === 'shortlist' ? shortlist : applicants;
 
   return (
     <>
@@ -156,7 +232,7 @@ export default function ListingDetail({ initialProfile, initialListing }) {
             <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'start', marginBottom: 16 }}>
             {/* Unit + preferences */}
             <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 26px)' }}>
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Unit & preferences</div>
@@ -190,47 +266,147 @@ export default function ListingDetail({ initialProfile, initialListing }) {
               )}
             </section>
 
-            {/* Applicants area (empty in Stage 1) + invite link */}
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {/* Invite link */}
-              <div className="rl-card" style={{ padding: 'clamp(18px, 3vw, 26px)' }}>
-                <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Invite link</div>
-                <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
-                  Share this link with prospective tenants. They fill the application and it appears here automatically.
-                </p>
-                {inviteUrl ? (
-                  <>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <input readOnly value={inviteUrl}
-                        style={{ flex: 1, minWidth: 200, padding: '11px 13px', fontSize: 13, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
-                      <button onClick={copy} className="rl-btn"
-                        style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                        <Icon name="copy" size={14} /> {copied ? 'Copied' : 'Copy'}
-                      </button>
-                    </div>
-                    <button onClick={() => getInvite(true)} disabled={inviteLoading}
-                      style={{ marginTop: 10, background: 'transparent', border: 'none', color: C.inkMute, fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>
-                      {inviteLoading ? 'Working…' : 'Regenerate link'}
+            {/* Invite link */}
+            <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 26px)' }}>
+              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Invite link</div>
+              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
+                Share this link with prospective tenants. They fill the application and it appears below automatically.
+              </p>
+              {inviteUrl ? (
+                <>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <input readOnly value={inviteUrl}
+                      style={{ flex: 1, minWidth: 200, padding: '11px 13px', fontSize: 13, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
+                    <button onClick={copy} className="rl-btn"
+                      style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                      <Icon name="copy" size={14} /> {copied ? 'Copied' : 'Copy'}
                     </button>
-                  </>
-                ) : (
-                  <button onClick={() => getInvite(false)} disabled={inviteLoading} className="rl-btn"
-                    style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                    {inviteLoading ? 'Creating…' : <><Icon name="link" size={16} /> Get invite link</>}
+                  </div>
+                  <button onClick={() => getInvite(true)} disabled={inviteLoading}
+                    style={{ marginTop: 10, background: 'transparent', border: 'none', color: C.inkMute, fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>
+                    {inviteLoading ? 'Working…' : 'Regenerate link'}
                   </button>
-                )}
-              </div>
+                </>
+              ) : (
+                <button onClick={() => getInvite(false)} disabled={inviteLoading} className="rl-btn"
+                  style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  {inviteLoading ? 'Creating…' : <><Icon name="link" size={16} /> Get invite link</>}
+                </button>
+              )}
 
-              {/* Applicants empty state */}
-              <div className="rl-card" style={{ padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}` }}>
-                <div style={{ display: 'inline-flex', marginBottom: 12, color: C.inkMute }}><Icon name="users" size={28} /></div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>No applicants yet</div>
-                <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 360, margin: '0 auto' }}>
-                  Share your invite link above. As tenants apply, their applications will appear here for you to review and shortlist.
-                </p>
+              {/* Add an existing applicant by RL number */}
+              <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.rule}` }}>
+                <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, marginBottom: 8 }}>Already have an application number?</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX"
+                    onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
+                    style={{ flex: 1, minWidth: 180, padding: '11px 13px', fontSize: 13, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
+                  <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} className="rl-btn"
+                    style={{ background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'not-allowed' : 'pointer' }}>
+                    {addLoading ? 'Adding…' : 'Add'}
+                  </button>
+                </div>
               </div>
             </section>
           </div>
+
+          {/* ── APPLICANTS ─────────────────────────────────────── */}
+          <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Applicants</h2>
+              <span style={{ fontSize: 12.5, color: C.inkMute }}>{applicants.length} total · {shortlist.length} shortlisted</span>
+            </div>
+
+            {applicants.length === 0 ? (
+              <div style={{ padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card }}>
+                <div style={{ display: 'inline-flex', marginBottom: 12, color: C.inkMute }}><Icon name="users" size={28} /></div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>No applicants yet</div>
+                <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
+                  Share your invite link above. As tenants apply, their applications appear here for you to review and shortlist.
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Tabs */}
+                <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.rule}`, marginBottom: 18, overflowX: 'auto' }}>
+                  {[
+                    { id: 'all', label: `All applicants (${applicants.length})` },
+                    { id: 'shortlist', label: `My shortlist (${shortlist.length})` },
+                  ].map((t) => (
+                    <button key={t.id} onClick={() => setTab(t.id)}
+                      style={{
+                        background: 'transparent', border: 'none', padding: '12px 18px', fontSize: 14.5,
+                        fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? C.ink : C.inkSoft,
+                        borderBottom: tab === t.id ? `3px solid ${C.red}` : '3px solid transparent',
+                        marginBottom: -1, whiteSpace: 'nowrap', cursor: 'pointer', minHeight: 44,
+                      }}>
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+
+                {visible.length === 0 ? (
+                  <div style={{ padding: 'clamp(20px, 4vw, 32px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>Your shortlist is empty.</div>
+                    <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>Favourite applicants under “All applicants” and they’ll appear here.</div>
+                  </div>
+                ) : (
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {visible.map((a) => {
+                      const app = a.application || {};
+                      const overall = app.scorecard?.overall;
+                      const shortlisted = a.decisionStatus === 'shortlist';
+                      const rejected = a.decisionStatus === 'reject';
+                      const borderColor = shortlisted ? C.green : rejected ? C.red : C.rule;
+                      const bg = shortlisted ? '#f0f7f3' : rejected ? '#fef2f0' : C.card;
+                      return (
+                        <div key={a.linkId} style={{
+                          background: bg, border: `1px solid ${C.rule}`, borderLeft: `4px solid ${borderColor}`,
+                          borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)',
+                          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+                        }}>
+                          <span aria-hidden="true" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>
+                            {initialsOf(app.full_name)}
+                          </span>
+                          <div style={{ flex: 1, minWidth: 180 }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
+                              {shortlisted && <span style={{ fontSize: 10, color: C.green, fontWeight: 700, letterSpacing: '0.08em' }}>★ FAVOURITE</span>}
+                              {rejected && <span style={{ fontSize: 10, color: C.red, fontWeight: 700, letterSpacing: '0.08em' }}>✕ REJECTED</span>}
+                              {app.revoked && <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em' }}>REVOKED</span>}
+                            </div>
+                            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
+                              {[app.job_title, app.employer].filter(Boolean).join(' · ') || 'Role not listed'}
+                              {app.annual_income ? ` · $${Number(app.annual_income).toLocaleString()}/yr` : ''}
+                            </div>
+                            <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{app.application_number}</div>
+                          </div>
+                          {overall != null && (
+                            <div style={{ textAlign: 'right', minWidth: 54 }}>
+                              <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1 }}>
+                                {Number(overall).toFixed(1)}<span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}> / 5</span>
+                              </div>
+                              <div style={{ fontSize: 9, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>Scorecard</div>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                            <button onClick={() => toggleReject(a)} title="Reject"
+                              style={{ background: rejected ? C.red : 'transparent', color: rejected ? C.paper : C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                              <Icon name="x" size={15} color={rejected ? C.paper : C.red} strokeWidth={2.5} />
+                            </button>
+                            <button onClick={() => toggleShortlist(a)} title="Favourite"
+                              style={{ background: shortlisted ? C.green : 'transparent', color: shortlisted ? C.paper : C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                              <Icon name="check" size={15} color={shortlisted ? C.paper : C.green} strokeWidth={2.5} /> {shortlisted ? 'Favourited' : 'Favourite'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </section>
         </div>
 
         {profileOpen && (
