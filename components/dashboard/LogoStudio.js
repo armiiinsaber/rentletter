@@ -29,7 +29,8 @@ function Swatch({ svg, bg, label }) {
   );
 }
 
-export default function LogoStudio({ onChosen }) {
+export default function LogoStudio({ fullName, brokerage, onChosen }) {
+  const profileReady = !!(String(fullName || '').trim() && String(brokerage || '').trim());
   const [brief, setBrief] = useState('');
   const [refineBrief, setRefineBrief] = useState('');
   const [rounds, setRounds] = useState([]); // [{ brief, variations:[{label,svg}] }]
@@ -68,6 +69,7 @@ export default function LogoStudio({ onChosen }) {
   };
 
   const generate = () => {
+    if (!profileReady) { setError('Add your name and brokerage first so we can build your brand.'); return; }
     if (!brief.trim()) { setError('Describe the logo you want first.'); return; }
     call({ brief: brief.trim(), conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
   };
@@ -111,11 +113,23 @@ export default function LogoStudio({ onChosen }) {
         <div style={{ padding: '10px 14px', background: '#fff8ec', borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold || '#b08d57'}`, fontSize: 13, color: C.ink }}>{limitMsg}</div>
       ) : (
         <>
-          <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2}
+          {/* Required-profile gate */}
+          {!profileReady && (
+            <div style={{ padding: '10px 14px', marginBottom: 10, background: '#fff8ec', borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold || '#b08d57'}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+              <strong>Add your name and brokerage first</strong> so we can build your brand. Fill in the <strong>Your full name</strong> and <strong>Brokerage</strong> fields just below, then come back up here.
+            </div>
+          )}
+
+          {/* Friendly help box */}
+          <div style={{ padding: '10px 12px', marginBottom: 10, background: C.paper, border: `1px dashed ${C.ruleDark}`, borderRadius: R.ctrl, fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
+            Describe it however you like — it doesn’t have to mention your name, and you can be as specific as you want: a mark like a house or key, colours, mood, or a style (serif, minimal, bold). By default we build around your name + brokerage; your description can add to or override that.
+          </div>
+
+          <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} disabled={!profileReady}
             placeholder="e.g. clean and modern, a simple house, navy blue"
-            style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
-          <button onClick={generate} disabled={busy}
-            style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+            style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: profileReady ? C.paper : C.paperDeep, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit', opacity: profileReady ? 1 : 0.7 }} />
+          <button onClick={generate} disabled={busy || !profileReady} title={profileReady ? '' : 'Add your name and brokerage first'}
+            style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, cursor: (busy || !profileReady) ? 'not-allowed' : 'pointer', opacity: (busy || !profileReady) ? 0.5 : 1 }}>
             {busy ? 'Designing…' : rounds.length ? 'Generate again' : 'Generate 3 concepts'}
           </button>
         </>

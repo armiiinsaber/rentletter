@@ -26,7 +26,7 @@ DESIGN VOCABULARY (draw on these when the brief is vague — pick what fits, don
 TRANSLATE the realtor's rough words into concrete choices. "Something clean with a house" -> a single-line geometric roofline + their name in a clean sans. "Modern blue" -> navy/slate, sans wordmark, minimal mark. Make 3 DISTINCT directions (e.g. one icon+wordmark, one monogram, one wordmark-led) unless they asked to iterate on one.
 
 USE REAL TEXT
-Always render the realtor's actual name and brokerage in the wordmarks (provided below). Never use placeholder text like "Your Name".
+The realtor's actual name and brokerage are provided below and are the default text basis for the brand. By DEFAULT, render their real name as the wordmark (brokerage smaller beneath). Never use placeholder text like "Your Name". The ONLY exception: if the realtor's brief explicitly asks for something else (e.g. "icon only", "no text", "just my initials", or a different word/name) — then follow the brief. Otherwise their name + brokerage must appear.
 
 HARD OUTPUT RULES — follow EXACTLY
 - Return ONLY a JSON array of exactly 3 objects. No prose, no markdown, no code fences. The first character of your reply must be "[" and the last "]".
@@ -89,6 +89,16 @@ export default async function handler(req, res) {
   const { brief, refineFrom, conversationContext } = req.body || {};
   if (!brief && !refineFrom) return res.status(400).json({ error: 'Tell us what you want your logo to look like.' });
 
+  // Pull the realtor's real name/brokerage for the wordmark — and REQUIRE both before
+  // generating, so the brand is always built on real text.
+  const { data: profile } = await supabase
+    .from('profiles').select('full_name, brokerage').eq('id', user.id).maybeSingle();
+  const fullName = (profile?.full_name || '').trim();
+  const brokerage = (profile?.brokerage || '').trim();
+  if (!fullName || !brokerage) {
+    return res.status(400).json({ error: 'Add your name and brokerage first so we can build your brand.', code: 'profile_incomplete' });
+  }
+
   // Soft daily cap (per realtor). Fail-open if KV is unavailable.
   const dayKey = `logogen:${user.id}:${new Date().toISOString().slice(0, 10)}`;
   const count = await kvIncr(dayKey);
@@ -97,20 +107,15 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: `You've hit today's logo-generation limit (${DAILY_LIMIT}). Your saved logo is untouched — try again tomorrow.`, limit: DAILY_LIMIT, used: count - 1 });
   }
 
-  // Pull the realtor's real name/brokerage for the wordmark.
-  const { data: profile } = await supabase
-    .from('profiles').select('full_name, brokerage').eq('id', user.id).maybeSingle();
-
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 8000,
       system: SYSTEM_PROMPT,
       messages: [{
         role: 'user',
         content: buildUserMessage({
-          brief, refineFrom, conversationContext,
-          fullName: profile?.full_name, brokerage: profile?.brokerage,
+          brief, refineFrom, conversationContext, fullName, brokerage,
         }),
       }],
     });

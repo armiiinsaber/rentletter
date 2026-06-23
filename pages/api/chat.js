@@ -122,7 +122,7 @@ async function isOnTopic(userMessage, conversationContext) {
   try {
     // Use Haiku for the cheap classifier (much cheaper than Sonnet for binary classification)
     const result = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
+      model: 'claude-sonnet-4-6',
       max_tokens: 5,
       system: `You are a topic classifier. Your only job: decide if the user's question is about Rentletter — a Canadian rental application platform with tenant cover letters and a landlord screening dashboard.
 
@@ -267,7 +267,7 @@ export default async function handler(req, res) {
   // ─── LAYER 3: Main answer ────────────────────────────
   try {
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 400,
       system: SYSTEM_PROMPT,
       messages: cleanMessages,

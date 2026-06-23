@@ -160,8 +160,10 @@ export default function ProfileEditorModal({ profile, onClose, onSaved }) {
             PNG, JPG, SVG, or WebP · under 2MB. Appears on your landlord report (PNG/JPG render in the PDF).
           </p>
 
-          {/* AI logo studio — generate a logo instead of (or alongside) uploading one */}
-          <LogoStudio onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }} />
+          {/* AI logo studio — generate a logo instead of (or alongside) uploading one.
+              Receives the LIVE name/brokerage so the gate updates as they're typed below. */}
+          <LogoStudio fullName={form.full_name} brokerage={form.brokerage}
+            onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }} />
 
           {fields.map((f) => (
             <div key={f.k} style={{ marginBottom: 16 }}>
