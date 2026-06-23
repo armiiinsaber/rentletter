@@ -372,7 +372,6 @@ export default function LandlordDashboard() {
   const [justSignedIn, setJustSignedIn] = useState(false);
   const [signinLoading, setSigninLoading] = useState(false);
   const [signinError, setSigninError] = useState('');
-  const [exporting, setExporting] = useState(false);
   const [emailingSummary, setEmailingSummary] = useState(false);
   const [emailSummarySent, setEmailSummarySent] = useState(false);
 
@@ -1056,35 +1055,6 @@ export default function LandlordDashboard() {
       sessionStorage.removeItem('landlord_apps');
       sessionStorage.removeItem('landlord_decisions');
     }
-  };
-
-  // Export shortlisted applicants as a PDF
-  const exportShortlistPdf = async () => {
-    setExporting(true);
-    setError('');
-    try {
-      const res = await fetch('/api/landlord/export-shortlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applications, decisions, realtorProfile }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error || 'Export failed.');
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rentletter-shortlist-${new Date().toISOString().slice(0, 10)}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      setError(e.message);
-    }
-    setExporting(false);
   };
 
   // Email the signed-in user a summary of their current shortlist + decisions.
@@ -2788,8 +2758,6 @@ export default function LandlordDashboard() {
                   unit={unit}
                   onJumpToDetail={(idx) => { setActiveAppIdx(idx); setSimpleMode(false); setView('detail'); }}
                   onJumpToFavourites={() => { setView('compare'); }}
-                  onExportPdf={exportShortlistPdf}
-                  exporting={exporting}
                 />
               )}
 
@@ -2882,18 +2850,6 @@ export default function LandlordDashboard() {
                               {emailingSummary ? 'Sending...' : emailSummarySent ? '✓ Sent to your inbox' : '✉ Email me a copy'}
                             </button>
                           )}
-                          <button onClick={exportShortlistPdf}
-                            disabled={exporting}
-                            style={{
-                              background: C.red, color: C.paper, border: 'none',
-                              padding: '12px 20px', fontSize: 14, fontWeight: 700,
-                              cursor: exporting ? 'wait' : 'pointer',
-                              opacity: exporting ? 0.6 : 1,
-                              minHeight: 44,
-                              whiteSpace: 'nowrap',
-                            }}>
-                            {exporting ? 'Building PDF...' : '⬇ Save as PDF'}
-                          </button>
                         </div>
                       </div>
                     )}
@@ -3888,7 +3844,7 @@ function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, o
 // Designed for older landlords/realtors. One tenant per screen.
 // Three big choices: Yes / Maybe / No. Tap → next.
 // ════════════════════════════════════════════════════════════
-function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpanded, getDecision, setDecisionStatus, decisions, unit, onJumpToDetail, onJumpToFavourites, onExportPdf, exporting }) {
+function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpanded, getDecision, setDecisionStatus, decisions, unit, onJumpToDetail, onJumpToFavourites }) {
   const total = applications.length;
 
   // Count decisions
@@ -3947,27 +3903,14 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
             ↻ Start over
           </button>
           {shortlistedCount > 0 && (
-            <>
-              <button onClick={() => onJumpToFavourites()}
-                style={{
-                  background: C.green, color: C.paper, border: 'none',
-                  padding: '14px 24px', fontSize: 15, fontWeight: 700,
-                  cursor: 'pointer', minHeight: 48,
-                }}>
-                See your favourites →
-              </button>
-              <button onClick={onExportPdf}
-                disabled={exporting}
-                style={{
-                  background: C.red, color: C.paper, border: 'none',
-                  padding: '14px 24px', fontSize: 15, fontWeight: 700,
-                  cursor: exporting ? 'wait' : 'pointer',
-                  opacity: exporting ? 0.6 : 1,
-                  minHeight: 48,
-                }}>
-                {exporting ? 'Building PDF...' : '⬇ Save favourites as PDF'}
-              </button>
-            </>
+            <button onClick={() => onJumpToFavourites()}
+              style={{
+                background: C.green, color: C.paper, border: 'none',
+                padding: '14px 24px', fontSize: 15, fontWeight: 700,
+                cursor: 'pointer', minHeight: 48,
+              }}>
+              See your favourites →
+            </button>
           )}
         </div>
       </div>
