@@ -30,6 +30,7 @@ export default function ProfileEditorModal({ profile, onClose, onSaved }) {
     license_number: profile?.license_number || '',
   });
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
+  const [studioOpen, setStudioOpen] = useState(!profile?.logo_url);
   const [saving, setSaving] = useState(false);
   const [logoBusy, setLogoBusy] = useState(false);
   const [error, setError] = useState('');
@@ -133,37 +134,56 @@ export default function ProfileEditorModal({ profile, onClose, onSaved }) {
         <div style={{ padding: 'clamp(20px,4vw,28px)' }}>
           {error && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>}
 
-          {/* Logo / branding */}
-          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Logo</label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 6, flexWrap: 'wrap' }}>
-            <div style={{ width: 64, height: 64, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
-              {logoUrl
-                ? <img src={logoUrl} alt="Logo preview" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                : <span style={{ fontSize: 11, color: C.inkMute }}>No logo</span>}
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}
-                onChange={(e) => { const f = e.target.files?.[0]; uploadLogo(f); e.target.value = ''; }} />
-              <button onClick={() => fileRef.current?.click()} disabled={logoBusy}
-                style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>
-                {logoBusy ? 'Working…' : logoUrl ? 'Replace logo' : 'Upload logo'}
-              </button>
-              {logoUrl && (
-                <button onClick={removeLogo} disabled={logoBusy}
-                  style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: '10px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                  Remove
-                </button>
-              )}
+          {/* ── YOUR BRAND — finalized logo as it appears on your reports ── */}
+          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Your brand</label>
+          <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 16, background: C.paperDeep, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              {/* top-left logo slot (the brand placement) */}
+              <div style={{ width: 88, height: 56, borderRadius: 8, background: '#fff', border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, padding: 6 }}>
+                {logoUrl
+                  ? <img src={logoUrl} alt="Your logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                  : <span style={{ fontSize: 10.5, color: C.inkMute, textAlign: 'center', lineHeight: 1.3 }}>No logo yet</span>}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.full_name || 'Your name'}</div>
+                {(form.brokerage || !logoUrl) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 1 }}>{form.brokerage || 'Your brokerage'}</div>}
+                {form.phone && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>{form.phone}</div>}
+              </div>
             </div>
           </div>
-          <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 16 }}>
-            PNG, JPG, SVG, or WebP · under 2MB. Appears on your landlord report (PNG/JPG render in the PDF).
+          <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 10 }}>
+            This is your brand — it appears top-left on the landlord reports you send.
+          </p>
+
+          {/* Change actions */}
+          <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}
+            onChange={(e) => { const f = e.target.files?.[0]; uploadLogo(f); e.target.value = ''; }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: studioOpen ? 14 : 18 }}>
+            <button onClick={() => fileRef.current?.click()} disabled={logoBusy}
+              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>
+              {logoBusy ? 'Working…' : 'Replace with upload'}
+            </button>
+            <button onClick={() => setStudioOpen((o) => !o)}
+              style={{ background: studioOpen ? C.card : C.red, color: studioOpen ? C.ink : C.paper, border: studioOpen ? `1px solid ${C.ruleDark}` : 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              {studioOpen ? 'Hide AI studio' : logoUrl ? 'Regenerate with AI' : 'Create with AI'}
+            </button>
+            {logoUrl && (
+              <button onClick={removeLogo} disabled={logoBusy}
+                style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: '10px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                Remove
+              </button>
+            )}
+          </div>
+          <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 16 }}>
+            Upload accepts PNG, JPG, SVG, or WebP · under 2MB (PNG/JPG render in the PDF).
           </p>
 
           {/* AI logo studio — generate a logo instead of (or alongside) uploading one.
               Receives the LIVE name/brokerage so the gate updates as they're typed below. */}
-          <LogoStudio fullName={form.full_name} brokerage={form.brokerage}
-            onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }} />
+          {studioOpen && (
+            <LogoStudio fullName={form.full_name} brokerage={form.brokerage}
+              onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }} />
+          )}
 
           {fields.map((f) => (
             <div key={f.k} style={{ marginBottom: 16 }}>
