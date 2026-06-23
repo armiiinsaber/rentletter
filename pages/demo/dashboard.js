@@ -3624,29 +3624,33 @@ function DemoSendToLandlord({ apps, unit, realtor }) {
   const realtorPhone = realtor?.phone || '';
   const unitLabel = unit?.address || 'the unit';
 
+  // Plain-text, iMessage-optimized: short header, then each applicant as a tight
+  // ranked block with labelled lines (Role / Income / References). No markdown.
+  // OHRC-safe: screenable facts only.
   const composeText = () => {
     const lines = [];
-    lines.push('Hi Jordan,');
-    lines.push('');
-    const unitBits = [unitLabel, unit?.monthlyRent ? `$${Number(unit.monthlyRent).toLocaleString()}/mo` : null, unit?.bedrooms ? `${unit.bedrooms} bed` : null].filter(Boolean).join(' - ');
-    lines.push(`Here are my top ${apps.length} for ${unitBits}:`);
-    lines.push('');
+    const unitBits = [unitLabel, unit?.monthlyRent ? `$${Number(unit.monthlyRent).toLocaleString()}/mo` : null, unit?.bedrooms ? `${unit.bedrooms} bed` : null].filter(Boolean).join(' · ');
+    lines.push(`🏠 ${unitBits}`);
+    lines.push(`Shortlist from ${[realtorName, brokerage].filter(Boolean).join(', ')}`);
+    lines.push(`Ranked best fit first (${apps.length}):`);
     apps.forEach((a, i) => {
-      const role = [a.employment?.jobTitle, a.employment?.employer].filter(Boolean).join(' at ');
-      const bits = [];
-      if (a.employment?.annualIncome) bits.push(`$${Number(a.employment.annualIncome).toLocaleString()}/yr`);
+      lines.push('');
+      const star = i === 0 ? ' ⭐ Top pick' : '';
+      lines.push(`${i + 1}. ${a.tenant?.fullName || 'Applicant'}${star}`);
       const yrs = a.employment?.yearsAtJob;
-      if (yrs) bits.push(`${yrs} yr${String(yrs) === '1' ? '' : 's'} at current job`);
-      if (a.apartment?.rentToIncomeRatio) bits.push(`${a.apartment.rentToIncomeRatio}% rent-to-income`);
+      const role = [a.employment?.jobTitle, a.employment?.employer].filter(Boolean).join(', ');
+      if (role) lines.push(`   Role: ${role}${yrs ? ` (${yrs} yr${String(yrs) === '1' ? '' : 's'})` : ''}`);
+      if (a.employment?.annualIncome) lines.push(`   Income: $${Number(a.employment.annualIncome).toLocaleString()}/yr`);
       const refs = (a.references || []).length;
-      if (refs) bits.push(`${refs} reference${refs === 1 ? '' : 's'} provided`);
-      lines.push(`${i + 1}) ${a.tenant?.fullName || 'Applicant'}${role ? ' - ' + role : ''}. ${bits.join(', ')}.`);
+      const refBits = [];
+      if (refs) refBits.push(`${refs} provided`);
+      if (a.apartment?.rentToIncomeRatio) refBits.push(`${a.apartment.rentToIncomeRatio}% rent-to-income`);
+      if (refBits.length) lines.push(`   References: ${refBits.join(' · ')}`);
     });
     lines.push('');
-    lines.push('All figures are applicant-reported. Happy to set up viewings or walk you through any of them.');
-    lines.push('');
-    lines.push(realtorName);
-    lines.push([brokerage, realtorPhone].filter(Boolean).join(' - '));
+    lines.push('———');
+    lines.push("Reply here and I'll set up viewings. Figures are applicant-reported.");
+    lines.push([realtorName, brokerage, realtorPhone].filter(Boolean).join(' · '));
     return lines.join('\n');
   };
 

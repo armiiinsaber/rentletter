@@ -69,20 +69,30 @@ export default async function handler(req, res) {
       };
     });
 
-    const systemPrompt = `You write a short, professional message a Canadian realtor pastes into Messages or email for their landlord client. It summarizes a ranked tenant shortlist.
+    const systemPrompt = `You write a short message a Canadian realtor pastes into iMessage/SMS for their landlord client, summarizing a ranked tenant shortlist. It must look great and be instantly scannable on a phone.
 
-OUTPUT RULES:
-- PLAIN TEXT ONLY. No markdown whatsoever: no asterisks, no #, no **bold**, no underscores, no backticks, no tables. Use line breaks and simple hyphen bullets ("- ") or numbered lines ("1)") only.
-- Keep it tight and skimmable on a phone. Short lines.
-- Lead with the realtor's name (and brokerage if given) and the unit.
-- Then the candidates IN THE GIVEN RANK ORDER, each with a name and ONE short factual reason line.
-- End with a brief sign-off inviting the landlord to reply.
+FORMAT (follow EXACTLY):
+- A 3-line header:
+  Line 1: a house emoji then the unit, e.g. "🏠 210 Carlaw Ave, Unit 4 · $2,600/mo · 2 bed" (include rent/bed only if provided).
+  Line 2: "Shortlist from <realtor name>, <brokerage>" (drop brokerage if not given).
+  Line 3: "Ranked best fit first (<N>):".
+- Then ONE block per candidate IN THE GIVEN ORDER, separated by a blank line. Each block:
+    "<rank>. <Name>" — append " ⭐ Top pick" to candidate 1 ONLY.
+    then 2-3 short labelled lines, each indented with three spaces, choosing from the available facts:
+       "   Role: <job title>, <employer> (<years> yrs)"   (years only if known)
+       "   Income: $<amount>/yr"   (use household income and say "Household: $X/yr" if a co-applicant income is present)
+       "   References: <n> provided · <pct>% rent-to-income"   (include whichever parts exist)
+- End with a plain divider line "———" then a one-line sign-off inviting a reply (and note figures are applicant-reported), then a final line "<realtor name> · <brokerage> · <phone>" (omit missing parts).
+
+STYLE RULES:
+- PLAIN TEXT ONLY. NO markdown: no #, no *, no **bold**, no underscores, no backticks, no tables. The ONLY non-text characters allowed are the 🏠 and ⭐ emoji, the "·" middot separator, and the "———" divider.
+- Tight, short lines. Use the labels above verbatim (Role / Income / Household / References).
 
 COMPLIANCE (Ontario Human Rights Code) — STRICT:
-- Reasons must come ONLY from: income, employment tenure, rent-to-income, references, scorecard fit. Use the provided facts; do not invent.
+- Facts ONLY from: income, employment tenure, rent-to-income, references, scorecard fit. Use the provided data; never invent.
 - NEVER mention or imply protected grounds: race, ancestry, place of origin, citizenship, ethnic origin, creed/religion, sex, sexual orientation, gender identity, age, marital status, family status, disability, or receipt of public assistance.
-- Say "the household" rather than "the couple/family". Do not infer age from job/student status.
-- Be factual and neutral. Do not over-claim (e.g. if references were "provided" don't say "excellent references").
+- Say "household" rather than "couple/family". Do not infer age from job/student status.
+- Be factual and neutral. Do not over-claim (if references were "provided" don't say "excellent references").
 
 Output ONLY the message text — no preamble, no explanation.`;
 
