@@ -830,7 +830,9 @@ export default function Home() {
                       Book a 15-min demo
                     </a>
                     {loggedOut && (
-                      <a href="/demo" className="rl-btn" style={{
+                      // Link straight to the demo dashboard (not /demo) so there's no
+                      // 307 redirect hop / flash of any other route before it paints.
+                      <a href="/demo/dashboard?demo=pmc" className="rl-btn" style={{
                         background: 'transparent', color: C.red, border: `1px dashed ${C.red}`, textDecoration: 'none',
                         borderRadius: R.ctrl, padding: '16px 24px', fontSize: 15, fontWeight: 600,
                         display: 'inline-flex', alignItems: 'center', gap: 8,
