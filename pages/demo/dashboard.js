@@ -4771,7 +4771,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
 // ════════════════════════════════════════════════════════════
 // COMPARE VIEW — side-by-side table
 // ════════════════════════════════════════════════════════════
-function CompareView({ applications, onRemove, getDecision, setDecisionStatus }) {
+function CompareView({ applications, onRemove, getDecision, setDecisionStatus, ranked }) {
   const factors = [
     { label: 'Annual income', get: a => `$${(a.employment.annualIncome || 0).toLocaleString()}` },
     { label: 'Combined household income', get: a => {
@@ -4806,85 +4806,168 @@ function CompareView({ applications, onRemove, getDecision, setDecisionStatus })
   ];
 
   return (
-    <div style={{ overflowX: 'auto' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 + applications.length * 200 }}>
-        <thead>
-          <tr>
-            <th style={{ ...thStyle, textAlign: 'left', width: 200 }}></th>
-            {applications.map(app => {
-              const dec = getDecision ? getDecision(app.applicationNumber) : { status: 'none' };
-              const isShortlisted = dec.status === 'shortlist';
-              return (
-                <th key={app.applicationNumber} style={thStyle}>
-                  <div style={{ marginBottom: 8 }}>
-                    <ScoreBadge score={app.scorecard.overall} small />
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 2 }}>
-                    {app.tenant.fullName}
-                  </div>
-                  <div style={{ fontSize: 10, color: C.inkMute, fontFamily: 'monospace', marginBottom: 8 }}>
-                    {app.applicationNumber}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
-                    {isShortlisted && setDecisionStatus ? (
-                      <button onClick={() => setDecisionStatus(app.applicationNumber, 'none')}
-                        title="Take off shortlist (keeps the applicant loaded)"
-                        style={{ background: 'transparent', border: `1px solid ${C.green}`, color: C.green, padding: '4px 10px', fontSize: 11, fontWeight: 600 }}>
-                        ✓ On shortlist — remove
-                      </button>
-                    ) : (
-                      <button onClick={() => onRemove(app.applicationNumber)}
-                        style={{ background: 'transparent', border: `1px solid ${C.rule}`, color: C.inkSoft, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}>
-                        Remove
-                      </button>
+    <>
+      {/* ── DESKTOP: side-by-side comparison table ── */}
+      <div className="rl-cmp-table" style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 600 + applications.length * 200 }}>
+          <thead>
+            <tr>
+              <th style={{ ...thStyle, textAlign: 'left', width: 200 }}></th>
+              {applications.map((app, idx) => {
+                const dec = getDecision ? getDecision(app.applicationNumber) : { status: 'none' };
+                const isShortlisted = dec.status === 'shortlist';
+                return (
+                  <th key={app.applicationNumber} style={thStyle}>
+                    {ranked && (
+                      <div style={{ fontSize: 11, fontWeight: 800, color: idx === 0 ? C.red : C.inkMute, letterSpacing: '0.08em', marginBottom: 6 }}>
+                        {idx === 0 ? 'TOP PICK · #1' : `#${idx + 1}`}
+                      </div>
                     )}
-                  </div>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-
-        <tbody>
-          {/* Profile facts */}
-          <tr><td colSpan={applications.length + 1} style={{ padding: '20px 0 8px', fontSize: 11, fontWeight: 600, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Profile</td></tr>
-          {factors.map(f => (
-            <tr key={f.label}>
-              <td style={tdLabelStyle}>{f.label}</td>
-              {applications.map(app => (
-                <td key={app.applicationNumber} style={tdStyle}>
-                  {f.get(app)}
-                </td>
-              ))}
+                    <div style={{ marginBottom: 8 }}>
+                      <ScoreBadge score={app.scorecard.overall} small />
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 2 }}>
+                      {app.tenant.fullName}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.inkMute, fontFamily: 'monospace', marginBottom: 8 }}>
+                      {app.applicationNumber}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      {isShortlisted && setDecisionStatus ? (
+                        <button onClick={() => setDecisionStatus(app.applicationNumber, 'none')}
+                          title="Take off shortlist (keeps the applicant loaded)"
+                          style={{ background: 'transparent', border: `1px solid ${C.green}`, color: C.green, padding: '4px 10px', fontSize: 11, fontWeight: 600 }}>
+                          ✓ On shortlist — remove
+                        </button>
+                      ) : (
+                        <button onClick={() => onRemove(app.applicationNumber)}
+                          style={{ background: 'transparent', border: `1px solid ${C.rule}`, color: C.inkSoft, padding: '4px 10px', fontSize: 11, fontWeight: 500 }}>
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  </th>
+                );
+              })}
             </tr>
-          ))}
+          </thead>
 
-          {/* Scorecard */}
-          <tr><td colSpan={applications.length + 1} style={{ padding: '20px 0 8px', fontSize: 11, fontWeight: 600, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Scorecard</td></tr>
-          {scorecardRows.map(({ key, label }) => (
-            <tr key={key}>
-              <td style={tdLabelStyle}>{label}</td>
-              {applications.map(app => (
-                <td key={app.applicationNumber} style={tdStyle}>
-                  <Stars score={app.scorecard[key].score} size={12} />
-                  <div style={{ fontSize: 10, color: C.inkMute, marginTop: 4 }}>
-                    {app.scorecard[key].note}
-                  </div>
-                </td>
-              ))}
-            </tr>
-          ))}
-          <tr>
-            <td style={{ ...tdLabelStyle, fontWeight: 700, color: C.ink }}>Overall</td>
-            {applications.map(app => (
-              <td key={app.applicationNumber} style={{ ...tdStyle, fontWeight: 800, color: C.ink, fontSize: 20 }}>
-                {app.scorecard.overall} <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 500 }}>/ 5</span>
-              </td>
+          <tbody>
+            {/* Profile facts */}
+            <tr><td colSpan={applications.length + 1} style={{ padding: '20px 0 8px', fontSize: 11, fontWeight: 600, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Profile</td></tr>
+            {factors.map(f => (
+              <tr key={f.label}>
+                <td style={tdLabelStyle}>{f.label}</td>
+                {applications.map(app => (
+                  <td key={app.applicationNumber} style={tdStyle}>
+                    {f.get(app)}
+                  </td>
+                ))}
+              </tr>
             ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
+
+            {/* Scorecard */}
+            <tr><td colSpan={applications.length + 1} style={{ padding: '20px 0 8px', fontSize: 11, fontWeight: 600, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Scorecard</td></tr>
+            {scorecardRows.map(({ key, label }) => (
+              <tr key={key}>
+                <td style={tdLabelStyle}>{label}</td>
+                {applications.map(app => (
+                  <td key={app.applicationNumber} style={tdStyle}>
+                    <Stars score={app.scorecard[key].score} size={12} />
+                    <div style={{ fontSize: 10, color: C.inkMute, marginTop: 4 }}>
+                      {app.scorecard[key].note}
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr>
+              <td style={{ ...tdLabelStyle, fontWeight: 700, color: C.ink }}>Overall</td>
+              {applications.map(app => (
+                <td key={app.applicationNumber} style={{ ...tdStyle, fontWeight: 800, color: C.ink, fontSize: 20 }}>
+                  {app.scorecard.overall} <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 500 }}>/ 5</span>
+                </td>
+              ))}
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── MOBILE: each applicant as a full-width labelled card (no overflow) ── */}
+      <div className="rl-cmp-cards">
+        {applications.map((app, idx) => {
+          const dec = getDecision ? getDecision(app.applicationNumber) : { status: 'none' };
+          const isShortlisted = dec.status === 'shortlist';
+          const topPick = ranked && idx === 0;
+          return (
+            <div key={app.applicationNumber} style={{
+              background: C.paper, border: `1px solid ${topPick ? C.red : C.rule}`,
+              borderLeft: `4px solid ${topPick ? C.red : C.green}`, borderRadius: R.card,
+              padding: 'clamp(14px, 4vw, 18px)', boxShadow: topPick ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+                {ranked && (
+                  <span aria-label={`Rank ${idx + 1}`} style={{ width: 28, height: 28, flexShrink: 0, borderRadius: '50%', background: topPick ? C.red : C.paperDeep, color: topPick ? C.paper : C.inkSoft, border: `1px solid ${topPick ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800 }}>
+                    {idx + 1}
+                  </span>
+                )}
+                <span style={{ fontSize: 17, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.tenant.fullName}</span>
+                {topPick && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP PICK</span>}
+                <span style={{ marginLeft: 'auto' }}><ScoreBadge score={app.scorecard.overall} small /></span>
+              </div>
+              <div style={{ fontSize: 10, color: C.inkMute, fontFamily: 'monospace', marginBottom: 12 }}>{app.applicationNumber}</div>
+
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Profile</div>
+              <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+                {factors.map(f => (
+                  <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, fontSize: 13, lineHeight: 1.4 }}>
+                    <span style={{ color: C.inkMute, flexShrink: 0 }}>{f.label}</span>
+                    <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', overflowWrap: 'anywhere' }}>{f.get(app)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ fontSize: 10, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>Scorecard</div>
+              <div style={{ display: 'grid', gap: 8, marginBottom: 14 }}>
+                {scorecardRows.map(({ key, label }) => (
+                  <div key={key} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, fontSize: 13 }}>
+                    <span style={{ color: C.inkMute, flexShrink: 0 }}>{label}</span>
+                    <span style={{ textAlign: 'right' }}>
+                      <Stars score={app.scorecard[key].score} size={12} />
+                      <div style={{ fontSize: 10, color: C.inkMute, marginTop: 2, overflowWrap: 'anywhere' }}>{app.scorecard[key].note}</div>
+                    </span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, fontSize: 14, paddingTop: 6, borderTop: `1px solid ${C.rule}` }}>
+                  <span style={{ color: C.ink, fontWeight: 700 }}>Overall</span>
+                  <span style={{ color: C.ink, fontWeight: 800 }}>{app.scorecard.overall} <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 500 }}>/ 5</span></span>
+                </div>
+              </div>
+
+              {isShortlisted && setDecisionStatus ? (
+                <button onClick={() => setDecisionStatus(app.applicationNumber, 'none')}
+                  style={{ width: '100%', background: 'transparent', border: `1px solid ${C.green}`, color: C.green, borderRadius: R.ctrl, padding: '10px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>
+                  ✓ On shortlist — remove
+                </button>
+              ) : (
+                <button onClick={() => onRemove(app.applicationNumber)}
+                  style={{ width: '100%', background: 'transparent', border: `1px solid ${C.rule}`, color: C.inkSoft, borderRadius: R.ctrl, padding: '10px', fontSize: 13, fontWeight: 500, cursor: 'pointer', minHeight: 44 }}>
+                  Remove
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      <style jsx>{`
+        .rl-cmp-cards { display: none; }
+        @media (max-width: 640px) {
+          .rl-cmp-table { display: none; }
+          .rl-cmp-cards { display: grid; gap: 14px; }
+        }
+      `}</style>
+    </>
   );
 }
 

@@ -420,13 +420,31 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                       const topPick = rankView && idx === 0;
                       const borderColor = topPick ? C.red : shortlisted ? C.green : rejected ? C.red : C.rule;
                       const bg = shortlisted ? '#f0f7f3' : rejected ? '#fef2f0' : C.card;
+                      // Labelled comparison facts (shortlist tab) — every value keeps its label.
+                      const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
+                      const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
+                      const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
+                      const details = [
+                        ['Income', app.annual_income ? `${money(app.annual_income)}/yr` : null],
+                        ['Household income', coIncome ? `${money((Number(app.annual_income) || 0) + Number(coIncome))}/yr (joint)` : null],
+                        ['Employer', app.employer || null],
+                        ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
+                        ['Rent-to-income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
+                        ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
+                        ['Years at address', app.years_at_previous ? `${app.years_at_previous} yrs` : null],
+                        ['Move-in', app.move_in_date || null],
+                        ['Occupants', app.number_of_occupants != null ? String(app.number_of_occupants) : null],
+                        ['Smoker', smokerLabel],
+                        ['Pets', app.pets || 'None'],
+                        ['References', Array.isArray(app.references) ? `${app.references.length} provided` : null],
+                      ].filter(([, v]) => v != null && v !== '');
                       return (
                         <div key={a.linkId} style={{
                           background: bg, border: `1px solid ${topPick ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
                           borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)',
-                          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
                           boxShadow: topPick ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
                         }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                           {rankView && (
                             <span aria-label={`Rank ${rank}`} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: topPick ? C.red : C.paperDeep, color: topPick ? C.paper : C.inkSoft, border: `1px solid ${topPick ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
                               {rank}
@@ -467,6 +485,20 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                               <Icon name="check" size={15} color={shortlisted ? C.paper : C.green} strokeWidth={2.5} /> {shortlisted ? 'Favourited' : 'Favourite'}
                             </button>
                           </div>
+                          </div>
+                          {rankView && details.length > 0 && (
+                            <div style={{
+                              marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}`,
+                              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px',
+                            }}>
+                              {details.map(([label, value]) => (
+                                <div key={label} style={{ minWidth: 0 }}>
+                                  <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+                                  <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
