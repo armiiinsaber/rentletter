@@ -76,6 +76,11 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   const [copied, setCopied] = useState(false);
   const [addRL, setAddRL] = useState('');
   const [addLoading, setAddLoading] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [textBusy, setTextBusy] = useState(false);
+  const [textCopied, setTextCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendMsg, setSendMsg] = useState('');
 
   const saveEdit = async (values) => {
     setSaving(true);
@@ -157,6 +162,51 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
       setError('Could not add that application number.');
     }
     setAddLoading(false);
+  };
+
+  // ── Landlord comms (Group 2-4) ──
+  const downloadPdf = async () => {
+    setPdfBusy(true); setSendMsg('');
+    try {
+      const r = await fetch(`/api/listings/report-pdf?listingId=${encodeURIComponent(listing.id)}`);
+      if (!r.ok) { const j = await r.json().catch(() => ({})); setSendMsg(j?.error || 'Could not generate the PDF.'); setPdfBusy(false); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `shortlist-${new Date().toISOString().slice(0, 10)}.pdf`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) { setSendMsg('Could not generate the PDF.'); }
+    setPdfBusy(false);
+  };
+
+  const copyText = async () => {
+    setTextBusy(true); setSendMsg('');
+    try {
+      const r = await fetch('/api/listings/report-text', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId: listing.id }),
+      });
+      const j = await r.json();
+      if (!r.ok || !j.text) { setSendMsg(j?.error || 'Could not compose the message.'); setTextBusy(false); return; }
+      await navigator.clipboard.writeText(j.text);
+      setTextCopied(true);
+      setTimeout(() => setTextCopied(false), 2200);
+    } catch (e) { setSendMsg('Could not compose the message.'); }
+    setTextBusy(false);
+  };
+
+  const sendEmail = async () => {
+    setSending(true); setSendMsg('');
+    try {
+      const r = await fetch('/api/listings/send-report', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId: listing.id }),
+      });
+      const j = await r.json();
+      setSendMsg(r.ok ? `Sent to ${j.sentTo || listing.landlord_email}.` : (j?.error || 'Email send failed.'));
+    } catch (e) { setSendMsg('Email send failed.'); }
+    setSending(false);
   };
 
   // Persist a decision to listing_applicants (realtor RLS). Optimistic local update.
@@ -407,6 +457,46 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               </>
             )}
           </section>
+
+          {/* ── SEND TO LANDLORD (appears once there's a shortlist) ── */}
+          {shortlist.length > 0 && (
+            <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Send to landlord</div>
+              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, maxWidth: 560 }}>
+                Share your {shortlist.length} shortlisted candidate{shortlist.length === 1 ? '' : 's'} as a branded PDF report or a paste-ready message.
+              </p>
+
+              {/* Landlord contact captured on the listing */}
+              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+                <span style={{ color: C.inkMute, fontWeight: 600 }}>Landlord client: </span>
+                {(l.landlord_name || l.landlord_email || l.landlord_phone) ? (
+                  <span style={{ color: C.ink }}>
+                    {[l.landlord_name, l.landlord_email, l.landlord_phone].filter(Boolean).join(' · ')}
+                  </span>
+                ) : (
+                  <span style={{ color: C.inkMute }}>Not set — add it via <button onClick={() => setEditOpen(true)} style={{ background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 13 }}>Edit listing</button> to email them.</span>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button onClick={downloadPdf} disabled={pdfBusy} className="rl-btn"
+                  style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Icon name="doc" size={16} color={C.paper} /> {pdfBusy ? 'Generating…' : 'Generate PDF'}
+                </button>
+                <button onClick={copyText} disabled={textBusy} className="rl-btn"
+                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Icon name="copy" size={16} /> {textBusy ? 'Composing…' : textCopied ? 'Copied!' : 'Copy text for landlord'}
+                </button>
+                <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
+                  style={{ background: (sending || !l.landlord_email) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <Icon name="mail" size={16} color={C.paper} /> {sending ? 'Sending…' : 'Email report'}
+                </button>
+              </div>
+              {sendMsg && (
+                <div style={{ marginTop: 12, fontSize: 13, color: C.inkSoft }}>{sendMsg}</div>
+              )}
+            </section>
+          )}
         </div>
 
         {profileOpen && (
