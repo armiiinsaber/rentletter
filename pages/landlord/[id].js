@@ -403,6 +403,23 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                   ))}
                 </div>
 
+                {/* Next-step CTA: guide from the All-applicants pass into the ranked shortlist + send. */}
+                {tab === 'all' && shortlist.length > 0 && (
+                  <button onClick={() => setTab('shortlist')}
+                    style={{
+                      width: '100%', marginBottom: 16, textAlign: 'left',
+                      background: '#f0f7f3', border: `1px solid ${C.green}`, borderRadius: R.card,
+                      padding: 'clamp(13px, 3vw, 16px) 18px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                    }}>
+                    <span>
+                      <span style={{ display: 'block', fontSize: 14.5, fontWeight: 800, color: C.ink }}>Review your shortlist ({shortlist.length}) →</span>
+                      <span style={{ display: 'block', fontSize: 12.5, color: C.inkSoft, marginTop: 2 }}>Compare your picks ranked best-fit-first, then send a PDF or text to your landlord.</span>
+                    </span>
+                    <Icon name="arrow" size={18} color={C.green} />
+                  </button>
+                )}
+
                 {visible.length === 0 ? (
                   <div style={{ padding: 'clamp(20px, 4vw, 32px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>Your shortlist is empty.</div>

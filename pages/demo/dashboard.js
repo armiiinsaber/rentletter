@@ -1917,7 +1917,7 @@ export default function LandlordDashboard() {
                     )}
                     {shortlistedCount > 0 && (
                       <button
-                        onClick={() => { setView('compare'); setWelcomeBackDismissed(true); }}
+                        onClick={() => { setView('ranked'); setWelcomeBackDismissed(true); }}
                         className="rl-btn"
                         style={{
                           background: C.green, color: C.paper, border: 'none', borderRadius: R.ctrl,
@@ -2713,10 +2713,13 @@ export default function LandlordDashboard() {
 
               {/* TABS — simplified to Review + My picks only */}
               <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.rule}`, marginBottom: 32, overflowX: 'auto' }}>
-                {[
-                  { id: 'review', label: 'All applicants', enabled: true },
-                  { id: 'ranked', label: 'My shortlist', enabled: filteredApplications.length >= 1 },
-                ].map(tab => (
+                {(() => {
+                  const slN = applications.filter(a => decisions[a.applicationNumber]?.status === 'shortlist').length;
+                  return [
+                    { id: 'review', label: 'All applicants', enabled: true },
+                    { id: 'ranked', label: slN > 0 ? `My shortlist (${slN})` : 'My shortlist', enabled: filteredApplications.length >= 1 },
+                  ];
+                })().map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => tab.enabled && setView(tab.id)}
@@ -2757,7 +2760,7 @@ export default function LandlordDashboard() {
                   decisions={decisions}
                   unit={unit}
                   onJumpToDetail={(idx) => { setActiveAppIdx(idx); setSimpleMode(false); setView('detail'); }}
-                  onJumpToFavourites={() => { setView('compare'); }}
+                  onJumpToFavourites={() => { setView('ranked'); }}
                 />
               )}
 
@@ -2781,88 +2784,6 @@ export default function LandlordDashboard() {
                 />
               )}
 
-              {/* ── COMPARE VIEW ────────────────────────────── */}
-              {view === 'compare' && (() => {
-                // Auto-filter Compare to shortlisted-only if any shortlisted exist
-                const shortlistedApps = filteredApplications.filter(
-                  a => decisions[a.applicationNumber]?.status === 'shortlist'
-                );
-                const hasShortlist = shortlistedApps.length > 0;
-                const compareList = hasShortlist ? shortlistedApps : filteredApplications;
-
-                if (compareList.length < 2) {
-                  return (
-                    <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>
-                        {hasShortlist ? 'Shortlist 2 or more applicants to compare them.' : 'Add 2 or more applications to compare.'}
-                      </div>
-                      <div style={{ fontSize: 12, color: C.inkMute }}>
-                        {hasShortlist
-                          ? `You currently have ${shortlistedApps.length} shortlisted applicant${shortlistedApps.length === 1 ? '' : 's'}.`
-                          : 'Look up application numbers above, then shortlist your top candidates.'}
-                      </div>
-                    </div>
-                  );
-                }
-
-                return (
-                  <>
-                    {hasShortlist && (
-                      <div style={{
-                        marginBottom: 16,
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        flexWrap: 'wrap', gap: 12,
-                      }}>
-                        <div style={{
-                          flex: 1, minWidth: 220,
-                          padding: '10px 14px', borderRadius: R.ctrl,
-                          background: '#f0f7f3', borderLeft: `3px solid ${C.green}`,
-                          fontSize: 13, color: C.inkSoft,
-                        }}>
-                          <span style={{ color: C.green, fontWeight: 700 }}>✓ Your {shortlistedApps.length} favourite{shortlistedApps.length === 1 ? '' : 's'}.</span>
-                          {' '}
-                          <span style={{ color: C.inkMute }}>Remove favourite to take them out of this view.</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-                          {sessionToken && realtorProfile.isRealtor && (
-                            <button
-                              onClick={() => { setSendToLandlordEmail(''); setSendToLandlordNote(''); setSendToLandlordSent(false); setSendToLandlordOpen(true); }}
-                              style={{
-                                background: C.red, color: C.paper, border: 'none',
-                                padding: '12px 18px', fontSize: 14, fontWeight: 700,
-                                cursor: 'pointer', minHeight: 44, whiteSpace: 'nowrap',
-                                display: 'inline-flex', alignItems: 'center', gap: 6,
-                              }}>
-                              ✉ Send to landlord client →
-                            </button>
-                          )}
-                          {sessionToken && (
-                            <button onClick={emailSummary}
-                              disabled={emailingSummary}
-                              style={{
-                                background: emailSummarySent ? C.green : C.ink, color: C.paper, border: 'none',
-                                padding: '12px 18px', fontSize: 14, fontWeight: 700,
-                                cursor: emailingSummary ? 'wait' : 'pointer',
-                                opacity: emailingSummary ? 0.6 : 1,
-                                minHeight: 44,
-                                whiteSpace: 'nowrap',
-                              }}>
-                              {emailingSummary ? 'Sending...' : emailSummarySent ? '✓ Sent to your inbox' : '✉ Email me a copy'}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    <CompareView
-                      applications={compareList}
-                      onRemove={removeApplication}
-                      getDecision={getDecision}
-                      setDecisionStatus={setDecisionStatus}
-                    />
-                  </>
-                );
-              })()}
-
               {/* ── RANKED VIEW (detailed) or SIMPLE LIST (simple) ── */}
               {view === 'ranked' && simpleMode && (() => {
                 // "My shortlist" = the applicants the user has favourited. Empty
@@ -2883,17 +2804,20 @@ export default function LandlordDashboard() {
                 }
                 return (
                   <>
-                    <AllApplicantsList
+                    <div style={{ marginBottom: 18 }}>
+                      <div style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4 }}>
+                        Your shortlist — ranked best fit first
+                      </div>
+                      <div style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
+                        {shortlisted.length} candidate{shortlisted.length === 1 ? '' : 's'}, strongest at the top. Compare them below, then send your top picks to your landlord.
+                      </div>
+                    </div>
+                    <CompareView
                       applications={shortlisted}
-                      decisions={decisions}
-                      unit={unit}
                       ranked
+                      getDecision={getDecision}
                       setDecisionStatus={setDecisionStatus}
-                      onJumpToReview={(idx, app) => {
-                        const realIdx = applications.findIndex(a => a.applicationNumber === app.applicationNumber);
-                        setReviewIdx(realIdx >= 0 ? realIdx : 0);
-                        setView('review');
-                      }}
+                      onRemove={removeApplication}
                     />
                     <DemoSendToLandlord apps={shortlisted} unit={unit} realtor={realtorProfile} />
                   </>
@@ -3940,14 +3864,19 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
           {shortlistedCount > 0 && (
             <button onClick={() => onJumpToFavourites()}
               style={{
-                background: C.green, color: C.paper, border: 'none',
-                padding: '14px 24px', fontSize: 15, fontWeight: 700,
-                cursor: 'pointer', minHeight: 48,
+                background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl,
+                padding: '16px 28px', fontSize: 16, fontWeight: 800, letterSpacing: '-0.01em',
+                cursor: 'pointer', minHeight: 52, boxShadow: '0 1px 0 rgba(168,22,28,0.5)',
               }}>
-              See your favourites →
+              Review your shortlist ({shortlistedCount}) →
             </button>
           )}
         </div>
+        {shortlistedCount > 0 && (
+          <div style={{ fontSize: 12.5, color: C.inkMute, textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
+            Next: compare your top picks ranked best-fit-first, then send the PDF or a paste-ready text to your landlord.
+          </div>
+        )}
       </div>
     );
   }
