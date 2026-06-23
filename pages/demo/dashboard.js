@@ -2938,17 +2938,20 @@ export default function LandlordDashboard() {
                   );
                 }
                 return (
-                  <AllApplicantsList
-                    applications={shortlisted}
-                    decisions={decisions}
-                    unit={unit}
-                    setDecisionStatus={setDecisionStatus}
-                    onJumpToReview={(idx, app) => {
-                      const realIdx = applications.findIndex(a => a.applicationNumber === app.applicationNumber);
-                      setReviewIdx(realIdx >= 0 ? realIdx : 0);
-                      setView('review');
-                    }}
-                  />
+                  <>
+                    <AllApplicantsList
+                      applications={shortlisted}
+                      decisions={decisions}
+                      unit={unit}
+                      setDecisionStatus={setDecisionStatus}
+                      onJumpToReview={(idx, app) => {
+                        const realIdx = applications.findIndex(a => a.applicationNumber === app.applicationNumber);
+                        setReviewIdx(realIdx >= 0 ? realIdx : 0);
+                        setView('review');
+                      }}
+                    />
+                    <DemoSendToLandlord apps={shortlisted} unit={unit} realtor={realtorProfile} />
+                  </>
                 );
               })()}
               {view === 'ranked' && !simpleMode && filteredApplications.length >= 2 && (
@@ -3660,6 +3663,126 @@ export default function LandlordDashboard() {
 // ALL APPLICANTS LIST — simple scrollable list for simple-mode "All applicants" tab
 // Plain rows, no weight sliders. Tap any row → opens that tenant in Review mode.
 // ════════════════════════════════════════════════════════════
+// ─── DEMO: Send-to-landlord PREVIEW ──────────────────────────
+// Demo-only mirror of the real dashboard's send-to-landlord area. NO network:
+// the text is composed client-side from the favourited sample applicants, the PDF
+// is generated client-side by reusing the real white-label builder with demo data
+// (logo_url null → no fetch), and Email is purely illustrative.
+function DemoSendToLandlord({ apps, unit, realtor }) {
+  const [copied, setCopied] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfErr, setPdfErr] = useState('');
+  const [emailNote, setEmailNote] = useState(false);
+
+  const realtorName = realtor?.fullName || 'Demo Realtor';
+  const brokerage = realtor?.brokerage || 'Sample Realty';
+  const realtorPhone = realtor?.phone || '';
+  const unitLabel = unit?.address || 'the unit';
+
+  const composeText = () => {
+    const lines = [];
+    lines.push('Hi Jordan,');
+    lines.push('');
+    const unitBits = [unitLabel, unit?.monthlyRent ? `$${Number(unit.monthlyRent).toLocaleString()}/mo` : null, unit?.bedrooms ? `${unit.bedrooms} bed` : null].filter(Boolean).join(' - ');
+    lines.push(`Here are my top ${apps.length} for ${unitBits}:`);
+    lines.push('');
+    apps.forEach((a, i) => {
+      const role = [a.employment?.jobTitle, a.employment?.employer].filter(Boolean).join(' at ');
+      const bits = [];
+      if (a.employment?.annualIncome) bits.push(`$${Number(a.employment.annualIncome).toLocaleString()}/yr`);
+      const yrs = a.employment?.yearsAtJob;
+      if (yrs) bits.push(`${yrs} yr${String(yrs) === '1' ? '' : 's'} at current job`);
+      if (a.apartment?.rentToIncomeRatio) bits.push(`${a.apartment.rentToIncomeRatio}% rent-to-income`);
+      const refs = (a.references || []).length;
+      if (refs) bits.push(`${refs} reference${refs === 1 ? '' : 's'} provided`);
+      lines.push(`${i + 1}) ${a.tenant?.fullName || 'Applicant'}${role ? ' - ' + role : ''}. ${bits.join(', ')}.`);
+    });
+    lines.push('');
+    lines.push('All figures are applicant-reported. Happy to set up viewings or walk you through any of them.');
+    lines.push('');
+    lines.push(realtorName);
+    lines.push([brokerage, realtorPhone].filter(Boolean).join(' - '));
+    return lines.join('\n');
+  };
+
+  const copyText = async () => {
+    setPdfErr('');
+    try {
+      await navigator.clipboard.writeText(composeText());
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2200);
+    } catch (e) { setPdfErr('Could not copy to clipboard.'); }
+  };
+
+  const generatePdf = async () => {
+    setPdfBusy(true); setPdfErr('');
+    try {
+      // Reuse the real white-label PDF builder with demo data. No auth/Supabase/network.
+      const { buildLandlordReportPdf } = await import('../../lib/landlordReportPdf');
+      const shortlisted = apps.map((a, i) => ({
+        decisionPriority: i === 0 ? 'top' : null,
+        decisionNotes: '',
+        application: {
+          application_number: a.applicationNumber,
+          full_name: a.tenant?.fullName,
+          job_title: a.employment?.jobTitle,
+          employer: a.employment?.employer,
+          annual_income: a.employment?.annualIncome,
+          co_applicant: a.coApplicant ? { name: a.coApplicant.name, annualIncome: a.coApplicant.annualIncome } : null,
+          rent_to_income_ratio: a.apartment?.rentToIncomeRatio,
+          scorecard: a.scorecard,
+        },
+      }));
+      const profile = { full_name: `${realtorName} (Sample)`, brokerage, phone: realtorPhone, logo_url: null };
+      const listing = { name: unitLabel, monthly_rent: unit?.monthlyRent ? Number(unit.monthlyRent) : null, bedrooms: unit?.bedrooms };
+      const bytes = await buildLandlordReportPdf({ profile, listing, shortlisted });
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = 'sample-landlord-report.pdf';
+      document.body.appendChild(link); link.click(); link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('[demo pdf] error', e);
+      setPdfErr('Could not generate the sample PDF.');
+    }
+    setPdfBusy(false);
+  };
+
+  return (
+    <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
+      <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>Send to landlord</div>
+      <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginBottom: 14 }}>Sample — this is what your landlord receives.</div>
+
+      <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+        <span style={{ color: C.inkMute, fontWeight: 600 }}>Landlord client: </span>
+        <span style={{ color: C.ink }}>Jordan Lee · jordan@example.com · (416) 555-0188</span>
+      </div>
+
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button onClick={generatePdf} disabled={pdfBusy} className="rl-btn"
+          style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <Icon name="doc" size={16} color={C.paper} /> {pdfBusy ? 'Generating…' : 'Generate PDF'}
+        </button>
+        <button onClick={copyText} className="rl-btn"
+          style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <Icon name="copy" size={16} /> {copied ? 'Copied!' : 'Copy text for landlord'}
+        </button>
+        <button onClick={() => setEmailNote(true)} className="rl-btn"
+          style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <Icon name="mail" size={16} color={C.inkSoft} /> Email report
+        </button>
+      </div>
+      {emailNote && (
+        <div style={{ marginTop: 12, fontSize: 13, color: C.inkSoft }}>Available once you're signed in.</div>
+      )}
+      {pdfErr && (
+        <div style={{ marginTop: 12, fontSize: 13, color: C.red }}>{pdfErr}</div>
+      )}
+    </section>
+  );
+}
+
 function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, onJumpToReview }) {
   if (!applications.length) {
     return (
