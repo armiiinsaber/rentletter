@@ -3624,34 +3624,48 @@ function DemoSendToLandlord({ apps, unit, realtor }) {
   const realtorPhone = realtor?.phone || '';
   const unitLabel = unit?.address || 'the unit';
 
-  // Plain-text, iMessage-optimized: short header, then each applicant as a tight
-  // ranked block with labelled lines (Role / Income / References). No markdown.
+  // Deliberately, fussily formatted TRUE plain text for iMessage/SMS — bracket rank
+  // tags, leader-dot label→value alignment, em-dash rules. NO emojis, NO markdown.
   // OHRC-safe: screenable facts only.
   const composeText = () => {
-    const lines = [];
-    const unitBits = [unitLabel, unit?.monthlyRent ? `$${Number(unit.monthlyRent).toLocaleString()}/mo` : null, unit?.bedrooms ? `${unit.bedrooms} bed` : null].filter(Boolean).join(' · ');
-    lines.push(`🏠 ${unitBits}`);
-    lines.push(`Shortlist from ${[realtorName, brokerage].filter(Boolean).join(', ')}`);
-    lines.push(`Ranked best fit first (${apps.length}):`);
-    apps.forEach((a, i) => {
-      lines.push('');
-      const star = i === 0 ? ' ⭐ Top pick' : '';
-      lines.push(`${i + 1}. ${a.tenant?.fullName || 'Applicant'}${star}`);
-      const yrs = a.employment?.yearsAtJob;
+    const RULE = '—'.repeat(28);
+    const INDENT = '       '; // 7 spaces, aligns under the name after "[ N ]  "
+    // Pad "label + dots" to a fixed 15-char column so all values line up.
+    const leader = (label, value) => `${INDENT}${label} ${'.'.repeat(Math.max(2, 15 - label.length))} ${value}`;
+
+    const fitPhrase = (a) => {
+      const r = a.apartment?.rentToIncomeRatio;
+      if (r != null) return r <= 30 ? 'comfortable on income' : r <= 35 ? 'within typical range' : 'tighter on income';
+      const o = a.scorecard?.overall;
+      if (o != null) return o >= 4.5 ? 'strong overall' : o >= 3.5 ? 'solid overall' : 'mixed signals';
+      return 'see application';
+    };
+
+    const block = (a, i) => {
+      const out = [];
       const role = [a.employment?.jobTitle, a.employment?.employer].filter(Boolean).join(', ');
-      if (role) lines.push(`   Role: ${role}${yrs ? ` (${yrs} yr${String(yrs) === '1' ? '' : 's'})` : ''}`);
-      if (a.employment?.annualIncome) lines.push(`   Income: $${Number(a.employment.annualIncome).toLocaleString()}/yr`);
+      out.push(`[ ${i + 1} ]  ${(a.tenant?.fullName || 'Applicant').toUpperCase()}${role ? ` — ${role}` : ''}`);
+      if (a.employment?.annualIncome) {
+        const r2i = a.apartment?.rentToIncomeRatio;
+        out.push(leader('Income', `$${Number(a.employment.annualIncome).toLocaleString()}/yr${r2i != null ? `  (${r2i}% rent-to-income)` : ''}`));
+      }
+      const yrs = a.employment?.yearsAtJob;
+      if (yrs) out.push(leader('Tenure', `${yrs} yr${String(yrs) === '1' ? '' : 's'}`));
       const refs = (a.references || []).length;
-      const refBits = [];
-      if (refs) refBits.push(`${refs} provided`);
-      if (a.apartment?.rentToIncomeRatio) refBits.push(`${a.apartment.rentToIncomeRatio}% rent-to-income`);
-      if (refBits.length) lines.push(`   References: ${refBits.join(' · ')}`);
-    });
-    lines.push('');
-    lines.push('———');
-    lines.push("Reply here and I'll set up viewings. Figures are applicant-reported.");
-    lines.push([realtorName, brokerage, realtorPhone].filter(Boolean).join(' · '));
-    return lines.join('\n');
+      if (refs) out.push(leader('References', `${refs} provided`));
+      out.push(leader('Fit', fitPhrase(a)));
+      return out.join('\n');
+    };
+
+    const unitBits = [unitLabel, unit?.monthlyRent ? `$${Number(unit.monthlyRent).toLocaleString()}/mo` : null, unit?.bedrooms ? `${unit.bedrooms}BR` : null].filter(Boolean).join(' · ');
+    const header = [
+      `RENTLETTER  |  ${unitBits}`,
+      `Shortlist from ${[realtorName, brokerage].filter(Boolean).join(', ')} — ranked best fit first (${apps.length})`,
+    ].join('\n');
+
+    const body = apps.map(block).join(`\n\n${RULE}\n\n`);
+    const signoff = `${RULE}\nReply to set up viewings. Figures are applicant-reported.\n${[realtorName, brokerage, realtorPhone].filter(Boolean).join(' · ')}`;
+    return `${header}\n\n${body}\n\n${signoff}`;
   };
 
   const copyText = async () => {

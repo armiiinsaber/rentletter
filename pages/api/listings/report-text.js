@@ -69,24 +69,40 @@ export default async function handler(req, res) {
       };
     });
 
-    const systemPrompt = `You write a short message a Canadian realtor pastes into iMessage/SMS for their landlord client, summarizing a ranked tenant shortlist. It must look great and be instantly scannable on a phone.
+    const systemPrompt = `You format a tenant shortlist into a deliberately, fussily laid-out PLAIN-TEXT message a Canadian realtor pastes into iMessage/SMS for their landlord client. The whole point is meticulous typographic alignment a person could do by hand but never would — the landlord must absorb the entire shortlist in seconds on a phone.
 
-FORMAT (follow EXACTLY):
-- A 3-line header:
-  Line 1: a house emoji then the unit, e.g. "🏠 210 Carlaw Ave, Unit 4 · $2,600/mo · 2 bed" (include rent/bed only if provided).
-  Line 2: "Shortlist from <realtor name>, <brokerage>" (drop brokerage if not given).
-  Line 3: "Ranked best fit first (<N>):".
-- Then ONE block per candidate IN THE GIVEN ORDER, separated by a blank line. Each block:
-    "<rank>. <Name>" — append " ⭐ Top pick" to candidate 1 ONLY.
-    then 2-3 short labelled lines, each indented with three spaces, choosing from the available facts:
-       "   Role: <job title>, <employer> (<years> yrs)"   (years only if known)
-       "   Income: $<amount>/yr"   (use household income and say "Household: $X/yr" if a co-applicant income is present)
-       "   References: <n> provided · <pct>% rent-to-income"   (include whichever parts exist)
-- End with a plain divider line "———" then a one-line sign-off inviting a reply (and note figures are applicant-reported), then a final line "<realtor name> · <brokerage> · <phone>" (omit missing parts).
+PRODUCE EXACTLY THIS STRUCTURE (no deviation):
 
-STYLE RULES:
-- PLAIN TEXT ONLY. NO markdown: no #, no *, no **bold**, no underscores, no backticks, no tables. The ONLY non-text characters allowed are the 🏠 and ⭐ emoji, the "·" middot separator, and the "———" divider.
-- Tight, short lines. Use the labels above verbatim (Role / Income / Household / References).
+RENTLETTER  |  <address> — $<rent>/mo · <beds>BR
+Shortlist from <realtor name>, <brokerage> — ranked best fit first (<N>)
+
+[ 1 ]  <NAME IN UPPERCASE> — <role>, <employer>
+       Income ......... $<amount>/yr  (<pct>% rent-to-income)
+       Tenure ......... <years> yrs
+       References ..... <n> provided
+       Fit ............ <short factual phrase>
+
+————————————————————————————
+
+[ 2 ]  <NAME IN UPPERCASE> — <role>, <employer>
+       Income ......... ...
+       ...
+
+————————————————————————————
+Reply to set up viewings. Figures are applicant-reported.
+<realtor name> · <brokerage> · <phone>
+
+ALIGNMENT RULES (critical):
+- Header line 1 starts with "RENTLETTER  |  " (two spaces, pipe, two spaces). Include rent and "<beds>BR" only if provided.
+- Candidate first line: "[ <rank> ]  " (space inside the brackets, two spaces after) then the NAME IN ALL CAPS, then " — " then role, employer.
+- Labelled lines are indented exactly 7 spaces (to sit under the name). Each is: label, one space, a run of "." leader dots, one space, value — padded so EVERY value across ALL candidates starts in the same column. Use these four labels verbatim, in this order: Income, Tenure, References, Fit. The "label + dots" segment must be 15 characters wide (e.g. "Income ........." / "Tenure ........." / "References ....." / "Fit ............"). Omit a line only if that fact is entirely missing.
+- Income value: "$<amount>/yr" then two spaces then "(<pct>% rent-to-income)" if a ratio exists. If a co-applicant income exists, use the household total and label it "Income" with value "$<total>/yr (household)".
+- Fit value: ONE short factual phrase derived from the data (e.g. "comfortable on income", "within typical range", "long, stable tenure", "references in hand"). Keep it under ~4 words.
+- Between candidates put a blank line, a rule of 28 em dashes (————————————————————————————), then a blank line. Use the same rule before the sign-off.
+
+STYLE:
+- TRUE plain text only. NO emojis. NO markdown (no #, *, _, backticks, tables). Only keyboard punctuation, "·" middots, "." leader dots, and "—" em-dash rules.
+- Keep every line short enough to not wrap badly on a narrow phone — prefer short labelled lines over sentences.
 
 COMPLIANCE (Ontario Human Rights Code) — STRICT:
 - Facts ONLY from: income, employment tenure, rent-to-income, references, scorecard fit. Use the provided data; never invent.
