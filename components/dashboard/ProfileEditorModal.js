@@ -7,6 +7,7 @@
 import { useState, useRef } from 'react';
 import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
+import LogoStudio from './LogoStudio';
 
 const inputStyle = {
   width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl,
@@ -121,7 +122,7 @@ export default function ProfileEditorModal({ profile, onClose, onSaved }) {
     <div onClick={onClose}
       style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px,4vw,32px)', zIndex: 100 }}>
       <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-        style={{ background: C.paper, maxWidth: 480, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}` }}>
+        style={{ background: C.paper, maxWidth: 540, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}` }}>
         <div style={{ padding: 'clamp(20px,4vw,28px)', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
           <div>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Realtor profile</div>
@@ -155,9 +156,12 @@ export default function ProfileEditorModal({ profile, onClose, onSaved }) {
               )}
             </div>
           </div>
-          <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 20 }}>
+          <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 16 }}>
             PNG, JPG, SVG, or WebP · under 2MB. Appears on your landlord report (PNG/JPG render in the PDF).
           </p>
+
+          {/* AI logo studio — generate a logo instead of (or alongside) uploading one */}
+          <LogoStudio onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }} />
 
           {fields.map((f) => (
             <div key={f.k} style={{ marginBottom: 16 }}>
