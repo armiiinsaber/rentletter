@@ -239,7 +239,15 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     l.pref_employment_part_time && 'Part-time',
   ].filter(Boolean).join(', ') || '—';
 
-  const shortlist = applicants.filter((a) => a.decisionStatus === 'shortlist');
+  // Rank the shortlist exactly like the PDF/text report (lib/listingReportData
+  // rankShortlist): top-priority first, then scorecard overall desc.
+  const rankShortlist = (list) => [...list].sort((a, b) => {
+    const pa = a.decisionPriority === 'top' ? 0 : 1;
+    const pb = b.decisionPriority === 'top' ? 0 : 1;
+    if (pa !== pb) return pa - pb;
+    return (b.application?.scorecard?.overall ?? 0) - (a.application?.scorecard?.overall ?? 0);
+  });
+  const shortlist = rankShortlist(applicants.filter((a) => a.decisionStatus === 'shortlist'));
   const visible = tab === 'shortlist' ? shortlist : applicants;
 
   return (
@@ -402,26 +410,36 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gap: 12 }}>
-                    {visible.map((a) => {
+                    {visible.map((a, idx) => {
                       const app = a.application || {};
                       const overall = app.scorecard?.overall;
                       const shortlisted = a.decisionStatus === 'shortlist';
                       const rejected = a.decisionStatus === 'reject';
-                      const borderColor = shortlisted ? C.green : rejected ? C.red : C.rule;
+                      const rankView = tab === 'shortlist'; // ranked 1→N high to low
+                      const rank = idx + 1;
+                      const topPick = rankView && idx === 0;
+                      const borderColor = topPick ? C.red : shortlisted ? C.green : rejected ? C.red : C.rule;
                       const bg = shortlisted ? '#f0f7f3' : rejected ? '#fef2f0' : C.card;
                       return (
                         <div key={a.linkId} style={{
-                          background: bg, border: `1px solid ${C.rule}`, borderLeft: `4px solid ${borderColor}`,
+                          background: bg, border: `1px solid ${topPick ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
                           borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)',
                           display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+                          boxShadow: topPick ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
                         }}>
+                          {rankView && (
+                            <span aria-label={`Rank ${rank}`} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: topPick ? C.red : C.paperDeep, color: topPick ? C.paper : C.inkSoft, border: `1px solid ${topPick ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
+                              {rank}
+                            </span>
+                          )}
                           <span aria-hidden="true" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>
                             {initialsOf(app.full_name)}
                           </span>
                           <div style={{ flex: 1, minWidth: 180 }}>
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
                               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
-                              {shortlisted && <span style={{ fontSize: 10, color: C.green, fontWeight: 700, letterSpacing: '0.08em' }}>★ FAVOURITE</span>}
+                              {topPick && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP PICK</span>}
+                              {shortlisted && !topPick && <span style={{ fontSize: 10, color: C.green, fontWeight: 700, letterSpacing: '0.08em' }}>★ FAVOURITE</span>}
                               {rejected && <span style={{ fontSize: 10, color: C.red, fontWeight: 700, letterSpacing: '0.08em' }}>✕ REJECTED</span>}
                               {app.revoked && <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em' }}>REVOKED</span>}
                             </div>

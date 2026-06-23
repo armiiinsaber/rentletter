@@ -2867,7 +2867,10 @@ export default function LandlordDashboard() {
               {view === 'ranked' && simpleMode && (() => {
                 // "My shortlist" = the applicants the user has favourited. Empty
                 // until they pick, then it fills with their shortlisted picks.
-                const shortlisted = filteredApplications.filter(a => decisions[a.applicationNumber]?.status === 'shortlist');
+                // Ranked high→low by scorecard overall (same order the PDF + copy-text use).
+                const shortlisted = filteredApplications
+                  .filter(a => decisions[a.applicationNumber]?.status === 'shortlist')
+                  .sort((a, b) => (b.scorecard?.overall ?? 0) - (a.scorecard?.overall ?? 0));
                 if (shortlisted.length === 0) {
                   return (
                     <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
@@ -2884,6 +2887,7 @@ export default function LandlordDashboard() {
                       applications={shortlisted}
                       decisions={decisions}
                       unit={unit}
+                      ranked
                       setDecisionStatus={setDecisionStatus}
                       onJumpToReview={(idx, app) => {
                         const realIdx = applications.findIndex(a => a.applicationNumber === app.applicationNumber);
@@ -3724,7 +3728,7 @@ function DemoSendToLandlord({ apps, unit, realtor }) {
   );
 }
 
-function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, onJumpToReview }) {
+function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, onJumpToReview, ranked }) {
   if (!applications.length) {
     return (
       <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
@@ -3750,22 +3754,30 @@ function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, o
           const fitChecks = computeUnitFit(app, unit);
           const fitSummary = unitFitSummary(fitChecks);
 
-          const statusBorderColor = dec.status === 'shortlist' ? C.green : dec.status === 'reject' ? C.red : C.rule;
+          const topPick = ranked && idx === 0;
+          const rank = idx + 1;
+          const statusBorderColor = topPick ? C.red : dec.status === 'shortlist' ? C.green : dec.status === 'reject' ? C.red : C.rule;
           const statusBg = dec.status === 'shortlist' ? '#f0f7f3' : dec.status === 'reject' ? '#fef2f0' : C.paper;
 
           return (
             <div key={app.applicationNumber} style={{
               background: statusBg,
-              border: `1px solid ${C.rule}`,
+              border: `1px solid ${topPick ? C.red : C.rule}`,
               borderRadius: R.card,
               borderLeft: `4px solid ${statusBorderColor}`,
               padding: 'clamp(14px, 3vw, 18px)',
               display: 'grid',
-              gridTemplateColumns: '1fr auto',
+              gridTemplateColumns: ranked ? 'auto 1fr auto' : '1fr auto',
               gap: 14,
               alignItems: 'center',
               minWidth: 0,
+              boxShadow: topPick ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
             }}>
+              {ranked && (
+                <span aria-label={`Rank ${rank}`} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: topPick ? C.red : C.paperDeep, color: topPick ? C.paper : C.inkSoft, border: `1px solid ${topPick ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
+                  {rank}
+                </span>
+              )}
               <div
                 onClick={() => onJumpToReview(idx, app)}
                 style={{ cursor: 'pointer', minWidth: 0 }}>
@@ -3773,7 +3785,12 @@ function AllApplicantsList({ applications, decisions, unit, setDecisionStatus, o
                   <div style={{ fontSize: 'clamp(16px, 4vw, 18px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>
                     {app.tenant?.fullName}
                   </div>
-                  {dec.status === 'shortlist' && (
+                  {topPick && (
+                    <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>
+                      TOP PICK
+                    </span>
+                  )}
+                  {dec.status === 'shortlist' && !topPick && (
                     <span style={{ fontSize: 10, color: C.green, fontWeight: 700, letterSpacing: '0.08em' }}>
                       ✓ FAVOURITE
                     </span>
