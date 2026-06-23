@@ -275,9 +275,25 @@ const calculateWeightedScore = (scorecard, weights) => {
   return Math.round((weighted / totalWeight) * 10) / 10;
 };
 
+// Demo workspace constants — used both to seed initial state synchronously (so the
+// first paint already shows the sample dashboard, never an empty/real-looking frame)
+// and by loadPMCDemo().
+const DEMO_UNIT = { address: '210 Carlaw Ave, Unit 4, Toronto', monthlyRent: '2600', bedrooms: '2', allowsPets: 'yes', allowsSmoking: 'no', parkingIncluded: 'no' };
+const DEMO_LISTING = {
+  id: 'L_demo_mixed',
+  name: '210 Carlaw Ave, Unit 4',
+  applications: MIXED_RENTERS,
+  decisions: {},
+  unit: DEMO_UNIT,
+  createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
+};
+const DEMO_REALTOR = { isRealtor: true, fullName: 'Demo Realtor', brokerage: 'Sample Realty', phone: '(416) 555-0123', licenseNumber: '' };
+
 export default function LandlordDashboard() {
   const [appNumberInput, setAppNumberInput] = useState('');
-  const [applications, setApplications] = useState([]);
+  // Seed with the demo data so the FIRST paint is already the sample dashboard —
+  // no empty/real-looking frame flashes before the effect runs.
+  const [applications, setApplications] = useState(DEMO_LISTING.applications);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [view, setView] = useState('review'); // 'review' | 'detail' | 'compare' | 'ranked'
@@ -293,14 +309,7 @@ export default function LandlordDashboard() {
 
   // ── UNIT CONTEXT (the unit being rented out) ──
   // Lets the dashboard show "Fits your unit?" for each applicant.
-  const [unit, setUnit] = useState({
-    address: '',
-    monthlyRent: '',
-    bedrooms: '',
-    allowsPets: 'any',     // 'any' | 'yes' | 'no'
-    allowsSmoking: 'no',   // 'yes' | 'no'
-    parkingIncluded: 'no', // 'yes' | 'no'
-  });
+  const [unit, setUnit] = useState(DEMO_UNIT);
   const [unitCardExpanded, setUnitCardExpanded] = useState(false);
   const unitIsSet = !!(unit.address || unit.monthlyRent || unit.bedrooms);
 
@@ -308,22 +317,16 @@ export default function LandlordDashboard() {
   // listings[]: each entry has { id, name, applications[], decisions{}, unit{}, createdAt }
   // activeListingId: which listing is currently being viewed/edited
   // applications/decisions/unit above are the "in-view" values, mirrored from the active listing.
-  const [listings, setListings] = useState([]);
-  const [activeListingId, setActiveListingId] = useState(null);
+  const [listings, setListings] = useState([DEMO_LISTING]);
+  const [activeListingId, setActiveListingId] = useState(DEMO_LISTING.id);
   const [listingsSwitcherOpen, setListingsSwitcherOpen] = useState(false);
   const [renamingListingId, setRenamingListingId] = useState(null);
   const [renameInput, setRenameInput] = useState('');
 
   // ── REALTOR PROFILE state ──
   // Optional. If user identifies as a realtor, their info brands exports + emails.
-  const [realtorProfile, setRealtorProfile] = useState({
-    isRealtor: true,
-    fullName: '',
-    brokerage: '',
-    phone: '',
-    licenseNumber: '', // optional RECO license
-  });
-  const [realtorOnboardingShown, setRealtorOnboardingShown] = useState(false);
+  const [realtorProfile, setRealtorProfile] = useState(DEMO_REALTOR);
+  const [realtorOnboardingShown, setRealtorOnboardingShown] = useState(true);
   const [realtorEditOpen, setRealtorEditOpen] = useState(false);
 
   // ── DEMO/SANDBOX MODE ──
@@ -355,11 +358,11 @@ export default function LandlordDashboard() {
   const [unsignedBannerDismissed, setUnsignedBannerDismissed] = useState(false);
   // CRITICAL: don't sync to server until we've finished loading existing workspace.
   // Otherwise a fresh page-load races: we POST empty state and wipe out the laptop's saved work.
-  const [workspaceReady, setWorkspaceReady] = useState(false);
+  const [workspaceReady, setWorkspaceReady] = useState(true);
   // While true: show a loading state instead of empty-state hero (prevents flash for returning users)
   const [workspaceLoading, setWorkspaceLoading] = useState(false);
   // Whether the user has dismissed the "welcome back" returning-user card this session
-  const [welcomeBackDismissed, setWelcomeBackDismissed] = useState(false);
+  const [welcomeBackDismissed, setWelcomeBackDismissed] = useState(true);
   // Sync status: 'idle' | 'syncing' | 'synced' | 'error'
   const [syncStatus, setSyncStatus] = useState('idle');
   const [lastSyncedAt, setLastSyncedAt] = useState(null);
@@ -447,10 +450,9 @@ export default function LandlordDashboard() {
   // to logged-out visitors. The real realtor dashboard lives at /landlord.
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    // State is already seeded synchronously from DEMO_* constants (no flash); this
+    // just re-affirms demo mode on mount.
     setDemoMode(true);
-    // Defer one tick so initial state is in place before the sample data loads.
-    const t = setTimeout(() => loadPMCDemo(), 0);
-    return () => clearTimeout(t);
   }, []);
 
   // Persist simple mode
@@ -1434,33 +1436,16 @@ export default function LandlordDashboard() {
   // The demo starts with ZERO decisions — the visitor reviews under All applicants
   // and favourites/rejects themselves, which is the only way My shortlist fills.
   // Runs on the /demo/dashboard route. No session, no Supabase, no writes.
+  // Re-seed the demo workspace to its initial state (used by a "reset demo" affordance
+  // if present). State is already seeded from DEMO_* on first render.
   const loadPMCDemo = () => {
-    const listing = {
-      id: 'L_demo_mixed',
-      name: '210 Carlaw Ave, Unit 4',
-      applications: MIXED_RENTERS,
-      decisions: {}, // start undecided — the visitor makes every call
-      unit: { address: '210 Carlaw Ave, Unit 4, Toronto', monthlyRent: '2600', bedrooms: '2', allowsPets: 'yes', allowsSmoking: 'no', parkingIncluded: 'no' },
-      createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-    };
-
-    // Set realtor profile so co-branding features render.
-    setRealtorProfile({
-      isRealtor: true,
-      fullName: 'Demo Realtor',
-      brokerage: 'Sample Realty',
-      phone: '(416) 555-0123',
-      licenseNumber: '',
-    });
+    setRealtorProfile(DEMO_REALTOR);
     setRealtorOnboardingShown(true);
-
-    // Hydrate the single listing — and crucially, NO decisions.
-    setListings([listing]);
-    setActiveListingId(listing.id);
-    setApplications(listing.applications);
+    setListings([DEMO_LISTING]);
+    setActiveListingId(DEMO_LISTING.id);
+    setApplications(DEMO_LISTING.applications);
     setDecisions({}); // My shortlist starts empty
-    setUnit(listing.unit);
-
+    setUnit(DEMO_UNIT);
     setReviewIdx(0);
     setView('review');
     setWorkspaceReady(true);
