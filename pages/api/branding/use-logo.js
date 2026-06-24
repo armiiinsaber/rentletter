@@ -11,6 +11,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { validateLogoSvg } from '../../../lib/svgSanitize';
 import { BRAND_FONT_TTF, BRAND_FONT_FAMILY } from '../../../lib/fonts/brandFont';
+import { svgTextToPaths } from '../../../lib/svgTextToPaths';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -27,12 +28,16 @@ export default async function handler(req, res) {
   const svg = check.svg;
 
   // 1) Rasterize SVG → transparent PNG for the PDF/email pipeline.
-  // CRITICAL: resvg has NO system fonts in the serverless runtime, so <text> (initials,
-  // wordmarks) would render to nothing. Feed it a bundled TTF + defaultFontFamily so all
-  // text in the generated logo renders faithfully.
+  // CRITICAL: resvg cannot reliably resolve a font at raster time in the serverless
+  // runtime, so <text> (initials/wordmarks) rasterized to nothing — the saved logo lost
+  // its text even though the preview (browser fonts) showed it. We therefore OUTLINE all
+  // <text> to vector <path> with the bundled font BEFORE rasterizing, so no font is
+  // needed at raster time. The resvg font config below stays as a belt-and-suspenders
+  // fallback for any text that couldn't be outlined.
+  const rasterSvg = svgTextToPaths(svg);
   let png;
   try {
-    const resvg = new Resvg(svg, {
+    const resvg = new Resvg(rasterSvg, {
       fitTo: { mode: 'width', value: 800 },
       background: 'rgba(0,0,0,0)',
       font: { loadSystemFonts: false, fontBuffers: [BRAND_FONT_TTF], defaultFontFamily: BRAND_FONT_FAMILY },
