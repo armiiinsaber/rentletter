@@ -2432,7 +2432,17 @@ export default function LandlordDashboard() {
                       </div>
                     )}
                     <button
-                      onClick={createOrGetInviteLink}
+                      onClick={() => {
+                        // If a link already exists, copy the COMPLETE displayed URL directly
+                        // (don't re-fetch). Otherwise generate one.
+                        if (inviteUrl) {
+                          navigator.clipboard.writeText(inviteUrl);
+                          setInviteCopied(true);
+                          setTimeout(() => setInviteCopied(false), 3000);
+                        } else {
+                          createOrGetInviteLink();
+                        }
+                      }}
                       disabled={inviteLoading}
                       className="rl-btn"
                       style={{

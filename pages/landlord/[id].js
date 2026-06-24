@@ -126,9 +126,16 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     }
   };
 
+  // Always copy the COMPLETE canonical invite URL. The token is the source of truth,
+  // so build the URL from it (overrides any partial/stale stored invite_url); fall
+  // back to the stored URL only when no token is present.
+  const fullInviteUrl = () =>
+    (listing.invite_token ? `https://rentletter.ca/apply/${listing.invite_token}` : '') || inviteUrl || '';
+
   const copy = () => {
-    if (!inviteUrl) return;
-    navigator.clipboard.writeText(inviteUrl);
+    const full = fullInviteUrl();
+    if (!full) return;
+    navigator.clipboard.writeText(full);
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
   };
@@ -230,6 +237,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     setDecision(a.linkId, { decisionStatus: a.decisionStatus === 'reject' ? 'none' : 'reject', decisionPriority: null });
 
   const l = listing;
+  const inviteShareUrl = fullInviteUrl(); // complete URL shown + copied
   const employment = [
     l.pref_employment_full_time && 'Full-time',
     l.pref_employment_contract && 'Contract',
@@ -328,10 +336,10 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
                 Share this link with prospective tenants. They fill the application and it appears below automatically.
               </p>
-              {inviteUrl ? (
+              {inviteShareUrl ? (
                 <>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <input readOnly value={inviteUrl}
+                    <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()}
                       style={{ flex: 1, minWidth: 200, padding: '11px 13px', fontSize: 13, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
                     <button onClick={copy} className="rl-btn"
                       style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
