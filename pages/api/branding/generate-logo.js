@@ -38,11 +38,13 @@ HARD OUTPUT RULES — follow EXACTLY
 
 Output the JSON array now.`;
 
-function buildUserMessage({ brief, refineFrom, conversationContext, fullName, brokerage, brandColor }) {
+function buildUserMessage({ brief, refineFrom, conversationContext, fullName, brokerage, brandColor, brandColorSecondary }) {
   const lines = [];
   lines.push(`REALTOR NAME: ${fullName || '(not set — use a tasteful placeholder monogram only if truly absent)'}`);
   lines.push(`BROKERAGE: ${brokerage || '(none provided)'}`);
-  if (brandColor) lines.push(`PREFERRED BRAND COLOUR: ${brandColor} — use this as the primary colour of the mark/wordmark (with a tasteful neutral), UNLESS the brief explicitly asks for a different colour.`);
+  if (brandColor) lines.push(`PRIMARY BRAND COLOUR: ${brandColor} — the dominant colour of the mark/wordmark.`);
+  if (brandColorSecondary) lines.push(`SECONDARY BRAND COLOUR: ${brandColorSecondary} — the accent (e.g. the wordmark, a supporting detail, or the secondary part of the mark).`);
+  if (brandColor || brandColorSecondary) lines.push(`Use BOTH brand colours intentionally together (plus a neutral ink/charcoal if needed). UNLESS the brief explicitly names a different colour, build the palette from these.`);
   lines.push('');
   if (Array.isArray(conversationContext) && conversationContext.length) {
     lines.push('PRIOR DIRECTION (most recent last):');
@@ -88,18 +90,22 @@ export default async function handler(req, res) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
 
-  const { brief, refineFrom, conversationContext, brandColor: bodyColor } = req.body || {};
+  const { brief, refineFrom, conversationContext, brandColor: bodyColor, brandColorSecondary: bodyColor2 } = req.body || {};
   if (!brief && !refineFrom) return res.status(400).json({ error: 'Tell us what you want your logo to look like.' });
 
   // Pull the realtor's real name/brokerage for the wordmark — and REQUIRE both before
   // generating, so the brand is always built on real text.
   const { data: profile } = await supabase
-    .from('profiles').select('full_name, brokerage, brand_color').eq('id', user.id).maybeSingle();
+    .from('profiles').select('full_name, brokerage, brand_color, brand_color_secondary').eq('id', user.id).maybeSingle();
   const fullName = (profile?.full_name || '').trim();
   const brokerage = (profile?.brokerage || '').trim();
-  // Preferred brand colour: the live picker (body) overrides the saved one. Validate hex.
-  const rawColor = String(bodyColor || profile?.brand_color || '').trim();
-  const brandColor = /^#?[0-9a-fA-F]{6}$/.test(rawColor) ? (rawColor.startsWith('#') ? rawColor : `#${rawColor}`) : null;
+  // Brand colours: the live pickers (body) override the saved ones. Validate hex.
+  const normHex = (v) => {
+    const r = String(v || '').trim();
+    return /^#?[0-9a-fA-F]{6}$/.test(r) ? (r.startsWith('#') ? r.toLowerCase() : `#${r.toLowerCase()}`) : null;
+  };
+  const brandColor = normHex(bodyColor) || normHex(profile?.brand_color);
+  const brandColorSecondary = normHex(bodyColor2) || normHex(profile?.brand_color_secondary);
   if (!fullName || !brokerage) {
     return res.status(400).json({ error: 'Add your name and brokerage first so we can build your brand.', code: 'profile_incomplete' });
   }
@@ -120,7 +126,7 @@ export default async function handler(req, res) {
       messages: [{
         role: 'user',
         content: buildUserMessage({
-          brief, refineFrom, conversationContext, fullName, brokerage, brandColor,
+          brief, refineFrom, conversationContext, fullName, brokerage, brandColor, brandColorSecondary,
         }),
       }],
     });

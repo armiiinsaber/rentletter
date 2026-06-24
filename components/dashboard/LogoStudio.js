@@ -1,13 +1,16 @@
 // components/dashboard/LogoStudio.js
-// AI logo studio: a chat-style box where the realtor describes what they want, we
-// call /api/branding/generate-logo (3 SVG concepts), render them live on light + dark
-// swatches, let them iterate (refine) on a chosen direction, and "Use this logo" to
-// save it (rasterized to PNG) via /api/branding/use-logo. No API calls in demo mode —
-// this component is only mounted in the authenticated profile editor.
-import { useState, useRef } from 'react';
+// AI logo studio — a stepped, gated workflow so realtors can't get lost:
+//   STEP 1 Colours  → pick primary + secondary (each unlocks nothing until both set)
+//   STEP 2 Describe → revealed only once both colours are chosen (description optional)
+//   STEP 3 Generate → active only when both colours are set
+// Then 3 SVG concepts render live; "Use this logo" saves it (rasterized to PNG).
+// No API calls in demo mode — this component is only mounted in the authenticated
+// profile editor. Brand colours are controlled by the parent (saved with the profile).
+import { useState, useEffect, useRef } from 'react';
 import { C, R } from '../theme';
 
-// Defensive client-side guard before we dangerouslySetInnerHTML a server-validated SVG.
+const isHex = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
+
 function safeForRender(svg) {
   return typeof svg === 'string' && /<svg[\s>]/i.test(svg) && !/<\s*script/i.test(svg) && !/\son\w+\s*=/i.test(svg);
 }
@@ -15,11 +18,7 @@ function safeForRender(svg) {
 function Swatch({ svg, bg, label }) {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
-      <div style={{
-        background: bg, border: `1px solid ${C.rule}`, borderRadius: R.ctrl,
-        height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 10, overflow: 'hidden',
-      }}>
+      <div style={{ background: bg, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, overflow: 'hidden' }}>
         {safeForRender(svg)
           ? <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex' }} dangerouslySetInnerHTML={{ __html: svg }} />
           : <span style={{ fontSize: 11, color: C.inkMute }}>—</span>}
@@ -29,14 +28,48 @@ function Swatch({ svg, bg, label }) {
   );
 }
 
-export default function LogoStudio({ fullName, brokerage, brandColor, onChosen }) {
+// A single colour control: native picker + hex input + swatch. (Replaced by a wheel
+// in Stage-2 commit.)
+function ColorField({ label, value, onChange, disabled }) {
+  const valid = isHex(value);
+  const [hex, setHex] = useState(value || '');
+  useEffect(() => { setHex(value || ''); }, [value]);
+  const apply = (v) => { setHex(v); if (isHex(v)) onChange(v.toLowerCase()); };
+  return (
+    <div style={{ flex: 1, minWidth: 150, opacity: disabled ? 0.5 : 1 }}>
+      <div style={{ fontSize: 11, color: C.inkSoft, fontWeight: 600, marginBottom: 6 }}>{label}</div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input type="color" aria-label={label} disabled={disabled} value={valid ? value : '#1f3a5f'}
+          onChange={(e) => onChange(e.target.value.toLowerCase())}
+          style={{ width: 42, height: 36, padding: 0, border: `1px solid ${C.ruleDark}`, borderRadius: 8, background: C.paper, cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0 }} />
+        <input type="text" value={hex} disabled={disabled} onChange={(e) => apply(e.target.value)} placeholder="#1f3a5f" spellCheck={false}
+          style={{ flex: 1, minWidth: 0, padding: '9px 11px', fontSize: 14, fontFamily: 'monospace', borderRadius: R.ctrl, border: `1px solid ${valid || !hex ? C.rule : C.red}`, background: C.paper, color: C.ink, outline: 'none' }} />
+      </div>
+    </div>
+  );
+}
+
+function StepChip({ n, label, state }) {
+  const done = state === 'done', active = state === 'active';
+  const bg = done ? C.green : active ? C.ink : C.paperDeep;
+  const fg = done || active ? C.paper : C.inkMute;
+  return (
+    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, opacity: state === 'locked' ? 0.55 : 1 }}>
+      <span style={{ width: 20, height: 20, borderRadius: '50%', background: bg, color: fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: `1px solid ${done ? C.green : active ? C.ink : C.ruleDark}` }}>{done ? '✓' : n}</span>
+      <span style={{ fontSize: 11.5, fontWeight: active ? 700 : 600, color: active ? C.ink : C.inkSoft }}>{label}</span>
+    </div>
+  );
+}
+
+export default function LogoStudio({ fullName, brokerage, primary, secondary, onPrimary, onSecondary, onChosen }) {
   const profileReady = !!(String(fullName || '').trim() && String(brokerage || '').trim());
-  const colorForGen = /^#[0-9a-fA-F]{6}$/.test(String(brandColor || '')) ? brandColor : undefined;
+  const colorsReady = profileReady && isHex(primary) && isHex(secondary);
+
   const [brief, setBrief] = useState('');
   const [refineBrief, setRefineBrief] = useState('');
   const [rounds, setRounds] = useState([]); // [{ brief, variations:[{label,svg}] }]
   const [roundIdx, setRoundIdx] = useState(0);
-  const [refineTarget, setRefineTarget] = useState(null); // { label, svg }
+  const [refineTarget, setRefineTarget] = useState(null);
   const [busy, setBusy] = useState(false);
   const [usingIdx, setUsingIdx] = useState(null);
   const [error, setError] = useState('');
@@ -45,6 +78,14 @@ export default function LogoStudio({ fullName, brokerage, brandColor, onChosen }
   const refineRef = useRef(null);
 
   const round = rounds[roundIdx];
+  const colorsForGen = () => ({
+    brandColor: isHex(primary) ? primary : undefined,
+    brandColorSecondary: isHex(secondary) ? secondary : undefined,
+  });
+
+  const step1State = colorsReady ? 'done' : 'active';
+  const step2State = !colorsReady ? 'locked' : (rounds.length || brief.trim()) ? 'done' : 'active';
+  const step3State = !colorsReady ? 'locked' : 'active';
 
   const call = async (body) => {
     setError(''); setSavedOk(false); setBusy(true);
@@ -70,15 +111,18 @@ export default function LogoStudio({ fullName, brokerage, brandColor, onChosen }
   };
 
   const generate = () => {
-    if (!profileReady) { setError('Add your name and brokerage first so we can build your brand.'); return; }
-    if (!brief.trim()) { setError('Describe the logo you want first.'); return; }
-    call({ brief: brief.trim(), brandColor: colorForGen, conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
+    if (!colorsReady) { setError('Pick your two brand colours first.'); return; }
+    call({
+      brief: brief.trim() || 'A clean, professional real-estate logo using my name and brand colours.',
+      ...colorsForGen(),
+      conversationContext: rounds.map((r) => r.brief).filter(Boolean),
+    });
   };
 
   const refine = () => {
-    if (!refineTarget) return;
-    if (!refineBrief.trim()) { setError('Tell us what to change (e.g. “bolder”, “try navy”, “drop the icon”).'); return; }
-    call({ brief: refineBrief.trim(), refineFrom: refineTarget.svg, brandColor: colorForGen, conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
+    if (!refineTarget || busy) return;
+    if (!refineBrief.trim()) { setError('Tell us what to change (e.g. “bolder”, “bigger icon”, “drop the icon”).'); return; }
+    call({ brief: refineBrief.trim(), refineFrom: refineTarget.svg, ...colorsForGen(), conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
     setRefineBrief('');
   };
 
@@ -104,34 +148,59 @@ export default function LogoStudio({ fullName, brokerage, brandColor, onChosen }
   };
 
   return (
-    <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(14px,3vw,18px)', background: C.paperDeep, marginBottom: 20 }}>
+    <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(14px,3vw,18px)', background: C.paperDeep }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: C.ink, marginBottom: 2 }}>Generate a logo with AI</div>
-      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
-        Describe what you want — we’ll design 3 concepts using your name and brokerage. No design skills needed.
+      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>Three steps. We design 3 concepts from your name, brokerage, and colours.</div>
+
+      {/* Step progress */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px,2vw,16px)', flexWrap: 'wrap', marginBottom: 14 }}>
+        <StepChip n={1} label="Colours" state={step1State} />
+        <StepChip n={2} label="Describe" state={step2State} />
+        <StepChip n={3} label="Generate" state={step3State} />
       </div>
+
+      {!profileReady && (
+        <div style={{ padding: '10px 14px', marginBottom: 12, background: '#fff8ec', borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold || '#b08d57'}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+          <strong>Add your name and brokerage first</strong> (in the fields below) so we can build your brand.
+        </div>
+      )}
 
       {limitMsg ? (
         <div style={{ padding: '10px 14px', background: '#fff8ec', borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold || '#b08d57'}`, fontSize: 13, color: C.ink }}>{limitMsg}</div>
       ) : (
         <>
-          {/* Required-profile gate */}
-          {!profileReady && (
-            <div style={{ padding: '10px 14px', marginBottom: 10, background: '#fff8ec', borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold || '#b08d57'}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
-              <strong>Add your name and brokerage first</strong> so we can build your brand. Fill in the <strong>Your full name</strong> and <strong>Brokerage</strong> fields just below, then come back up here.
+          {/* STEP 1 — COLOURS */}
+          <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'clamp(12px,3vw,16px)', marginBottom: 12, opacity: profileReady ? 1 : 0.55 }}>
+            <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 · Brand colours</div>
+            <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+              <ColorField label="Primary" value={primary} onChange={onPrimary} disabled={!profileReady} />
+              <ColorField label="Secondary" value={secondary} onChange={onSecondary} disabled={!profileReady} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+              <span style={{ fontSize: 11, color: C.inkMute }}>Preview</span>
+              <span style={{ display: 'inline-flex', borderRadius: 999, overflow: 'hidden', border: `1px solid ${C.ruleDark}` }}>
+                <span style={{ width: 28, height: 18, background: isHex(primary) ? primary : C.paperDeep }} />
+                <span style={{ width: 28, height: 18, background: isHex(secondary) ? secondary : C.paperDeep }} />
+              </span>
+              {!colorsReady && profileReady && <span style={{ fontSize: 11.5, color: C.inkMute }}>Pick both to continue →</span>}
+            </div>
+          </div>
+
+          {/* STEP 2 — DESCRIBE (revealed once colours are set) */}
+          {colorsReady && (
+            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'clamp(12px,3vw,16px)', marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 2 · Describe <span style={{ color: C.inkMute, fontWeight: 600 }}>(optional)</span></div>
+              <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} disabled={busy}
+                placeholder="Describe your logo — a house, a key, your initials, a mood… or leave blank and we'll design from your name."
+                style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
             </div>
           )}
 
-          {/* Friendly help box */}
-          <div style={{ padding: '10px 12px', marginBottom: 10, background: C.paper, border: `1px dashed ${C.ruleDark}`, borderRadius: R.ctrl, fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
-            Describe it however you like — it doesn’t have to mention your name, and you can be as specific as you want: a mark like a house or key, colours, mood, or a style (serif, minimal, bold). By default we build around your name + brokerage; your description can add to or override that.
-          </div>
-
-          <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} disabled={!profileReady}
-            placeholder="e.g. clean and modern, a simple house, navy blue"
-            style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: profileReady ? C.paper : C.paperDeep, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit', opacity: profileReady ? 1 : 0.7 }} />
-          <button onClick={generate} disabled={busy || !profileReady} title={profileReady ? '' : 'Add your name and brokerage first'}
-            style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, cursor: (busy || !profileReady) ? 'not-allowed' : 'pointer', opacity: (busy || !profileReady) ? 0.5 : 1 }}>
-            {busy ? 'Designing…' : rounds.length ? 'Generate again' : 'Generate 3 concepts'}
+          {/* STEP 3 — GENERATE */}
+          <button onClick={generate} disabled={busy || !colorsReady}
+            title={colorsReady ? '' : 'Pick your two brand colours first'}
+            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: (busy || !colorsReady) ? 'not-allowed' : 'pointer', opacity: (busy || !colorsReady) ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            {busy ? 'Designing…' : rounds.length ? 'Generate 3 again' : 'Generate 3 concepts'}
           </button>
         </>
       )}
@@ -160,11 +229,11 @@ export default function LogoStudio({ fullName, brokerage, brandColor, onChosen }
                   <Swatch svg={v.svg} bg="#0f0f10" label="On dark" />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => useLogo(v, i)} disabled={usingIdx !== null}
+                  <button onClick={() => useLogo(v, i)} disabled={usingIdx !== null || busy}
                     style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: usingIdx !== null ? 'wait' : 'pointer', opacity: usingIdx !== null && usingIdx !== i ? 0.6 : 1 }}>
                     {usingIdx === i ? 'Saving…' : 'Use this logo'}
                   </button>
-                  <button onClick={() => startRefine(v)} disabled={busy}
+                  <button onClick={() => startRefine(v)} disabled={busy || usingIdx !== null}
                     style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     Refine this →
                   </button>
@@ -181,9 +250,9 @@ export default function LogoStudio({ fullName, brokerage, brandColor, onChosen }
                 </div>
                 <div style={{ fontSize: 12, color: C.inkSoft }}>Iterating on <strong>{refineTarget.label}</strong>. What should change?</div>
               </div>
-              <input value={refineBrief} onChange={(e) => setRefineBrief(e.target.value)}
+              <input value={refineBrief} onChange={(e) => setRefineBrief(e.target.value)} disabled={busy}
                 onKeyDown={(e) => { if (e.key === 'Enter') refine(); }}
-                placeholder="e.g. bolder · try navy · drop the icon · serif wordmark"
+                placeholder="e.g. bolder · bigger icon · centre the mark · drop the icon"
                 style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
               <button onClick={refine} disabled={busy}
                 style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>

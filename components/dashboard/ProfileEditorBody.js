@@ -28,6 +28,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
     license_number: profile?.license_number || '',
   });
   const [brandColor, setBrandColor] = useState(profile?.brand_color || '');
+  const [brandColorSecondary, setBrandColorSecondary] = useState(profile?.brand_color_secondary || '');
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
   const [studioOpen, setStudioOpen] = useState(!profile?.logo_url);
   const [saving, setSaving] = useState(false);
@@ -98,6 +99,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
         phone: form.phone.trim() || null,
         license_number: form.license_number.trim() || null,
         brand_color: /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor.toLowerCase() : null,
+        brand_color_secondary: /^#[0-9a-fA-F]{6}$/.test(brandColorSecondary) ? brandColorSecondary.toLowerCase() : null,
       };
       const { data, error: upErr } = await supabase
         .from('profiles').update(patch).eq('id', user.id).select().single();
@@ -120,7 +122,6 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
   ];
 
   const accentPreview = /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor : C.red;
-  const colorPresets = ['#1f3a5f', '#334155', '#2d5a3d', '#9a4a2f', '#5b2a6b', '#b08d57', '#d72027', '#0f0f10'];
 
   return (
     <div>
@@ -169,31 +170,19 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
         Upload accepts PNG, JPG, SVG, or WebP · under 2MB (PNG/JPG render in the PDF).
       </p>
 
-      {/* Brand colour — feeds the AI logo + tints a subtle accent on the report */}
-      <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Brand colour</label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
-        <input type="color" aria-label="Brand colour" value={accentPreview}
-          onChange={(e) => { setBrandColor(e.target.value); setSavedOk(false); }}
-          style={{ width: 40, height: 32, padding: 0, border: `1px solid ${C.ruleDark}`, borderRadius: 8, background: C.paper, cursor: 'pointer' }} />
-        <span style={{ fontSize: 13, color: C.ink, fontFamily: 'monospace' }}>{/^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor.toLowerCase() : 'Default (brand red)'}</span>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          {colorPresets.map((c) => (
-            <button key={c} type="button" aria-label={`Use ${c}`} onClick={() => { setBrandColor(c); setSavedOk(false); }}
-              style={{ width: 22, height: 22, borderRadius: '50%', background: c, border: brandColor.toLowerCase() === c ? `2px solid ${C.ink}` : `1px solid ${C.ruleDark}`, cursor: 'pointer', padding: 0 }} />
-          ))}
-        </div>
-        {/^#[0-9a-fA-F]{6}$/.test(brandColor) && (
-          <button type="button" onClick={() => { setBrandColor(''); setSavedOk(false); }}
-            style={{ background: 'transparent', color: C.inkMute, border: 'none', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Reset</button>
-        )}
-      </div>
-      <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: studioOpen ? 16 : 26 }}>
-        Used as your AI logo's primary colour and a subtle accent on the landlord report. Falls back to brand red.
-      </p>
-
       {studioOpen && (
-        <LogoStudio fullName={form.full_name} brokerage={form.brokerage} brandColor={brandColor}
-          onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }} />
+        <div style={{ marginTop: 4 }}>
+          <LogoStudio
+            fullName={form.full_name} brokerage={form.brokerage}
+            primary={brandColor} secondary={brandColorSecondary}
+            onPrimary={(v) => { setBrandColor(v); setSavedOk(false); }}
+            onSecondary={(v) => { setBrandColorSecondary(v); setSavedOk(false); }}
+            onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }}
+          />
+          <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, margin: '10px 0 26px' }}>
+            Your brand colours are saved with your profile and tint the landlord report accent. Press <strong>Save</strong> below to keep them.
+          </p>
+        </div>
       )}
 
       {/* ── IDENTITY ── */}
