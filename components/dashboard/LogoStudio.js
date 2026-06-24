@@ -107,8 +107,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
   const [usingIdx, setUsingIdx] = useState(null);
   const [error, setError] = useState('');
   const [limitMsg, setLimitMsg] = useState('');
-  const [savedOk, setSavedOk] = useState(false);
+  const [savedKey, setSavedKey] = useState(null); // `${roundIdx}-${idx}` of the saved card
+  const [toast, setToast] = useState('');
   const refineRef = useRef(null);
+  const toastTimer = useRef(null);
 
   const round = rounds[roundIdx];
   const colorsForGen = () => ({
@@ -121,7 +123,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
   const step3State = !colorsReady ? 'locked' : 'active';
 
   const call = async (body) => {
-    setError(''); setSavedOk(false); setBusy(true);
+    setError(''); setSavedKey(null); setBusy(true);
     try {
       const r = await fetch('/api/branding/generate-logo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -165,14 +167,17 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
   };
 
   const useLogo = async (v, idx) => {
-    setUsingIdx(idx); setError(''); setSavedOk(false);
+    setUsingIdx(idx); setError(''); setSavedKey(null);
     try {
       const r = await fetch('/api/branding/use-logo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ svg: v.svg }),
       });
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not save that logo.'); setUsingIdx(null); return; }
-      setSavedOk(true);
+      setSavedKey(`${roundIdx}-${idx}`); // confirm on THIS card
+      setToast('Saved! This is now your branding.');
+      if (toastTimer.current) clearTimeout(toastTimer.current);
+      toastTimer.current = setTimeout(() => setToast(''), 4500);
       onChosen?.(j.logo_url, j.profile);
     } catch (e) {
       setError('Could not save that logo.');
@@ -257,7 +262,6 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           <span className="rl-lspin" aria-hidden="true" /> Saving your logo…
         </div>
       )}
-      {savedOk && <div style={{ marginTop: 12, fontSize: 13, color: C.green, fontWeight: 600 }}>✓ Saved — this is now your branding.</div>}
 
       {round && (
         <div style={{ marginTop: 16 }}>
@@ -272,25 +276,32 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           )}
 
           <div style={{ display: 'grid', gap: 12 }}>
-            {round.variations.map((v, i) => (
-              <div key={i} style={{ border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 12, background: C.paper }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{v.label}</div>
+            {round.variations.map((v, i) => {
+              const isSaved = savedKey === `${roundIdx}-${i}`;
+              return (
+              <div key={i} style={{ border: `1px solid ${isSaved ? C.green : C.rule}`, borderRadius: R.ctrl, padding: 12, background: isSaved ? '#f0f7f3' : C.paper, boxShadow: isSaved ? `0 0 0 1px ${C.green}` : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{v.label}</span>
+                  {isSaved && <span style={{ fontSize: 11, fontWeight: 800, color: C.paper, background: C.green, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.04em' }}>✓ SAVED</span>}
+                </div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   <Swatch svg={v.svg} bg="#ffffff" label="On light" idKey={`r${roundIdx}v${i}l`} />
                   <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`r${roundIdx}v${i}d`} />
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={() => useLogo(v, i)} disabled={usingIdx !== null || busy}
-                    style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: usingIdx !== null ? 'wait' : 'pointer', opacity: usingIdx !== null && usingIdx !== i ? 0.6 : 1 }}>
-                    {usingIdx === i ? 'Saving…' : 'Use this logo'}
+                    style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: usingIdx !== null ? 'wait' : 'pointer', opacity: usingIdx !== null && usingIdx !== i ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    {usingIdx === i ? 'Saving…' : isSaved ? '✓ Saved as your logo' : 'Use this logo'}
                   </button>
                   <button onClick={() => startRefine(v)} disabled={busy || usingIdx !== null}
                     style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     Refine this →
                   </button>
                 </div>
+                {isSaved && <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 8 }}>This is now your branding — it appears on your reports.</div>}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {refineTarget && !limitMsg && (
@@ -311,6 +322,14 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               </button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Toast — fixed to the viewport so it's visible no matter which card was saved or how far down the realtor scrolled */}
+      {toast && (
+        <div role="status" onClick={() => setToast('')}
+          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, background: C.green, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: '0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
+          <span style={{ fontSize: 15 }}>✓</span> {toast}
         </div>
       )}
 
