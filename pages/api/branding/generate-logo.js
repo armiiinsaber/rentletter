@@ -23,7 +23,15 @@ DESIGN VOCABULARY (draw on these when the brief is vague — pick what fits, don
 - Colour: restrained palettes of 1–2 colours plus optional neutral (ink/charcoal, paper). Translate vague colour words tastefully (e.g. "modern blue" -> a deep navy or slate, not a bright primary; "warm" -> terracotta/clay; "premium" -> ink + a single metallic-feeling accent like muted gold #b08d57).
 - Composition: generous spacing, strong alignment, balanced optical weight. Icon either left of the wordmark or centered above it.
 
-TRANSLATE the realtor's rough words into concrete choices. "Something clean with a house" -> a single-line geometric roofline + their name in a clean sans. "Modern blue" -> navy/slate, sans wordmark, minimal mark. Make 3 DISTINCT directions (e.g. one icon+wordmark, one monogram, one wordmark-led) unless they asked to iterate on one.
+LAYOUT & QUALITY — NON-NEGOTIABLE. EVERY one of the 3 SVGs MUST satisfy ALL of these; a logo that fails ANY of them is unacceptable. The realtor must be able to choose on taste alone — never because the other two are broken:
+- CENTERED: the whole composition is optically centered inside the viewBox both HORIZONTALLY and VERTICALLY, with balanced, roughly EQUAL safe-area padding on all four sides (at least ~10% of the viewBox per edge). NOTHING touches or clips at the edges.
+- The icon/mark is centered within its own area (no off-center marks) and aligns cleanly with the wordmark (shared centre axis or baseline). No lopsided spacing.
+- BALANCED WEIGHT: size the mark relative to the text so neither overwhelms the other; even stroke widths; no overlapping or colliding elements; no tiny illegible text.
+- CONSISTENT CANVAS: use the SAME viewBox for all 3. Use "0 0 400 200" for an icon-left or icon-above lockup; use "0 0 300 300" ONLY if all 3 are square monograms. Set width and height to match the viewBox aspect ratio exactly.
+- COLOUR: the main mark in the PRIMARY colour and the accent/wordmark in the SECONDARY colour (or vice-versa) — BOTH provided colours must appear and be used intentionally, plus an optional neutral ink/charcoal. Do not invent unrelated colours.
+
+TRANSLATE the realtor's rough words into concrete choices. "Something clean with a house" -> a single-line geometric roofline + their name in a clean sans. "Modern blue" -> navy/slate, sans wordmark, minimal mark.
+Make the 3 variations DISTINCT directions but EQUALLY polished and ALL centered/clean: (1) a monogram/initials mark, (2) an icon + wordmark lockup, (3) a wordmark-led or abstract-mark direction — unless the brief asks to iterate on one.
 
 USE REAL TEXT
 The realtor's actual name and brokerage are provided below and are the default text basis for the brand. By DEFAULT, render their real name as the wordmark (brokerage smaller beneath). Never use placeholder text like "Your Name". The ONLY exception: if the realtor's brief explicitly asks for something else (e.g. "icon only", "no text", "just my initials", or a different word/name) — then follow the brief. Otherwise their name + brokerage must appear.
@@ -34,7 +42,7 @@ HARD OUTPUT RULES — follow EXACTLY
 - Each svg MUST be: self-contained and valid; have a viewBox; have width and height; transparent background (no full-canvas opaque rect unless intentionally part of the mark).
 - FONTS: every <text>/<tspan> MUST use font-family="Noto Sans, Arial, sans-serif" (this exact stack — the server renders text with a bundled "Noto Sans" font, and any other family will NOT render). NO @font-face, NO external fonts, NO Google Fonts, NO serif families. Use font-weight (e.g. 700) and letter-spacing for character, not a different typeface. Keep text legible at small sizes.
 - ABSOLUTELY NO: <script>, event handlers (onclick etc.), <foreignObject>, <image>, any href/src/url() pointing at http(s) or // or data:, base64 or raster images, <!DOCTYPE>, external stylesheets. Pure inline vector + <text> only.
-- Keep each SVG compact (well under 8KB). Use a sensible canvas like viewBox="0 0 320 120" for a horizontal lockup.
+- Keep each SVG compact (well under 8KB). Follow the LAYOUT & QUALITY rules above for the viewBox, centering, and padding — all 3 must be production-quality, valid, and sandbox-safe (no <script>, no external refs, no raster).
 
 Output the JSON array now.`;
 
