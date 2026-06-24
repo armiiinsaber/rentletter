@@ -10,6 +10,7 @@ import { Resvg } from '@resvg/resvg-js';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { validateLogoSvg } from '../../../lib/svgSanitize';
+import { BRAND_FONT_TTF, BRAND_FONT_FAMILY } from '../../../lib/fonts/brandFont';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -26,9 +27,16 @@ export default async function handler(req, res) {
   const svg = check.svg;
 
   // 1) Rasterize SVG → transparent PNG for the PDF/email pipeline.
+  // CRITICAL: resvg has NO system fonts in the serverless runtime, so <text> (initials,
+  // wordmarks) would render to nothing. Feed it a bundled TTF + defaultFontFamily so all
+  // text in the generated logo renders faithfully.
   let png;
   try {
-    const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 800 }, background: 'rgba(0,0,0,0)' });
+    const resvg = new Resvg(svg, {
+      fitTo: { mode: 'width', value: 800 },
+      background: 'rgba(0,0,0,0)',
+      font: { loadSystemFonts: false, fontBuffers: [BRAND_FONT_TTF], defaultFontFamily: BRAND_FONT_FAMILY },
+    });
     png = resvg.render().asPng(); // Uint8Array
   } catch (e) {
     console.error('[use-logo] rasterize error:', e?.message || e);

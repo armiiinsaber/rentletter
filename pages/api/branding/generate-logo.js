@@ -31,7 +31,8 @@ The realtor's actual name and brokerage are provided below and are the default t
 HARD OUTPUT RULES — follow EXACTLY
 - Return ONLY a JSON array of exactly 3 objects. No prose, no markdown, no code fences. The first character of your reply must be "[" and the last "]".
 - Each object: { "label": "<2-4 word name of the direction>", "svg": "<a complete SVG string>" }.
-- Each svg MUST be: self-contained and valid; have a viewBox; have width and height; transparent background (no full-canvas opaque rect unless intentionally part of the mark); use ONLY generic font-family stacks (e.g. "Georgia, 'Times New Roman', serif" or "Helvetica, Arial, sans-serif") via <text>/<tspan> — NO @font-face, NO external fonts, NO Google Fonts.
+- Each svg MUST be: self-contained and valid; have a viewBox; have width and height; transparent background (no full-canvas opaque rect unless intentionally part of the mark).
+- FONTS: every <text>/<tspan> MUST use font-family="Noto Sans, Arial, sans-serif" (this exact stack — the server renders text with a bundled "Noto Sans" font, and any other family will NOT render). NO @font-face, NO external fonts, NO Google Fonts, NO serif families. Use font-weight (e.g. 700) and letter-spacing for character, not a different typeface. Keep text legible at small sizes.
 - ABSOLUTELY NO: <script>, event handlers (onclick etc.), <foreignObject>, <image>, any href/src/url() pointing at http(s) or // or data:, base64 or raster images, <!DOCTYPE>, external stylesheets. Pure inline vector + <text> only.
 - Keep each SVG compact (well under 8KB). Use a sensible canvas like viewBox="0 0 320 120" for a horizontal lockup.
 
