@@ -3,6 +3,7 @@ import Head from 'next/head';
 import ChatWidget from '../../components/ChatWidget';
 import { C as THEME, R, SH, EASE, FONT } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade, useReveal } from '../../components/ui';
+import { DEMO_BRAND_NAME, DEMO_BRAND_BROKERAGE, DEMO_BRAND_LOGO_PNG, DEMO_LOGO_CONCEPTS } from '../../lib/demoBranding';
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 // Shared brand tokens, extended with the legacy "info" keys this page used
@@ -2826,7 +2827,9 @@ export default function LandlordDashboard() {
                       setDecisionStatus={setDecisionStatus}
                       onRemove={removeApplication}
                     />
-                    <DemoSendToLandlord apps={shortlisted} unit={unit} realtor={realtorProfile} />
+                    <DemoBrandingPreview />
+                    <DemoSendToLandlord apps={shortlisted} unit={unit} realtor={realtorProfile}
+                      brand={{ name: DEMO_BRAND_NAME, brokerage: DEMO_BRAND_BROKERAGE, logoPng: DEMO_BRAND_LOGO_PNG }} />
                   </>
                 );
               })()}
@@ -3544,14 +3547,70 @@ export default function LandlordDashboard() {
 // the text is composed client-side from the favourited sample applicants, the PDF
 // is generated client-side by reusing the real white-label builder with demo data
 // (logo_url null → no fetch), and Email is purely illustrative.
-function DemoSendToLandlord({ apps, unit, realtor }) {
+// Demo-only branding preview. 100% hardcoded samples — NO Anthropic/Supabase calls.
+// Shows the finalized brand (logo on light/dark), pre-made "AI concepts", and makes
+// clear that real realtors generate their own after signing in.
+function DemoBrandingPreview() {
+  const Swatch = ({ children, bg, label }) => (
+    <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ background: bg, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, height: 70, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, overflow: 'hidden' }}>
+        {children}
+      </div>
+      <div style={{ fontSize: 9.5, color: C.inkMute, textAlign: 'center', marginTop: 3, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+    </div>
+  );
+  return (
+    <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
+      <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>Your brand</div>
+      <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginBottom: 16 }}>This is a preview — your real brand is created after you sign in.</div>
+
+      {/* Finalized letterhead brand card (sample) */}
+      <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 16, background: C.paperDeep, marginBottom: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ width: 120, height: 56, borderRadius: 8, background: '#fff', border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, padding: 6 }}>
+            <img src={DEMO_BRAND_LOGO_PNG} alt="Sample logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{DEMO_BRAND_NAME}</div>
+            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 1 }}>{DEMO_BRAND_BROKERAGE}</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Uploaded logo — contrast check */}
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Sample uploaded logo</div>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+        <Swatch bg="#ffffff" label="On light"><img src={DEMO_BRAND_LOGO_PNG} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></Swatch>
+        <Swatch bg="#0f0f10" label="On dark"><img src={DEMO_BRAND_LOGO_PNG} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /></Swatch>
+      </div>
+
+      {/* Pre-made AI concepts (samples) */}
+      <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>AI logo concepts (samples)</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginBottom: 12 }}>
+        {DEMO_LOGO_CONCEPTS.map((c) => (
+          <div key={c.label} style={{ border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 10, background: C.paper }}>
+            <div style={{ background: '#fff', borderRadius: 6, height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, overflow: 'hidden' }}>
+              <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex' }} dangerouslySetInnerHTML={{ __html: c.svg }} />
+            </div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: C.inkSoft, textAlign: 'center', marginTop: 6 }}>{c.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.55, background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.ctrl, padding: '10px 12px' }}>
+        Signed-in realtors generate their own logo with AI from a short brief, then upload or refine it. These are pre-made samples — the demo doesn’t call the AI.
+      </div>
+    </section>
+  );
+}
+
+function DemoSendToLandlord({ apps, unit, realtor, brand }) {
   const [copied, setCopied] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfErr, setPdfErr] = useState('');
   const [emailNote, setEmailNote] = useState(false);
 
-  const realtorName = realtor?.fullName || 'Demo Realtor';
-  const brokerage = realtor?.brokerage || 'Sample Realty';
+  const realtorName = brand?.name || realtor?.fullName || 'Demo Realtor';
+  const brokerage = brand?.brokerage || realtor?.brokerage || 'Sample Realty';
   const realtorPhone = realtor?.phone || '';
   const unitLabel = unit?.address || 'the unit';
 
@@ -3627,7 +3686,8 @@ function DemoSendToLandlord({ apps, unit, realtor }) {
           scorecard: a.scorecard,
         },
       }));
-      const profile = { full_name: `${realtorName} (Sample)`, brokerage, phone: realtorPhone, logo_url: null };
+      // brand.logoPng is a local PNG data URI → embeds in the PDF with NO network call.
+      const profile = { full_name: realtorName, brokerage, phone: realtorPhone, logo_url: brand?.logoPng || null };
       const listing = { name: unitLabel, monthly_rent: unit?.monthlyRent ? Number(unit.monthlyRent) : null, bedrooms: unit?.bedrooms };
       const bytes = await buildLandlordReportPdf({ profile, listing, shortlisted });
       const blob = new Blob([bytes], { type: 'application/pdf' });
