@@ -8,6 +8,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
+import { reasonLabel } from '../../../lib/setAsideReasons';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -31,8 +32,8 @@ export default async function handler(req, res) {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
     if (!ctx) return res.status(404).json({ error: 'Listing not found.' });
-    if (ctx.shortlisted.length === 0) {
-      return res.status(400).json({ error: 'Shortlist some applicants first.' });
+    if (ctx.active.length + ctx.setAside.length === 0) {
+      return res.status(400).json({ error: 'No applicants to present yet.' });
     }
 
     const realtor = {
@@ -45,8 +46,9 @@ export default async function handler(req, res) {
       rent: ctx.listing?.monthly_rent || null,
       bedrooms: ctx.listing?.bedrooms || null,
     };
+    const total = ctx.active.length + ctx.setAside.length;
     // Screenable facts only — no protected-class data leaves here.
-    const candidates = ctx.shortlisted.map((row, i) => {
+    const toCandidate = (row, i) => {
       const a = row.application || {};
       return {
         rank: i + 1,
@@ -58,24 +60,26 @@ export default async function handler(req, res) {
           : null,
         yearsAtJob: a.years_at_job || null,
         rentToIncomePct: a.rent_to_income_ratio ?? null,
-        hasLandlordReference: !!a.prev_landlord_name,
         referencesProvided: Array.isArray(a.references) ? a.references.length : 0,
         scorecardOverall: a.scorecard?.overall ?? null,
-        fitNotes: a.scorecard ? [
-          a.scorecard.incomeStability?.note,
-          a.scorecard.rentAffordability?.note,
-          a.scorecard.rentalHistory?.note,
-        ].filter(Boolean) : [],
       };
-    });
+    };
+    const ranked = ctx.active.map(toCandidate);
+    const topMatches = ranked.slice(0, 5);
+    const alsoRanked = ranked.slice(5);
+    const setAside = ctx.setAside.map((row) => ({
+      name: row.application?.full_name || 'Applicant',
+      reason: reasonLabel(row.decisionReasonCode),
+    }));
 
-    const systemPrompt = `You format a tenant shortlist into a deliberately, fussily laid-out PLAIN-TEXT message a Canadian realtor pastes into iMessage/SMS for their landlord client. The whole point is meticulous typographic alignment a person could do by hand but never would — the landlord must absorb the entire shortlist in seconds on a phone.
+    const systemPrompt = `You format a FULL RANKED LIST of rental applicants into a deliberately, fussily laid-out PLAIN-TEXT message a Canadian realtor pastes into iMessage/SMS for their landlord client. Everyone is included and ranked best fit first — no culling. The landlord must absorb the whole list in seconds on a phone.
 
-PRODUCE EXACTLY THIS STRUCTURE (no deviation):
+PRODUCE EXACTLY THIS STRUCTURE (omit a whole section only if it has no entries):
 
 RENTLETTER  |  <address> — $<rent>/mo · <beds>BR
-Shortlist from <realtor name>, <brokerage> — ranked best fit first (<N>)
+Ranked applicants from <realtor name>, <brokerage> — <TOTAL> total, best fit first
 
+TOP MATCHES
 [ 1 ]  <NAME IN UPPERCASE> — <role>, <employer>
        Income ......... $<amount>/yr  (<pct>% rent-to-income)
        Tenure ......... <years> yrs
@@ -84,37 +88,46 @@ Shortlist from <realtor name>, <brokerage> — ranked best fit first (<N>)
 
 ————————————————————————————
 
-[ 2 ]  <NAME IN UPPERCASE> — <role>, <employer>
-       Income ......... ...
-       ...
+[ 2 ]  <NAME IN UPPERCASE> — ...
+
+ALSO RANKED
+[ 6 ]  <NAME IN UPPERCASE> — ...
+       (same labelled block)
+
+SET ASIDE
+- <NAME IN UPPERCASE> — <reason>
 
 ————————————————————————————
 Reply to set up viewings. Figures are applicant-reported.
 <realtor name> · <brokerage> · <phone>
 
-ALIGNMENT RULES (critical):
-- Header line 1 starts with "RENTLETTER  |  " (two spaces, pipe, two spaces). Include rent and "<beds>BR" only if provided.
-- Candidate first line: "[ <rank> ]  " (space inside the brackets, two spaces after) then the NAME IN ALL CAPS, then " — " then role, employer.
-- Labelled lines are indented exactly 7 spaces (to sit under the name). Each is: label, one space, a run of "." leader dots, one space, value — padded so EVERY value across ALL candidates starts in the same column. Use these four labels verbatim, in this order: Income, Tenure, References, Fit. The "label + dots" segment must be 15 characters wide (e.g. "Income ........." / "Tenure ........." / "References ....." / "Fit ............"). Omit a line only if that fact is entirely missing.
-- Income value: "$<amount>/yr" then two spaces then "(<pct>% rent-to-income)" if a ratio exists. If a co-applicant income exists, use the household total and label it "Income" with value "$<total>/yr (household)".
-- Fit value: ONE short factual phrase derived from the data (e.g. "comfortable on income", "within typical range", "long, stable tenure", "references in hand"). Keep it under ~4 words.
-- Between candidates put a blank line, a rule of 28 em dashes (————————————————————————————), then a blank line. Use the same rule before the sign-off.
+RULES:
+- "TOP MATCHES" holds the candidates in topMatches (max 5), keeping their rank numbers. "ALSO RANKED" holds alsoRanked (continue the rank numbers). Put the section header on its own line, then a blank line, then the blocks.
+- Candidate first line: "[ <rank> ]  " (space inside brackets, two spaces after) then the NAME IN ALL CAPS, then " — " then role, employer.
+- Labelled lines indented exactly 7 spaces. Each: label, one space, "." leader dots, one space, value — padded so the "label + dots" segment is 15 chars wide and EVERY value lines up. Labels verbatim in order: Income, Tenure, References, Fit. Omit a line only if the fact is missing.
+- Income value: "$<amount>/yr" then two spaces then "(<pct>% rent-to-income)" if a ratio exists. If householdIncome is present, use it and write "$<total>/yr (household)".
+- Fit value: ONE short factual phrase from the data (e.g. "comfortable on income", "within typical range", "long, stable tenure"). Under ~4 words.
+- SET ASIDE: one line per applicant — "- <NAME IN UPPERCASE> — <reason verbatim from the data>". No labelled block, no scores. These were de-prioritized for screenable reasons; present them neutrally.
+- Between candidate blocks (within a section) put a blank line, a 28 em-dash rule, a blank line. Use one em-dash rule before the sign-off.
 
 STYLE:
-- TRUE plain text only. NO emojis. NO markdown (no #, *, _, backticks, tables). Only keyboard punctuation, "·" middots, "." leader dots, and "—" em-dash rules.
-- Keep every line short enough to not wrap badly on a narrow phone — prefer short labelled lines over sentences.
+- TRUE plain text only. NO emojis. NO markdown (no #, *, _, backticks, tables). Only keyboard punctuation, "·" middots, "." leader dots, "—" em-dash rules.
+- Short lines that won't wrap badly on a narrow phone.
 
 COMPLIANCE (Ontario Human Rights Code) — STRICT:
-- Facts ONLY from: income, employment tenure, rent-to-income, references, scorecard fit. Use the provided data; never invent.
+- Facts ONLY from: income, employment tenure, rent-to-income, references, scorecard fit, and the provided set-aside reasons. Use the data; never invent.
 - NEVER mention or imply protected grounds: race, ancestry, place of origin, citizenship, ethnic origin, creed/religion, sex, sexual orientation, gender identity, age, marital status, family status, disability, or receipt of public assistance.
 - Say "household" rather than "couple/family". Do not infer age from job/student status.
-- Be factual and neutral. Do not over-claim (if references were "provided" don't say "excellent references").
+- Be factual and neutral. Do not over-claim.
 
 Output ONLY the message text — no preamble, no explanation.`;
 
     const userPrompt = `REALTOR: ${JSON.stringify(realtor)}
 UNIT: ${JSON.stringify(unit)}
-RANKED SHORTLIST (in order): ${JSON.stringify(candidates, null, 2)}
+TOTAL: ${total}
+topMatches: ${JSON.stringify(topMatches, null, 2)}
+alsoRanked: ${JSON.stringify(alsoRanked, null, 2)}
+setAside: ${JSON.stringify(setAside, null, 2)}
 
 Write the paste-ready plain-text message now.`;
 

@@ -34,7 +34,7 @@ export default async function handler(req, res) {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
     if (!ctx) return res.status(404).json({ error: 'Listing not found.' });
-    if (ctx.shortlisted.length === 0) return res.status(400).json({ error: 'Shortlist some applicants first.' });
+    if (ctx.active.length + ctx.setAside.length === 0) return res.status(400).json({ error: 'No applicants to present yet.' });
 
     const landlordEmail = String(ctx.listing.landlord_email || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(landlordEmail)) {
@@ -47,7 +47,7 @@ export default async function handler(req, res) {
     const realtorEmail = user.email;
     const unitName = String(ctx.listing.name || ctx.listing.address || 'your unit');
     const personalNote = String(note || '').slice(0, 1000);
-    const n = ctx.shortlisted.length;
+    const n = ctx.active.length + ctx.setAside.length;
 
     const bytes = await buildLandlordReportPdf(ctx);
 
@@ -61,8 +61,8 @@ export default async function handler(req, res) {
         ${phone ? `<p style="font-size:13px;color:#c8c2b3;margin:0;">${esc(phone)}</p>` : ''}
       </td></tr>
       <tr><td style="padding:24px 4px 0;">
-        <h1 style="font-size:24px;font-weight:800;color:#0f0f10;letter-spacing:-0.02em;margin:0 0 10px;">${n} candidate${n === 1 ? '' : 's'} for ${esc(unitName).slice(0, 60)}</h1>
-        <p style="font-size:14px;color:#3a3a3c;line-height:1.6;margin:0 0 14px;">The full ranked shortlist is attached as a PDF. Reply to this email to discuss next steps.</p>
+        <h1 style="font-size:24px;font-weight:800;color:#0f0f10;letter-spacing:-0.02em;margin:0 0 10px;">${n} applicant${n === 1 ? '' : 's'} for ${esc(unitName).slice(0, 60)}</h1>
+        <p style="font-size:14px;color:#3a3a3c;line-height:1.6;margin:0 0 14px;">The full ranked list (best fit first, top matches highlighted) is attached as a PDF. Reply to this email to discuss next steps.</p>
         ${personalNote ? `<div style="background:#f2eee3;padding:16px;border-left:3px solid #d72027;margin:0 0 14px;"><p style="font-size:14px;color:#0f0f10;line-height:1.6;margin:0;white-space:pre-wrap;">${esc(personalNote)}</p></div>` : ''}
       </td></tr>
       <tr><td style="padding:20px 4px 0;border-top:1px solid #e3ddd0;margin-top:20px;">
@@ -75,9 +75,9 @@ export default async function handler(req, res) {
       from: 'Rentletter <hello@rentletter.ca>',
       to: landlordEmail,
       reply_to: realtorEmail,
-      subject: `Shortlist from ${realtorName} — ${n} candidate${n === 1 ? '' : 's'} for ${unitName.slice(0, 60)}`,
+      subject: `Ranked applicants from ${realtorName} — ${n} for ${unitName.slice(0, 60)}`,
       html,
-      attachments: [{ filename: `shortlist-${new Date().toISOString().slice(0, 10)}.pdf`, content: Buffer.from(bytes) }],
+      attachments: [{ filename: `ranked-applicants-${new Date().toISOString().slice(0, 10)}.pdf`, content: Buffer.from(bytes) }],
     });
     if (result?.error) {
       console.error('[send-report] Resend error:', result.error);

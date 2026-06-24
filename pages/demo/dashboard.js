@@ -3624,7 +3624,7 @@ function DemoSendToLandlord({ apps, unit, realtor, brand }) {
       // brand.logoPng is a local PNG data URI → embeds in the PDF with NO network call.
       const profile = { full_name: realtorName, brokerage, phone: realtorPhone, logo_url: brand?.logoPng || null };
       const listing = { name: unitLabel, monthly_rent: unit?.monthlyRent ? Number(unit.monthlyRent) : null, bedrooms: unit?.bedrooms };
-      const bytes = await buildLandlordReportPdf({ profile, listing, shortlisted });
+      const bytes = await buildLandlordReportPdf({ profile, listing, active: shortlisted, setAside: [] });
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

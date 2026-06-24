@@ -24,8 +24,8 @@ export default async function handler(req, res) {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
     if (!ctx) return res.status(404).json({ error: 'Listing not found.' });
-    if (ctx.shortlisted.length === 0) {
-      return res.status(400).json({ error: 'Shortlist some applicants first.' });
+    if (ctx.active.length + ctx.setAside.length === 0) {
+      return res.status(400).json({ error: 'No applicants to present yet.' });
     }
     const bytes = await buildLandlordReportPdf(ctx);
     const slug = String(ctx.listing.name || ctx.listing.address || 'listing').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
