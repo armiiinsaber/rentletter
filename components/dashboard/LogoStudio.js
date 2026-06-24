@@ -29,8 +29,9 @@ function Swatch({ svg, bg, label }) {
   );
 }
 
-export default function LogoStudio({ fullName, brokerage, onChosen }) {
+export default function LogoStudio({ fullName, brokerage, brandColor, onChosen }) {
   const profileReady = !!(String(fullName || '').trim() && String(brokerage || '').trim());
+  const colorForGen = /^#[0-9a-fA-F]{6}$/.test(String(brandColor || '')) ? brandColor : undefined;
   const [brief, setBrief] = useState('');
   const [refineBrief, setRefineBrief] = useState('');
   const [rounds, setRounds] = useState([]); // [{ brief, variations:[{label,svg}] }]
@@ -71,13 +72,13 @@ export default function LogoStudio({ fullName, brokerage, onChosen }) {
   const generate = () => {
     if (!profileReady) { setError('Add your name and brokerage first so we can build your brand.'); return; }
     if (!brief.trim()) { setError('Describe the logo you want first.'); return; }
-    call({ brief: brief.trim(), conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
+    call({ brief: brief.trim(), brandColor: colorForGen, conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
   };
 
   const refine = () => {
     if (!refineTarget) return;
     if (!refineBrief.trim()) { setError('Tell us what to change (e.g. “bolder”, “try navy”, “drop the icon”).'); return; }
-    call({ brief: refineBrief.trim(), refineFrom: refineTarget.svg, conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
+    call({ brief: refineBrief.trim(), refineFrom: refineTarget.svg, brandColor: colorForGen, conversationContext: rounds.map((r) => r.brief).filter(Boolean) });
     setRefineBrief('');
   };
 
