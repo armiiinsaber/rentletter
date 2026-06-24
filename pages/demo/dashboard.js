@@ -1532,7 +1532,7 @@ export default function LandlordDashboard() {
                   </button>
                 </>
               ) : (
-                <button onClick={() => { setSigninLinkSent(false); setSigninEmailInput(''); setSigninError(''); setSigninModalOpen(true); }}
+                <button onClick={() => { window.location.href = '/signin'; }}
                   className="rl-btn" style={{
                     background: C.ink, color: C.paper, padding: '11px 18px', fontSize: 13, fontWeight: 600,
                     borderRadius: R.ctrl, display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -2047,7 +2047,7 @@ export default function LandlordDashboard() {
                 {!sessionToken && (
                   <div style={{ marginBottom: 28, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                     <button
-                      onClick={() => { setSigninLinkSent(false); setSigninEmailInput(''); setSigninError(''); setSigninModalOpen(true); }}
+                      onClick={() => { window.location.href = '/signin'; }}
                       style={{
                         background: C.paper, color: C.red, border: 'none',
                         padding: '14px 22px', fontSize: 15, fontWeight: 700,
@@ -2170,7 +2170,7 @@ export default function LandlordDashboard() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
                   <button
-                    onClick={() => { setSigninLinkSent(false); setSigninEmailInput(''); setSigninError(''); setSigninModalOpen(true); }}
+                    onClick={() => { window.location.href = '/signin'; }}
                     style={{
                       background: C.red, color: C.paper, border: 'none',
                       padding: '11px 16px', fontSize: 13, fontWeight: 700,
@@ -3386,83 +3386,8 @@ export default function LandlordDashboard() {
         {/* ════════════════════════════════════════════════════════ */}
         {/* SIGN-IN MODAL */}
         {/* ════════════════════════════════════════════════════════ */}
-        {signinModalOpen && (
-          <div
-            onClick={() => setSigninModalOpen(false)}
-            style={{
-              position: 'fixed', inset: 0,
-              background: 'rgba(15,15,16,0.65)',
-              zIndex: 1000,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: 20,
-            }}>
-            <div
-              onClick={e => e.stopPropagation()}
-              style={{
-                background: C.paper, maxWidth: 480, width: '100%',
-                borderRadius: R.modal, overflow: 'hidden',
-              }}>
-              <div style={{ padding: '28px 32px', borderBottom: `1px solid ${C.rule}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-                    Sign in
-                  </div>
-                  <h3 style={{ fontSize: 22, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10 }}>
-                    Save your work on this device.
-                  </h3>
-                  <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55 }}>
-                    Enter your email. We'll sign you in instantly on this device and email you a link so you can also sign in on your phone or other devices later.
-                  </p>
-                </div>
-                <button onClick={() => setSigninModalOpen(false)}
-                  style={{ background: 'transparent', border: 'none', fontSize: 24, color: C.inkSoft, cursor: 'pointer', padding: 0, lineHeight: 1 }}>
-                  ×
-                </button>
-              </div>
-              <div style={{ padding: '24px 32px' }}>
-                <label style={{ display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Your email
-                </label>
-                <input
-                  type="text"
-                  inputMode="email"
-                  autoComplete="email"
-                  value={signinEmailInput}
-                  onChange={e => setSigninEmailInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && requestSigninLink()}
-                  placeholder="you@example.com"
-                  autoFocus
-                  style={{
-                    width: '100%', padding: '14px 16px', fontSize: 15,
-                    border: `1px solid ${C.ink}`, background: C.paper, color: C.ink,
-                    outline: 'none', marginBottom: 14,
-                  }}
-                />
-                {(signinError || (signinEmailInput.trim() && !signinEmailValid)) && (
-                  <div style={{ marginBottom: 12, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
-                    {signinError || 'Enter a valid email address.'}
-                  </div>
-                )}
-                <button
-                  onClick={requestSigninLink}
-                  disabled={signinLoading || !signinEmailValid}
-                  style={{
-                    width: '100%',
-                    background: (signinLoading || !signinEmailValid) ? '#c8c2b3' : C.red,
-                    color: C.paper, border: 'none', padding: '16px',
-                    fontSize: 15, fontWeight: 700,
-                    cursor: (signinLoading || !signinEmailValid) ? 'not-allowed' : 'pointer',
-                    letterSpacing: '0.01em',
-                  }}>
-                  {signinLoading ? 'Signing you in...' : 'Sign in →'}
-                </button>
-                <p style={{ fontSize: 11, color: C.inkMute, marginTop: 14, lineHeight: 1.5, textAlign: 'center' }}>
-                  No password needed. You'll be signed in instantly.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Old magic-link sign-in modal removed — all sign-in entry points now route to
+            the single Supabase password flow at /signin. */}
 
         {/* ════════════════════════════════════════════════════════ */}
         {/* REQUEST-APPLICATION MODAL */}
