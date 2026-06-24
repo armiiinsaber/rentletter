@@ -8,6 +8,7 @@
 // profile editor. Brand colours are controlled by the parent (saved with the profile).
 import { useState, useEffect, useRef } from 'react';
 import { C, R } from '../theme';
+import ColorWheel from './ColorWheel';
 
 const isHex = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
 
@@ -28,23 +29,22 @@ function Swatch({ svg, bg, label }) {
   );
 }
 
-// A single colour control: native picker + hex input + swatch. (Replaced by a wheel
-// in Stage-2 commit.)
+// A single colour control: full-spectrum HSV wheel + hex input + live swatch.
 function ColorField({ label, value, onChange, disabled }) {
   const valid = isHex(value);
   const [hex, setHex] = useState(value || '');
   useEffect(() => { setHex(value || ''); }, [value]);
   const apply = (v) => { setHex(v); if (isHex(v)) onChange(v.toLowerCase()); };
   return (
-    <div style={{ flex: 1, minWidth: 150, opacity: disabled ? 0.5 : 1 }}>
-      <div style={{ fontSize: 11, color: C.inkSoft, fontWeight: 600, marginBottom: 6 }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <input type="color" aria-label={label} disabled={disabled} value={valid ? value : '#1f3a5f'}
-          onChange={(e) => onChange(e.target.value.toLowerCase())}
-          style={{ width: 42, height: 36, padding: 0, border: `1px solid ${C.ruleDark}`, borderRadius: 8, background: C.paper, cursor: disabled ? 'not-allowed' : 'pointer', flexShrink: 0 }} />
-        <input type="text" value={hex} disabled={disabled} onChange={(e) => apply(e.target.value)} placeholder="#1f3a5f" spellCheck={false}
-          style={{ flex: 1, minWidth: 0, padding: '9px 11px', fontSize: 14, fontFamily: 'monospace', borderRadius: R.ctrl, border: `1px solid ${valid || !hex ? C.rule : C.red}`, background: C.paper, color: C.ink, outline: 'none' }} />
+    <div style={{ flex: 1, minWidth: 168 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+        <span style={{ width: 16, height: 16, borderRadius: '50%', background: valid ? value : C.paperDeep, border: `1px solid ${C.ruleDark}`, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, color: C.inkSoft, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</span>
       </div>
+      <ColorWheel value={valid ? value : '#1f3a5f'} onChange={onChange} size={150} disabled={disabled} />
+      <input type="text" value={hex} disabled={disabled} onChange={(e) => apply(e.target.value)} placeholder="#1f3a5f" spellCheck={false}
+        aria-label={`${label} hex`}
+        style={{ width: 150, marginTop: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'monospace', textAlign: 'center', borderRadius: R.ctrl, border: `1px solid ${valid || !hex ? C.rule : C.red}`, background: C.paper, color: C.ink, outline: 'none' }} />
     </div>
   );
 }
