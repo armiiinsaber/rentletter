@@ -13,6 +13,7 @@ import { C } from '../components/theme';
 export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,19 @@ export default function SignUp() {
 
   const emailValid = isValidEmail(email);
   const passwordValid = password.length >= 8;
-  const canSubmit = emailValid && passwordValid && !loading;
+  const confirmValid = confirm.length > 0 && confirm === password;
+  const canSubmit = emailValid && passwordValid && confirmValid && !loading;
+
+  // Map raw Supabase errors to clean, friendly messages.
+  const friendlyError = (msg) => {
+    const m = String(msg || '').toLowerCase();
+    if (m.includes('already registered') || m.includes('already exists') || m.includes('already been registered')) {
+      return 'An account with this email already exists. Try signing in instead.';
+    }
+    if (m.includes('password')) return 'That password is too weak — use at least 8 characters.';
+    if (m.includes('invalid') && m.includes('email')) return 'Enter a valid email address.';
+    return msg || 'Something went wrong. Please try again.';
+  };
 
   const submit = async (e) => {
     e?.preventDefault();
@@ -37,7 +50,7 @@ export default function SignUp() {
         options: { emailRedirectTo },
       });
       if (signUpError) {
-        setError(signUpError.message);
+        setError(friendlyError(signUpError.message));
         setLoading(false);
         return;
       }
@@ -100,8 +113,19 @@ export default function SignUp() {
           value={password} onChange={(e) => setPassword(e.target.value)} onBlur={() => setTouched(true)}
           placeholder="At least 8 characters" style={authInputStyle}
         />
-        {touched && password.length > 0 && !passwordValid && (
+        {touched && password.length > 0 && !passwordValid ? (
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Use at least 8 characters.</div>
+        ) : (
+          <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 4 }}>Use at least 8 characters.</div>
+        )}
+        <label style={authLabelStyle} htmlFor="confirm">Confirm password</label>
+        <input
+          id="confirm" type="password" autoComplete="new-password"
+          value={confirm} onChange={(e) => setConfirm(e.target.value)} onBlur={() => setTouched(true)}
+          placeholder="Re-enter your password" style={authInputStyle}
+        />
+        {touched && confirm.length > 0 && !confirmValid && (
+          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don’t match.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
           {loading ? 'Creating account…' : 'Create account →'}
