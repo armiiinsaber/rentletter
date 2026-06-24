@@ -16,12 +16,45 @@ function safeForRender(svg) {
   return typeof svg === 'string' && /<svg[\s>]/i.test(svg) && !/<\s*script/i.test(svg) && !/\son\w+\s*=/i.test(svg);
 }
 
-function Swatch({ svg, bg, label }) {
+// Make an injected SVG scale to its container: drop the root's fixed width/height
+// (which otherwise break aspect ratio + overflow the small preview box) and let the
+// viewBox + preserveAspectRatio fit it. Does NOT change what we save — preview only.
+function fitSvg(svg) {
+  if (typeof svg !== 'string') return svg;
+  return svg.replace(/<svg\b[^>]*>/i, (tag) => {
+    const hadPAR = /preserveAspectRatio/i.test(tag);
+    const stripped = tag.replace(/\s(?:width|height)\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, ' ');
+    return stripped.replace(/<svg\b/i, `<svg width="100%" height="100%"${hadPAR ? '' : ' preserveAspectRatio="xMidYMid meet"'}`);
+  });
+}
+
+// Prefix every id (and its url(#id)/href="#id" refs) with a per-instance key, so that
+// multiple inline SVGs on the page (3 variations × 2 swatches) don't share gradient/clip
+// ids — otherwise url(#g) resolves to the FIRST match and concepts bleed into each other.
+function namespaceIds(svg, key) {
+  const ids = new Set();
+  svg.replace(/\sid\s*=\s*["']([^"']+)["']/gi, (_, id) => { ids.add(id); return _; });
+  let out = svg;
+  for (const id of ids) {
+    const esc = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const nid = `${key}-${id}`;
+    out = out
+      .replace(new RegExp(`(\\sid\\s*=\\s*["'])${esc}(["'])`, 'g'), `$1${nid}$2`)
+      .replace(new RegExp(`url\\(\\s*#${esc}\\s*\\)`, 'g'), `url(#${nid})`)
+      .replace(new RegExp(`((?:xlink:)?href\\s*=\\s*["'])#${esc}(["'])`, 'g'), `$1#${nid}$2`);
+  }
+  return out;
+}
+const prepSvg = (svg, key) => namespaceIds(fitSvg(svg), key);
+
+const fitInner = { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' };
+
+function Swatch({ svg, bg, label, idKey }) {
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
       <div style={{ background: bg, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, overflow: 'hidden' }}>
         {safeForRender(svg)
-          ? <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex' }} dangerouslySetInnerHTML={{ __html: svg }} />
+          ? <div style={fitInner} dangerouslySetInnerHTML={{ __html: prepSvg(svg, idKey) }} />
           : <span style={{ fontSize: 11, color: C.inkMute }}>—</span>}
       </div>
       <div style={{ fontSize: 9.5, color: C.inkMute, textAlign: 'center', marginTop: 3, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
@@ -243,8 +276,8 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               <div key={i} style={{ border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 12, background: C.paper }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{v.label}</div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <Swatch svg={v.svg} bg="#ffffff" label="On light" />
-                  <Swatch svg={v.svg} bg="#0f0f10" label="On dark" />
+                  <Swatch svg={v.svg} bg="#ffffff" label="On light" idKey={`r${roundIdx}v${i}l`} />
+                  <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`r${roundIdx}v${i}d`} />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                   <button onClick={() => useLogo(v, i)} disabled={usingIdx !== null || busy}
@@ -264,7 +297,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             <div ref={refineRef} style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                 <div style={{ width: 56, height: 40, border: `1px solid ${C.rule}`, borderRadius: 6, background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, overflow: 'hidden', flexShrink: 0 }}>
-                  {safeForRender(refineTarget.svg) && <div style={{ maxWidth: '100%', maxHeight: '100%', display: 'flex' }} dangerouslySetInnerHTML={{ __html: refineTarget.svg }} />}
+                  {safeForRender(refineTarget.svg) && <div style={fitInner} dangerouslySetInnerHTML={{ __html: prepSvg(refineTarget.svg, 'refine') }} />}
                 </div>
                 <div style={{ fontSize: 12, color: C.inkSoft }}>Iterating on <strong>{refineTarget.label}</strong>. What should change?</div>
               </div>
