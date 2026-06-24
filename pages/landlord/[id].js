@@ -2,9 +2,9 @@
 // Listing DETAIL — Supabase-backed (RLS), gated. Listing info + landlord
 // preferences, edit/delete, the tenant invite link (KV via /api/listings/invite),
 // and the listing's APPLICANTS (Supabase: listing_applicants ⨝ applications).
-// Decisions (favourite/reject/priority/notes) persist to listing_applicants under
-// realtor RLS, so they survive sign-out/sign-in.
-import { useState } from 'react';
+// Decisions (ranked / set_aside + reason / withdrawn) persist to listing_applicants
+// under realtor RLS, so they survive sign-out/sign-in.
+import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon } from '../../components/ui';
@@ -15,6 +15,7 @@ import { fetchListingApplicants } from '../../lib/supabaseBridge';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
+import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -65,8 +66,10 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   const [profile, setProfile] = useState(initialProfile);
   const [listing, setListing] = useState(initialListing);
   const [applicants, setApplicants] = useState(initialApplicants || []);
-  const [tab, setTab] = useState('all'); // 'all' | 'shortlist'
   const [editOpen, setEditOpen] = useState(false);
+  const [setAsideFor, setSetAsideFor] = useState(null); // applicant link being set aside
+  const [setAsideCode, setSetAsideCode] = useState('');
+  const [setAsideNote, setSetAsideNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [inviteUrl, setInviteUrl] = useState(initialListing.invite_url || '');
@@ -178,7 +181,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = `shortlist-${new Date().toISOString().slice(0, 10)}.pdf`;
+      a.href = url; a.download = `ranked-applicants-${new Date().toISOString().slice(0, 10)}.pdf`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
     } catch (e) { setSendMsg('Could not generate the PDF.'); }
@@ -222,7 +225,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
       const supabase = getSupabaseBrowserClient();
       const dbPatch = { decision_changed_at: changedAt };
       if ('decisionStatus' in patch) dbPatch.decision_status = patch.decisionStatus;
-      if ('decisionPriority' in patch) dbPatch.decision_priority = patch.decisionPriority;
+      if ('decisionReasonCode' in patch) dbPatch.decision_reason_code = patch.decisionReasonCode;
       if ('decisionNotes' in patch) dbPatch.decision_notes = patch.decisionNotes;
       const { error: upErr } = await supabase.from('listing_applicants').update(dbPatch).eq('id', linkId);
       if (upErr) setError('Could not save your decision: ' + upErr.message);
@@ -231,10 +234,21 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     }
   };
 
-  const toggleShortlist = (a) =>
-    setDecision(a.linkId, { decisionStatus: a.decisionStatus === 'shortlist' ? 'none' : 'shortlist', decisionPriority: a.decisionStatus === 'shortlist' ? null : a.decisionPriority });
-  const toggleReject = (a) =>
-    setDecision(a.linkId, { decisionStatus: a.decisionStatus === 'reject' ? 'none' : 'reject', decisionPriority: null });
+  // Set aside REQUIRES an OHRC-safe screenable reason. Applicant stays in the list,
+  // marked + sorted to the bottom — the defensible paper trail.
+  const openSetAside = (a) => { setSetAsideFor(a); setSetAsideCode(''); setSetAsideNote(''); };
+  const confirmSetAside = () => {
+    if (!setAsideFor || !setAsideCode) return;
+    setDecision(setAsideFor.linkId, { decisionStatus: 'set_aside', decisionReasonCode: setAsideCode, decisionNotes: setAsideNote.trim() || null });
+    setSetAsideFor(null);
+  };
+  const restoreApplicant = (a) =>
+    setDecision(a.linkId, { decisionStatus: 'ranked', decisionReasonCode: null });
+  // Remove = genuine tenant WITHDRAWAL only (not a screening decision).
+  const withdrawApplicant = (a) => {
+    if (!confirm(`Mark ${a.application?.full_name || 'this applicant'} as withdrawn? Use this only if the tenant withdrew — it removes them from your ranked list.`)) return;
+    setDecision(a.linkId, { decisionStatus: 'withdrawn', decisionReasonCode: null });
+  };
 
   const l = listing;
   const inviteShareUrl = fullInviteUrl(); // complete URL shown + copied
@@ -245,16 +259,107 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     l.pref_employment_part_time && 'Part-time',
   ].filter(Boolean).join(', ') || '—';
 
-  // Rank the shortlist exactly like the PDF/text report (lib/listingReportData
-  // rankShortlist): top-priority first, then scorecard overall desc.
-  const rankShortlist = (list) => [...list].sort((a, b) => {
-    const pa = a.decisionPriority === 'top' ? 0 : 1;
-    const pb = b.decisionPriority === 'top' ? 0 : 1;
-    if (pa !== pb) return pa - pb;
-    return (b.application?.scorecard?.overall ?? 0) - (a.application?.scorecard?.overall ?? 0);
-  });
-  const shortlist = rankShortlist(applicants.filter((a) => a.decisionStatus === 'shortlist'));
-  const visible = tab === 'shortlist' ? shortlist : applicants;
+  // Pure scorecard-vs-criteria ranking (matches lib/listingReportData). Everyone is
+  // in: active best-fit-first, set-aside below, withdrawn excluded.
+  const norm = (s) => (s === 'set_aside' ? 'set_aside' : s === 'withdrawn' ? 'withdrawn' : 'ranked');
+  const byScore = (x, y) => (y.application?.scorecard?.overall ?? 0) - (x.application?.scorecard?.overall ?? 0);
+  const active = applicants.filter((a) => norm(a.decisionStatus) === 'ranked').sort(byScore);
+  const setAsideList = applicants.filter((a) => norm(a.decisionStatus) === 'set_aside').sort(byScore);
+  const totalApplicants = active.length + setAsideList.length;
+
+  const renderApplicantCard = (a, { rank, top5, isSetAside }) => {
+    const app = a.application || {};
+    const overall = app.scorecard?.overall;
+    const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
+    const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
+    const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
+    const details = [
+      ['Income', app.annual_income ? `${money(app.annual_income)}/yr` : null],
+      ['Household income', coIncome ? `${money((Number(app.annual_income) || 0) + Number(coIncome))}/yr (joint)` : null],
+      ['Employer', app.employer || null],
+      ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
+      ['Rent-to-income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
+      ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
+      ['Years at address', app.years_at_previous ? `${app.years_at_previous} yrs` : null],
+      ['Move-in', app.move_in_date || null],
+      ['Occupants', app.number_of_occupants != null ? String(app.number_of_occupants) : null],
+      ['Smoker', smokerLabel],
+      ['Pets', app.pets || 'None'],
+      ['References', Array.isArray(app.references) ? `${app.references.length} provided` : null],
+    ].filter(([, v]) => v != null && v !== '');
+    const borderColor = isSetAside ? C.ruleDark : top5 ? C.red : C.green;
+    return (
+      <div key={a.linkId} style={{
+        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
+        borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
+        boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {rank != null && (
+            <span aria-label={`Rank ${rank}`} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: top5 ? C.red : C.paperDeep, color: top5 ? C.paper : C.inkSoft, border: `1px solid ${top5 ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
+              {rank}
+            </span>
+          )}
+          <span aria-hidden="true" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: isSetAside ? C.inkMute : C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>
+            {initialsOf(app.full_name)}
+          </span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
+              {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
+              {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
+            </div>
+            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
+              {[app.job_title, app.employer].filter(Boolean).join(' · ') || 'Role not listed'}
+              {app.annual_income ? ` · $${Number(app.annual_income).toLocaleString()}/yr` : ''}
+            </div>
+            <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{app.application_number}</div>
+            {isSetAside && (
+              <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, padding: '6px 10px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
+                <strong style={{ color: C.ink }}>Set aside:</strong> {reasonLabel(a.decisionReasonCode)}
+                {a.decisionNotes ? ` — ${a.decisionNotes}` : ''}
+              </div>
+            )}
+          </div>
+          {overall != null && (
+            <div style={{ textAlign: 'right', minWidth: 54 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1 }}>
+                {Number(overall).toFixed(1)}<span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}> / 5</span>
+              </div>
+              <div style={{ fontSize: 9, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>Scorecard</div>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            {isSetAside ? (
+              <button onClick={() => restoreApplicant(a)}
+                style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Restore
+              </button>
+            ) : (
+              <button onClick={() => openSetAside(a)} title="Record a screenable reason to de-prioritize"
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                Set aside
+              </button>
+            )}
+            <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
+              style={{ background: 'transparent', color: C.inkMute, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+              Withdrew
+            </button>
+          </div>
+        </div>
+        {details.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px' }}>
+            {details.map(([label, value]) => (
+              <div key={label} style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -374,169 +479,62 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             </section>
           </div>
 
-          {/* ── APPLICANTS ─────────────────────────────────────── */}
+          {/* ── APPLICANTS — single ranked list (everyone, best fit first) ── */}
           <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Applicants</h2>
-              <span style={{ fontSize: 12.5, color: C.inkMute }}>{applicants.length} total · {shortlist.length} shortlisted</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Ranked applicants</h2>
+              <span style={{ fontSize: 12.5, color: C.inkMute }}>{totalApplicants} total{setAsideList.length ? ` · ${setAsideList.length} set aside` : ''}</span>
             </div>
 
-            {applicants.length === 0 ? (
-              <div style={{ padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card }}>
+            {totalApplicants === 0 ? (
+              <div style={{ padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 12 }}>
                 <div style={{ display: 'inline-flex', marginBottom: 12, color: C.inkMute }}><Icon name="users" size={28} /></div>
                 <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>No applicants yet</div>
                 <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
-                  Share your invite link above. As tenants apply, their applications appear here for you to review and shortlist.
+                  Share your invite link above. As tenants apply, they appear here ranked against your stated criteria — best fit first.
                 </p>
               </div>
             ) : (
               <>
-                {/* Tabs */}
-                <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.rule}`, marginBottom: 18, overflowX: 'auto' }}>
-                  {[
-                    { id: 'all', label: `All applicants (${applicants.length})` },
-                    { id: 'shortlist', label: `My shortlist (${shortlist.length})` },
-                  ].map((t) => (
-                    <button key={t.id} onClick={() => setTab(t.id)}
-                      style={{
-                        background: 'transparent', border: 'none', padding: '12px 18px', fontSize: 14.5,
-                        fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? C.ink : C.inkSoft,
-                        borderBottom: tab === t.id ? `3px solid ${C.red}` : '3px solid transparent',
-                        marginBottom: -1, whiteSpace: 'nowrap', cursor: 'pointer', minHeight: 44,
-                      }}>
-                      {t.label}
-                    </button>
+                <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
+                  Everyone who applied, ranked against your stated criteria. Your <strong>top 5</strong> are highlighted. To de-prioritize someone, <strong>Set aside</strong> with a screenable reason — they stay in the list, sorted to the bottom.
+                </p>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  {active.map((a, idx) => (
+                    <React.Fragment key={a.linkId}>
+                      {idx === 5 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0' }}>
+                          <div style={{ flex: 1, height: 1, background: C.rule }} />
+                          <span style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Below your top 5</span>
+                          <div style={{ flex: 1, height: 1, background: C.rule }} />
+                        </div>
+                      )}
+                      {renderApplicantCard(a, { rank: idx + 1, top5: idx < 5, isSetAside: false })}
+                    </React.Fragment>
                   ))}
                 </div>
 
-                {/* Next-step CTA: guide from the All-applicants pass into the ranked shortlist + send. */}
-                {tab === 'all' && shortlist.length > 0 && (
-                  <button onClick={() => setTab('shortlist')}
-                    style={{
-                      width: '100%', marginBottom: 16, textAlign: 'left',
-                      background: '#f0f7f3', border: `1px solid ${C.green}`, borderRadius: R.card,
-                      padding: 'clamp(13px, 3vw, 16px) 18px', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                    }}>
-                    <span>
-                      <span style={{ display: 'block', fontSize: 14.5, fontWeight: 800, color: C.ink }}>Review your shortlist ({shortlist.length}) →</span>
-                      <span style={{ display: 'block', fontSize: 12.5, color: C.inkSoft, marginTop: 2 }}>Compare your picks ranked best-fit-first, then send a PDF or text to your landlord.</span>
-                    </span>
-                    <Icon name="arrow" size={18} color={C.green} />
-                  </button>
-                )}
-
-                {visible.length === 0 ? (
-                  <div style={{ padding: 'clamp(20px, 4vw, 32px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card }}>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 6 }}>Your shortlist is empty.</div>
-                    <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>Favourite applicants under “All applicants” and they’ll appear here.</div>
-                  </div>
-                ) : (
-                  <div style={{ display: 'grid', gap: 12 }}>
-                    {visible.map((a, idx) => {
-                      const app = a.application || {};
-                      const overall = app.scorecard?.overall;
-                      const shortlisted = a.decisionStatus === 'shortlist';
-                      const rejected = a.decisionStatus === 'reject';
-                      const rankView = tab === 'shortlist'; // ranked 1→N high to low
-                      const rank = idx + 1;
-                      const topPick = rankView && idx === 0;
-                      const borderColor = topPick ? C.red : shortlisted ? C.green : rejected ? C.red : C.rule;
-                      const bg = shortlisted ? '#f0f7f3' : rejected ? '#fef2f0' : C.card;
-                      // Labelled comparison facts (shortlist tab) — every value keeps its label.
-                      const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
-                      const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
-                      const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
-                      const details = [
-                        ['Income', app.annual_income ? `${money(app.annual_income)}/yr` : null],
-                        ['Household income', coIncome ? `${money((Number(app.annual_income) || 0) + Number(coIncome))}/yr (joint)` : null],
-                        ['Employer', app.employer || null],
-                        ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
-                        ['Rent-to-income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
-                        ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
-                        ['Years at address', app.years_at_previous ? `${app.years_at_previous} yrs` : null],
-                        ['Move-in', app.move_in_date || null],
-                        ['Occupants', app.number_of_occupants != null ? String(app.number_of_occupants) : null],
-                        ['Smoker', smokerLabel],
-                        ['Pets', app.pets || 'None'],
-                        ['References', Array.isArray(app.references) ? `${app.references.length} provided` : null],
-                      ].filter(([, v]) => v != null && v !== '');
-                      return (
-                        <div key={a.linkId} style={{
-                          background: bg, border: `1px solid ${topPick ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
-                          borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)',
-                          boxShadow: topPick ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                          {rankView && (
-                            <span aria-label={`Rank ${rank}`} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: topPick ? C.red : C.paperDeep, color: topPick ? C.paper : C.inkSoft, border: `1px solid ${topPick ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
-                              {rank}
-                            </span>
-                          )}
-                          <span aria-hidden="true" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>
-                            {initialsOf(app.full_name)}
-                          </span>
-                          <div style={{ flex: 1, minWidth: 180 }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                              <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
-                              {topPick && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP PICK</span>}
-                              {shortlisted && !topPick && <span style={{ fontSize: 10, color: C.green, fontWeight: 700, letterSpacing: '0.08em' }}>★ FAVOURITE</span>}
-                              {rejected && <span style={{ fontSize: 10, color: C.red, fontWeight: 700, letterSpacing: '0.08em' }}>✕ REJECTED</span>}
-                              {app.revoked && <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em' }}>REVOKED</span>}
-                            </div>
-                            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
-                              {[app.job_title, app.employer].filter(Boolean).join(' · ') || 'Role not listed'}
-                              {app.annual_income ? ` · $${Number(app.annual_income).toLocaleString()}/yr` : ''}
-                            </div>
-                            <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{app.application_number}</div>
-                          </div>
-                          {overall != null && (
-                            <div style={{ textAlign: 'right', minWidth: 54 }}>
-                              <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1 }}>
-                                {Number(overall).toFixed(1)}<span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}> / 5</span>
-                              </div>
-                              <div style={{ fontSize: 9, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>Scorecard</div>
-                            </div>
-                          )}
-                          <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-                            <button onClick={() => toggleReject(a)} title="Reject"
-                              style={{ background: rejected ? C.red : 'transparent', color: rejected ? C.paper : C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                              <Icon name="x" size={15} color={rejected ? C.paper : C.red} strokeWidth={2.5} />
-                            </button>
-                            <button onClick={() => toggleShortlist(a)} title="Favourite"
-                              style={{ background: shortlisted ? C.green : 'transparent', color: shortlisted ? C.paper : C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                              <Icon name="check" size={15} color={shortlisted ? C.paper : C.green} strokeWidth={2.5} /> {shortlisted ? 'Favourited' : 'Favourite'}
-                            </button>
-                          </div>
-                          </div>
-                          {rankView && details.length > 0 && (
-                            <div style={{
-                              marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}`,
-                              display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px',
-                            }}>
-                              {details.map(([label, value]) => (
-                                <div key={label} style={{ minWidth: 0 }}>
-                                  <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-                                  <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
+                {setAsideList.length > 0 && (
+                  <div style={{ marginTop: 22 }}>
+                    <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Set aside ({setAsideList.length})</div>
+                    <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
+                      De-prioritized for the screenable reasons noted. Still shown to your landlord, at the bottom.
+                    </p>
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {setAsideList.map((a) => renderApplicantCard(a, { rank: null, top5: false, isSetAside: true }))}
+                    </div>
                   </div>
                 )}
               </>
             )}
           </section>
 
-          {/* ── SEND TO LANDLORD (appears once there's a shortlist) ── */}
-          {shortlist.length > 0 && (
+          {/* ── PRESENT TO LANDLORD (appears once anyone has applied) ── */}
+          {totalApplicants > 0 && (
             <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Send to landlord</div>
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Present to landlord</div>
               <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, maxWidth: 560 }}>
-                Share your {shortlist.length} shortlisted candidate{shortlist.length === 1 ? '' : 's'} as a branded PDF report or a paste-ready message.
+                Present the full ranked list of {totalApplicants} applicant{totalApplicants === 1 ? '' : 's'} (top 5 highlighted{setAsideList.length ? `, ${setAsideList.length} set aside` : ''}) as a branded PDF report or a paste-ready message.
               </p>
 
               {/* Landlord contact captured on the listing */}
@@ -574,6 +572,49 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
 
         {editOpen && (
           <ListingSetupModal mode="edit" initial={listing} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
+        )}
+
+        {/* Set-aside reason modal — an OHRC-safe, screenable reason is REQUIRED. */}
+        {setAsideFor && (
+          <div onClick={() => setSetAsideFor(null)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px,4vw,32px)', zIndex: 100 }}>
+            <div onClick={(e) => e.stopPropagation()} className="rl-modal"
+              style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.modal, padding: 'clamp(20px,4vw,28px)' }}>
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Set aside</div>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 8 }}>
+                {setAsideFor.application?.full_name || 'Applicant'}
+              </h3>
+              <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
+                Choose a screenable reason. They stay in the list (sorted to the bottom) with this reason recorded — your defensible paper trail. This is not a rejection.
+              </p>
+              <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Reason (required)</label>
+              <select value={setAsideCode} onChange={(e) => setSetAsideCode(e.target.value)}
+                style={{ width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', marginBottom: 14 }}>
+                <option value="">Select a reason…</option>
+                {SET_ASIDE_REASONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+              </select>
+              <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Note {setAsideCode === 'other_screenable' ? '(required)' : '(optional)'}
+              </label>
+              <textarea value={setAsideNote} onChange={(e) => setSetAsideNote(e.target.value)} rows={3}
+                placeholder="e.g. stated income $42k vs $60k minimum"
+                style={{ width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit', marginBottom: 8 }} />
+              <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 16 }}>
+                Use only screenable facts (income, references, tenure, occupancy). Never protected grounds.
+              </p>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button onClick={confirmSetAside}
+                  disabled={!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())}
+                  style={{ flex: 1, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px', fontSize: 14, fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
+                  Set aside
+                </button>
+                <button onClick={() => setSetAsideFor(null)}
+                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '13px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     </>

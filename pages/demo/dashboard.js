@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import ChatWidget from '../../components/ChatWidget';
 import { C as THEME, R, SH, EASE, FONT } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade, useReveal } from '../../components/ui';
 import { DEMO_BRAND_NAME, DEMO_BRAND_BROKERAGE, DEMO_BRAND_LOGO_PNG, DEMO_LOGO_CONCEPTS } from '../../lib/demoBranding';
+import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 // Shared brand tokens, extended with the legacy "info" keys this page used
@@ -2698,159 +2699,16 @@ export default function LandlordDashboard() {
           {applications.length > 0 && (
             <section className="rl-reveal" style={{ marginBottom: 32, borderTop: `1px solid ${C.rule}`, paddingTop: 24 }}>
 
-              {/* SIMPLE / DETAILED MODE TOGGLE */}
-              <div style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                marginBottom: 20, flexWrap: 'wrap', gap: 12,
-              }}>
-                <div style={{ fontSize: 12, color: C.inkMute, letterSpacing: '0.04em' }}>
-                  {applications.length} applicant{applications.length === 1 ? '' : 's'} loaded
-                </div>
-                <button
-                  onClick={() => {
-                    setSimpleMode(!simpleMode);
-                    // Switch view to a sensible default for the mode
-                    setView(!simpleMode ? 'review' : 'detail');
-                  }}
-                  className="rl-btn"
-                  style={{
-                    background: C.card, border: `1px solid ${C.ruleDark}`, borderRadius: R.pill,
-                    color: C.inkSoft, padding: '8px 16px', fontSize: 12, fontWeight: 500,
-                    cursor: 'pointer',
-                  }}>
-                  {simpleMode ? 'Switch to detailed view →' : 'Switch to simple view →'}
-                </button>
-              </div>
-
-              {/* TABS — simplified to Review + My picks only */}
-              <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.rule}`, marginBottom: 32, overflowX: 'auto' }}>
-                {(() => {
-                  const slN = applications.filter(a => decisions[a.applicationNumber]?.status === 'shortlist').length;
-                  return [
-                    { id: 'review', label: 'All applicants', enabled: true },
-                    { id: 'ranked', label: slN > 0 ? `My shortlist (${slN})` : 'My shortlist', enabled: filteredApplications.length >= 1 },
-                  ];
-                })().map(tab => (
-                  <button
-                    key={tab.id}
-                    onClick={() => tab.enabled && setView(tab.id)}
-                    disabled={!tab.enabled}
-                    style={{
-                      background: 'transparent', border: 'none',
-                      padding: '16px 24px', fontSize: 16,
-                      fontWeight: view === tab.id ? 700 : 500,
-                      color: view === tab.id ? C.ink : (tab.enabled ? C.inkSoft : C.inkMute),
-                      borderBottom: view === tab.id ? `3px solid ${C.red}` : '3px solid transparent',
-                      cursor: tab.enabled ? 'pointer' : 'not-allowed',
-                      opacity: tab.enabled ? 1 : 0.4,
-                      marginBottom: -1,
-                      whiteSpace: 'nowrap',
-                      minHeight: 48,
-                    }}
-                  >
-                    {tab.label}
-                    {!simpleMode && tab.id !== 'detail' && !tab.enabled && (
-                      <span style={{ fontSize: 11, color: C.inkMute, marginLeft: 8 }}>
-                        (need 2+)
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* ── REVIEW VIEW (simple mode default) ──────── */}
-              {view === 'review' && simpleMode && (
-                <ReviewView
-                  applications={applications}
-                  reviewIdx={reviewIdx}
-                  setReviewIdx={setReviewIdx}
-                  expanded={reviewExpanded}
-                  setExpanded={setReviewExpanded}
-                  getDecision={getDecision}
-                  setDecisionStatus={setDecisionStatus}
-                  decisions={decisions}
-                  unit={unit}
-                  onJumpToDetail={(idx) => { setActiveAppIdx(idx); setSimpleMode(false); setView('detail'); }}
-                  onJumpToFavourites={() => { setView('ranked'); }}
-                />
-              )}
-
-              {/* ── DETAIL VIEW (detailed mode) ─────────────── */}
-              {view === 'detail' && !simpleMode && (
-                <DetailView
-                  applications={applications}
-                  activeIdx={activeAppIdx}
-                  setActiveIdx={setActiveAppIdx}
-                  onRemove={removeApplication}
-                  getDecision={getDecision}
-                  setDecisionStatus={setDecisionStatus}
-                  setDecisionNotes={setDecisionNotes}
-                  setDecisionReason={setDecisionReason}
-                  setMethodologyOpen={setMethodologyOpen}
-                  unit={unit}
-                  rationaleLoading={rationaleLoading}
-                  setRationaleLoading={setRationaleLoading}
-                  rationaleError={rationaleError}
-                  setRationaleError={setRationaleError}
-                />
-              )}
-
-              {/* ── RANKED VIEW (detailed) or SIMPLE LIST (simple) ── */}
-              {view === 'ranked' && simpleMode && (() => {
-                // "My shortlist" = the applicants the user has favourited. Empty
-                // until they pick, then it fills with their shortlisted picks.
-                // Single sorted array consumed by the compare view, mobile cards,
-                // PDF and copy-text — strongest first. Mirrors the real dashboard's
-                // rankShortlist: top-priority first, then scorecard overall desc.
-                const shortlisted = filteredApplications
-                  .filter(a => decisions[a.applicationNumber]?.status === 'shortlist')
-                  .sort((a, b) => {
-                    const pa = decisions[a.applicationNumber]?.priority === 'top' ? 0 : 1;
-                    const pb = decisions[b.applicationNumber]?.priority === 'top' ? 0 : 1;
-                    if (pa !== pb) return pa - pb;
-                    return (b.scorecard?.overall ?? 0) - (a.scorecard?.overall ?? 0);
-                  });
-                if (shortlisted.length === 0) {
-                  return (
-                    <div style={{ padding: 40, textAlign: 'center', color: C.inkSoft, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, background: C.paperDeep }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: C.ink, marginBottom: 8 }}>Your shortlist is empty.</div>
-                      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5 }}>
-                        Review applicants under “All applicants” and tap the favourite (✓) button. Your picks appear here.
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <>
-                    <div style={{ marginBottom: 18 }}>
-                      <div style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4 }}>
-                        Your shortlist — ranked best fit first
-                      </div>
-                      <div style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
-                        {shortlisted.length} candidate{shortlisted.length === 1 ? '' : 's'}, strongest at the top. Compare them below, then send your top picks to your landlord.
-                      </div>
-                    </div>
-                    <CompareView
-                      applications={shortlisted}
-                      ranked
-                      getDecision={getDecision}
-                      setDecisionStatus={setDecisionStatus}
-                      onRemove={removeApplication}
-                    />
-                    <DemoBrandingPreview />
-                    <DemoSendToLandlord apps={shortlisted} unit={unit} realtor={realtorProfile}
-                      brand={{ name: DEMO_BRAND_NAME, brokerage: DEMO_BRAND_BROKERAGE, logoPng: DEMO_BRAND_LOGO_PNG }} />
-                  </>
-                );
-              })()}
-              {view === 'ranked' && !simpleMode && filteredApplications.length >= 2 && (
-                <RankedView
-                  applications={filteredApplications}
-                  weights={weights}
-                  setWeights={setWeights}
-                  onRemove={removeApplication}
-                />
-              )}
+              {/* Single ranked-list view — teaches the new ranked-everyone model */}
+              <DemoRankedList
+                applications={applications}
+                decisions={decisions}
+                unit={unit}
+                realtorProfile={realtorProfile}
+                setDecisionStatus={setDecisionStatus}
+                setDecisionReason={setDecisionReason}
+                setDecisionNotes={setDecisionNotes}
+              />
             </section>
           )}
 
@@ -3538,7 +3396,172 @@ function DemoBrandingPreview() {
   );
 }
 
-function DemoSendToLandlord({ apps, unit, realtor, brand }) {
+// Demo-only single RANKED LIST that teaches the new model: everyone ranked best-fit-
+// first, top 5 highlighted, "Set aside" requires an OHRC-safe reason (sorts to bottom),
+// "Withdrew" removes. Then the branding preview + the full-ranked sample deliverable.
+// No API/Supabase calls.
+function DemoRankedList({ applications, decisions, unit, realtorProfile, setDecisionStatus, setDecisionReason, setDecisionNotes }) {
+  const [setAsideFor, setSetAsideFor] = useState(null);
+  const [code, setCode] = useState('');
+  const [note, setNote] = useState('');
+
+  const norm = (s) => (s === 'set_aside' ? 'set_aside' : s === 'withdrawn' ? 'withdrawn' : 'ranked');
+  const byScore = (a, b) => (b.scorecard?.overall ?? 0) - (a.scorecard?.overall ?? 0);
+  const active = applications.filter((a) => norm(decisions[a.applicationNumber]?.status) === 'ranked').sort(byScore);
+  const setAsideApps = applications.filter((a) => norm(decisions[a.applicationNumber]?.status) === 'set_aside').sort(byScore);
+  const total = active.length + setAsideApps.length;
+  const initials = (n) => String(n || '').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '—';
+
+  const openSetAside = (a) => { setSetAsideFor(a.applicationNumber); setCode(''); setNote(''); };
+  const confirmSetAside = () => {
+    if (!code || (code === 'other_screenable' && !note.trim())) return;
+    setDecisionStatus(setAsideFor, 'set_aside');
+    setDecisionReason(setAsideFor, code);
+    setDecisionNotes(setAsideFor, note.trim());
+    setSetAsideFor(null);
+  };
+  const restore = (a) => { setDecisionStatus(a.applicationNumber, 'ranked'); setDecisionReason(a.applicationNumber, ''); };
+  const withdraw = (a) => { if (typeof window !== 'undefined' && window.confirm(`Mark ${a.tenant?.fullName || 'this applicant'} as withdrawn? Use this only if the tenant withdrew.`)) setDecisionStatus(a.applicationNumber, 'withdrawn'); };
+
+  const card = (a, { rank, top5, isSetAside }) => {
+    const sc = a.scorecard?.overall;
+    const money = (n) => (n != null ? `$${Number(n).toLocaleString()}` : null);
+    const details = [
+      ['Income', a.employment?.annualIncome ? `${money(a.employment.annualIncome)}/yr` : null],
+      ['Tenure', a.employment?.yearsAtJob ? `${a.employment.yearsAtJob} yrs` : null],
+      ['Rent-to-income', a.apartment?.rentToIncomeRatio != null ? `${a.apartment.rentToIncomeRatio}%` : null],
+      ['References', (a.references || []).length ? `${a.references.length} provided` : null],
+      ['Occupants', a.household?.numberOfOccupants != null ? String(a.household.numberOfOccupants) : null],
+      ['Pets', a.lifestyle?.pets || 'None'],
+    ].filter(([, v]) => v != null);
+    const rc = decisions[a.applicationNumber]?.reasonCode;
+    const rn = decisions[a.applicationNumber]?.notes;
+    return (
+      <div key={a.applicationNumber} style={{
+        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${isSetAside ? C.ruleDark : top5 ? C.red : C.green}`,
+        borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1, boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          {rank != null && (
+            <span style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: top5 ? C.red : C.paperDeep, color: top5 ? C.paper : C.inkSoft, border: `1px solid ${top5 ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>{rank}</span>
+          )}
+          <span style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: isSetAside ? C.inkMute : C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>{initials(a.tenant?.fullName)}</span>
+          <div style={{ flex: 1, minWidth: 180 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{a.tenant?.fullName || 'Applicant'}</span>
+              {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
+              {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
+            </div>
+            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
+              {[a.employment?.jobTitle, a.employment?.employer].filter(Boolean).join(' · ') || 'Role not listed'}
+              {a.employment?.annualIncome ? ` · ${money(a.employment.annualIncome)}/yr` : ''}
+            </div>
+            {isSetAside && (
+              <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, padding: '6px 10px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
+                <strong style={{ color: C.ink }}>Set aside:</strong> {reasonLabel(rc)}{rn ? ` — ${rn}` : ''}
+              </div>
+            )}
+          </div>
+          {sc != null && (
+            <div style={{ textAlign: 'right', minWidth: 54 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1 }}>{Number(sc).toFixed(1)}<span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}> / 5</span></div>
+              <div style={{ fontSize: 9, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>Scorecard</div>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
+            {isSetAside ? (
+              <button onClick={() => restore(a)} style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Restore</button>
+            ) : (
+              <button onClick={() => openSetAside(a)} title="Record a screenable reason" style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Set aside</button>
+            )}
+            <button onClick={() => withdraw(a)} title="Tenant withdrew" style={{ background: 'transparent', color: C.inkMute, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Withdrew</button>
+          </div>
+        </div>
+        {details.length > 0 && (
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px 18px' }}>
+            {details.map(([label, value]) => (
+              <div key={label} style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <>
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 4 }}>Ranked applicants — best fit first</div>
+        <div style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
+          Everyone who applied, ranked against the unit's criteria. Your <strong>top 5</strong> are highlighted. To de-prioritize someone, <strong>Set aside</strong> with a screenable reason — they stay in the list, sorted below.
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 12 }}>
+        {active.map((a, idx) => (
+          <React.Fragment key={a.applicationNumber}>
+            {idx === 5 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0' }}>
+                <div style={{ flex: 1, height: 1, background: C.rule }} />
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Below your top 5</span>
+                <div style={{ flex: 1, height: 1, background: C.rule }} />
+              </div>
+            )}
+            {card(a, { rank: idx + 1, top5: idx < 5, isSetAside: false })}
+          </React.Fragment>
+        ))}
+      </div>
+
+      {setAsideApps.length > 0 && (
+        <div style={{ marginTop: 22 }}>
+          <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Set aside ({setAsideApps.length})</div>
+          <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>De-prioritized for the screenable reasons noted. Still shown to your landlord, at the bottom.</p>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {setAsideApps.map((a) => card(a, { rank: null, top5: false, isSetAside: true }))}
+          </div>
+        </div>
+      )}
+
+      <DemoBrandingPreview />
+      <DemoSendToLandlord
+        active={active}
+        setAside={setAsideApps.map((a) => ({ app: a, reasonCode: decisions[a.applicationNumber]?.reasonCode }))}
+        unit={unit} realtor={realtorProfile}
+        brand={{ name: DEMO_BRAND_NAME, brokerage: DEMO_BRAND_BROKERAGE, logoPng: DEMO_BRAND_LOGO_PNG }}
+      />
+
+      {/* Set-aside reason modal — OHRC-safe reason REQUIRED */}
+      {setAsideFor && (() => {
+        const a = applications.find((x) => x.applicationNumber === setAsideFor);
+        return (
+          <div onClick={() => setSetAsideFor(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px,4vw,32px)', zIndex: 1000 }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.modal, padding: 'clamp(20px,4vw,28px)' }}>
+              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Set aside</div>
+              <h3 style={{ fontSize: 20, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 8 }}>{a?.tenant?.fullName || 'Applicant'}</h3>
+              <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>Choose a screenable reason. They stay in the list (sorted to the bottom) with this reason recorded — your defensible paper trail. This is not a rejection.</p>
+              <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Reason (required)</label>
+              <select value={code} onChange={(e) => setCode(e.target.value)} style={{ width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', marginBottom: 14 }}>
+                <option value="">Select a reason…</option>
+                {SET_ASIDE_REASONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
+              </select>
+              <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Note {code === 'other_screenable' ? '(required)' : '(optional)'}</label>
+              <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="e.g. stated income $42k vs $60k minimum" style={{ width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit', marginBottom: 16 }} />
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button onClick={confirmSetAside} disabled={!code || (code === 'other_screenable' && !note.trim())} style={{ flex: 1, background: (!code || (code === 'other_screenable' && !note.trim())) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px', fontSize: 14, fontWeight: 700, cursor: (!code || (code === 'other_screenable' && !note.trim())) ? 'not-allowed' : 'pointer' }}>Set aside</button>
+                <button onClick={() => setSetAsideFor(null)} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '13px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+    </>
+  );
+}
+
+function DemoSendToLandlord({ active = [], setAside = [], unit, realtor, brand }) {
   const [copied, setCopied] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [pdfErr, setPdfErr] = useState('');
@@ -3548,16 +3571,31 @@ function DemoSendToLandlord({ apps, unit, realtor, brand }) {
   const brokerage = brand?.brokerage || realtor?.brokerage || 'Sample Realty';
   const realtorPhone = realtor?.phone || '';
   const unitLabel = unit?.address || 'the unit';
+  const total = active.length + setAside.length;
 
-  // Deliberately, fussily formatted TRUE plain text for iMessage/SMS — bracket rank
-  // tags, leader-dot label→value alignment, em-dash rules. NO emojis, NO markdown.
-  // OHRC-safe: screenable facts only.
+  // Map a KV-shaped demo applicant into the white-label PDF builder's row shape.
+  const toRow = (a, reasonCode) => ({
+    decisionNotes: '',
+    decisionReasonCode: reasonCode || null,
+    application: {
+      application_number: a.applicationNumber,
+      full_name: a.tenant?.fullName,
+      job_title: a.employment?.jobTitle,
+      employer: a.employment?.employer,
+      annual_income: a.employment?.annualIncome,
+      co_applicant: a.coApplicant ? { name: a.coApplicant.name, annualIncome: a.coApplicant.annualIncome } : null,
+      rent_to_income_ratio: a.apartment?.rentToIncomeRatio,
+      references: a.references || [],
+      scorecard: a.scorecard,
+    },
+  });
+
+  // Full ranked list as fussy plain text: TOP MATCHES (top 5) + ALSO RANKED + SET ASIDE.
+  // NO emojis, NO markdown. OHRC-safe: screenable facts + recorded reasons only.
   const composeText = () => {
     const RULE = '—'.repeat(28);
-    const INDENT = '       '; // 7 spaces, aligns under the name after "[ N ]  "
-    // Pad "label + dots" to a fixed 15-char column so all values line up.
+    const INDENT = '       ';
     const leader = (label, value) => `${INDENT}${label} ${'.'.repeat(Math.max(2, 15 - label.length))} ${value}`;
-
     const fitPhrase = (a) => {
       const r = a.apartment?.rentToIncomeRatio;
       if (r != null) return r <= 30 ? 'comfortable on income' : r <= 35 ? 'within typical range' : 'tighter on income';
@@ -3565,11 +3603,10 @@ function DemoSendToLandlord({ apps, unit, realtor, brand }) {
       if (o != null) return o >= 4.5 ? 'strong overall' : o >= 3.5 ? 'solid overall' : 'mixed signals';
       return 'see application';
     };
-
-    const block = (a, i) => {
+    const block = (a, rank) => {
       const out = [];
       const role = [a.employment?.jobTitle, a.employment?.employer].filter(Boolean).join(', ');
-      out.push(`[ ${i + 1} ]  ${(a.tenant?.fullName || 'Applicant').toUpperCase()}${role ? ` — ${role}` : ''}`);
+      out.push(`[ ${rank} ]  ${(a.tenant?.fullName || 'Applicant').toUpperCase()}${role ? ` — ${role}` : ''}`);
       if (a.employment?.annualIncome) {
         const r2i = a.apartment?.rentToIncomeRatio;
         out.push(leader('Income', `$${Number(a.employment.annualIncome).toLocaleString()}/yr${r2i != null ? `  (${r2i}% rent-to-income)` : ''}`));
@@ -3583,14 +3620,34 @@ function DemoSendToLandlord({ apps, unit, realtor, brand }) {
     };
 
     const unitBits = [unitLabel, unit?.monthlyRent ? `$${Number(unit.monthlyRent).toLocaleString()}/mo` : null, unit?.bedrooms ? `${unit.bedrooms}BR` : null].filter(Boolean).join(' · ');
-    const header = [
-      `RENTLETTER  |  ${unitBits}`,
-      `Shortlist from ${[realtorName, brokerage].filter(Boolean).join(', ')} — ranked best fit first (${apps.length})`,
-    ].join('\n');
+    const lines = [];
+    lines.push(`RENTLETTER  |  ${unitBits}`);
+    lines.push(`Ranked applicants from ${[realtorName, brokerage].filter(Boolean).join(', ')} — ${total} total, best fit first`);
 
-    const body = apps.map(block).join(`\n\n${RULE}\n\n`);
-    const signoff = `${RULE}\nReply to set up viewings. Figures are applicant-reported.\n${[realtorName, brokerage, realtorPhone].filter(Boolean).join(' · ')}`;
-    return `${header}\n\n${body}\n\n${signoff}`;
+    const top = active.slice(0, 5);
+    const rest = active.slice(5);
+    if (top.length) {
+      lines.push('');
+      lines.push('TOP MATCHES');
+      lines.push('');
+      lines.push(top.map((a, i) => block(a, i + 1)).join(`\n\n${RULE}\n\n`));
+    }
+    if (rest.length) {
+      lines.push('');
+      lines.push('ALSO RANKED');
+      lines.push('');
+      lines.push(rest.map((a, i) => block(a, i + 6)).join(`\n\n${RULE}\n\n`));
+    }
+    if (setAside.length) {
+      lines.push('');
+      lines.push('SET ASIDE');
+      setAside.forEach((s) => lines.push(`- ${(s.app.tenant?.fullName || 'Applicant').toUpperCase()} — ${reasonLabel(s.reasonCode)}`));
+    }
+    lines.push('');
+    lines.push(RULE);
+    lines.push('Reply to set up viewings. Figures are applicant-reported.');
+    lines.push([realtorName, brokerage, realtorPhone].filter(Boolean).join(' · '));
+    return lines.join('\n');
   };
 
   const copyText = async () => {
@@ -3607,28 +3664,16 @@ function DemoSendToLandlord({ apps, unit, realtor, brand }) {
     try {
       // Reuse the real white-label PDF builder with demo data. No auth/Supabase/network.
       const { buildLandlordReportPdf } = await import('../../lib/landlordReportPdf');
-      const shortlisted = apps.map((a, i) => ({
-        decisionPriority: i === 0 ? 'top' : null,
-        decisionNotes: '',
-        application: {
-          application_number: a.applicationNumber,
-          full_name: a.tenant?.fullName,
-          job_title: a.employment?.jobTitle,
-          employer: a.employment?.employer,
-          annual_income: a.employment?.annualIncome,
-          co_applicant: a.coApplicant ? { name: a.coApplicant.name, annualIncome: a.coApplicant.annualIncome } : null,
-          rent_to_income_ratio: a.apartment?.rentToIncomeRatio,
-          scorecard: a.scorecard,
-        },
-      }));
+      const activeRows = active.map((a) => toRow(a));
+      const setAsideRows = setAside.map((s) => toRow(s.app, s.reasonCode));
       // brand.logoPng is a local PNG data URI → embeds in the PDF with NO network call.
       const profile = { full_name: realtorName, brokerage, phone: realtorPhone, logo_url: brand?.logoPng || null };
       const listing = { name: unitLabel, monthly_rent: unit?.monthlyRent ? Number(unit.monthlyRent) : null, bedrooms: unit?.bedrooms };
-      const bytes = await buildLandlordReportPdf({ profile, listing, active: shortlisted, setAside: [] });
+      const bytes = await buildLandlordReportPdf({ profile, listing, active: activeRows, setAside: setAsideRows });
       const blob = new Blob([bytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url; link.download = 'sample-landlord-report.pdf';
+      link.href = url; link.download = 'sample-ranked-applicants.pdf';
       document.body.appendChild(link); link.click(); link.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
