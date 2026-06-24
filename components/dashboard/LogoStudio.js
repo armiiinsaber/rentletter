@@ -173,8 +173,8 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'clamp(12px,3vw,16px)', marginBottom: 12, opacity: profileReady ? 1 : 0.55 }}>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 · Brand colours</div>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
-              <ColorField label="Primary" value={primary} onChange={onPrimary} disabled={!profileReady} />
-              <ColorField label="Secondary" value={secondary} onChange={onSecondary} disabled={!profileReady} />
+              <ColorField label="Primary" value={primary} onChange={onPrimary} disabled={!profileReady || busy} />
+              <ColorField label="Secondary" value={secondary} onChange={onSecondary} disabled={!profileReady || busy} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
               <span style={{ fontSize: 11, color: C.inkMute }}>Preview</span>
@@ -197,15 +197,33 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           )}
 
           {/* STEP 3 — GENERATE */}
-          <button onClick={generate} disabled={busy || !colorsReady}
-            title={colorsReady ? '' : 'Pick your two brand colours first'}
-            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: (busy || !colorsReady) ? 'not-allowed' : 'pointer', opacity: (busy || !colorsReady) ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            {busy ? 'Designing…' : rounds.length ? 'Generate 3 again' : 'Generate 3 concepts'}
-          </button>
+          {!busy && (
+            <button onClick={generate} disabled={!colorsReady}
+              title={colorsReady ? '' : 'Pick your two brand colours first'}
+              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: !colorsReady ? 'not-allowed' : 'pointer', opacity: !colorsReady ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              {rounds.length ? 'Generate 3 again' : 'Generate 3 concepts'}
+            </button>
+          )}
+
+          {/* Loading state — generation takes several seconds */}
+          {busy && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
+              <span className="rl-lspin" aria-hidden="true" />
+              <div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>Designing your logos…</div>
+                <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>This takes about 10–15 seconds. Please don’t refresh.</div>
+              </div>
+            </div>
+          )}
         </>
       )}
 
       {error && <div style={{ marginTop: 12, fontSize: 13, color: C.red }}>{error}</div>}
+      {usingIdx !== null && (
+        <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13, color: C.inkSoft }}>
+          <span className="rl-lspin" aria-hidden="true" /> Saving your logo…
+        </div>
+      )}
       {savedOk && <div style={{ marginTop: 12, fontSize: 13, color: C.green, fontWeight: 600 }}>✓ Saved — this is now your branding.</div>}
 
       {round && (
@@ -262,6 +280,15 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           )}
         </div>
       )}
+
+      <style jsx>{`
+        .rl-lspin {
+          width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%;
+          border: 2.5px solid ${C.rule}; border-top-color: ${C.red};
+          display: inline-block; animation: rl-lspin 0.7s linear infinite;
+        }
+        @keyframes rl-lspin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
