@@ -342,8 +342,8 @@ export default function LandlordDashboard() {
   const [rationaleLoading, setRationaleLoading] = useState({}); // keyed by appNumber
   const [rationaleError, setRationaleError] = useState('');
 
-  // ── SHORTLIST + NOTES state (keyed by application number) ──
-  // status: 'none' | 'shortlist' | 'reject'
+  // ── DECISIONS state (keyed by application number) ──
+  // status: 'ranked' (default/in list) | 'set_aside' (+ reasonCode) | 'withdrawn'
   const [decisions, setDecisions] = useState({});
 
   // ── Request-application modal ──
@@ -426,8 +426,8 @@ export default function LandlordDashboard() {
     if (app.apartment?.rentToIncomeRatio && app.apartment.rentToIncomeRatio > filters.maxRentToIncome) return false;
     // Decision filter
     const dec = decisions[app.applicationNumber]?.status || 'none';
-    if (filters.decision === 'shortlist-only' && dec !== 'shortlist') return false;
-    if (filters.decision === 'hide-rejected' && dec === 'reject') return false;
+    if (filters.decision === 'set-aside-only' && dec !== 'set_aside') return false;
+    if (filters.decision === 'hide-set-aside' && dec === 'set_aside') return false;
     return true;
   });
 
@@ -2685,10 +2685,10 @@ export default function LandlordDashboard() {
                   <FilterGroup label="Your decision">
                     <FilterRadio name="decision" value="any" current={filters.decision}
                       onChange={() => setFilters({ ...filters, decision: 'any' })}>Show all</FilterRadio>
-                    <FilterRadio name="decision" value="shortlist-only" current={filters.decision}
-                      onChange={() => setFilters({ ...filters, decision: 'shortlist-only' })}>Shortlisted only</FilterRadio>
-                    <FilterRadio name="decision" value="hide-rejected" current={filters.decision}
-                      onChange={() => setFilters({ ...filters, decision: 'hide-rejected' })}>Hide rejected</FilterRadio>
+                    <FilterRadio name="decision" value="set-aside-only" current={filters.decision}
+                      onChange={() => setFilters({ ...filters, decision: 'set-aside-only' })}>Set aside only</FilterRadio>
+                    <FilterRadio name="decision" value="hide-set-aside" current={filters.decision}
+                      onChange={() => setFilters({ ...filters, decision: 'hide-set-aside' })}>Hide set aside</FilterRadio>
                   </FilterGroup>
                 </div>
               )}
@@ -2701,7 +2701,7 @@ export default function LandlordDashboard() {
 
               {/* Single ranked-list view — teaches the new ranked-everyone model */}
               <DemoRankedList
-                applications={applications}
+                applications={filteredApplications}
                 decisions={decisions}
                 unit={unit}
                 realtorProfile={realtorProfile}
@@ -3685,8 +3685,8 @@ function DemoSendToLandlord({ active = [], setAside = [], unit, realtor, brand }
 
   return (
     <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
-      <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>Send to landlord</div>
-      <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginBottom: 14 }}>Sample — this is what your landlord receives.</div>
+      <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>Present to landlord</div>
+      <div style={{ fontSize: 11.5, color: C.inkMute, fontStyle: 'italic', marginBottom: 14 }}>Sample — the full ranked list (top 5 highlighted) your landlord receives.</div>
 
       <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
         <span style={{ color: C.inkMute, fontWeight: 600 }}>Landlord client: </span>

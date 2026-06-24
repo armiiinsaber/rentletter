@@ -186,7 +186,7 @@ function HeroDemo() {
         pointerEvents: 'none',
       }} aria-hidden={!shortlistVisible}>
         <div style={head}>
-          <span style={eyebrow}>Your shortlist · top 5</span>
+          <span style={eyebrow}>Ranked · top 5</span>
           <span style={{ fontSize: 'clamp(8px, 2.2vw, 10px)', color: C.green, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${C.green}`, borderRadius: R.pill, padding: '1px 7px' }}>Ranked</span>
         </div>
         <div style={{ height: 1, background: C.rule }} />
@@ -731,7 +731,7 @@ export default function Home() {
       <>
         <Head>
           <title>Rentletter — Rental screening for Canadian realtors.</title>
-          <meta name="description" content="A dashboard for Canadian rental realtors to receive standardized tenant applications, shortlist candidates, and send polished reports to landlord clients." />
+          <meta name="description" content="A dashboard for Canadian rental realtors to receive standardized tenant applications, rank every candidate against the landlord's criteria, and send polished reports to landlord clients." />
         </Head>
         <GlobalStyle />
 
@@ -809,7 +809,7 @@ export default function Home() {
                   marginBottom: 34,
                   maxWidth: 540,
                 }}>
-                  Send applicants one link. Standardized applications land in your dashboard automatically. Shortlist, document your decisions, and send a polished report to your landlord client.
+                  Send applicants one link. Standardized applications land in your dashboard automatically. Everyone is ranked against your landlord's criteria — document your decisions and send a polished report to your landlord client.
                 </p>
 
                 <div className="rl-hero-seq" style={{ animationDelay: '660ms' }}>
@@ -915,7 +915,7 @@ export default function Home() {
               </div>
               <p className="rl-serif" style={{ fontSize: 'clamp(21px, 3vw, 30px)', lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0 }}>
                 Rentletter organizes your applicants —{' '}
-                <span style={{ color: C.inkMute }}>from the first inquiry to the shortlist you hand your landlord.</span>
+                <span style={{ color: C.inkMute }}>from the first inquiry to the ranked list you hand your landlord.</span>
               </p>
             </div>
           </section>
@@ -946,7 +946,7 @@ export default function Home() {
               {[
                 { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your screening preferences. We generate a secure link tied to that listing.' },
                 { n: '02', icon: 'link', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route into your dashboard automatically.' },
-                { n: '03', icon: 'list', t: 'Review and shortlist', d: 'Compare candidates side by side. Score, shortlist, and document every decision.' },
+                { n: '03', icon: 'list', t: 'Review and rank', d: 'Everyone ranked against your criteria, best fit first. Set aside with a reason, and document every decision.' },
                 { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co-branded report with your name on it — free for you.' },
               ].map(s => (
                 <div key={s.n} className="rl-step" style={{ paddingTop: 22, position: 'relative' }}>

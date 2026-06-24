@@ -123,7 +123,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                   { n: '1', t: 'Add a listing', d: "Enter the unit address, rent, and your landlord client's preferences." },
                   { n: '2', t: 'Share the invite link', d: 'Send one link to prospective tenants. No accounts needed.' },
                   { n: '3', t: 'Applicants appear here', d: 'Standardized applications land on the listing automatically.' },
-                  { n: '4', t: 'Review & shortlist', d: 'Mark your top picks, add notes, and send a report to your landlord.' },
+                  { n: '4', t: 'Review & rank', d: 'Everyone is ranked against your criteria, best fit first. Set aside with a reason, then present the full ranked list to your landlord.' },
                 ].map((s, i) => (
                   <li key={s.n} style={{ padding: 'clamp(18px, 4vw, 24px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, borderLeft: i % 2 === 1 ? `1px solid ${C.rule}` : 'none' }}>
                     <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', marginBottom: 8 }}>STEP {s.n}</div>

@@ -80,7 +80,7 @@ export default function SignUp() {
       title="Sign up"
       eyebrow="Realtor dashboard"
       heading="Create your account."
-      sub="Organize your applicants, shortlist your top picks, and send a polished report to your landlord client."
+      sub="Organize your applicants, rank everyone against your landlord's criteria, and send a polished report to your landlord client."
       footer={<>Already have an account? <a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Sign in</a></>}
     >
       <form onSubmit={submit} noValidate>
