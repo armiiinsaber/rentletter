@@ -3,7 +3,7 @@
 // (ProfileEditorModal) and the profile hub page (/profile) share one code path —
 // no duplicated save/upload/logo logic. Updates the Supabase profiles row (RLS, own
 // row) and the logos Storage bucket. Renders two clear sections: Branding + Identity.
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import LogoStudio from './LogoStudio';
@@ -121,6 +121,27 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
     { k: 'license_number', label: 'RECO license number (optional)', ph: 'RECO 1234567', ac: 'off' },
   ];
 
+  // Auto-persist brand colours in the background when they change — no manual Save
+  // required. (Generation already uses the LIVE picker values; this just remembers them
+  // and lets the PDF accent pick them up.)
+  useEffect(() => {
+    const p = /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor.toLowerCase() : null;
+    const s = /^#[0-9a-fA-F]{6}$/.test(brandColorSecondary) ? brandColorSecondary.toLowerCase() : null;
+    if (p === (profile?.brand_color || null) && s === (profile?.brand_color_secondary || null)) return;
+    const t = setTimeout(async () => {
+      try {
+        const supabase = getSupabaseBrowserClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from('profiles')
+          .update({ brand_color: p, brand_color_secondary: s }).eq('id', user.id).select().single();
+        if (data) onSaved?.(data);
+      } catch (e) { /* non-fatal — colours still feed generation from live state */ }
+    }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandColor, brandColorSecondary, profile?.brand_color, profile?.brand_color_secondary]);
+
   const accentPreview = /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor : C.red;
 
   return (
@@ -180,7 +201,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
             onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }}
           />
           <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, margin: '10px 0 26px' }}>
-            Your brand colours are saved with your profile and tint the landlord report accent. Press <strong>Save</strong> below to keep them.
+            Your brand colours save automatically, feed the AI generator, and tint the landlord report accent.
           </p>
         </div>
       )}
