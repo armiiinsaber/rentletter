@@ -7,7 +7,7 @@
 import { useState } from 'react';
 import Head from 'next/head';
 import { GlobalStyle } from '../components/ui';
-import { C } from '../components/theme';
+import { C, R } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ProfileEditorBody from '../components/dashboard/ProfileEditorBody';
@@ -38,6 +38,10 @@ export default function ProfileHub({ initialProfile }) {
 
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px) 64px' }}>
           <header style={{ marginBottom: 28 }}>
+            <a href="/landlord" className="rl-btn"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 18, padding: '8px 14px', borderRadius: R.pill, border: `1px solid ${C.ruleDark}`, background: C.card, color: C.inkSoft, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+              <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>←</span> Back to dashboard
+            </a>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Your account</div>
             <h1 style={{ fontSize: 'clamp(26px, 5vw, 36px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.05, marginBottom: 8 }}>You &amp; your brand</h1>
             <p style={{ fontSize: 'clamp(14px, 2.4vw, 15px)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 520 }}>
