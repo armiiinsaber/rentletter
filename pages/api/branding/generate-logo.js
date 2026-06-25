@@ -59,6 +59,35 @@ HARD OUTPUT RULES — follow EXACTLY
 
 Output the JSON array now.`;
 
+// Used ONLY when the realtor is refining one chosen logo. The job here is the opposite
+// of fresh generation: do NOT explore new directions — preserve the chosen mark and apply
+// only the requested tweak, returning a few close refinements of that SAME logo.
+const REFINE_SYSTEM_PROMPT = `You are a senior brand designer refining ONE logo the client has already chosen. They like this exact direction — your job is to apply a single requested change while keeping it unmistakably the same logo. This is a refinement, NOT a redesign.
+
+PRESERVE — this is the whole point:
+- Keep the CORE CONCEPT and composition: the same mark/icon idea, the same lockup (icon-left, icon-above, monogram, wordmark-led), the same overall layout and proportions.
+- Keep the LETTERFORMS and wordmark: the same name/brokerage text, same general type treatment and hierarchy, unless the instruction is specifically about the type.
+- Keep the colour roles and viewBox/aspect ratio the same unless the instruction is about colour or format.
+- The result must be recognisable as the SAME logo, just adjusted. If someone saw the before and after side by side, they should say "that's the same logo, refined" — never "that's a different logo".
+
+APPLY ONLY THE REQUESTED CHANGE:
+- Make the specific change the client asked for (e.g. "bolder" -> increase stroke/weight; "use the accent colour" -> swap the accent; "tighter spacing" -> reduce tracking; "simpler" -> remove a non-essential detail; "bigger icon" -> rescale the mark relative to the text). Do not change anything else they didn't ask about.
+- Return EXACTLY 3 refined variations that are SUBTLE alternatives of THAT SAME logo with the change applied at slightly different intensities or interpretations (e.g. three degrees of "bolder", or the accent applied to three different details) — NOT three different concepts.
+
+LAYOUT & QUALITY — still NON-NEGOTIABLE for all 3:
+- Optically CENTERED in the viewBox, balanced safe-area padding on all four edges (~10% min), nothing clipping.
+- Even stroke widths, clean geometry, legible text, no colliding elements. Same viewBox across all 3.
+- Both brand colours still used intentionally (unless the instruction changes the palette).
+
+HARD OUTPUT RULES — follow EXACTLY
+- Return ONLY a JSON array of exactly 3 objects. No prose, no markdown, no code fences. First character "[", last "]".
+- Each object: { "label": "<2-4 word note on the tweak, e.g. 'Bolder mark'>", "svg": "<a complete SVG string>" }.
+- Each svg MUST be self-contained and valid; have a viewBox, width and height; transparent background.
+- FONTS: every <text>/<tspan> MUST use font-family="Noto Sans, Arial, sans-serif" (this exact stack — the server renders text with a bundled "Noto Sans" font; any other family will NOT render). NO @font-face, NO external fonts, NO serif families. Use font-weight and letter-spacing for character.
+- ABSOLUTELY NO: <script>, event handlers, <foreignObject>, <image>, any href/src/url() pointing at http(s) or // or data:, base64 or raster images, <!DOCTYPE>, external stylesheets. Pure inline vector + <text> only. Keep each SVG compact (well under 8KB).
+
+Output the JSON array now.`;
+
 function buildUserMessage({ brief, refineFrom, conversationContext, fullName, brokerage, brandColor, brandColorSecondary }) {
   const lines = [];
   lines.push(`REALTOR NAME: ${fullName || '(not set — use a tasteful placeholder monogram only if truly absent)'}`);
@@ -73,12 +102,12 @@ function buildUserMessage({ brief, refineFrom, conversationContext, fullName, br
     lines.push('');
   }
   if (refineFrom) {
-    lines.push('ITERATE on this existing logo (keep what works, apply the new instruction; do not start from scratch). Still return 3 variations exploring the requested change:');
+    lines.push('REFINE this exact logo. Preserve its concept, composition, lockup and letterforms — change ONLY what the instruction asks. Return 3 close refinements of THIS SAME logo (not new concepts):');
     lines.push('```');
     lines.push(String(refineFrom).slice(0, 12000));
     lines.push('```');
     lines.push('');
-    lines.push(`NEW INSTRUCTION: ${brief || 'refine and polish'}`);
+    lines.push(`THE ONE CHANGE TO APPLY: ${brief || 'tighten and polish without changing the concept'}`);
   } else {
     lines.push(`BRIEF: ${brief || 'A clean, professional real-estate logo for me.'}`);
   }
@@ -143,7 +172,7 @@ export default async function handler(req, res) {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,
-      system: SYSTEM_PROMPT,
+      system: refineFrom ? REFINE_SYSTEM_PROMPT : SYSTEM_PROMPT,
       messages: [{
         role: 'user',
         content: buildUserMessage({
