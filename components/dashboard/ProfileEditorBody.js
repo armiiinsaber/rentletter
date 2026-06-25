@@ -6,6 +6,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
+import { buildPalette, PALETTE_ORDER, readableText } from '../../lib/brandPalette';
 import LogoStudio from './LogoStudio';
 
 const inputStyle = {
@@ -121,12 +122,15 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
     { k: 'license_number', label: 'RECO license number (optional)', ph: 'RECO 1234567', ac: 'off' },
   ];
 
-  // Auto-persist brand colours in the background when they change — no manual Save
-  // required. (Generation already uses the LIVE picker values; this just remembers them
-  // and lets the PDF accent pick them up.)
+  const hexOk = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
+  const palette = (hexOk(brandColor) && hexOk(brandColorSecondary)) ? buildPalette(brandColor, brandColorSecondary) : null;
+
+  // Auto-persist brand colours + derived palette in the background when they change — no
+  // manual Save required. The colour columns and the brand_palette jsonb are saved in
+  // separate updates so a not-yet-added jsonb column can't break colour persistence.
   useEffect(() => {
-    const p = /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor.toLowerCase() : null;
-    const s = /^#[0-9a-fA-F]{6}$/.test(brandColorSecondary) ? brandColorSecondary.toLowerCase() : null;
+    const p = hexOk(brandColor) ? brandColor.toLowerCase() : null;
+    const s = hexOk(brandColorSecondary) ? brandColorSecondary.toLowerCase() : null;
     if (p === (profile?.brand_color || null) && s === (profile?.brand_color_secondary || null)) return;
     const t = setTimeout(async () => {
       try {
@@ -136,13 +140,20 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
         const { data } = await supabase.from('profiles')
           .update({ brand_color: p, brand_color_secondary: s }).eq('id', user.id).select().single();
         if (data) onSaved?.(data);
+        if (p && s) {
+          try {
+            const { data: d2 } = await supabase.from('profiles')
+              .update({ brand_palette: buildPalette(p, s) }).eq('id', user.id).select().single();
+            if (d2) onSaved?.(d2);
+          } catch (e) { /* brand_palette column not added yet — non-fatal */ }
+        }
       } catch (e) { /* non-fatal — colours still feed generation from live state */ }
     }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandColor, brandColorSecondary, profile?.brand_color, profile?.brand_color_secondary]);
 
-  const accentPreview = /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor : C.red;
+  const accentPreview = hexOk(brandColor) ? brandColor : C.red;
 
   return (
     <div>
@@ -203,6 +214,29 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
           <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, margin: '10px 0 26px' }}>
             Your brand colours save automatically, feed the AI generator, and tint the landlord report accent.
           </p>
+        </div>
+      )}
+
+      {/* ── BRAND PALETTE — auto-generated from the two brand colours ── */}
+      {palette && (
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ ...sectionLabel, marginBottom: 4 }}>Brand palette</label>
+          <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 10 }}>
+            Auto-generated from your two colours — feeds your report accents and brand kit.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
+            {PALETTE_ORDER.map(([key, label]) => {
+              const hex = palette[key];
+              return (
+                <div key={key} style={{ borderRadius: R.ctrl, overflow: 'hidden', border: `1px solid ${C.rule}` }}>
+                  <div style={{ background: hex, height: 52, display: 'flex', alignItems: 'flex-end', padding: 6 }}>
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: readableText(hex), letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</span>
+                  </div>
+                  <div style={{ background: C.paper, padding: '5px 6px', fontSize: 10.5, fontFamily: 'monospace', color: C.inkSoft, textAlign: 'center' }}>{hex}</div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
