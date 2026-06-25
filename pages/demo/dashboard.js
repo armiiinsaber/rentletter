@@ -5,6 +5,7 @@ import { C as THEME, R, SH, EASE, FONT } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade, useReveal } from '../../components/ui';
 import { DEMO_BRAND_NAME, DEMO_BRAND_BROKERAGE, DEMO_BRAND_LOGO_PNG, DEMO_LOGO_CONCEPTS } from '../../lib/demoBranding';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
+import DocIntelReport from '../../components/dashboard/DocIntelReport';
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 // Shared brand tokens, extended with the legacy "info" keys this page used
@@ -3525,6 +3526,7 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
         </div>
       )}
 
+      <DemoDocIntelShowcase />
       <DemoBrandingPreview />
       <DemoSendToLandlord
         active={active}
@@ -3558,6 +3560,48 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
         );
       })()}
     </>
+  );
+}
+
+// ─── DEMO: AI document verification (HARDCODED SAMPLE — no upload, no API call) ───
+// A representative multi-document result (pay stub + employment letter + ID): grouped by
+// document, cross-referenced, compared to the application, with an OHRC-safe insight. The
+// data is screenable-facts-only by construction (income / employment / references / consistency).
+const SAMPLE_DOCINTEL = {
+  analyzedAt: '2026-06-25T15:00:00Z',
+  documentCount: 3,
+  documents: [
+    { filename: 'paystub-may.pdf', documentType: 'pay stub', extracted: { applicantName: 'Priya Sharma', income: '$3,540 net / semi-monthly', payFrequency: 'Semi-monthly', employer: 'Northbridge Analytics', employmentType: 'Full-time', jobTitle: 'Data Analyst', documentDate: 'May 31, 2026' }, notes: 'Gross annualizes to ~$92,000.' },
+    { filename: 'employment-letter.pdf', documentType: 'employment letter', extracted: { applicantName: 'Priya Sharma', income: '$92,000 / year', employer: 'Northbridge Analytics', employmentType: 'Full-time, permanent', jobTitle: 'Data Analyst', documentDate: 'Jun 2, 2026' }, notes: 'Signed by HR; confirms salary and start date.' },
+    { filename: 'id-front.jpg', documentType: 'government ID', extracted: { applicantName: 'Priya Sharma' }, notes: 'Name used only to confirm identity across documents.' },
+  ],
+  crossReference: [
+    { field: 'Applicant name', status: 'consistent', detail: 'Matches across the pay stub, employment letter, and ID.' },
+    { field: 'Employer', status: 'consistent', detail: 'Northbridge Analytics on both the pay stub and the employment letter.' },
+    { field: 'Income', status: 'consistent', detail: 'Pay stub annualizes to ~$92,000, matching the employment letter.' },
+  ],
+  comparisons: [
+    { field: 'Income', stated: '$92,000', found: '$92,000', status: 'match' },
+    { field: 'Employer', stated: 'Northbridge Analytics', found: 'Northbridge Analytics', status: 'match' },
+    { field: 'Job title', stated: 'Data Analyst', found: 'Data Analyst', status: 'match' },
+  ],
+  overallSummary: 'Income, employer, and job title on the application are corroborated by the pay stub and employment letter, and the applicant name is consistent across all three documents.',
+  confidence: 'high',
+};
+const SAMPLE_INSIGHT = 'On the stated $92,000 income, rent of $2,600 works out to roughly 34% rent-to-income, within a typical range for this unit. Employment reads as stable — a full-time, permanent Data Analyst role at Northbridge Analytics, corroborated by both a pay stub and a signed employment letter, with figures consistent across the documents. Two references were provided, including a previous landlord. The uploaded documents confirm the application’s income, employer, and job title with no discrepancies, and the applicant name matches across the pay stub, letter, and ID.';
+
+function DemoDocIntelShowcase() {
+  return (
+    <div style={{ marginTop: 28, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(16px,3vw,24px)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
+        <div style={{ fontSize: 'clamp(18px,4vw,22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>AI document verification</div>
+        <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.inkMute, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.06em' }}>SAMPLE</span>
+      </div>
+      <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
+        Drop a few documents (pay stub, employment letter, ID) and Rentletter reads them together — categorizing each, extracting screenable facts, cross-referencing them, and comparing to the application. Sample result shown; no upload and no AI call in the demo.
+      </p>
+      <DocIntelReport result={SAMPLE_DOCINTEL} insight={SAMPLE_INSIGHT} />
+    </div>
   );
 }
 
