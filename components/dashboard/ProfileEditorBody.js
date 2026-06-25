@@ -4,9 +4,11 @@
 // no duplicated save/upload/logo logic. Updates the Supabase profiles row (RLS, own
 // row) and the logos Storage bucket. Renders two clear sections: Branding + Identity.
 import { useState, useRef, useEffect } from 'react';
+import Head from 'next/head';
 import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { buildPalette, PALETTE_ORDER, readableText } from '../../lib/brandPalette';
+import { FONT_PAIRINGS, GOOGLE_FONTS_HREF, suggestPairingId } from '../../lib/brandFonts';
 import LogoStudio from './LogoStudio';
 
 const inputStyle = {
@@ -30,6 +32,21 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
   });
   const [brandColor, setBrandColor] = useState(profile?.brand_color || '');
   const [brandColorSecondary, setBrandColorSecondary] = useState(profile?.brand_color_secondary || '');
+  const [fontId, setFontId] = useState(profile?.brand_fonts?.id || '');
+  const suggestedFontId = suggestPairingId(profile);
+
+  // Pick a font pairing → persist to profiles.brand_fonts (separate update so a
+  // not-yet-added column can't affect other saves).
+  const selectFont = async (fp) => {
+    setFontId(fp.id); setSavedOk(false);
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').update({ brand_fonts: fp }).eq('id', user.id).select().single();
+      if (data) onSaved?.(data);
+    } catch (e) { /* brand_fonts column not added yet — non-fatal */ }
+  };
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
   const [studioOpen, setStudioOpen] = useState(!profile?.logo_url);
   const [saving, setSaving] = useState(false);
@@ -157,6 +174,11 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
 
   return (
     <div>
+      <Head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href={GOOGLE_FONTS_HREF} />
+      </Head>
       {error && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>}
 
       {/* ── BRANDING ── */}
@@ -239,6 +261,33 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
           </div>
         </div>
       )}
+
+      {/* ── FONT PAIRING ── */}
+      <div style={{ marginBottom: 24 }}>
+        <label style={{ ...sectionLabel, marginBottom: 4 }}>Font pairing</label>
+        <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
+          Pick a heading + body pairing for your business card, signature, and brand kit.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          {FONT_PAIRINGS.map((fp) => {
+            const selected = fontId === fp.id;
+            return (
+              <button key={fp.id} type="button" onClick={() => selectFont(fp)}
+                style={{ textAlign: 'left', cursor: 'pointer', borderRadius: R.card, padding: 12, background: selected ? '#f0f7f3' : C.paper, border: `1px solid ${selected ? C.green : C.rule}`, boxShadow: selected ? `0 0 0 1px ${C.green}` : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{fp.name}</span>
+                  {selected
+                    ? <span style={{ fontSize: 10, fontWeight: 800, color: C.paper, background: C.green, padding: '2px 8px', borderRadius: R.pill }}>✓ IN USE</span>
+                    : fp.id === suggestedFontId && <span style={{ fontSize: 10, fontWeight: 700, color: C.red, border: `1px solid ${C.red}`, padding: '1px 7px', borderRadius: R.pill }}>SUGGESTED</span>}
+                </div>
+                <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{fp.mood}</div>
+                <div style={{ fontFamily: fp.heading.css, fontWeight: fp.heading.weight, letterSpacing: fp.heading.letterSpacing, fontSize: 22, color: C.ink, lineHeight: 1.1 }}>Aa Heading</div>
+                <div style={{ fontFamily: fp.body.css, fontWeight: fp.body.weight, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginTop: 4 }}>The quick brown fox jumps over the lazy dog.</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* ── IDENTITY ── */}
       <label style={sectionLabel}>Your details</label>
