@@ -302,7 +302,10 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
       ['Pets', app.pets || 'None'],
       ['References', Array.isArray(app.references) ? `${app.references.length} provided` : null],
     ].filter(([, v]) => v != null && v !== '');
-    const borderColor = isSetAside ? C.ruleDark : top5 ? C.red : C.green;
+    // Brand red = EMPHASIS on the top picks only; everyone else is neutral. (Previously the
+    // non-top applicants got a green left-bar applied purely by rank position, which read as
+    // a misleading "good to go" status while the actual best picks looked flagged in red.)
+    const borderColor = top5 ? C.red : C.ruleDark;
     return (
       <div key={a.linkId} style={{
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,

@@ -3439,7 +3439,7 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
     const rn = decisions[a.applicationNumber]?.notes;
     return (
       <div key={a.applicationNumber} style={{
-        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${isSetAside ? C.ruleDark : top5 ? C.red : C.green}`,
+        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${top5 ? C.red : C.ruleDark}`,
         borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1, boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
