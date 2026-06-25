@@ -7,6 +7,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
+import { loadPairingFonts } from '../../../lib/pdfFonts';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -49,7 +50,8 @@ export default async function handler(req, res) {
     const personalNote = String(note || '').slice(0, 1000);
     const n = ctx.active.length + ctx.setAside.length;
 
-    const bytes = await buildLandlordReportPdf(ctx);
+    const fonts = loadPairingFonts(ctx.profile?.brand_fonts);
+    const bytes = await buildLandlordReportPdf({ ...ctx, fonts });
 
     const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#faf8f3;font-family:-apple-system,'Inter',sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f3;padding:40px 16px;"><tr><td align="center">

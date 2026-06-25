@@ -6,6 +6,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
+import { loadPairingFonts } from '../../../lib/pdfFonts';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -27,7 +28,8 @@ export default async function handler(req, res) {
     if (ctx.active.length + ctx.setAside.length === 0) {
       return res.status(400).json({ error: 'No applicants to present yet.' });
     }
-    const bytes = await buildLandlordReportPdf(ctx);
+    const fonts = loadPairingFonts(ctx.profile?.brand_fonts);
+    const bytes = await buildLandlordReportPdf({ ...ctx, fonts });
     const slug = String(ctx.listing.name || ctx.listing.address || 'listing').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
     const filename = `shortlist-${slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
