@@ -15,6 +15,7 @@ import { fetchListingApplicants } from '../../lib/supabaseBridge';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
+import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 
 export async function getServerSideProps(ctx) {
@@ -40,6 +41,20 @@ export async function getServerSideProps(ctx) {
   try {
     const admin = getSupabaseAdminClient();
     initialApplicants = await fetchListingApplicants(admin, listing.id);
+    // Merge the realtor-side document-intelligence columns (kept off fetchListingApplicants
+    // so the ranking/report flow is untouched). Graceful if the columns don't exist yet.
+    try {
+      const { data: extras } = await admin
+        .from('listing_applicants').select('id, doc_verifications, ai_insight').eq('listing_id', listing.id);
+      if (Array.isArray(extras)) {
+        const m = new Map(extras.map((e) => [e.id, e]));
+        initialApplicants = initialApplicants.map((a) => ({
+          ...a,
+          docVerifications: m.get(a.linkId)?.doc_verifications || null,
+          aiInsight: m.get(a.linkId)?.ai_insight || null,
+        }));
+      }
+    } catch (e) { /* columns not added yet — feature simply starts empty */ }
   } catch (e) {
     console.error('[listing gSSP] applicants read failed:', e?.message || e);
   }
@@ -357,6 +372,14 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             ))}
           </div>
         )}
+        <ApplicantDocIntel
+          listingId={listing.id}
+          linkId={a.linkId}
+          applicantName={app.full_name}
+          initialVerifications={a.docVerifications}
+          initialInsight={a.aiInsight}
+          onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
+        />
       </div>
     );
   };
