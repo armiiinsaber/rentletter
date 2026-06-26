@@ -6,6 +6,7 @@ import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade, useReveal } from
 import { DEMO_BRAND_NAME, DEMO_BRAND_BROKERAGE, DEMO_BRAND_LOGO_PNG, DEMO_LOGO_CONCEPTS } from '../../lib/demoBranding';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import DocIntelReport from '../../components/dashboard/DocIntelReport';
+import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
 // Shared brand tokens, extended with the legacy "info" keys this page used
@@ -3405,6 +3406,7 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
   const [setAsideFor, setSetAsideFor] = useState(null);
   const [code, setCode] = useState('');
   const [note, setNote] = useState('');
+  const [compareOpen, setCompareOpen] = useState(false);
 
   const norm = (s) => (s === 'set_aside' ? 'set_aside' : s === 'withdrawn' ? 'withdrawn' : 'ranked');
   const byScore = (a, b) => (b.scorecard?.overall ?? 0) - (a.scorecard?.overall ?? 0);
@@ -3412,6 +3414,29 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
   const setAsideApps = applications.filter((a) => norm(decisions[a.applicationNumber]?.status) === 'set_aside').sort(byScore);
   const total = active.length + setAsideApps.length;
   const initials = (n) => String(n || '').trim().split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase() || '—';
+
+  // Normalize the ACTIVE ranked sample applicants into the shared Compare shape (screenable
+  // facts only). Same component + layout as the real dashboard, so demo and product match.
+  const comparePool = active.map((a, idx) => {
+    const coIncome = a.coApplicant?.annualIncome;
+    return {
+      id: a.applicationNumber, rank: idx + 1, name: a.tenant?.fullName || 'Applicant',
+      overall: a.scorecard?.overall ?? null,
+      annualIncome: toNum(a.employment?.annualIncome),
+      householdIncome: coIncome != null ? (toNum(a.employment?.annualIncome) || 0) + (toNum(coIncome) || 0) : null,
+      rentToIncome: toNum(a.apartment?.rentToIncomeRatio),
+      jobTenureYears: toNum(a.employment?.yearsAtJob),
+      employer: a.employment?.employer || null,
+      employmentType: employmentTypeFromTitle(a.employment?.jobTitle),
+      yearsAtAddress: toNum(a.rental?.yearsAtPrevious),
+      currentRent: toNum(a.rental?.currentRent),
+      references: Array.isArray(a.references) ? a.references.length : null,
+      moveInDate: a.move?.moveInDate || null,
+      occupants: a.household?.numberOfOccupants != null ? toNum(a.household.numberOfOccupants) : null,
+      smoker: smokerLabel(a.household?.smoker),
+      pets: a.lifestyle?.pets || null,
+    };
+  });
 
   const openSetAside = (a) => { setSetAsideFor(a.applicationNumber); setCode(''); setNote(''); };
   const confirmSetAside = () => {
@@ -3492,6 +3517,12 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
     );
   };
 
+  if (compareOpen) {
+    return (
+      <CompareTenants pool={comparePool} onClose={() => setCompareOpen(false)} />
+    );
+  }
+
   return (
     <>
       <div style={{ marginBottom: 16 }}>
@@ -3500,6 +3531,13 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
           Everyone who applied, ranked against the unit's criteria. Your <strong>top 5</strong> are highlighted. To de-prioritize someone, <strong>Set aside</strong> with a screenable reason — they stay in the list, sorted below.
         </div>
       </div>
+
+      {active.length >= 2 && (
+        <button onClick={() => setCompareOpen(true)}
+          style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          ⇄ Compare top tenants
+        </button>
+      )}
 
       <div style={{ display: 'grid', gap: 12 }}>
         {active.map((a, idx) => (
