@@ -16,6 +16,7 @@ import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
+import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 
 export async function getServerSideProps(ctx) {
@@ -82,6 +83,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   const [listing, setListing] = useState(initialListing);
   const [applicants, setApplicants] = useState(initialApplicants || []);
   const [editOpen, setEditOpen] = useState(false);
+  const [compareOpen, setCompareOpen] = useState(false);
   const [setAsideFor, setSetAsideFor] = useState(null); // applicant link being set aside
   const [setAsideCode, setSetAsideCode] = useState('');
   const [setAsideNote, setSetAsideNote] = useState('');
@@ -281,6 +283,30 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   const active = applicants.filter((a) => norm(a.decisionStatus) === 'ranked').sort(byScore);
   const setAsideList = applicants.filter((a) => norm(a.decisionStatus) === 'set_aside').sort(byScore);
   const totalApplicants = active.length + setAsideList.length;
+
+  // Normalize the ACTIVE ranked list into the shared Compare shape (screenable facts only;
+  // set-aside/withdrawn are excluded by construction — compare is for active ranked tenants).
+  const comparePool = active.map((a, idx) => {
+    const app = a.application || {};
+    const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
+    return {
+      id: a.linkId, rank: idx + 1, name: app.full_name || 'Applicant',
+      overall: app.scorecard?.overall ?? null,
+      annualIncome: toNum(app.annual_income),
+      householdIncome: coIncome != null ? (toNum(app.annual_income) || 0) + (toNum(coIncome) || 0) : null,
+      rentToIncome: toNum(app.rent_to_income_ratio),
+      jobTenureYears: toNum(app.years_at_job),
+      employer: app.employer || null,
+      employmentType: employmentTypeFromTitle(app.job_title),
+      yearsAtAddress: toNum(app.years_at_previous),
+      currentRent: toNum(app.current_rent),
+      references: Array.isArray(app.references) ? app.references.length : null,
+      moveInDate: app.move_in_date || null,
+      occupants: app.number_of_occupants != null ? toNum(app.number_of_occupants) : null,
+      smoker: smokerLabel(app.smoker),
+      pets: app.pets || null,
+    };
+  });
 
   const renderApplicantCard = (a, { rank, top5, isSetAside }) => {
     const app = a.application || {};
@@ -520,11 +546,19 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                   Share your invite link above. As tenants apply, they appear here ranked against your stated criteria — best fit first.
                 </p>
               </div>
+            ) : compareOpen ? (
+              <CompareTenants pool={comparePool} onClose={() => setCompareOpen(false)} />
             ) : (
               <>
-                <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
                   Everyone who applied, ranked against your stated criteria. Your <strong>top 5</strong> are highlighted. To de-prioritize someone, <strong>Set aside</strong> with a screenable reason — they stay in the list, sorted to the bottom.
                 </p>
+                {active.length >= 2 && (
+                  <button onClick={() => setCompareOpen(true)} className="rl-btn"
+                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    ⇄ Compare top tenants
+                  </button>
+                )}
                 <div style={{ display: 'grid', gap: 12 }}>
                   {active.map((a, idx) => (
                     <React.Fragment key={a.linkId}>
