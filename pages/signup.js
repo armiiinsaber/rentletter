@@ -18,6 +18,7 @@ export default function SignUp() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [agreed, setAgreed] = useState(false); // required: Terms + Privacy
 
   const emailValid = isValidEmail(email);
   const passwordValid = password.length >= 8;
@@ -39,6 +40,7 @@ export default function SignUp() {
     e?.preventDefault();
     setTouched(true);
     if (!canSubmit) return;
+    if (!agreed) return; // blocked until the Terms + Privacy box is checked (inline error shows)
     setLoading(true);
     setError('');
     try {
@@ -126,6 +128,23 @@ export default function SignUp() {
         />
         {touched && confirm.length > 0 && !confirmValid && (
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don’t match.</div>
+        )}
+        {/* Required agreement — makes the Terms binding at signup. */}
+        <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 18, marginBottom: 6, cursor: 'pointer', fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
+          <input
+            type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
+            aria-label="I agree to the Terms of Service and Privacy Policy"
+            style={{ width: 18, height: 18, marginTop: 1, flexShrink: 0, accentColor: C.red, cursor: 'pointer' }}
+          />
+          <span>
+            I agree to the{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: C.red, fontWeight: 700, textDecoration: 'underline' }}>Terms of Service</a>{' '}
+            and{' '}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: C.red, fontWeight: 700, textDecoration: 'underline' }}>Privacy Policy</a>.
+          </span>
+        </label>
+        {touched && !agreed && (
+          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>You must agree to the Terms of Service and Privacy Policy to continue.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
           {loading ? 'Creating account…' : 'Create account →'}
