@@ -21,7 +21,8 @@ export default function StatusBadge({ profile }) {
   }
   return (
     <span style={{
-      fontSize: 12, fontWeight: 700, padding: '5px 11px', borderRadius: R.pill,
+      height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+      fontSize: 12, fontWeight: 700, padding: '0 12px', borderRadius: R.pill,
       background: bg, color: fg, border: `1px solid ${border}`, whiteSpace: 'nowrap',
     }}>
       {label}
