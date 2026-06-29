@@ -456,6 +456,24 @@ export default function LandlordDashboard() {
     // State is already seeded synchronously from DEMO_* constants (no flash); this
     // just re-affirms demo mode on mount.
     setDemoMode(true);
+
+    // Always open the demo at the TOP. The browser's native history.scrollRestoration is
+    // 'auto', so on reload it restored the visitor's prior scroll position, and on
+    // back/forward the page is shown from the bfcache at its old scroll — landing the visitor
+    // partway into the ranked applicants list instead of at the SANDBOX banner. Force manual
+    // restoration + scroll to the top now (rAF catches any deferred restore) and again on
+    // every pageshow (which fires on load AND on bfcache restore, when the effect won't rerun).
+    let restore;
+    try { restore = window.history.scrollRestoration; window.history.scrollRestoration = 'manual'; } catch (e) { /* unsupported */ }
+    const toTop = () => window.scrollTo(0, 0);
+    toTop();
+    const raf = window.requestAnimationFrame(toTop);
+    window.addEventListener('pageshow', toTop);
+    return () => {
+      window.cancelAnimationFrame(raf);
+      window.removeEventListener('pageshow', toTop);
+      try { if (restore) window.history.scrollRestoration = restore; } catch (e) { /* noop */ }
+    };
   }, []);
 
   // Persist simple mode
