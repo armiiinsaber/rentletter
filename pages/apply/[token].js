@@ -70,6 +70,18 @@ export default function ApplyPage() {
           return;
         }
         setInvite(json);
+        // Apartment/listing details come from the LISTING the realtor created — NEVER from
+        // tenant input. Pre-fill the (now hidden) apartment fields from the invite's unit so
+        // the submitted application still carries the correct address + rent. generate.js
+        // parses the rent out of the description to compute the rent-to-income ratio used in
+        // ranking, so the description must contain the listing's "$<rent>/mo".
+        const u = (json && json.unit) || {};
+        const rent = String(u.monthlyRent || '').trim();
+        const beds = String(u.bedrooms || '').trim();
+        const descBits = [];
+        if (beds) descBits.push(/^\d+$/.test(beds) ? `${beds} bed` : beds);
+        if (rent) descBits.push(`$${rent}/mo`);
+        setForm((f) => ({ ...f, apartmentAddress: u.address || '', apartmentDescription: descBits.join(' · ') }));
         setStatus('ready');
       } catch (e) {
         if (cancelled) return;
@@ -241,22 +253,32 @@ export default function ApplyPage() {
               {/* Applying-for banner from the resolved invite */}
               {invite && (
                 <div style={{ background: C.ink, color: C.paper, padding: 'clamp(16px, 4vw, 22px) clamp(18px, 4vw, 24px)', marginBottom: 28, borderRadius: R.card, borderLeft: `4px solid ${C.red}` }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 6 }}>Applying for</div>
+                  <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 6 }}>You’re applying to</div>
                   <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>
                     {invite.listingName || invite.unit?.address || 'Rental unit'}
                   </div>
-                  {invite.unit && (
-                    <div style={{ fontSize: 13, color: '#c8c2b3', marginBottom: (invite.realtorName || invite.realtorBrokerage) ? 8 : 0 }}>
-                      {invite.unit.monthlyRent && `$${invite.unit.monthlyRent}/mo`}
-                      {invite.unit.bedrooms && ` · ${invite.unit.bedrooms} bed`}
-                    </div>
-                  )}
+                  {invite.unit && (() => {
+                    const addr = invite.unit.address && invite.unit.address !== (invite.listingName || '') ? invite.unit.address : null;
+                    const bits = [
+                      invite.unit.monthlyRent && `$${invite.unit.monthlyRent}/mo`,
+                      invite.unit.bedrooms && `${invite.unit.bedrooms} bed`,
+                      addr,
+                    ].filter(Boolean);
+                    return bits.length ? (
+                      <div style={{ fontSize: 13, color: '#c8c2b3', marginBottom: (invite.realtorName || invite.realtorBrokerage) ? 8 : 0 }}>
+                        {bits.join('  ·  ')}
+                      </div>
+                    ) : null;
+                  })()}
                   {(invite.realtorName || invite.realtorBrokerage) && (
                     <div style={{ fontSize: 13, color: '#c8c2b3' }}>
                       Submitted to: <strong style={{ color: C.paper }}>{invite.realtorName}</strong>
                       {invite.realtorBrokerage && ` · ${invite.realtorBrokerage}`}
                     </div>
                   )}
+                  <div style={{ fontSize: 12, color: '#9a958a', marginTop: 10 }}>
+                    Your realtor already entered these unit details — you only need to tell us about yourself below.
+                  </div>
                 </div>
               )}
 
@@ -264,7 +286,7 @@ export default function ApplyPage() {
                 Tell us about you
               </h1>
               <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
-                No account needed. The more specific, the better — skip anything that doesn’t apply.
+                No account needed — the unit details are already filled in by your realtor, so just tell us about you. The more specific, the better; skip anything that doesn’t apply.
               </p>
 
               {error && (
@@ -285,12 +307,10 @@ export default function ApplyPage() {
                 <Field label="Email" value={form.email} onChange={(v) => update('email', v)} placeholder="you@example.com" type="email" />
               </FormSection>
 
-              <FormSection num="02" title="The apartment">
-                <Field label="Address" value={form.apartmentAddress} onChange={(v) => update('apartmentAddress', v)} placeholder={invite?.unit?.address || '123 King St W, Toronto'} />
-                <Field label="Brief description" value={form.apartmentDescription} onChange={(v) => update('apartmentDescription', v)} placeholder="2BR, downtown, $2,400/mo" />
-              </FormSection>
+              {/* No "apartment" section — those details belong to the listing the realtor
+                  created (shown read-only in the banner above), not to tenant input. */}
 
-              <FormSection num="03" title="About you" required>
+              <FormSection num="02" title="About you" required>
                 <Field label="Full name" value={form.fullName} onChange={(v) => update('fullName', v)} placeholder="Jane Doe" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
                   <Field label="Age" value={form.age} onChange={(v) => update('age', v)} placeholder="28" type="number" />
@@ -299,7 +319,7 @@ export default function ApplyPage() {
                 <Field label="Phone" value={form.phone} onChange={(v) => update('phone', v)} placeholder="(416) 555-0142" type="tel" />
               </FormSection>
 
-              <FormSection num="04" title="Employment" required>
+              <FormSection num="03" title="Employment" required>
                 <Field label="Job title" value={form.jobTitle} onChange={(v) => update('jobTitle', v)} placeholder="Software engineer" />
                 <Field label="Employer" value={form.employer} onChange={(v) => update('employer', v)} placeholder="Shopify" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
@@ -308,7 +328,7 @@ export default function ApplyPage() {
                 </div>
               </FormSection>
 
-              <FormSection num="05" title="Current rental">
+              <FormSection num="04" title="Current rental">
                 <Field label="Current address" value={form.previousAddress} onChange={(v) => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
                   <Field label="Years there" value={form.yearsAtPrevious} onChange={(v) => update('yearsAtPrevious', v)} placeholder="2" />
@@ -318,12 +338,12 @@ export default function ApplyPage() {
                 <Field label="Landlord contact" value={form.previousLandlordContact} onChange={(v) => update('previousLandlordContact', v)} placeholder="phone or email" />
               </FormSection>
 
-              <FormSection num="06" title="Your move" required>
+              <FormSection num="05" title="Your move" required>
                 <Field label="Desired move-in date" value={form.moveInDate} onChange={(v) => update('moveInDate', v)} type="date" />
                 <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={(v) => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
               </FormSection>
 
-              <FormSection num="07" title="Household">
+              <FormSection num="06" title="Household">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
                   <Field label="Total occupants" value={form.numberOfOccupants} onChange={(v) => update('numberOfOccupants', v)} placeholder="2" type="number" />
                   <SelectField label="Smoker?" value={form.smoker} onChange={(v) => update('smoker', v)} options={[
@@ -350,13 +370,13 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
-              <FormSection num="08" title="Lifestyle">
+              <FormSection num="07" title="Lifestyle">
                 <Textarea label="Lifestyle and habits" value={form.personality} onChange={(v) => update('personality', v)} placeholder="Quiet, work from home most days, like to cook and read." />
                 <Field label="Pets" value={form.pets} onChange={(v) => update('pets', v)} placeholder="One small cat, indoor only, vet records available" />
                 <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={form.redFlags} onChange={(v) => update('redFlags', v)} placeholder="Limited Canadian credit history due to recent move..." />
               </FormSection>
 
-              <FormSection num="09" title="References (optional but recommended)">
+              <FormSection num="08" title="References (optional but recommended)">
                 <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
                   Two people who can vouch for you. Mentioning these by name is more persuasive than saying "references available."
                 </p>
@@ -378,7 +398,7 @@ export default function ApplyPage() {
                 </div>
               </FormSection>
 
-              <FormSection num="10" title="Vehicle (if parking matters)">
+              <FormSection num="09" title="Vehicle (if parking matters)">
                 <ToggleField label="Do you have a vehicle?" value={form.hasVehicle} onChange={(v) => update('hasVehicle', v)} />
                 {form.hasVehicle && (
                   <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 18 }}>
