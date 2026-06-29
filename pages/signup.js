@@ -99,7 +99,10 @@ export default function SignUp() {
       footer={<>Already have an account? <a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Sign in</a></>}
     >
       <form onSubmit={submit} noValidate>
-        {error && <div style={authErrorStyle}>{error}</div>}
+        {/* Render the error ONLY when it's a non-empty string — never a raw object (an
+            object child would render/throw oddly, e.g. the reported "{}"). Defensive: keeps
+            the form to exactly Email / Password / Confirm / agreement / submit. */}
+        {typeof error === 'string' && error.trim() ? <div style={authErrorStyle}>{error}</div> : null}
         <label style={{ ...authLabelStyle, marginTop: 0 }} htmlFor="email">Email</label>
         <input
           id="email" type="email" inputMode="email" autoComplete="email"
