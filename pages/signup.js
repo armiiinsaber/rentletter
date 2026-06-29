@@ -25,15 +25,48 @@ export default function SignUp() {
   const confirmValid = confirm.length > 0 && confirm === password;
   const canSubmit = emailValid && passwordValid && confirmValid && !loading;
 
-  // Map raw Supabase errors to clean, friendly messages.
-  const friendlyError = (msg) => {
-    const m = String(msg || '').toLowerCase();
-    if (m.includes('already registered') || m.includes('already exists') || m.includes('already been registered')) {
+  const GENERIC = 'Something went wrong creating your account. Please try again.';
+
+  // Map a Supabase auth error (the WHOLE object, not just .message) to a clean, friendly
+  // STRING. Classifies by code + HTTP status + message keywords, and NEVER returns a raw
+  // object, an empty value, or junk like "{}" / "[object Object]" — always the GENERIC
+  // fallback when it can't produce something meaningful.
+  const friendlyError = (err) => {
+    const code = String(err?.code || err?.error_code || '').toLowerCase();
+    const status = Number(err?.status || err?.statusCode || 0);
+    const raw = typeof err?.message === 'string' ? err.message : '';
+    const m = raw.toLowerCase();
+
+    // Weak password (check before the generic 422 "already exists" mapping below).
+    if (code.includes('weak_password') || (m.includes('password') && (m.includes('weak') || m.includes('at least') || m.includes('should be') || m.includes('characters') || m.includes('short')))) {
+      return 'That password is too weak — use at least 8 characters.';
+    }
+    // Already registered (most common when re-testing the same email). When email
+    // confirmation is on, Supabase usually returns status 422 / a user_already_exists code.
+    if (code.includes('user_already_exists') || code.includes('email_exists') ||
+        m.includes('already registered') || m.includes('already exists') || m.includes('already been registered') ||
+        (status === 422 && (m === '' || m.includes('user') || m.includes('email') || m === '{}'))) {
       return 'An account with this email already exists. Try signing in instead.';
     }
-    if (m.includes('password')) return 'That password is too weak — use at least 8 characters.';
-    if (m.includes('invalid') && m.includes('email')) return 'Enter a valid email address.';
-    return msg || 'Something went wrong. Please try again.';
+    // Rate limited.
+    if (status === 429 || code.includes('over_') || code.includes('rate_limit') || m.includes('rate limit') || m.includes('too many') || m.includes('try again later')) {
+      return 'Too many attempts. Please wait a minute and try again.';
+    }
+    // Invalid email.
+    if (code.includes('email_address_invalid') || (m.includes('invalid') && m.includes('email'))) {
+      return 'Enter a valid email address.';
+    }
+    // Sign-ups disabled on the project.
+    if (code.includes('signup_disabled') || m.includes('signups not allowed') || m.includes('signup is disabled')) {
+      return 'Sign-ups are temporarily unavailable. Please try again later.';
+    }
+    // A clean, human-readable message? Show it. Otherwise the generic fallback — never the
+    // raw object or "{}".
+    const clean = raw.trim();
+    if (clean && clean !== '{}' && clean.toLowerCase() !== '[object object]' && clean.length <= 160 && /[a-z]/i.test(clean)) {
+      return clean;
+    }
+    return GENERIC;
   };
 
   const submit = async (e) => {
@@ -52,21 +85,31 @@ export default function SignUp() {
         options: { emailRedirectTo },
       });
       if (signUpError) {
-        setError(friendlyError(signUpError.message));
+        setError(friendlyError(signUpError)); // pass the whole error so code/status classify it
         setLoading(false);
         return;
       }
-      // With confirmation ON, no session is returned until the email is confirmed.
-      // (If the email already exists, Supabase returns an obfuscated identities-empty user.)
+      // With confirmation ON, no session is returned until the email is confirmed. For an
+      // ALREADY-REGISTERED email, Supabase obfuscates the response: it returns a user with an
+      // EMPTY identities array (and no error) instead of telling you the email is taken. Detect
+      // that and show the "account exists" message rather than a misleading "check your email".
       if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
         setError('An account with this email already exists. Try signing in instead.');
+        setLoading(false);
+        return;
+      }
+      // No error and no user at all → don't show a false success screen.
+      if (!data?.user) {
+        setError(GENERIC);
         setLoading(false);
         return;
       }
       setSent(true);
       setLoading(false);
     } catch (err) {
-      setError('Something went wrong. Please try again.');
+      // Thrown (network / misconfigured client). NEVER surface the raw object (it serializes
+      // to "{}") or internal config text — show a friendly generic string.
+      setError(GENERIC);
       setLoading(false);
     }
   };
