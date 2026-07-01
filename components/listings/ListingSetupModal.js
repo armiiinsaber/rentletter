@@ -6,6 +6,7 @@
 // the design system; fully rounded; fits mobile.
 import { useState } from 'react';
 import { C, R } from '../theme';
+import { isValidEmail } from '../../lib/validation';
 
 const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
@@ -50,15 +51,36 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
     }
   }
   const [form, setForm] = useState(seed);
+  const [confirming, setConfirming] = useState(false); // create-time "are you sure" step
+  const [triedSave, setTriedSave] = useState(false);
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   const creating = mode === 'create';
-  const canSave = !!(String(form.address).trim() && String(form.monthly_rent).trim() && String(form.bedrooms).trim()) && !saving;
 
-  const handleSave = () => {
-    if (!canSave) return;
+  // Required fields to create/save a listing. Rent is CRITICAL — ranking's rent-to-income
+  // math depends on it — so it must be a positive number, not just non-empty. Screening
+  // preferences stay optional.
+  const rentNum = parseInt(String(form.monthly_rent).replace(/[^\d]/g, ''), 10);
+  const emailValid = isValidEmail(form.landlord_email);
+  const req = {
+    address: !!String(form.address).trim(),
+    monthly_rent: Number.isFinite(rentNum) && rentNum > 0,
+    bedrooms: !!String(form.bedrooms).trim(),
+    landlord_name: !!String(form.landlord_name).trim(),
+    landlord_email: emailValid,
+  };
+  const allValid = Object.values(req).every(Boolean);
+  const canSave = allValid && !saving;
+  const emailError = (triedSave || String(form.landlord_email).trim())
+    ? (!String(form.landlord_email).trim() ? 'Landlord email is required.' : (!emailValid ? 'Enter a valid email (name@example.com).' : ''))
+    : '';
+
+  const REQ_LABELS = { address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Bedrooms', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
+  const missing = Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]);
+
+  const buildPayload = () => {
     const name = String(form.address).trim().slice(0, 80) || 'New listing';
-    const payload = {
+    return {
       name,
       address: String(form.address).trim(),
       monthly_rent: intOrNull(form.monthly_rent),
@@ -88,8 +110,22 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       pref_guarantor_accepted: !!form.pref_guarantor_accepted,
       pref_notes: String(form.pref_notes).trim() || null,
     };
-    onSave(payload);
   };
+
+  // Clicking Create/Save: block if anything required is missing/invalid. On CREATE, valid
+  // input opens the confirmation step; on EDIT, save directly (no "are you sure" on edits).
+  const handleSaveClick = () => {
+    if (!allValid) { setTriedSave(true); return; }
+    if (creating) setConfirming(true);
+    else onSave(buildPayload());
+  };
+  // The actual create — only reachable from the confirmation step, and re-guarded.
+  const confirmCreate = () => {
+    if (!allValid || saving) return;
+    onSave(buildPayload());
+  };
+
+  const Req = () => <span aria-hidden="true" style={{ color: C.red, fontWeight: 800, marginLeft: 3 }}>*</span>;
 
   const Check = ({ k, label }) => (
     <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: C.ink, cursor: 'pointer', padding: '4px 0' }}>
@@ -119,7 +155,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           </h3>
           {creating && (
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
-              Add the unit's address, monthly rent, and bedrooms to create the listing. Cancel won't create anything.
+              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required — address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited later.
             </p>
           )}
         </div>
@@ -128,11 +164,11 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           {/* UNIT */}
           <div style={{ ...sectionLabel, marginTop: 0 }}>Unit</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label><span style={fieldLabel}>Address</span>
+            <label><span style={fieldLabel}>Address<Req /></span>
               <input type="text" value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="88 Bay Street" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Monthly rent (CAD)</span>
+            <label><span style={fieldLabel}>Monthly rent (CAD)<Req /></span>
               <input type="text" inputMode="numeric" value={form.monthly_rent} onChange={(e) => set({ monthly_rent: e.target.value.replace(/[^\d]/g, '') })} placeholder="2400" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Bedrooms</span>
+            <label><span style={fieldLabel}>Bedrooms<Req /></span>
               <input type="text" value={form.bedrooms} onChange={(e) => set({ bedrooms: e.target.value })} placeholder="2" style={inputStyle} /></label>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 10 }}>
@@ -151,13 +187,15 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           </div>
 
           {/* LANDLORD CLIENT */}
-          <div style={sectionLabel}>Landlord client (optional)</div>
+          <div style={sectionLabel}>Landlord client</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label><span style={fieldLabel}>Name</span>
+            <label><span style={fieldLabel}>Name<Req /></span>
               <input type="text" value={form.landlord_name} onChange={(e) => set({ landlord_name: e.target.value })} placeholder="Pat Owner" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Email</span>
-              <input type="email" value={form.landlord_email} onChange={(e) => set({ landlord_email: e.target.value })} placeholder="owner@email.com" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Phone</span>
+            <label><span style={fieldLabel}>Email<Req /></span>
+              <input type="email" value={form.landlord_email} onChange={(e) => set({ landlord_email: e.target.value })} placeholder="owner@email.com"
+                style={{ ...inputStyle, borderColor: emailError ? C.red : C.rule }} />
+              {emailError && <span style={{ display: 'block', fontSize: 12, color: C.red, marginTop: 4 }}>{emailError}</span>}</label>
+            <label><span style={fieldLabel}>Phone <span style={{ color: C.inkMute, fontWeight: 400 }}>(optional)</span></span>
               <input type="text" value={form.landlord_phone} onChange={(e) => set({ landlord_phone: e.target.value })} placeholder="(416) 555-0199" style={inputStyle} /></label>
           </div>
 
@@ -227,18 +265,59 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
         </div>
 
         {/* Footer */}
-        <div style={{ padding: 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap', position: 'sticky', bottom: 0, background: C.paper }}>
+        <div style={{ padding: 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', position: 'sticky', bottom: 0, background: C.paper }}>
+          {!allValid && (
+            <span style={{ flex: '1 1 100%', minWidth: 0, fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, order: -1 }}>
+              Still needed: <span style={{ color: C.inkSoft, fontWeight: 600 }}>{missing.join(', ')}</span>.
+            </span>
+          )}
           <button onClick={onCancel}
             style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '12px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={handleSave} disabled={!canSave}
-            title={canSave ? '' : 'Add address, monthly rent, and bedrooms first'}
+          <button onClick={handleSaveClick} disabled={!canSave}
+            title={canSave ? '' : 'Complete the required fields first'}
             style={{ background: canSave ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.7 }}>
             {saving ? 'Saving…' : creating ? 'Create listing' : 'Save changes'}
           </button>
         </div>
       </div>
+
+      {/* CREATE-TIME CONFIRMATION — extra check before the listing is created. */}
+      {confirming && (
+        <div onClick={(e) => { e.stopPropagation(); if (!saving) setConfirming(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 32px)', zIndex: 120 }}>
+          <div onClick={(e) => e.stopPropagation()} className="rl-modal"
+            style={{ background: C.paper, maxWidth: 440, width: '100%', border: `1px solid ${C.rule}`, padding: 'clamp(20px, 4vw, 28px)' }}>
+            <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Confirm new listing</div>
+            <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>Create this listing?</h3>
+            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>You can edit the details later — nothing here is locked in.</p>
+            <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
+              {[
+                ['Address', String(form.address).trim()],
+                ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : '—'],
+                ['Bedrooms', String(form.bedrooms).trim()],
+                ['Landlord', [String(form.landlord_name).trim(), String(form.landlord_email).trim().toLowerCase()].filter(Boolean).join(' · ')],
+              ].map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '5px 0', fontSize: 13 }}>
+                  <span style={{ color: C.inkMute, fontWeight: 600, minWidth: 0, flexShrink: 0 }}>{k}</span>
+                  <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{v}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button onClick={() => setConfirming(false)} disabled={saving}
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '12px 20px', fontSize: 13, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={confirmCreate} disabled={saving}
+                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                {saving ? 'Creating…' : 'Confirm & create'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
