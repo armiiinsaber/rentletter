@@ -95,7 +95,7 @@ export default async function handler(req, res) {
 
     // Footer on cover
     cover.drawLine({ start: { x: 48, y: 60 }, end: { x: 564, y: 60 }, thickness: 0.5, color: RULE });
-    cover.drawText('rentletter.ca · Toronto · Free for landlords + realtors', { x: 48, y: 46, size: 9, font: helv, color: INK_MUTE });
+    cover.drawText('rentletter.ca · Ontario · Free for landlords + realtors', { x: 48, y: 46, size: 9, font: helv, color: INK_MUTE });
     cover.drawText('Compliance: subject to Ontario Human Rights Code', { x: 48, y: 34, size: 9, font: helv, color: INK_MUTE });
 
     // ─── ONE PAGE PER APPLICANT ───

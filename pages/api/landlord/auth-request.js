@@ -106,7 +106,7 @@ function buildMagicLinkEmail(magicUrl) {
         </td></tr>
         <tr><td style="padding-top:24px;border-top:1px solid #e3ddd0;">
           <p style="font-family:'Inter',sans-serif;font-size:12px;color:#86868b;line-height:1.55;margin:0;">
-            Rentletter &middot; Toronto &middot; rentletter.ca
+            Rentletter &middot; Ontario &middot; rentletter.ca
           </p>
         </td></tr>
       </table>

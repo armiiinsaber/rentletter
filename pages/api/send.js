@@ -369,7 +369,7 @@ export default async function handler(req, res) {
                     </table>
                   </td>
                   <td align="right" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #86868b;">
-                    Toronto · Not legal advice
+                    Ontario · Not legal advice
                   </td>
                 </tr>
               </table>

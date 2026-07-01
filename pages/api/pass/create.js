@@ -262,7 +262,7 @@ function buildPassEmail(token, passUrl, expiresDate) {
             <td style="padding-top:24px;border-top:1px solid #e3ddd0;">
               <p style="font-family:'Inter',sans-serif;font-size:12px;color:#86868b;line-height:1.55;margin:0;">
                 Questions? Reply to this email.<br>
-                Rentletter · Toronto · rentletter.ca
+                Rentletter · Ontario · rentletter.ca
               </p>
             </td>
           </tr>
