@@ -765,7 +765,7 @@ export default function Home() {
               </span>
             </span>
             <span style={{ fontSize: 13, fontWeight: 500, color: C.inkInverse }}>
-              Free for Toronto realtors during launch · No credit card
+              Free for Ontario realtors during launch · No credit card
             </span>
           </div>
 
@@ -799,7 +799,7 @@ export default function Home() {
                 <div className="rl-hero-seq" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
                   <span className="rl-rule-draw" style={{ height: 2, background: C.red, borderRadius: 1, display: 'block' }} />
                   <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-                    For Toronto Realtors · 2026
+                    For Ontario Realtors · 2026
                   </span>
                 </div>
 
@@ -1028,7 +1028,7 @@ export default function Home() {
                   Set up your first listing.
                 </h2>
                 <p style={{ fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.6, color: C.inkInverse, marginBottom: 32 }}>
-                  Free for Toronto realtors during launch. No credit card, no setup — your first applicant link is ready in minutes.
+                  Free for Ontario realtors during launch. No credit card, no setup — your first applicant link is ready in minutes.
                 </p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <a href="/landlord" className="rl-btn" style={{
@@ -1064,7 +1064,7 @@ export default function Home() {
                 <FooterCol title="Contact" links={[['info@rentletter.ca', 'mailto:info@rentletter.ca']]} />
               </div>
               <div style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, fontSize: 12.5, color: C.inkMute }}>
-                © {new Date().getFullYear()} Rentletter · Toronto, Canada · Not legal advice
+                © {new Date().getFullYear()} Rentletter · Ontario, Canada · Not legal advice
               </div>
             </div>
           </footer>

@@ -2752,7 +2752,7 @@ export default function LandlordDashboard() {
               <a href="/privacy" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>Privacy</a>
               <a href="/terms" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>Terms</a>
               <a href="mailto:info@rentletter.ca" style={{ fontSize: 12, color: C.inkSoft, textDecoration: 'underline' }}>Contact</a>
-              <span style={{ fontSize: 12, color: C.inkMute }}>Toronto · Not legal advice</span>
+              <span style={{ fontSize: 12, color: C.inkMute }}>Ontario · Not legal advice</span>
             </div>
           </footer>
           </div>{/* close inner padded wrapper */}

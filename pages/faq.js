@@ -23,8 +23,8 @@ const FAQS = [
   },
   {
     category: 'General',
-    q: 'Is it only for Toronto?',
-    a: 'No. We launched in Toronto and Ontario is the primary market, but realtors and landlords anywhere in Canada can use it.',
+    q: 'Is it only for Ontario?',
+    a: 'No. Ontario is our primary market, but realtors and landlords anywhere in Canada can use it.',
   },
   {
     category: 'General',
