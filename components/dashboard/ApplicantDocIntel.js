@@ -32,6 +32,9 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   const [dragOver, setDragOver] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [textBusy, setTextBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
   const inputRef = useRef(null);
   const hasReport = !!result;
 
@@ -115,6 +118,42 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setClearing(false);
   };
 
+  // Stage-2: a SEPARATE landlord verification confirmation for THIS applicant only, as a
+  // branded PDF or paste-ready text. Reads the applicant's own saved analysis (two-key bound).
+  const downloadConfirmPdf = async () => {
+    if (pdfBusy) return;
+    setPdfBusy(true); setError('');
+    try {
+      const r = await fetch('/api/applicants/verify-confirm-pdf', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId, linkId, applicationId }),
+      });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); setError(j?.error || 'Could not generate the verification PDF.'); setPdfBusy(false); return; }
+      const blob = await r.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = `verification-${String(applicantName || 'applicant').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`;
+      document.body.appendChild(link); link.click(); link.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) { setError('Could not generate the verification PDF.'); }
+    setPdfBusy(false);
+  };
+  const copyConfirmText = async () => {
+    if (textBusy) return;
+    setTextBusy(true); setError('');
+    try {
+      const r = await fetch('/api/applicants/verify-confirm-text', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId, linkId, applicationId }),
+      });
+      const j = await r.json();
+      if (!r.ok) { setError(j?.error || 'Could not generate the verification text.'); setTextBusy(false); return; }
+      await navigator.clipboard.writeText(j.text || '');
+      setCopied(true); setTimeout(() => setCopied(false), 2200);
+    } catch (e) { setError('Could not copy the verification text.'); }
+    setTextBusy(false);
+  };
+
   const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
 
   return (
@@ -177,6 +216,22 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                   {insightLoading ? 'Writing insight…' : 'Generate AI insight'}
                 </button>
               )}
+
+              {/* Stage 2 — SEPARATE landlord confirmation for THIS applicant only (PDF + text). */}
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+                <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, marginBottom: 3 }}>Verify &amp; confirm to landlord</div>
+                <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 10 }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only — separate from the ranked shortlist.</div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                  <button onClick={downloadConfirmPdf} disabled={pdfBusy}
+                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                    {pdfBusy && <span className="rl-dispin" aria-hidden="true" />}{pdfBusy ? 'Preparing…' : 'Download PDF'}
+                  </button>
+                  <button onClick={copyConfirmText} disabled={textBusy}
+                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                    {copied ? '✓ Copied' : textBusy ? 'Preparing…' : 'Copy text'}
+                  </button>
+                </div>
+              </div>
 
               {/* Clear / reset this applicant's analysis (removes stale/incorrect verification). */}
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
