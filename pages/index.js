@@ -948,31 +948,9 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── OTHER AUDIENCES — self-serve landlords + property managers + tenants ── */}
+          {/* ── TENANT — arrive through a realtor's invite link ── */}
           <section className="rl-reveal" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'clamp(14px, 2vw, 20px)' }}>
-              {/* Self-serve landlord / PM */}
-              <div className="rl-card rl-card-lift" style={{ padding: 'clamp(22px, 3vw, 28px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="home" size={20} color={C.ink} />
-                </span>
-                <div>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 6 }}>
-                    Renting your own units?
-                  </h3>
-                  <p style={{ fontSize: 14, lineHeight: 1.6, color: C.inkSoft, margin: 0 }}>
-                    Landlords and property managers handling it themselves — without a realtor — get the same dashboard. Keep the commission, run a clean process.
-                  </p>
-                </div>
-                <a href="/landlord" className="rl-btn" style={{
-                  alignSelf: 'flex-start', marginTop: 2,
-                  background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
-                  padding: '11px 18px', fontSize: 14, fontWeight: 600, textDecoration: 'none',
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                }}>
-                  Open the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
-                </a>
-              </div>
               {/* Tenant */}
               <div className="rl-card rl-card-lift" style={{ padding: 'clamp(22px, 3vw, 28px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
