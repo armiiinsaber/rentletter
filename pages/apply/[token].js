@@ -15,6 +15,33 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
+import { isValidEmail } from '../../lib/validation';
+
+// Age (whole years) from an ISO yyyy-mm-dd DOB, accounting for whether this year's
+// birthday has already occurred. Returns null for an empty/unparseable date.
+function ageFromDob(dob) {
+  if (!dob) return null;
+  const d = new Date(`${dob}T00:00:00`);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age -= 1;
+  return age;
+}
+
+// Phone helpers — validate on exactly 10 digits, display as (XXX) XXX-XXXX.
+const phoneDigits = (v) => String(v || '').replace(/\D/g, '');
+const isValidPhone = (v) => phoneDigits(v).length === 10;
+function formatPhone(v) {
+  const d = phoneDigits(v).slice(0, 10);
+  if (d.length === 0) return '';
+  if (d.length < 4) return `(${d}`;
+  if (d.length < 7) return `(${d.slice(0, 3)}) ${d.slice(3)}`;
+  return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
+}
+
+const UNDER_18_MSG = 'You must be at least 18 (the age of majority in Ontario) to submit a rental application on your own. Applicants under 18 need a guarantor — support for that is coming soon.';
 
 // Same application schema the homepage form + generate.js use. Do not rename keys.
 const EMPTY_FORM = {
@@ -46,8 +73,39 @@ export default function ApplyPage() {
   const [error, setError] = useState('');
   const [result, setResult] = useState(null); // { applicationNumber, ownerToken }
   const [copied, setCopied] = useState(false);
+  const [touched, setTouched] = useState({});
+  const [triedSubmit, setTriedSubmit] = useState(false);
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+  const markTouched = (k) => setTouched((t) => ({ ...t, [k]: true }));
+  const showErr = (k) => Boolean(touched[k] || triedSubmit);
+
+  // DOB drives both the (now removed) age field and the 18+ legal-capacity gate. Keep the
+  // derived age in the payload so generate.js still receives `age` — no API change needed.
+  const derivedAge = ageFromDob(form.dateOfBirth);
+  const updateDob = (v) => setForm((f) => ({ ...f, dateOfBirth: v, age: (ageFromDob(v) ?? '') === '' ? '' : String(ageFromDob(v)) }));
+
+  // Per-field validity for the VITAL fields the screening depends on.
+  const vital = {
+    fullName: !!form.fullName.trim(),
+    dateOfBirth: !!form.dateOfBirth && derivedAge != null && derivedAge >= 18,
+    email: isValidEmail(form.email),
+    phone: isValidPhone(form.phone),
+    annualIncome: !!String(form.annualIncome).trim(),
+    employer: !!form.employer.trim(),
+    jobTitle: !!form.jobTitle.trim(),
+    moveInDate: !!form.moveInDate,
+    unit: !!String(form.apartmentDescription).trim(), // pre-filled from the invite's listing
+  };
+  const allVitalValid = Object.values(vital).every(Boolean);
+
+  // Inline error messages (only surfaced once a field is touched or submit was attempted).
+  const emailError = showErr('email') && !vital.email
+    ? (form.email.trim() ? 'Enter a valid email address (name@example.com).' : 'Email is required.') : '';
+  const phoneError = showErr('phone') && !vital.phone
+    ? (phoneDigits(form.phone).length ? 'Enter a 10-digit phone number.' : 'Phone number is required.') : '';
+  const dobError = showErr('dateOfBirth') && !vital.dateOfBirth
+    ? (form.dateOfBirth ? UNDER_18_MSG : 'Date of birth is required.') : '';
 
   // Resolve the invite token once the router has the param.
   useEffect(() => {
@@ -92,12 +150,10 @@ export default function ApplyPage() {
     return () => { cancelled = true; };
   }, [router.isReady, router.query.token]);
 
-  const isFormValid = () =>
-    form.fullName.trim() && form.jobTitle.trim() && String(form.annualIncome).trim();
-
   const submit = async () => {
-    if (!isFormValid()) {
-      setError('Please fill in at least your full name, job title, and annual income.');
+    if (!allVitalValid) {
+      setTriedSubmit(true);
+      setError('Please complete the required fields marked with * — some are missing or need fixing. They’re highlighted below.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -304,27 +360,24 @@ export default function ApplyPage() {
               </div>
 
               <FormSection num="01" title="Where to send it" required>
-                <Field label="Email" value={form.email} onChange={(v) => update('email', v)} placeholder="you@example.com" type="email" />
+                <Field label="Email" required value={form.email} onChange={(v) => update('email', v)} onBlur={() => markTouched('email')} error={emailError} placeholder="you@example.com" type="email" inputMode="email" />
               </FormSection>
 
               {/* No "apartment" section — those details belong to the listing the realtor
                   created (shown read-only in the banner above), not to tenant input. */}
 
               <FormSection num="02" title="About you" required>
-                <Field label="Full name" value={form.fullName} onChange={(v) => update('fullName', v)} placeholder="Jane Doe" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                  <Field label="Age" value={form.age} onChange={(v) => update('age', v)} placeholder="28" type="number" />
-                  <Field label="Date of birth" value={form.dateOfBirth} onChange={(v) => update('dateOfBirth', v)} type="date" />
-                </div>
-                <Field label="Phone" value={form.phone} onChange={(v) => update('phone', v)} placeholder="(416) 555-0142" type="tel" />
+                <Field label="Full name" required value={form.fullName} onChange={(v) => update('fullName', v)} onBlur={() => markTouched('fullName')} error={showErr('fullName') && !vital.fullName ? 'Full name is required.' : ''} placeholder="Jane Doe" />
+                <Field label="Date of birth" required value={form.dateOfBirth} onChange={updateDob} onBlur={() => markTouched('dateOfBirth')} error={dobError} type="date" hint="You must be 18+ (Ontario age of majority) to apply on your own." />
+                <Field label="Phone" required value={form.phone} onChange={(v) => update('phone', formatPhone(v))} onBlur={() => markTouched('phone')} error={phoneError} placeholder="(416) 555-1234" type="tel" inputMode="tel" />
               </FormSection>
 
               <FormSection num="03" title="Employment" required>
-                <Field label="Job title" value={form.jobTitle} onChange={(v) => update('jobTitle', v)} placeholder="Software engineer" />
-                <Field label="Employer" value={form.employer} onChange={(v) => update('employer', v)} placeholder="Shopify" />
+                <Field label="Job title" required value={form.jobTitle} onChange={(v) => update('jobTitle', v)} onBlur={() => markTouched('jobTitle')} error={showErr('jobTitle') && !vital.jobTitle ? 'Job title is required.' : ''} placeholder="Software engineer" />
+                <Field label="Employer" required value={form.employer} onChange={(v) => update('employer', v)} onBlur={() => markTouched('employer')} error={showErr('employer') && !vital.employer ? 'Employer is required.' : ''} placeholder="Shopify" />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
                   <Field label="Years at this job" value={form.yearsAtJob} onChange={(v) => update('yearsAtJob', v)} placeholder="3" />
-                  <Field label="Annual income (CAD)" value={form.annualIncome} onChange={(v) => update('annualIncome', v)} placeholder="85,000" type="number" />
+                  <Field label="Annual income (CAD)" required value={form.annualIncome} onChange={(v) => update('annualIncome', v)} onBlur={() => markTouched('annualIncome')} error={showErr('annualIncome') && !vital.annualIncome ? 'Annual income is required.' : ''} placeholder="85,000" type="number" inputMode="numeric" />
                 </div>
               </FormSection>
 
@@ -339,7 +392,7 @@ export default function ApplyPage() {
               </FormSection>
 
               <FormSection num="05" title="Your move" required>
-                <Field label="Desired move-in date" value={form.moveInDate} onChange={(v) => update('moveInDate', v)} type="date" />
+                <Field label="Desired move-in date" required value={form.moveInDate} onChange={(v) => update('moveInDate', v)} onBlur={() => markTouched('moveInDate')} error={showErr('moveInDate') && !vital.moveInDate ? 'Move-in date is required.' : ''} type="date" />
                 <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={(v) => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
               </FormSection>
 
@@ -408,20 +461,32 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
+              <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.55 }}>
+                Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required. Your realtor screens on these, so please double-check they’re accurate before you submit.
+              </p>
               <button
                 onClick={submit}
-                disabled={status === 'submitting' || !isFormValid()}
+                disabled={status === 'submitting' || !allVitalValid}
                 className="rl-btn"
                 style={{
                   width: '100%', marginTop: 8,
-                  background: (status === 'submitting' || !isFormValid()) ? C.ruleDark : C.red,
+                  background: (status === 'submitting' || !allVitalValid) ? C.ruleDark : C.red,
                   color: C.paper, border: 'none', borderRadius: R.ctrl,
                   padding: '17px', fontSize: 16, fontWeight: 700,
-                  cursor: (status === 'submitting' || !isFormValid()) ? 'not-allowed' : 'pointer',
+                  cursor: (status === 'submitting' || !allVitalValid) ? 'not-allowed' : 'pointer',
                   minHeight: 56,
                 }}>
                 {status === 'submitting' ? 'Submitting…' : 'Submit application'}
               </button>
+              {status === 'ready' && !allVitalValid && (() => {
+                const labels = { fullName: 'Full name', dateOfBirth: 'Date of birth (18+)', email: 'Valid email', phone: '10-digit phone', annualIncome: 'Annual income', employer: 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };
+                const missing = Object.keys(vital).filter((k) => !vital[k]).map((k) => labels[k]);
+                return (
+                  <p style={{ fontSize: 12.5, color: C.inkMute, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
+                    Still needed before you can submit: <span style={{ color: C.inkSoft, fontWeight: 600 }}>{missing.join(', ')}</span>.
+                  </p>
+                );
+              })()}
               <p style={{ fontSize: 12, color: C.inkMute, textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
                 Free for applicants. You’ll get an application number to share — your realtor sees it in their dashboard.
               </p>
@@ -447,14 +512,20 @@ function FormSection({ num, title, required, children }) {
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = 'text' }) {
+function Field({ label, value, onChange, onBlur, placeholder, type = 'text', required, error, hint, inputMode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${C.rule}`, background: 'transparent', color: C.ink, outline: 'none', transition: 'border-color 0.2s' }}
+      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>
+        {label}{required && <span aria-hidden="true" style={{ color: C.red, fontWeight: 700, marginLeft: 4 }}>*</span>}
+      </label>
+      <input type={type} inputMode={inputMode} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
+        aria-required={required || undefined} aria-invalid={error ? true : undefined}
+        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${error ? C.red : C.rule}`, background: 'transparent', color: C.ink, outline: 'none', transition: 'border-color 0.2s' }}
         onFocus={(e) => (e.target.style.borderBottomColor = C.ink)}
-        onBlur={(e) => (e.target.style.borderBottomColor = C.rule)} />
+        onBlur={(e) => { e.target.style.borderBottomColor = error ? C.red : C.rule; onBlur && onBlur(); }} />
+      {error
+        ? <div style={{ fontSize: 12, color: C.red, marginTop: 6, lineHeight: 1.5 }}>{error}</div>
+        : hint ? <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>{hint}</div> : null}
     </div>
   );
 }
