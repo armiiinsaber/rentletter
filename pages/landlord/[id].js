@@ -11,7 +11,7 @@ import { GlobalStyle, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../lib/supabase/admin';
-import { fetchListingApplicants } from '../../lib/supabaseBridge';
+import { fetchListingApplicants, attachDocVerifications } from '../../lib/supabaseBridge';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -42,27 +42,9 @@ export async function getServerSideProps(ctx) {
   try {
     const admin = getSupabaseAdminClient();
     initialApplicants = await fetchListingApplicants(admin, listing.id);
-    // Merge the realtor-side document-intelligence columns (kept off fetchListingApplicants
-    // so the ranking/report flow is untouched). Graceful if the columns don't exist yet.
-    try {
-      const { data: extras } = await admin
-        .from('listing_applicants').select('id, application_id, doc_verifications, ai_insight').eq('listing_id', listing.id);
-      if (Array.isArray(extras)) {
-        const m = new Map(extras.map((e) => [e.id, e]));
-        // [temp diagnostic] which junction rows actually hold verification in the DB.
-        console.log('[verif-trace][dashboard] listing=%s extras=%j', listing.id,
-          extras.map((e) => ({ id: e.id, application_id: e.application_id, hasDocVerif: e.doc_verifications != null })));
-        initialApplicants = initialApplicants.map((a) => {
-          const e = m.get(a.linkId);
-          const ownApp = a.application?.id;
-          // STRICT per-row attribution: only from the row matching BOTH linkId AND application_id.
-          const own = e && String(e.application_id) === String(ownApp) ? e : null;
-          if (e && !own) console.warn('[verif-trace][dashboard] ATTRIBUTION MISMATCH linkId=%s applicantApp=%s rowApp=%s (ignoring)', a.linkId, ownApp, e.application_id);
-          console.log('[verif-trace][dashboard] linkId=%s app_id=%s ownDocVerif=%s', a.linkId, ownApp, own?.doc_verifications != null);
-          return { ...a, docVerifications: own?.doc_verifications || null, aiInsight: own?.ai_insight || null };
-        });
-      }
-    } catch (e) { /* columns not added yet — feature simply starts empty */ }
+    // Attach doc_verifications/ai_insight via the shared STRICT two-key helper (same as the
+    // applicants-refresh and landlord-report paths), so attribution is identical everywhere.
+    await attachDocVerifications(admin, listing.id, initialApplicants, 'dashboard');
   } catch (e) {
     console.error('[listing gSSP] applicants read failed:', e?.message || e);
   }

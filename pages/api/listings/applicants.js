@@ -5,7 +5,7 @@
 // Used to refresh the dashboard after adding an applicant.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
-import { fetchListingApplicants } from '../../../lib/supabaseBridge';
+import { fetchListingApplicants, attachDocVerifications } from '../../../lib/supabaseBridge';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -31,6 +31,9 @@ export default async function handler(req, res) {
   try {
     const admin = getSupabaseAdminClient();
     const applicants = await fetchListingApplicants(admin, listing.id);
+    // Same STRICT two-key doc_verifications attribution as the dashboard/report reads, so a
+    // refresh keeps each applicant's verification correct and consistent.
+    await attachDocVerifications(admin, listing.id, applicants, 'refresh');
     return res.status(200).json({ applicants });
   } catch (e) {
     console.error('[listings/applicants] error:', e?.message || e);
