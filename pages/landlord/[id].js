@@ -53,8 +53,8 @@ export async function getServerSideProps(ctx) {
 
 const Row = ({ label, value }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '9px 0', borderBottom: `1px solid ${C.rule}` }}>
-    <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 600 }}>{label}</span>
-    <span style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, textAlign: 'right' }}>{value}</span>
+    <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 600, minWidth: 0 }}>{label}</span>
+    <span style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{value}</span>
   </div>
 );
 
@@ -323,6 +323,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     const borderColor = top5 ? C.red : C.ruleDark;
     return (
       <div key={a.linkId} style={{
+        minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
         boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
@@ -549,7 +550,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                     ⇄ Compare top tenants
                   </button>
                 )}
-                <div style={{ display: 'grid', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
                   {active.map((a, idx) => (
                     <React.Fragment key={a.linkId}>
                       {idx === 5 && (
@@ -570,7 +571,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                     <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
                       De-prioritized for the screenable reasons noted. Still shown to your landlord, at the bottom.
                     </p>
-                    <div style={{ display: 'grid', gap: 12 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
                       {setAsideList.map((a) => renderApplicantCard(a, { rank: null, top5: false, isSetAside: true }))}
                     </div>
                   </div>
