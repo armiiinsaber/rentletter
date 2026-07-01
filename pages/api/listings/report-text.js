@@ -7,7 +7,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
-import { loadReportContext } from '../../../lib/listingReportData';
+import { loadReportContext, verificationText } from '../../../lib/listingReportData';
 import { reasonLabel } from '../../../lib/setAsideReasons';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -62,6 +62,8 @@ export default async function handler(req, res) {
         rentToIncomePct: a.rent_to_income_ratio ?? null,
         referencesProvided: Array.isArray(a.references) ? a.references.length : 0,
         scorecardOverall: a.scorecard?.overall ?? null,
+        // Landlord-safe, preformatted verification line (verified facts only — no discrepancies).
+        verification: verificationText(row.verification),
       };
     };
     const ranked = ctx.active.map(toCandidate);
@@ -104,8 +106,9 @@ Reply to set up viewings. Figures are applicant-reported.
 RULES:
 - "TOP MATCHES" holds the candidates in topMatches (max 5), keeping their rank numbers. "ALSO RANKED" holds alsoRanked (continue the rank numbers). Put the section header on its own line, then a blank line, then the blocks.
 - Candidate first line: "[ <rank> ]  " (space inside brackets, two spaces after) then the NAME IN ALL CAPS, then " — " then role, employer.
-- Labelled lines indented exactly 7 spaces. Each: label, one space, "." leader dots, one space, value — padded so the "label + dots" segment is 15 chars wide and EVERY value lines up. Labels verbatim in order: Income, Tenure, References, Fit. Omit a line only if the fact is missing.
+- Labelled lines indented exactly 7 spaces. Each: label, one space, "." leader dots, one space, value — padded so the "label + dots" segment is 15 chars wide and EVERY value lines up. Labels verbatim in order: Income, Tenure, References, Verification, Fit. Omit a line only if the fact is missing (the Verification line is ALWAYS present).
 - Income value: "$<amount>/yr" then two spaces then "(<pct>% rent-to-income)" if a ratio exists. If householdIncome is present, use it and write "$<total>/yr (household)".
+- Verification value: the candidate's "verification" field VERBATIM — never shorten, alter, or add to it. It is already landlord-safe: it says either "Documents verified · …" or "Not verified — no documents provided". NEVER add any document detail, discrepancy, mismatch, or credit interpretation beyond that exact string.
 - Fit value: ONE short factual phrase from the data (e.g. "comfortable on income", "within typical range", "long, stable tenure"). Under ~4 words.
 - SET ASIDE: one line per applicant — "- <NAME IN UPPERCASE> — <reason verbatim from the data>". No labelled block, no scores. These were de-prioritized for screenable reasons; present them neutrally.
 - Between candidate blocks (within a section) put a blank line, a 28 em-dash rule, a blank line. Use one em-dash rule before the sign-off.
@@ -115,7 +118,7 @@ STYLE:
 - Short lines that won't wrap badly on a narrow phone.
 
 COMPLIANCE (Ontario Human Rights Code) — STRICT:
-- Facts ONLY from: income, employment tenure, rent-to-income, references, scorecard fit, and the provided set-aside reasons. Use the data; never invent.
+- Facts ONLY from: income, employment tenure, rent-to-income, references, scorecard fit, the provided verification string, and the provided set-aside reasons. Use the data; never invent. The verification string is the ONLY place document/credit facts may appear, and it must be used verbatim.
 - NEVER mention or imply protected grounds: race, ancestry, place of origin, citizenship, ethnic origin, creed/religion, sex, sexual orientation, gender identity, age, marital status, family status, disability, or receipt of public assistance.
 - Say "household" rather than "couple/family". Do not infer age from job/student status.
 - Be factual and neutral. Do not over-claim.
