@@ -3675,9 +3675,29 @@ function DemoSendToLandlord({ active = [], setAside = [], unit, realtor, brand }
   const total = active.length + setAside.length;
 
   // Map a KV-shaped demo applicant into the white-label PDF builder's row shape.
+  // SAMPLE landlord-safe verification (no API): the strongest applicants show as verified with
+  // a credit score, the rest as a neutral "not verified". Same shape the real report uses.
+  const demoVerification = (a) => {
+    const o = a.scorecard?.overall ?? 0;
+    const inc = `$${Number(a.employment?.annualIncome || 0).toLocaleString()}`;
+    if (o >= 4.5) return { verified: true, incomeVerified: true, incomeFigure: inc, employmentVerified: true, employerName: a.employment?.employer, credit: { score: 748, band: 'Very Good', bureau: 'Equifax' } };
+    if (o >= 4.0) return { verified: true, incomeVerified: true, incomeFigure: inc, employmentVerified: true, employerName: a.employment?.employer, credit: { score: 705, band: 'Good', bureau: 'TransUnion' } };
+    return { verified: false };
+  };
+  const demoVerificationText = (a) => {
+    const v = demoVerification(a);
+    if (!v.verified) return 'Not verified — no documents provided';
+    const parts = ['Documents verified'];
+    if (v.incomeVerified) parts.push(`income verified${v.incomeFigure ? ` (${v.incomeFigure})` : ''}`);
+    if (v.employmentVerified) parts.push('employment verified');
+    if (v.credit && v.credit.score != null) { const meta = [v.credit.bureau, v.credit.band].filter(Boolean).join(', '); parts.push(`credit score ${v.credit.score}${meta ? ` (${meta})` : ''}`); }
+    return parts.join(' · ');
+  };
+
   const toRow = (a, reasonCode) => ({
     decisionNotes: '',
     decisionReasonCode: reasonCode || null,
+    verification: demoVerification(a),
     application: {
       application_number: a.applicationNumber,
       full_name: a.tenant?.fullName,
@@ -3716,6 +3736,7 @@ function DemoSendToLandlord({ active = [], setAside = [], unit, realtor, brand }
       if (yrs) out.push(leader('Tenure', `${yrs} yr${String(yrs) === '1' ? '' : 's'}`));
       const refs = (a.references || []).length;
       if (refs) out.push(leader('References', `${refs} provided`));
+      out.push(leader('Verification', demoVerificationText(a)));
       out.push(leader('Fit', fitPhrase(a)));
       return out.join('\n');
     };
