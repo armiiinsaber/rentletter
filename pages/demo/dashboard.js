@@ -3,6 +3,7 @@ import Head from 'next/head';
 import ChatWidget from '../../components/ChatWidget';
 import { C as THEME, R, SH, EASE, FONT } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader, ScrollFade, useReveal } from '../../components/ui';
+import NotificationBell from '../../components/dashboard/NotificationBell';
 import { DEMO_BRAND_NAME, DEMO_BRAND_BROKERAGE, DEMO_BRAND_LOGO_PNG, DEMO_LOGO_CONCEPTS } from '../../lib/demoBranding';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import DocIntelReport from '../../components/dashboard/DocIntelReport';
@@ -292,6 +293,12 @@ const DEMO_LISTING = {
   createdAt: new Date(Date.now() - 86400000 * 3).toISOString(),
 };
 const DEMO_REALTOR = { isRealtor: true, fullName: 'Demo Realtor', brokerage: 'Sample Realty', phone: '(416) 555-0123', licenseNumber: '' };
+
+// Hardcoded SAMPLE notifications for the demo bell — no API/Supabase calls. Illustrative only.
+const DEMO_NOTIFICATIONS = [
+  { id: 'demo-n1', type: 'new', title: 'New application from Priya Sharma', listingName: '210 Carlaw Ave, Unit 4', ts: Date.now() - 2 * 60 * 60 * 1000, unread: true },
+  { id: 'demo-n2', type: 'withdrawn', title: 'Marc Tremblay withdrew', listingName: '210 Carlaw Ave, Unit 4', ts: Date.now() - 26 * 60 * 60 * 1000, unread: true },
+];
 
 export default function LandlordDashboard() {
   const [appNumberInput, setAppNumberInput] = useState('');
@@ -1561,6 +1568,8 @@ export default function LandlordDashboard() {
                   <Icon name="mail" size={15} /> Sign in &amp; save on all devices
                 </button>
               )}
+              {/* Sample bell — showcases the notification center; no real data / no API calls. */}
+              <NotificationBell demo items={DEMO_NOTIFICATIONS} />
             </div>
         </ScrollHeader>
 
