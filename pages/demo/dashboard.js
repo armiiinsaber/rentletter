@@ -3675,15 +3675,16 @@ function DemoSendToLandlord({ active = [], setAside = [], unit, realtor, brand }
   const total = active.length + setAside.length;
 
   // Map a KV-shaped demo applicant into the white-label PDF builder's row shape.
-  // SAMPLE landlord-safe verification (no API): the strongest applicants show as verified with
-  // a credit score, the rest as a neutral "not verified". Same shape the real report uses.
-  const demoVerification = (a) => {
-    const o = a.scorecard?.overall ?? 0;
-    const inc = `$${Number(a.employment?.annualIncome || 0).toLocaleString()}`;
-    if (o >= 4.5) return { verified: true, incomeVerified: true, incomeFigure: inc, employmentVerified: true, employerName: a.employment?.employer, credit: { score: 748, band: 'Very Good', bureau: 'Equifax' } };
-    if (o >= 4.0) return { verified: true, incomeVerified: true, incomeFigure: inc, employmentVerified: true, employerName: a.employment?.employer, credit: { score: 705, band: 'Good', bureau: 'TransUnion' } };
-    return { verified: false };
+  // SAMPLE landlord-safe verification (no API). Verification is tied to WHICH applicant
+  // actually had documents analyzed — NOT to score or stated application data. In the demo,
+  // only Priya Sharma has documents (see the AI document-verification showcase above), so she
+  // is the only applicant shown as verified; everyone else is "Not verified — no documents
+  // provided". (This is the fix: a high-ranked applicant with no documents must NOT show
+  // "verified".)
+  const DEMO_VERIFIED = {
+    'Priya Sharma': { verified: true, incomeVerified: true, incomeFigure: '$92,000', employmentVerified: true, credit: { score: 748, band: 'Very Good', bureau: 'Equifax' } },
   };
+  const demoVerification = (a) => DEMO_VERIFIED[a.tenant?.fullName || ''] || { verified: false };
   const demoVerificationText = (a) => {
     const v = demoVerification(a);
     if (!v.verified) return 'Not verified — no documents provided';
