@@ -3675,30 +3675,11 @@ function DemoSendToLandlord({ active = [], setAside = [], unit, realtor, brand }
   const total = active.length + setAside.length;
 
   // Map a KV-shaped demo applicant into the white-label PDF builder's row shape.
-  // SAMPLE landlord-safe verification (no API). Verification is tied to WHICH applicant
-  // actually had documents analyzed — NOT to score or stated application data. In the demo,
-  // only Priya Sharma has documents (see the AI document-verification showcase above), so she
-  // is the only applicant shown as verified; everyone else is "Not verified — no documents
-  // provided". (This is the fix: a high-ranked applicant with no documents must NOT show
-  // "verified".)
-  const DEMO_VERIFIED = {
-    'Priya Sharma': { verified: true, incomeVerified: true, incomeFigure: '$92,000', employmentVerified: true, credit: { score: 748, band: 'Very Good', bureau: 'Equifax' } },
-  };
-  const demoVerification = (a) => DEMO_VERIFIED[a.tenant?.fullName || ''] || { verified: false };
-  const demoVerificationText = (a) => {
-    const v = demoVerification(a);
-    if (!v.verified) return 'Not verified — no documents provided';
-    const parts = ['Documents verified'];
-    if (v.incomeVerified) parts.push(`income verified${v.incomeFigure ? ` (${v.incomeFigure})` : ''}`);
-    if (v.employmentVerified) parts.push('employment verified');
-    if (v.credit && v.credit.score != null) { const meta = [v.credit.bureau, v.credit.band].filter(Boolean).join(', '); parts.push(`credit score ${v.credit.score}${meta ? ` (${meta})` : ''}`); }
-    return parts.join(' · ');
-  };
-
+  // The GROUP shortlist is RANKING ONLY — no verification is attached here. (Document
+  // verification is a separate Stage-2, per-finalist confirmation.)
   const toRow = (a, reasonCode) => ({
     decisionNotes: '',
     decisionReasonCode: reasonCode || null,
-    verification: demoVerification(a),
     application: {
       application_number: a.applicationNumber,
       full_name: a.tenant?.fullName,
@@ -3737,7 +3718,6 @@ function DemoSendToLandlord({ active = [], setAside = [], unit, realtor, brand }
       if (yrs) out.push(leader('Tenure', `${yrs} yr${String(yrs) === '1' ? '' : 's'}`));
       const refs = (a.references || []).length;
       if (refs) out.push(leader('References', `${refs} provided`));
-      out.push(leader('Verification', demoVerificationText(a)));
       out.push(leader('Fit', fitPhrase(a)));
       return out.join('\n');
     };
