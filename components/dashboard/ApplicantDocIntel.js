@@ -30,6 +30,8 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   const [insightLoading, setInsightLoading] = useState(false);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
   const inputRef = useRef(null);
   const hasReport = !!result;
 
@@ -87,6 +89,30 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       setError('Could not generate the insight.');
     }
     setInsightLoading(false);
+  };
+
+  // Clear this applicant's OWN doc_verifications + ai_insight (owner-auth, two-key bound). After
+  // this the applicant shows "Not verified" everywhere (dashboard + landlord report). Used to
+  // remove stale/incorrect verification.
+  const clearAnalysis = async () => {
+    if (clearing) return;
+    setClearing(true); setError('');
+    try {
+      const r = await fetch('/api/applicants/clear-analysis', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ listingId, linkId, applicationId }),
+      });
+      const j = await r.json();
+      if (!r.ok) { setError(j?.error || 'Could not clear the analysis.'); setClearing(false); setConfirmClear(false); return; }
+      setResult(null);
+      setInsight('');
+      setFiles([]);
+      setConfirmClear(false);
+      onSaved?.({ docVerifications: null, aiInsight: null });
+    } catch (e) {
+      setError('Could not clear the analysis.');
+    }
+    setClearing(false);
   };
 
   const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
@@ -151,6 +177,30 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                   {insightLoading ? 'Writing insight…' : 'Generate AI insight'}
                 </button>
               )}
+
+              {/* Clear / reset this applicant's analysis (removes stale/incorrect verification). */}
+              <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+                {!confirmClear ? (
+                  <button onClick={() => { setConfirmClear(true); setError(''); }} disabled={clearing}
+                    style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkMute, borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                    Clear document analysis
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
+                      Remove this applicant’s document analysis? They’ll show as <strong style={{ color: C.ink }}>not verified</strong> on the dashboard and the landlord report.
+                    </span>
+                    <button onClick={clearAnalysis} disabled={clearing}
+                      style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: clearing ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      {clearing && <span className="rl-dispin" aria-hidden="true" />}{clearing ? 'Clearing…' : 'Clear'}
+                    </button>
+                    <button onClick={() => setConfirmClear(false)} disabled={clearing}
+                      style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
