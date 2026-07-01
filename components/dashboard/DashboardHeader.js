@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { ScrollHeader, Wordmark, Icon } from '../ui';
 import { C, R } from '../theme';
 import StatusBadge from './StatusBadge';
+import NotificationBell from './NotificationBell';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 
 function initialsOf(profile) {
@@ -36,6 +37,8 @@ export default function DashboardHeader({ profile }) {
             tidy right-aligned row on small screens (no overflow). */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, rowGap: 8, flexWrap: 'wrap', minWidth: 0, marginLeft: 'auto' }}>
           <StatusBadge profile={profile} />
+          {/* Bell — on-load notifications for this realtor's listings. */}
+          <NotificationBell />
           {/* Avatar (saved logo or initials) + name → /profile. */}
           <a href="/profile" className="rl-btn" title="You & your brand" aria-label="Open your profile"
             style={{ ...pill, textDecoration: 'none', gap: 8, padding: '0 12px 0 4px', background: C.card, border: `1px solid ${C.ruleDark}`, cursor: 'pointer', maxWidth: 'min(46vw, 210px)' }}>
