@@ -3625,15 +3625,16 @@ function DemoRankedList({ applications, decisions, unit, realtorProfile, setDeci
 // data is screenable-facts-only by construction (income / employment / references / consistency).
 const SAMPLE_DOCINTEL = {
   analyzedAt: '2026-06-25T15:00:00Z',
-  documentCount: 3,
+  documentCount: 4,
   documents: [
     { filename: 'paystub-may.pdf', documentType: 'pay stub', extracted: { applicantName: 'Priya Sharma', income: '$3,540 net / semi-monthly', payFrequency: 'Semi-monthly', employer: 'Northbridge Analytics', employmentType: 'Full-time', jobTitle: 'Data Analyst', documentDate: 'May 31, 2026' }, notes: 'Gross annualizes to ~$92,000.' },
     { filename: 'employment-letter.pdf', documentType: 'employment letter', extracted: { applicantName: 'Priya Sharma', income: '$92,000 / year', employer: 'Northbridge Analytics', employmentType: 'Full-time, permanent', jobTitle: 'Data Analyst', documentDate: 'Jun 2, 2026' }, notes: 'Signed by HR; confirms salary and start date.' },
+    { filename: 'equifax-report.pdf', documentType: 'credit report', extracted: { applicantName: 'Priya Sharma', creditScore: 748, scoreBand: 'Very Good', bureau: 'Equifax', reportDate: 'Jun 1, 2026', accountsCount: 6, delinquencies: 'None reported', collections: 'None reported', employer: 'Northbridge Analytics' }, notes: 'Consumer credit report.' },
     { filename: 'id-front.jpg', documentType: 'government ID', extracted: { applicantName: 'Priya Sharma' }, notes: 'Name used only to confirm identity across documents.' },
   ],
   crossReference: [
-    { field: 'Applicant name', status: 'consistent', detail: 'Matches across the pay stub, employment letter, and ID.' },
-    { field: 'Employer', status: 'consistent', detail: 'Northbridge Analytics on both the pay stub and the employment letter.' },
+    { field: 'Applicant name', status: 'consistent', detail: 'Matches across the pay stub, employment letter, credit report, and ID.' },
+    { field: 'Employer', status: 'consistent', detail: 'Northbridge Analytics on the pay stub, employment letter, and credit report.' },
     { field: 'Income', status: 'consistent', detail: 'Pay stub annualizes to ~$92,000, matching the employment letter.' },
   ],
   comparisons: [
@@ -3641,7 +3642,7 @@ const SAMPLE_DOCINTEL = {
     { field: 'Employer', stated: 'Northbridge Analytics', found: 'Northbridge Analytics', status: 'match' },
     { field: 'Job title', stated: 'Data Analyst', found: 'Data Analyst', status: 'match' },
   ],
-  overallSummary: 'Income, employer, and job title on the application are corroborated by the pay stub and employment letter, and the applicant name is consistent across all three documents.',
+  overallSummary: 'Income, employer, and job title on the application are corroborated by the pay stub and employment letter; the Equifax credit report shows a score of 748 (Very Good) with no reported delinquencies or collections; and the applicant name is consistent across all four documents.',
   confidence: 'high',
 };
 const SAMPLE_INSIGHT = 'On the stated $92,000 income, rent of $2,600 works out to roughly 34% rent-to-income, within a typical range for this unit. Employment reads as stable — a full-time, permanent Data Analyst role at Northbridge Analytics, corroborated by both a pay stub and a signed employment letter, with figures consistent across the documents. Two references were provided, including a previous landlord. The uploaded documents confirm the application’s income, employer, and job title with no discrepancies, and the applicant name matches across the pay stub, letter, and ID.';

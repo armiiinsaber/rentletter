@@ -16,14 +16,22 @@ const cmp = {
 };
 
 const DOC_LABEL = {
-  'pay stub': 'Pay stub', 'employment letter': 'Employment letter', 'bank statement': 'Bank statement',
-  'government ID': 'Government ID', 'reference letter': 'Reference letter', 'tax document': 'Tax document', other: 'Document',
+  'pay stub': 'Pay stub', 'employment letter': 'Employment letter', 'credit report': 'Credit report',
+  'bank statement': 'Bank statement', 'government ID': 'Government ID', 'reference letter': 'Reference letter',
+  'tax document': 'Tax document', other: 'Document',
 };
+// Pretty label for any type — known label, else the model's specific custom label as-is.
+const prettyType = (t) => DOC_LABEL[t] || (t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Document');
 
 const FIELD_LABEL = {
   applicantName: 'Name', income: 'Income', payFrequency: 'Pay frequency', employer: 'Employer',
   employmentType: 'Employment', jobTitle: 'Job title', documentDate: 'Date',
+  accountsCount: 'Accounts / tradelines', delinquencies: 'Delinquencies', collections: 'Collections',
+  bureau: 'Bureau', scoreBand: 'Score band', reportDate: 'Report date',
 };
+// Which fact rows to show (credit score/band/bureau/date render in the headline block instead).
+const STD_FIELDS = ['applicantName', 'income', 'payFrequency', 'employer', 'employmentType', 'jobTitle', 'documentDate'];
+const CREDIT_ROW_FIELDS = ['accountsCount', 'delinquencies', 'collections', 'employer', 'applicantName', 'documentDate'];
 
 function Chip({ children, fg, bg }) {
   return (
@@ -100,24 +108,54 @@ export default function DocIntelReport({ result, insight }) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
             {documents.map((d, i) => {
               const ex = d.extracted || {};
-              const rows = Object.keys(FIELD_LABEL).filter((k) => ex[k] != null && ex[k] !== '');
+              const type = d.documentType || '';
+              const isUnrecognized = d.unrecognized === true || /unrecognized/i.test(type);
+              const isCredit = !isUnrecognized && (/credit\s*report/i.test(type) || ex.creditScore != null || ex.scoreBand != null);
+              const rowKeys = (isCredit ? CREDIT_ROW_FIELDS : STD_FIELDS).filter((k) => ex[k] != null && ex[k] !== '');
               return (
-                <div key={i} style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 12 }}>
+                <div key={i} style={{ background: C.paper, border: `1px solid ${isUnrecognized ? AMBER : C.rule}`, borderRadius: R.card, padding: 12 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                    <Chip fg={C.paper} bg={C.ink}>{DOC_LABEL[d.documentType] || 'Document'}</Chip>
+                    <Chip fg={isUnrecognized ? AMBER : C.paper} bg={isUnrecognized ? AMBER_BG : C.ink}>{isUnrecognized ? 'Other / Unrecognized' : prettyType(type)}</Chip>
                     <span style={{ fontSize: 11, color: C.inkMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={d.filename}>{d.filename}</span>
                   </div>
-                  {rows.length > 0 ? (
+
+                  {/* Unrecognized / possibly-invalid upload — flag it clearly. */}
+                  {isUnrecognized && (
+                    <div style={{ background: AMBER_BG, border: `1px solid ${AMBER}`, borderLeft: `3px solid ${AMBER}`, borderRadius: R.ctrl, padding: '9px 11px', marginBottom: rowKeys.length ? 10 : 0 }}>
+                      <div style={{ fontSize: 11.5, fontWeight: 800, color: AMBER, marginBottom: 2 }}>⚠ May not be a valid supporting document</div>
+                      <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>{d.notes || 'This file does not appear to be a recognizable rental-screening document. Ask the applicant to resend.'}</div>
+                    </div>
+                  )}
+
+                  {/* Credit report — the SCORE is the headline fact. */}
+                  {isCredit && ex.creditScore != null && (
+                    <div style={{ background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '10px 12px', marginBottom: 10 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>Credit score</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 34, fontWeight: 800, color: C.ink, lineHeight: 1 }}>{ex.creditScore}</span>
+                        {ex.scoreBand && <Chip fg={C.ink} bg={C.card}>{ex.scoreBand}</Chip>}
+                      </div>
+                      {(ex.bureau || ex.reportDate) && (
+                        <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 5 }}>
+                          {[ex.bureau, ex.reportDate && `as of ${ex.reportDate}`].filter(Boolean).join('  ·  ')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {rowKeys.length > 0 ? (
                     <div style={{ display: 'grid', gap: 4 }}>
-                      {rows.map((k) => (
+                      {rowKeys.map((k) => (
                         <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5 }}>
-                          <span style={{ color: C.inkMute, fontWeight: 600 }}>{FIELD_LABEL[k]}</span>
+                          <span style={{ color: C.inkMute, fontWeight: 600 }}>{FIELD_LABEL[k] || k}</span>
                           <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', overflowWrap: 'anywhere' }}>{String(ex[k])}</span>
                         </div>
                       ))}
                     </div>
-                  ) : <div style={{ fontSize: 12, color: C.inkMute }}>No screenable fields read.</div>}
-                  {d.notes && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 8, lineHeight: 1.45 }}>{d.notes}</div>}
+                  ) : (!isCredit && !isUnrecognized) ? <div style={{ fontSize: 12, color: C.inkMute }}>No screenable fields read.</div> : null}
+
+                  {/* Notes (for unrecognized docs the note is already shown in the flag box). */}
+                  {d.notes && !isUnrecognized && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 8, lineHeight: 1.45 }}>{d.notes}</div>}
                 </div>
               );
             })}
