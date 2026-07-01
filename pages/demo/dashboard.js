@@ -51,11 +51,11 @@ const MIXED_RENTERS = [
     disclosures: null,
     scorecard: {
       incomeStability: { score: 5, note: '5 years permanent full-time at a major hospital' },
-      rentAffordability: { score: 4, note: '34% of monthly income' },
+      rentAffordability: { score: 4.7, note: '34% of monthly income' },
       rentalHistory: { score: 5, note: '4 years, landlord reference confirmed' },
       longTermIntent: { score: 4, note: 'Wants a stable long-term home near work' },
       disclosures: { score: 5, note: 'Nothing to address' },
-      overall: 4.6,
+      overall: 4.7,
     },
   },
   {
@@ -129,11 +129,11 @@ const MIXED_RENTERS = [
     disclosures: 'One late rent payment two years ago during a job transition; caught up the same month. Can provide guarantor if helpful.',
     scorecard: {
       incomeStability: { score: 3, note: '7 years with one employer; single income' },
-      rentAffordability: { score: 2, note: '51% of income on rent alone — stretched without a guarantor' },
+      rentAffordability: { score: 3.4, note: '51% of income on rent alone — stretched without a guarantor' },
       rentalHistory: { score: 4, note: '5 years, one disclosed late payment since resolved' },
       longTermIntent: { score: 4, note: 'Moving for school stability; likely long-term' },
       disclosures: { score: 4, note: 'Disclosed the late payment and offered a guarantor' },
-      overall: 3.4,
+      overall: 3.7,
     },
   },
   {
@@ -181,11 +181,11 @@ const MIXED_RENTERS = [
     disclosures: 'Self-employed — income varies by season. Two years of Notice of Assessment and business statements available.',
     scorecard: {
       incomeStability: { score: 3, note: 'Self-employed; income varies but 8-year track record' },
-      rentAffordability: { score: 3, note: '46% of declared income — verify with NOAs' },
+      rentAffordability: { score: 3.8, note: '46% of declared income — verify with NOAs' },
       rentalHistory: { score: 4, note: '10 years with one landlord, strong reference' },
       longTermIntent: { score: 4, note: 'Roots in the neighbourhood via her business' },
       disclosures: { score: 4, note: 'Offered NOAs and business statements upfront' },
-      overall: 3.6,
+      overall: 3.8,
     },
   },
   {
@@ -207,11 +207,11 @@ const MIXED_RENTERS = [
     disclosures: 'Stipend-based income. Parent is co-signing as guarantor with verified income; documentation available.',
     scorecard: {
       incomeStability: { score: 2, note: 'Stipend income; relies on a guarantor' },
-      rentAffordability: { score: 2, note: 'Rent is 92% of own income — guarantor required' },
+      rentAffordability: { score: 1, note: 'Rent is 92% of own income — guarantor required' },
       rentalHistory: { score: 3, note: '2 years in student housing' },
       longTermIntent: { score: 3, note: 'Likely 2-3 more years in the program' },
       disclosures: { score: 5, note: 'Guarantor offered proactively' },
-      overall: 3.0,
+      overall: 2.8,
     },
   },
   {
@@ -233,11 +233,11 @@ const MIXED_RENTERS = [
     disclosures: 'Newcomer to Canada — limited local rental and credit history. Signed employment offer, first and last month, and international references available.',
     scorecard: {
       incomeStability: { score: 4, note: 'Signed full-time offer; partner currently job searching' },
-      rentAffordability: { score: 4, note: '32% of primary income' },
+      rentAffordability: { score: 4.8, note: '32% of primary income' },
       rentalHistory: { score: 2, note: 'Strong international history; limited Canadian record' },
       longTermIntent: { score: 4, note: 'Relocated for a permanent role; settling long-term' },
       disclosures: { score: 4, note: 'Offered offer letter, first/last, and references upfront' },
-      overall: 3.6,
+      overall: 3.8,
     },
   },
 ];

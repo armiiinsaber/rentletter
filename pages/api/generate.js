@@ -1,5 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { bump, logEvent, COUNTERS } from '../../lib/stats';
+import {
+  incomeLevelScore, rentAffordabilityScore, employmentStabilityScore,
+  rentalHistoryScore, overallScore,
+} from '../../lib/scoring';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -16,42 +20,34 @@ function generateApplicationNumber() {
 // Calculated server-side from form data — the tenant never sees this
 function calculateScorecard(data) {
   const {
-    yearsAtJob, annualIncome, monthlyIncome, estimatedRent, rentToIncomeRatio,
-    previousAddress, yearsAtPrevious, previousLandlordName,
+    yearsAtJob, householdAnnualIncome, householdRentToIncomeRatio, hasCoApplicant,
+    previousAddress, yearsAtPrevious, previousLandlordName, referencesCount,
     reasonForMoving, redFlags,
   } = data;
 
-  // Income stability
-  let incomeStability = 3;
+  // Employment tenure/stability — smooth ramp (see lib/scoring.js). Note keeps the years phrasing.
   const jobYears = parseFloat(yearsAtJob) || 0;
-  if (jobYears >= 3) incomeStability = 5;
-  else if (jobYears >= 1) incomeStability = 4;
-  else if (jobYears >= 0.5) incomeStability = 3;
-  else incomeStability = 2;
+  const incomeStability = employmentStabilityScore(jobYears);
   const incomeStabilityNote = jobYears >= 3
     ? `${Math.floor(jobYears)}+ years at same employer`
     : jobYears > 0
       ? `${jobYears} year(s) at current employer`
       : 'New position';
 
-  // Rent affordability
+  // Rent affordability — smooth Toronto-calibrated blend of rent-to-income + a diminishing
+  // income-level buffer, on HOUSEHOLD income when there is a co-applicant (see lib/scoring.js).
   let rentAffordability = 3;
   let rentAffordabilityNote = 'Rent not specified';
-  if (rentToIncomeRatio !== null && rentToIncomeRatio !== undefined) {
-    if (rentToIncomeRatio <= 30) rentAffordability = 5;
-    else if (rentToIncomeRatio <= 35) rentAffordability = 4;
-    else if (rentToIncomeRatio <= 40) rentAffordability = 3;
-    else rentAffordability = 2;
-    rentAffordabilityNote = `${rentToIncomeRatio}% of monthly income`;
+  if (householdRentToIncomeRatio !== null && householdRentToIncomeRatio !== undefined) {
+    rentAffordability = rentAffordabilityScore(householdAnnualIncome, householdRentToIncomeRatio);
+    rentAffordabilityNote = `${householdRentToIncomeRatio}% of ${hasCoApplicant ? 'combined household' : 'monthly'} income`;
   }
 
-  // Rental history
-  let rentalHistory = 3;
+  // Rental history + references — smooth base from prior tenancy, references corroborate.
   const histYears = parseFloat(yearsAtPrevious) || 0;
-  if (histYears >= 2 && previousLandlordName) rentalHistory = 5;
-  else if (histYears >= 1 && previousLandlordName) rentalHistory = 4;
-  else if (previousAddress) rentalHistory = 3;
-  else rentalHistory = 3; // First-time renter — neutral, not penalized
+  const rentalHistory = rentalHistoryScore({
+    yearsAtPrevious: histYears, previousLandlordName, previousAddress, referencesCount,
+  });
   const rentalHistoryNote = histYears > 0 && previousLandlordName
     ? `${histYears} years with reference available`
     : previousAddress
@@ -93,9 +89,9 @@ function calculateScorecard(data) {
     rentalHistory: { score: rentalHistory, note: rentalHistoryNote },
     longTermIntent: { score: longTermIntent, note: longTermIntentNote },
     disclosures: { score: disclosures, note: disclosuresNote },
-    overall: Math.round(
-      (incomeStability + rentAffordability + rentalHistory + longTermIntent + disclosures) / 5 * 10
-    ) / 10,
+    overall: overallScore({
+      incomeStability, rentAffordability, rentalHistory, longTermIntent, disclosures,
+    }),
   };
 }
 
@@ -809,9 +805,20 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
     if (!applicationNumber) {
       applicationNumber = generateApplicationNumber();
     }
+    // Score on HOUSEHOLD income (primary + co-applicant) — the honest affordability signal for a
+    // dual-income household. The letter/display `rentToIncomeRatio` above is left untouched.
+    const coApplicantIncomeNum = hasCoApplicant ? (parseInt(coApplicantIncome) || 0) : 0;
+    const householdAnnualIncome = annualIncomeNum + coApplicantIncomeNum;
+    const householdMonthlyIncome = Math.round(householdAnnualIncome / 12);
+    const householdRentToIncomeRatio = (estimatedRent && householdMonthlyIncome)
+      ? Math.round((estimatedRent / householdMonthlyIncome) * 100)
+      : null;
+    const referencesCount = (reference1Name ? 1 : 0) + (reference2Name ? 1 : 0);
+
     const scorecard = calculateScorecard({
-      yearsAtJob, annualIncome, monthlyIncome, estimatedRent, rentToIncomeRatio,
-      previousAddress, yearsAtPrevious, previousLandlordName,
+      yearsAtJob, householdAnnualIncome, householdRentToIncomeRatio,
+      hasCoApplicant: !!(hasCoApplicant && coApplicantIncomeNum > 0),
+      previousAddress, yearsAtPrevious, previousLandlordName, referencesCount,
       reasonForMoving, redFlags,
     });
 
