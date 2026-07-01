@@ -175,7 +175,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
             onClick={() => inputRef.current?.click()}
             style={{ border: `1.5px dashed ${dragOver ? C.red : C.ruleDark}`, background: dragOver ? '#fef2f0' : C.paper, borderRadius: R.card, padding: '18px 16px', textAlign: 'center', cursor: 'pointer' }}>
-            <input ref={inputRef} type="file" multiple accept="image/jpeg,image/png,application/pdf" style={{ display: 'none' }}
+            <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx" style={{ display: 'none' }}
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>Drop documents here or click to choose</div>
             <div style={{ fontSize: 12, color: C.inkMute, marginTop: 3 }}>Pay stubs, employment letters, bank statements, ID — up to {MAX} files (JPG/PNG/PDF, 25MB total)</div>
