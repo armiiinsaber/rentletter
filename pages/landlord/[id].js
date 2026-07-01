@@ -46,14 +46,21 @@ export async function getServerSideProps(ctx) {
     // so the ranking/report flow is untouched). Graceful if the columns don't exist yet.
     try {
       const { data: extras } = await admin
-        .from('listing_applicants').select('id, doc_verifications, ai_insight').eq('listing_id', listing.id);
+        .from('listing_applicants').select('id, application_id, doc_verifications, ai_insight').eq('listing_id', listing.id);
       if (Array.isArray(extras)) {
         const m = new Map(extras.map((e) => [e.id, e]));
-        initialApplicants = initialApplicants.map((a) => ({
-          ...a,
-          docVerifications: m.get(a.linkId)?.doc_verifications || null,
-          aiInsight: m.get(a.linkId)?.ai_insight || null,
-        }));
+        // [temp diagnostic] which junction rows actually hold verification in the DB.
+        console.log('[verif-trace][dashboard] listing=%s extras=%j', listing.id,
+          extras.map((e) => ({ id: e.id, application_id: e.application_id, hasDocVerif: e.doc_verifications != null })));
+        initialApplicants = initialApplicants.map((a) => {
+          const e = m.get(a.linkId);
+          const ownApp = a.application?.id;
+          // STRICT per-row attribution: only from the row matching BOTH linkId AND application_id.
+          const own = e && String(e.application_id) === String(ownApp) ? e : null;
+          if (e && !own) console.warn('[verif-trace][dashboard] ATTRIBUTION MISMATCH linkId=%s applicantApp=%s rowApp=%s (ignoring)', a.linkId, ownApp, e.application_id);
+          console.log('[verif-trace][dashboard] linkId=%s app_id=%s ownDocVerif=%s', a.linkId, ownApp, own?.doc_verifications != null);
+          return { ...a, docVerifications: own?.doc_verifications || null, aiInsight: own?.ai_insight || null };
+        });
       }
     } catch (e) { /* columns not added yet — feature simply starts empty */ }
   } catch (e) {

@@ -177,10 +177,15 @@ export default async function handler(req, res) {
     const admin = getSupabaseAdminClient();
     const existing = ctx.junction.doc_verifications;
     verifications = Array.isArray(existing) ? [...existing, run] : [run];
-    const { error: upErr } = await admin
+    // [temp diagnostic] .select() returns the affected rows so we can confirm the write hits
+    // EXACTLY ONE row (the intended applicant's), not multiple.
+    const { data: upRows, error: upErr } = await admin
       .from('listing_applicants')
       .update({ doc_verifications: verifications })
-      .eq('id', linkId);
+      .eq('id', linkId)
+      .select('id, application_id');
+    console.log('[verif-trace][write] linkId=%s applicationId=%s junction.id=%s junction.application_id=%s affectedRows=%j',
+      linkId, applicationId, ctx.junction?.id, ctx.junction?.application_id, (upRows || []).map((r) => ({ id: r.id, application_id: r.application_id })));
     if (upErr) {
       console.error('[analyze-documents] persist error:', upErr.message);
       // Still return the result so the realtor sees it; warn that it wasn't saved.
