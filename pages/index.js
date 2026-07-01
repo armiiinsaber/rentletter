@@ -231,8 +231,36 @@ function HeroDemo() {
   );
 }
 
+// Extract the invite token from whatever a tenant pastes: a full apply URL
+// (https://…/apply/{token}, with/without trailing slash or query/hash), or a bare
+// token/code. Tolerant — the /apply page validates + handles invalid/expired tokens.
+function parseApplyInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return { ok: false };
+  const m = s.match(/\/apply\/([^/?#\s]+)/i); // token from a pasted apply link
+  const fromUrl = !!m;
+  const token = (m ? m[1] : s).replace(/[?#].*$/, '').replace(/^\/+|\/+$/g, '').trim();
+  if (!token) return { ok: false };
+  // Accept anything that came from an /apply/ link; for a bare paste, require a plausible
+  // token (no spaces/slashes, reasonable length) so obvious garbage gets a friendly error.
+  const plausible = /^[A-Za-z0-9_-]{6,}$/.test(token);
+  if (!fromUrl && !plausible) return { ok: false };
+  return { ok: true, token };
+}
+
 export default function Home() {
   const [step, setStep] = useState('landing');
+  const [applyLink, setApplyLink] = useState('');
+  const [applyError, setApplyError] = useState('');
+  const goToApply = () => {
+    const parsed = parseApplyInput(applyLink);
+    if (!parsed.ok) {
+      setApplyError("That doesn't look like a valid application link — paste the full link your realtor sent you.");
+      return;
+    }
+    setApplyError('');
+    window.location.assign(`/apply/${encodeURIComponent(parsed.token)}`);
+  };
   const [tier, setTier] = useState('single');
   const [form, setForm] = useState({
     email: '',
@@ -948,31 +976,46 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── TENANT — arrive through a realtor's invite link ── */}
+          {/* ── TENANT ENTRY — paste the realtor's invite link → /apply/{token} ── */}
           <section className="rl-reveal" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 300px), 1fr))', gap: 'clamp(14px, 2vw, 20px)' }}>
-              {/* Tenant */}
-              <div className="rl-card rl-card-lift" style={{ padding: 'clamp(22px, 3vw, 28px)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-                <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="rl-card" style={{ padding: 'clamp(22px, 3vw, 32px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="user" size={20} color={C.ink} />
                 </span>
-                <div>
-                  <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 6 }}>
-                    Applying for a unit?
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ fontSize: 'clamp(18px, 2.4vw, 22px)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 4 }}>
+                    Applying to a rental?
                   </h3>
-                  <p style={{ fontSize: 14, lineHeight: 1.6, color: C.inkSoft, margin: 0 }}>
-                    Tenants submit a standardized application and get a shareable number — free. Usually you'll arrive through a link from your realtor or landlord.
+                  <p style={{ fontSize: 14, lineHeight: 1.55, color: C.inkSoft, margin: 0 }}>
+                    Enter the application link your realtor sent you and we'll take you straight to the form. Applying is free.
                   </p>
                 </div>
-                <button onClick={() => setStep('form')} className="rl-btn" style={{
-                  alignSelf: 'flex-start', marginTop: 2,
-                  background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
-                  padding: '11px 18px', fontSize: 14, fontWeight: 600,
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <input
+                  type="text" inputMode="url" value={applyLink}
+                  onChange={(e) => { setApplyLink(e.target.value); if (applyError) setApplyError(''); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') goToApply(); }}
+                  placeholder="rentletter.ca/apply/…"
+                  aria-label="Paste the application link your realtor sent you"
+                  aria-invalid={applyError ? true : undefined}
+                  style={{
+                    flex: '1 1 240px', minWidth: 0, boxSizing: 'border-box',
+                    padding: '13px 15px', fontSize: 15, borderRadius: R.ctrl,
+                    border: `1px solid ${applyError ? C.red : C.ruleDark}`, background: C.paper, color: C.ink, outline: 'none',
+                  }} />
+                <button onClick={goToApply} className="rl-btn" style={{
+                  flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl,
+                  padding: '13px 22px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
-                  Submit your application <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+                  Go to my application <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={16} /></span>
                 </button>
               </div>
+              {applyError
+                ? <div style={{ fontSize: 13, color: C.red, lineHeight: 1.5 }}>{applyError}</div>
+                : <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>Paste the full link (or just the code at the end). No account needed.</div>}
             </div>
           </section>
 
