@@ -1,8 +1,11 @@
 // components/dashboard/DashboardHeader.js
-// Shared realtor dashboard header: wordmark, founder/trial badge, profile name,
-// edit-profile + sign-out actions. Used on the listings index and detail pages.
+// Shared realtor dashboard header: wordmark, founder/trial badge, notification bell,
+// initials account avatar, and sign-out. Used on the listings index and detail pages.
+// The realtor's uploaded logo is deliberately NOT shown here — an arbitrary logo never
+// looks seamless jammed into a circle; its home is the landlord PDF letterhead. The header
+// uses a clean native initials avatar instead.
 import { useRouter } from 'next/router';
-import { ScrollHeader, Wordmark, Icon } from '../ui';
+import { ScrollHeader, Wordmark } from '../ui';
 import { C, R } from '../theme';
 import StatusBadge from './StatusBadge';
 import NotificationBell from './NotificationBell';
@@ -24,42 +27,28 @@ export default function DashboardHeader({ profile }) {
     await supabase.auth.signOut();
     router.replace('/signin');
   };
-  const name = profile?.full_name || profile?.email || 'Your account';
-  const logo = profile?.logo_url;
-  // Every control in the account cluster shares this height so they line up exactly.
-  const pill = { height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', borderRadius: R.pill, flexShrink: 0 };
+  // Bell and avatar share this 34px circle so the cluster reads as one matched set.
+  const circle = { width: 34, height: 34, boxSizing: 'border-box', flexShrink: 0, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' };
   return (
-    <>
-      <ScrollHeader maxWidth={1100}>
-        {/* Wordmark → homepage (keeps the session). */}
-        <a href="/" aria-label="Rentletter home" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}><Wordmark /></a>
-        {/* Account cluster — uniform-height pills, evenly spaced, right-aligned; wraps as a
-            tidy right-aligned row on small screens (no overflow). */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, rowGap: 8, flexWrap: 'wrap', minWidth: 0, marginLeft: 'auto' }}>
-          <StatusBadge profile={profile} />
-          {/* Bell — on-load notifications for this realtor's listings. */}
-          <NotificationBell />
-          {/* Avatar (saved logo or initials) + name → /profile. */}
-          <a href="/profile" className="rl-btn" title="You & your brand" aria-label="Open your profile"
-            style={{ ...pill, textDecoration: 'none', gap: 8, padding: '0 12px 0 4px', background: C.card, border: `1px solid ${C.ruleDark}`, cursor: 'pointer', maxWidth: 'min(46vw, 210px)' }}>
-            <span aria-hidden="true" style={{ width: 26, height: 26, flexShrink: 0, borderRadius: 7, overflow: 'hidden', background: logo ? '#fff' : C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: logo ? `1px solid ${C.rule}` : 'none' }}>
-              {logo
-                ? <img src={logo} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                : initialsOf(profile)}
-            </span>
-            <span className="rl-acct-name" style={{ fontSize: 13, color: C.ink, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{name}</span>
-          </a>
-          <button onClick={signOut} title="Sign out"
-            style={{ ...pill, padding: '0 14px', background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-            Sign out
-          </button>
-        </div>
-      </ScrollHeader>
-      {/* On very narrow screens drop the name (avatar still links to the profile) so the
-          cluster stays on one clean row instead of crowding/wrapping awkwardly. */}
-      <style jsx>{`
-        @media (max-width: 460px) { .rl-acct-name { display: none; } }
-      `}</style>
-    </>
+    <ScrollHeader maxWidth={1100}>
+      {/* Wordmark → homepage (keeps the session). */}
+      <a href="/" aria-label="Rentletter home" style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}><Wordmark /></a>
+      {/* Account cluster — evenly spaced, right-aligned; matched 34px controls read as a tidy
+          group with clear separation. Stays balanced whether or not the founder tag is shown. */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 14, rowGap: 8, flexWrap: 'wrap', minWidth: 0, marginLeft: 'auto' }}>
+        <StatusBadge profile={profile} />
+        {/* Bell — on-load notifications for this realtor's listings. */}
+        <NotificationBell />
+        {/* Account avatar — native initials (never the uploaded logo); opens profile/branding. */}
+        <a href="/profile" title="You & your brand" aria-label="Open your profile and branding"
+          style={{ ...circle, background: C.ink, color: C.paper, fontSize: 12, fontWeight: 800, letterSpacing: '0.02em', textDecoration: 'none', cursor: 'pointer' }}>
+          {initialsOf(profile)}
+        </a>
+        <button onClick={signOut} title="Sign out"
+          style={{ height: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', flexShrink: 0, borderRadius: R.pill, padding: '0 16px', background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+          Sign out
+        </button>
+      </div>
+    </ScrollHeader>
   );
 }
