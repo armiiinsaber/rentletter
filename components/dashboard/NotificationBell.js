@@ -27,7 +27,21 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
   const [items, setItems] = useState(demo ? demoItems : []);
   const [unread, setUnread] = useState(demo ? demoItems.filter((i) => i.unread).length : 0);
   const [seen, setSeen] = useState(false); // once the panel has been opened, dots read as seen
+  const [menuPos, setMenuPos] = useState(null); // {top,left,width} in viewport (fixed) coords
   const ref = useRef(null);
+
+  // Position the panel in VIEWPORT coordinates so it can never clip off either edge (the bell
+  // is not the rightmost control, so a plain right:0 anchor ran off the left). Anchor its right
+  // edge near the bell, then clamp left/right within the viewport with a small margin.
+  const computePos = () => {
+    if (!ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const margin = 12;
+    const width = Math.min(340, window.innerWidth - margin * 2);
+    let left = rect.right - width; // prefer right-aligned to the bell
+    left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+    setMenuPos({ top: Math.round(rect.bottom + 8), left: Math.round(left), width: Math.round(width) });
+  };
 
   // Fetch once on mount (real mode only).
   useEffect(() => {
@@ -45,18 +59,27 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
     return () => { cancel = true; };
   }, [demo]);
 
-  // Close on outside click / Escape.
+  // Close on outside click / Escape; keep the panel aligned to the bell on resize/scroll.
   useEffect(() => {
     if (!open) return;
     const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
+    const onReflow = () => computePos();
     document.addEventListener('mousedown', onDoc);
     document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onKey); };
+    window.addEventListener('resize', onReflow);
+    window.addEventListener('scroll', onReflow, true);
+    return () => {
+      document.removeEventListener('mousedown', onDoc);
+      document.removeEventListener('keydown', onKey);
+      window.removeEventListener('resize', onReflow);
+      window.removeEventListener('scroll', onReflow, true);
+    };
   }, [open]);
 
   const toggle = () => {
     const next = !open;
+    if (next) computePos();
     setOpen(next);
     if (next && !seen) {
       setSeen(true);
@@ -95,10 +118,10 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
         )}
       </button>
 
-      {open && (
+      {open && menuPos && (
         <div role="menu" style={{
-          position: 'absolute', top: 42, right: 0, zIndex: 60,
-          width: 'min(340px, calc(100vw - 24px))', maxHeight: '70vh', overflowY: 'auto',
+          position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 1000,
+          width: menuPos.width, maxHeight: '70vh', overflowY: 'auto',
           background: C.card, border: `1px solid ${C.ruleDark}`, borderRadius: R.card,
           boxShadow: '0 12px 34px rgba(15,15,16,0.16)',
         }}>
