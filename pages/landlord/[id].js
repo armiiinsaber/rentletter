@@ -420,11 +420,11 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
 
           {/* Title + actions */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
-            <div>
-              <h1 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.1 }}>
+            <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+              <h1 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.1, overflowWrap: 'anywhere' }}>
                 {l.name || l.address || 'Untitled listing'}
               </h1>
-              <div style={{ fontSize: 14, color: C.inkSoft, marginTop: 6 }}>
+              <div style={{ fontSize: 14, color: C.inkSoft, marginTop: 6, overflowWrap: 'anywhere' }}>
                 {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}{l.bedrooms ? ` · ${l.bedrooms} bed` : ''}
               </div>
             </div>
@@ -444,9 +444,9 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, alignItems: 'start', marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16, alignItems: 'start', marginBottom: 16 }}>
             {/* Unit + preferences */}
-            <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 26px)' }}>
+            <section className="rl-card" style={{ minWidth: 0, padding: 'clamp(18px, 3vw, 26px)' }}>
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Unit & preferences</div>
               <Row label="Address" value={l.address || '—'} />
               <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : '—'} />
@@ -471,15 +471,15 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               {(l.landlord_name || l.landlord_email || l.landlord_phone) && (
                 <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
                   <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Landlord client</div>
-                  {l.landlord_name && <div style={{ fontSize: 13.5, color: C.ink }}>{l.landlord_name}</div>}
-                  {l.landlord_email && <div style={{ fontSize: 13, color: C.inkSoft }}>{l.landlord_email}</div>}
-                  {l.landlord_phone && <div style={{ fontSize: 13, color: C.inkSoft }}>{l.landlord_phone}</div>}
+                  {l.landlord_name && <div style={{ fontSize: 13.5, color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
+                  {l.landlord_email && <div style={{ fontSize: 13, color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
+                  {l.landlord_phone && <div style={{ fontSize: 13, color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
                 </div>
               )}
             </section>
 
             {/* Invite link */}
-            <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 26px)' }}>
+            <section className="rl-card" style={{ minWidth: 0, padding: 'clamp(18px, 3vw, 26px)' }}>
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Invite link</div>
               <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
                 Share this link with prospective tenants. They fill the application and it appears below automatically.
