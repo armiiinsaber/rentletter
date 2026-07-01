@@ -20,7 +20,7 @@ function readAsBase64(file) {
   });
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicantName, initialVerifications, initialInsight, onSaved }) {
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialInsight, onSaved }) {
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]); // File[]
@@ -57,7 +57,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicantName, in
       const payload = await Promise.all(files.map(async (f) => ({ name: f.name, type: f.type, data: await readAsBase64(f) })));
       const r = await fetch('/api/applicants/analyze-documents', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, linkId, files: payload }),
+        body: JSON.stringify({ listingId, linkId, applicationId, files: payload }),
       });
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not analyze those documents.'); setAnalyzing(false); return; }
@@ -77,7 +77,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicantName, in
     try {
       const r = await fetch('/api/applicants/insight', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, linkId }),
+        body: JSON.stringify({ listingId, linkId, applicationId }),
       });
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not generate the insight.'); setInsightLoading(false); return; }

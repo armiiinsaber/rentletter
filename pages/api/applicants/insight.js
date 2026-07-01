@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
 
-  const { listingId, linkId } = req.body || {};
+  const { listingId, linkId, applicationId } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant reference.' });
 
   let ctx;
@@ -51,6 +51,14 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Could not load that applicant.' });
   }
   if (!ctx) return res.status(404).json({ error: 'Applicant not found.' });
+
+  // STRICT per-applicant binding (same as analyze-documents): the row we persist ai_insight to
+  // MUST be the exact applicant requested. Reject a linkId/applicationId mismatch.
+  if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
+    console.error('[insight] applicant binding mismatch — linkId row application_id',
+      ctx.junction.application_id, '!== expected', applicationId, '(refusing to write)');
+    return res.status(409).json({ error: 'Applicant reference mismatch — please reload the page and try again.' });
+  }
 
   const facts = screenableFacts(ctx.application, ctx.listing);
   // Latest document-verification run (structured facts only — no images were ever stored).

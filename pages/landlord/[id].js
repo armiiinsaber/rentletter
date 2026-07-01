@@ -404,6 +404,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
         <ApplicantDocIntel
           listingId={listing.id}
           linkId={a.linkId}
+          applicationId={app.id}
           applicantName={app.full_name}
           initialVerifications={a.docVerifications}
           initialInsight={a.aiInsight}

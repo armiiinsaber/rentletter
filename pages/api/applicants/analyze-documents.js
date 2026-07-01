@@ -66,7 +66,7 @@ export default async function handler(req, res) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
 
-  const { listingId, linkId, files } = req.body || {};
+  const { listingId, linkId, applicationId, files } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant reference.' });
   if (!Array.isArray(files) || files.length === 0) return res.status(400).json({ error: 'Add at least one document.' });
   if (files.length > MAX_DOCS) return res.status(400).json({ error: `Up to ${MAX_DOCS} documents at a time.` });
@@ -95,6 +95,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Could not load that applicant.' });
   }
   if (!ctx) return res.status(404).json({ error: 'Applicant not found.' });
+
+  // STRICT per-applicant binding: the row we are about to write (id = linkId) MUST be the exact
+  // applicant these documents were uploaded for. Cross-check the application_id so a stale/wrong
+  // linkId can NEVER persist analysis onto a DIFFERENT applicant's listing_applicants row.
+  if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
+    console.error('[analyze-documents] applicant binding mismatch — linkId row application_id',
+      ctx.junction.application_id, '!== expected', applicationId, '(refusing to write)');
+    return res.status(409).json({ error: 'Applicant reference mismatch — please reload the page and try again.' });
+  }
 
   const facts = screenableFacts(ctx.application, ctx.listing);
   const hasPdf = files.some((f) => String(f.type).toLowerCase() === 'application/pdf');
