@@ -45,9 +45,32 @@ export default function DocIntelReport({ result, insight }) {
   const crossReference = Array.isArray(result.crossReference) ? result.crossReference : [];
   const comparisons = Array.isArray(result.comparisons) ? result.comparisons : [];
   const conf = result.confidence;
+  const nameMatch = result.nameMatch; // 'match' | 'mismatch' | 'unclear' | undefined
+  const docNames = Array.isArray(result.documentNames) ? result.documentNames.filter(Boolean) : [];
 
   return (
     <div style={{ display: 'grid', gap: 14 }}>
+      {/* Name-match safeguard — most important when it fails. */}
+      {nameMatch === 'mismatch' && (
+        <div style={{ background: '#fef2f0', border: `1px solid ${C.red}`, borderLeft: `4px solid ${C.red}`, borderRadius: R.card, padding: '11px 14px' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.red, marginBottom: 3 }}>⚠ Document name does not match this applicant</div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
+            Applicant is <strong style={{ color: C.ink }}>{result.applicantName || '—'}</strong>{docNames.length ? <> but the documents name <strong style={{ color: C.ink }}>{docNames.join(', ')}</strong></> : ''}. This applicant will show as <strong>not verified</strong> — re-check you uploaded the right person’s documents.
+          </div>
+        </div>
+      )}
+      {nameMatch === 'unclear' && documents.length > 0 && (
+        <div style={{ background: AMBER_BG, border: `1px solid ${AMBER}`, borderLeft: `4px solid ${AMBER}`, borderRadius: R.card, padding: '11px 14px' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: AMBER, marginBottom: 3 }}>Name not confirmed</div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>Couldn’t confirm the document name matches <strong style={{ color: C.ink }}>{result.applicantName || 'this applicant'}</strong>. Shown as not verified until confirmed.</div>
+        </div>
+      )}
+      {nameMatch === 'match' && (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: C.green, fontWeight: 700 }}>
+          <span aria-hidden="true">✓</span> Name matches the applicant{result.applicantName ? <span style={{ color: C.inkMute, fontWeight: 500 }}> ({result.applicantName})</span> : null}
+        </div>
+      )}
+
       {/* Overall summary */}
       {result.overallSummary && (
         <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderLeft: `4px solid ${C.ink}`, borderRadius: R.card, padding: '12px 14px' }}>
