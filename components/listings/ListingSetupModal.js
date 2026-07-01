@@ -297,7 +297,10 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
                 ['Address', String(form.address).trim()],
                 ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : '—'],
                 ['Bedrooms', String(form.bedrooms).trim()],
-                ['Landlord', [String(form.landlord_name).trim(), String(form.landlord_email).trim().toLowerCase()].filter(Boolean).join(' · ')],
+                // Join name + email with a middot ONLY when both exist (filter(Boolean) drops an
+                // empty side → no leading/trailing dot). Non-breaking spaces keep the middot glued
+                // between the two so it can never wrap to a line edge as an orphan "·".
+                ['Landlord', [String(form.landlord_name).trim(), String(form.landlord_email).trim().toLowerCase()].filter(Boolean).join(' · ')],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '5px 0', fontSize: 13 }}>
                   <span style={{ color: C.inkMute, fontWeight: 600, minWidth: 0, flexShrink: 0 }}>{k}</span>
