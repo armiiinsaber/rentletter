@@ -182,7 +182,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
           </div>
 
           {files.length > 0 && (
-            <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6 }}>
               {files.map((f, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '7px 11px' }}>
                   <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{f.name}</span>

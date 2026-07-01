@@ -49,7 +49,7 @@ export default function DocIntelReport({ result, insight }) {
   const docNames = Array.isArray(result.documentNames) ? result.documentNames.filter(Boolean) : [];
 
   return (
-    <div style={{ display: 'grid', gap: 14 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
       {/* Name-match safeguard — most important when it fails. */}
       {nameMatch === 'mismatch' && (
         <div style={{ background: '#fef2f0', border: `1px solid ${C.red}`, borderLeft: `4px solid ${C.red}`, borderRadius: R.card, padding: '11px 14px' }}>
@@ -86,7 +86,7 @@ export default function DocIntelReport({ result, insight }) {
       {comparisons.length > 0 && (
         <div>
           <div style={{ fontSize: 10.5, fontWeight: 800, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Compared to the application</div>
-          <div style={{ display: 'grid', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
             {comparisons.map((c, i) => {
               const s = cmp[c.status] || cmp.not_found;
               return (
@@ -128,7 +128,7 @@ export default function DocIntelReport({ result, insight }) {
       {documents.length > 0 && (
         <div>
           <div style={{ fontSize: 10.5, fontWeight: 800, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Documents read ({documents.length})</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 10 }}>
             {documents.map((d, i) => {
               const ex = d.extracted || {};
               const type = d.documentType || '';
@@ -167,11 +167,11 @@ export default function DocIntelReport({ result, insight }) {
                   )}
 
                   {rowKeys.length > 0 ? (
-                    <div style={{ display: 'grid', gap: 4 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
                       {rowKeys.map((k) => (
                         <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5 }}>
-                          <span style={{ color: C.inkMute, fontWeight: 600 }}>{FIELD_LABEL[k] || k}</span>
-                          <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', overflowWrap: 'anywhere' }}>{String(ex[k])}</span>
+                          <span style={{ color: C.inkMute, fontWeight: 600, minWidth: 0 }}>{FIELD_LABEL[k] || k}</span>
+                          <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{String(ex[k])}</span>
                         </div>
                       ))}
                     </div>
