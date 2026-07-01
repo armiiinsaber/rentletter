@@ -12,7 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import {
-  authorizeApplicant, screenableFacts, parseJsonObject,
+  authorizeApplicant, screenableFacts, parseJsonObject, computeNameMatch,
   ALLOWED_DOC_MIME, MAX_DOCS, MAX_TOTAL_BYTES,
 } from '../../../lib/applicantAnalysis';
 
@@ -160,15 +160,32 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'The analysis came back unreadable. Please try again.' });
   }
 
+  const documents = Array.isArray(parsed.documents) ? parsed.documents.slice(0, MAX_DOCS) : [];
+
+  // NAME-MATCH SAFEGUARD: do the names printed on the (recognized) documents actually belong to
+  // THIS applicant? Compared server-side against the authoritative full_name from the application
+  // record — tolerant of case/accents/order/middle-names/initials, but a clearly different person
+  // (e.g. docs say "Nikita Kamalkhani", applicant is "Armin Jassem") is flagged as a mismatch.
+  const applicantName = ctx.application?.full_name || '';
+  const documentNames = documents
+    .filter((d) => d && d.unrecognized !== true)
+    .map((d) => (d.extracted && d.extracted.applicantName) || null)
+    .filter((n) => typeof n === 'string' && n.trim());
+  const nameMatch = computeNameMatch(applicantName, documentNames); // 'match' | 'mismatch' | 'unclear'
+
   // Shape the persisted run (structured facts only — no images).
   const run = {
     analyzedAt: new Date().toISOString(),
     documentCount: files.length,
-    documents: Array.isArray(parsed.documents) ? parsed.documents.slice(0, MAX_DOCS) : [],
+    documents,
     crossReference: Array.isArray(parsed.crossReference) ? parsed.crossReference : [],
     comparisons: Array.isArray(parsed.comparisons) ? parsed.comparisons : [],
     overallSummary: typeof parsed.overallSummary === 'string' ? parsed.overallSummary.slice(0, 1200) : '',
     confidence: ['high', 'medium', 'low'].includes(parsed.confidence) ? parsed.confidence : 'medium',
+    // Identity check (OHRC-safe — names only).
+    nameMatch,
+    documentNames,
+    applicantName,
   };
 
   // Persist ONLY the structured result. Accumulate across analyses (most recent last).
