@@ -3352,7 +3352,8 @@ export default function LandlordDashboard() {
           </div>
         )}
       </div>
-      <ChatWidget />
+      {/* Sample dashboard showcases the product-help assistant (generic how-to; no real data). */}
+      <ChatWidget mode="dashboard" />
     </>
   );
 }
