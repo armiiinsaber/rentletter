@@ -75,9 +75,38 @@ const ACCOUNT_PATTERNS = [
   /\bRL-?\d{4}-?[A-Z0-9-]+/i,
 ];
 
-function preFilterMessage(text) {
+// ─── DASHBOARD GUARDRAIL: tenant-selection advice ─────────────
+// The dashboard assistant is a HOW-TO guide, never a screening advisor. These patterns catch
+// "who should I pick / is this tenant good / should I approve X" and refuse deterministically
+// (before spending a Claude call), redirecting to "I can explain HOW the ranking works". The
+// system prompt enforces the same; this is the code-level backstop.
+const SELECTION_ADVICE_PATTERNS = [
+  /\bwho (should|do|would|ought) (i|we|you)\b[^?]*\b(pick|choose|select|go with|rent to|approve|accept|reject|shortlist|prefer|take)\b/i,
+  /\b(which|what) (applicant|tenant|candidate|one|person|renter)\b[^?]*\b(should|is|are|do you|would you|best|better|strongest|worst|good|pick|choose|recommend|prefer|go with)\b/i,
+  /\bshould i (pick|choose|select|go with|rent to|approve|accept|reject|shortlist|prefer|take)\b/i,
+  /\b(is|are) (this|that|the) (applicant|tenant|candidate|person|renter)\b[^?]*\b(good|bad|risky|trustworthy|reliable|worth|a good (fit|choice|tenant|applicant)|the best|the right|strong|weak)\b/i,
+  /\bis (he|she|they)\b[^?]*\b(a )?(good|bad|risky|trustworthy|reliable|worth|the best|the right|a good (fit|tenant|choice|applicant))\b/i,
+  /\b(who|which)(?:'s|’s| is| are)? the (best|top|strongest|right|worst) (applicant|tenant|candidate|pick|choice|fit)\b/i,
+  /\bdo you (recommend|think|suggest|reckon)\b[^?]*\b(pick|choose|approve|accept|reject|prefer|go with|rent to)\b/i,
+  /\b(recommend|suggest|tell me|pick|choose)\b[^?]*\b(which|who|the best|the top|the strongest) (applicant|tenant|candidate|one)\b/i,
+];
+
+// Exact decline + redirect used whenever selection advice is requested (pre- and post-filter).
+const DASHBOARD_SELECTION_DECLINE =
+  "That's your professional judgment as the realtor — I can't recommend or endorse which applicant to choose. What I can do is explain how the ranking is calculated (income, rent-to-income, employment tenure, rental history, and references) so you can interpret it and decide for yourself. Want me to walk through how a score is built?";
+
+function preFilterMessage(text, mode = 'marketing') {
   const t = String(text || '').trim();
   if (!t) return { allow: false, reason: 'empty', response: 'Please type a question.' };
+
+  // Dashboard only: refuse tenant-selection advice up front (the marketing chat never sees this).
+  if (mode === 'dashboard') {
+    for (const re of SELECTION_ADVICE_PATTERNS) {
+      if (re.test(t)) {
+        return { allow: false, reason: 'selection_advice', response: DASHBOARD_SELECTION_DECLINE };
+      }
+    }
+  }
 
   // Off-topic — refuse politely without spending budget
   for (const re of OFF_TOPIC_PATTERNS) {
@@ -168,7 +197,7 @@ Respond with EXACTLY one word: "YES" if the question is about Rentletter, or "NO
 
 // ─── LAYER 4: OUTPUT FILTER ───────────────────────────────────
 // Scan Claude's response for risky language. Replace with safe response if matched.
-function postFilterResponse(text) {
+function postFilterResponse(text, mode = 'marketing') {
   const t = String(text || '');
 
   // Patterns that indicate Claude slipped past its instructions
@@ -184,6 +213,21 @@ function postFilterResponse(text) {
     if (re.test(t)) {
       console.warn('[chat] Output filter caught risky pattern:', re);
       return "I can't give specific legal or decision advice for your situation. For general info about how Rentletter works, I can help. For specific cases, please consult a lawyer or contact the Landlord and Tenant Board.";
+    }
+  }
+
+  // Dashboard only: catch any model slip that endorses picking/preferring an applicant.
+  if (mode === 'dashboard') {
+    const SELECTION_OUTPUT_PATTERNS = [
+      /\b(you should|i(?:'d| would)?( strongly)? (recommend|suggest)|i think you should|my recommendation is to) (pick|choose|select|go with|rent to|approve|accept|reject|shortlist|prefer)\b/i,
+      /\bthe (best|top|strongest|right|worst) (applicant|tenant|candidate|choice|pick|fit) (is|would be|here is|is probably)\b/i,
+      /\b(applicant|tenant|candidate) \w+ is (the best|clearly better|a better|stronger than|the right|the strongest)\b/i,
+    ];
+    for (const re of SELECTION_OUTPUT_PATTERNS) {
+      if (re.test(t)) {
+        console.warn('[chat] Dashboard output filter caught selection-advice slip:', re);
+        return DASHBOARD_SELECTION_DECLINE;
+      }
     }
   }
 
@@ -250,7 +294,7 @@ export default async function handler(req, res) {
   const userMessage = cleanMessages[cleanMessages.length - 1].content;
 
   // ─── LAYER 1: Pre-filter ─────────────────────────────
-  const preCheck = preFilterMessage(userMessage);
+  const preCheck = preFilterMessage(userMessage, mode);
   if (!preCheck.allow) {
     console.log(`[chat] Pre-filter blocked: reason=${preCheck.reason}, message=${userMessage.slice(0, 80)}`);
     return res.status(200).json({ reply: preCheck.response });
@@ -289,7 +333,7 @@ export default async function handler(req, res) {
     }
 
     // ─── LAYER 4: Post-filter ──────────────────────────
-    const safeText = postFilterResponse(rawText);
+    const safeText = postFilterResponse(rawText, mode);
 
     return res.status(200).json({ reply: safeText });
   } catch (e) {
