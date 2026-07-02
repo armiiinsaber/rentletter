@@ -16,6 +16,7 @@ import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
+import ChatWidget from '../../components/ChatWidget';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 
@@ -668,6 +669,8 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           </div>
         )}
       </div>
+      {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
+      <ChatWidget mode="dashboard" />
     </>
   );
 }

@@ -11,6 +11,7 @@ import { C, R } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ProfileEditorBody from '../components/dashboard/ProfileEditorBody';
+import ChatWidget from '../components/ChatWidget';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -56,6 +57,8 @@ export default function ProfileHub({ initialProfile }) {
           </section>
         </div>
       </div>
+      {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
+      <ChatWidget mode="dashboard" />
     </>
   );
 }

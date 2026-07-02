@@ -12,6 +12,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/s
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
+import ChatWidget from '../components/ChatWidget';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -166,6 +167,8 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           <ListingSetupModal mode="create" onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
         )}
       </div>
+      {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
+      <ChatWidget mode="dashboard" />
     </>
   );
 }

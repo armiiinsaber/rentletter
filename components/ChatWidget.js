@@ -16,12 +16,32 @@ const COLORS = {
   green: '#2d7d4a',
 };
 
-const INITIAL_GREETING = "Hi! I'm the Rentletter assistant. I can help with how the product works, pricing, or how to use it. What can I help with?";
+const MARKETING_GREETING = "Hi! I'm the Rentletter assistant. I can help with how the product works, pricing, or how to use it. What can I help with?";
+const DASHBOARD_GREETING = "Hi! I'm your Rentletter product-help assistant. Ask me how to do anything in the dashboard — creating listings, invite links, the ranked list, verifying a finalist, sending the report. I explain how features work; deciding which applicant to choose is your call.";
 
-export default function ChatWidget() {
+// Per-mode copy. mode="dashboard" is the in-app realtor product-help assistant; default is the
+// homepage marketing assistant (unchanged).
+const MODES = {
+  marketing: {
+    greeting: MARKETING_GREETING,
+    eyebrow: 'AI Assistant · Beta',
+    title: 'Rentletter Help',
+    placeholder: 'Ask anything about Rentletter...',
+  },
+  dashboard: {
+    greeting: DASHBOARD_GREETING,
+    eyebrow: 'Product help · Beta',
+    title: 'How-to assistant',
+    placeholder: 'Ask how to use the dashboard...',
+  },
+};
+
+export default function ChatWidget({ mode = 'marketing' }) {
+  const cfg = MODES[mode] || MODES.marketing;
+  const isDashboard = mode === 'dashboard';
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: INITIAL_GREETING },
+    { role: 'assistant', content: cfg.greeting },
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -59,7 +79,7 @@ export default function ChatWidget() {
       const r = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
+        body: JSON.stringify({ messages: newMessages, mode }),
       });
       const bodyText = await r.text();
       let json = null;
@@ -146,10 +166,10 @@ export default function ChatWidget() {
           }}>
             <div>
               <div style={{ fontSize: 10, color: '#a4adbb', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                AI Assistant · Beta
+                {cfg.eyebrow}
               </div>
               <div style={{ fontSize: 15, fontWeight: 700, marginTop: 2 }}>
-                Rentletter Help
+                {cfg.title}
               </div>
             </div>
             <button onClick={() => setOpen(false)}
@@ -231,7 +251,7 @@ export default function ChatWidget() {
                 value={input}
                 onChange={e => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask anything about Rentletter..."
+                placeholder={cfg.placeholder}
                 rows={1}
                 style={{
                   flex: 1,
@@ -267,7 +287,9 @@ export default function ChatWidget() {
               </button>
             </div>
             <div style={{ fontSize: 10, color: COLORS.inkMute, marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
-              AI assistant — general info only, not legal or financial advice. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.
+              {isDashboard
+                ? <>Product how-to only — not tenant-selection or legal advice. Deciding who to choose is your judgment. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.</>
+                : <>AI assistant — general info only, not legal or financial advice. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.</>}
             </div>
           </div>
 

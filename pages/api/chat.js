@@ -7,7 +7,7 @@
 //   4. Output filter — scans response for risky language and rewrites if needed
 
 import Anthropic from '@anthropic-ai/sdk';
-import { SYSTEM_PROMPT } from '../../lib/chatKnowledge.js';
+import { SYSTEM_PROMPT, DASHBOARD_SYSTEM_PROMPT } from '../../lib/chatKnowledge.js';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -200,7 +200,12 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Chat is temporarily unavailable.' });
   }
 
-  const { messages } = req.body || {};
+  const { messages, mode: rawMode } = req.body || {};
+  // 'dashboard' = the in-app realtor product-help assistant; anything else = the homepage
+  // marketing assistant (default, unchanged). Only the system prompt (and, for dashboard, an
+  // extra selection-advice guardrail) differ — the safety stack around them is shared.
+  const mode = rawMode === 'dashboard' ? 'dashboard' : 'marketing';
+  const systemPrompt = mode === 'dashboard' ? DASHBOARD_SYSTEM_PROMPT : SYSTEM_PROMPT;
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'Messages array required.' });
@@ -269,7 +274,7 @@ export default async function handler(req, res) {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 400,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       messages: cleanMessages,
     });
 
