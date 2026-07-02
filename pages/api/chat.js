@@ -95,6 +95,17 @@ const SELECTION_ADVICE_PATTERNS = [
 const DASHBOARD_SELECTION_DECLINE =
   "That's your professional judgment as the realtor — I can't recommend or endorse which applicant to choose. What I can do is explain how the ranking is calculated (income, rent-to-income, employment tenure, rental history, and references) so you can interpret it and decide for yourself. Want me to walk through how a score is built?";
 
+// Dashboard off-topic decline — the realtor's help assistant, NOT the marketing chat. No
+// "landlord dashboard" wording, no "try ChatGPT" (off-brand for an in-product paid tool).
+const DASHBOARD_OFF_TOPIC_DECLINE =
+  "I'm here to help you use Rentletter — creating listings, ranking applicants, verifying documents, sending reports. For account issues, email info@rentletter.ca.";
+
+// Product how-to vocabulary. In dashboard mode, if a question mentions any of this it's a
+// legitimate product question and is treated as on-topic deterministically — so the probabilistic
+// topic classifier can never false-refuse core how-to ("how do I create a listing", etc.).
+// (Selection-advice was already declined earlier in the pre-filter, so these hints are safe here.)
+const DASHBOARD_ONTOPIC_HINTS = /\b(listing|listings|invite|link|applicant|application|apply|tenant|rank|ranked|ranking|score|scorecard|scoring|set[ -]?aside|withdrew|withdrawn|verif|document|name[ -]?match|report|shortlist|landlord|notification|bell|preference|occupant|bedroom|rent|income|lease|guarantor|reference|employment|dashboard|listing detail|create|edit|delete|add|share|regenerate|confirm|how do i|how to|what does|what is|where (is|do|can)|set up|use)\b/i;
+
 function preFilterMessage(text, mode = 'marketing') {
   const t = String(text || '').trim();
   if (!t) return { allow: false, reason: 'empty', response: 'Please type a question.' };
@@ -108,13 +119,16 @@ function preFilterMessage(text, mode = 'marketing') {
     }
   }
 
-  // Off-topic — refuse politely without spending budget
+  // Off-topic — refuse politely without spending budget. Dashboard mode uses its own,
+  // in-product decline copy (never the marketing "landlord dashboard / try ChatGPT" line).
   for (const re of OFF_TOPIC_PATTERNS) {
     if (re.test(t)) {
       return {
         allow: false,
         reason: 'off_topic',
-        response: "I can only help with questions about Rentletter — pricing, how it works, the landlord dashboard, application numbers, etc. For general questions, try ChatGPT or Google.",
+        response: mode === 'dashboard'
+          ? DASHBOARD_OFF_TOPIC_DECLINE
+          : "I can only help with questions about Rentletter — pricing, how it works, the landlord dashboard, application numbers, etc. For general questions, try ChatGPT or Google.",
       };
     }
   }
@@ -145,15 +159,9 @@ function preFilterMessage(text, mode = 'marketing') {
 }
 
 // ─── LAYER 2: TOPIC CLASSIFIER ────────────────────────────────
-// Cheap second-pass check using Claude Haiku.
-// Returns true if the question is about Rentletter, false otherwise.
-async function isOnTopic(userMessage, conversationContext) {
-  try {
-    // Use Haiku for the cheap classifier (much cheaper than Sonnet for binary classification)
-    const result = await anthropic.messages.create({
-      model: 'claude-haiku-4-5-20251001',
-      max_tokens: 5,
-      system: `You are a topic classifier. Your only job: decide if the user's question is about Rentletter — a Canadian rental application platform with tenant cover letters and a landlord screening dashboard.
+// Cheap second-pass check using Claude Haiku. Returns true if the question is on-topic.
+
+const MARKETING_CLASSIFIER_PROMPT = `You are a topic classifier. Your only job: decide if the user's question is about Rentletter — a Canadian rental application platform with tenant cover letters and a landlord screening dashboard.
 
 ON-TOPIC examples:
 - "How much does it cost?"
@@ -174,7 +182,36 @@ OFF-TOPIC examples:
 - "Write a poem"
 - General trivia, coding, math, creative writing, personal advice not about renting.
 
-Respond with EXACTLY one word: "YES" if the question is about Rentletter, or "NO" if it's off-topic. No other words. No punctuation.`,
+Respond with EXACTLY one word: "YES" if the question is about Rentletter, or "NO" if it's off-topic. No other words. No punctuation.`;
+
+// Dashboard classifier: on-topic = ANY question about USING Rentletter as a realtor (product
+// how-to). Strongly biased to YES so real how-to questions are never refused; only genuinely
+// unrelated requests get a NO.
+const DASHBOARD_CLASSIFIER_PROMPT = `You are a topic classifier for the Rentletter REALTOR DASHBOARD help assistant. Decide if the user's question is about USING Rentletter as a realtor — how the product works and how to do things in it.
+
+ON-TOPIC (YES) — anything about using Rentletter:
+- "How do I create a listing?" / "How do I invite a tenant?" / "How do I get the invite link?"
+- "How does the ranking work?" / "What does set-aside mean?" / "Difference between set-aside and withdrew?"
+- "How do I verify a finalist?" / "What is the name-match?" / "How do I send the report to my landlord?"
+- "How do notifications work?" / "How do I edit a listing?" / "What are the required fields?"
+- Anything about listings, invite links, applicants, the ranked list, the score/factors, verification, documents, reports, notifications, preferences, compliance, or how to use any dashboard feature.
+
+OFF-TOPIC (NO) — only things unrelated to Rentletter entirely:
+- "Write me a Python function" / "What's the weather?" / "What's 2+2?" / "Recipe for pasta" / "Write a poem"
+- General trivia, coding, math, creative writing, or personal advice unrelated to using Rentletter.
+
+When unsure, answer YES (assume it's a product question). Respond with EXACTLY one word: "YES" or "NO". No other words. No punctuation.`;
+
+async function isOnTopic(userMessage, mode = 'marketing') {
+  // Dashboard: product how-to vocabulary is on-topic deterministically — never let the
+  // probabilistic classifier false-refuse a core how-to question.
+  if (mode === 'dashboard' && DASHBOARD_ONTOPIC_HINTS.test(userMessage)) return true;
+  try {
+    // Use Haiku for the cheap classifier (much cheaper than Sonnet for binary classification)
+    const result = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 5,
+      system: mode === 'dashboard' ? DASHBOARD_CLASSIFIER_PROMPT : MARKETING_CLASSIFIER_PROMPT,
       messages: [
         { role: 'user', content: `Question: "${userMessage.slice(0, 500)}"` },
       ],
@@ -304,11 +341,13 @@ export default async function handler(req, res) {
   // Skip for very short clarifying messages or first message (greeting)
   const isShortReply = userMessage.length < 25;
   if (!isShortReply) {
-    const onTopic = await isOnTopic(userMessage, cleanMessages);
+    const onTopic = await isOnTopic(userMessage, mode);
     if (!onTopic) {
-      console.log(`[chat] Classifier rejected as off-topic: ${userMessage.slice(0, 80)}`);
+      console.log(`[chat] Classifier rejected as off-topic (mode=${mode}): ${userMessage.slice(0, 80)}`);
       return res.status(200).json({
-        reply: "I can only help with questions about Rentletter — how it works, pricing, the landlord dashboard, application numbers, etc. For other questions, please try a general AI assistant like ChatGPT.",
+        reply: mode === 'dashboard'
+          ? DASHBOARD_OFF_TOPIC_DECLINE
+          : "I can only help with questions about Rentletter — how it works, pricing, the landlord dashboard, application numbers, etc. For other questions, please try a general AI assistant like ChatGPT.",
       });
     }
   }
