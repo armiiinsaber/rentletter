@@ -9,6 +9,7 @@ import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { buildPalette, PALETTE_ORDER, readableText } from '../../lib/brandPalette';
 import { FONT_PAIRINGS, GOOGLE_FONTS_HREF, suggestPairingId } from '../../lib/brandFonts';
+import { PROVINCE_OPTIONS, normalizeProvince } from '../../lib/provinces';
 import LogoStudio from './LogoStudio';
 
 const inputStyle = {
@@ -29,6 +30,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
     brokerage: profile?.brokerage || '',
     phone: profile?.phone || '',
     license_number: profile?.license_number || '',
+    province: normalizeProvince(profile?.province),
   });
   const [brandColor, setBrandColor] = useState(profile?.brand_color || '');
   const [brandColorSecondary, setBrandColorSecondary] = useState(profile?.brand_color_secondary || '');
@@ -116,6 +118,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
         brokerage: form.brokerage.trim() || null,
         phone: form.phone.trim() || null,
         license_number: form.license_number.trim() || null,
+        province: normalizeProvince(form.province),
         brand_color: /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor.toLowerCase() : null,
         brand_color_secondary: /^#[0-9a-fA-F]{6}$/.test(brandColorSecondary) ? brandColorSecondary.toLowerCase() : null,
       };
@@ -297,6 +300,14 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
           <input type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} placeholder={f.ph} style={inputStyle} />
         </div>
       ))}
+      {/* Province — drives province-specific behaviour (e.g. the tenant age-of-majority gate). */}
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Province</label>
+        <select value={form.province} onChange={(e) => set('province', e.target.value)} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+          {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
+        <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>The province you operate in. Sets rules like the tenant age of majority (Ontario 18, BC 19).</div>
+      </div>
       <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 14 }}>
         These appear on PDF exports and email summaries you send to landlord clients. All optional.
       </p>

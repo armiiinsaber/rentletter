@@ -10,6 +10,7 @@ import { GlobalStyle, Icon } from '../components/ui';
 import { C, R, SH } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
+import { normalizeProvince } from '../lib/provinces';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
 import ChatWidget from '../components/ChatWidget';
@@ -23,10 +24,21 @@ export async function getServerSideProps(ctx) {
   if (!user) {
     return { redirect: { destination: '/signin?next=/landlord', permanent: false } };
   }
-  const [{ data: profile }, { data: listings }] = await Promise.all([
+  let [{ data: profile }, { data: listings }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('listings').select('*').eq('profile_id', user.id).order('created_at', { ascending: false }),
   ]);
+  // Backfill province once: new signups carry it in user metadata; existing accounts with no
+  // province default to Ontario. Only writes when profiles.province is unset, so a realtor's
+  // later manual change in settings is never overwritten. Gracefully no-ops if the column
+  // isn't migrated yet.
+  if (profile && (profile.province === null || profile.province === undefined)) {
+    const chosen = normalizeProvince(user.user_metadata?.province);
+    const { data: updated } = await supabase
+      .from('profiles').update({ province: chosen }).eq('id', user.id).select().single();
+    if (updated) profile = updated;
+    else profile = { ...profile, province: chosen };
+  }
   return {
     props: {
       userId: user.id,

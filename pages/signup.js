@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { isValidEmail } from '../lib/validation';
+import { PROVINCE_OPTIONS, DEFAULT_PROVINCE, normalizeProvince } from '../lib/provinces';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
 
@@ -14,6 +15,7 @@ export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [province, setProvince] = useState(DEFAULT_PROVINCE);
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -82,7 +84,9 @@ export default function SignUp() {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
-        options: { emailRedirectTo },
+        // Province is carried in user metadata so it survives the email-confirmation gap;
+        // it's backfilled onto profiles.province on first authenticated dashboard load.
+        options: { emailRedirectTo, data: { province: normalizeProvince(province) } },
       });
       if (signUpError) {
         setError(friendlyError(signUpError)); // pass the whole error so code/status classify it
@@ -175,6 +179,15 @@ export default function SignUp() {
         {touched && confirm.length > 0 && !confirmValid && (
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don’t match.</div>
         )}
+        {/* Province — determines province-specific behaviour (e.g. tenant age of majority). */}
+        <label style={authLabelStyle} htmlFor="province">Province</label>
+        <select
+          id="province" value={province} onChange={(e) => setProvince(e.target.value)}
+          style={{ ...authInputStyle, appearance: 'none', cursor: 'pointer' }}
+        >
+          {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
+        <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 4 }}>Where you operate. You can change this later in your profile.</div>
         {/* Required agreement — makes the Terms binding at signup. */}
         <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 18, marginBottom: 6, cursor: 'pointer', fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
           <input
