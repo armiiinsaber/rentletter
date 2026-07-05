@@ -9,6 +9,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { reasonLabel } from '../../../lib/setAsideReasons';
+import { humanRightsCodeName } from '../../../lib/provinces';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -115,7 +116,7 @@ STYLE:
 - TRUE plain text only. NO emojis. NO markdown (no #, *, _, backticks, tables). Only keyboard punctuation, "·" middots, "." leader dots, "—" em-dash rules.
 - Short lines that won't wrap badly on a narrow phone.
 
-COMPLIANCE (Ontario Human Rights Code) — STRICT:
+COMPLIANCE (${humanRightsCodeName(ctx.profile?.province)}) — STRICT:
 - Facts ONLY from: income, employment tenure, rent-to-income, references, scorecard fit, and the provided set-aside reasons. Use the data; never invent.
 - NEVER mention or imply protected grounds: race, ancestry, place of origin, citizenship, ethnic origin, creed/religion, sex, sexual orientation, gender identity, age, marital status, family status, disability, or receipt of public assistance.
 - Say "household" rather than "couple/family". Do not infer age from job/student status.

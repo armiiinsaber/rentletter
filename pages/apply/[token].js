@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
-import { normalizeProvince, ageOfMajority, provinceName } from '../../lib/provinces';
+import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } from '../../lib/provinces';
 import { formatUnit } from '../../lib/unitType';
 
 // Age (whole years) from an ISO yyyy-mm-dd DOB, accounting for whether this year's
@@ -376,12 +376,12 @@ export default function ApplyPage() {
                 </div>
               )}
 
-              {/* Privacy / OHRC note — kept intact */}
+              {/* Privacy / human-rights-code note — province-aware (ON: OHRC, BC: BC code). */}
               <div style={{ marginBottom: 40, padding: '18px 22px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                   Designed to be privacy-first
                 </div>
-                We collect what landlords need to make a good decision — not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with Ontario Human Rights Code best practices.
+                We collect what landlords need to make a good decision — not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with {humanRightsCodeName(listingProvince)} best practices.
               </div>
 
               <FormSection num="01" title="Where to send it" required>

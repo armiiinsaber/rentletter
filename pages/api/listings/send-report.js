@@ -8,6 +8,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
 import { loadPairingFonts } from '../../../lib/pdfFonts';
+import { humanRightsCodeName } from '../../../lib/provinces';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -68,7 +69,7 @@ export default async function handler(req, res) {
         ${personalNote ? `<div style="background:#f2eee3;padding:16px;border-left:3px solid #d72027;margin:0 0 14px;"><p style="font-size:14px;color:#0f0f10;line-height:1.6;margin:0;white-space:pre-wrap;">${esc(personalNote)}</p></div>` : ''}
       </td></tr>
       <tr><td style="padding:20px 4px 0;border-top:1px solid #e3ddd0;margin-top:20px;">
-        <p style="font-size:11px;color:#86868b;line-height:1.6;margin:14px 0 0;">Prepared by ${esc(realtorName)}. Tenant data is self-reported; verify references independently. Screening must comply with the Ontario Human Rights Code. Powered by Rentletter.</p>
+        <p style="font-size:11px;color:#86868b;line-height:1.6;margin:14px 0 0;">Prepared by ${esc(realtorName)}. Tenant data is self-reported; verify references independently. Screening must comply with the ${humanRightsCodeName(ctx.profile?.province)}. Powered by Rentletter.</p>
       </td></tr>
     </table>
   </td></tr></table></body></html>`;
