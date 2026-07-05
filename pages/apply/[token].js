@@ -81,6 +81,7 @@ export default function ApplyPage() {
   const [copied, setCopied] = useState(false);
   const [touched, setTouched] = useState({});
   const [triedSubmit, setTriedSubmit] = useState(false);
+  const [reviewing, setReviewing] = useState(false); // deliberate review-and-confirm step
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const markTouched = (k) => setTouched((t) => ({ ...t, [k]: true }));
@@ -162,13 +163,23 @@ export default function ApplyPage() {
     return () => { cancelled = true; };
   }, [router.isReady, router.query.token]);
 
-  const submit = async () => {
+  // Tapping "Submit" opens the deliberate review step. Gating is unchanged — this is only
+  // reachable when all required/vital fields are valid; otherwise surface the missing fields.
+  const openReview = () => {
     if (!allVitalValid) {
       setTriedSubmit(true);
       setError('Please complete the required fields marked with * — some are missing or need fixing. They’re highlighted below.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    setError('');
+    setReviewing(true);
+  };
+
+  // Final submission — only from the review step's "Confirm & submit". The successful-submit
+  // flow (RL generation, KV tag, Supabase mirror, email, success screen) is unchanged.
+  const submitApplication = async () => {
+    if (status === 'submitting') return; // guard against double-submit
     setError('');
     setStatus('submitting');
     const token = String(router.query.token || '');
@@ -231,6 +242,7 @@ export default function ApplyPage() {
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.');
       setStatus('ready');
+      setReviewing(false); // close the review so the form + error banner are visible
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
@@ -477,7 +489,7 @@ export default function ApplyPage() {
                 Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required. Your realtor screens on these, so please double-check they’re accurate before you submit.
               </p>
               <button
-                onClick={submit}
+                onClick={openReview}
                 disabled={status === 'submitting' || !allVitalValid}
                 className="rl-btn"
                 style={{
@@ -488,7 +500,7 @@ export default function ApplyPage() {
                   cursor: (status === 'submitting' || !allVitalValid) ? 'not-allowed' : 'pointer',
                   minHeight: 56,
                 }}>
-                {status === 'submitting' ? 'Submitting…' : 'Submit application'}
+                {status === 'submitting' ? 'Submitting…' : 'Review &amp; submit'}
               </button>
               {status === 'ready' && !allVitalValid && (() => {
                 const labels = { fullName: 'Full name', dateOfBirth: `Date of birth (${minAge}+)`, email: 'Valid email', phone: '10-digit phone', annualIncome: 'Annual income', employer: 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };
@@ -502,6 +514,53 @@ export default function ApplyPage() {
               <p style={{ fontSize: 12, color: C.inkMute, textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
                 Free for applicants. You’ll get an application number to share — your realtor sees it in their dashboard.
               </p>
+
+              {/* REVIEW-AND-CONFIRM — the deliberate final checkpoint before submitting. */}
+              {reviewing && (() => {
+                const fmtDate = (v) => { try { return new Date(`${v}T00:00:00`).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return v; } };
+                const incomeNum = Number(String(form.annualIncome).replace(/[^\d.]/g, '')) || 0;
+                const rows = [
+                  ['Full name', form.fullName.trim()],
+                  ['Date of birth', form.dateOfBirth ? `${fmtDate(form.dateOfBirth)}${derivedAge != null ? ` (age ${derivedAge})` : ''}` : '—'],
+                  ['Email', form.email.trim()],
+                  ['Phone', form.phone.trim()],
+                  ['Annual income', incomeNum ? `$${incomeNum.toLocaleString()}` : '—'],
+                  ['Employer', form.employer.trim()],
+                  ['Job title', form.jobTitle.trim()],
+                  ['Move-in date', form.moveInDate ? fmtDate(form.moveInDate) : '—'],
+                ];
+                const submitting = status === 'submitting';
+                return (
+                  <div
+                    onClick={() => { if (!submitting) setReviewing(false); }}
+                    style={{ position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 32px)', zIndex: 120 }}>
+                    <div onClick={(e) => e.stopPropagation()} className="rl-modal"
+                      style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(20px, 4vw, 28px)' }}>
+                      <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Review your application</div>
+                      <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>Please review before you submit</h3>
+                      <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>Your realtor and the landlord screen on this information, so make sure it’s accurate — you can go back and edit anything.</p>
+                      <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
+                        {rows.map(([k, v]) => (
+                          <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '5px 0', fontSize: 13 }}>
+                            <span style={{ color: C.inkMute, fontWeight: 600, minWidth: 0, flexShrink: 0 }}>{k}</span>
+                            <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{v || '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                        <button onClick={() => setReviewing(false)} disabled={submitting}
+                          style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '12px 20px', fontSize: 13, fontWeight: 600, cursor: submitting ? 'default' : 'pointer' }}>
+                          Go back and edit
+                        </button>
+                        <button onClick={submitApplication} disabled={submitting}
+                          style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.7 : 1 }}>
+                          {submitting ? 'Submitting…' : 'Confirm & submit'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
