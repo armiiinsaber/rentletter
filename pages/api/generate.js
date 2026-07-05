@@ -380,7 +380,7 @@ export default async function handler(req, res) {
     previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
     currentRent,
     moveInDate, reasonForMoving,
-    numberOfOccupants, occupantsDetails, smoker,
+    numberOfOccupants, occupantsDetails, smoker, evParkingNeeded,
     hasCoApplicant, coApplicantName, coApplicantAge, coApplicantEmployer,
     coApplicantJobTitle, coApplicantIncome, coApplicantRelationship,
     personality, pets, redFlags,
@@ -860,6 +860,7 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
         numberOfOccupants: numberOfOccupants || '1',
         occupantsDetails: occupantsDetails || null,
         smoker: smoker || 'no',
+        evParkingNeeded: evParkingNeeded === 'yes' ? 'yes' : 'no',
       },
       coApplicant: hasCoApplicant ? {
         name: coApplicantName || null,

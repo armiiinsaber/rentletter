@@ -455,6 +455,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : '—'} />
               <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
               <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
+              <Row label="EV parking" value={l.ev_parking === 'yes' ? 'Yes' : 'No'} />
               <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : '—'} />
               <Row label="Max rent-to-income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : '—'} />
               <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : '—'} />

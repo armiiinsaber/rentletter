@@ -10,7 +10,7 @@ import { isValidEmail } from '../../lib/validation';
 
 const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
-  allows_pets: 'no', allows_smoking: 'no', parking_included: 'no',
+  allows_pets: 'no', allows_smoking: 'no', parking_included: 'no', ev_parking: 'no',
   landlord_name: '', landlord_email: '', landlord_phone: '',
   pref_min_annual_income: '', pref_rent_to_income_max_pct: 30, pref_min_years_at_job: '',
   pref_employment_full_time: true, pref_employment_contract: true,
@@ -88,6 +88,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       allows_pets: form.allows_pets === 'yes' ? 'yes' : 'no',
       allows_smoking: form.allows_smoking,
       parking_included: form.parking_included,
+      ev_parking: form.ev_parking === 'yes' ? 'yes' : 'no',
       landlord_name: String(form.landlord_name).trim() || null,
       landlord_email: String(form.landlord_email).trim().toLowerCase() || null,
       landlord_phone: String(form.landlord_phone).trim() || null,
@@ -182,6 +183,10 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
             <label><span style={fieldLabel}>Parking</span>
               <select value={form.parking_included} onChange={(e) => set({ parking_included: e.target.value })} style={inputStyle}>
                 <option value="no">Not included</option><option value="yes">Included</option>
+              </select></label>
+            <label><span style={fieldLabel}>EV parking</span>
+              <select value={form.ev_parking === 'yes' ? 'yes' : 'no'} onChange={(e) => set({ ev_parking: e.target.value })} style={inputStyle}>
+                <option value="no">No</option><option value="yes">Yes</option>
               </select></label>
           </div>
 

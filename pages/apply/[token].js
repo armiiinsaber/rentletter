@@ -58,7 +58,7 @@ const EMPTY_FORM = {
   previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
   currentRent: '',
   moveInDate: '', reasonForMoving: '',
-  numberOfOccupants: '1', occupantsDetails: '', smoker: 'no',
+  numberOfOccupants: '1', occupantsDetails: '', smoker: 'no', evParkingNeeded: 'no',
   hasCoApplicant: false,
   coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
   coApplicantIncome: '', coApplicantRelationship: '',
@@ -483,6 +483,10 @@ export default function ApplyPage() {
                     <Field label="Year" value={form.vehicleYear} onChange={(v) => update('vehicleYear', v)} placeholder="2020" type="number" />
                   </div>
                 )}
+                <SelectField label="Do you need EV parking?" value={form.evParkingNeeded} onChange={(v) => update('evParkingNeeded', v)} options={[
+                  { value: 'no', label: 'No' },
+                  { value: 'yes', label: 'Yes' },
+                ]} />
               </FormSection>
 
               <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.55 }}>
