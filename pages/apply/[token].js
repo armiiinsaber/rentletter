@@ -16,6 +16,7 @@ import { useRouter } from 'next/router';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
+import { normalizeProvince, ageOfMajority, provinceName } from '../../lib/provinces';
 
 // Age (whole years) from an ISO yyyy-mm-dd DOB, accounting for whether this year's
 // birthday has already occurred. Returns null for an empty/unparseable date.
@@ -41,7 +42,12 @@ function formatPhone(v) {
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
-const UNDER_18_MSG = 'You must be at least 18 (the age of majority in Ontario) to submit a rental application on your own. Applicants under 18 need a guarantor — support for that is coming soon.';
+// Province-aware legal-capacity gate: Ontario 18, British Columbia 19. Threshold + wording both
+// come from the listing's province (the owning realtor's), resolved from the invite.
+function underAgeMsg(province) {
+  const min = ageOfMajority(province);
+  return `You must be at least ${min} (the age of majority in ${provinceName(province)}) to submit a rental application on your own. Applicants under ${min} need a guarantor — support for that is coming soon.`;
+}
 
 // Same application schema the homepage form + generate.js use. Do not rename keys.
 const EMPTY_FORM = {
@@ -80,15 +86,21 @@ export default function ApplyPage() {
   const markTouched = (k) => setTouched((t) => ({ ...t, [k]: true }));
   const showErr = (k) => Boolean(touched[k] || triedSubmit);
 
-  // DOB drives both the (now removed) age field and the 18+ legal-capacity gate. Keep the
-  // derived age in the payload so generate.js still receives `age` — no API change needed.
+  // DOB drives both the (now removed) age field and the legal-capacity gate. Keep the derived
+  // age in the payload so generate.js still receives `age` — no API change needed.
   const derivedAge = ageFromDob(form.dateOfBirth);
   const updateDob = (v) => setForm((f) => ({ ...f, dateOfBirth: v, age: (ageFromDob(v) ?? '') === '' ? '' : String(ageFromDob(v)) }));
+
+  // Applicable minimum age from the listing's province (owning realtor's): ON 18, BC 19.
+  // Before the invite resolves, province defaults to Ontario; the form isn't interactive until
+  // status==='ready', by which point the resolved province is in effect.
+  const listingProvince = normalizeProvince(invite?.province);
+  const minAge = ageOfMajority(listingProvince);
 
   // Per-field validity for the VITAL fields the screening depends on.
   const vital = {
     fullName: !!form.fullName.trim(),
-    dateOfBirth: !!form.dateOfBirth && derivedAge != null && derivedAge >= 18,
+    dateOfBirth: !!form.dateOfBirth && derivedAge != null && derivedAge >= minAge,
     email: isValidEmail(form.email),
     phone: isValidPhone(form.phone),
     annualIncome: !!String(form.annualIncome).trim(),
@@ -105,7 +117,7 @@ export default function ApplyPage() {
   const phoneError = showErr('phone') && !vital.phone
     ? (phoneDigits(form.phone).length ? 'Enter a 10-digit phone number.' : 'Phone number is required.') : '';
   const dobError = showErr('dateOfBirth') && !vital.dateOfBirth
-    ? (form.dateOfBirth ? UNDER_18_MSG : 'Date of birth is required.') : '';
+    ? (form.dateOfBirth ? underAgeMsg(listingProvince) : 'Date of birth is required.') : '';
 
   // Resolve the invite token once the router has the param.
   useEffect(() => {
@@ -368,7 +380,7 @@ export default function ApplyPage() {
 
               <FormSection num="02" title="About you" required>
                 <Field label="Full name" required value={form.fullName} onChange={(v) => update('fullName', v)} onBlur={() => markTouched('fullName')} error={showErr('fullName') && !vital.fullName ? 'Full name is required.' : ''} placeholder="Jane Doe" />
-                <Field label="Date of birth" required value={form.dateOfBirth} onChange={updateDob} onBlur={() => markTouched('dateOfBirth')} error={dobError} type="date" hint="You must be 18+ (Ontario age of majority) to apply on your own." />
+                <Field label="Date of birth" required value={form.dateOfBirth} onChange={updateDob} onBlur={() => markTouched('dateOfBirth')} error={dobError} type="date" hint={`You must be ${minAge}+ (${provinceName(listingProvince)} age of majority) to apply on your own.`} />
                 <Field label="Phone" required value={form.phone} onChange={(v) => update('phone', formatPhone(v))} onBlur={() => markTouched('phone')} error={phoneError} placeholder="(416) 555-1234" type="tel" inputMode="tel" />
               </FormSection>
 
@@ -479,7 +491,7 @@ export default function ApplyPage() {
                 {status === 'submitting' ? 'Submitting…' : 'Submit application'}
               </button>
               {status === 'ready' && !allVitalValid && (() => {
-                const labels = { fullName: 'Full name', dateOfBirth: 'Date of birth (18+)', email: 'Valid email', phone: '10-digit phone', annualIncome: 'Annual income', employer: 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };
+                const labels = { fullName: 'Full name', dateOfBirth: `Date of birth (${minAge}+)`, email: 'Valid email', phone: '10-digit phone', annualIncome: 'Annual income', employer: 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };
                 const missing = Object.keys(vital).filter((k) => !vital[k]).map((k) => labels[k]);
                 return (
                   <p style={{ fontSize: 12.5, color: C.inkMute, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
