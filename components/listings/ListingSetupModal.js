@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { C, R } from '../theme';
 import { isValidEmail } from '../../lib/validation';
+import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
 
 const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
@@ -75,7 +76,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
     ? (!String(form.landlord_email).trim() ? 'Landlord email is required.' : (!emailValid ? 'Enter a valid email (name@example.com).' : ''))
     : '';
 
-  const REQ_LABELS = { address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Bedrooms', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
+  const REQ_LABELS = { address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Unit type', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
   const missing = Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]);
 
   const buildPayload = () => {
@@ -155,7 +156,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           </h3>
           {creating && (
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
-              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required — address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited later.
+              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required — address, monthly rent, unit type, and your landlord client's name and email. Everything else can be set now or edited later.
             </p>
           )}
         </div>
@@ -168,8 +169,10 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               <input type="text" value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="88 Bay Street" style={inputStyle} /></label>
             <label><span style={fieldLabel}>Monthly rent (CAD)<Req /></span>
               <input type="text" inputMode="numeric" value={form.monthly_rent} onChange={(e) => set({ monthly_rent: e.target.value.replace(/[^\d]/g, '') })} placeholder="2400" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Bedrooms<Req /></span>
-              <input type="text" value={form.bedrooms} onChange={(e) => set({ bedrooms: e.target.value })} placeholder="2" style={inputStyle} /></label>
+            <label><span style={fieldLabel}>Unit type<Req /></span>
+              <select value={UNIT_TYPE_OPTIONS.some((o) => o.value === form.bedrooms) ? form.bedrooms : ''} onChange={(e) => set({ bedrooms: e.target.value })} style={inputStyle}>
+                {UNIT_TYPE_OPTIONS.map((o) => <option key={o.value || 'none'} value={o.value}>{o.label}</option>)}
+              </select></label>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 10 }}>
             <label><span style={fieldLabel}>Pets allowed</span>
@@ -296,7 +299,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               {[
                 ['Address', String(form.address).trim()],
                 ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : '—'],
-                ['Bedrooms', String(form.bedrooms).trim()],
+                ['Unit type', formatUnit(form.bedrooms) || '—'],
                 // Join name + email with a middot ONLY when both exist (filter(Boolean) drops an
                 // empty side → no leading/trailing dot). Non-breaking spaces keep the middot glued
                 // between the two so it can never wrap to a line edge as an orphan "·".

@@ -17,6 +17,7 @@ import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ChatWidget from '../../components/ChatWidget';
+import { formatUnit } from '../../lib/unitType';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 
@@ -426,7 +427,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                 {l.name || l.address || 'Untitled listing'}
               </h1>
               <div style={{ fontSize: 14, color: C.inkSoft, marginTop: 6, overflowWrap: 'anywhere' }}>
-                {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}{l.bedrooms ? ` · ${l.bedrooms} bed` : ''}
+                {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -451,7 +452,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Unit & preferences</div>
               <Row label="Address" value={l.address || '—'} />
               <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : '—'} />
-              <Row label="Bedrooms" value={l.bedrooms || '—'} />
+              <Row label="Unit type" value={formatUnit(l.bedrooms) || '—'} />
               <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : '—'} />
               <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
               <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />

@@ -17,6 +17,7 @@ import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
 import { normalizeProvince, ageOfMajority, provinceName } from '../../lib/provinces';
+import { formatUnit } from '../../lib/unitType';
 
 // Age (whole years) from an ISO yyyy-mm-dd DOB, accounting for whether this year's
 // birthday has already occurred. Returns null for an empty/unparseable date.
@@ -148,9 +149,9 @@ export default function ApplyPage() {
         // ranking, so the description must contain the listing's "$<rent>/mo".
         const u = (json && json.unit) || {};
         const rent = String(u.monthlyRent || '').trim();
-        const beds = String(u.bedrooms || '').trim();
+        const bedsLabel = formatUnit(u.bedrooms);
         const descBits = [];
-        if (beds) descBits.push(/^\d+$/.test(beds) ? `${beds} bed` : beds);
+        if (bedsLabel) descBits.push(bedsLabel);
         if (rent) descBits.push(`$${rent}/mo`);
         setForm((f) => ({ ...f, apartmentAddress: u.address || '', apartmentDescription: descBits.join(' · ') }));
         setStatus('ready');
@@ -341,7 +342,7 @@ export default function ApplyPage() {
                     const addr = invite.unit.address && invite.unit.address !== (invite.listingName || '') ? invite.unit.address : null;
                     const bits = [
                       invite.unit.monthlyRent && `$${invite.unit.monthlyRent}/mo`,
-                      invite.unit.bedrooms && `${invite.unit.bedrooms} bed`,
+                      formatUnit(invite.unit.bedrooms) || null,
                       addr,
                     ].filter(Boolean);
                     return bits.length ? (

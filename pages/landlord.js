@@ -11,6 +11,7 @@ import { C, R, SH } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { normalizeProvince } from '../lib/provinces';
+import { formatUnit } from '../lib/unitType';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
 import ChatWidget from '../components/ChatWidget';
@@ -159,7 +160,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                   </div>
                   <div style={{ fontSize: 13, color: C.inkSoft }}>
                     {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}
-                    {l.bedrooms ? ` · ${l.bedrooms} bed` : ''}
+                    {formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
                   </div>
                   <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
                     Open listing <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>

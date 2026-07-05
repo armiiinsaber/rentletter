@@ -9,6 +9,7 @@ import { useRouter } from 'next/router';
 import ChatWidget from '../../components/ChatWidget';
 import { C as THEME, R, SH } from '../../components/theme';
 import { GlobalStyle, Icon } from '../../components/ui';
+import { formatUnit } from '../../lib/unitType';
 
 // Shared brand tokens, extended with the legacy "info" keys (the fit-against-
 // preferences blocks) — re-toned onto the paper palette so the report stays
@@ -252,7 +253,7 @@ export default function LandlordShortlistView() {
               <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.6 }}>
                 For: <strong>{data.unit.address}</strong>
                 {data.unit.monthlyRent && ` · $${data.unit.monthlyRent}/mo`}
-                {data.unit.bedrooms && ` · ${data.unit.bedrooms} bed`}
+                {formatUnit(data.unit.bedrooms) && ` · ${formatUnit(data.unit.bedrooms)}`}
               </p>
             )}
           </div>
