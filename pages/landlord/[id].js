@@ -452,7 +452,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <Row label="Address" value={l.address || '—'} />
               <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : '—'} />
               <Row label="Bedrooms" value={l.bedrooms || '—'} />
-              <Row label="Pets" value={l.allows_pets === 'yes' ? 'Allowed' : l.allows_pets === 'no' ? 'Not allowed' : 'No preference'} />
+              <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : '—'} />
               <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
               <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
               <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : '—'} />

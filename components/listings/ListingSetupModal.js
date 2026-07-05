@@ -10,13 +10,13 @@ import { isValidEmail } from '../../lib/validation';
 
 const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
-  allows_pets: 'any', allows_smoking: 'no', parking_included: 'no',
+  allows_pets: 'no', allows_smoking: 'no', parking_included: 'no',
   landlord_name: '', landlord_email: '', landlord_phone: '',
   pref_min_annual_income: '', pref_rent_to_income_max_pct: 30, pref_min_years_at_job: '',
   pref_employment_full_time: true, pref_employment_contract: true,
   pref_employment_self_employed: false, pref_employment_part_time: false,
   pref_earliest_move_in: '', pref_latest_move_in: '', pref_min_lease_term_months: 12,
-  pref_max_occupants: '', pref_smoking_allowed: false, pref_pets_policy: 'case-by-case',
+  pref_max_occupants: '', pref_smoking_allowed: false,
   pref_parking_spots: '', pref_requires_landlord_reference: true,
   pref_requires_employer_verification: true, pref_guarantor_accepted: true,
   pref_notes: '',
@@ -85,7 +85,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       address: String(form.address).trim(),
       monthly_rent: intOrNull(form.monthly_rent),
       bedrooms: String(form.bedrooms).trim(),
-      allows_pets: form.allows_pets,
+      allows_pets: form.allows_pets === 'yes' ? 'yes' : 'no',
       allows_smoking: form.allows_smoking,
       parking_included: form.parking_included,
       landlord_name: String(form.landlord_name).trim() || null,
@@ -103,7 +103,6 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       pref_min_lease_term_months: intOrNull(form.pref_min_lease_term_months),
       pref_max_occupants: intOrNull(form.pref_max_occupants),
       pref_smoking_allowed: !!form.pref_smoking_allowed,
-      pref_pets_policy: form.pref_pets_policy,
       pref_parking_spots: intOrNull(form.pref_parking_spots),
       pref_requires_landlord_reference: !!form.pref_requires_landlord_reference,
       pref_requires_employer_verification: !!form.pref_requires_employer_verification,
@@ -172,9 +171,9 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               <input type="text" value={form.bedrooms} onChange={(e) => set({ bedrooms: e.target.value })} placeholder="2" style={inputStyle} /></label>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10, marginTop: 10 }}>
-            <label><span style={fieldLabel}>Pets</span>
-              <select value={form.allows_pets} onChange={(e) => set({ allows_pets: e.target.value })} style={inputStyle}>
-                <option value="any">No preference</option><option value="yes">Allowed</option><option value="no">Not allowed</option>
+            <label><span style={fieldLabel}>Pets allowed</span>
+              <select value={form.allows_pets === 'yes' ? 'yes' : 'no'} onChange={(e) => set({ allows_pets: e.target.value })} style={inputStyle}>
+                <option value="yes">Yes</option><option value="no">No</option>
               </select></label>
             <label><span style={fieldLabel}>Smoking</span>
               <select value={form.allows_smoking} onChange={(e) => set({ allows_smoking: e.target.value })} style={inputStyle}>
@@ -237,10 +236,6 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               <input type="number" min="0" inputMode="numeric" value={form.pref_max_occupants} onChange={(e) => set({ pref_max_occupants: e.target.value })} placeholder="e.g. 2" style={inputStyle} /></label>
             <label><span style={fieldLabel}>Parking spots</span>
               <input type="number" min="0" inputMode="numeric" value={form.pref_parking_spots} onChange={(e) => set({ pref_parking_spots: e.target.value })} placeholder="e.g. 1" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Pets policy</span>
-              <select value={form.pref_pets_policy} onChange={(e) => set({ pref_pets_policy: e.target.value })} style={inputStyle}>
-                <option value="case-by-case">Case by case</option><option value="no">No pets</option><option value="yes">Pets welcome</option>
-              </select></label>
           </div>
           <div style={{ marginTop: 8 }}>
             <Check k="pref_smoking_allowed" label="Smoking allowed" />
