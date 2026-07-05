@@ -6,6 +6,7 @@
 // Supabase listing row (RLS, realtor owns it).
 import crypto from 'crypto';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { normalizeProvince } from '../../../lib/provinces';
 
 function kvBase() {
   return (process.env.KV_REST_API_URL || '').replace(/\/+$/, '');
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
   // Realtor profile for co-branding on the apply page.
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name, brokerage, phone')
+    .select('full_name, brokerage, phone, province')
     .eq('id', user.id)
     .single();
 
@@ -51,6 +52,9 @@ export default async function handler(req, res) {
     realtorName: String(profile?.full_name || '').slice(0, 120),
     realtorBrokerage: String(profile?.brokerage || '').slice(0, 200),
     realtorPhone: String(profile?.phone || '').slice(0, 40),
+    // The listing's applicable province = the owning realtor's province. Carried on the invite
+    // so the tenant apply page can apply the right age-of-majority gate (ON 18 / BC 19).
+    province: normalizeProvince(profile?.province),
     listingId: String(listing.id).slice(0, 64),
     listingName: String(listing.name || 'Listing').slice(0, 80),
     unit: {

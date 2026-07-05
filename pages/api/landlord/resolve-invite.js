@@ -1,6 +1,7 @@
 // /api/landlord/resolve-invite
 // PUBLIC endpoint. Tenants land on /apply/[token]; the page calls this
 // to look up listing info to show the tenant.
+import { normalizeProvince } from '../../../lib/provinces';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -32,6 +33,8 @@ export default async function handler(req, res) {
       realtorBrokerage: invite.realtorBrokerage,
       listingName: invite.listingName,
       unit: invite.unit,
+      // Applicable province (owning realtor's). Older invites without it default to Ontario.
+      province: normalizeProvince(invite.province),
     });
   } catch (e) {
     console.error('[resolve-invite] error:', e);
