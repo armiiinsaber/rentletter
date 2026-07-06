@@ -839,16 +839,31 @@ export default function Home() {
                   <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '360ms', color: C.red }}>applications.</span></span>
                 </h1>
 
-                <p className="rl-hero-seq" style={{
+                {/* Hero sequence as a compact numbered 3-step. Deliberately small red numerals +
+                    short lines — visually distinct from the big serif 01/02/03 "How it works"
+                    section below. text-wrap:pretty guards against orphan words at 360/390. */}
+                <ol className="rl-hero-seq" style={{
                   animationDelay: '540ms',
-                  fontSize: 'clamp(16px, 1.7vw, 19px)',
-                  lineHeight: 1.6,
-                  color: C.inkSoft,
-                  marginBottom: 34,
-                  maxWidth: 540,
+                  listStyle: 'none', margin: '0 0 34px', padding: 0, maxWidth: 480,
+                  display: 'grid', gap: 13,
                 }}>
-                  Send applicants one link. Standardized applications land in your dashboard, ranked against your landlord&apos;s criteria. Document your decisions and send your landlord a polished report.
-                </p>
+                  {[
+                    'Send applicants one link.',
+                    'Standardized applications land in your dashboard, ranked.',
+                    'Send your landlord a polished report.',
+                  ].map((line, i) => (
+                    <li key={i} style={{ display: 'flex', gap: 13, alignItems: 'baseline' }}>
+                      <span aria-hidden="true" style={{
+                        flexShrink: 0, minWidth: 15, color: C.red, fontWeight: 700,
+                        fontSize: 14, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em',
+                      }}>{i + 1}</span>
+                      <span style={{
+                        fontSize: 'clamp(16px, 1.7vw, 19px)', lineHeight: 1.45,
+                        color: C.inkSoft, textWrap: 'pretty',
+                      }}>{line}</span>
+                    </li>
+                  ))}
+                </ol>
 
                 <div className="rl-hero-seq" style={{ animationDelay: '660ms' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
