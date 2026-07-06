@@ -176,6 +176,18 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           a scroll container, which breaks the sticky header (it scrolls away instead of reserving
           its height at the top). clip still contains any horizontal overflow without that side effect. */}
       <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'clip' }}>
+        {/* Safe-area fill: the header is fixed + transparent, so nothing paints the notch/status-bar
+            strip (exposed by viewport-fit=cover) — it showed white. This fixed strip paints exactly
+            the safe-area-inset-top region eggshell, BEHIND the header content (z 59 < header 60) and
+            non-interactive, so it never covers or blocks the bell/avatar/sign-out and doesn't affect
+            the header's fade/transparency. Height collapses to 0 on devices without a notch. */}
+        <div aria-hidden="true" style={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          height: 'env(safe-area-inset-top, 0px)',
+          background: C.paper,
+          zIndex: 59,
+          pointerEvents: 'none',
+        }} />
         <DashboardHeader profile={profile} />
 
         <div style={{
