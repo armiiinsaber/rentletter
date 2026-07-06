@@ -580,7 +580,7 @@ export default function ApplyPage() {
 // ─── Form field components (match the homepage application form exactly) ──────
 function FormSection({ num, title, required, children }) {
   return (
-    <div style={{ marginBottom: 40, paddingBottom: 40, borderBottom: `1px solid ${C.rule}` }}>
+    <div className="rl-in" style={{ marginBottom: 40, paddingBottom: 40, borderBottom: `1px solid ${C.rule}` }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 14 }}>
         <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500 }}>{num}</span>
         <h3 style={{ fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>{title}</h3>

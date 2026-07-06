@@ -529,7 +529,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           </div>
 
           {/* ── APPLICANTS — single ranked list (everyone, best fit first) ── */}
-          <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
+          <section className="rl-card rl-in" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Ranked applicants</h2>
               <span style={{ fontSize: 12.5, color: C.inkMute }}>{totalApplicants} total{setAsideList.length ? ` · ${setAsideList.length} set aside` : ''}</span>
@@ -588,7 +588,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
 
           {/* ── PRESENT TO LANDLORD (appears once anyone has applied) ── */}
           {totalApplicants > 0 && (
-            <section className="rl-card" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
+            <section className="rl-card rl-in" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
               <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Present to landlord</div>
               <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, maxWidth: 560 }}>
                 Present the full ranked list of {totalApplicants} applicant{totalApplicants === 1 ? '' : 's'} (top 5 highlighted{setAsideList.length ? `, ${setAsideList.length} set aside` : ''}) as a branded PDF report or a paste-ready message.

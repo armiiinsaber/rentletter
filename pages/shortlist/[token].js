@@ -8,7 +8,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import ChatWidget from '../../components/ChatWidget';
 import { C as THEME, R, SH } from '../../components/theme';
-import { GlobalStyle, Icon } from '../../components/ui';
+import { GlobalStyle, Icon, useReveal } from '../../components/ui';
 import { formatUnit } from '../../lib/unitType';
 
 // Shared brand tokens, extended with the legacy "info" keys (the fit-against-
@@ -124,6 +124,10 @@ export default function LandlordShortlistView() {
       setLoading(false);
     })();
   }, [token]);
+
+  // Reveal the report's stable sections on load / scroll (kept off the interactive
+  // list/compare card area so switching views never flashes). Presentation only.
+  useReveal(`${!!data}-${view}`);
 
   const handleAction = async (action, appNumber, noteText) => {
     if (!token) return;
@@ -242,7 +246,7 @@ export default function LandlordShortlistView() {
         <main style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(28px, 5vw, 48px) clamp(20px, 4vw, 32px) 80px' }}>
 
           {/* Title + unit */}
-          <div style={{ marginBottom: 28 }}>
+          <div className="rl-in" style={{ marginBottom: 28 }}>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Your shortlist
             </div>
@@ -276,7 +280,7 @@ export default function LandlordShortlistView() {
             if (items.length === 0 && !prefs.notes) return null;
 
             return (
-              <div style={{ marginBottom: 32, padding: 'clamp(18px, 3vw, 24px)', background: C.info, borderRadius: R.card, borderLeft: `4px solid ${C.inkSoft}` }}>
+              <div className="rl-in" style={{ marginBottom: 32, padding: 'clamp(18px, 3vw, 24px)', background: C.info, borderRadius: R.card, borderLeft: `4px solid ${C.inkSoft}` }}>
                 <div style={{ fontSize: 10, color: C.infoInk, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
                   Your stated preferences
                 </div>
@@ -547,7 +551,7 @@ export default function LandlordShortlistView() {
           )}
 
           {/* Bottom — call-to-action to realtor */}
-          <section style={{ marginTop: 60, padding: 'clamp(24px, 5vw, 40px)', background: C.ink, color: C.paper, borderRadius: R.card }}>
+          <section className="rl-in" style={{ marginTop: 60, padding: 'clamp(24px, 5vw, 40px)', background: C.ink, color: C.paper, borderRadius: R.card }}>
             <div style={{ fontSize: 11, color: '#f0b8bb', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Ready to decide?
             </div>
