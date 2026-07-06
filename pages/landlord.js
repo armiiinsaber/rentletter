@@ -132,13 +132,17 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
     const measure = () => setHeaderOffset(Math.ceil(header.getBoundingClientRect().height) + GAP);
     measure();
     let ro;
-    if (typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(measure); ro.observe(header); }
+    // Observe the BORDER-box: the safe-area inset is padding, so a notch-inset change resizes the
+    // border-box (not the content-box). Observing border-box re-measures when iOS resolves the notch.
+    if (typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(measure); ro.observe(header, { box: 'border-box' }); }
     window.addEventListener('resize', measure);
     window.addEventListener('orientationchange', measure);
+    window.addEventListener('load', measure);
     return () => {
       if (ro) ro.disconnect();
       window.removeEventListener('resize', measure);
       window.removeEventListener('orientationchange', measure);
+      window.removeEventListener('load', measure);
     };
   }, []);
 
@@ -163,9 +167,13 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
         <div style={{
           maxWidth: 1100, margin: '0 auto',
-          // Clear the fixed header by its measured height (+ gap). Fallback (pre-measure / no-JS)
-          // tracks the same safe-area env so first paint is already clear, then JS refines it exactly.
-          paddingTop: headerOffset != null ? headerOffset : 'calc(72px + env(safe-area-inset-top, 0px) + 20px)',
+          // Clear the fixed header. Use max() of the JS-measured height and a LIVE env-based floor
+          // (header content ~74px + 20px gap + the safe-area inset). The env floor re-evaluates
+          // automatically, so even if the one-shot measurement ran before iOS resolved the notch
+          // inset (leaving a too-small px value), the content can never start under the header.
+          paddingTop: headerOffset != null
+            ? `max(${headerOffset}px, calc(94px + env(safe-area-inset-top, 0px)))`
+            : 'calc(94px + env(safe-area-inset-top, 0px))',
           paddingRight: 'clamp(16px, 4vw, 32px)',
           paddingLeft: 'clamp(16px, 4vw, 32px)',
           paddingBottom: 48,
@@ -355,7 +363,10 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           top: 0;
           left: 0;
           right: 0;
-          background: #faf8f3 !important;  /* solid, same as the page — seamless AND opaque */
+          background: #faf8f3 !important;         /* solid, same as the page — seamless AND opaque */
+          background-color: #faf8f3 !important;   /* explicit: fully opaque, no alpha channel */
+          opacity: 1 !important;                  /* never semi-transparent (no leftover fade opacity) */
+          z-index: 90 !important;                 /* above all page content, below modals (z100)/dropdowns */
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
           border-bottom-color: transparent !important;
