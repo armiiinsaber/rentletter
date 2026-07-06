@@ -1983,7 +1983,8 @@ export default function LandlordDashboard() {
 
           {/* ── GUIDED ONBOARDING — signed-in realtor with no applicants yet ── */}
           {sessionToken && realtorProfile.isRealtor && applications.length === 0 && !workspaceLoading && (
-            <section className="rl-reveal" style={{ marginBottom: 28 }}>
+            /* First-paint content — not reveal-gated (see ranked-list note) so it never blanks. */
+            <section style={{ marginBottom: 28 }}>
               <div className="rl-card" style={{ overflow: 'hidden' }}>
                 <div style={{ padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)', borderBottom: `1px solid ${C.rule}` }}>
                   <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
@@ -2726,7 +2727,11 @@ export default function LandlordDashboard() {
 
           {/* ── VIEW SWITCHER ────────────────────────────────── */}
           {applications.length > 0 && (
-            <section className="rl-reveal" style={{ marginBottom: 32, borderTop: `1px solid ${C.rule}`, paddingTop: 24 }}>
+            /* Primary demo content — must render on first paint. NOT reveal-gated: this section is
+               very tall, and the shared reveal observer (threshold 0.08) would need ~8% of its height
+               in view to fire, which never happens at the top, so the demo looked empty until you
+               scrolled. Rendered immediately instead. */
+            <section style={{ marginBottom: 32, borderTop: `1px solid ${C.rule}`, paddingTop: 24 }}>
 
               {/* Single ranked-list view — teaches the new ranked-everyone model */}
               <DemoRankedList
