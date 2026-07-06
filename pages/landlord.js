@@ -57,6 +57,10 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  // Measured pixel height of the fixed dashboard header (includes the REAL safe-area inset on
+  // device) plus a gap — used to offset the content so nothing ever overlaps. Null until measured
+  // on the client; a CSS fallback covers the first paint. See the measure effect below.
+  const [headerOffset, setHeaderOffset] = useState(null);
 
   const createListing = async (values) => {
     setSaving(true);
@@ -132,6 +136,31 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
     };
   }, []);
 
+  // ── Robust header clearance ──────────────────────────────────────────────────────────────
+  // The header is position:fixed (see .dash-bg override), so it does NOT reserve space in flow —
+  // we reserve it explicitly. env(safe-area-inset-top) alone proved unreliable on real iPhones, so
+  // instead we MEASURE the header's actual rendered height (getBoundingClientRect already includes
+  // its safe-area padding, whatever the device's real notch inset turns out to be) and offset the
+  // content by that + a small gap. Re-measures on resize/orientation (a ResizeObserver also catches
+  // font-size / safe-area changes). The header's on-scroll height is pinned constant in CSS, so this
+  // never jumps while scrolling.
+  useEffect(() => {
+    const header = document.querySelector('.dash-bg .rl-header');
+    if (!header) return;
+    const GAP = 20; // clear minimum breathing room below the header
+    const measure = () => setHeaderOffset(Math.ceil(header.getBoundingClientRect().height) + GAP);
+    measure();
+    let ro;
+    if (typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(measure); ro.observe(header); }
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+    };
+  }, []);
+
   return (
     <>
       <Head>
@@ -145,7 +174,15 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
       <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'clip' }}>
         <DashboardHeader profile={profile} />
 
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(28px, 5vw, 44px) clamp(16px, 4vw, 32px) 48px' }}>
+        <div style={{
+          maxWidth: 1100, margin: '0 auto',
+          // Clear the fixed header by its measured height (+ gap). Fallback (pre-measure / no-JS)
+          // tracks the same safe-area env so first paint is already clear, then JS refines it exactly.
+          paddingTop: headerOffset != null ? headerOffset : 'calc(72px + env(safe-area-inset-top, 0px) + 20px)',
+          paddingRight: 'clamp(16px, 4vw, 32px)',
+          paddingLeft: 'clamp(16px, 4vw, 32px)',
+          paddingBottom: 48,
+        }}>
 
           {/* ── OVERVIEW BENTO — hero + branding ── */}
           <div className="rl-in dash-bento">
@@ -322,16 +359,30 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
            entirely, so the page gradient flows straight through the header with no boundary.
            Scoped here; the shared ScrollHeader is unchanged on every other page. */
         .dash-bg :global(.rl-header) {
+          /* Fixed, NOT sticky. position:sticky is supposed to reserve its height in flow, but on iOS
+             that reservation is unreliable, so content overlapped the header. Fixed takes it out of
+             flow deterministically; the content offset is reserved explicitly from the JS-measured
+             header height (see headerOffset), which is robust on every device. */
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
           background: transparent !important;
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
           border-bottom-color: transparent !important;
           box-shadow: none !important;
           transition: opacity 140ms linear !important; /* smooths the scroll-driven header fade */
-          /* viewport-fit=cover extends the page under the iPhone notch; pad the sticky header by the
-             safe-area inset so its controls clear the status bar and never overlap the top on device.
-             Reserved in flow, so content still starts below the header. 0 on browsers without a notch. */
+          /* viewport-fit=cover extends the page under the iPhone notch; pad the header by the
+             safe-area inset so its controls clear the status bar. This padding is part of the height
+             the JS measures, so the content offset accounts for it too. 0 on non-notch browsers. */
           padding-top: env(safe-area-inset-top, 0px);
+        }
+        /* Pin the header's height constant on scroll — neutralise the shared shrink's padding change
+           so the measured content offset never jumps as the page scrolls. */
+        .dash-bg :global(.rl-header.rl-shrink) .rl-header-inner {
+          padding-top: 18px;
+          padding-bottom: 18px;
         }
         /* Seamless top AND bottom: match the root background to the flat .dash-bg base so there is
            no tone step at the very top edge (under the status bar / above the header) or the very
