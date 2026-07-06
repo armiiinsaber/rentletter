@@ -89,27 +89,47 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   useReveal(`${listings.length}-${hasListings}`);
 
   // ── Scroll-reactive top transition ──────────────────────────────────────────────────────
-  // A GENTLE hint only: as the page scrolls, just the topmost hero strip softens very slightly
-  // (never below ~0.68 opacity) and drifts a few px, over a long distance so it's gradual — not
-  // a dissolve. Scoped to the hero alone; the branding card and everything below stay fully
-  // readable. opacity/transform only (compositor). Static (no listener) for reduced-motion.
+  // Two GENTLE, compositor-only hints as the page scrolls (opacity/transform only; both static
+  // for reduced-motion):
+  //   1. The topmost hero strip softens slightly (never below ~0.68) and drifts a few px, over a
+  //      long distance so it's gradual — not a dissolve.
+  //   2. The sticky header softly fades out over a short distance. It is transparent on the
+  //      dashboard (see .dash-bg override), so without this it would leave a hard half-cut edge
+  //      where content scrolls sharply under it. Fading it removes that hard overlap; it eases
+  //      back to full as you scroll up. Pointer-events drop once it's nearly gone so it never
+  //      blocks the content beneath.
   const heroFadeRef = useRef(null);
   useEffect(() => {
     const el = heroFadeRef.current;
-    if (!el) return;
+    const header = document.querySelector('.dash-bg .rl-header');
+    if (!el && !header) return;
     if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const DISTANCE = 560;
+    const HERO_DISTANCE = 560;
+    const HEADER_DISTANCE = 150;
+    if (header) header.style.willChange = 'opacity';
     let raf = 0;
     const apply = () => {
       raf = 0;
-      const t = Math.min(Math.max(window.scrollY / DISTANCE, 0), 1);
-      el.style.opacity = String(1 - t * 0.32);      // eases to ~0.68, never a full fade
-      el.style.transform = `translate3d(0, ${(-t * 7).toFixed(1)}px, 0)`; // barely-there drift
+      const y = window.scrollY;
+      if (el) {
+        const t = Math.min(Math.max(y / HERO_DISTANCE, 0), 1);
+        el.style.opacity = String(1 - t * 0.32);      // eases to ~0.68, never a full fade
+        el.style.transform = `translate3d(0, ${(-t * 7).toFixed(1)}px, 0)`; // barely-there drift
+      }
+      if (header) {
+        const h = Math.min(Math.max(y / HEADER_DISTANCE, 0), 1);
+        header.style.opacity = String(1 - h * 0.82);  // eases to ~0.18, softly fades back in on scroll up
+        header.style.pointerEvents = h > 0.85 ? 'none' : 'auto';
+      }
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
     apply();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      if (header) { header.style.opacity = ''; header.style.transform = ''; header.style.pointerEvents = ''; header.style.willChange = ''; }
+    };
   }, []);
 
   return (
@@ -131,10 +151,10 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
             <section ref={heroFadeRef} className="dash-card dash-hero span-4" style={{ willChange: 'opacity, transform' }}>
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
               <h1 className="dash-h1" style={{ marginBottom: 4 }}>
-                {hasListings ? `Welcome back${firstName ? `, ${firstName}` : ''}.` : 'Welcome to Rentletter.'}
+                {hasListings ? `Welcome back${firstName ? `, ${firstName}` : ''}` : 'Welcome to Rentletter'}
               </h1>
               <p className="dash-hero-sub">
-                Every applicant to your listings, standardized and ranked against your landlord’s criteria — ready to review and present.
+                All your applicants, ranked and ready to review.
               </p>
               <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                 <button onClick={() => setModalOpen(true)} className="dash-cta">
@@ -280,12 +300,16 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
       <ChatWidget mode="dashboard" />
 
       <style jsx>{`
-        /* ── Layered base surface: soft warm gradient + faint brand/ink glows, quiet not noisy ── */
+        /* ── Layered base surface: flat paper + faint brand/ink glows, quiet not noisy.
+           The base is a single flat colour (not a vertical gradient) on purpose: a gradient's top
+           (#faf8f3) and bottom (#f4efe6) can't both match a single body colour, which is what left
+           a visible tone band at the very top or very bottom edge (and on iOS overscroll). Flat
+           #faf8f3 = body = html means zero step at either edge. The glows still carry the depth. ── */
         .dash-bg {
           background:
             radial-gradient(130% 92% at 88% -14%, rgba(215, 32, 39, 0.05), transparent 56%),
             radial-gradient(120% 82% at 4% 2%, rgba(15, 15, 16, 0.022), transparent 52%),
-            linear-gradient(180deg, #faf8f3 0%, #f4efe6 100%);
+            #faf8f3;
         }
         /* Seamless header: the visible line under the header was NOT a border/shadow (those were
            already off) — it was a colour/saturation SEAM at the header's bottom edge. The shared
@@ -300,13 +324,13 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           backdrop-filter: none !important;
           border-bottom-color: transparent !important;
           box-shadow: none !important;
+          transition: opacity 140ms linear !important; /* smooths the scroll-driven header fade */
         }
-        /* Seamless bottom: the line near the footer was another background seam — the .dash-bg
-           gradient ends at #f4efe6 while the page/body sits on #faf8f3 (C.paper), so the two tones
-           met in an edge at the page bottom (and on mobile overscroll / dynamic-toolbar exposure).
-           Match the root background to the gradient's end colour so there is no step below. */
+        /* Seamless top AND bottom: match the root background to the flat .dash-bg base so there is
+           no tone step at the very top edge (under the status bar / above the header) or the very
+           bottom edge (browser chrome / iOS overscroll). One continuous #faf8f3 surface. */
         :global(html),
-        :global(body) { background: #f4efe6 !important; }
+        :global(body) { background: #faf8f3 !important; }
         /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
         .dash-card {
           background: ${C.card};
