@@ -89,6 +89,14 @@ export const GlobalStyle = () => (
       .rl-reveal { opacity: 0; transform: translateY(28px); transition: opacity 620ms ease, transform 680ms ${EASE}; }
       .rl-reveal.rl-vis { opacity: 1; transform: none; }
 
+      /* App reveal — the subtle, confident variant matching the dashboard header's language
+         (small travel, quicker). Shared by every authenticated page for BOTH the page-load
+         reveal (above-the-fold elements fire immediately as the observer runs on mount) and
+         scroll reveals (below-the-fold elements fire on enter). Optional per-item stagger via
+         a --rl-d CSS var, same idea as the header. Reused by the one useReveal() observer. */
+      .rl-in { opacity: 0; transform: translateY(12px); transition: opacity 480ms ease, transform 520ms ${EASE}; transition-delay: var(--rl-d, 0ms); }
+      .rl-in.rl-vis { opacity: 1; transform: none; }
+
       /* Stepped reveal — parent gets .rl-vis, children stagger */
       .rl-steps .rl-step { opacity: 0; transform: translateY(28px); transition: opacity 560ms ease, transform 620ms ${EASE}; }
       .rl-steps.rl-vis .rl-step:nth-child(1) { opacity: 1; transform: none; }
@@ -186,13 +194,14 @@ export const ScrollFade = ({ children, distance = 220, style }) => {
 };
 
 // ─── SCROLL REVEAL HOOK ──────────────────────────────────────
-// Adds .rl-vis to every .rl-reveal / .rl-steps element as it enters view, once.
-// No-ops for reduced-motion (elements are already visible via the static base).
+// Adds .rl-vis to every .rl-reveal / .rl-steps / .rl-in element as it enters view, once.
+// No-ops for reduced-motion (elements are already visible via the static base). Pass a `dep`
+// that changes when new revealable content mounts so freshly-added elements get observed.
 export const useReveal = (dep) => {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const els = document.querySelectorAll('.rl-reveal:not(.rl-vis), .rl-steps:not(.rl-vis)');
+    const els = document.querySelectorAll('.rl-reveal:not(.rl-vis), .rl-steps:not(.rl-vis), .rl-in:not(.rl-vis)');
     if (!els.length) return;
     const obs = new IntersectionObserver(
       entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('rl-vis'); obs.unobserve(e.target); } }),
