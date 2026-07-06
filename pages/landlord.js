@@ -171,12 +171,21 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           </div>
           </div>
 
-          {/* ── AT-A-GLANCE STATS (real, derived) ── */}
+          {/* ── AT-A-GLANCE STATS — one compact horizontal bar (real, derived) ── */}
           {hasListings && (
-            <div className="rl-in dash-stats" style={{ '--rl-d': '70ms' }}>
-              <StatTile icon="home" value={listings.length} label="Listings" hint="in your workspace" />
-              <StatTile icon="link" value={activeLinks} label="Active invite links" hint={activeLinks === 1 ? 'collecting applicants' : 'collecting applicants'} />
-              <StatTile icon="shield" value={provinceCode} label="Market" hint={provinceLabel} />
+            <div className="rl-in dash-statbar" style={{ '--rl-d': '70ms' }}>
+              <div className="dash-statcell">
+                <span className="dash-stat-val">{listings.length}</span>
+                <span className="dash-stat-label">{listings.length === 1 ? 'Listing' : 'Listings'}</span>
+              </div>
+              <div className="dash-statcell">
+                <span className="dash-stat-val">{activeLinks}</span>
+                <span className="dash-stat-label">Invite links</span>
+              </div>
+              <div className="dash-statcell">
+                <span className="dash-stat-val">{provinceCode}</span>
+                <span className="dash-stat-label">Market</span>
+              </div>
             </div>
           )}
 
@@ -290,8 +299,6 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
         /* ── Bento grid: single column on mobile → asymmetric 6-col on wide screens ── */
         .dash-bento { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 14px; }
-        .dash-stats { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 4px; }
-        @media (min-width: 560px) { .dash-stats { grid-template-columns: repeat(3, 1fr); } }
         @media (min-width: 840px) {
           .dash-bento { grid-template-columns: repeat(6, 1fr); gap: 18px; margin-bottom: 18px; }
           .dash-bento .span-4 { grid-column: span 4; }
@@ -324,13 +331,13 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-brand-desc { font-size: 12.5px; color: ${C.inkSoft}; line-height: 1.55; margin: 0; }
         .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: ${C.red}; }
 
-        /* ── Stat tiles ── */
-        .dash-stat { padding: clamp(18px, 2.4vw, 22px); display: flex; flex-direction: column; gap: 10px; }
-        .dash-stat-top { display: flex; align-items: center; justify-content: space-between; }
-        .dash-stat-ic { width: 34px; height: 34px; border-radius: 10px; background: ${C.paperDeep}; color: ${C.inkSoft}; display: inline-flex; align-items: center; justify-content: center; }
-        .dash-stat-val { font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.035em; line-height: 1; color: ${C.ink}; font-variant-numeric: tabular-nums; }
-        .dash-stat-label { font-size: 12.5px; font-weight: 700; color: ${C.ink}; }
-        .dash-stat-hint { font-size: 11.5px; color: ${C.inkMute}; margin-top: 1px; }
+        /* ── At-a-glance stat bar — one crafted card, 3 compact cells with hairline dividers ── */
+        .dash-statbar { display: grid; grid-template-columns: repeat(3, 1fr); background: ${C.card}; border: 1px solid #ece5d6; border-radius: 16px; overflow: hidden; margin-bottom: 4px;
+          box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
+        .dash-statcell { padding: clamp(14px, 2.6vw, 20px) clamp(12px, 2.2vw, 18px); display: flex; flex-direction: column; gap: 4px; min-width: 0; border-left: 1px solid ${C.rule}; }
+        .dash-statcell:first-child { border-left: none; }
+        .dash-stat-val { font-size: clamp(26px, 6vw, 34px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+        .dash-stat-label { font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; line-height: 1.3; overflow-wrap: anywhere; }
 
         /* ── Listing invite-link status chip (real data) ── */
         .dash-lchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; }
@@ -339,7 +346,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-lchip-dot-off { background: #cabfa8; }
 
         /* ── Section head + ghost button ── */
-        .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: clamp(26px, 3.4vw, 38px) 0 16px; }
+        .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: clamp(18px, 2.6vw, 26px) 0 16px; }
         .dash-count { font-size: 12px; font-weight: 700; color: ${C.inkMute}; background: ${C.paperDeep}; border-radius: 999px; padding: 2px 10px; }
         .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: 11px; padding: 9px 15px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 
@@ -360,21 +367,5 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         }
       `}</style>
     </>
-  );
-}
-
-// At-a-glance metric tile — presentation only, values passed from existing data.
-function StatTile({ icon, value, label, hint }) {
-  return (
-    <div className="dash-card dash-stat">
-      <div className="dash-stat-top">
-        <span className="dash-stat-val">{value}</span>
-        <span className="dash-stat-ic"><Icon name={icon} size={17} /></span>
-      </div>
-      <div>
-        <div className="dash-stat-label">{label}</div>
-        {hint && <div className="dash-stat-hint">{hint}</div>}
-      </div>
-    </div>
   );
 }
