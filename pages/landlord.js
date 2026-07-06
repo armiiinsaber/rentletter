@@ -110,7 +110,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
               <p className="dash-hero-sub">
                 Every applicant to your listings, standardized and ranked against your landlord’s criteria — ready to review and present.
               </p>
-              <div style={{ marginTop: 'auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, paddingTop: 14 }}>
+              <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                 <button onClick={() => setModalOpen(true)} className="dash-cta">
                   <Icon name="plus" size={17} /> New listing
                 </button>
@@ -130,6 +130,11 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
               <a href="/faq" className="dash-qa">
                 <span className="dash-qa-ic"><Icon name="question" size={15} /></span>
                 <span style={{ minWidth: 0 }}>Help &amp; FAQ</span>
+                <span className="dash-qa-chev"><Icon name="chevron" size={15} /></span>
+              </a>
+              <a href="/compliance" className="dash-qa">
+                <span className="dash-qa-ic"><Icon name="shield" size={15} /></span>
+                <span style={{ minWidth: 0 }}>Screening compliance</span>
                 <span className="dash-qa-chev"><Icon name="chevron" size={15} /></span>
               </a>
             </section>
@@ -208,7 +213,12 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                     {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}
                     {formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
                   </div>
-                  <div style={{ marginTop: 'auto', paddingTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
+                  {(l.invite_token || l.invite_url) ? (
+                    <span className="dash-lchip dash-lchip-on"><span className="dash-lchip-dot" /> Invite link active</span>
+                  ) : (
+                    <span className="dash-lchip"><span className="dash-lchip-dot dash-lchip-dot-off" /> No invite link yet</span>
+                  )}
+                  <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${C.rule}`, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
                     Open listing <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
                   </div>
                 </a>
@@ -265,7 +275,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-hero-meta { font-size: 12px; color: ${C.inkMute}; font-weight: 500; }
 
         /* ── Hero overview card — subtle warm gradient + faint brand glow ── */
-        .dash-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 34px); min-height: 208px;
+        .dash-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 32px);
           background: linear-gradient(152deg, ${C.card} 0%, #fbf6ec 100%); }
         .dash-hero::before { content: ''; position: absolute; top: -45%; right: -14%; width: 62%; height: 130%; pointer-events: none;
           background: radial-gradient(circle at center, rgba(215, 32, 39, 0.07), transparent 62%); }
@@ -285,6 +295,12 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-stat-val { font-size: clamp(30px, 5vw, 40px); font-weight: 800; letter-spacing: -0.035em; line-height: 1; color: ${C.ink}; font-variant-numeric: tabular-nums; }
         .dash-stat-label { font-size: 12.5px; font-weight: 700; color: ${C.ink}; }
         .dash-stat-hint { font-size: 11.5px; color: ${C.inkMute}; margin-top: 1px; }
+
+        /* ── Listing invite-link status chip (real data) ── */
+        .dash-lchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; }
+        .dash-lchip-on { color: ${C.green}; }
+        .dash-lchip-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; flex-shrink: 0; }
+        .dash-lchip-dot-off { background: #cabfa8; }
 
         /* ── Section head + ghost button ── */
         .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: clamp(26px, 3.4vw, 38px) 0 16px; }
