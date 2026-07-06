@@ -3,7 +3,7 @@
 // Supabase session. Lists the realtor's listings; "New listing" opens the
 // Listing Setup modal and inserts a row; edit/delete via Supabase. Tapping a
 // listing opens its detail view (/landlord/[id]). Stage 1: no KV workspace.
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../components/ui';
@@ -88,6 +88,30 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   // Reveal major sections on load / scroll (subtle, matches the header language).
   useReveal(`${listings.length}-${hasListings}`);
 
+  // ── Scroll-reactive top transition ──────────────────────────────────────────────────────
+  // Instead of a hard divider under the header, the hero/overview region eases out — fades and
+  // drifts up — as the page scrolls, so the header→content boundary dissolves smoothly. Drives
+  // opacity/transform only (compositor). Static (no listener) for reduced-motion.
+  const heroFadeRef = useRef(null);
+  useEffect(() => {
+    const el = heroFadeRef.current;
+    if (!el) return;
+    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    const DISTANCE = 260;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const t = Math.min(Math.max(window.scrollY / DISTANCE, 0), 1);
+      el.style.opacity = String(1 - t * 0.92);
+      el.style.transform = `translate3d(0, ${(-t * 20).toFixed(1)}px, 0)`;
+      el.style.pointerEvents = t > 0.9 ? 'none' : '';
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
+  }, []);
+
   return (
     <>
       <Head>
@@ -100,7 +124,8 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
 
-          {/* ── OVERVIEW BENTO — hero + quick actions ── */}
+          {/* ── OVERVIEW BENTO — hero + branding (eases out on scroll, see heroFadeRef) ── */}
+          <div ref={heroFadeRef} style={{ willChange: 'opacity, transform' }}>
           <div className="rl-in dash-bento">
             <section className="dash-card dash-hero span-4">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
@@ -138,6 +163,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                 <span className="dash-qa-chev"><Icon name="chevron" size={15} /></span>
               </a>
             </section>
+          </div>
           </div>
 
           {/* ── AT-A-GLANCE STATS (real, derived) ── */}
