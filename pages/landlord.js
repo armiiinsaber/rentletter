@@ -145,24 +145,29 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
               </div>
             </section>
 
-            <section className="dash-card dash-actions span-2">
-              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Quick actions</div>
-              <a href="/profile" className="dash-qa">
-                <span className="dash-qa-ic"><Icon name="user" size={15} /></span>
-                <span style={{ minWidth: 0 }}>Profile &amp; brand</span>
-                <span className="dash-qa-chev"><Icon name="chevron" size={15} /></span>
-              </a>
-              <a href="/faq" className="dash-qa">
-                <span className="dash-qa-ic"><Icon name="question" size={15} /></span>
-                <span style={{ minWidth: 0 }}>Help &amp; FAQ</span>
-                <span className="dash-qa-chev"><Icon name="chevron" size={15} /></span>
-              </a>
-              <a href="/compliance" className="dash-qa">
-                <span className="dash-qa-ic"><Icon name="shield" size={15} /></span>
-                <span style={{ minWidth: 0 }}>Screening compliance</span>
-                <span className="dash-qa-chev"><Icon name="chevron" size={15} /></span>
-              </a>
-            </section>
+            {/* Branding — the one action worth featuring here. A crafted, on-brand tile that
+                previews the realtor's identity (as it appears on their reports) and invites
+                setup. Whole card → /profile. Help/FAQ live in the ? assistant; compliance in
+                the footer + its page — not featured here. */}
+            <a href="/profile" className="dash-card dash-card-int dash-brand span-2"
+              title="You & your brand" aria-label="Set up your profile and branding">
+              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
+              <div className="dash-brand-preview">
+                {profile?.logo_url
+                  ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
+                  : <span className="dash-brand-bar" />}
+                <span className="dash-brand-id">
+                  <span className="dash-brand-name">{profile?.full_name || 'Your name'}</span>
+                  <span className="dash-brand-brok">{brokerage || 'Add your brokerage'}</span>
+                </span>
+              </div>
+              <p className="dash-brand-desc">
+                Your logo, colours, and details — they appear on every report you send to landlords.
+              </p>
+              <span className="dash-brand-foot">
+                Set up branding <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+              </span>
+            </a>
           </div>
           </div>
 
@@ -308,11 +313,16 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-hero > * { position: relative; }
         .dash-cta { background: ${C.red}; color: ${C.paper}; border: none; border-radius: 12px; padding: 13px 20px; font-size: 14.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 
-        /* ── Quick actions card ── */
-        .dash-actions { display: flex; flex-direction: column; padding: clamp(18px, 2.6vw, 22px); }
-        .dash-qa { display: flex; align-items: center; gap: 11px; padding: 11px 12px; border-radius: 12px; text-decoration: none; color: ${C.ink}; font-size: 13.5px; font-weight: 600; }
-        .dash-qa-ic { width: 30px; height: 30px; flex-shrink: 0; border-radius: 9px; background: ${C.paperDeep}; color: ${C.inkSoft}; display: inline-flex; align-items: center; justify-content: center; }
-        .dash-qa-chev { margin-left: auto; color: ${C.inkMute}; display: inline-flex; }
+        /* ── Branding tile — crafted preview of the realtor's identity, whole card → /profile ── */
+        .dash-brand { display: flex; flex-direction: column; gap: 14px; padding: clamp(18px, 2.6vw, 24px); text-decoration: none; color: ${C.ink}; }
+        .dash-brand-preview { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 12px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; }
+        .dash-brand-bar { width: 4px; align-self: stretch; min-height: 34px; background: ${C.red}; border-radius: 2px; flex-shrink: 0; }
+        .dash-brand-logo { width: 40px; height: 40px; border-radius: 9px; object-fit: contain; background: #fff; border: 1px solid ${C.rule}; padding: 4px; flex-shrink: 0; }
+        .dash-brand-id { display: flex; flex-direction: column; min-width: 0; }
+        .dash-brand-name { font-size: 14px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-brand-brok { font-size: 12px; color: ${C.inkMute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-brand-desc { font-size: 12.5px; color: ${C.inkSoft}; line-height: 1.55; margin: 0; }
+        .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: ${C.red}; }
 
         /* ── Stat tiles ── */
         .dash-stat { padding: clamp(18px, 2.4vw, 22px); display: flex; flex-direction: column; gap: 10px; }
@@ -334,15 +344,9 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: 11px; padding: 9px 15px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 
         /* Instant (motion-independent) hover colour states — safe for reduced-motion */
-        .dash-qa:hover { background: ${C.paperDeep}; }
-        .dash-qa:hover .dash-qa-ic { background: #ece5d6; }
-        .dash-qa:hover .dash-qa-chev { color: ${C.inkSoft}; }
         .dash-ghost:hover { background: ${C.paperDeep}; border-color: ${C.ink}; }
 
         @media (prefers-reduced-motion: no-preference) {
-          .dash-qa { transition: background 160ms ease; }
-          .dash-qa-ic, .dash-qa-chev { transition: background 160ms ease, color 160ms ease, transform 220ms ${EASE}; }
-          .dash-qa:hover .dash-qa-chev { transform: translateX(2px); }
           .dash-cta { transition: transform 200ms ${EASE}, box-shadow 220ms ease; }
           .dash-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); }
           .dash-cta:active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
