@@ -737,6 +737,40 @@ export default function Home() {
   const updateLetter = (text) => { setLetter(text); localStorage.setItem('rentletter_letter', text); };
   const updateResume = (text) => { setResume(text); localStorage.setItem('rentletter_resume', text); };
 
+  // ── Landing header scroll-parallax + fade ────────────────────────────────────────────────
+  // As the page scrolls, the left zone (wordmark) drifts further LEFT, the right zone (CTA) drifts
+  // further RIGHT, and the whole header fades out — so it dissolves elegantly instead of hard-
+  // cutting against content passing under it. Eases back on scroll up. Transforms/opacity only;
+  // gated behind prefers-reduced-motion (static fallback: header stays put, still seamless via CSS).
+  useEffect(() => {
+    if (step !== 'landing') return;
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    const header = document.querySelector('.lp-shell .rl-header');
+    if (!header) return;
+    const left = header.querySelector('.lh-left');
+    const right = header.querySelector('.lh-right');
+    const DIST = 190;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const t = Math.min(Math.max(window.scrollY / DIST, 0), 1);
+      header.style.opacity = String(1 - t * 0.86);      // eases to ~0.14, fades back in on scroll up
+      if (left) left.style.transform = `translate3d(${(-t * 30).toFixed(1)}px, 0, 0)`;
+      if (right) right.style.transform = `translate3d(${(t * 30).toFixed(1)}px, 0, 0)`;
+      header.style.pointerEvents = t > 0.9 ? 'none' : 'auto';
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      header.style.opacity = ''; header.style.pointerEvents = '';
+      if (left) left.style.transform = ''; if (right) right.style.transform = '';
+    };
+  }, [step]);
+
   // ════════════════════════════════════════════════════════════
   // LANDING — minimal, confident, sparingly red
   // ════════════════════════════════════════════════════════════
@@ -749,14 +783,22 @@ export default function Home() {
         </Head>
         <GlobalStyle />
 
-        <div style={{ minHeight: '100vh', background: C.paper }}>
+        <div className="lp-shell" style={{ minHeight: '100vh', background: C.paper }}>
 
-          {/* ── HEADER ──────────────────────────────────────── */}
+          {/* ── HEADER — balanced 3-zone: wordmark left · nav center · CTA right ── */}
           <ScrollHeader>
-            <Wordmark />
-            <div style={{ display: 'flex', gap: 'clamp(14px, 2vw, 26px)', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* LEFT — wordmark (drifts left + fades on scroll) */}
+            <div className="lh-left">
+              <Wordmark />
+            </div>
+            {/* CENTER — secondary nav; collapses to the footer on small screens so the bar stays a
+                single tidy row (wordmark + CTA) with no wrap/overflow at 360/390 */}
+            <nav className="lh-nav" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(18px, 2.4vw, 30px)' }}>
               <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
               <a href="/signin" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</a>
+            </nav>
+            {/* RIGHT — primary CTA (drifts right + fades on scroll) */}
+            <div className="lh-right">
               <a href="/landlord" className="rl-btn" style={{
                 background: C.ink, color: C.paper, textDecoration: 'none',
                 padding: '11px 18px', fontSize: 13, fontWeight: 600, borderRadius: R.ctrl,
@@ -1052,6 +1094,27 @@ export default function Home() {
           </footer>
         </div>
       <ChatWidget />
+      <style jsx>{`
+        /* Landing header — seamless like the dashboard: drop the translucent tint + backdrop-filter
+           and the divider/shadow so it blends into the flat paper page (no colour/saturation seam),
+           and let the scroll-fade dissolve it instead of hard-cutting against content underneath. */
+        .lp-shell :global(.rl-header) {
+          background: transparent !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+          border-bottom-color: transparent !important;
+          box-shadow: none !important;
+          transition: opacity 160ms linear !important;
+          will-change: opacity;
+        }
+        .lp-shell :global(.lh-left),
+        .lp-shell :global(.lh-right) { will-change: transform; }
+        /* Small screens: collapse the secondary nav (still in the footer) so the top bar is a single
+           tidy row — wordmark + primary CTA — with no wrap or overflow at 360/390. */
+        @media (max-width: 599px) {
+          .lp-shell :global(.lh-nav) { display: none !important; }
+        }
+      `}</style>
       </>
     );
   }
