@@ -154,7 +154,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         {/* Tint the mobile browser chrome (status bar / toolbar) to the page eggshell so there is no
             white band at the very top or bottom edge. html/body/#__next backgrounds (below) cover the
             content, notch region (viewport-fit=cover), and overscroll canvas; this covers the chrome. */}
-        <meta name="theme-color" content="#faf8f3" />
+        <meta name="theme-color" content={C.paperDeep} />
       </Head>
       <GlobalStyle />
       {/* overflow-x: clip (not hidden) — hidden makes overflow-y compute to auto, turning this into
@@ -291,9 +291,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                 <h2 className="dash-h2">Your listings</h2>
                 <span className="dash-count">{listings.length}</span>
               </span>
-              <button onClick={() => setModalOpen(true)} className="dash-ghost">
-                <Icon name="plus" size={15} /> New listing
-              </button>
+              {/* "New listing" lives once, on the hero card above — no duplicate here. */}
             </div>
           )}
           {hasListings && (
@@ -335,25 +333,19 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
       <ChatWidget mode="dashboard" />
 
       <style jsx>{`
-        /* ── Layered base surface: flat paper + faint brand/ink glows, quiet not noisy.
-           The base is a single flat colour (not a vertical gradient) on purpose: a gradient's top
-           (#faf8f3) and bottom (#f4efe6) can't both match a single body colour, which is what left
-           a visible tone band at the very top or very bottom edge (and on iOS overscroll). Flat
-           #faf8f3 = body = html means zero step at either edge. The glows still carry the depth. ── */
+        /* ── Base canvas — ONE flat, uniform tone (C.paperDeep), no glows/gradients. The fixed header
+           carries the exact same colour (below), so header + page read as a single monochrome surface
+           top to bottom: no distinct header band, nothing to flash on scroll, and the notch region
+           matches too. The lighter cream cards (C.card) sit raised on top of this recessed canvas. ── */
         .dash-bg {
-          background:
-            radial-gradient(130% 92% at 88% -14%, rgba(215, 32, 39, 0.05), transparent 56%),
-            radial-gradient(120% 82% at 4% 2%, rgba(15, 15, 16, 0.022), transparent 52%),
-            #faf8f3;
+          background: ${C.paperDeep};
         }
-        /* SOLID eggshell header — bulletproof against the top white/lighter band. A transparent
-           header let the notch/safe-area strip fall back to white on iOS (nothing opaque painted it).
-           Instead the header carries a solid #faf8f3 background — the SAME colour as the page, so it
-           still reads perfectly seamless (no border/shadow, exact colour match), but now a real
-           opaque surface paints the whole top region and no white can show through, whatever iOS does.
-           Because background-clip defaults to border-box, this background fills the padding-top
-           (= safe-area-inset-top) region too — so top:0 THROUGH the notch is eggshell, and down
-           through the header content. Scoped here; the shared ScrollHeader is unchanged elsewhere. */
+        /* SOLID header painted the EXACT canvas tone (C.paperDeep) — identical to the page, so it is
+           indistinguishable: no eggshell/white, no distinct band, fully monochrome. Opaque, so content
+           scrolling under it is covered (no bleed-through). background-clip defaults to border-box, so
+           this fills the padding-top (= safe-area-inset-top) region too — top:0 THROUGH the notch is the
+           canvas tone, down through the header content. Scoped here; the shared ScrollHeader is unchanged
+           elsewhere. */
         .dash-bg :global(.rl-header) {
           /* Fixed, NOT sticky. position:sticky is supposed to reserve its height in flow, but on iOS
              that reservation is unreliable, so content overlapped the header. Fixed takes it out of
@@ -363,8 +355,8 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           top: 0;
           left: 0;
           right: 0;
-          background: #faf8f3 !important;         /* solid, same as the page — seamless AND opaque */
-          background-color: #faf8f3 !important;   /* explicit: fully opaque, no alpha channel */
+          background: ${C.paperDeep} !important;         /* solid canvas tone — identical to the page canvas */
+          background-color: ${C.paperDeep} !important;   /* explicit: fully opaque, no alpha channel */
           opacity: 1 !important;                  /* never semi-transparent (no leftover fade opacity) */
           z-index: 90 !important;                 /* above all page content, below modals (z100)/dropdowns */
           -webkit-backdrop-filter: none !important;
@@ -373,7 +365,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           box-shadow: none !important;
           /* viewport-fit=cover extends the page under the iPhone notch; pad the header by the
              safe-area inset so its controls clear the status bar. The solid background fills this
-             padding region (border-box clip), so the notch is eggshell. Part of the measured height,
+             padding region (border-box clip), so the notch is the canvas tone. Part of the measured height,
              so the content offset accounts for it too. 0 on non-notch browsers. */
           padding-top: env(safe-area-inset-top, 0px);
         }
@@ -383,15 +375,15 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           padding-top: 18px;
           padding-bottom: 18px;
         }
-        /* Seamless top AND bottom: match the root background to the flat .dash-bg base so there is
+        /* Seamless top AND bottom: match the root background to the flat .dash-bg canvas so there is
            no tone step at the very top edge (under the status bar / above the header) or the very
-           bottom edge (browser chrome / iOS overscroll). One continuous #faf8f3 surface. */
+           bottom edge (browser chrome / iOS overscroll). One continuous canvas surface. */
         :global(html),
         :global(body),
-        :global(#__next) { background: #faf8f3 !important; }
+        :global(#__next) { background: ${C.paperDeep} !important; }
         /* The overscroll bounce and the region behind the notch (viewport-fit=cover) paint the ROOT
-           element's background, so pin html to eggshell explicitly (not just via body propagation). */
-        :global(html) { background-color: #faf8f3 !important; }
+           element's background, so pin html to the canvas tone explicitly (not just via body). */
+        :global(html) { background-color: ${C.paperDeep} !important; }
         /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
         .dash-card {
           background: ${C.card};
@@ -439,10 +431,13 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         /* ── At-a-glance stat bar — one crafted card, 3 compact cells with hairline dividers ── */
         .dash-statbar { display: grid; grid-template-columns: repeat(3, 1fr); background: ${C.card}; border: 1px solid #ece5d6; border-radius: 16px; overflow: hidden; margin-bottom: 4px;
           box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
-        .dash-statcell { padding: clamp(14px, 2.6vw, 20px) clamp(12px, 2.2vw, 18px); display: flex; flex-direction: column; gap: 4px; min-width: 0; border-left: 1px solid ${C.rule}; }
+        /* Three equal cells, everything centred and balanced. Values share one size (numbers and the
+           province code line up on the same baseline); labels are small uppercase for a clean, premium
+           at-a-glance read. */
+        .dash-statcell { padding: clamp(16px, 3vw, 22px) clamp(8px, 2vw, 16px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 7px; min-width: 0; border-left: 1px solid ${C.rule}; }
         .dash-statcell:first-child { border-left: none; }
-        .dash-stat-val { font-size: clamp(26px, 6vw, 34px); font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: ${C.ink}; font-variant-numeric: tabular-nums; }
-        .dash-stat-label { font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; line-height: 1.3; overflow-wrap: anywhere; }
+        .dash-stat-val { font-size: clamp(24px, 5.4vw, 30px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+        .dash-stat-label { font-size: 10.5px; font-weight: 700; color: ${C.inkMute}; line-height: 1.25; letter-spacing: 0.06em; text-transform: uppercase; overflow-wrap: anywhere; }
 
         /* ── Listing invite-link status chip (real data) ── */
         .dash-lchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; }
@@ -452,7 +447,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
         /* ── Section head + ghost button ── */
         .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: clamp(18px, 2.6vw, 26px) 0 16px; }
-        .dash-count { font-size: 12px; font-weight: 700; color: ${C.inkMute}; background: ${C.paperDeep}; border-radius: 999px; padding: 2px 10px; }
+        .dash-count { font-size: 12px; font-weight: 700; color: ${C.inkMute}; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 999px; padding: 2px 10px; }
         .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: 11px; padding: 9px 15px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 
         /* Instant (motion-independent) hover colour states — safe for reduced-motion */

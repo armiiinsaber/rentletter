@@ -49,6 +49,8 @@ export default function ChatWidget({ mode = 'marketing' }) {
   const [hasUnread, setHasUnread] = useState(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const launcherRef = useRef(null);
+  const [launcherDim, setLauncherDim] = useState(false);
 
   // Scroll to bottom whenever messages change
   useEffect(() => {
@@ -63,6 +65,41 @@ export default function ChatWidget({ mode = 'marketing' }) {
       setTimeout(() => inputRef.current.focus(), 100);
     }
     if (open) setHasUnread(false);
+  }, [open]);
+
+  // Never a full-contrast blob over another control: soften the launcher when a button/link/field is
+  // behind it, full opacity over neutral/empty space. Presentation only — it stays fully tappable.
+  // rAF-throttled; recomputed on scroll/resize. When the chat is open it's the ink close button (full).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const btn = launcherRef.current;
+    if (!btn) return;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      if (open) { setLauncherDim(false); return; }
+      const r = btn.getBoundingClientRect();
+      const pts = [
+        [r.left + r.width / 2, r.top + r.height / 2],
+        [r.left + 10, r.top + 10], [r.right - 10, r.top + 10],
+        [r.left + 10, r.bottom - 10], [r.right - 10, r.bottom - 10],
+      ];
+      let overControl = false;
+      for (const [x, y] of pts) {
+        const behind = document.elementsFromPoint(x, y).find((e) => e !== btn && !btn.contains(e));
+        if (behind && behind.closest('button, a[href], [role="button"], input, select, textarea')) { overControl = true; break; }
+      }
+      setLauncherDim(overControl);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(check); };
+    check();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+    };
   }, [open]);
 
   const sendMessage = async () => {
@@ -110,7 +147,9 @@ export default function ChatWidget({ mode = 'marketing' }) {
     <>
       {/* Floating bubble button */}
       <button
+        ref={launcherRef}
         onClick={() => setOpen(!open)}
+        onFocus={() => setLauncherDim(false)}
         aria-label={open ? 'Close chat' : 'Open chat'}
         style={{
           position: 'fixed',
@@ -124,9 +163,12 @@ export default function ChatWidget({ mode = 'marketing' }) {
           cursor: 'pointer',
           boxShadow: '0 6px 24px rgba(15, 15, 16, 0.18)',
           fontSize: 22,
+          // Soften to ~0.5 when floating over a control so it's never a full-contrast blob on top of
+          // another button; full opacity over neutral space (and while open / on focus). Stays tappable.
+          opacity: (!open && launcherDim) ? 0.5 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 9999,
-          transition: 'background 0.2s, transform 0.15s',
+          transition: 'background 0.2s, transform 0.15s, opacity 0.2s',
           fontWeight: 700,
         }}
         onMouseDown={e => e.currentTarget.style.transform = 'scale(0.94)'}
