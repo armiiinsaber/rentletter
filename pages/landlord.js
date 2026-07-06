@@ -109,7 +109,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
     if (!el && !header) return;
     if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
     const HERO_DISTANCE = 560;
-    const HEADER_DISTANCE = 150;
+    const HEADER_DISTANCE = 120; // header is essentially gone within a short scroll (~120px)
     if (header) header.style.willChange = 'opacity';
     let raf = 0;
     const apply = () => {
@@ -122,7 +122,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
       }
       if (header) {
         const h = Math.min(Math.max(y / HEADER_DISTANCE, 0), 1);
-        header.style.opacity = String(1 - h * 0.82);  // eases to ~0.18, softly fades back in on scroll up
+        header.style.opacity = String(1 - h);         // fully fades to ~0 by ~120px; fades back in on scroll up
         header.style.pointerEvents = h > 0.85 ? 'none' : 'auto';
       }
     };
@@ -166,6 +166,10 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
       <Head>
         <title>Realtor Dashboard — Rentletter</title>
         <meta name="description" content="Your listings. Add a listing, share the invite link, review applicants." />
+        {/* Tint the mobile browser chrome (status bar / toolbar) to the page eggshell so there is no
+            white band at the very top or bottom edge. html/body/#__next backgrounds (below) cover the
+            content, notch region (viewport-fit=cover), and overscroll canvas; this covers the chrome. */}
+        <meta name="theme-color" content="#faf8f3" />
       </Head>
       <GlobalStyle />
       {/* overflow-x: clip (not hidden) — hidden makes overflow-y compute to auto, turning this into
@@ -388,7 +392,11 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
            no tone step at the very top edge (under the status bar / above the header) or the very
            bottom edge (browser chrome / iOS overscroll). One continuous #faf8f3 surface. */
         :global(html),
-        :global(body) { background: #faf8f3 !important; }
+        :global(body),
+        :global(#__next) { background: #faf8f3 !important; }
+        /* The overscroll bounce and the region behind the notch (viewport-fit=cover) paint the ROOT
+           element's background, so pin html to eggshell explicitly (not just via body propagation). */
+        :global(html) { background-color: #faf8f3 !important; }
         /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
         .dash-card {
           background: ${C.card};
