@@ -7,10 +7,10 @@ import { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../components/ui';
-import { C, R, SH } from '../components/theme';
+import { C, R, SH, EASE } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
-import { normalizeProvince } from '../lib/provinces';
+import { normalizeProvince, provinceName } from '../lib/provinces';
 import { formatUnit } from '../lib/unitType';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
@@ -89,7 +89,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         <meta name="description" content="Your listings. Add a listing, share the invite link, review applicants." />
       </Head>
       <GlobalStyle />
-      <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
+      <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} />
 
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
@@ -120,7 +120,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
           {/* Guided empty state */}
           {!hasListings && (
-            <section className="rl-card rl-in" style={{ overflow: 'hidden', '--rl-d': '90ms' }}>
+            <section className="dash-card rl-in" style={{ overflow: 'hidden', '--rl-d': '90ms' }}>
               <div style={{ padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)', borderBottom: `1px solid ${C.rule}` }}>
                 <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Getting started</div>
                 <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 10 }}>
@@ -153,18 +153,18 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
           {/* Listings list */}
           {hasListings && (
-            <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, '--rl-d': '90ms' }}>
+            <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16, '--rl-d': '90ms' }}>
               {listings.map((l) => (
-                <a key={l.id} href={`/landlord/${l.id}`} className="rl-card rl-card-lift"
-                  style={{ textDecoration: 'none', color: C.ink, padding: 'clamp(18px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1.25 }}>
+                <a key={l.id} href={`/landlord/${l.id}`} className="dash-card dash-card-int"
+                  style={{ textDecoration: 'none', color: C.ink, padding: 'clamp(20px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ fontSize: 17.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.25, overflowWrap: 'anywhere' }}>
                     {l.name || l.address || 'Untitled listing'}
                   </div>
-                  <div style={{ fontSize: 13, color: C.inkSoft }}>
+                  <div style={{ fontSize: 13.5, color: C.inkSoft, fontWeight: 500 }}>
                     {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}
                     {formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
                   </div>
-                  <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
+                  <div style={{ marginTop: 'auto', paddingTop: 6, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
                     Open listing <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
                   </div>
                 </a>
@@ -184,6 +184,33 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
       </div>
       {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
       <ChatWidget mode="dashboard" />
+
+      <style jsx>{`
+        /* ── Layered base surface: soft warm gradient + faint brand/ink glows, quiet not noisy ── */
+        .dash-bg {
+          background:
+            radial-gradient(130% 92% at 88% -14%, rgba(215, 32, 39, 0.05), transparent 56%),
+            radial-gradient(120% 82% at 4% 2%, rgba(15, 15, 16, 0.022), transparent 52%),
+            linear-gradient(180deg, #faf8f3 0%, #f4efe6 100%);
+        }
+        /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
+        .dash-card {
+          background: ${C.card};
+          border: 1px solid #ece5d6;
+          border-radius: 18px;
+          box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05);
+        }
+        /* Red-dash brand motif for section eyebrows/heads. */
+        .dash-dash { display: inline-block; width: 3px; height: 1em; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
+
+        @media (prefers-reduced-motion: no-preference) {
+          .dash-card-int { transition: transform 260ms ${EASE}, box-shadow 260ms ease, border-color 200ms ease; }
+          .dash-card-int:hover { transform: translateY(-4px); box-shadow: 0 4px 10px rgba(15, 15, 16, 0.06), 0 22px 48px rgba(15, 15, 16, 0.11); border-color: #e4dcc9; }
+          .dash-card-int:active { transform: translateY(-1px); transition-duration: 110ms; }
+          .dash-card-int .rl-arrow { transition: transform 220ms ${EASE}; }
+          .dash-card-int:hover .rl-arrow { transform: translateX(4px); }
+        }
+      `}</style>
     </>
   );
 }
