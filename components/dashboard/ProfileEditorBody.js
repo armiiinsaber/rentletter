@@ -2,7 +2,8 @@
 // The realtor identity + branding editor, extracted so BOTH the modal
 // (ProfileEditorModal) and the profile hub page (/profile) share one code path —
 // no duplicated save/upload/logo logic. Updates the Supabase profiles row (RLS, own
-// row) and the logos Storage bucket. Renders two clear sections: Branding + Identity.
+// row) and the logos Storage bucket. Renders two clear sections, in order: Your details (identity)
+// first, then Your branding (logo / colours / fonts).
 import { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 import { C, R } from '../theme';
@@ -21,6 +22,16 @@ const ALLOWED = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/svg+xml': 'svg
 const MAX_BYTES = 2 * 1024 * 1024; // 2MB
 
 const sectionLabel = { display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 };
+
+// Red-dash eyebrow — the app's section-header treatment, used for the two main sections below.
+function SectionHeader({ children }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      <span aria-hidden="true" style={{ display: 'inline-block', width: 3, height: 13, background: C.red, borderRadius: 1, flexShrink: 0 }} />
+      <span style={{ fontSize: 11.5, color: C.red, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{children}</span>
+    </div>
+  );
+}
 
 // onClose: when provided (modal), Save closes it. When omitted (page), Save shows an
 // inline "Saved" confirmation instead.
@@ -184,8 +195,30 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
       </Head>
       {error && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>}
 
-      {/* ── BRANDING ── */}
-      <label style={sectionLabel}>Branding</label>
+      {/* ── YOUR DETAILS (identity) — FIRST. A realtor's own identity is more fundamental than
+          their branding, so it leads; branding (logo/colours/fonts) follows below. ── */}
+      <SectionHeader>Your details</SectionHeader>
+      {fields.map((f) => (
+        <div key={f.k} style={{ marginBottom: 16 }}>
+          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
+          <input type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} placeholder={f.ph} style={inputStyle} />
+        </div>
+      ))}
+      {/* Province — drives province-specific behaviour (e.g. the tenant age-of-majority gate). */}
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Province</label>
+        <select value={form.province} onChange={(e) => set('province', e.target.value)} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+          {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
+        <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>The province you operate in. Sets rules like the tenant age of majority (Ontario 18, BC 19).</div>
+      </div>
+      <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 4 }}>
+        These appear on PDF exports and email summaries you send to landlord clients. All optional.
+      </p>
+
+      {/* ── YOUR BRANDING — SECOND: logo, colours, fonts — how you LOOK on reports. ── */}
+      <div style={{ borderTop: `1px solid ${C.rule}`, margin: '30px 0 24px' }} />
+      <SectionHeader>Your branding</SectionHeader>
       <div style={{ border: `1px solid ${C.rule}`, borderLeft: `4px solid ${accentPreview}`, borderRadius: R.card, padding: 16, background: C.paperDeep, marginBottom: 10 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* top-left logo slot (the brand placement) */}
@@ -292,25 +325,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
         </div>
       </div>
 
-      {/* ── IDENTITY ── */}
-      <label style={sectionLabel}>Your details</label>
-      {fields.map((f) => (
-        <div key={f.k} style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
-          <input type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} placeholder={f.ph} style={inputStyle} />
-        </div>
-      ))}
-      {/* Province — drives province-specific behaviour (e.g. the tenant age-of-majority gate). */}
-      <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Province</label>
-        <select value={form.province} onChange={(e) => set('province', e.target.value)} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
-          {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-        </select>
-        <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>The province you operate in. Sets rules like the tenant age of majority (Ontario 18, BC 19).</div>
-      </div>
-      <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 14 }}>
-        These appear on PDF exports and email summaries you send to landlord clients. All optional.
-      </p>
+      {/* Save — persists identity + brand colours in one patch (logic unchanged; still saves
+          every field regardless of the new section order). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <button onClick={save} disabled={saving}
           style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '14px 24px', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
