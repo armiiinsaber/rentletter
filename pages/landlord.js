@@ -287,11 +287,26 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
             radial-gradient(120% 82% at 4% 2%, rgba(15, 15, 16, 0.022), transparent 52%),
             linear-gradient(180deg, #faf8f3 0%, #f4efe6 100%);
         }
-        /* Seamless header: no hard divider/shadow line where it meets the content — it blends
-           into the page background. Scoped to the dashboard; the shared ScrollHeader is
-           unchanged elsewhere. (The footer note below is plain borderless text, already
-           seamless — nothing to remove there.) */
-        .dash-bg :global(.rl-header) { border-bottom-color: transparent !important; box-shadow: none !important; }
+        /* Seamless header: the visible line under the header was NOT a border/shadow (those were
+           already off) — it was a colour/saturation SEAM at the header's bottom edge. The shared
+           ScrollHeader has a translucent background (rgba paper) + backdrop-filter (saturate+blur)
+           that composite LIGHTER and more saturated than the .dash-bg gradient below it, so the
+           box's bottom edge reads as a hard line. On the dashboard we drop the tint and the filter
+           entirely, so the page gradient flows straight through the header with no boundary.
+           Scoped here; the shared ScrollHeader is unchanged on every other page. */
+        .dash-bg :global(.rl-header) {
+          background: transparent !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+          border-bottom-color: transparent !important;
+          box-shadow: none !important;
+        }
+        /* Seamless bottom: the line near the footer was another background seam — the .dash-bg
+           gradient ends at #f4efe6 while the page/body sits on #faf8f3 (C.paper), so the two tones
+           met in an edge at the page bottom (and on mobile overscroll / dynamic-toolbar exposure).
+           Match the root background to the gradient's end colour so there is no step below. */
+        :global(html),
+        :global(body) { background: #f4efe6 !important; }
         /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
         .dash-card {
           background: ${C.card};
