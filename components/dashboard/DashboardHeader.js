@@ -36,17 +36,21 @@ export default function DashboardHeader({ profile }) {
   return (
     <>
       <ScrollHeader maxWidth={1100}>
-        {/* Wordmark → homepage (keeps the session). First beat of the reveal. */}
+        {/* LEFT — wordmark → homepage (keeps the session). First beat of the reveal. */}
         <a href="/" aria-label="Rentletter home" className="rl-hdr-mark rl-hdr-reveal" style={{ '--d': '40ms' }}>
           <Wordmark />
         </a>
-        {/* Account cluster — right-aligned, matched 34px controls with an intentional spacing
-            rhythm. Reveals left→right after the wordmark; stays balanced with or without the
-            founder tag (which is removed in the real product). */}
+        {/* CENTER — account status badge. Like the landing header's centered nav, placing it between
+            the wordmark and the actions distributes the bar across the full width, so it reads
+            balanced instead of a cluster bunched in the corner with dead space. It's a launch-only
+            badge and the widest control, so it collapses below 560px — leaving a tidy wordmark +
+            actions row (the same clean two-part bar once the badge is retired in the real product). */}
+        <span className="rl-hdr-reveal rl-hdr-status" style={{ '--d': '160ms', display: 'inline-flex' }}>
+          <StatusBadge profile={profile} />
+        </span>
+        {/* RIGHT — account actions grouped with an even rhythm (matched 34px controls, 12px gaps).
+            Reveals left→right after the wordmark and badge. */}
         <div className="rl-hdr-cluster">
-          <span className="rl-hdr-reveal" style={{ '--d': '160ms', display: 'inline-flex' }}>
-            <StatusBadge profile={profile} />
-          </span>
           {/* Bell — on-load notifications for this realtor's listings (logic untouched). */}
           <span className="rl-hdr-reveal rl-hdr-bellwrap" style={{ '--d': '220ms', display: 'inline-flex' }}>
             <NotificationBell />
@@ -70,15 +74,22 @@ export default function DashboardHeader({ profile }) {
           align-items: center;
           min-width: 0;
         }
+        /* Right zone: account actions. No margin-left:auto — the shared header's space-between
+           distributes the three zones (wordmark · status · actions) across the full width. */
         .rl-hdr-cluster {
           display: flex;
           align-items: center;
           justify-content: flex-end;
           gap: 12px;
-          row-gap: 8px;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           min-width: 0;
-          margin-left: auto;
+        }
+        /* The founder tag is a launch-only badge and the widest control. On small screens it would
+           force the bar to wrap to two rows, so it collapses below 560px — leaving a tidy single
+           row (wordmark left · bell · avatar · sign-out right). The bar reads balanced with the tag
+           (wider screens) and without it (mobile, and the real product once the badge is retired). */
+        @media (max-width: 559px) {
+          .rl-hdr-status { display: none !important; }
         }
         .rl-hdr-avatar {
           width: 34px;
