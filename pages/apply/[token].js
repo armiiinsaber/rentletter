@@ -13,7 +13,7 @@
 import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
+import { GlobalStyle, Wordmark, Icon, useReveal } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
 import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } from '../../lib/provinces';
@@ -83,6 +83,9 @@ export default function ApplyPage() {
   const [touched, setTouched] = useState({});
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [reviewing, setReviewing] = useState(false); // deliberate review-and-confirm step
+  // Reveal the form on load / scroll. Depends on `status` so sections that mount once the invite
+  // resolves (status → 'ready') get observed. Presentation only — no effect on validation.
+  useReveal(status);
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const markTouched = (k) => setTouched((t) => ({ ...t, [k]: true }));
@@ -333,7 +336,7 @@ export default function ApplyPage() {
             <>
               {/* Applying-for banner from the resolved invite */}
               {invite && (
-                <div style={{ background: C.ink, color: C.paper, padding: 'clamp(16px, 4vw, 22px) clamp(18px, 4vw, 24px)', marginBottom: 28, borderRadius: R.card, borderLeft: `4px solid ${C.red}` }}>
+                <div className="rl-in" style={{ background: C.ink, color: C.paper, padding: 'clamp(16px, 4vw, 22px) clamp(18px, 4vw, 24px)', marginBottom: 28, borderRadius: R.card, borderLeft: `4px solid ${C.red}` }}>
                   <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 6 }}>You’re applying to</div>
                   <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>
                     {invite.listingName || invite.unit?.address || 'Rental unit'}
@@ -363,10 +366,10 @@ export default function ApplyPage() {
                 </div>
               )}
 
-              <h1 className="rl-serif" style={{ fontSize: 'clamp(30px, 5.5vw, 44px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.05 }}>
+              <h1 className="rl-serif rl-in" style={{ fontSize: 'clamp(30px, 5.5vw, 44px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.05, '--rl-d': '80ms' }}>
                 Tell us about you
               </h1>
-              <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
+              <p className="rl-in" style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55, '--rl-d': '120ms' }}>
                 No account needed — the unit details are already filled in by your realtor, so just tell us about you. The more specific, the better; skip anything that doesn’t apply.
               </p>
 

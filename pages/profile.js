@@ -6,7 +6,7 @@
 // a Supabase session (RLS). Reachable from the top-bar avatar.
 import { useState } from 'react';
 import Head from 'next/head';
-import { GlobalStyle } from '../components/ui';
+import { GlobalStyle, useReveal } from '../components/ui';
 import { C, R } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
@@ -26,6 +26,7 @@ export async function getServerSideProps(ctx) {
 
 export default function ProfileHub({ initialProfile }) {
   const [profile, setProfile] = useState(initialProfile);
+  useReveal('profile');
 
   return (
     <>
@@ -38,7 +39,7 @@ export default function ProfileHub({ initialProfile }) {
         <DashboardHeader profile={profile} />
 
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px) 64px' }}>
-          <header style={{ marginBottom: 28 }}>
+          <header className="rl-in" style={{ marginBottom: 28 }}>
             <a href="/landlord" className="rl-btn"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 18, padding: '8px 14px', borderRadius: R.pill, border: `1px solid ${C.ruleDark}`, background: C.card, color: C.inkSoft, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>←</span> Back to dashboard
@@ -52,7 +53,7 @@ export default function ProfileHub({ initialProfile }) {
 
           {/* Identity + branding + AI studio + colours. (A display name / username field
               joins the identity section next stage.) */}
-          <section className="rl-card" style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
+          <section className="rl-card rl-in" style={{ padding: 'clamp(20px, 4vw, 32px)', '--rl-d': '90ms' }}>
             <ProfileEditorBody profile={profile} onSaved={setProfile} />
           </section>
         </div>

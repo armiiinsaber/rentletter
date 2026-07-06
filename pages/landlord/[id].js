@@ -7,7 +7,7 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon } from '../../components/ui';
+import { GlobalStyle, Icon, useReveal } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../lib/supabase/admin';
@@ -90,6 +90,9 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   const [textCopied, setTextCopied] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState('');
+  // Reveal sections on load + as they scroll into view. Re-run when the applicant set changes
+  // so newly-rendered cards get observed.
+  useReveal(`${applicants.length}-${compareOpen}-${editOpen}`);
 
   const saveEdit = async (values) => {
     setSaving(true);
@@ -421,7 +424,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           </a>
 
           {/* Title + actions */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div className="rl-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
             <div style={{ minWidth: 0, flex: '1 1 auto' }}>
               <h1 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.1, overflowWrap: 'anywhere' }}>
                 {l.name || l.address || 'Untitled listing'}
@@ -446,7 +449,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16, alignItems: 'start', marginBottom: 16 }}>
+          <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16, alignItems: 'start', marginBottom: 16, '--rl-d': '90ms' }}>
             {/* Unit + preferences */}
             <section className="rl-card" style={{ minWidth: 0, padding: 'clamp(18px, 3vw, 26px)' }}>
               <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Unit & preferences</div>

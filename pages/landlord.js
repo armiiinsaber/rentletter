@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon } from '../components/ui';
+import { GlobalStyle, Icon, useReveal } from '../components/ui';
 import { C, R, SH } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
@@ -79,6 +79,8 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   };
 
   const hasListings = listings.length > 0;
+  // Reveal major sections on load / scroll (subtle, matches the header language).
+  useReveal(`${listings.length}-${hasListings}`);
 
   return (
     <>
@@ -93,7 +95,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
 
           {/* Title row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div className="rl-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
             <div>
               <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
                 Your listings
@@ -118,7 +120,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
           {/* Guided empty state */}
           {!hasListings && (
-            <section className="rl-card" style={{ overflow: 'hidden' }}>
+            <section className="rl-card rl-in" style={{ overflow: 'hidden', '--rl-d': '90ms' }}>
               <div style={{ padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)', borderBottom: `1px solid ${C.rule}` }}>
                 <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Getting started</div>
                 <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 10 }}>
@@ -151,7 +153,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
           {/* Listings list */}
           {hasListings && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+            <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16, '--rl-d': '90ms' }}>
               {listings.map((l) => (
                 <a key={l.id} href={`/landlord/${l.id}`} className="rl-card rl-card-lift"
                   style={{ textDecoration: 'none', color: C.ink, padding: 'clamp(18px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 10 }}>
