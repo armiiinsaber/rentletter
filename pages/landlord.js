@@ -92,48 +92,29 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   // Reveal major sections on load / scroll (subtle, matches the header language).
   useReveal(`${listings.length}-${hasListings}`);
 
-  // ── Scroll-reactive top transition ──────────────────────────────────────────────────────
-  // Two GENTLE, compositor-only hints as the page scrolls (opacity/transform only; both static
-  // for reduced-motion):
-  //   1. The topmost hero strip softens slightly (never below ~0.68) and drifts a few px, over a
-  //      long distance so it's gradual — not a dissolve.
-  //   2. The sticky header softly fades out over a short distance. It is transparent on the
-  //      dashboard (see .dash-bg override), so without this it would leave a hard half-cut edge
-  //      where content scrolls sharply under it. Fading it removes that hard overlap; it eases
-  //      back to full as you scroll up. Pointer-events drop once it's nearly gone so it never
-  //      blocks the content beneath.
+  // ── Scroll-reactive hero softening ───────────────────────────────────────────────────────
+  // The topmost hero strip softens slightly (never below ~0.68) and drifts a few px as the page
+  // scrolls — gradual, not a dissolve. Compositor-only (opacity/transform), static for reduced-
+  // motion. The HEADER itself is no longer faded: it's a solid eggshell bar (see .dash-bg override)
+  // that cleanly hides content scrolling beneath it, so there's nothing to dissolve and no way for a
+  // band or show-through to appear.
   const heroFadeRef = useRef(null);
   useEffect(() => {
     const el = heroFadeRef.current;
-    const header = document.querySelector('.dash-bg .rl-header');
-    if (!el && !header) return;
+    if (!el) return;
     if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
     const HERO_DISTANCE = 560;
-    const HEADER_DISTANCE = 120; // header is essentially gone within a short scroll (~120px)
-    if (header) header.style.willChange = 'opacity';
     let raf = 0;
     const apply = () => {
       raf = 0;
-      const y = window.scrollY;
-      if (el) {
-        const t = Math.min(Math.max(y / HERO_DISTANCE, 0), 1);
-        el.style.opacity = String(1 - t * 0.32);      // eases to ~0.68, never a full fade
-        el.style.transform = `translate3d(0, ${(-t * 7).toFixed(1)}px, 0)`; // barely-there drift
-      }
-      if (header) {
-        const h = Math.min(Math.max(y / HEADER_DISTANCE, 0), 1);
-        header.style.opacity = String(1 - h);         // fully fades to ~0 by ~120px; fades back in on scroll up
-        header.style.pointerEvents = h > 0.85 ? 'none' : 'auto';
-      }
+      const t = Math.min(Math.max(window.scrollY / HERO_DISTANCE, 0), 1);
+      el.style.opacity = String(1 - t * 0.32);      // eases to ~0.68, never a full fade
+      el.style.transform = `translate3d(0, ${(-t * 7).toFixed(1)}px, 0)`; // barely-there drift
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
     apply();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (raf) cancelAnimationFrame(raf);
-      if (header) { header.style.opacity = ''; header.style.transform = ''; header.style.pointerEvents = ''; header.style.willChange = ''; }
-    };
+    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
   }, []);
 
   // ── Robust header clearance ──────────────────────────────────────────────────────────────
@@ -176,18 +157,8 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           a scroll container, which breaks the sticky header (it scrolls away instead of reserving
           its height at the top). clip still contains any horizontal overflow without that side effect. */}
       <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'clip' }}>
-        {/* Safe-area fill: the header is fixed + transparent, so nothing paints the notch/status-bar
-            strip (exposed by viewport-fit=cover) — it showed white. This fixed strip paints exactly
-            the safe-area-inset-top region eggshell, BEHIND the header content (z 59 < header 60) and
-            non-interactive, so it never covers or blocks the bell/avatar/sign-out and doesn't affect
-            the header's fade/transparency. Height collapses to 0 on devices without a notch. */}
-        <div aria-hidden="true" style={{
-          position: 'fixed', top: 0, left: 0, right: 0,
-          height: 'env(safe-area-inset-top, 0px)',
-          background: C.paper,
-          zIndex: 59,
-          pointerEvents: 'none',
-        }} />
+        {/* The header now carries a solid eggshell background that fills the safe-area/notch region
+            itself (see .dash-bg .rl-header below), so the separate safe-area strip is no longer needed. */}
         <DashboardHeader profile={profile} />
 
         <div style={{
@@ -367,13 +338,14 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
             radial-gradient(120% 82% at 4% 2%, rgba(15, 15, 16, 0.022), transparent 52%),
             #faf8f3;
         }
-        /* Seamless header: the visible line under the header was NOT a border/shadow (those were
-           already off) — it was a colour/saturation SEAM at the header's bottom edge. The shared
-           ScrollHeader has a translucent background (rgba paper) + backdrop-filter (saturate+blur)
-           that composite LIGHTER and more saturated than the .dash-bg gradient below it, so the
-           box's bottom edge reads as a hard line. On the dashboard we drop the tint and the filter
-           entirely, so the page gradient flows straight through the header with no boundary.
-           Scoped here; the shared ScrollHeader is unchanged on every other page. */
+        /* SOLID eggshell header — bulletproof against the top white/lighter band. A transparent
+           header let the notch/safe-area strip fall back to white on iOS (nothing opaque painted it).
+           Instead the header carries a solid #faf8f3 background — the SAME colour as the page, so it
+           still reads perfectly seamless (no border/shadow, exact colour match), but now a real
+           opaque surface paints the whole top region and no white can show through, whatever iOS does.
+           Because background-clip defaults to border-box, this background fills the padding-top
+           (= safe-area-inset-top) region too — so top:0 THROUGH the notch is eggshell, and down
+           through the header content. Scoped here; the shared ScrollHeader is unchanged elsewhere. */
         .dash-bg :global(.rl-header) {
           /* Fixed, NOT sticky. position:sticky is supposed to reserve its height in flow, but on iOS
              that reservation is unreliable, so content overlapped the header. Fixed takes it out of
@@ -383,15 +355,15 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           top: 0;
           left: 0;
           right: 0;
-          background: transparent !important;
+          background: #faf8f3 !important;  /* solid, same as the page — seamless AND opaque */
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
           border-bottom-color: transparent !important;
           box-shadow: none !important;
-          transition: opacity 140ms linear !important; /* smooths the scroll-driven header fade */
           /* viewport-fit=cover extends the page under the iPhone notch; pad the header by the
-             safe-area inset so its controls clear the status bar. This padding is part of the height
-             the JS measures, so the content offset accounts for it too. 0 on non-notch browsers. */
+             safe-area inset so its controls clear the status bar. The solid background fills this
+             padding region (border-box clip), so the notch is eggshell. Part of the measured height,
+             so the content offset accounts for it too. 0 on non-notch browsers. */
           padding-top: env(safe-area-inset-top, 0px);
         }
         /* Pin the header's height constant on scroll — neutralise the shared shrink's padding change
