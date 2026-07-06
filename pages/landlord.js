@@ -89,22 +89,22 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   useReveal(`${listings.length}-${hasListings}`);
 
   // ── Scroll-reactive top transition ──────────────────────────────────────────────────────
-  // Instead of a hard divider under the header, the hero/overview region eases out — fades and
-  // drifts up — as the page scrolls, so the header→content boundary dissolves smoothly. Drives
-  // opacity/transform only (compositor). Static (no listener) for reduced-motion.
+  // A GENTLE hint only: as the page scrolls, just the topmost hero strip softens very slightly
+  // (never below ~0.68 opacity) and drifts a few px, over a long distance so it's gradual — not
+  // a dissolve. Scoped to the hero alone; the branding card and everything below stay fully
+  // readable. opacity/transform only (compositor). Static (no listener) for reduced-motion.
   const heroFadeRef = useRef(null);
   useEffect(() => {
     const el = heroFadeRef.current;
     if (!el) return;
     if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const DISTANCE = 260;
+    const DISTANCE = 560;
     let raf = 0;
     const apply = () => {
       raf = 0;
       const t = Math.min(Math.max(window.scrollY / DISTANCE, 0), 1);
-      el.style.opacity = String(1 - t * 0.92);
-      el.style.transform = `translate3d(0, ${(-t * 20).toFixed(1)}px, 0)`;
-      el.style.pointerEvents = t > 0.9 ? 'none' : '';
+      el.style.opacity = String(1 - t * 0.32);      // eases to ~0.68, never a full fade
+      el.style.transform = `translate3d(0, ${(-t * 7).toFixed(1)}px, 0)`; // barely-there drift
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
     apply();
@@ -124,10 +124,11 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
         <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
 
-          {/* ── OVERVIEW BENTO — hero + branding (eases out on scroll, see heroFadeRef) ── */}
-          <div ref={heroFadeRef} style={{ willChange: 'opacity, transform' }}>
+          {/* ── OVERVIEW BENTO — hero + branding ── */}
           <div className="rl-in dash-bento">
-            <section className="dash-card dash-hero span-4">
+            {/* Only the hero strip gently softens on scroll (see heroFadeRef) — branding + the
+                content below stay fully readable. */}
+            <section ref={heroFadeRef} className="dash-card dash-hero span-4" style={{ willChange: 'opacity, transform' }}>
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
               <h1 className="dash-h1" style={{ marginBottom: 4 }}>
                 {hasListings ? `Welcome back${firstName ? `, ${firstName}` : ''}.` : 'Welcome to Rentletter.'}
@@ -168,7 +169,6 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                 Set up branding <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
               </span>
             </a>
-          </div>
           </div>
 
           {/* ── AT-A-GLANCE STATS — one compact horizontal bar (real, derived) ── */}
@@ -287,6 +287,11 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
             radial-gradient(120% 82% at 4% 2%, rgba(15, 15, 16, 0.022), transparent 52%),
             linear-gradient(180deg, #faf8f3 0%, #f4efe6 100%);
         }
+        /* Seamless header: no hard divider/shadow line where it meets the content — it blends
+           into the page background. Scoped to the dashboard; the shared ScrollHeader is
+           unchanged elsewhere. (The footer note below is plain borderless text, already
+           seamless — nothing to remove there.) */
+        .dash-bg :global(.rl-header) { border-bottom-color: transparent !important; box-shadow: none !important; }
         /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
         .dash-card {
           background: ${C.card};
