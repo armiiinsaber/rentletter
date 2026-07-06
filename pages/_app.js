@@ -12,6 +12,10 @@ export default function App({ Component, pageProps }) {
           name="viewport"
           content="width=device-width, initial-scale=1, viewport-fit=cover"
         />
+        {/* Tint the mobile browser chrome (status bar / toolbar) to the page eggshell site-wide so
+            there are no white bands at the top/bottom edges on any page. A page can still override
+            this by setting its own theme-color in its <Head> (Next dedupes by meta name). */}
+        <meta name="theme-color" content="#faf8f3" />
       </Head>
       <Component {...pageProps} />
     </>
