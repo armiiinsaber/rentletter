@@ -751,24 +751,6 @@ export default function Home() {
 
         <div style={{ minHeight: '100vh', background: C.paper }}>
 
-          {/* ── LAUNCH BANNER ── */}
-          <div style={{
-            background: C.ink, color: C.paper,
-            padding: '11px 24px',
-            display: 'flex', justifyContent: 'center', alignItems: 'center',
-            gap: 12, flexWrap: 'wrap',
-          }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-              <span className="rl-dot" style={{ width: 6, height: 6, borderRadius: '50%', background: C.red, display: 'inline-block' }} />
-              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', color: C.red }}>
-                Launch
-              </span>
-            </span>
-            <span style={{ fontSize: 13, fontWeight: 500, color: C.inkInverse }}>
-              Free for Ontario realtors during launch · No credit card
-            </span>
-          </div>
-
           {/* ── HEADER ──────────────────────────────────────── */}
           <ScrollHeader>
             <Wordmark />
@@ -799,7 +781,7 @@ export default function Home() {
                 <div className="rl-hero-seq" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
                   <span className="rl-rule-draw" style={{ height: 2, background: C.red, borderRadius: 1, display: 'block' }} />
                   <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
-                    For Ontario Realtors · 2026
+                    For Ontario &amp; BC Realtors · 2026
                   </span>
                 </div>
 
@@ -823,7 +805,7 @@ export default function Home() {
                   marginBottom: 34,
                   maxWidth: 540,
                 }}>
-                  Send applicants one link. Standardized applications land in your dashboard automatically. Everyone is ranked against your landlord's criteria — document your decisions and send a polished report to your landlord client.
+                  Send applicants one link. Standardized applications land in your dashboard, ranked against your landlord&apos;s criteria. Document your decisions and send your landlord a polished report.
                 </p>
 
                 <div className="rl-hero-seq" style={{ animationDelay: '660ms' }}>
@@ -1028,7 +1010,7 @@ export default function Home() {
                   Set up your first listing.
                 </h2>
                 <p style={{ fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.6, color: C.inkInverse, marginBottom: 32 }}>
-                  Free for Ontario realtors during launch. No credit card, no setup — your first applicant link is ready in minutes.
+                  Free for Ontario &amp; BC realtors during launch. No credit card, no setup — your first applicant link is ready in minutes.
                 </p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <a href="/landlord" className="rl-btn" style={{
@@ -1064,7 +1046,7 @@ export default function Home() {
                 <FooterCol title="Contact" links={[['info@rentletter.ca', 'mailto:info@rentletter.ca']]} />
               </div>
               <div style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, fontSize: 12.5, color: C.inkMute }}>
-                © {new Date().getFullYear()} Rentletter · Ontario, Canada · Not legal advice
+                © {new Date().getFullYear()} Rentletter · Ontario &amp; BC, Canada · Not legal advice
               </div>
             </div>
           </footer>
