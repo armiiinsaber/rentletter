@@ -139,10 +139,13 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         <meta name="description" content="Your listings. Add a listing, share the invite link, review applicants." />
       </Head>
       <GlobalStyle />
-      <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'hidden' }}>
+      {/* overflow-x: clip (not hidden) — hidden makes overflow-y compute to auto, turning this into
+          a scroll container, which breaks the sticky header (it scrolls away instead of reserving
+          its height at the top). clip still contains any horizontal overflow without that side effect. */}
+      <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'clip' }}>
         <DashboardHeader profile={profile} />
 
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(28px, 5vw, 44px) clamp(16px, 4vw, 32px) 48px' }}>
 
           {/* ── OVERVIEW BENTO — hero + branding ── */}
           <div className="rl-in dash-bento">
@@ -325,6 +328,10 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           border-bottom-color: transparent !important;
           box-shadow: none !important;
           transition: opacity 140ms linear !important; /* smooths the scroll-driven header fade */
+          /* viewport-fit=cover extends the page under the iPhone notch; pad the sticky header by the
+             safe-area inset so its controls clear the status bar and never overlap the top on device.
+             Reserved in flow, so content still starts below the header. 0 on browsers without a notch. */
+          padding-top: env(safe-area-inset-top, 0px);
         }
         /* Seamless top AND bottom: match the root background to the flat .dash-bg base so there is
            no tone step at the very top edge (under the status bar / above the header) or the very
