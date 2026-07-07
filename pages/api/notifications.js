@@ -101,6 +101,42 @@ export default async function handler(req, res) {
         });
       }
     }
+
+    // 5b. Tenant document uploads (GROUP 3): derive a "documents received (& verified)" event
+    //     from the docs_submitted_at marker /api/upload/submit sets on the applicant's row —
+    //     the same derived-from-timestamps model as the new/withdrawal events above. Isolated +
+    //     best-effort so a not-yet-migrated docs_submitted_at/docs_verified column can't break
+    //     the whole bell.
+    try {
+      const { data: docRows } = await admin
+        .from('listing_applicants')
+        .select('id, listing_id, application_id, docs_submitted_at, docs_verified')
+        .in('listing_id', listingIds)
+        .not('docs_submitted_at', 'is', null)
+        .order('docs_submitted_at', { ascending: false })
+        .limit(MAX_ROWS);
+      const drows = docRows || [];
+      // Resolve any applicant names not already known from the events above.
+      const missing = [...new Set(drows.map((r) => r.application_id).filter((v) => v != null && !(String(v) in nameById)))];
+      if (missing.length) {
+        const { data: apps2 } = await admin.from('applications').select('id, full_name').in('id', missing);
+        for (const a of (apps2 || [])) nameById[String(a.id)] = a.full_name || 'An applicant';
+      }
+      for (const r of drows) {
+        const ts = r.docs_submitted_at ? new Date(r.docs_submitted_at).getTime() : 0;
+        if (!ts) continue;
+        const name = nameById[String(r.application_id)] || 'An applicant';
+        const lname = listingName[String(r.listing_id)] || 'your listing';
+        items.push({
+          id: `docs:${r.id}`, type: 'docs', name, listingId: r.listing_id, listingName: lname,
+          title: r.docs_verified ? `Documents received & verified for ${name}` : `Documents received for ${name}`,
+          ts, unread: ts > lastSeen,
+        });
+      }
+    } catch (e) {
+      console.warn('[notifications] docs events skipped:', e?.message || e);
+    }
+
     items.sort((a, b) => b.ts - a.ts);
     const unreadCount = items.filter((i) => i.unread).length;
     return res.status(200).json({ items: items.slice(0, MAX_ITEMS), unreadCount, lastSeen: lastSeenIso });

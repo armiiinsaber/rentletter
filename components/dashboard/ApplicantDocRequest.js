@@ -88,7 +88,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId }
 
       {status === 'received' ? (
         <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55 }}>
-          The tenant uploaded their documents{receivedAt ? ` on ${shortDate(receivedAt)}` : ''}. They’re ready to analyze.
+          The tenant uploaded their documents{receivedAt ? ` on ${shortDate(receivedAt)}` : ''}. They’re analyzed automatically — see the verification in the document panel above.
         </div>
       ) : status === 'requested' ? (
         <>
