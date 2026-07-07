@@ -3,7 +3,7 @@
 // Supabase session. Lists the realtor's listings; "New listing" opens the
 // Listing Setup modal and inserts a row; edit/delete via Supabase. Tapping a
 // listing opens its detail view (/landlord/[id]). Stage 1: no KV workspace.
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../components/ui';
@@ -92,30 +92,13 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   // Reveal major sections on load / scroll (subtle, matches the header language).
   useReveal(`${listings.length}-${hasListings}`);
 
-  // ── Scroll-reactive hero softening ───────────────────────────────────────────────────────
-  // The topmost hero strip softens slightly (never below ~0.68) and drifts a few px as the page
-  // scrolls — gradual, not a dissolve. Compositor-only (opacity/transform), static for reduced-
-  // motion. The HEADER itself is no longer faded: it's a solid eggshell bar (see .dash-bg override)
-  // that cleanly hides content scrolling beneath it, so there's nothing to dissolve and no way for a
-  // band or show-through to appear.
-  const heroFadeRef = useRef(null);
-  useEffect(() => {
-    const el = heroFadeRef.current;
-    if (!el) return;
-    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const HERO_DISTANCE = 560;
-    let raf = 0;
-    const apply = () => {
-      raf = 0;
-      const t = Math.min(Math.max(window.scrollY / HERO_DISTANCE, 0), 1);
-      el.style.opacity = String(1 - t * 0.32);      // eases to ~0.68, never a full fade
-      el.style.transform = `translate3d(0, ${(-t * 7).toFixed(1)}px, 0)`; // barely-there drift
-    };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
-    apply();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { window.removeEventListener('scroll', onScroll); if (raf) cancelAnimationFrame(raf); };
-  }, []);
+  // ── No scroll-fade on the hero (deliberately) ────────────────────────────────────────────
+  // The hero card used to soften + drift on scroll via a translate3d. But a 3D transform promotes
+  // the element to its own compositor layer, and on iOS a transformed element paints ABOVE a
+  // position:fixed sibling — so the hero's "Welcome back" title showed over the fixed header's
+  // bottom edge as a half-cut sliver. With NO transform anywhere in the scrolling content, the
+  // solid opaque header (z-index 90) cleanly covers everything that scrolls beneath it — content
+  // simply disappears under the uniform gray bar, no half-cut possible.
 
   // ── Robust header clearance ──────────────────────────────────────────────────────────────
   // The header is position:fixed (see .dash-bg override), so it does NOT reserve space in flow —
@@ -181,9 +164,9 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
           {/* ── OVERVIEW BENTO — hero + branding ── */}
           <div className="rl-in dash-bento">
-            {/* Only the hero strip gently softens on scroll (see heroFadeRef) — branding + the
-                content below stay fully readable. */}
-            <section ref={heroFadeRef} className="dash-card dash-hero span-4" style={{ willChange: 'opacity, transform' }}>
+            {/* Hero card — NO scroll transform (see note above): a transformed hero paints above the
+                fixed header on iOS, causing a half-cut title. Plain, so the header cleanly covers it. */}
+            <section className="dash-card dash-hero span-4">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
               <h1 className="dash-h1" style={{ marginBottom: 4 }}>
                 {hasListings ? `Welcome back${firstName ? `, ${firstName}` : ''}` : 'Welcome to Rentletter'}
