@@ -3,7 +3,7 @@
 // Supabase session. Lists the realtor's listings; "New listing" opens the
 // Listing Setup modal and inserts a row; edit/delete via Supabase. Tapping a
 // listing opens its detail view (/landlord/[id]). Stage 1: no KV workspace.
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../components/ui';
@@ -57,10 +57,6 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  // Measured pixel height of the fixed dashboard header (includes the REAL safe-area inset on
-  // device) plus a gap — used to offset the content so nothing ever overlaps. Null until measured
-  // on the client; a CSS fallback covers the first paint. See the measure effect below.
-  const [headerOffset, setHeaderOffset] = useState(null);
 
   const createListing = async (values) => {
     setSaving(true);
@@ -92,42 +88,10 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   // Reveal major sections on load / scroll (subtle, matches the header language).
   useReveal(`${listings.length}-${hasListings}`);
 
-  // ── No scroll-fade on the hero (deliberately) ────────────────────────────────────────────
-  // The hero card used to soften + drift on scroll via a translate3d. But a 3D transform promotes
-  // the element to its own compositor layer, and on iOS a transformed element paints ABOVE a
-  // position:fixed sibling — so the hero's "Welcome back" title showed over the fixed header's
-  // bottom edge as a half-cut sliver. With NO transform anywhere in the scrolling content, the
-  // solid opaque header (z-index 90) cleanly covers everything that scrolls beneath it — content
-  // simply disappears under the uniform gray bar, no half-cut possible.
-
-  // ── Robust header clearance ──────────────────────────────────────────────────────────────
-  // The header is position:fixed (see .dash-bg override), so it does NOT reserve space in flow —
-  // we reserve it explicitly. env(safe-area-inset-top) alone proved unreliable on real iPhones, so
-  // instead we MEASURE the header's actual rendered height (getBoundingClientRect already includes
-  // its safe-area padding, whatever the device's real notch inset turns out to be) and offset the
-  // content by that + a small gap. Re-measures on resize/orientation (a ResizeObserver also catches
-  // font-size / safe-area changes). The header's on-scroll height is pinned constant in CSS, so this
-  // never jumps while scrolling.
-  useEffect(() => {
-    const header = document.querySelector('.dash-bg .rl-header');
-    if (!header) return;
-    const GAP = 20; // clear minimum breathing room below the header
-    const measure = () => setHeaderOffset(Math.ceil(header.getBoundingClientRect().height) + GAP);
-    measure();
-    let ro;
-    // Observe the BORDER-box: the safe-area inset is padding, so a notch-inset change resizes the
-    // border-box (not the content-box). Observing border-box re-measures when iOS resolves the notch.
-    if (typeof ResizeObserver !== 'undefined') { ro = new ResizeObserver(measure); ro.observe(header, { box: 'border-box' }); }
-    window.addEventListener('resize', measure);
-    window.addEventListener('orientationchange', measure);
-    window.addEventListener('load', measure);
-    return () => {
-      if (ro) ro.disconnect();
-      window.removeEventListener('resize', measure);
-      window.removeEventListener('orientationchange', measure);
-      window.removeEventListener('load', measure);
-    };
-  }, []);
+  // Header note: the dashboard header is a plain in-flow element (position: static, see .dash-bg
+  // override) that scrolls away with the page. Because nothing is fixed/sticky, there is no floating
+  // bar for content to bleed under or be cut by — no measured content offset, no ResizeObserver, and
+  // no scroll-fade are needed. The whole page (header included) simply scrolls as one.
 
   return (
     <>
@@ -140,23 +104,17 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         <meta name="theme-color" content={C.paperDeep} />
       </Head>
       <GlobalStyle />
-      {/* overflow-x: clip (not hidden) — hidden makes overflow-y compute to auto, turning this into
-          a scroll container, which breaks the sticky header (it scrolls away instead of reserving
-          its height at the top). clip still contains any horizontal overflow without that side effect. */}
+      {/* overflow-x: clip contains any horizontal overflow without creating a scroll container. */}
       <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'clip' }}>
-        {/* The header now carries a solid eggshell background that fills the safe-area/notch region
-            itself (see .dash-bg .rl-header below), so the separate safe-area strip is no longer needed. */}
+        {/* Static, in-flow header (see .dash-bg .rl-header below) — it scrolls away with the page; its
+            solid canvas background + safe-area padding cover the notch region at the top. */}
         <DashboardHeader profile={profile} />
 
         <div style={{
           maxWidth: 1100, margin: '0 auto',
-          // Clear the fixed header. Use max() of the JS-measured height and a LIVE env-based floor
-          // (header content ~74px + 20px gap + the safe-area inset). The env floor re-evaluates
-          // automatically, so even if the one-shot measurement ran before iOS resolved the notch
-          // inset (leaving a too-small px value), the content can never start under the header.
-          paddingTop: headerOffset != null
-            ? `max(${headerOffset}px, calc(94px + env(safe-area-inset-top, 0px)))`
-            : 'calc(94px + env(safe-area-inset-top, 0px))',
+          // The header is now in normal flow directly above, so it takes its own space — content just
+          // follows below it. No measured offset needed; a small top gap is all that's required.
+          paddingTop: 'clamp(8px, 2vw, 16px)',
           paddingRight: 'clamp(16px, 4vw, 32px)',
           paddingLeft: 'clamp(16px, 4vw, 32px)',
           paddingBottom: 48,
@@ -323,37 +281,27 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-bg {
           background: ${C.paperDeep};
         }
-        /* SOLID header painted the EXACT canvas tone (C.paperDeep) — identical to the page, so it is
-           indistinguishable: no eggshell/white, no distinct band, fully monochrome. Opaque, so content
-           scrolling under it is covered (no bleed-through). background-clip defaults to border-box, so
-           this fills the padding-top (= safe-area-inset-top) region too — top:0 THROUGH the notch is the
-           canvas tone, down through the header content. Scoped here; the shared ScrollHeader is unchanged
-           elsewhere. */
+        /* The dashboard header is a NORMAL, STATIC, in-flow element — it scrolls up and off with the
+           page like any other content, NOT fixed/sticky. With no floating bar, there is no fixed layer
+           for content to bleed under or be cut by, which eliminates the entire class of iOS fixed-vs-
+           scrolling compositing bug (the half-cut title) at the source. It carries the exact page canvas
+           tone (C.paperDeep) so it reads as a seamless top strip of the monochrome page. Scoped here; the
+           shared ScrollHeader (sticky) is unchanged on every other page. */
         .dash-bg :global(.rl-header) {
-          /* Fixed, NOT sticky. position:sticky is supposed to reserve its height in flow, but on iOS
-             that reservation is unreliable, so content overlapped the header. Fixed takes it out of
-             flow deterministically; the content offset is reserved explicitly from the JS-measured
-             header height (see headerOffset), which is robust on every device. */
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          background: ${C.paperDeep} !important;         /* solid canvas tone — identical to the page canvas */
-          background-color: ${C.paperDeep} !important;   /* explicit: fully opaque, no alpha channel */
-          opacity: 1 !important;                  /* never semi-transparent (no leftover fade opacity) */
-          z-index: 90 !important;                 /* above all page content, below modals (z100)/dropdowns */
+          position: static !important;            /* was fixed — now scrolls away with the page */
+          background: ${C.paperDeep} !important;  /* solid canvas tone — seamless with the page */
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
           border-bottom-color: transparent !important;
           box-shadow: none !important;
-          /* viewport-fit=cover extends the page under the iPhone notch; pad the header by the
-             safe-area inset so its controls clear the status bar. The solid background fills this
-             padding region (border-box clip), so the notch is the canvas tone. Part of the measured height,
-             so the content offset accounts for it too. 0 on non-notch browsers. */
+          /* As the topmost in-flow element, pad by the safe-area inset so the wordmark/controls clear
+             the iPhone notch/status bar at the top of the page; the solid bg fills that region too.
+             0 on non-notch browsers. */
           padding-top: env(safe-area-inset-top, 0px);
         }
-        /* Pin the header's height constant on scroll — neutralise the shared shrink's padding change
-           so the measured content offset never jumps as the page scrolls. */
+        /* Keep the header height constant when the shared scroll-shrink class toggles at ~8px scroll
+           (it tightens the inner padding) so the in-flow content below doesn't jump as you start
+           scrolling. */
         .dash-bg :global(.rl-header.rl-shrink) .rl-header-inner {
           padding-top: 18px;
           padding-bottom: 18px;
