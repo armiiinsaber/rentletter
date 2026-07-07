@@ -26,8 +26,16 @@ const sectionLabel = { display: 'block', fontSize: 11, color: C.inkSoft, fontWei
 
 // onClose: when provided (modal), Save closes it. When omitted (page), Save shows an
 // inline "Saved" confirmation instead.
-export default function ProfileEditorBody({ profile, onSaved, onClose }) {
+export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyChange, saveRef }) {
   const [form, setForm] = useState({
+    full_name: profile?.full_name || '',
+    brokerage: profile?.brokerage || '',
+    phone: profile?.phone || '',
+    license_number: profile?.license_number || '',
+    province: normalizeProvince(profile?.province),
+  });
+  // Snapshot of the last-saved detail values. "Dirty" = form differs from this. Updated on Save.
+  const [savedForm, setSavedForm] = useState({
     full_name: profile?.full_name || '',
     brokerage: profile?.brokerage || '',
     phone: profile?.phone || '',
@@ -108,13 +116,14 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
     setLogoBusy(false);
   };
 
+  // Returns true on success, false on failure — so the leave-guard can "Save & leave" reliably.
   const save = async () => {
     setSaving(true);
     setError('');
     try {
       const supabase = getSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setError('Your session expired. Please sign in again.'); setSaving(false); return; }
+      if (!user) { setError('Your session expired. Please sign in again.'); setSaving(false); return false; }
       const patch = {
         full_name: form.full_name.trim() || null,
         brokerage: form.brokerage.trim() || null,
@@ -126,14 +135,17 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
       };
       const { data, error: upErr } = await supabase
         .from('profiles').update(patch).eq('id', user.id).select().single();
-      if (upErr) { setError(upErr.message); setSaving(false); return; }
+      if (upErr) { setError(upErr.message); setSaving(false); return false; }
       onSaved?.(data);
+      setSavedForm({ ...form }); // detail fields are now saved — clears the dirty state
       setSaving(false);
       if (onClose) onClose();
       else { setSavedOk(true); setTimeout(() => setSavedOk(false), 2600); }
+      return true;
     } catch (e) {
       setError('Could not save. Please try again.');
       setSaving(false);
+      return false;
     }
   };
 
@@ -176,6 +188,23 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
   }, [brandColor, brandColorSecondary, profile?.brand_color, profile?.brand_color_secondary]);
 
   const accentPreview = hexOk(brandColor) ? brandColor : C.red;
+
+  // ── Unsaved-changes (dirty) tracking for the DETAIL fields ────────────────────────────────
+  // Only the fields the Save button persists count. The logo + brand colours auto-save on their
+  // own, so they're already persisted and never make the form "dirty".
+  const DETAIL_KEYS = ['full_name', 'brokerage', 'phone', 'license_number', 'province'];
+  const dirty = DETAIL_KEYS.some((k) => form[k] !== savedForm[k]);
+
+  // Report dirty state up (lets the page guard "Back to dashboard") and expose save() to the parent.
+  useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
+  useEffect(() => { if (saveRef) saveRef.current = save; }); // keep the ref pointing at the latest save
+  // Warn on browser back / tab close / refresh while detail changes are unsaved.
+  useEffect(() => {
+    if (!dirty) return;
+    const h = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', h);
+    return () => window.removeEventListener('beforeunload', h);
+  }, [dirty]);
 
   return (
     <div>
@@ -314,14 +343,23 @@ export default function ProfileEditorBody({ profile, onSaved, onClose }) {
         </div>
       </div>
 
-      {/* Save — persists identity + brand colours in one patch (logic unchanged; still saves
-          every field regardless of the new section order). */}
+      {/* Save — persists the detail fields (+ brand colours) in one patch (logic unchanged). The
+          button emphasises + says "Save changes" while there are unsaved detail edits, and a clear
+          "Unsaved changes" note sits beside it; once saved it returns to a plain "✓ Saved" state.
+          (Note: the logo/branding save their own "Logo saved" toast — that never means the whole
+          form is saved; the detail fields still need this button.) */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <button onClick={save} disabled={saving}
-          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '14px 24px', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-          {saving ? 'Saving…' : 'Save'}
+          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '14px 24px', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(215, 32, 39, 0.25)' : 'none' }}>
+          {saving ? 'Saving…' : (dirty ? 'Save changes' : 'Save')}
         </button>
-        {savedOk && <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>✓ Saved</span>}
+        {!saving && dirty && (
+          <span style={{ fontSize: 13, color: C.red, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: C.red, display: 'inline-block', flexShrink: 0 }} />
+            Unsaved changes
+          </span>
+        )}
+        {!saving && !dirty && savedOk && <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>✓ Saved</span>}
       </div>
     </div>
   );

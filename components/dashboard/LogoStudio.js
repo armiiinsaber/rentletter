@@ -227,7 +227,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not save that logo.'); setUsingKey(null); return; }
       setSavedKey(key); // confirm on THIS card
-      setToast('Saved! This is now your branding.');
+      setToast('Logo saved — now your branding logo.');
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setToast(''), 4500);
       onChosen?.(j.logo_url, j.profile);

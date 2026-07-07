@@ -4,7 +4,8 @@
 // upload / Regenerate-with-AI / Remove, the AI logo studio), and brand colours. Listings
 // are managed on the dashboard; account/founder status shows in the header. Gated behind
 // a Supabase session (RLS). Reachable from the top-bar avatar.
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { GlobalStyle, useReveal } from '../components/ui';
 import { C, R } from '../components/theme';
@@ -26,7 +27,25 @@ export async function getServerSideProps(ctx) {
 
 export default function ProfileHub({ initialProfile }) {
   const [profile, setProfile] = useState(initialProfile);
+  const [dirty, setDirty] = useState(false);         // set by ProfileEditorBody when detail fields change
+  const [leaveOpen, setLeaveOpen] = useState(false); // unsaved-changes confirm dialog
+  const [leaving, setLeaving] = useState(false);
+  const saveRef = useRef(null);                      // ProfileEditorBody populates this with its save()
+  const router = useRouter();
   useReveal('profile');
+
+  // "Back to dashboard" leave guard — only prompts when there are unsaved DETAIL changes.
+  const goToDashboard = () => router.push('/landlord');
+  const leaveWithoutSaving = () => { setLeaveOpen(false); goToDashboard(); };
+  const saveAndLeave = async () => {
+    const doSave = saveRef.current;
+    if (!doSave) { setLeaveOpen(false); goToDashboard(); return; }
+    setLeaving(true);
+    const ok = await doSave();
+    setLeaving(false);
+    setLeaveOpen(false);
+    if (ok) goToDashboard(); // on failure, stay — the editor surfaces the error inline
+  };
 
   return (
     <>
@@ -41,6 +60,7 @@ export default function ProfileHub({ initialProfile }) {
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px) 64px' }}>
           <header className="rl-in" style={{ marginBottom: 28 }}>
             <a href="/landlord" className="rl-btn"
+              onClick={(e) => { if (dirty) { e.preventDefault(); setLeaveOpen(true); } }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginBottom: 18, padding: '8px 14px', borderRadius: R.pill, border: `1px solid ${C.ruleDark}`, background: C.card, color: C.inkSoft, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
               <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1 }}>←</span> Back to dashboard
             </a>
@@ -54,12 +74,40 @@ export default function ProfileHub({ initialProfile }) {
           {/* Identity + branding + AI studio + colours. (A display name / username field
               joins the identity section next stage.) */}
           <section className="rl-card rl-in" style={{ padding: 'clamp(20px, 4vw, 32px)', '--rl-d': '90ms' }}>
-            <ProfileEditorBody profile={profile} onSaved={setProfile} />
+            <ProfileEditorBody profile={profile} onSaved={setProfile} onDirtyChange={setDirty} saveRef={saveRef} />
           </section>
         </div>
       </div>
       {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
       <ChatWidget mode="dashboard" />
+
+      {/* Unsaved-changes leave guard — shown when "Back to dashboard" is clicked with dirty details. */}
+      {leaveOpen && (
+        <div role="dialog" aria-modal="true" aria-labelledby="leave-title"
+          onClick={(e) => { if (e.target === e.currentTarget && !leaving) setLeaveOpen(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 32px)', zIndex: 300 }}>
+          <div style={{ maxWidth: 420, width: '100%', background: C.paper, borderRadius: R.card, boxShadow: '0 24px 64px rgba(15,15,16,0.28)', padding: 'clamp(20px, 5vw, 28px)' }}>
+            <h2 id="leave-title" style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', marginBottom: 8 }}>Unsaved changes</h2>
+            <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 20 }}>
+              You have unsaved changes to your details. Do you want to save before leaving?
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <button onClick={saveAndLeave} disabled={leaving}
+                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: leaving ? 'wait' : 'pointer', opacity: leaving ? 0.7 : 1 }}>
+                {leaving ? 'Saving…' : 'Save & leave'}
+              </button>
+              <button onClick={leaveWithoutSaving} disabled={leaving}
+                style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 600, cursor: leaving ? 'default' : 'pointer', opacity: leaving ? 0.6 : 1 }}>
+                Leave without saving
+              </button>
+              <button onClick={() => setLeaveOpen(false)} disabled={leaving}
+                style={{ background: 'transparent', color: C.inkSoft, border: 'none', borderRadius: R.ctrl, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
