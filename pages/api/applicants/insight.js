@@ -7,6 +7,7 @@
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { authorizeApplicant, generateApplicantInsight } from '../../../lib/applicantAnalysis';
+import { activeReport } from '../../../lib/docVerifications';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -40,9 +41,8 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'Applicant reference mismatch — please reload the page and try again.' });
   }
 
-  // Latest document-verification run (structured facts only — no images were ever stored).
-  const runs = Array.isArray(ctx.junction.doc_verifications) ? ctx.junction.doc_verifications : [];
-  const latest = runs.length ? runs[runs.length - 1] : null;
+  // The ACTIVE document-verification report (structured facts only — no images were ever stored).
+  const latest = activeReport(ctx.junction.doc_verifications);
 
   // Generate via the SHARED insight engine (same one the tenant-upload path auto-runs), so a
   // realtor-generated insight and a tenant-triggered one are produced identically.

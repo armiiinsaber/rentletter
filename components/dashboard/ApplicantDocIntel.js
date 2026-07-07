@@ -20,7 +20,7 @@ function readAsBase64(file) {
   });
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialInsight, onSaved }) {
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved }) {
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]); // File[]
@@ -30,11 +30,16 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   const [insightLoading, setInsightLoading] = useState(false);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
-  const [clearing, setClearing] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [textBusy, setTextBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Feature 4 — archive / delete a completed analysis.
+  const [archived, setArchived] = useState(Array.isArray(initialArchived) ? initialArchived : []);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [viewing, setViewing] = useState(null);       // an archived entry being viewed read-only
+  const [managing, setManaging] = useState('');        // '' | 'archive' | 'delete' | 'delete-archived'
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmArchId, setConfirmArchId] = useState('');
   const inputRef = useRef(null);
   const hasReport = !!result;
 
@@ -94,28 +99,54 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setInsightLoading(false);
   };
 
-  // Clear this applicant's OWN doc_verifications + ai_insight (owner-auth, two-key bound). After
-  // this the applicant shows "Not verified" everywhere (dashboard + landlord report). Used to
-  // remove stale/incorrect verification.
-  const clearAnalysis = async () => {
-    if (clearing) return;
-    setClearing(true); setError('');
+  // Feature 4 — archive / delete the analysis (owner-auth, two-key bound). Archive moves the
+  // active report into history; delete removes it permanently. Either way the applicant returns
+  // to the clean pre-analysis state (re-upload or a fresh tenant request lands a new active report).
+  const manage = async (action, archivedId) => {
+    if (managing) return null;
+    setManaging(action); setError('');
     try {
-      const r = await fetch('/api/applicants/clear-analysis', {
+      const r = await fetch('/api/applicants/manage-analysis', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, linkId, applicationId }),
+        body: JSON.stringify({ listingId, linkId, applicationId, action, archivedId }),
       });
       const j = await r.json();
-      if (!r.ok) { setError(j?.error || 'Could not clear the analysis.'); setClearing(false); setConfirmClear(false); return; }
-      setResult(null);
-      setInsight('');
-      setFiles([]);
-      setConfirmClear(false);
-      onSaved?.({ docVerifications: null, aiInsight: null });
+      if (!r.ok) { setError(j?.error || 'Could not update the analysis.'); setManaging(''); return null; }
+      setManaging('');
+      return j;
     } catch (e) {
-      setError('Could not clear the analysis.');
+      setError('Could not update the analysis.'); setManaging(''); return null;
     }
-    setClearing(false);
+  };
+
+  const archiveActive = async () => {
+    const j = await manage('archive');
+    if (!j) return;
+    setArchived(j.docArchived || []);
+    setResult(null); setInsight(''); setFiles([]);
+    onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || [], aiInsight: null });
+  };
+
+  const deleteActive = async () => {
+    const j = await manage('delete');
+    if (!j) return;
+    setResult(null); setInsight(''); setFiles([]); setConfirmDelete(false);
+    setArchived(j.docArchived || archived);
+    onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || archived, aiInsight: null });
+  };
+
+  const deleteArchivedEntry = async (id) => {
+    const j = await manage('delete-archived', id);
+    if (!j) return;
+    setArchived(j.docArchived || []);
+    setConfirmArchId('');
+    if (viewing && viewing.id === id) setViewing(null);
+    onSaved?.({ docArchived: j.docArchived || [] });
+  };
+
+  const fmtDate = (iso) => {
+    if (!iso) return 'earlier';
+    try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return 'earlier'; }
   };
 
   // Stage-2: a SEPARATE landlord verification confirmation for THIS applicant only, as a
@@ -155,6 +186,9 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   };
 
   const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
+  const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 };
+  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.red}`, color: C.red, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' };
+  const destSolidBtn = { background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 };
 
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
@@ -166,7 +200,18 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
         <span aria-hidden="true" style={{ color: C.inkMute, marginLeft: 2 }}>{open ? '▲' : '▼'}</span>
       </button>
 
-      {open && (
+      {/* Archived report — read-only view. */}
+      {open && viewing && (
+        <div style={{ marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.inkMute, padding: '3px 10px', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived — {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ' · tenant' : ''}</span>
+            <button onClick={() => setViewing(null)} style={{ ...ghostBtn, color: C.ink }}>← Back</button>
+          </div>
+          <DocIntelReport result={viewing.report} insight={viewing.ai_insight || ''} />
+        </div>
+      )}
+
+      {open && !viewing && (
         <div style={{ marginTop: 12 }}>
           {/* Uploader */}
           <div
@@ -233,24 +278,25 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                 </div>
               </div>
 
-              {/* Clear / reset this applicant's analysis (removes stale/incorrect verification). */}
+              {/* Archive / delete this applicant's active analysis (Feature 4). */}
               <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
-                {!confirmClear ? (
-                  <button onClick={() => { setConfirmClear(true); setError(''); }} disabled={clearing}
-                    style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkMute, borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
-                    Clear document analysis
-                  </button>
+                {!confirmDelete ? (
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button onClick={archiveActive} disabled={!!managing} style={{ ...secondaryBtn, opacity: managing ? 0.6 : 1 }}>
+                      {managing === 'archive' && <span className="rl-dispin rl-dispin--dark" aria-hidden="true" />}{managing === 'archive' ? 'Archiving…' : 'Archive'}
+                    </button>
+                    <button onClick={() => { setConfirmDelete(true); setError(''); }} disabled={!!managing} style={{ ...destOutlineBtn, opacity: managing ? 0.6 : 1 }}>
+                      Delete
+                    </button>
+                    <span style={{ fontSize: 11.5, color: C.inkMute, minWidth: 0 }}>Archive keeps a copy in history · Delete removes it permanently.</span>
+                  </div>
                 ) : (
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
-                      Remove this applicant’s document analysis? They’ll show as <strong style={{ color: C.ink }}>not verified</strong> on the dashboard and the landlord report.
-                    </span>
-                    <button onClick={clearAnalysis} disabled={clearing}
-                      style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: clearing ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      {clearing && <span className="rl-dispin" aria-hidden="true" />}{clearing ? 'Clearing…' : 'Clear'}
+                    <span style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>Delete this analysis? This can’t be undone.</span>
+                    <button onClick={deleteActive} disabled={managing === 'delete'} style={destSolidBtn}>
+                      {managing === 'delete' && <span className="rl-dispin" aria-hidden="true" />}{managing === 'delete' ? 'Deleting…' : 'Delete'}
                     </button>
-                    <button onClick={() => setConfirmClear(false)} disabled={clearing}
-                      style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={() => setConfirmDelete(false)} disabled={!!managing} style={{ ...ghostBtn }}>
                       Cancel
                     </button>
                   </div>
@@ -258,11 +304,48 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
               </div>
             </div>
           )}
+
+          {/* Archived analyses (collapsed) — view-only history, each with a permanent delete. */}
+          {archived.length > 0 && (
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+              <button onClick={() => setArchiveOpen((o) => !o)}
+                style={{ ...ghostBtn, color: C.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                <span aria-hidden="true">🗄</span> Archived analyses ({archived.length})
+                <span aria-hidden="true" style={{ color: C.inkMute }}>{archiveOpen ? '▲' : '▼'}</span>
+              </button>
+              {archiveOpen && (
+                <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
+                  {archived.map((entry) => (
+                    <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px' }}>
+                      <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        Archived — {fmtDate(entry.archived_at)}{entry.source === 'tenant' ? ' · tenant upload' : ''}
+                      </span>
+                      <button onClick={() => setViewing(entry)} style={{ ...ghostBtn, padding: '6px 11px', color: C.ink }}>View</button>
+                      {confirmArchId === entry.id ? (
+                        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                          <button onClick={() => deleteArchivedEntry(entry.id)} disabled={managing === 'delete-archived'} style={{ ...destSolidBtn, padding: '6px 11px' }}>
+                            {managing === 'delete-archived' && <span className="rl-dispin" aria-hidden="true" />}Delete
+                          </button>
+                          <button onClick={() => setConfirmArchId('')} style={{ ...ghostBtn, padding: '6px 11px' }}>Cancel</button>
+                        </span>
+                      ) : (
+                        <button onClick={() => { setConfirmArchId(entry.id); setError(''); }} style={{ ...destOutlineBtn, padding: '6px 11px' }}>Delete</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
       <style jsx>{`
-        .rl-dispin { width: 15px; height: 15px; flex-shrink: 0; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: #fff; display: inline-block; animation: rl-dispin 0.7s linear infinite; }
+        .rl-dispin { width: 15px; height: 15px; flex-shrink: 0; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: #fff; display: inline-block; }
+        .rl-dispin--dark { border-color: rgba(15,15,16,0.2); border-top-color: ${C.ink}; }
+        @media (prefers-reduced-motion: no-preference) {
+          .rl-dispin { animation: rl-dispin 0.7s linear infinite; }
+        }
         @keyframes rl-dispin { to { transform: rotate(360deg); } }
       `}</style>
     </div>

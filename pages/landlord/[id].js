@@ -403,6 +403,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           applicationId={app.id}
           applicantName={app.full_name}
           initialVerifications={a.docVerifications}
+          initialArchived={a.docArchived}
           initialInsight={a.aiInsight}
           onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
         />

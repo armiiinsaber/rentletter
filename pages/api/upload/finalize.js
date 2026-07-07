@@ -15,6 +15,7 @@ import { kvReady, kvGetJson, kvSetJson, kvDel, reqKey, appKey, stagingKey, isDoc
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { generateApplicantInsight, computeNameMatch } from '../../../lib/applicantAnalysis';
+import { withActiveReport } from '../../../lib/docVerifications';
 
 // Only a token in the body; one text insight call. Modest duration, no large body.
 export const config = { maxDuration: 30 };
@@ -160,12 +161,11 @@ export default async function handler(req, res) {
 
         const run = buildCombinedRun(items, application.full_name || '');
 
-        // Persist the combined result — tagged as a tenant self-upload — accumulating across
-        // analyses (most recent last). Same column, row, and shape as the realtor path.
-        const existing = junction.doc_verifications;
-        const verifications = Array.isArray(existing) ? [...existing, { ...run, source: 'tenant' }] : [{ ...run, source: 'tenant' }];
+        // Persist the combined result — tagged as a tenant self-upload — as the ACTIVE report,
+        // preserving any archived history. Same column, row, and shape as the realtor path.
+        const newDocV = withActiveReport(junction.doc_verifications, { ...run, source: 'tenant' });
         const { data: upRows, error: upErr } = await admin
-          .from('listing_applicants').update({ doc_verifications: verifications }).eq('id', rec.linkId).select('id, application_id');
+          .from('listing_applicants').update({ doc_verifications: newDocV }).eq('id', rec.linkId).select('id, application_id');
 
         if (upErr) { console.error('[upload/finalize] persist error:', upErr.message); persistFailed = true; }
         else if (!(upRows || []).length) { console.error('[upload/finalize] persist affected 0 rows'); persistFailed = true; }

@@ -237,10 +237,13 @@ export default function UploadPage() {
               <div style={{ fontSize: 11, color: C.green, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
                 <Icon name="check" size={15} color={C.green} strokeWidth={2.5} /> Documents received
               </div>
-              <h1 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 10 }}>
-                Thanks{firstName ? `, ${firstName}` : ''} — you’re all set.
+              <h1 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 4, textWrap: 'balance' }}>
+                Thanks{firstName ? `, ${firstName}` : ''}.
               </h1>
-              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22 }}>
+              <div style={{ fontSize: 'clamp(16px, 4vw, 21px)', fontWeight: 700, color: C.inkSoft, letterSpacing: '-0.01em', marginBottom: 18 }}>
+                You’re all&nbsp;set.
+              </div>
+              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22, textWrap: 'pretty' }}>
                 Your {sentCount} document{sentCount === 1 ? '' : 's'} {sentCount === 1 ? 'was' : 'were'} received and sent{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ' to your realtor'} for review. You can close this page.
               </p>
               {disclosure}
@@ -289,7 +292,7 @@ export default function UploadPage() {
                   </div>
 
                   {files.length > 0 && (
-                    <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, marginBottom: 14 }}>
                       {files.map((f, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px' }}>
                           <span style={{ color: C.green, display: 'inline-flex', flexShrink: 0 }}><Icon name="check" size={15} color={C.green} strokeWidth={2.5} /></span>
@@ -317,7 +320,7 @@ export default function UploadPage() {
                   <div className="rl-card" style={{ padding: 'clamp(18px, 4vw, 24px)', marginBottom: 16 }}>
                     <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>Double-check before you send</div>
                     <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5, marginBottom: 14 }}>You’re about to send {files.length} document{files.length === 1 ? '' : 's'}. Make sure you’ve included everything from the checklist.</div>
-                    <div style={{ display: 'grid', gap: 6, marginBottom: 14 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, marginBottom: 14 }}>
                       {files.map((f, i) => (
                         <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px' }}>
                           <span style={{ color: C.green, display: 'inline-flex', flexShrink: 0 }}><Icon name="check" size={15} color={C.green} strokeWidth={2.5} /></span>

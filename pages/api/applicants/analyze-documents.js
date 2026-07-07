@@ -14,6 +14,7 @@ import {
   authorizeApplicant, runDocumentAnalysis,
   ALLOWED_DOC_MIME, MAX_DOCS, MAX_TOTAL_BYTES,
 } from '../../../lib/applicantAnalysis';
+import { withActiveReport } from '../../../lib/docVerifications';
 
 // Allow the batch payload (≤6 docs, base64) through Next's default 1MB body cap.
 export const config = { api: { bodyParser: { sizeLimit: '26mb' } } };
@@ -82,17 +83,17 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'Could not read those documents. Please try again.' });
   }
 
-  // Persist ONLY the structured result. Accumulate across analyses (most recent last).
-  let verifications = [run];
+  // Persist ONLY the structured result. New analysis becomes the ACTIVE report; any archived
+  // history is preserved (see lib/docVerifications). The client display array is [run].
+  const verifications = [run];
   try {
     const admin = getSupabaseAdminClient();
-    const existing = ctx.junction.doc_verifications;
-    verifications = Array.isArray(existing) ? [...existing, run] : [run];
+    const newDocV = withActiveReport(ctx.junction.doc_verifications, run);
     // [temp diagnostic] .select() returns the affected rows so we can confirm the write hits
     // EXACTLY ONE row (the intended applicant's), not multiple.
     const { data: upRows, error: upErr } = await admin
       .from('listing_applicants')
-      .update({ doc_verifications: verifications })
+      .update({ doc_verifications: newDocV })
       .eq('id', linkId)
       .select('id, application_id');
     console.log('[verif-trace][write] linkId=%s applicationId=%s junction.id=%s junction.application_id=%s affectedRows=%j',

@@ -7,6 +7,7 @@
 // Demo mode (`demo` + `items`) renders hardcoded SAMPLE notifications and makes NO network
 // calls — so the demo can showcase the feature without touching real data.
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
 import { Icon } from '../ui';
 import { C, R } from '../theme';
@@ -28,19 +29,25 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
   const [unread, setUnread] = useState(demo ? demoItems.filter((i) => i.unread).length : 0);
   const [seen, setSeen] = useState(false); // once the panel has been opened, dots read as seen
   const [menuPos, setMenuPos] = useState(null); // {top,left,width} in viewport (fixed) coords
-  const ref = useRef(null);
+  const ref = useRef(null);      // the bell wrapper
+  const menuRef = useRef(null);  // the (portaled) panel
 
-  // Position the panel in VIEWPORT coordinates so it can never clip off either edge (the bell
-  // is not the rightmost control, so a plain right:0 anchor ran off the left). Anchor its right
-  // edge near the bell, then clamp left/right within the viewport with a small margin.
+  // The panel is PORTALED to <body> and positioned in VIEWPORT coordinates. Portaling escapes any
+  // transformed / overflow:hidden ancestor in the header — such an ancestor becomes the containing
+  // block for a position:fixed child (an iOS Safari gotcha too), which was displacing the panel
+  // off-screen in landscape and past the right edge in portrait. From <body> the fixed coords are
+  // true viewport coords, then we clamp within the viewport so it can never run off any edge.
   const computePos = () => {
     if (!ref.current) return;
     const rect = ref.current.getBoundingClientRect();
     const margin = 12;
-    const width = Math.min(340, window.innerWidth - margin * 2);
+    const vw = window.innerWidth;
+    const width = Math.min(400, vw - margin * 2);
     let left = rect.right - width; // prefer right-aligned to the bell
-    left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
-    setMenuPos({ top: Math.round(rect.bottom + 8), left: Math.round(left), width: Math.round(width) });
+    left = Math.max(margin, Math.min(left, vw - width - margin));
+    // Clamp the top so a short (landscape) viewport can't push the panel origin off-screen.
+    const top = Math.max(margin, Math.min(Math.round(rect.bottom + 8), window.innerHeight - 80));
+    setMenuPos({ top, left: Math.round(left), width: Math.round(width) });
   };
 
   // Fetch once on mount (real mode only).
@@ -62,7 +69,12 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
   // Close on outside click / Escape; keep the panel aligned to the bell on resize/scroll.
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    // The panel is portaled outside `ref`, so check BOTH the bell and the panel before closing.
+    const onDoc = (e) => {
+      if (ref.current && ref.current.contains(e.target)) return;
+      if (menuRef.current && menuRef.current.contains(e.target)) return;
+      setOpen(false);
+    };
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
     const onReflow = () => computePos();
     document.addEventListener('mousedown', onDoc);
@@ -118,10 +130,10 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
         )}
       </button>
 
-      {open && menuPos && (
-        <div role="menu" style={{
-          position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 1000,
-          width: menuPos.width, maxHeight: '70vh', overflowY: 'auto',
+      {open && menuPos && typeof document !== 'undefined' && createPortal(
+        <div ref={menuRef} role="menu" style={{
+          position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 4000,
+          width: menuPos.width, maxHeight: 'min(60vh, 480px)', overflowY: 'auto', boxSizing: 'border-box',
           background: C.card, border: `1px solid ${C.ruleDark}`, borderRadius: R.card,
           boxShadow: '0 12px 34px rgba(15,15,16,0.16)',
         }}>
@@ -165,7 +177,8 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
               })}
             </ul>
           )}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
