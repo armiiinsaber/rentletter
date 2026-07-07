@@ -16,6 +16,7 @@ import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
+import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import ChatWidget from '../../components/ChatWidget';
 import { formatUnit } from '../../lib/unitType';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
@@ -405,6 +406,9 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           initialInsight={a.aiInsight}
           onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
         />
+        {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
+            uploads via a secure link. Coexists with ApplicantDocIntel above. */}
+        <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} />
       </div>
     );
   };
