@@ -103,7 +103,7 @@ export default async function handler(req, res) {
     }
 
     // 5b. Tenant document uploads (GROUP 3): derive a "documents received (& verified)" event
-    //     from the docs_submitted_at marker /api/upload/submit sets on the applicant's row —
+    //     from the docs_submitted_at marker /api/upload/finalize sets on the applicant's row —
     //     the same derived-from-timestamps model as the new/withdrawal events above. Isolated +
     //     best-effort so a not-yet-migrated docs_submitted_at/docs_verified column can't break
     //     the whole bell.
