@@ -5,6 +5,7 @@
 // base64 in the browser, POSTed once, and never re-stored; the server processes-and-discards.
 import { useState, useRef } from 'react';
 import { C, R } from '../theme';
+import { Icon } from '../ui';
 import DocIntelReport from './DocIntelReport';
 
 const MAX = 6;
@@ -194,7 +195,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
       <button onClick={() => setOpen((o) => !o)}
         style={{ ...ghostBtn, color: C.ink, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        <span aria-hidden="true" style={{ fontSize: 14 }}>🗎</span>
+        <Icon name="doc" size={14} color={C.ink} />
         {hasReport ? 'Document verification' : 'Analyze documents'}
         {hasReport && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.green, padding: '2px 8px', borderRadius: R.pill }}>✓ done</span>}
         <span aria-hidden="true" style={{ color: C.inkMute, marginLeft: 2 }}>{open ? '▲' : '▼'}</span>
@@ -310,7 +311,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
               <button onClick={() => setArchiveOpen((o) => !o)}
                 style={{ ...ghostBtn, color: C.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                <span aria-hidden="true">🗄</span> Archived analyses ({archived.length})
+                <Icon name="list" size={13} color={C.inkSoft} /> Archived analyses ({archived.length})
                 <span aria-hidden="true" style={{ color: C.inkMute }}>{archiveOpen ? '▲' : '▼'}</span>
               </button>
               {archiveOpen && (

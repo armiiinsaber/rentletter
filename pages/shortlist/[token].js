@@ -492,7 +492,7 @@ export default function LandlordShortlistView() {
                         </td>
                         <td style={cellBody}>
                           {app.household?.totalOccupants || 1} occupants<br />
-                          {app.household?.hasPets === 'yes' && '🐾 Pets'}
+                          {app.household?.hasPets === 'yes' && 'Pets'}
                         </td>
                         <td style={cellBody}>
                           <strong>{app.scorecard?.overall ?? '—'}/5</strong>
@@ -707,19 +707,19 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
       {/* Action buttons */}
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 28, paddingTop: 20, borderTop: `1px solid ${C.rule}` }}>
         <button onClick={onEditNote}
-          style={{ background: C.ink, color: C.paper, border: 'none', padding: '14px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-          ✎ Add/edit my note
+          style={{ background: C.ink, color: C.paper, border: 'none', padding: '14px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <Icon name="edit" size={15} color={C.paper} /> Add/edit my note
         </button>
         {a.tenant?.email && (
           <a href={`mailto:${a.tenant.email}`}
-            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
-            ✉ Email candidate
+            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Icon name="mail" size={15} color={C.ink} /> Email candidate
           </a>
         )}
         {a.tenant?.phone && (
           <a href={`tel:${a.tenant.phone}`}
-            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
-            📞 Call candidate
+            style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: '14px 20px', fontSize: 14, fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <Icon name="phone" size={15} color={C.ink} /> Call candidate
           </a>
         )}
         <button onClick={onRemove}

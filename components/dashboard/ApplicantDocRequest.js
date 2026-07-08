@@ -6,13 +6,14 @@
 // dashboard only (calls the API). No raw files touch this component.
 import { useState, useEffect } from 'react';
 import { C, R } from '../theme';
+import { Icon } from '../ui';
 
 function shortDate(iso) {
   if (!iso) return '';
   try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch (e) { return ''; }
 }
 
-export default function ApplicantDocRequest({ listingId, linkId, applicationId }) {
+export default function ApplicantDocRequest({ listingId, linkId, applicationId, hasActiveAnalysis }) {
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState(null); // null | 'requested' | 'received'
   const [url, setUrl] = useState('');
@@ -23,6 +24,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId }
   const [emailBusy, setEmailBusy] = useState(false);
   const [emailedNote, setEmailedNote] = useState('');
   const [copied, setCopied] = useState(false);
+  const [confirmRenew, setConfirmRenew] = useState(false); // guard before re-requesting over an active analysis
   const [error, setError] = useState('');
 
   // Load current status on mount (single lightweight KV read on the server).
@@ -46,13 +48,15 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId }
     return () => { cancelled = true; };
   }, [listingId, linkId]);
 
-  const request = async (sendEmail = false) => {
+  // Create (or re-create) the document request. renew=true mints a BRAND-NEW upload link via the
+  // same server endpoint — used by "Request again" after a prior submission (the old link dies).
+  const request = async (sendEmail = false, renew = false) => {
     if (sendEmail) setEmailBusy(true); else setBusy(true);
     setError(''); setEmailedNote('');
     try {
       const r = await fetch('/api/applicants/request-documents', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, linkId, applicationId, sendEmail }),
+        body: JSON.stringify({ listingId, linkId, applicationId, sendEmail, renew }),
       });
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not create the document request.'); }
@@ -60,11 +64,19 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId }
         setStatus(j.status || 'requested');
         setUrl(j.url || '');
         setRequestedAt(j.requestedAt || requestedAt);
+        if (renew) { setReceivedAt(null); setConfirmRenew(false); } // fresh request → back to pending
         if (j.tenantEmail !== undefined) setTenantEmail(j.tenantEmail);
         if (sendEmail) setEmailedNote(j.emailed ? `Emailed to ${j.tenantEmail || 'the tenant'}` : (j.emailError || 'Could not email — share the link instead.'));
       }
     } catch (e) { setError('Could not create the document request.'); }
     if (sendEmail) setEmailBusy(false); else setBusy(false);
+  };
+
+  // "Request again" — if an active (non-archived) analysis exists, confirm first (a new submission
+  // overwrites it); otherwise create the fresh link straight away.
+  const requestAgain = () => {
+    if (hasActiveAnalysis) { setConfirmRenew(true); setError(''); }
+    else request(false, true);
   };
 
   const copy = async () => {
@@ -80,15 +92,42 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId }
   return (
     <div style={box}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
-        <span aria-hidden="true" style={{ fontSize: 14 }}>📄</span>
+        <Icon name="doc" size={15} color={C.ink} />
         <span style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>Request documents from tenant</span>
         {status === 'requested' && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, padding: '2px 8px', borderRadius: R.pill }}>Pending</span>}
         {status === 'received' && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.green, background: C.greenTint, border: `1px solid ${C.green}`, padding: '2px 8px', borderRadius: R.pill }}>✓ Received</span>}
       </div>
 
       {status === 'received' ? (
-        <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55 }}>
-          The tenant uploaded their documents{receivedAt ? ` on ${shortDate(receivedAt)}` : ''}. They’re analyzed automatically — see the verification in the document panel above.
+        <div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55 }}>
+            The tenant uploaded their documents{receivedAt ? ` on ${shortDate(receivedAt)}` : ''}. They’re analyzed automatically — see the verification in the document panel above.
+          </div>
+          {!confirmRenew ? (
+            <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <button onClick={requestAgain} disabled={busy}
+                style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+                {busy ? 'Creating link…' : 'Request again'}
+              </button>
+              <span style={{ fontSize: 11.5, color: C.inkMute, minWidth: 0 }}>Need different documents? Send a fresh upload link.</span>
+            </div>
+          ) : (
+            <div style={{ marginTop: 12, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '11px 13px' }}>
+              <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 10 }}>
+                A verified analysis already exists. Request new documents anyway? A new submission will overwrite the active analysis. <strong style={{ color: C.ink }}>Tip:</strong> archive the current analysis first if you want to keep it.
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                <button onClick={() => request(false, true)} disabled={busy}
+                  style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+                  {busy ? 'Creating link…' : 'Request new documents'}
+                </button>
+                <button onClick={() => setConfirmRenew(false)} disabled={busy}
+                  style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : status === 'requested' ? (
         <>

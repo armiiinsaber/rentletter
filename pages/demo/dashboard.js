@@ -2085,7 +2085,7 @@ export default function LandlordDashboard() {
                         cursor: 'pointer', letterSpacing: '0.01em', minHeight: 48,
                         display: 'inline-flex', alignItems: 'center', gap: 8,
                       }}>
-                      ✉ Sign in and save on all devices
+                      <Icon name="mail" size={15} color={C.red} /> Sign in and save on all devices
                     </button>
                     <span style={{ fontSize: 13, color: C.paper, opacity: 0.85 }}>
                       Applications arrive over days — sign in keeps your shortlist synced across phone + laptop.
@@ -2338,8 +2338,8 @@ export default function LandlordDashboard() {
                               </button>
                               <button onClick={() => { setRenamingListingId(l.id); setRenameInput(l.name || ''); }}
                                 title="Rename"
-                                style={{ background: 'transparent', border: 'none', padding: 6, fontSize: 12, cursor: 'pointer', color: C.inkSoft }}>
-                                ✎
+                                style={{ background: 'transparent', border: 'none', padding: 6, cursor: 'pointer', color: C.inkSoft, display: 'inline-flex', alignItems: 'center' }}>
+                                <Icon name="edit" size={13} color={C.inkSoft} />
                               </button>
                               {listings.length > 1 && (
                                 <button onClick={() => {
@@ -4176,7 +4176,7 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 minHeight: 48, borderRadius: R.ctrl,
               }}>
-              📞 Call {app.tenant.phone}
+              <Icon name="phone" size={16} color={C.paper} /> Call {app.tenant.phone}
             </a>
           )}
           {app.email && (
@@ -4189,7 +4189,7 @@ function ReviewView({ applications, reviewIdx, setReviewIdx, expanded, setExpand
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 minHeight: 48, borderRadius: R.ctrl,
               }}>
-              ✉ Email
+              <Icon name="mail" size={16} color={C.ink} /> Email
             </a>
           )}
         </div>
@@ -4555,7 +4555,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     borderRadius: R.ctrl,
                   }}>
-                  📞 {app.tenant.phone}
+                  <Icon name="phone" size={14} color={C.paper} /> {app.tenant.phone}
                 </a>
               )}
               {app.email && (
@@ -4567,7 +4567,7 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
                     display: 'inline-flex', alignItems: 'center', gap: 6,
                     borderRadius: R.ctrl,
                   }}>
-                  ✉ Email
+                  <Icon name="mail" size={14} color={C.ink} /> Email
                 </a>
               )}
               {!app.tenant.phone && !app.email && (

@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
 
-  const { listingId, linkId, applicationId, sendEmail } = req.body || {};
+  const { listingId, linkId, applicationId, sendEmail, renew } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant reference.' });
 
   // Authorize: realtor owns the listing (RLS) AND this link is on it.
@@ -57,8 +57,11 @@ export default async function handler(req, res) {
   const brokerage = String(profile?.brokerage || '').slice(0, 160);
 
   try {
-    // Reuse an existing pending/received request for this applicant so the link stays stable.
-    const existingPtr = await kvGetJson(appKey(linkId));
+    // Reuse an existing pending/received request for this applicant so the link stays stable —
+    // UNLESS the realtor explicitly renews ("Request again") after a prior submission, in which
+    // case we mint a BRAND-NEW token below (the old token's record stays as-is until it TTLs out,
+    // and its /upload page shows "already received", so the old link is effectively dead).
+    const existingPtr = renew ? null : await kvGetJson(appKey(linkId));
     let token = existingPtr && isDocReqToken(existingPtr.token) ? existingPtr.token : null;
     let status = existingPtr?.status || 'requested';
     let requestedAt = existingPtr?.requestedAt || new Date().toISOString();

@@ -409,7 +409,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
         />
         {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
             uploads via a secure link. Coexists with ApplicantDocIntel above. */}
-        <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} />
+        <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} />
       </div>
     );
   };
