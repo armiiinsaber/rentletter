@@ -3,18 +3,8 @@
 // Used on both home page and landlord dashboard.
 
 import { useState, useRef, useEffect } from 'react';
-
-const COLORS = {
-  paper: '#faf8f3',
-  paperDeep: '#f2eee3',
-  ink: '#0f0f10',
-  inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
-  rule: '#e3ddd0',
-  red: '#d72027',
-  redDark: '#a8161c',
-  green: '#2d7d4a',
-};
+// Single token source — this file previously forked its own copy of the palette.
+import { C as COLORS } from './theme';
 
 const MARKETING_GREETING = "Hi! I'm the Rentletter assistant. I can help with how the product works, pricing, or how to use it. What can I help with?";
 const DASHBOARD_GREETING = "Hi! I'm your Rentletter product-help assistant. Ask me how to do anything in the dashboard — creating listings, invite links, the ranked list, verifying a finalist, sending the report. I explain how features work; deciding which applicant to choose is your call.";

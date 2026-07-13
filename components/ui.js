@@ -212,6 +212,119 @@ export const useReveal = (dep) => {
   }, [dep]);
 };
 
+// ─── TICK METER — the red tick-mark motif as the score language ──────────────
+// Renders a score (e.g. scorecard 0–5) as a row of tick marks instead of bare
+// "4.2/5" text: filled ticks in signal red, a half-opacity tick for the fraction,
+// empty ticks in rule. Pass showValue to print the tabular-nums numeral beside it.
+// Purely presentational — no motion, safe under reduced-motion.
+export const TickMeter = ({ value, max = 5, size = 14, showValue = true, onDark = false }) => {
+  const v = Math.max(0, Math.min(Number(value) || 0, max));
+  const full = Math.floor(v);
+  const hasPartial = v - full >= 0.25 && full < max;
+  const empty = onDark ? C.instRule : C.rule;
+  const fill = onDark ? C.redBright : C.red;
+  return (
+    <span role="img" aria-label={`${v} out of ${max}`}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+      <span style={{ display: 'inline-flex', gap: 3 }} aria-hidden="true">
+        {Array.from({ length: max }, (_, i) => (
+          <span key={i} style={{
+            width: 3, height: size, borderRadius: 1, flexShrink: 0,
+            background: i < full ? fill : (i === full && hasPartial) ? fill : empty,
+            opacity: i === full && hasPartial ? 0.4 : 1,
+          }} />
+        ))}
+      </span>
+      {showValue && (
+        <span style={{
+          fontSize: size - 1, fontWeight: 800, letterSpacing: '-0.01em', lineHeight: 1,
+          color: onDark ? C.instText : C.ink, fontVariantNumeric: 'tabular-nums',
+        }}>
+          {v}<span style={{ fontSize: size - 4, fontWeight: 500, color: onDark ? C.instMute : C.inkMute }}>/{max}</span>
+        </span>
+      )}
+    </span>
+  );
+};
+
+// ─── CONFIRM SHEET — replaces native window.confirm() ────────────────────────
+// One confirmation idiom product-wide: a bottom sheet on phones (thumb-reachable,
+// safe-area aware), a centered card on desktop. The confirm button carries the
+// action verb, never "OK"; destructive actions use the danger red, not brand red.
+// Renders nothing when closed. Escape or scrim-tap cancels (disabled while busy).
+// Callers migrate per-phase — build here in B1, adopt in B2+.
+export const ConfirmSheet = ({
+  open, title, body, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
+  danger = false, busy = false, onConfirm, onCancel,
+}) => {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === 'Escape' && !busy) onCancel?.(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, busy, onCancel]);
+  if (!open) return null;
+  const accent = danger ? C.danger : C.red;
+  return (
+    <div onClick={() => { if (!busy) onCancel?.(); }} role="presentation" className="rl-sheet-scrim">
+      <div onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true"
+        aria-label={title} className="rl-sheet">
+        <span className="rl-sheet-tick" style={{ background: accent }} aria-hidden="true" />
+        <h3 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', marginBottom: 8 }}>
+          {title}
+        </h3>
+        {body && <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18 }}>{body}</p>}
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <button onClick={onConfirm} disabled={busy} autoFocus
+            style={{
+              flex: '1 1 auto', background: busy ? C.ruleDark : accent, color: C.paper, border: 'none',
+              borderRadius: R.ctrl, padding: '14px 18px', fontSize: 14.5, fontWeight: 700,
+              cursor: busy ? 'wait' : 'pointer', minHeight: 48,
+            }}>
+            {busy ? 'Working…' : confirmLabel}
+          </button>
+          <button onClick={onCancel} disabled={busy}
+            style={{
+              background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`,
+              borderRadius: R.ctrl, padding: '14px 18px', fontSize: 14.5, fontWeight: 600,
+              cursor: busy ? 'not-allowed' : 'pointer', minHeight: 48,
+            }}>
+            {cancelLabel}
+          </button>
+        </div>
+      </div>
+      <style jsx>{`
+        .rl-sheet-scrim {
+          position: fixed; inset: 0; z-index: 130; background: rgba(15, 15, 16, 0.5);
+          display: flex; align-items: center; justify-content: center;
+          padding: clamp(16px, 4vw, 32px);
+        }
+        .rl-sheet {
+          position: relative; background: ${C.paper}; border: 1px solid ${C.rule};
+          border-radius: ${R.modal}px; box-shadow: ${SH.modal};
+          width: 100%; max-width: 420px; padding: 22px 22px 20px; overflow: hidden;
+        }
+        .rl-sheet-tick { position: absolute; top: 0; left: 0; width: 44px; height: 3px; }
+        /* Phone: bottom sheet — thumb-reachable, clears the home indicator. */
+        @media (max-width: 640px) {
+          .rl-sheet-scrim { align-items: flex-end; padding: 0; }
+          .rl-sheet {
+            max-width: none; border-radius: ${R.modal}px ${R.modal}px 0 0; border-bottom: none;
+            padding: 22px clamp(18px, 5vw, 24px) calc(20px + env(safe-area-inset-bottom, 0px));
+          }
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .rl-sheet { animation: rl-sheet-in 200ms ${EASE} both; }
+          @keyframes rl-sheet-in {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: none; }
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
 // ─── ICON SET — inline SVG, 1.5px stroke, currentColor ───────
 const PATHS = {
   arrow:    <path d="M5 12h14M13 6l6 6-6 6" />,

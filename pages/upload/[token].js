@@ -311,7 +311,7 @@ export default function UploadPage() {
 
                   <button onClick={() => { if (files.length) { setError(''); setReviewing(true); window.scrollTo(0, 0); } }} disabled={!files.length}
                     style={{ width: '100%', background: files.length ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '15px 24px', fontSize: 15, fontWeight: 700, cursor: files.length ? 'pointer' : 'default', opacity: files.length ? 1 : 0.6, minHeight: 52 }}>
-                    Review {files.length ? `${files.length} file${files.length === 1 ? '' : 's'}` : ''} &amp; submit
+                    Review {files.length ? `${files.length} file${files.length === 1 ? '' : 's'}` : ''} & submit
                   </button>
                 </>
               ) : (

@@ -252,13 +252,13 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       )}
 
       {!refineMode && !profileReady && (
-        <div style={{ padding: '10px 14px', marginBottom: 12, background: '#fff8ec', borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold || '#b08d57'}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+        <div style={{ padding: '10px 14px', marginBottom: 12, background: C.amberTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
           <strong>Add your name and brokerage first</strong> (in the fields below) so we can build your brand.
         </div>
       )}
 
       {limitMsg && (
-        <div style={{ padding: '10px 14px', marginBottom: 12, background: '#fff8ec', borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold || '#b08d57'}`, fontSize: 13, color: C.ink }}>{limitMsg}</div>
+        <div style={{ padding: '10px 14px', marginBottom: 12, background: C.amberTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold}`, fontSize: 13, color: C.ink }}>{limitMsg}</div>
       )}
 
       {!limitMsg && !refineMode && (

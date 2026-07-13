@@ -10,15 +10,9 @@ import DocIntelReport from '../../components/dashboard/DocIntelReport';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 
 // ─── DESIGN TOKENS ──────────────────────────────────────────
-// Shared brand tokens, extended with the legacy "info" keys this page used
-// for policy/notice boxes — now re-toned onto the paper palette so the blue
-// no longer breaks the paper/ink/red brand.
-const C = {
-  ...THEME,
-  info: THEME.paperDeep,
-  infoBorder: THEME.rule,
-  infoInk: THEME.inkSoft,
-};
+// Single token source: the info/notice keys now live in the shared theme, so this
+// page no longer forks its own C.
+const C = THEME;
 
 
 // ════════════════════════════════════════════════════════════

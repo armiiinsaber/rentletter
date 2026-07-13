@@ -54,10 +54,15 @@ shortlist page reference only legally screenable criteria.
 - Paper `#faf8f3` (deep variant `#f2eee3`)
 - Ink `#0f0f10` (soft `#3a3a3c`, mute `#86868b`)
 - Rule `#e3ddd0`
-- Signal red `#d72027` (dark `#a8161c`) — used sparingly, editorial accent
-- Green `#2d7d4a` (founder badge, success states)
+- Signal red `#d72027` — brand accent and primary actions ONLY; errors and
+  destructive actions use danger `#a8161c` (never brand red)
+- Green `#2d7d4a` (founder badge, success, document-verified states)
+- Instrument surfaces (`#101012` family in `components/theme.js`) — ink-black
+  panels reserved for AI/verification/live-data moments; paper = human,
+  instrument = machine, red = signal between them
 - Identity: paper/ink/red, editorial confidence — Time-magazine-style red bar
-  wordmark.
+  wordmark; the red tick-mark motif is the score/divider language (see
+  `TickMeter` in `components/ui.js`)
 
 ## Copy tone rules
 
@@ -65,5 +70,7 @@ shortlist page reference only legally screenable criteria.
   "supercharge", "win more" and the like.
 - Every sentence states something the realtor concretely gets. Prefer fewer
   words.
-- Realtor demographic skews 45–65: UX must be immediately obvious, generous
-  tap targets, readable sizes.
+- Design-target realtor: young and tech-savvy, 25–45 — uses ChatGPT/Claude
+  casually and expects an AI-forward, fast product. Clarity fundamentals stay
+  (obvious UX, generous tap targets, readable sizes); speed and density are
+  tuned for this user.

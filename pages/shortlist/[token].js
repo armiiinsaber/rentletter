@@ -11,15 +11,9 @@ import { C as THEME, R, SH } from '../../components/theme';
 import { GlobalStyle, Icon, useReveal } from '../../components/ui';
 import { formatUnit } from '../../lib/unitType';
 
-// Shared brand tokens, extended with the legacy "info" keys (the fit-against-
-// preferences blocks) — re-toned onto the paper palette so the report stays
-// on-brand (paper/ink/red), no off-brand blue.
-const C = {
-  ...THEME,
-  info: THEME.paperDeep,
-  infoBorder: THEME.rule,
-  infoInk: THEME.inkSoft,
-};
+// Single token source: the info/notice keys (fit-against-preferences blocks) now
+// live in the shared theme, so this page no longer forks its own C.
+const C = THEME;
 
 // Compute fit between an applicant and the landlord's stated preferences.
 // Returns { matches: [], misses: [], unknowns: [] } — all in plain language.

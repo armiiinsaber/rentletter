@@ -508,7 +508,7 @@ export default function ApplyPage() {
                   cursor: (status === 'submitting' || !allVitalValid) ? 'not-allowed' : 'pointer',
                   minHeight: 56,
                 }}>
-                {status === 'submitting' ? 'Submitting…' : 'Review &amp; submit'}
+                {status === 'submitting' ? 'Submitting…' : 'Review & submit'}
               </button>
               {status === 'ready' && !allVitalValid && (() => {
                 const labels = { fullName: 'Full name', dateOfBirth: `Date of birth (${minAge}+)`, email: 'Valid email', phone: '10-digit phone', annualIncome: 'Annual income', employer: 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };

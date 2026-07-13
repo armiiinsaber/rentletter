@@ -145,7 +145,7 @@ export default function CompareTenants({ pool, onClose }) {
               {selected.map((t) => {
                 const lead = leaders[c.key]?.has(t.id);
                 return (
-                  <div key={t.id} style={{ padding: '10px 12px', borderLeft: `1px solid ${C.rule}`, background: lead ? '#f0f7f3' : 'transparent', display: 'flex', alignItems: 'center' }}>
+                  <div key={t.id} style={{ padding: '10px 12px', borderLeft: `1px solid ${C.rule}`, background: lead ? C.greenTint : 'transparent', display: 'flex', alignItems: 'center' }}>
                     <span style={{ fontSize: 13, fontWeight: lead ? 800 : 600, color: c.kind === 'rank' ? C.inkSoft : C.ink, overflowWrap: 'anywhere' }}>{valueOf(c, t)}</span>
                     {lead && <LeaderTick />}
                   </div>
@@ -166,7 +166,7 @@ export default function CompareTenants({ pool, onClose }) {
                 {selected.map((t) => {
                   const lead = leaders[c.key]?.has(t.id);
                   return (
-                    <div key={t.id} style={{ minWidth: 0, background: lead ? '#f0f7f3' : C.paperDeep, border: `1px solid ${lead ? C.green : C.rule}`, borderRadius: R.ctrl, padding: '7px 9px' }}>
+                    <div key={t.id} style={{ minWidth: 0, background: lead ? C.greenTint : C.paperDeep, border: `1px solid ${lead ? C.green : C.rule}`, borderRadius: R.ctrl, padding: '7px 9px' }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstName(t.name)} · #{t.rank}</div>
                       <div style={{ fontSize: 12.5, fontWeight: lead ? 800 : 600, color: C.ink, overflowWrap: 'anywhere', marginTop: 2 }}>
                         {valueOf(c, t)}{lead && <LeaderTick />}

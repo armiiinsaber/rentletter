@@ -5,13 +5,16 @@
 // paragraph. No API calls, no data fetching — safe to use in the demo with a hardcoded sample.
 import { C, R } from '../theme';
 
-const AMBER = '#b3791f';
-const AMBER_BG = '#fff8ec';
+// Status colors come from the shared theme (this file previously hardcoded its own
+// amber/green, drifting from the tokens). Verification states use the semantic names:
+// verified green, amber for "close", danger — never brand red — for mismatches.
+const AMBER = C.amber;
+const AMBER_BG = C.amberTint;
 
 const cmp = {
-  match: { label: 'Verified', fg: C.green, bg: '#f0f7f3', mark: '✓' },
+  match: { label: 'Verified', fg: C.verified, bg: C.greenTint, mark: '✓' },
   close: { label: 'Close', fg: AMBER, bg: AMBER_BG, mark: '≈' },
-  mismatch: { label: 'Mismatch', fg: C.red, bg: '#fef2f0', mark: '!' },
+  mismatch: { label: 'Mismatch', fg: C.danger, bg: C.dangerTint, mark: '!' },
   not_found: { label: 'Not found', fg: C.inkMute, bg: C.paperDeep, mark: '–' },
 };
 
@@ -52,8 +55,8 @@ export default function DocIntelReport({ result, insight }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
       {/* Name-match safeguard — most important when it fails. */}
       {nameMatch === 'mismatch' && (
-        <div style={{ background: '#fef2f0', border: `1px solid ${C.red}`, borderLeft: `4px solid ${C.red}`, borderRadius: R.card, padding: '11px 14px' }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: C.red, marginBottom: 3 }}>⚠ Document name does not match this applicant</div>
+        <div style={{ background: C.dangerTint, border: `1px solid ${C.danger}`, borderLeft: `4px solid ${C.danger}`, borderRadius: R.card, padding: '11px 14px' }}>
+          <div style={{ fontSize: 12, fontWeight: 800, color: C.danger, marginBottom: 3 }}>⚠ Document name does not match this applicant</div>
           <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
             Applicant is <strong style={{ color: C.ink }}>{result.applicantName || '—'}</strong>{docNames.length ? <> but the documents name <strong style={{ color: C.ink }}>{docNames.join(', ')}</strong></> : ''}. This applicant will show as <strong>not verified</strong> — re-check you uploaded the right person’s documents.
           </div>
@@ -76,7 +79,7 @@ export default function DocIntelReport({ result, insight }) {
         <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderLeft: `4px solid ${C.ink}`, borderRadius: R.card, padding: '12px 14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
             <span style={{ fontSize: 10.5, fontWeight: 800, color: C.inkSoft, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Verification summary</span>
-            {conf && <Chip fg={conf === 'high' ? C.green : conf === 'low' ? AMBER : C.inkSoft} bg={conf === 'high' ? '#f0f7f3' : conf === 'low' ? AMBER_BG : C.paperDeep}>{conf} confidence</Chip>}
+            {conf && <Chip fg={conf === 'high' ? C.verified : conf === 'low' ? AMBER : C.inkSoft} bg={conf === 'high' ? C.greenTint : conf === 'low' ? AMBER_BG : C.paperDeep}>{conf} confidence</Chip>}
           </div>
           <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55 }}>{result.overallSummary}</div>
         </div>

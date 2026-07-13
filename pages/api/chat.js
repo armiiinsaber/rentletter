@@ -353,11 +353,17 @@ export default async function handler(req, res) {
   }
 
   // ─── LAYER 3: Main answer ────────────────────────────
+  // Model split (intentional): Haiku 4.5 runs ONLY the Layer-2 YES/NO classifier above;
+  // this user-facing answer runs on Sonnet 4.6 for quality.
   try {
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 400,
-      system: systemPrompt,
+      // Prompt caching: the system prompt is a large static block resent on every turn of a
+      // conversation — cache it so follow-up turns within the 5-min TTL read it at ~0.1x input
+      // price. Sonnet 4.6 caches prefixes ≥2048 tokens: the dashboard prompt (~3.3k) qualifies;
+      // the marketing prompt (~2k) is borderline — below the minimum the marker is a free no-op.
+      system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
       messages: cleanMessages,
     });
 
