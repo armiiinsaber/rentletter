@@ -13,7 +13,10 @@ const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
   allows_pets: 'no', allows_smoking: 'no', parking_included: 'no', ev_parking: 'no',
   landlord_name: '', landlord_email: '', landlord_phone: '',
-  pref_min_annual_income: '', pref_rent_to_income_max_pct: 30, pref_min_years_at_job: '',
+  // AFFORDABILITY: max rent-to-income is the SINGLE input. pref_min_annual_income is no
+  // longer independently settable — it is derived from ratio × rent on save (see
+  // buildPayload) so the two columns can never contradict each other.
+  pref_rent_to_income_max_pct: 30, pref_min_years_at_job: '',
   pref_employment_full_time: true, pref_employment_contract: true,
   pref_employment_self_employed: false, pref_employment_part_time: false,
   pref_earliest_move_in: '', pref_latest_move_in: '', pref_min_lease_term_months: 12,
@@ -50,6 +53,15 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
     for (const k of Object.keys(EMPTY)) {
       if (initial[k] !== null && initial[k] !== undefined) seed[k] = initial[k] === null ? EMPTY[k] : initial[k];
     }
+    // Legacy rows saved before the affordability inputs were unified could hold a min
+    // income with no ratio. Convert that intent into the ratio input (the single source)
+    // so it isn't silently dropped: ratio = rent×12 ÷ income. Rows with BOTH fields keep
+    // their saved ratio — the ratio wins and the stored min income is ignored.
+    if ((initial.pref_rent_to_income_max_pct === null || initial.pref_rent_to_income_max_pct === undefined)
+      && initial.pref_min_annual_income > 0 && initial.monthly_rent > 0) {
+      const derived = Math.round((initial.monthly_rent * 12 * 100) / initial.pref_min_annual_income);
+      if (derived >= 1 && derived <= 100) seed.pref_rent_to_income_max_pct = derived;
+    }
   }
   const [form, setForm] = useState(seed);
   const [confirming, setConfirming] = useState(false); // create-time "are you sure" step
@@ -79,6 +91,13 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
   const REQ_LABELS = { address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Unit type', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
   const missing = Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]);
 
+  // Income floor implied by the ratio at this listing's rent: annual income where rent is
+  // exactly `ratio`% of monthly income. Live helper under the ratio input + the saved value.
+  const ratioPct = intOrNull(form.pref_rent_to_income_max_pct);
+  const impliedMinIncome = ratioPct > 0 && Number.isFinite(rentNum) && rentNum > 0
+    ? Math.round((rentNum * 12 * 100) / ratioPct)
+    : null;
+
   const buildPayload = () => {
     const name = String(form.address).trim().slice(0, 80) || 'New listing';
     return {
@@ -93,8 +112,14 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       landlord_name: String(form.landlord_name).trim() || null,
       landlord_email: String(form.landlord_email).trim().toLowerCase() || null,
       landlord_phone: String(form.landlord_phone).trim() || null,
-      pref_min_annual_income: intOrNull(form.pref_min_annual_income),
-      pref_rent_to_income_max_pct: intOrNull(form.pref_rent_to_income_max_pct),
+      // AFFORDABILITY — READ RULE: max rent-to-income is the single source of truth.
+      // pref_min_annual_income is DERIVED (ratio × this listing's rent), never entered,
+      // so the two columns stay consistent for every downstream consumer. For rows saved
+      // before this change where both were set independently: the RATIO WINS and the
+      // stored min income is ignored — no data migration; legacy rows normalize the next
+      // time they're edited and saved here.
+      pref_min_annual_income: impliedMinIncome,
+      pref_rent_to_income_max_pct: ratioPct,
       pref_min_years_at_job: numOrNull(form.pref_min_years_at_job),
       pref_employment_full_time: !!form.pref_employment_full_time,
       pref_employment_contract: !!form.pref_employment_contract,
@@ -211,13 +236,20 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
             <strong>Why some fields aren't here:</strong> Ontario's Human Rights Code prohibits screening tenants on gender, age, family status, race, religion, disability, or receipt of public assistance. The fields below are legally screenable criteria. Stating discriminatory preferences in writing can trigger HRTO complaints — for both you and your landlord client.
           </div>
 
-          {/* PREFERENCES — financial */}
+          {/* PREFERENCES — financial. ONE affordability input: max rent-to-income. The
+              income equivalent is derived live from this listing's rent (read-only), so
+              the old separate "minimum annual income" field can never contradict it. */}
           <div style={{ ...sectionLabel, marginTop: 0 }}>Financial</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label><span style={fieldLabel}>Minimum annual income</span>
-              <input type="number" min="0" inputMode="numeric" value={form.pref_min_annual_income} onChange={(e) => set({ pref_min_annual_income: e.target.value })} placeholder="e.g. 80000" style={inputStyle} /></label>
             <label><span style={fieldLabel}>Max rent-to-income (%)</span>
-              <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder="30" style={inputStyle} /></label>
+              <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder="30" style={inputStyle} />
+              <span style={{ display: 'block', fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+                {impliedMinIncome
+                  ? <>≈ ${impliedMinIncome.toLocaleString()}/yr minimum income at ${rentNum.toLocaleString()}/mo</>
+                  : ratioPct > 0
+                    ? 'Add the monthly rent above to see the income equivalent.'
+                    : 'Set a ratio to see the income equivalent at this rent.'}
+              </span></label>
             <label><span style={fieldLabel}>Min years at job</span>
               <input type="number" min="0" step="0.5" inputMode="decimal" value={form.pref_min_years_at_job} onChange={(e) => set({ pref_min_years_at_job: e.target.value })} placeholder="e.g. 1" style={inputStyle} /></label>
           </div>

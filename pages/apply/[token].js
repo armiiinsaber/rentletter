@@ -227,7 +227,10 @@ export default function ApplyPage() {
         } catch (e) {
           console.error('[apply] tag/mirror failed (non-fatal)', e);
         }
-        // 4. Best-effort: email the tenant their number + owner token.
+        // 4. Best-effort: email the tenant their number + owner token — confirmation
+        // only. No letter/resume fields: the legacy rent-letter PDF and tenant-résumé
+        // attachments were removed from the product; /api/send now sends the lean
+        // confirmation (the /my-application recovery path depends on this email).
         if (form.email) {
           fetch('/api/send', {
             method: 'POST',
@@ -235,8 +238,6 @@ export default function ApplyPage() {
             body: JSON.stringify({
               email: form.email,
               fullName: form.fullName,
-              letter: '',
-              resume: json.resume || '',
               applicationNumber,
               ownerToken,
             }),

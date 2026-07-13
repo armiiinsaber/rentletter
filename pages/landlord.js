@@ -10,7 +10,7 @@ import { GlobalStyle, Icon, useReveal } from '../components/ui';
 import { C, R, SH, EASE, FONT } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
-import { normalizeProvince, provinceName } from '../lib/provinces';
+import { normalizeProvince } from '../lib/provinces';
 import { formatUnit } from '../lib/unitType';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
@@ -162,20 +162,11 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
   const activeLinks = listings.filter((l) => l.invite_token || l.invite_url).length;
   const provinceCode = normalizeProvince(profile?.province);
-  const provinceLabel = provinceName(profile?.province);
   const brokerage = (profile?.brokerage || '').trim();
   const newThisWeek = listings.filter((l) => {
     const t = l.created_at ? new Date(l.created_at).getTime() : NaN;
     return Number.isFinite(t) && Date.now() - t < 7 * 24 * 60 * 60 * 1000;
   }).length;
-  // Live activity line under the hero title — only real, currently-loaded numbers.
-  // Zero-value segments are omitted rather than faked.
-  const activity = [];
-  if (hasListings) {
-    activity.push({ n: listings.length, t: listings.length === 1 ? 'listing on market' : 'listings on market' });
-    if (activeLinks > 0) activity.push({ n: activeLinks, t: activeLinks === 1 ? 'invite link live' : 'invite links live' });
-    if (newThisWeek > 0) activity.push({ n: newThisWeek, t: 'added this week' });
-  }
   // Logo-derived accent for the brand card only; product red when absent/too light.
   const logoAccent = useLogoAccent(profile?.logo_url || '');
   const brandAccent = logoAccent || C.red;
@@ -229,25 +220,17 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
               <h1 className="dash-h1" style={{ marginBottom: 10 }}>
                 {hasListings ? `Welcome back${firstName ? `, ${firstName}` : ''}` : 'Welcome to Rentletter'}
               </h1>
-              {activity.length > 0 ? (
-                <p className="dash-activity">
-                  {activity.map((a, i) => (
-                    <span key={a.t} className="dash-act-seg">
-                      {i > 0 && <span className="dash-tick" aria-hidden="true" />}
-                      <span className="dash-act-num">{a.n}</span> {a.t}
-                    </span>
-                  ))}
-                </p>
-              ) : (
-                <p className="dash-hero-sub">Your next applicant will show up here.</p>
-              )}
-              <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
+              {/* The pulse strip below OWNS the counts — this line never repeats them.
+                  B3: graduate this line to applicant activity. */}
+              <p className="dash-hero-sub">
+                {hasListings
+                  ? 'All your applicants, ranked and ready to review.'
+                  : 'Your next applicant will show up here.'}
+              </p>
+              <div style={{ marginTop: 18 }}>
                 <button onClick={() => setModalOpen(true)} className="dash-cta">
                   <Icon name="plus" size={17} /> New listing
                 </button>
-                <span className="dash-hero-meta">
-                  Set up for {provinceLabel}{brokerage ? ` · ${brokerage}` : ''}
-                </span>
               </div>
             </section>
 
@@ -464,14 +447,6 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .dash-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: ${C.inkMute}; margin-bottom: 10px; }
         .dash-hero-sub { font-size: clamp(14px, 1.9vw, 15.5px); color: ${C.inkSoft}; line-height: 1.6; max-width: 460px; }
-        .dash-hero-meta { font-size: 12px; color: ${C.inkMute}; font-weight: 500; }
-
-        /* ── Live activity line — real numbers separated by the red tick motif. Wraps cleanly
-           at 390px (flex-wrap; each segment is an unbreakable unit). ── */
-        .dash-activity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: clamp(13.5px, 1.9vw, 15px); color: ${C.inkSoft}; line-height: 1.5; max-width: 520px; }
-        .dash-act-seg { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-        .dash-act-num { font-weight: 800; color: ${C.ink}; font-variant-numeric: tabular-nums; }
-        .dash-tick { width: 2.5px; height: 12px; background: ${C.red}; border-radius: 1px; margin-right: 7px; flex-shrink: 0; }
 
         /* ── Hero overview card — subtle warm gradient + faint brand glow ── */
         .dash-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 32px);
