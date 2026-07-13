@@ -11,8 +11,8 @@ import { C, R, SH, EASE, FONT } from './theme';
 // reads fully static (and works with JS off) for opt-out users.
 export const GlobalStyle = () => (
   <style jsx global>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap');
-
+    /* Font faces (Inter + Fraunces) are loaded once for every page in
+       pages/_document.js via preconnect + <link> — no @import here. */
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html {
       scroll-behavior: smooth;

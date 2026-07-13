@@ -3,11 +3,11 @@
 // Supabase session. Lists the realtor's listings; "New listing" opens the
 // Listing Setup modal and inserts a row; edit/delete via Supabase. Tapping a
 // listing opens its detail view (/landlord/[id]). Stage 1: no KV workspace.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../components/ui';
-import { C, R, SH, EASE } from '../components/theme';
+import { C, R, SH, EASE, FONT } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { normalizeProvince, provinceName } from '../lib/provinces';
@@ -50,6 +50,84 @@ export async function getServerSideProps(ctx) {
   };
 }
 
+// ── Presentation-only helpers (no data logic) ─────────────────
+
+// Initials for the no-logo brand fallback (same derivation as the header avatar).
+function initialsOf(profile) {
+  const n = (profile?.full_name || '').trim();
+  if (n) {
+    const parts = n.split(/\s+/);
+    return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || n[0].toUpperCase();
+  }
+  return (profile?.email || '?')[0].toUpperCase();
+}
+
+// Count-up for pulse-strip numbers. Initial state is the FINAL value so SSR, no-JS,
+// and reduced-motion all read the real number; motion-welcome browsers animate
+// 0 → value once on first load (rAF, ease-out, 400ms — inside the motion budget).
+function CountUp({ value }) {
+  const target = Number(value) || 0;
+  const [shown, setShown] = useState(target);
+  useEffect(() => {
+    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    if (target <= 0) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (now) => {
+      const p = Math.min((now - t0) / 400, 1);
+      setShown(Math.round(target * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+    // Runs once on mount by design — the strip counts up on first load only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return <>{shown}</>;
+}
+
+// Dominant colour of the uploaded logo, sampled client-side on a downsampled canvas
+// (no dependencies). Transparent and near-white/near-paper pixels are ignored; a
+// too-light average (washes out on the cream card) or any failure (CORS taint,
+// decode error, no logo) yields null → callers fall back to the product red.
+function useLogoAccent(logoUrl) {
+  const [accent, setAccent] = useState(null);
+  useEffect(() => {
+    setAccent(null);
+    if (!logoUrl) return;
+    let cancelled = false;
+    const img = new Image();
+    img.crossOrigin = 'anonymous'; // required for getImageData; logo storage is CORS-open
+    img.onload = () => {
+      if (cancelled) return;
+      try {
+        const N = 24;
+        const canvas = document.createElement('canvas');
+        canvas.width = N;
+        canvas.height = N;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.drawImage(img, 0, 0, N, N);
+        const { data } = ctx.getImageData(0, 0, N, N);
+        let r = 0, g = 0, b = 0, n = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 128) continue;
+          const R = data[i], G = data[i + 1], B = data[i + 2];
+          if (R > 232 && G > 228 && B > 216) continue;
+          r += R; g += G; b += B; n++;
+        }
+        if (n < 12) return; // logo is effectively white/empty — keep the red fallback
+        r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
+        if (0.2126 * r + 0.7152 * g + 0.0722 * b > 200) return; // insufficient contrast on the card
+        setAccent(`rgb(${r}, ${g}, ${b})`);
+      } catch (e) { /* tainted canvas / decode failure — red fallback stands */ }
+    };
+    img.src = logoUrl;
+    return () => { cancelled = true; };
+  }, [logoUrl]);
+  return accent;
+}
+
 export default function LandlordDashboard({ userId, userEmail, initialProfile, initialListings }) {
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
@@ -79,12 +157,28 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   };
 
   const hasListings = listings.length > 0;
-  // Derived, presentation-only summaries from data that already exists (no fabrication).
+  // Derived, presentation-only summaries from data that already exists (no fabrication,
+  // no new API calls — everything below comes from the listings/profile already loaded).
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
   const activeLinks = listings.filter((l) => l.invite_token || l.invite_url).length;
   const provinceCode = normalizeProvince(profile?.province);
   const provinceLabel = provinceName(profile?.province);
   const brokerage = (profile?.brokerage || '').trim();
+  const newThisWeek = listings.filter((l) => {
+    const t = l.created_at ? new Date(l.created_at).getTime() : NaN;
+    return Number.isFinite(t) && Date.now() - t < 7 * 24 * 60 * 60 * 1000;
+  }).length;
+  // Live activity line under the hero title — only real, currently-loaded numbers.
+  // Zero-value segments are omitted rather than faked.
+  const activity = [];
+  if (hasListings) {
+    activity.push({ n: listings.length, t: listings.length === 1 ? 'listing on market' : 'listings on market' });
+    if (activeLinks > 0) activity.push({ n: activeLinks, t: activeLinks === 1 ? 'invite link live' : 'invite links live' });
+    if (newThisWeek > 0) activity.push({ n: newThisWeek, t: 'added this week' });
+  }
+  // Logo-derived accent for the brand card only; product red when absent/too light.
+  const logoAccent = useLogoAccent(profile?.logo_url || '');
+  const brandAccent = logoAccent || C.red;
   // Reveal major sections on load / scroll (subtle, matches the header language).
   useReveal(`${listings.length}-${hasListings}`);
 
@@ -104,8 +198,10 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         <meta name="theme-color" content={C.paperDeep} />
       </Head>
       <GlobalStyle />
-      {/* overflow-x: clip contains any horizontal overflow without creating a scroll container. */}
-      <div className="dash-bg" style={{ minHeight: '100vh', overflowX: 'clip' }}>
+      {/* overflow-x: clip contains any horizontal overflow without creating a scroll container.
+          No min-height: html/body/#__next are pinned to the same canvas tone below, so a short
+          page needs no stretch — stretching only left a void of empty canvas under the footer. */}
+      <div className="dash-bg" style={{ overflowX: 'clip' }}>
         {/* Static, in-flow header (see .dash-bg .rl-header below) — it scrolls away with the page; its
             solid canvas background + safe-area padding cover the notch region at the top. */}
         <DashboardHeader profile={profile} />
@@ -117,7 +213,11 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           paddingTop: 'clamp(8px, 2vw, 16px)',
           paddingRight: 'clamp(16px, 4vw, 32px)',
           paddingLeft: 'clamp(16px, 4vw, 32px)',
-          paddingBottom: 48,
+          // Reserved clearance for the fixed "?" assistant launcher: 56px FAB + up to 24px of
+          // its bottom offset + 16px breathing room, plus the home-indicator inset. Nothing in
+          // flow (the "Signed in as" footer line included) can ever sit under the FAB, and the
+          // page ends right after this zone — no extra void below.
+          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
         }}>
 
           {/* ── OVERVIEW BENTO — hero + branding ── */}
@@ -126,12 +226,21 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                 fixed header on iOS, causing a half-cut title. Plain, so the header cleanly covers it. */}
             <section className="dash-card dash-hero span-4">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
-              <h1 className="dash-h1" style={{ marginBottom: 4 }}>
+              <h1 className="dash-h1" style={{ marginBottom: 10 }}>
                 {hasListings ? `Welcome back${firstName ? `, ${firstName}` : ''}` : 'Welcome to Rentletter'}
               </h1>
-              <p className="dash-hero-sub">
-                All your applicants, ranked and ready to review.
-              </p>
+              {activity.length > 0 ? (
+                <p className="dash-activity">
+                  {activity.map((a, i) => (
+                    <span key={a.t} className="dash-act-seg">
+                      {i > 0 && <span className="dash-tick" aria-hidden="true" />}
+                      <span className="dash-act-num">{a.n}</span> {a.t}
+                    </span>
+                  ))}
+                </p>
+              ) : (
+                <p className="dash-hero-sub">Your next applicant will show up here.</p>
+              )}
               <div style={{ marginTop: 18, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
                 <button onClick={() => setModalOpen(true)} className="dash-cta">
                   <Icon name="plus" size={17} /> New listing
@@ -147,12 +256,16 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                 setup. Whole card → /profile. Help/FAQ live in the ? assistant; compliance in
                 the footer + its page — not featured here. */}
             <a href="/profile" className="dash-card dash-card-int dash-brand span-2"
-              title="You & your brand" aria-label="Set up your profile and branding">
+              title="You & your brand" aria-label="Set up your profile and branding"
+              style={{ borderLeft: `3px solid ${brandAccent}` }}>
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
-              <div className="dash-brand-preview">
+              {/* Identity sits directly on the card surface — masthead byline, not an input
+                  field. Transparent logos render with no white tile; the neutral backing only
+                  appears as the no-logo fallback (initials). */}
+              <div className="dash-brand-identity">
                 {profile?.logo_url
                   ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
-                  : <span className="dash-brand-bar" />}
+                  : <span className="dash-brand-initials" aria-hidden="true">{initialsOf(profile)}</span>}
                 <span className="dash-brand-id">
                   <span className="dash-brand-name">{profile?.full_name || 'Your name'}</span>
                   <span className="dash-brand-brok">{brokerage || 'Add your brokerage'}</span>
@@ -167,20 +280,28 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
             </a>
           </div>
 
-          {/* ── AT-A-GLANCE STATS — one compact horizontal bar (real, derived) ── */}
+          {/* ── PULSE STRIP — one horizontal instrument (real, derived numbers). Red tick-marks
+              divide the stats (signature motif); numbers count up once on load (final values
+              render instantly under reduced-motion / no-JS). The empty delta slots keep the
+              three number baselines level when a real delta is shown. ── */}
           {hasListings && (
-            <div className="rl-in dash-statbar" style={{ '--rl-d': '70ms' }}>
-              <div className="dash-statcell">
-                <span className="dash-stat-val">{listings.length}</span>
-                <span className="dash-stat-label">{listings.length === 1 ? 'Listing' : 'Listings'}</span>
+            <div className="rl-in dash-pulse" style={{ '--rl-d': '70ms' }}>
+              <div className="dash-pulse-cell">
+                <span className="dash-data dash-pulse-val"><CountUp value={listings.length} /></span>
+                <span className="dash-pulse-label">{listings.length === 1 ? 'Listing' : 'Listings'}</span>
+                {newThisWeek > 0 && <span className="dash-pulse-delta">+{newThisWeek} this week</span>}
               </div>
-              <div className="dash-statcell">
-                <span className="dash-stat-val">{activeLinks}</span>
-                <span className="dash-stat-label">Invite links</span>
+              <span className="dash-pulse-tick" aria-hidden="true" />
+              <div className="dash-pulse-cell">
+                <span className="dash-data dash-pulse-val"><CountUp value={activeLinks} /></span>
+                <span className="dash-pulse-label">{activeLinks === 1 ? 'Link' : 'Links'}</span>
+                {newThisWeek > 0 && <span className="dash-pulse-delta" aria-hidden="true">&nbsp;</span>}
               </div>
-              <div className="dash-statcell">
-                <span className="dash-stat-val">{provinceCode}</span>
-                <span className="dash-stat-label">Market</span>
+              <span className="dash-pulse-tick" aria-hidden="true" />
+              <div className="dash-pulse-cell">
+                <span className="dash-data dash-pulse-val">{provinceCode}</span>
+                <span className="dash-pulse-label">Market</span>
+                {newThisWeek > 0 && <span className="dash-pulse-delta" aria-hidden="true">&nbsp;</span>}
               </div>
             </div>
           )}
@@ -196,7 +317,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
             <section className="dash-card rl-in" style={{ overflow: 'hidden', '--rl-d': '90ms' }}>
               <div style={{ padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)', borderBottom: `1px solid ${C.rule}` }}>
                 <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Getting started</div>
-                <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 10 }}>
+                <h2 style={{ fontFamily: FONT.serif, fontSize: 'clamp(24px, 4.5vw, 32px)', fontWeight: 600, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 10 }}>
                   Add your first listing.
                 </h2>
                 <p style={{ fontSize: 'clamp(14px, 3vw, 16px)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 560, marginBottom: 22 }}>
@@ -243,7 +364,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                   <div style={{ fontSize: 17.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.25, overflowWrap: 'anywhere' }}>
                     {l.name || l.address || 'Untitled listing'}
                   </div>
-                  <div style={{ fontSize: 13.5, color: C.inkSoft, fontWeight: 500 }}>
+                  <div style={{ fontSize: 13.5, color: C.inkSoft, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
                     {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}
                     {formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
                   </div>
@@ -333,12 +454,24 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           .dash-bento .span-2 { grid-column: span 2; }
         }
 
-        /* ── Type scale — confident, Apple-like ── */
-        .dash-h1 { font-size: clamp(28px, 4.6vw, 40px); font-weight: 800; letter-spacing: -0.035em; line-height: 1.04; color: ${C.ink}; }
+        /* ── Type scale — four tiers, used consistently on this screen ──
+           display  (.dash-h1)  Fraunces serif — the hero title, same face as the landing hero
+           heading  (.dash-h2)  Inter 800, tight tracking — section titles
+           body     (inherited) Inter 400/500 — everything else
+           data     (.dash-data) Inter 800 + tabular-nums — every number that must line up */
+        .dash-h1 { font-family: ${FONT.serif}; font-size: clamp(30px, 4.8vw, 44px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; color: ${C.ink}; }
         .dash-h2 { font-size: clamp(18px, 2.6vw, 22px); font-weight: 800; letter-spacing: -0.02em; color: ${C.ink}; }
+        .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .dash-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: ${C.inkMute}; margin-bottom: 10px; }
         .dash-hero-sub { font-size: clamp(14px, 1.9vw, 15.5px); color: ${C.inkSoft}; line-height: 1.6; max-width: 460px; }
         .dash-hero-meta { font-size: 12px; color: ${C.inkMute}; font-weight: 500; }
+
+        /* ── Live activity line — real numbers separated by the red tick motif. Wraps cleanly
+           at 390px (flex-wrap; each segment is an unbreakable unit). ── */
+        .dash-activity { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: clamp(13.5px, 1.9vw, 15px); color: ${C.inkSoft}; line-height: 1.5; max-width: 520px; }
+        .dash-act-seg { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .dash-act-num { font-weight: 800; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+        .dash-tick { width: 2.5px; height: 12px; background: ${C.red}; border-radius: 1px; margin-right: 7px; flex-shrink: 0; }
 
         /* ── Hero overview card — subtle warm gradient + faint brand glow ── */
         .dash-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 32px);
@@ -348,27 +481,32 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
         .dash-hero > * { position: relative; }
         .dash-cta { background: ${C.red}; color: ${C.paper}; border: none; border-radius: 12px; padding: 13px 20px; font-size: 14.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
 
-        /* ── Branding tile — crafted preview of the realtor's identity, whole card → /profile ── */
+        /* ── Branding tile — identity moment, whole card → /profile. The card's 3px left edge
+           (inline style) carries the colour sampled from the uploaded logo, red otherwise. ── */
         .dash-brand { display: flex; flex-direction: column; gap: 14px; padding: clamp(18px, 2.6vw, 24px); text-decoration: none; color: ${C.ink}; }
-        .dash-brand-preview { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-radius: 12px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; }
-        .dash-brand-bar { width: 4px; align-self: stretch; min-height: 34px; background: ${C.red}; border-radius: 2px; flex-shrink: 0; }
-        .dash-brand-logo { width: 40px; height: 40px; border-radius: 9px; object-fit: contain; background: #fff; border: 1px solid ${C.rule}; padding: 4px; flex-shrink: 0; }
-        .dash-brand-id { display: flex; flex-direction: column; min-width: 0; }
-        .dash-brand-name { font-size: 14px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .dash-brand-brok { font-size: 12px; color: ${C.inkMute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-brand-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+        /* Transparent logo art sits straight on the card surface — no tile, no frame. */
+        .dash-brand-logo { width: 60px; height: 60px; object-fit: contain; flex-shrink: 0; }
+        /* Neutral backing exists ONLY as the no-logo fallback (initials as a placeholder mark). */
+        .dash-brand-initials { width: 56px; height: 56px; border-radius: 14px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: 21px; color: ${C.inkSoft}; flex-shrink: 0; }
+        .dash-brand-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        /* Masthead byline: name in the display serif, brokerage muted below. */
+        .dash-brand-name { font-family: ${FONT.serif}; font-size: clamp(17px, 2.2vw, 20px); font-weight: 600; color: ${C.ink}; letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .dash-brand-brok { font-size: 12.5px; color: ${C.inkMute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .dash-brand-desc { font-size: 12.5px; color: ${C.inkSoft}; line-height: 1.55; margin: 0; }
         .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: ${C.red}; }
 
-        /* ── At-a-glance stat bar — one crafted card, 3 compact cells with hairline dividers ── */
-        .dash-statbar { display: grid; grid-template-columns: repeat(3, 1fr); background: ${C.card}; border: 1px solid #ece5d6; border-radius: 16px; overflow: hidden; margin-bottom: 4px;
+        /* ── Pulse strip — ONE instrument: shared card surface, no internal cell borders; the
+           stats are divided by red tick-marks (signature motif). Values share one size so the
+           numbers and the province code sit on the same line; labels are one word in small caps. ── */
+        .dash-pulse { display: flex; align-items: center; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 16px; margin-bottom: 4px;
+          padding: clamp(18px, 3vw, 24px) clamp(8px, 2.5vw, 24px);
           box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
-        /* Three equal cells, everything centred and balanced. Values share one size (numbers and the
-           province code line up on the same baseline); labels are small uppercase for a clean, premium
-           at-a-glance read. */
-        .dash-statcell { padding: clamp(16px, 3vw, 22px) clamp(8px, 2vw, 16px); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 7px; min-width: 0; border-left: 1px solid ${C.rule}; }
-        .dash-statcell:first-child { border-left: none; }
-        .dash-stat-val { font-size: clamp(24px, 5.4vw, 30px); font-weight: 800; letter-spacing: -0.02em; line-height: 1; color: ${C.ink}; font-variant-numeric: tabular-nums; }
-        .dash-stat-label { font-size: 10.5px; font-weight: 700; color: ${C.inkMute}; line-height: 1.25; letter-spacing: 0.06em; text-transform: uppercase; overflow-wrap: anywhere; }
+        .dash-pulse-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px; }
+        .dash-pulse-val { font-size: clamp(26px, 5.6vw, 34px); line-height: 1; color: ${C.ink}; }
+        .dash-pulse-label { font-size: 10.5px; font-weight: 700; color: ${C.inkMute}; line-height: 1.25; letter-spacing: 0.08em; text-transform: uppercase; }
+        .dash-pulse-delta { font-size: 10.5px; font-weight: 700; color: ${C.green}; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .dash-pulse-tick { width: 3px; height: clamp(24px, 4vw, 30px); background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 
         /* ── Listing invite-link status chip (real data) ── */
         .dash-lchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; }
@@ -378,13 +516,16 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
 
         /* ── Section head + ghost button ── */
         .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: clamp(18px, 2.6vw, 26px) 0 16px; }
-        .dash-count { font-size: 12px; font-weight: 700; color: ${C.inkMute}; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 999px; padding: 2px 10px; }
+        .dash-count { font-size: 12px; font-weight: 700; color: ${C.inkMute}; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; }
         .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: 11px; padding: 9px 15px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 
         /* Instant (motion-independent) hover colour states — safe for reduced-motion */
         .dash-ghost:hover { background: ${C.paperDeep}; border-color: ${C.ink}; }
 
         @media (prefers-reduced-motion: no-preference) {
+          /* Tighten the shared app-reveal on this screen only — same travel, ≤400ms
+             (opacity, then transform, matching .rl-in's property order). */
+          .dash-bg :global(.rl-in) { transition-duration: 340ms, 380ms; }
           .dash-cta { transition: transform 200ms ${EASE}, box-shadow 220ms ease; }
           .dash-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); }
           .dash-cta:active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
