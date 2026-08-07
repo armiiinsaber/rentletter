@@ -62,7 +62,7 @@ const MIXED_RENTERS = [
     apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 20 },
     move: { moveInDate: 'September 15, 2026', reasonForMoving: 'Growing family; need a second bedroom and want to stay in the east end.' },
     household: { numberOfOccupants: '3', occupantsDetails: 'Couple with one child (age 4)', smoker: 'no' },
-    coApplicant: { name: 'Janelle Tremblay', age: '36', relationship: 'Spouse', jobTitle: 'Dental Hygienist', employer: 'Beaches Dental', annualIncome: 74000 },
+    coApplicant: { name: 'Janelle Tremblay', age: '36', jobTitle: 'Dental Hygienist', employer: 'Beaches Dental', annualIncome: 74000 },
     lifestyle: { personality: 'Easygoing family, home most evenings and weekends.', pets: null },
     vehicle: { makeModel: 'Ford F-150 (work truck)', year: '2021' },
     references: [
@@ -140,7 +140,7 @@ const MIXED_RENTERS = [
     apartment: { address: '210 Carlaw Ave, Unit 4, Toronto', description: '2BR in Leslieville, $2,600/mo', estimatedRent: 2600, rentToIncomeRatio: 27 },
     move: { moveInDate: 'August 15, 2026', reasonForMoving: 'Downsizing after kids changed schools; want to be near transit.' },
     household: { numberOfOccupants: '3', occupantsDetails: 'Couple with one teenager', smoker: 'no' },
-    coApplicant: { name: 'Aisha Mohamed', age: '39', relationship: 'Spouse', jobTitle: 'Library Technician (part-time)', employer: 'Toronto Public Library', annualIncome: 38000 },
+    coApplicant: { name: 'Aisha Mohamed', age: '39', jobTitle: 'Library Technician (part-time)', employer: 'Toronto Public Library', annualIncome: 38000 },
     lifestyle: { personality: 'Quiet household, long-term renters, no parties.', pets: 'One older dog, well-trained' },
     vehicle: { makeModel: 'Subaru Outback', year: '2017' },
     references: [
@@ -4714,7 +4714,6 @@ function DetailView({ applications, activeIdx, setActiveIdx, onRemove, getDecisi
             {app.coApplicant && (
               <DataSection title="Co-applicant">
                 <DataRow label="Name" value={`${app.coApplicant.name}${app.coApplicant.age ? `, age ${app.coApplicant.age}` : ''}`} />
-                <DataRow label="Relationship" value={app.coApplicant.relationship || 'Not specified'} />
                 <DataRow label="Position" value={`${app.coApplicant.jobTitle || 'Not specified'} at ${app.coApplicant.employer || 'Not specified'}`} />
                 {app.coApplicant.annualIncome && (
                   <DataRow label="Their income" value={`$${app.coApplicant.annualIncome.toLocaleString()} CAD`} />
@@ -4878,7 +4877,7 @@ function CompareView({ applications, onRemove, getDecision, setDecisionStatus, r
       const s = a.household?.smoker;
       return s === 'no' ? 'Non-smoker' : s === 'outdoor' ? 'Outdoor' : s === 'yes' ? 'Yes' : '—';
     }},
-    { label: 'Co-applicant', get: a => a.coApplicant ? `${a.coApplicant.name} (${a.coApplicant.relationship || '—'})` : 'Single' },
+    { label: 'Co-applicant', get: a => a.coApplicant ? a.coApplicant.name : 'None' },
     { label: 'Pets', get: a => a.lifestyle.pets || 'None' },
     { label: 'Vehicle', get: a => a.vehicle ? `${a.vehicle.makeModel || 'Yes'}${a.vehicle.year ? ` (${a.vehicle.year})` : ''}` : 'None' },
     { label: 'Named references', get: a => a.references && a.references.length > 0 ? `${a.references.length} provided` : 'On request' },

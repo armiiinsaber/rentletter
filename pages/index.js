@@ -1300,7 +1300,7 @@ export default function Home() {
 
               {/* Co-applicant toggle */}
               <ToggleField
-                label="Applying with a partner or roommate?"
+                label="Applying with a co-tenant? (another adult who’ll be on the lease)"
                 value={form.hasCoApplicant}
                 onChange={v => update('hasCoApplicant', v)}
               />
@@ -1310,10 +1310,7 @@ export default function Home() {
                     Co-applicant
                   </div>
                   <Field label="Full name" value={form.coApplicantName} onChange={v => update('coApplicantName', v)} placeholder="Alex Smith" />
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                    <Field label="Age" value={form.coApplicantAge} onChange={v => update('coApplicantAge', v)} placeholder="30" type="number" />
-                    <Field label="Relationship" value={form.coApplicantRelationship} onChange={v => update('coApplicantRelationship', v)} placeholder="Partner / Roommate" />
-                  </div>
+                  <Field label="Age" value={form.coApplicantAge} onChange={v => update('coApplicantAge', v)} placeholder="30" type="number" />
                   <Field label="Job title" value={form.coApplicantJobTitle} onChange={v => update('coApplicantJobTitle', v)} placeholder="Designer" />
                   <Field label="Employer" value={form.coApplicantEmployer} onChange={v => update('coApplicantEmployer', v)} placeholder="Figma" />
                   <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={v => update('coApplicantIncome', v)} placeholder="75,000" type="number" />

@@ -569,15 +569,16 @@ export default function ApplyPage() {
                   </div>
                 )}
 
-                <ToggleField label="Applying with a partner or roommate?" value={form.hasCoApplicant} onChange={(v) => update('hasCoApplicant', v)} />
+                {/* Co-tenant framing on purpose: the household-income function needs another adult
+                    on the lease, never the nature of the relationship (marital status is a
+                    protected ground). coApplicantRelationship stays in state as '' so the
+                    payload shape is unchanged. */}
+                <ToggleField label="Applying with a co-tenant? (another adult who’ll be on the lease)" value={form.hasCoApplicant} onChange={(v) => update('hasCoApplicant', v)} />
                 {form.hasCoApplicant && (
                   <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Co-applicant</div>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Co-tenant</div>
                     <Field label="Full name" value={form.coApplicantName} onChange={(v) => update('coApplicantName', v)} placeholder="Alex Smith" />
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                      <Field label="Age" value={form.coApplicantAge} onChange={(v) => update('coApplicantAge', v)} placeholder="30" type="number" />
-                      <Field label="Relationship" value={form.coApplicantRelationship} onChange={(v) => update('coApplicantRelationship', v)} placeholder="Partner / Roommate" />
-                    </div>
+                    <Field label="Age" value={form.coApplicantAge} onChange={(v) => update('coApplicantAge', v)} placeholder="30" type="number" />
                     <Field label="Job title" value={form.coApplicantJobTitle} onChange={(v) => update('coApplicantJobTitle', v)} placeholder="Designer" />
                     <Field label="Employer" value={form.coApplicantEmployer} onChange={(v) => update('coApplicantEmployer', v)} placeholder="Figma" />
                     <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={(v) => update('coApplicantIncome', v)} placeholder="75,000" type="number" />
@@ -704,6 +705,16 @@ export default function ApplyPage() {
                             <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{v || '—'}</span>
                           </div>
                         ))}
+                      </div>
+                      {/* VERIFIED one-shot: applications have no edit path after submit —
+                          /api/application/manage supports only view/revoke/unrevoke, and
+                          application mode always mints a fresh RL (resubmitting via the same
+                          invite creates a second application, it doesn't update this one). */}
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: C.paperDeep, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, marginBottom: 16, fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>
+                        <span style={{ marginTop: 1, flexShrink: 0, color: C.red, display: 'inline-flex' }}><Icon name="shield" size={15} /></span>
+                        <span>
+                          Take a second to double-check everything above — <strong style={{ color: C.ink }}>once you submit, you can’t edit it</strong>, and fixing a mistake means filling out a new application.
+                        </span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                         <button onClick={() => setReviewing(false)} disabled={submitting}
