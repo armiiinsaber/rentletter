@@ -68,7 +68,36 @@ const EMPTY_FORM = {
   vehicleMakeModel: '', vehicleYear: '',
   reference1Name: '', reference1Relationship: '', reference1Contact: '',
   reference2Name: '', reference2Relationship: '', reference2Contact: '',
+  // ── Tenancy Profile: structured capture (UI-side). generate.js whitelists its stored
+  // record, so these DO NOT persist as-is — instead each is serialized into one of the
+  // whitelisted keys above before submit (contact → previousLandlordContact, tenure →
+  // yearsAtPrevious, pet details → pets). rentalStatus is a UI controller (drives which
+  // fields show); its value rides the payload harmlessly today and starts persisting the
+  // day generate.js whitelists it. ──
+  rentalStatus: 'current', // 'current' | 'previous' | 'none'
+  prevLandlordEmail: '', prevLandlordPhone: '',
+  tenureYears: '', tenureMonths: '',
+  hasPets: false, petType: 'cat', petCount: '1', petSize: '', petSpayedNeutered: false, petTrained: false, petNotes: '',
 };
+
+// Serialize the structured pet answers into the stored free-text `pets` field —
+// written to read naturally everywhere the string is displayed today.
+const PET_SIZE_LABELS = { small: 'small (under 25 lb)', medium: 'medium (25–60 lb)', large: 'large (60+ lb)' };
+function serializePets(f) {
+  if (!f.hasPets) return '';
+  const plural = f.petCount !== '1';
+  const count = f.petCount === '3+' ? '3 or more' : f.petCount;
+  const type = f.petType === 'catdog'
+    ? (plural ? 'cats & dogs' : 'cat & dog')
+    : `${{ cat: 'cat', dog: 'dog', other: 'pet' }[f.petType] || 'pet'}${plural ? 's' : ''}`;
+  const traits = [
+    f.petSize ? PET_SIZE_LABELS[f.petSize] : null,
+    f.petSpayedNeutered ? 'spayed/neutered' : null,
+    f.petTrained ? 'house-trained' : null,
+  ].filter(Boolean).join(', ');
+  const note = String(f.petNotes || '').trim();
+  return `${count} ${type}${traits ? ` — ${traits}` : ''}${note ? `. ${note}` : ''}`;
+}
 
 export default function ApplyPage() {
   const router = useRouter();
@@ -95,6 +124,46 @@ export default function ApplyPage() {
   // age in the payload so generate.js still receives `age` — no API change needed.
   const derivedAge = ageFromDob(form.dateOfBirth);
   const updateDob = (v) => setForm((f) => ({ ...f, dateOfBirth: v, age: (ageFromDob(v) ?? '') === '' ? '' : String(ageFromDob(v)) }));
+
+  // ── Tenancy Profile derived writes (same pattern as age/DOB): structured UI answers
+  // serialize into the whitelisted storage keys, so no API change is needed. ──
+  // CLEAN HOOK for the landlord-reference request flow: email and phone are captured as
+  // separate keys and joined with ' · ' for storage. A future request-reference flow
+  // (mirror of the document-request flow) can split previousLandlordContact on ' · '
+  // — or read prevLandlordEmail once generate.js whitelists it — to email the reference
+  // form to the previous landlord.
+  const updateReference = (patch) => setForm((f) => {
+    const n = { ...f, ...patch };
+    n.previousLandlordContact = [String(n.prevLandlordEmail).trim(), String(n.prevLandlordPhone).trim()].filter(Boolean).join(' · ');
+    return n;
+  });
+  // Tenure selects → decimal years in the stored yearsAtPrevious (numeric consumers —
+  // compare, scoring — keep working: "2.5" parses).
+  const updateTenure = (patch) => setForm((f) => {
+    const n = { ...f, ...patch };
+    const y = parseInt(n.tenureYears, 10);
+    const m = parseInt(n.tenureMonths, 10);
+    const total = (Number.isFinite(y) ? y : 0) + (Number.isFinite(m) ? m / 12 : 0);
+    n.yearsAtPrevious = total > 0 ? String(Math.round(total * 10) / 10) : '';
+    return n;
+  });
+  const updatePets = (patch) => setForm((f) => {
+    const n = { ...f, ...patch };
+    n.pets = serializePets(n);
+    return n;
+  });
+  // Switching to "no previous rental" hides AND clears the reference fields so
+  // half-entered data can never ride the submit.
+  const updateRentalStatus = (v) => setForm((f) => {
+    const n = { ...f, rentalStatus: v };
+    if (v === 'none') {
+      Object.assign(n, {
+        previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
+        prevLandlordEmail: '', prevLandlordPhone: '', tenureYears: '', tenureMonths: '', currentRent: '',
+      });
+    }
+    return n;
+  });
 
   // Applicable minimum age from the listing's province (owning realtor's): ON 18, BC 19.
   // Before the invite resolves, province defaults to Ontario; the form isn't interactive until
@@ -129,7 +198,7 @@ export default function ApplyPage() {
     if (!router.isReady) return;
     const token = String(router.query.token || '');
     if (!/^[a-f0-9]{20}$/.test(token)) {
-      setInvalidMsg('This application link doesn’t look right. Please use the exact link your realtor sent you.');
+      setInvalidMsg('This application link doesn’t look right. Please use the exact link the listing realtor sent you.');
       setStatus('invalid');
       return;
     }
@@ -140,7 +209,7 @@ export default function ApplyPage() {
         const json = await r.json().catch(() => ({}));
         if (cancelled) return;
         if (!r.ok || json?.error) {
-          setInvalidMsg(json?.error || 'This invite link has expired or is no longer active. Please contact your realtor for a new link.');
+          setInvalidMsg(json?.error || 'This invite link has expired or is no longer active. Please contact the listing realtor for a new link.');
           setStatus('invalid');
           return;
         }
@@ -160,7 +229,7 @@ export default function ApplyPage() {
         setStatus('ready');
       } catch (e) {
         if (cancelled) return;
-        setInvalidMsg('We couldn’t load this application link right now. Please try again in a moment, or contact your realtor.');
+        setInvalidMsg('We couldn’t load this application link right now. Please try again in a moment, or contact the listing realtor.');
         setStatus('invalid');
       }
     })();
@@ -263,7 +332,7 @@ export default function ApplyPage() {
     <>
       <Head>
         <title>Apply — Rentletter</title>
-        <meta name="description" content="Submit your rental application to your realtor — no account needed." />
+        <meta name="description" content="Submit your rental application — no account needed." />
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
@@ -305,7 +374,7 @@ export default function ApplyPage() {
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 24 }}>
                 Your application has been sent{invite?.realtorName ? <> to <strong style={{ color: C.ink }}>{invite.realtorName}</strong></> : ''}
-                {invite?.listingName ? <> for <strong style={{ color: C.ink }}>{invite.listingName}</strong></> : ''}. Save your application number below — it’s how your realtor pulls up your profile.
+                {invite?.listingName ? <> for <strong style={{ color: C.ink }}>{invite.listingName}</strong></> : ''}. Save your application number below — it’s how the listing realtor pulls up your application.
               </p>
 
               <div style={{ background: C.paperDeep, borderRadius: R.card, padding: 'clamp(18px, 4vw, 24px)', marginBottom: 20 }}>
@@ -357,12 +426,12 @@ export default function ApplyPage() {
                   })()}
                   {(invite.realtorName || invite.realtorBrokerage) && (
                     <div style={{ fontSize: 13, color: '#c8c2b3' }}>
-                      Submitted to: <strong style={{ color: C.paper }}>{invite.realtorName}</strong>
+                      Goes to <strong style={{ color: C.paper }}>{invite.realtorName}</strong>
                       {invite.realtorBrokerage && ` · ${invite.realtorBrokerage}`}
                     </div>
                   )}
                   <div style={{ fontSize: 12, color: '#9a958a', marginTop: 10 }}>
-                    Your realtor already entered these unit details — you only need to tell us about yourself below.
+                    The unit details above were entered by the listing realtor — you only need to tell us about yourself below.
                   </div>
                 </div>
               )}
@@ -371,7 +440,7 @@ export default function ApplyPage() {
                 Tell us about you
               </h1>
               <p className="rl-in" style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55, '--rl-d': '120ms' }}>
-                No account needed — the unit details are already filled in by your realtor, so just tell us about you. The more specific, the better; skip anything that doesn’t apply.
+                No account needed — the unit details are already filled in by the listing realtor, so just tell us about you. The more specific, the better; skip anything that doesn’t apply — though the optional sections help: landlords are more confident with a fuller picture.
               </p>
 
               {error && (
@@ -410,14 +479,47 @@ export default function ApplyPage() {
                 </div>
               </FormSection>
 
-              <FormSection num="04" title="Current rental">
-                <Field label="Current address" value={form.previousAddress} onChange={(v) => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                  <Field label="Years there" value={form.yearsAtPrevious} onChange={(v) => update('yearsAtPrevious', v)} placeholder="2" />
-                  <Field label="Current rent (CAD/mo)" value={form.currentRent} onChange={(v) => update('currentRent', v)} placeholder="2,200" type="number" />
-                </div>
-                <Field label="Current landlord name" value={form.previousLandlordName} onChange={(v) => update('previousLandlordName', v)} placeholder="John Smith" />
-                <Field label="Landlord contact" value={form.previousLandlordContact} onChange={(v) => update('previousLandlordContact', v)} placeholder="phone or email" />
+              <FormSection num="04" title="Rental history">
+                <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
+                  A landlord who can vouch for your tenancy is the strongest signal you can give — it carries more weight than anything else on this form.
+                </p>
+                <SelectField label="Your rental situation" value={form.rentalStatus} onChange={updateRentalStatus} options={[
+                  { value: 'current', label: 'I’m renting now' },
+                  { value: 'previous', label: 'I’ve rented before, but not right now' },
+                  { value: 'none', label: 'No previous rental to list' },
+                ]} />
+                {form.rentalStatus !== 'none' ? (
+                  <>
+                    <Field label={form.rentalStatus === 'current' ? 'Current rental address' : 'Most recent rental address'} value={form.previousAddress} onChange={(v) => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                      <SelectField label="Time there — years" value={form.tenureYears} onChange={(v) => updateTenure({ tenureYears: v })} options={[
+                        { value: '', label: 'Select…' },
+                        ...Array.from({ length: 10 }, (_, i) => ({ value: String(i), label: String(i) })),
+                        { value: '10', label: '10+' },
+                      ]} />
+                      <SelectField label="… plus months" value={form.tenureMonths} onChange={(v) => updateTenure({ tenureMonths: v })} options={[
+                        { value: '', label: '0' },
+                        ...Array.from({ length: 11 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+                      ]} />
+                      <Field label={form.rentalStatus === 'current' ? 'Current rent (CAD/mo)' : 'Rent there (CAD/mo)'} value={form.currentRent} onChange={(v) => update('currentRent', v)} placeholder="2,200" type="number" />
+                    </div>
+                    <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}`, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                      <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Landlord reference</div>
+                      <Field label={form.rentalStatus === 'current' ? 'Current landlord’s name' : 'That landlord’s name'} value={form.previousLandlordName} onChange={(v) => update('previousLandlordName', v)} placeholder="John Smith" />
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                        <Field label="Their email" value={form.prevLandlordEmail} onChange={(v) => updateReference({ prevLandlordEmail: v })} placeholder="landlord@email.com" type="email" inputMode="email" />
+                        <Field label="Their phone" value={form.prevLandlordPhone} onChange={(v) => updateReference({ prevLandlordPhone: formatPhone(v) })} placeholder="(416) 555-0142" type="tel" inputMode="tel" />
+                      </div>
+                      <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: 0 }}>
+                        Either works — both is best. The listing realtor may contact them for a short reference about the tenancy itself (rent paid on time, condition of the unit) — never about you personally.
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, margin: 0 }}>
+                    No problem — plenty of strong applications start here. The rest of your application carries the weight.
+                  </p>
+                )}
               </FormSection>
 
               <FormSection num="05" title="Your move" required>
@@ -425,16 +527,47 @@ export default function ApplyPage() {
                 <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={(v) => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
               </FormSection>
 
-              <FormSection num="06" title="Household">
+              <FormSection num="06" title="Household & pets">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                  <Field label="Total occupants" value={form.numberOfOccupants} onChange={(v) => update('numberOfOccupants', v)} placeholder="2" type="number" />
-                  <SelectField label="Smoker?" value={form.smoker} onChange={(v) => update('smoker', v)} options={[
-                    { value: 'no', label: 'Non-smoker' },
+                  <Field label="Total occupants" value={form.numberOfOccupants} onChange={(v) => update('numberOfOccupants', v)} placeholder="2" type="number" hint="Just the number of people who'll live in the unit." />
+                  <SelectField label="Smoking or vaping?" value={form.smoker} onChange={(v) => update('smoker', v)} options={[
+                    { value: 'no', label: 'No' },
                     { value: 'outdoor', label: 'Outdoor only' },
                     { value: 'yes', label: 'Yes' },
                   ]} />
                 </div>
-                <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={(v) => update('occupantsDetails', v)} placeholder="One roommate (also on this application), no children." />
+                <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={(v) => update('occupantsDetails', v)} placeholder="One roommate — also on this application." />
+
+                {/* Structured pet capture — serialized into the stored `pets` string (see
+                    serializePets), so every screen that displays pets today keeps working. */}
+                <ToggleField label="Do you have pets?" value={form.hasPets} onChange={(v) => updatePets({ hasPets: v })} />
+                {form.hasPets && (
+                  <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 18 }}>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Pets</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                      <SelectField label="Type" value={form.petType} onChange={(v) => updatePets({ petType: v })} options={[
+                        { value: 'cat', label: 'Cat' },
+                        { value: 'dog', label: 'Dog' },
+                        { value: 'catdog', label: 'Cats & dogs' },
+                        { value: 'other', label: 'Other' },
+                      ]} />
+                      <SelectField label="How many" value={form.petCount} onChange={(v) => updatePets({ petCount: v })} options={[
+                        { value: '1', label: '1' },
+                        { value: '2', label: '2' },
+                        { value: '3+', label: '3 or more' },
+                      ]} />
+                      <SelectField label="Size of largest (optional)" value={form.petSize} onChange={(v) => updatePets({ petSize: v })} options={[
+                        { value: '', label: 'Select…' },
+                        { value: 'small', label: 'Small (under 25 lb)' },
+                        { value: 'medium', label: 'Medium (25–60 lb)' },
+                        { value: 'large', label: 'Large (60+ lb)' },
+                      ]} />
+                    </div>
+                    <ToggleField label="Spayed / neutered" value={form.petSpayedNeutered} onChange={(v) => updatePets({ petSpayedNeutered: v })} />
+                    <ToggleField label="House-trained" value={form.petTrained} onChange={(v) => updatePets({ petTrained: v })} />
+                    <Field label="Anything else about your pet(s) (optional)" value={form.petNotes} onChange={(v) => updatePets({ petNotes: v })} placeholder="Breed, temperament, vet records available…" />
+                  </div>
+                )}
 
                 <ToggleField label="Applying with a partner or roommate?" value={form.hasCoApplicant} onChange={(v) => update('hasCoApplicant', v)} />
                 {form.hasCoApplicant && (
@@ -452,9 +585,20 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
-              <FormSection num="07" title="Lifestyle">
-                <Textarea label="Lifestyle and habits" value={form.personality} onChange={(v) => update('personality', v)} placeholder="Quiet, work from home most days, like to cook and read." />
-                <Field label="Pets" value={form.pets} onChange={(v) => update('pets', v)} placeholder="One small cat, indoor only, vet records available" />
+              <FormSection num="07" title="In your own words">
+                <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
+                  Optional — but landlords are more confident with a fuller picture, in your voice.
+                </p>
+                <div>
+                  <Textarea label="Tell the landlord a bit about yourself and how you live" value={form.personality} onChange={(v) => update('personality', v.slice(0, 500))} placeholder="e.g. I work from home most days, keep a quiet routine, and take good care of my space." />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5, flexWrap: 'wrap' }}>
+                    <span>Goes to the landlord exactly as you write it.</span>
+                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{form.personality.length}/500</span>
+                  </div>
+                </div>
+                <p style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, margin: 0, padding: '10px 14px', background: C.paperDeep, borderRadius: R.ctrl }}>
+                  One thing you can skip: your background, beliefs, or family. Landlords aren’t allowed to consider those, so leaving them out will never affect your application.
+                </p>
                 <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={form.redFlags} onChange={(v) => update('redFlags', v)} placeholder="Limited Canadian credit history due to recent move..." />
               </FormSection>
 
@@ -495,7 +639,7 @@ export default function ApplyPage() {
               </FormSection>
 
               <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.55 }}>
-                Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required. Your realtor screens on these, so please double-check they’re accurate before you submit.
+                Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required. The listing realtor screens on these, so please double-check they’re accurate before you submit.
               </p>
               <button
                 onClick={openReview}
@@ -521,7 +665,7 @@ export default function ApplyPage() {
                 );
               })()}
               <p style={{ fontSize: 12, color: C.inkMute, textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
-                Free for applicants. You’ll get an application number to share — your realtor sees it in their dashboard.
+                Free for applicants. You’ll get an application number to share — the listing realtor sees it in their dashboard.
               </p>
 
               {/* REVIEW-AND-CONFIRM — the deliberate final checkpoint before submitting. */}
@@ -537,6 +681,11 @@ export default function ApplyPage() {
                   ['Employer', form.employer.trim()],
                   ['Job title', form.jobTitle.trim()],
                   ['Move-in date', form.moveInDate ? fmtDate(form.moveInDate) : '—'],
+                  ['Rental history', form.rentalStatus === 'none'
+                    ? 'No previous rental listed'
+                    : [form.yearsAtPrevious ? `${form.yearsAtPrevious} yrs` : null, form.previousLandlordName.trim() ? `reference: ${form.previousLandlordName.trim()}` : null].filter(Boolean).join(' · ') || '—'],
+                  ['Pets', form.pets || 'None'],
+                  ['In your own words', form.personality.trim() ? `Included (${form.personality.trim().length} chars)` : '—'],
                 ];
                 const submitting = status === 'submitting';
                 return (
@@ -547,7 +696,7 @@ export default function ApplyPage() {
                       style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(20px, 4vw, 28px)' }}>
                       <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Review your application</div>
                       <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>Please review before you submit</h3>
-                      <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>Your realtor and the landlord screen on this information, so make sure it’s accurate — you can go back and edit anything.</p>
+                      <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>The listing realtor and the landlord screen on this information, so make sure it’s accurate — you can go back and edit anything.</p>
                       <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
                         {rows.map(([k, v]) => (
                           <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '5px 0', fontSize: 13 }}>

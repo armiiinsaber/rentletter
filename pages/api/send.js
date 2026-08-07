@@ -179,7 +179,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
           <tr>
             <td style="padding-bottom: 32px;">
               <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; color: #3a3a3c; margin: 0;">
-                Your application went to your realtor. Keep this email — your application number and owner key below are how you track and control it.
+                Your application went to the listing realtor — the agent representing the landlord for this unit. Keep this email — your application number and owner key below are how you track and control it.
               </p>
             </td>
           </tr>
@@ -198,7 +198,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                       ${applicationNumber}
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55; color: #a4adbb; margin: 0;">
-                      Your realtor uses this number to pull up your application in their dashboard.
+                      The listing realtor uses this number to pull up your application in their dashboard.
                     </p>
                   </td>
                 </tr>

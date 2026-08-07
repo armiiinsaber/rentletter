@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   const rec = await kvGetJson(reqKey(token));
   if (!rec) {
     // Missing or expired (KV TTL) — friendly, not a 404 page.
-    return res.status(404).json({ error: 'This upload link has expired or is no longer active. Please ask your realtor for a new one.' });
+    return res.status(404).json({ error: 'This upload link has expired or is no longer active. Please ask the listing realtor for a new one.' });
   }
 
   return res.status(200).json({

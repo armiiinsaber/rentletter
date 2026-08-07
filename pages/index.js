@@ -255,7 +255,7 @@ export default function Home() {
   const goToApply = () => {
     const parsed = parseApplyInput(applyLink);
     if (!parsed.ok) {
-      setApplyError("That doesn't look like a valid application link — paste the full link your realtor sent you.");
+      setApplyError("That doesn't look like a valid application link — paste the full link the listing realtor sent you.");
       return;
     }
     setApplyError('');
@@ -1027,7 +1027,7 @@ export default function Home() {
                     Applying to a rental?
                   </h3>
                   <p style={{ fontSize: 14, lineHeight: 1.55, color: C.inkSoft, margin: 0 }}>
-                    Enter the application link your realtor sent you and we'll take you straight to the form. Applying is free.
+                    Enter the application link the listing realtor sent you and we'll take you straight to the form. Applying is free.
                   </p>
                 </div>
               </div>
@@ -1037,7 +1037,7 @@ export default function Home() {
                   onChange={(e) => { setApplyLink(e.target.value); if (applyError) setApplyError(''); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') goToApply(); }}
                   placeholder="rentletter.ca/apply/…"
-                  aria-label="Paste the application link your realtor sent you"
+                  aria-label="Paste the application link the listing realtor sent you"
                   aria-invalid={applyError ? true : undefined}
                   style={{
                     flex: '1 1 240px', minWidth: 0, boxSizing: 'border-box',
@@ -1680,7 +1680,7 @@ export default function Home() {
             <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
               {letter
                 ? 'Read it over. Edit anything — changes save automatically.'
-                : 'Below is your application number and tenant resume. Share these with your realtor or landlord.'}
+                : 'Below is your application number and tenant resume. Share these with the listing realtor or landlord.'}
             </p>
 
             {/* Application Number Card — the trust signal for landlords */}

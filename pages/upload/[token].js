@@ -180,7 +180,7 @@ export default function UploadPage() {
 
   const disclosure = (
     <div style={{ background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '13px 15px', fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
-      <strong style={{ color: C.ink }}>How your documents are used:</strong> they’re analyzed to verify income, employment, and credit for your rental application, then <strong style={{ color: C.ink }}>discarded — we do not store them</strong>. Only your realtor sees the verified summary.
+      <strong style={{ color: C.ink }}>How your documents are used:</strong> they’re analyzed to verify income, employment, and credit for your rental application, then <strong style={{ color: C.ink }}>discarded — we do not store them</strong>. Only the listing realtor sees the verified summary.
     </div>
   );
 
@@ -188,7 +188,7 @@ export default function UploadPage() {
     <>
       <Head>
         <title>Upload your documents — Rentletter</title>
-        <meta name="description" content="Securely upload your rental application documents to your realtor." />
+        <meta name="description" content="Securely upload your rental application documents." />
         <meta name="theme-color" content="#f2eee3" />
       </Head>
       <GlobalStyle />
@@ -227,7 +227,7 @@ export default function UploadPage() {
               <div style={{ display: 'inline-flex', marginBottom: 12, color: C.green }}><Icon name="check" size={30} color={C.green} strokeWidth={2.5} /></div>
               <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10 }}>Documents already received</h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, maxWidth: 460, margin: '0 auto' }}>
-                Your documents were submitted{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ''}. There’s nothing more to do — if your realtor needs anything else, they’ll send a new request.
+                Your documents were submitted{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ''}. There’s nothing more to do — if the listing realtor needs anything else, they’ll send a new request.
               </p>
             </div>
           )}
@@ -244,7 +244,7 @@ export default function UploadPage() {
                 You’re all&nbsp;set.
               </div>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22, textWrap: 'pretty' }}>
-                Your {sentCount} document{sentCount === 1 ? '' : 's'} {sentCount === 1 ? 'was' : 'were'} received and sent{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ' to your realtor'} for review. You can close this page.
+                Your {sentCount} document{sentCount === 1 ? '' : 's'} {sentCount === 1 ? 'was' : 'were'} received and sent{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ' to the listing realtor'} for review. You can close this page.
               </p>
               {disclosure}
             </div>
@@ -257,7 +257,7 @@ export default function UploadPage() {
                 Upload your documents{firstName ? `, ${firstName}` : ''}
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22 }}>
-                {req?.realtorName ? <><strong style={{ color: C.ink }}>{req.realtorName}</strong> requested a few documents to finalize your rental application</> : 'Your realtor requested a few documents to finalize your rental application'}
+                {req?.realtorName ? <><strong style={{ color: C.ink }}>{req.realtorName}</strong> — the realtor representing the landlord — requested a few documents to finalize your rental application</> : 'The listing realtor requested a few documents to finalize your rental application'}
                 {unitLabel ? <> for <strong style={{ color: C.ink }}>{unitLabel}</strong></> : ''}.
               </p>
 

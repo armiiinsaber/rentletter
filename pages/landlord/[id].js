@@ -317,6 +317,11 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
       ['Rent-to-income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
       ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
       ['Years at address', app.years_at_previous ? `${app.years_at_previous} yrs` : null],
+      // Tenancy Profile: landlord-reference capture from the upgraded apply form
+      // (existing columns — prev_landlord_name / prev_landlord_contact).
+      ['Landlord reference', app.prev_landlord_name
+        ? [app.prev_landlord_name, app.prev_landlord_contact].filter(Boolean).join(' · ')
+        : null],
       ['Move-in', app.move_in_date || null],
       ['Occupants', app.number_of_occupants != null ? String(app.number_of_occupants) : null],
       ['Smoker', smokerLabel],
@@ -395,6 +400,14 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
                 <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
               </div>
             ))}
+          </div>
+        )}
+        {/* Tenant voice — the applicant's own words, shown verbatim and clearly attributed.
+            Existing `personality` column; the apply form now frames, caps, and steers it. */}
+        {app.personality && (
+          <div style={{ marginTop: 12, padding: '10px 14px', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ruleDark}` }}>
+            <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>In their own words</div>
+            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{app.personality}”</div>
           </div>
         )}
         <ApplicantDocIntel
