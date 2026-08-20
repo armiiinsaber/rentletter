@@ -19,6 +19,7 @@ import { isValidEmail } from '../../lib/validation';
 import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } from '../../lib/provinces';
 import { formatUnit } from '../../lib/unitType';
 import { EMPTY_FORM, serializePets, ageFromDob } from '../../lib/tenantProfile';
+import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { FormSection, Field, Textarea, SelectField, ToggleField } from '../../components/apply/fields';
 
 // Phone helpers — validate on exactly 10 digits, display as (XXX) XXX-XXXX.
@@ -131,6 +132,25 @@ export default function ApplyPage() {
     n.pets = serializePets(n);
     return n;
   });
+  // ── Employment type + income (derived writes, same pattern) ──
+  // Self-employed: the single required "employer" field IS the registered business name — it is
+  // stored in `employer` (so every realtor/landlord surface that shows employer shows it) AND in
+  // `businessName`. Same field, same requirement level as an employed applicant.
+  const updateEmployment = (patch) => setForm((f) => {
+    const n = { ...f, ...patch };
+    n.businessName = n.employmentType === 'self-employed' ? n.employer : '';
+    return n;
+  });
+  // annualIncome is GROSS (what the scorecard is calibrated on). The after-tax figure is an
+  // estimate for the listing's province that tracks gross until the tenant overwrites it.
+  const updateGross = (v) => setForm((f) => {
+    const n = { ...f, annualIncome: v };
+    if (n.netIncomeSource !== 'stated') n.netIncome = v ? String(estimateNetIncome(v, listingProvince).net || '') : '';
+    return n;
+  });
+  const updateNet = (v) => setForm((f) => ({ ...f, netIncome: v, netIncomeSource: 'stated' }));
+  const resetNetToEstimate = () => setForm((f) => ({ ...f, netIncomeSource: 'estimated', netIncome: f.annualIncome ? String(estimateNetIncome(f.annualIncome, listingProvince).net || '') : '' }));
+  const selfEmployed = form.employmentType === 'self-employed';
   // Switching to "no previous rental" hides AND clears the reference fields so
   // half-entered data can never ride the submit.
   const updateRentalStatus = (v) => setForm((f) => {
@@ -149,6 +169,11 @@ export default function ApplyPage() {
   // status==='ready', by which point the resolved province is in effect.
   const listingProvince = normalizeProvince(invite?.province);
   const minAge = ageOfMajority(listingProvince);
+  // Province arrives with the invite (and a prefilled profile may come from another province):
+  // refresh an ESTIMATED after-tax figure; a tenant-stated one is never touched.
+  useEffect(() => {
+    setForm((f) => (f.netIncomeSource === 'stated' || !f.annualIncome) ? f : { ...f, netIncome: String(estimateNetIncome(f.annualIncome, listingProvince).net || '') });
+  }, [listingProvince, prefill.state]);
 
   // Per-field validity for the VITAL fields the screening depends on.
   const vital = {
@@ -497,12 +522,38 @@ export default function ApplyPage() {
               </FormSection>
 
               <FormSection num="03" title="Employment" required>
-                <Field label="Job title" required value={form.jobTitle} onChange={(v) => update('jobTitle', v)} onBlur={() => markTouched('jobTitle')} error={showErr('jobTitle') && !vital.jobTitle ? 'Job title is required.' : ''} placeholder="Software engineer" />
-                <Field label="Employer" required value={form.employer} onChange={(v) => update('employer', v)} onBlur={() => markTouched('employer')} error={showErr('employer') && !vital.employer ? 'Employer is required.' : ''} placeholder="Shopify" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                  <Field label="Years at this job" value={form.yearsAtJob} onChange={(v) => update('yearsAtJob', v)} placeholder="3" />
-                  <Field label="Annual income (CAD)" required value={form.annualIncome} onChange={(v) => update('annualIncome', v)} onBlur={() => markTouched('annualIncome')} error={showErr('annualIncome') && !vital.annualIncome ? 'Annual income is required.' : ''} placeholder="85,000" type="number" inputMode="numeric" />
+                <SelectField label="Employment type" value={form.employmentType} onChange={(v) => updateEmployment({ employmentType: v })} options={[
+                  { value: '', label: 'Select…' },
+                  { value: 'full-time', label: 'Full-time' },
+                  { value: 'part-time', label: 'Part-time' },
+                  { value: 'contract', label: 'Contract' },
+                  { value: 'self-employed', label: 'Self-employed (own or family business)' },
+                ]} />
+                <Field label="Job title" required value={form.jobTitle} onChange={(v) => update('jobTitle', v)} onBlur={() => markTouched('jobTitle')} error={showErr('jobTitle') && !vital.jobTitle ? 'Job title is required.' : ''} placeholder={selfEmployed ? 'Owner / Electrician / Consultant' : 'Software engineer'} />
+                {/* Self-employed: this is the registered business name — same field, same bar. */}
+                <Field label={selfEmployed ? 'Registered business name' : 'Employer'} required value={form.employer} onChange={(v) => updateEmployment({ employer: v })} onBlur={() => markTouched('employer')}
+                  error={showErr('employer') && !vital.employer ? (selfEmployed ? 'Business name is required.' : 'Employer is required.') : ''}
+                  placeholder={selfEmployed ? 'Doe Electrical Ltd.' : 'Shopify'}
+                  hint={selfEmployed ? 'The business as it’s registered — your own, or a family business you work for.' : undefined} />
+                <Field label={selfEmployed ? 'Years in business' : 'Years at this job'} value={form.yearsAtJob} onChange={(v) => update('yearsAtJob', v)} placeholder="3" />
+                <div>
+                  <Field label="Annual income before tax (CAD)" required value={form.annualIncome} onChange={updateGross} onBlur={() => markTouched('annualIncome')} error={showErr('annualIncome') && !vital.annualIncome ? 'Annual income before tax is required.' : ''} placeholder="85,000" type="number" inputMode="numeric"
+                    hint="Gross — your yearly pay before deductions (offer letter / T4 box 14)." />
                 </div>
+                {/* Editable estimate. Never scored; shown to the landlord alongside gross, clearly labelled. */}
+                {String(form.annualIncome).trim() && (
+                  <div>
+                    <Field label="Estimated after-tax income (CAD/yr)" value={form.netIncome} onChange={updateNet} type="number" inputMode="numeric" placeholder="63,000"
+                      hint={form.netIncomeSource === 'stated'
+                        ? 'You entered this yourself.'
+                        : `Estimate for ${provinceName(listingProvince)} at ${TAX_YEAR} rates (federal + provincial tax, CPP, EI) — please correct if yours is different.`} />
+                    {form.netIncomeSource === 'stated' && (
+                      <button type="button" onClick={resetNetToEstimate} style={{ marginTop: 6, background: 'transparent', border: 'none', padding: 0, color: C.red, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+                        Use the {provinceName(listingProvince)} estimate instead
+                      </button>
+                    )}
+                  </div>
+                )}
               </FormSection>
 
               <FormSection num="04" title="Rental history">
@@ -683,7 +734,7 @@ export default function ApplyPage() {
                 {status === 'submitting' ? 'Submitting…' : 'Review & submit'}
               </button>
               {status === 'ready' && !allVitalValid && (() => {
-                const labels = { fullName: 'Full name', dateOfBirth: `Date of birth (${minAge}+)`, email: 'Valid email', phone: '10-digit phone', annualIncome: 'Annual income', employer: 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };
+                const labels = { fullName: 'Full name', dateOfBirth: `Date of birth (${minAge}+)`, email: 'Valid email', phone: '10-digit phone', annualIncome: 'Income before tax', employer: selfEmployed ? 'Business name' : 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };
                 const missing = Object.keys(vital).filter((k) => !vital[k]).map((k) => labels[k]);
                 return (
                   <p style={{ fontSize: 12.5, color: C.inkMute, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
@@ -704,8 +755,9 @@ export default function ApplyPage() {
                   ['Date of birth', form.dateOfBirth ? `${fmtDate(form.dateOfBirth)}${derivedAge != null ? ` (age ${derivedAge})` : ''}` : '—'],
                   ['Email', form.email.trim()],
                   ['Phone', form.phone.trim()],
-                  ['Annual income', incomeNum ? `$${incomeNum.toLocaleString()}` : '—'],
-                  ['Employer', form.employer.trim()],
+                  ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : '—'],
+                  ['After tax', Number(form.netIncome) ? `$${Number(form.netIncome).toLocaleString()}/yr ${form.netIncomeSource === 'stated' ? '(you entered)' : '(estimate)'}` : '—'],
+                  [form.employmentType === 'self-employed' ? 'Business' : 'Employer', `${form.employer.trim()}${form.employmentType ? ` · ${({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[form.employmentType]}` : ''}`],
                   ['Job title', form.jobTitle.trim()],
                   ['Move-in date', form.moveInDate ? fmtDate(form.moveInDate) : '—'],
                   ['Rental history', form.rentalStatus === 'none'

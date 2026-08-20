@@ -59,7 +59,10 @@ export default async function handler(req, res) {
         rank: i + 1,
         name: a.full_name || 'Applicant',
         role: [a.job_title, a.employer].filter(Boolean).join(' at ') || null,
-        annualIncome: a.annual_income || null,
+        annualIncome: a.annual_income || null, // gross
+        netIncome: a.net_income || null,
+        netIncomeSource: a.net_income ? (a.net_income_source || 'estimated') : null,
+        employmentType: a.employment_type || null,
         householdIncome: a.co_applicant?.annualIncome
           ? (Number(a.annual_income) || 0) + (Number(a.co_applicant.annualIncome) || 0)
           : null,
@@ -110,7 +113,8 @@ RULES:
 - "TOP MATCHES" holds the candidates in topMatches (max 5), keeping their rank numbers. "ALSO RANKED" holds alsoRanked (continue the rank numbers). Put the section header on its own line, then a blank line, then the blocks.
 - Candidate first line: "[ <rank> ]  " (space inside brackets, two spaces after) then the NAME IN ALL CAPS, then " — " then role, employer.
 - Labelled lines indented exactly 7 spaces. Each: label, one space, "." leader dots, one space, value — padded so the "label + dots" segment is 15 chars wide and EVERY value lines up. Labels verbatim in order: Income, Tenure, References, Fit. Omit a line only if the fact is missing.
-- Income value: "$<amount>/yr" then two spaces then "(<pct>% rent-to-income)" if a ratio exists. If householdIncome is present, use it and write "$<total>/yr (household)".
+- Income value: "$<amount>/yr before tax" then two spaces then "(<pct>% rent-to-income)" if a ratio exists. If householdIncome is present, use it and write "$<total>/yr before tax (household)". If netIncome is present add a second labelled line "After tax ...... $<netIncome>/yr" followed by " (estimate)" unless netIncomeSource is "stated".
+- Role: if employmentType is "self-employed", write "<role>, <employer> (self-employed)".
 - Fit value: ONE short factual phrase from the data (e.g. "comfortable on income", "within typical range", "long, stable tenure"). Under ~4 words.
 - This is a RANKING-ONLY shortlist: do NOT include any document-verification content — no "Documents verified", no "Not verified", no credit score, no verified-facts line. Verification is sent separately, per finalist.
 - SET ASIDE: one line per applicant — "- <NAME IN UPPERCASE> — <reason verbatim from the data>". No labelled block, no scores. These were de-prioritized for screenable reasons; present them neutrally.

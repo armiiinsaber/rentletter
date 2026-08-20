@@ -136,7 +136,8 @@ export default async function handler(req, res) {
         py -= 34;
       };
 
-      drawRow('Annual income', `$${(app.employment?.annualIncome || 0).toLocaleString()} CAD`);
+      drawRow('Income (before tax)', `$${(app.employment?.annualIncome || 0).toLocaleString()} CAD`);
+      if (app.employment?.netIncome) drawRow(app.employment.netIncomeSource === 'stated' ? 'After tax (stated)' : 'After tax (estimate)', `$${Number(app.employment.netIncome).toLocaleString()} CAD`);
       if (app.coApplicant?.annualIncome) {
         const combined = (app.employment?.annualIncome || 0) + (app.coApplicant?.annualIncome || 0);
         drawRow('Combined household', `$${combined.toLocaleString()} CAD/year (joint with ${app.coApplicant?.name || 'co-applicant'})`);

@@ -371,7 +371,7 @@ export default function LandlordShortlistView() {
                     </div>
                     {/* Key facts row */}
                     <div style={{ display: 'flex', gap: 18, fontSize: 13, color: C.inkSoft, flexWrap: 'wrap', marginBottom: 14 }}>
-                      {app.employment?.annualIncome && <span><strong style={{ color: C.ink }}>${Number(app.employment.annualIncome).toLocaleString()}</strong>/yr</span>}
+                      {app.employment?.annualIncome && <span><strong style={{ color: C.ink }}>${Number(app.employment.annualIncome).toLocaleString()}</strong>/yr before tax{app.employment?.netIncome ? ` · ${app.employment.netIncomeSource === 'stated' ? '' : 'est. '}$${Number(app.employment.netIncome).toLocaleString()} after tax` : ''}</span>}
                       {app.household?.totalOccupants && <span>{app.household.totalOccupants} occupants</span>}
                       {app.lifestyle?.movein && <span>Move-in: {app.lifestyle.movein}</span>}
                       <span style={{ color: C.inkMute }}>{app.applicationNumber}</span>
@@ -482,7 +482,7 @@ export default function LandlordShortlistView() {
                         </td>
                         <td style={cellBody}>
                           {app.employment?.jobTitle}<br />
-                          <strong>${Number(app.employment?.annualIncome || 0).toLocaleString()}/yr</strong>
+                          <strong>${Number(app.employment?.annualIncome || 0).toLocaleString()}/yr</strong> before tax{app.employment?.netIncome ? <><br />{app.employment.netIncomeSource === 'stated' ? '' : 'est. '}${Number(app.employment.netIncome).toLocaleString()} after tax</> : null}
                         </td>
                         <td style={cellBody}>
                           {app.household?.totalOccupants || 1} occupants<br />
@@ -661,7 +661,8 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 24 }}>
-        <Stat label="Income" value={a.employment?.annualIncome ? `$${Number(a.employment.annualIncome).toLocaleString()}/yr` : '—'} />
+        <Stat label="Income (before tax)" value={a.employment?.annualIncome ? `$${Number(a.employment.annualIncome).toLocaleString()}/yr` : '—'} />
+        {a.employment?.netIncome ? <Stat label={a.employment.netIncomeSource === 'stated' ? 'After tax (stated)' : 'After tax (estimate)'} value={`$${Number(a.employment.netIncome).toLocaleString()}/yr`} /> : null}
         <Stat label="Employment" value={a.employment?.duration || '—'} />
         <Stat label="Household" value={`${a.household?.totalOccupants || 1} occupant${a.household?.totalOccupants > 1 ? 's' : ''}`} />
         <Stat label="Move-in" value={a.lifestyle?.movein || '—'} />

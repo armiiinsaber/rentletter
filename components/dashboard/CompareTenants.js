@@ -31,7 +31,7 @@ const firstName = (n) => String(n || 'Applicant').trim().split(/\s+/)[0];
 const CATEGORIES = [
   { key: 'rank', label: 'Rank', kind: 'rank' },
   { key: 'overall', label: 'Overall grade', kind: 'grade' },
-  { key: 'annualIncome', label: 'Annual income', kind: 'num', better: 'high', fmt: money },
+  { key: 'annualIncome', label: 'Income (before tax)', kind: 'num', better: 'high', fmt: money },
   { key: 'householdIncome', label: 'Household income', kind: 'num', better: 'high', fmt: money },
   { key: 'rentToIncome', label: 'Rent-to-income', kind: 'num', better: 'low', fmt: (v) => `${v}%` },
   { key: 'jobTenureYears', label: 'Job tenure', kind: 'num', better: 'high', fmt: yrs },

@@ -295,6 +295,10 @@ export default async function handler(req, res) {
     apartmentAddress, apartmentDescription,
     fullName, age, dateOfBirth, phone,
     jobTitle, employer, yearsAtJob, annualIncome,
+    // Employment type + registered business name (self-employed), and the tenant's after-tax
+    // figure (estimated by lib/taxEstimate or stated by the tenant). annualIncome stays GROSS —
+    // it is what lib/scoring.js is calibrated on; netIncome is display-only and never scored.
+    employmentType, businessName, netIncome, netIncomeSource,
     previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
     currentRent,
     moveInDate, reasonForMoving,
@@ -754,8 +758,12 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
         jobTitle,
         employer,
         yearsAtJob: yearsAtJob || null,
-        annualIncome: annualIncomeNum,
+        annualIncome: annualIncomeNum, // GROSS (before tax) — scored
         monthlyIncome,
+        employmentType: ['full-time', 'part-time', 'contract', 'self-employed'].includes(employmentType) ? employmentType : null,
+        businessName: employmentType === 'self-employed' && businessName ? String(businessName).slice(0, 160) : null,
+        netIncome: parseInt(netIncome) > 0 ? parseInt(netIncome) : null, // after tax — display only
+        netIncomeSource: netIncomeSource === 'stated' ? 'stated' : 'estimated',
       },
       rental: {
         previousAddress: previousAddress || null,

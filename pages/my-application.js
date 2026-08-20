@@ -19,6 +19,13 @@ import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, useReveal } from '../components/ui';
 import { Field, Textarea, SelectField, ToggleField } from '../components/apply/fields';
 import { formFromApplication, serializePets } from '../lib/tenantProfile';
+import { estimateNetIncome, TAX_YEAR } from '../lib/taxEstimate';
+
+const EMP_LABEL = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
+// The application doesn't store the tenant's province; infer BC from the addresses we have,
+// default Ontario. Only used to label/compute the after-tax ESTIMATE (which stays editable).
+const guessProvince = (p) => (/\b(BC|B\.C\.|British Columbia|Vancouver|Victoria|Burnaby|Surrey|Richmond|Kelowna)\b/i.test(`${p?.apartment?.address || ''} ${p?.rental?.previousAddress || ''}`) ? 'BC' : 'ON');
+const PROV_NAME = { ON: 'Ontario', BC: 'British Columbia' };
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -206,6 +213,11 @@ export default function MyApplication() {
   const updateReference = (patch) => setDraft((f) => { const n = { ...f, ...patch }; n.previousLandlordContact = [String(n.prevLandlordEmail).trim(), String(n.prevLandlordPhone).trim()].filter(Boolean).join(' · '); return n; });
   const updateTenure = (patch) => setDraft((f) => { const n = { ...f, ...patch }; const y = parseInt(n.tenureYears, 10), m = parseInt(n.tenureMonths, 10); const t = (Number.isFinite(y) ? y : 0) + (Number.isFinite(m) ? m / 12 : 0); n.yearsAtPrevious = t > 0 ? String(Math.round(t * 10) / 10) : ''; return n; });
   const updatePets = (patch) => setDraft((f) => { const n = { ...f, ...patch }; n.pets = serializePets(n); return n; });
+  const province = guessProvince(data?.profile);
+  const updateEmployment = (patch) => setDraft((f) => { const n = { ...f, ...patch }; n.businessName = n.employmentType === 'self-employed' ? n.employer : ''; return n; });
+  const updateGross = (v) => setDraft((f) => { const n = { ...f, annualIncome: v }; if (n.netIncomeSource !== 'stated') n.netIncome = v ? String(estimateNetIncome(v, province).net || '') : ''; return n; });
+  const updateNet = (v) => setDraft((f) => ({ ...f, netIncome: v, netIncomeSource: 'stated' }));
+  const resetNet = () => setDraft((f) => ({ ...f, netIncomeSource: 'estimated', netIncome: f.annualIncome ? String(estimateNetIncome(f.annualIncome, province).net || '') : '' }));
   const updateRentalStatus = (v) => setDraft((f) => { const n = { ...f, rentalStatus: v }; if (v === 'none') Object.assign(n, { previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '', prevLandlordEmail: '', prevLandlordPhone: '', tenureYears: '', tenureMonths: '', currentRent: '' }); return n; });
 
   const goApplyWithProfile = (e) => {
@@ -393,16 +405,28 @@ export default function MyApplication() {
           <Section {...sec('employment')} title="Employment & income" blurb="What realtors screen on first."
             rows={<>
               <Row label="Job title" value={emp.jobTitle} />
-              <Row label="Employer" value={emp.employer} />
-              <Row label="Time in role" value={emp.yearsAtJob ? `${emp.yearsAtJob} yr${String(emp.yearsAtJob) === '1' ? '' : 's'}` : null} />
-              <Row label="Annual income" value={money(emp.annualIncome) ? `${money(emp.annualIncome)} CAD${emp.monthlyIncome ? ` · ${money(emp.monthlyIncome)}/mo` : ''}` : null} />
+              <Row label={emp.employmentType === 'self-employed' ? 'Business' : 'Employer'} value={emp.employer ? `${emp.employer}${EMP_LABEL[emp.employmentType] ? ` · ${EMP_LABEL[emp.employmentType]}` : ''}` : null} />
+              <Row label={emp.employmentType === 'self-employed' ? 'Years in business' : 'Time in role'} value={emp.yearsAtJob ? `${emp.yearsAtJob} yr${String(emp.yearsAtJob) === '1' ? '' : 's'}` : null} />
+              <Row label="Income before tax" value={money(emp.annualIncome) ? `${money(emp.annualIncome)} CAD/yr${emp.monthlyIncome ? ` · ${money(emp.monthlyIncome)}/mo` : ''}` : null} />
+              <Row label="After tax" value={money(emp.netIncome) ? `${money(emp.netIncome)} CAD/yr ${emp.netIncomeSource === 'stated' ? '(you entered)' : '(estimate)'}` : null} />
             </>}>
             {draft && <>
+              <SelectField label="Employment type" value={draft.employmentType} onChange={(v) => updateEmployment({ employmentType: v })} options={[
+                { value: '', label: 'Select…' }, { value: 'full-time', label: 'Full-time' }, { value: 'part-time', label: 'Part-time' }, { value: 'contract', label: 'Contract' }, { value: 'self-employed', label: 'Self-employed (own or family business)' },
+              ]} />
               <Field label="Job title" required value={draft.jobTitle} onChange={(v) => set('jobTitle', v)} />
-              <Field label="Employer" required value={draft.employer} onChange={(v) => set('employer', v)} />
+              <Field label={draft.employmentType === 'self-employed' ? 'Registered business name' : 'Employer'} required value={draft.employer} onChange={(v) => updateEmployment({ employer: v })}
+                hint={draft.employmentType === 'self-employed' ? 'The business as it’s registered — your own, or a family business you work for.' : undefined} />
               <div className="mp-grid2">
-                <Field label="Years at this job" value={draft.yearsAtJob} onChange={(v) => set('yearsAtJob', v)} placeholder="3" />
-                <Field label="Annual income (CAD)" required value={draft.annualIncome} onChange={(v) => set('annualIncome', v)} placeholder="85,000" type="number" inputMode="numeric" />
+                <Field label={draft.employmentType === 'self-employed' ? 'Years in business' : 'Years at this job'} value={draft.yearsAtJob} onChange={(v) => set('yearsAtJob', v)} placeholder="3" />
+                <Field label="Annual income before tax (CAD)" required value={draft.annualIncome} onChange={updateGross} placeholder="85,000" type="number" inputMode="numeric" hint="Gross — before deductions." />
+              </div>
+              <div>
+                <Field label="Estimated after-tax income (CAD/yr)" value={draft.netIncome} onChange={updateNet} type="number" inputMode="numeric"
+                  hint={draft.netIncomeSource === 'stated' ? 'You entered this yourself.' : `Estimate for ${PROV_NAME[province]} at ${TAX_YEAR} rates — please correct if yours is different.`} />
+                {draft.netIncomeSource === 'stated' && (
+                  <button type="button" onClick={resetNet} style={{ marginTop: 6, background: 'transparent', border: 'none', padding: 0, color: C.red, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>Use the {PROV_NAME[province]} estimate instead</button>
+                )}
               </div>
             </>}
           </Section>

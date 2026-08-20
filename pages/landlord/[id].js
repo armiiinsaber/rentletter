@@ -293,7 +293,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
       rentToIncome: toNum(app.rent_to_income_ratio),
       jobTenureYears: toNum(app.years_at_job),
       employer: app.employer || null,
-      employmentType: employmentTypeFromTitle(app.job_title),
+      employmentType: ({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[app.employment_type] || employmentTypeFromTitle(app.job_title),
       yearsAtAddress: toNum(app.years_at_previous),
       currentRent: toNum(app.current_rent),
       references: Array.isArray(app.references) ? app.references.length : null,
@@ -311,9 +311,10 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
     const details = [
-      ['Income', app.annual_income ? `${money(app.annual_income)}/yr` : null],
-      ['Household income', coIncome ? `${money((Number(app.annual_income) || 0) + Number(coIncome))}/yr (joint)` : null],
-      ['Employer', app.employer || null],
+      ['Income (before tax)', app.annual_income ? `${money(app.annual_income)}/yr` : null],
+      ['After tax', app.net_income ? `${money(app.net_income)}/yr${app.net_income_source === 'stated' ? ' (stated)' : ' (estimate)'}` : null],
+      ['Household income', coIncome ? `${money((Number(app.annual_income) || 0) + Number(coIncome))}/yr (joint, before tax)` : null],
+      [app.employment_type === 'self-employed' ? 'Business' : 'Employer', app.employer ? `${app.employer}${app.employment_type ? ` · ${({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[app.employment_type]}` : ''}` : null],
       ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
       ['Rent-to-income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
       ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
@@ -358,7 +359,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             </div>
             <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
               {[app.job_title, app.employer].filter(Boolean).join(' · ') || 'Role not listed'}
-              {app.annual_income ? ` · $${Number(app.annual_income).toLocaleString()}/yr` : ''}
+              {app.annual_income ? ` · $${Number(app.annual_income).toLocaleString()}/yr before tax` : ''}
             </div>
             <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{app.application_number}</div>
             {isSetAside && (

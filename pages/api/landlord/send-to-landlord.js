@@ -81,7 +81,7 @@ export default async function handler(req, res) {
         <div style="font-size:16px;font-weight:700;color:#0f0f10;margin-bottom:4px;">${escapeHtml(a.tenant?.fullName || 'Applicant')}</div>
         <div style="font-size:13px;color:#3a3a3c;line-height:1.55;">
           ${escapeHtml(a.employment?.jobTitle || '')}${a.employment?.employer ? ` at ${escapeHtml(a.employment.employer)}` : ''}<br>
-          ${a.employment?.annualIncome ? `$${Number(a.employment.annualIncome).toLocaleString()}/yr · ` : ''}Score ${score}/5 · ${escapeHtml(a.applicationNumber || '')}
+          ${a.employment?.annualIncome ? `$${Number(a.employment.annualIncome).toLocaleString()}/yr before tax · ` : ''}Score ${score}/5 · ${escapeHtml(a.applicationNumber || '')}
         </div>
         ${notes}
       </td></tr>`;
