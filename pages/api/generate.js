@@ -1,9 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { bump, logEvent, COUNTERS } from '../../lib/stats';
-import {
-  incomeLevelScore, rentAffordabilityScore, employmentStabilityScore,
-  rentalHistoryScore, overallScore,
-} from '../../lib/scoring';
+import { calculateScorecard } from '../../lib/scorecard';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -14,85 +11,6 @@ function generateApplicationNumber() {
   const hex = () => Math.floor(Math.random() * 16).toString(16).toUpperCase();
   const seg = () => Array.from({ length: 4 }, hex).join('');
   return `RL-${year}-${seg()}-${seg()}`;
-}
-
-// ─── LANDLORD SCORECARD CALCULATION ─────────────────────────
-// Calculated server-side from form data — the tenant never sees this
-function calculateScorecard(data) {
-  const {
-    yearsAtJob, householdAnnualIncome, householdRentToIncomeRatio, hasCoApplicant,
-    previousAddress, yearsAtPrevious, previousLandlordName, referencesCount,
-    reasonForMoving, redFlags,
-  } = data;
-
-  // Employment tenure/stability — smooth ramp (see lib/scoring.js). Note keeps the years phrasing.
-  const jobYears = parseFloat(yearsAtJob) || 0;
-  const incomeStability = employmentStabilityScore(jobYears);
-  const incomeStabilityNote = jobYears >= 3
-    ? `${Math.floor(jobYears)}+ years at same employer`
-    : jobYears > 0
-      ? `${jobYears} year(s) at current employer`
-      : 'New position';
-
-  // Rent affordability — smooth Toronto-calibrated blend of rent-to-income + a diminishing
-  // income-level buffer, on HOUSEHOLD income when there is a co-applicant (see lib/scoring.js).
-  let rentAffordability = 3;
-  let rentAffordabilityNote = 'Rent not specified';
-  if (householdRentToIncomeRatio !== null && householdRentToIncomeRatio !== undefined) {
-    rentAffordability = rentAffordabilityScore(householdAnnualIncome, householdRentToIncomeRatio);
-    rentAffordabilityNote = `${householdRentToIncomeRatio}% of ${hasCoApplicant ? 'combined household' : 'monthly'} income`;
-  }
-
-  // Rental history + references — smooth base from prior tenancy, references corroborate.
-  const histYears = parseFloat(yearsAtPrevious) || 0;
-  const rentalHistory = rentalHistoryScore({
-    yearsAtPrevious: histYears, previousLandlordName, previousAddress, referencesCount,
-  });
-  const rentalHistoryNote = histYears > 0 && previousLandlordName
-    ? `${histYears} years with reference available`
-    : previousAddress
-      ? `${histYears || 'Some'} years prior, limited references`
-      : 'First-time renter — alternative documentation';
-
-  // Long-term intent
-  let longTermIntent = 4;
-  const reason = (reasonForMoving || '').toLowerCase();
-  const strongIntentKeywords = ['new job', 'job', 'school', 'university', 'partner', 'family', 'closer to work', 'commute', 'permanent', 'long-term', 'settle'];
-  const shortIntentKeywords = ['temporary', 'short-term', 'few months', 'travel'];
-  if (strongIntentKeywords.some(k => reason.includes(k))) longTermIntent = 5;
-  else if (shortIntentKeywords.some(k => reason.includes(k))) longTermIntent = 3;
-  else longTermIntent = 4;
-  const longTermIntentNote = strongIntentKeywords.find(k => reason.includes(k))
-    ? `Clear long-term reason: ${strongIntentKeywords.find(k => reason.includes(k))}`
-    : 'General life-stage move';
-
-  // Disclosures
-  let disclosures = 5;
-  let disclosuresNote = 'No items to address';
-  if (redFlags && redFlags.trim().length > 0) {
-    const flagText = redFlags.toLowerCase();
-    if (flagText.includes('bankruptcy') || flagText.includes('eviction')) {
-      disclosures = 3;
-      disclosuresNote = 'Significant items addressed honestly';
-    } else if (flagText.includes('credit') || flagText.includes('gap')) {
-      disclosures = 4;
-      disclosuresNote = 'Minor items addressed with context';
-    } else {
-      disclosures = 4;
-      disclosuresNote = 'Items proactively disclosed';
-    }
-  }
-
-  return {
-    incomeStability: { score: incomeStability, note: incomeStabilityNote },
-    rentAffordability: { score: rentAffordability, note: rentAffordabilityNote },
-    rentalHistory: { score: rentalHistory, note: rentalHistoryNote },
-    longTermIntent: { score: longTermIntent, note: longTermIntentNote },
-    disclosures: { score: disclosures, note: disclosuresNote },
-    overall: overallScore({
-      incomeStability, rentAffordability, rentalHistory, longTermIntent, disclosures,
-    }),
-  };
 }
 
 // ─── DATA STORAGE (Vercel KV with graceful fallback) ────────

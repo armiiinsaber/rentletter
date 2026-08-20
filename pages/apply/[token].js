@@ -18,19 +18,8 @@ import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
 import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } from '../../lib/provinces';
 import { formatUnit } from '../../lib/unitType';
-
-// Age (whole years) from an ISO yyyy-mm-dd DOB, accounting for whether this year's
-// birthday has already occurred. Returns null for an empty/unparseable date.
-function ageFromDob(dob) {
-  if (!dob) return null;
-  const d = new Date(`${dob}T00:00:00`);
-  if (isNaN(d.getTime())) return null;
-  const now = new Date();
-  let age = now.getFullYear() - d.getFullYear();
-  const m = now.getMonth() - d.getMonth();
-  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age -= 1;
-  return age;
-}
+import { EMPTY_FORM, serializePets, ageFromDob } from '../../lib/tenantProfile';
+import { FormSection, Field, Textarea, SelectField, ToggleField } from '../../components/apply/fields';
 
 // Phone helpers — validate on exactly 10 digits, display as (XXX) XXX-XXXX.
 const phoneDigits = (v) => String(v || '').replace(/\D/g, '');
@@ -50,55 +39,6 @@ function underAgeMsg(province) {
   return `You must be at least ${min} (the age of majority in ${provinceName(province)}) to submit a rental application on your own. Applicants under ${min} need a guarantor — support for that is coming soon.`;
 }
 
-// Same application schema the homepage form + generate.js use. Do not rename keys.
-const EMPTY_FORM = {
-  email: '',
-  apartmentAddress: '', apartmentDescription: '',
-  fullName: '', age: '', dateOfBirth: '', phone: '',
-  jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
-  previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
-  currentRent: '',
-  moveInDate: '', reasonForMoving: '',
-  numberOfOccupants: '1', occupantsDetails: '', smoker: 'no', evParkingNeeded: 'no',
-  hasCoApplicant: false,
-  coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
-  coApplicantIncome: '', coApplicantRelationship: '',
-  personality: '', pets: '', redFlags: '',
-  hasVehicle: false,
-  vehicleMakeModel: '', vehicleYear: '',
-  reference1Name: '', reference1Relationship: '', reference1Contact: '',
-  reference2Name: '', reference2Relationship: '', reference2Contact: '',
-  // ── Tenancy Profile: structured capture (UI-side). generate.js whitelists its stored
-  // record, so these DO NOT persist as-is — instead each is serialized into one of the
-  // whitelisted keys above before submit (contact → previousLandlordContact, tenure →
-  // yearsAtPrevious, pet details → pets). rentalStatus is a UI controller (drives which
-  // fields show); its value rides the payload harmlessly today and starts persisting the
-  // day generate.js whitelists it. ──
-  rentalStatus: 'current', // 'current' | 'previous' | 'none'
-  prevLandlordEmail: '', prevLandlordPhone: '',
-  tenureYears: '', tenureMonths: '',
-  hasPets: false, petType: 'cat', petCount: '1', petSize: '', petSpayedNeutered: false, petTrained: false, petNotes: '',
-};
-
-// Serialize the structured pet answers into the stored free-text `pets` field —
-// written to read naturally everywhere the string is displayed today.
-const PET_SIZE_LABELS = { small: 'small (under 25 lb)', medium: 'medium (25–60 lb)', large: 'large (60+ lb)' };
-function serializePets(f) {
-  if (!f.hasPets) return '';
-  const plural = f.petCount !== '1';
-  const count = f.petCount === '3+' ? '3 or more' : f.petCount;
-  const type = f.petType === 'catdog'
-    ? (plural ? 'cats & dogs' : 'cat & dog')
-    : `${{ cat: 'cat', dog: 'dog', other: 'pet' }[f.petType] || 'pet'}${plural ? 's' : ''}`;
-  const traits = [
-    f.petSize ? PET_SIZE_LABELS[f.petSize] : null,
-    f.petSpayedNeutered ? 'spayed/neutered' : null,
-    f.petTrained ? 'house-trained' : null,
-  ].filter(Boolean).join(', ');
-  const note = String(f.petNotes || '').trim();
-  return `${count} ${type}${traits ? ` — ${traits}` : ''}${note ? `. ${note}` : ''}`;
-}
-
 export default function ApplyPage() {
   const router = useRouter();
   // status: 'loading' | 'invalid' | 'ready' | 'submitting' | 'done'
@@ -112,11 +52,50 @@ export default function ApplyPage() {
   const [touched, setTouched] = useState({});
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [reviewing, setReviewing] = useState(false); // deliberate review-and-confirm step
+  // ── Saved-profile reuse ─────────────────────────────────────────────────────────────────
+  // /my-application stores the tenant's RL + owner token in localStorage on THIS device (the
+  // token never travels in a URL we create). If present, offer to fill this form from that
+  // profile via /api/application/manage `prefill`. The prefilled form still goes through the
+  // same validation + review-and-confirm step — nothing is sent until they confirm.
+  const [saved, setSaved] = useState(null);          // { app, token } from localStorage
+  const [prefill, setPrefill] = useState({ state: 'idle', error: '', source: null, dismissed: false }); // state: idle|loading|applied|error
   // Reveal the form on load / scroll. Depends on `status` so sections that mount once the invite
   // resolves (status → 'ready') get observed. Presentation only — no effect on validation.
   useReveal(status);
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const app = localStorage.getItem('rentletter_app_number');
+    const tok = localStorage.getItem('rentletter_owner_token');
+    if (app && tok) setSaved({ app, token: tok });
+  }, []);
+
+  const useSavedProfile = async () => {
+    if (!saved || prefill.state === 'loading') return;
+    setPrefill((p) => ({ ...p, state: 'loading', error: '' }));
+    try {
+      const r = await fetch('/api/application/manage', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ applicationNumber: saved.app, ownerToken: saved.token, action: 'prefill' }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j?.form) throw new Error(j?.error || 'Could not load your saved profile.');
+      // Everything about the tenant comes from the profile; the UNIT facts stay from this invite.
+      setForm((f) => ({ ...EMPTY_FORM, ...j.form, apartmentAddress: f.apartmentAddress, apartmentDescription: f.apartmentDescription }));
+      setTouched({}); setTriedSubmit(false); setError('');
+      setPrefill({ state: 'applied', error: '', source: { app: j.sourceApplicationNumber, address: j.sourceListingAddress }, dismissed: false });
+    } catch (e) {
+      setPrefill((p) => ({ ...p, state: 'error', error: e.message || 'Could not load your saved profile.' }));
+    }
+  };
+  // Deep link from the profile page / confirmation email: /apply/{token}#profile auto-fills.
+  useEffect(() => {
+    if (status !== 'ready' || !saved || prefill.state !== 'idle') return;
+    if (typeof window !== 'undefined' && (window.location.hash === '#profile' || new URLSearchParams(window.location.search).get('profile') === '1')) useSavedProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, saved]);
   const markTouched = (k) => setTouched((t) => ({ ...t, [k]: true }));
   const showErr = (k) => Boolean(touched[k] || triedSubmit);
 
@@ -274,6 +253,10 @@ export default function ApplyPage() {
       // must never block or break the tenant's confirmation.
       setResult({ applicationNumber, ownerToken });
       setStatus('done');
+      // Keep the profile on this device so the next invite link offers "use my saved profile".
+      try {
+        if (ownerToken) { localStorage.setItem('rentletter_app_number', applicationNumber); localStorage.setItem('rentletter_owner_token', ownerToken); }
+      } catch (e) { /* private mode — the email carries the same keys */ }
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       // Background: tag the invite (KV), then mirror into Supabase (the bridge —
@@ -393,8 +376,8 @@ export default function ApplyPage() {
 
               {result.ownerToken && (
                 <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, padding: '14px 16px', fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>
-                  <strong style={{ color: C.ink }}>Keep this private —</strong> your owner key lets you see who viewed your application and revoke it anytime at{' '}
-                  <a href="/my-application" style={{ color: C.red, textDecoration: 'underline', fontWeight: 600 }}>rentletter.ca/my-application</a>:
+                  <strong style={{ color: C.ink }}>Keep this private —</strong> your owner key opens your profile at{' '}
+                  <a href="/my-application" style={{ color: C.red, textDecoration: 'underline', fontWeight: 600 }}>rentletter.ca/my-application</a>, where you can see who viewed your application, update your details, revoke it — and apply to your next listing in seconds without retyping:
                   <div className="rl-serif" style={{ marginTop: 8, color: C.ink, wordBreak: 'break-all', fontSize: 13 }}>{result.ownerToken}</div>
                   {form.email && <div style={{ marginTop: 8 }}>We also emailed a copy to {form.email}.</div>}
                 </div>
@@ -433,6 +416,49 @@ export default function ApplyPage() {
                   <div style={{ fontSize: 12, color: '#9a958a', marginTop: 10 }}>
                     The unit details above were entered by the listing realtor — you only need to tell us about yourself below.
                   </div>
+                </div>
+              )}
+
+              {/* Saved-profile offer — the "apply in seconds" entry point. Shown only when this
+                  device holds a saved profile (from /my-application) and it hasn't been applied. */}
+              {saved && prefill.state !== 'applied' && !prefill.dismissed && (
+                <div className="rl-in" style={{ position: 'relative', overflow: 'hidden', background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(16px, 4vw, 22px) clamp(18px, 4vw, 24px)', marginBottom: 24 }}>
+                  <span aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 44, height: 3, background: C.red }} />
+                  <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Apply in seconds</div>
+                  <div style={{ fontSize: 17, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', lineHeight: 1.25, marginBottom: 6, textWrap: 'balance' }}>
+                    Fill this application from your saved profile
+                  </div>
+                  <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
+                    We’ll bring over what you entered for <span style={{ fontFamily: 'monospace', color: C.ink }}>{saved.app}</span> — employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.
+                  </p>
+                  {prefill.state === 'error' && (
+                    <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+                      {prefill.error} {/revoked/i.test(prefill.error) && <a href="/my-application" style={{ color: C.red, fontWeight: 700 }}>Open my profile →</a>}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={useSavedProfile} disabled={prefill.state === 'loading'} className="rl-btn"
+                      style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: prefill.state === 'loading' ? 'wait' : 'pointer', minHeight: 44, opacity: prefill.state === 'loading' ? 0.75 : 1 }}>
+                      {prefill.state === 'loading' ? 'Loading your profile…' : 'Use my saved profile'}
+                    </button>
+                    <button type="button" onClick={() => setPrefill((p) => ({ ...p, dismissed: true }))}
+                      style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '12px 16px', fontSize: 14, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>
+                      Start fresh
+                    </button>
+                  </div>
+                </div>
+              )}
+              {prefill.state === 'applied' && (
+                <div role="status" style={{ background: C.greenTint, border: `1px solid ${C.green}`, borderRadius: R.card, padding: '14px 18px', marginBottom: 24, fontSize: 13.5, color: C.ink, lineHeight: 1.55 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: C.green, marginBottom: 4 }}>
+                    <Icon name="check" size={15} color={C.green} strokeWidth={2.5} /> Filled from your saved profile
+                  </div>
+                  Check each section — especially <strong>income</strong> and your <strong>move-in date</strong> — then review and submit. This creates a separate application for this listing; your saved profile isn’t changed.
+                  {prefill.source?.address && form.apartmentAddress && prefill.source.address.trim().toLowerCase() === form.apartmentAddress.trim().toLowerCase() && (
+                    <div style={{ marginTop: 10, padding: '10px 12px', background: C.amberTint, borderLeft: `3px solid ${C.gold}`, borderRadius: R.ctrl, color: C.ink }}>
+                      <strong>Heads up:</strong> your saved profile was already submitted for this same address ({prefill.source.app}). Submitting again adds a second application to the realtor’s list — if you only want to update details, edit your profile instead.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -706,14 +732,14 @@ export default function ApplyPage() {
                           </div>
                         ))}
                       </div>
-                      {/* VERIFIED one-shot: applications have no edit path after submit —
-                          /api/application/manage supports only view/revoke/unrevoke, and
-                          application mode always mints a fresh RL (resubmitting via the same
-                          invite creates a second application, it doesn't update this one). */}
+                      {/* One-shot SUBMISSION: this creates the application for this listing once.
+                          The tenant can later edit the facts on /my-application (the same record,
+                          same RL) — but resubmitting through the invite creates a second
+                          application, so the warning stands. */}
                       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: C.paperDeep, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, marginBottom: 16, fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>
                         <span style={{ marginTop: 1, flexShrink: 0, color: C.red, display: 'inline-flex' }}><Icon name="shield" size={15} /></span>
                         <span>
-                          Take a second to double-check everything above — <strong style={{ color: C.ink }}>once you submit, you can’t edit it</strong>, and fixing a mistake means filling out a new application.
+                          Take a second to double-check everything above — <strong style={{ color: C.ink }}>once you submit, you can’t edit it here</strong>. Later changes go through your profile page, and submitting this form again would create a second application.
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
@@ -735,77 +761,5 @@ export default function ApplyPage() {
         </div>
       </div>
     </>
-  );
-}
-
-// ─── Form field components (match the homepage application form exactly) ──────
-function FormSection({ num, title, required, children }) {
-  return (
-    <div className="rl-in" style={{ marginBottom: 40, paddingBottom: 40, borderBottom: `1px solid ${C.rule}` }}>
-      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 14 }}>
-        <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500 }}>{num}</span>
-        <h3 style={{ fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>{title}</h3>
-        {required && <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}>Required</span>}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>{children}</div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, onBlur, placeholder, type = 'text', required, error, hint, inputMode }) {
-  return (
-    <div>
-      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>
-        {label}{required && <span aria-hidden="true" style={{ color: C.red, fontWeight: 700, marginLeft: 4 }}>*</span>}
-      </label>
-      <input type={type} inputMode={inputMode} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        aria-required={required || undefined} aria-invalid={error ? true : undefined}
-        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${error ? C.red : C.rule}`, background: 'transparent', color: C.ink, outline: 'none', transition: 'border-color 0.2s' }}
-        onFocus={(e) => (e.target.style.borderBottomColor = C.ink)}
-        onBlur={(e) => { e.target.style.borderBottomColor = error ? C.red : C.rule; onBlur && onBlur(); }} />
-      {error
-        ? <div style={{ fontSize: 12, color: C.red, marginTop: 6, lineHeight: 1.5 }}>{error}</div>
-        : hint ? <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>{hint}</div> : null}
-    </div>
-  );
-}
-
-function Textarea({ label, value, onChange, placeholder }) {
-  return (
-    <div>
-      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
-      <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${C.rule}`, background: 'transparent', color: C.ink, outline: 'none', resize: 'vertical', fontFamily: "'Inter', sans-serif", lineHeight: 1.5, transition: 'border-color 0.2s' }}
-        onFocus={(e) => (e.target.style.borderBottomColor = C.ink)}
-        onBlur={(e) => (e.target.style.borderBottomColor = C.rule)} />
-    </div>
-  );
-}
-
-function SelectField({ label, value, onChange, options }) {
-  return (
-    <div>
-      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)}
-        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${C.rule}`, background: 'transparent', color: C.ink, outline: 'none', appearance: 'none', fontFamily: "'Inter', sans-serif", cursor: 'pointer' }}
-        onFocus={(e) => (e.target.style.borderBottomColor = C.ink)}
-        onBlur={(e) => (e.target.style.borderBottomColor = C.rule)}>
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function ToggleField({ label, value, onChange }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0' }}>
-      <button type="button" onClick={() => onChange(!value)}
-        style={{ width: 44, height: 24, background: value ? C.red : C.rule, border: 'none', borderRadius: 12, position: 'relative', cursor: 'pointer', transition: 'background 0.2s', padding: 0, flexShrink: 0 }}>
-        <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: C.paper, transition: 'left 0.2s' }} />
-      </button>
-      <span style={{ fontSize: 14, color: C.ink, fontWeight: 500, cursor: 'pointer' }} onClick={() => onChange(!value)}>{label}</span>
-    </div>
   );
 }

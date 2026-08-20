@@ -214,10 +214,16 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                 <tr>
                   <td style="padding: 20px 24px;">
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #d72027; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 10px;">
-                      Manage your application
+                      Your profile
                     </p>
-                    <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
-                      See who's looked you up. Revoke access any time. Your owner token below is the key &mdash; save this email or keep it somewhere private.
+                    <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #3a3a3c; margin: 0 0 8px;">
+                      This application is now your saved profile. From it you can see who's looked you up, update your details, and revoke access any time.
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #0f0f10; font-weight: 600; margin: 0 0 14px;">
+                      Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
+                      Your owner key below is the only thing that unlocks it &mdash; save this email or keep it somewhere private.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
                       Owner token
@@ -229,7 +235,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                       <tr>
                         <td style="background: #0f0f10;">
                           <a href="https://rentletter.ca/my-application?app=${applicationNumber}&token=${ownerToken}" style="display: inline-block; padding: 12px 22px; color: #faf8f3; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; letter-spacing: 0.02em;">
-                            Open my dashboard &rarr;
+                            Open my profile &rarr;
                           </a>
                         </td>
                       </tr>
@@ -467,10 +473,16 @@ export default async function handler(req, res) {
                 <tr>
                   <td style="padding: 20px 24px;">
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #d72027; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin: 0 0 10px;">
-                      Manage your application
+                      Your profile
                     </p>
-                    <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
-                      See who's looked you up. Revoke access any time. Your owner token below is the key &mdash; save this email or keep it somewhere private.
+                    <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #3a3a3c; margin: 0 0 8px;">
+                      This application is now your saved profile. From it you can see who's looked you up, update your details, and revoke access any time.
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #0f0f10; font-weight: 600; margin: 0 0 14px;">
+                      Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
+                    </p>
+                    <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
+                      Your owner key below is the only thing that unlocks it &mdash; save this email or keep it somewhere private.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
                       Owner token
@@ -482,7 +494,7 @@ export default async function handler(req, res) {
                       <tr>
                         <td style="background: #0f0f10;">
                           <a href="https://rentletter.ca/my-application?app=${applicationNumber}&token=${ownerToken}" style="display: inline-block; padding: 12px 22px; color: #faf8f3; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; letter-spacing: 0.02em;">
-                            Open my dashboard &rarr;
+                            Open my profile &rarr;
                           </a>
                         </td>
                       </tr>
