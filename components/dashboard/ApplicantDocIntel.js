@@ -7,6 +7,7 @@ import { useState, useRef } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import DocIntelReport from './DocIntelReport';
+import { editedAfterVerification, fmtShort } from '../../lib/profileEdits';
 
 const MAX = 6;
 const OK_MIME = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -21,7 +22,7 @@ function readAsBase64(file) {
   });
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved }) {
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt }) {
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]); // File[]
@@ -43,6 +44,8 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   const [confirmArchId, setConfirmArchId] = useState('');
   const inputRef = useRef(null);
   const hasReport = !!result;
+  // "Edited after verification" — the tenant changed their profile after this report ran.
+  const edited = hasReport ? editedAfterVerification({ profile_updated_at: profileUpdatedAt }, [result]) : { edited: false };
 
   const addFiles = (incoming) => {
     setError('');
@@ -194,12 +197,21 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
       <button onClick={() => setOpen((o) => !o)}
-        style={{ ...ghostBtn, color: C.ink, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        style={{ ...ghostBtn, color: C.ink, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', textAlign: 'left' }}>
         <Icon name="doc" size={14} color={C.ink} />
         {hasReport ? 'Document verification' : 'Analyze documents'}
         {hasReport && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.green, padding: '2px 8px', borderRadius: R.pill }}>✓ done</span>}
+        {edited.edited && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, padding: '2px 8px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>Edited after verification</span>}
         <span aria-hidden="true" style={{ color: C.inkMute, marginLeft: 2 }}>{open ? '▲' : '▼'}</span>
       </button>
+
+      {/* Caution (not an error): profile edited after the active verification. Shown whether or
+          not the panel is open so it can't be missed on a quick scan. */}
+      {edited.edited && (
+        <div role="note" style={{ marginTop: 10, padding: '10px 14px', background: C.amberTint, borderLeft: `3px solid ${C.amber}`, borderRadius: R.ctrl, fontSize: 12.5, color: C.ink, lineHeight: 1.55 }}>
+          <strong>Edited after verification.</strong> {applicantName ? applicantName.split(' ')[0] : 'The applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were verified on {fmtShort(edited.verifiedAt)}. The verified facts may no longer match what’s on the application — if income or employer changed and it matters here, re-request documents below.
+        </div>
+      )}
 
       {/* Archived report — read-only view. */}
       {open && viewing && (

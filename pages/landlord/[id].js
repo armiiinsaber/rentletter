@@ -19,6 +19,7 @@ import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import ChatWidget from '../../components/ChatWidget';
 import { formatUnit } from '../../lib/unitType';
+import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 
@@ -353,6 +354,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
               {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
               {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
+              {editedAfterVerification(app, a.docVerifications).edited && <span title="The applicant updated their profile after their documents were verified" style={{ fontSize: 10, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, fontWeight: 700, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>EDITED AFTER VERIFICATION</span>}
             </div>
             <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
               {[app.job_title, app.employer].filter(Boolean).join(' · ') || 'Role not listed'}
@@ -418,6 +420,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           initialVerifications={a.docVerifications}
           initialArchived={a.docArchived}
           initialInsight={a.aiInsight}
+          profileUpdatedAt={app.profile_updated_at}
           onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
         />
         {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
