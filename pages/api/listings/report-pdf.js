@@ -7,6 +7,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
 import { loadPairingFonts } from '../../../lib/pdfFonts';
+import { logServerError } from '../../../lib/serverLog';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -21,6 +22,7 @@ export default async function handler(req, res) {
   const listingId = String(req.query.listingId || '');
   if (!listingId) return res.status(400).json({ error: 'listingId required.' });
 
+  let fontPairingForLog = null;
   try {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
@@ -28,6 +30,7 @@ export default async function handler(req, res) {
     if (ctx.active.length + ctx.setAside.length === 0) {
       return res.status(400).json({ error: 'No applicants to present yet.' });
     }
+    fontPairingForLog = ctx.profile?.brand_fonts?.id || null;
     const fonts = loadPairingFonts(ctx.profile?.brand_fonts);
     const bytes = await buildLandlordReportPdf({ ...ctx, fonts });
     const slug = String(ctx.listing.name || ctx.listing.address || 'listing').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
@@ -37,7 +40,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Length', bytes.length);
     return res.status(200).send(Buffer.from(bytes));
   } catch (e) {
-    console.error('[listings/report-pdf] error:', e?.message || e);
-    return res.status(500).json({ error: 'Failed to generate PDF.' });
+    logServerError('[listings/report-pdf]', e, { listingId, fontPairing: fontPairingForLog });
+    return res.status(500).json({ error: 'Failed to generate PDF.', code: 'report_failed' });
   }
 }

@@ -12,6 +12,9 @@ const nextConfig = {
   outputFileTracingIncludes: {
     '/api/listings/report-pdf': ['./assets/fonts/**'],
     '/api/listings/send-report': ['./assets/fonts/**'],
+    // The per-finalist verification PDF uses the same builder/fonts — without this entry it
+    // silently fell back to Helvetica in production.
+    '/api/applicants/verify-confirm-pdf': ['./assets/fonts/**'],
   },
 };
 

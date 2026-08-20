@@ -108,8 +108,16 @@ function StepChip({ n, label, state }) {
   );
 }
 
-export default function LogoStudio({ fullName, brokerage, primary, secondary, onPrimary, onSecondary, onChosen }) {
-  const profileReady = !!(String(fullName || '').trim() && String(brokerage || '').trim());
+// Props from ProfileEditorBody:
+//   fullName / brokerage — LIVE form values (the gate below unlocks the instant both are typed).
+//   onEnsureProfileSaved — async () => bool. The server builds the wordmark from the SAVED
+//     profile row and 400s with code 'profile_incomplete' if name/brokerage aren't persisted
+//     yet. We flush unsaved edits through this right before every generation so the realtor
+//     never has to find the Save button first.
+//   onJumpToDetails — scrolls/focuses the name field (used by the gate notice).
+export default function LogoStudio({ fullName, brokerage, primary, secondary, onPrimary, onSecondary, onChosen, onEnsureProfileSaved, onJumpToDetails }) {
+  const missing = [!String(fullName || '').trim() && 'your name', !String(brokerage || '').trim() && 'your brokerage'].filter(Boolean);
+  const profileReady = missing.length === 0;
   const colorsReady = profileReady && isHex(primary) && isHex(secondary);
 
   const [brief, setBrief] = useState('');
@@ -147,17 +155,29 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
   const postGenerate = async (body) => {
     setError(''); setSavedKey(null); setBusy(true);
     try {
+      // Flush unsaved name/brokerage first — the server reads the saved row, not this form.
+      if (onEnsureProfileSaved) {
+        const ok = await onEnsureProfileSaved();
+        if (!ok) { setError('Your name and brokerage could not be saved just now, so we can’t build the wordmark. Check the message at the top of the form and try again.'); return null; }
+      }
       const r = await fetch('/api/branding/generate-logo', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-      const j = await r.json();
+      let j = null;
+      try { j = await r.json(); } catch (e) { j = null; } // a platform timeout returns a non-JSON body
       if (r.status === 429) { setLimitMsg(j?.error || "You've hit today's generation limit."); return null; }
-      if (!r.ok || !Array.isArray(j.variations) || j.variations.length === 0) {
+      if (j?.code === 'profile_incomplete') {
+        setError('Your name and brokerage aren’t saved yet. Save them at the top of the form, then generate again.'); return null;
+      }
+      if (r.status === 504 || (!j && !r.ok)) {
+        setError('The generator took too long to answer. Please try again — if it keeps happening, try a shorter description.'); return null;
+      }
+      if (!r.ok || !Array.isArray(j?.variations) || j.variations.length === 0) {
         setError(j?.error || 'Could not generate logos. Please try again.'); return null;
       }
       return j.variations;
     } catch (e) {
-      setError('Could not generate logos. Please try again.'); return null;
+      setError('Could not reach the generator. Check your connection and try again.'); return null;
     } finally {
       setBusy(false);
     }
@@ -251,9 +271,17 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </div>
       )}
 
+      {/* Gate notice — explicit and upfront. Names exactly what's missing and jumps to the field.
+          Unlocks live as the realtor types (props are the live form); the save is flushed
+          automatically before generation, so there's no save-and-come-back trip. */}
       {!refineMode && !profileReady && (
-        <div style={{ padding: '10px 14px', marginBottom: 12, background: C.amberTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
-          <strong>Add your name and brokerage first</strong> (in the fields below) so we can build your brand.
+        <div role="status" style={{ padding: '12px 14px', marginBottom: 12, background: C.amberTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+          <div style={{ fontWeight: 800, marginBottom: 2 }}>Locked until we have {missing.join(' and ')}</div>
+          <div style={{ color: C.inkSoft, marginBottom: 8 }}>The wordmark is built from your real name and brokerage — they’re the fields at the top of this form. Unlocks as soon as both are filled; no need to save first.</div>
+          <button type="button" onClick={onJumpToDetails}
+            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.pill, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span aria-hidden="true">↑</span> Go to those fields
+          </button>
         </div>
       )}
 
@@ -312,7 +340,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </>
       )}
 
-      {error && <div style={{ marginTop: 12, fontSize: 13, color: C.red }}>{error}</div>}
+      {error && <div role="alert" style={{ marginTop: 12, padding: '10px 14px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{error}</div>}
       {usingKey !== null && (
         <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13, color: C.inkSoft }}>
           <span className="rl-lspin" aria-hidden="true" /> Saving your logo…
@@ -462,7 +490,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         .rl-lspin {
           width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%;
           border: 2.5px solid ${C.rule}; border-top-color: ${C.red};
-          display: inline-block; animation: rl-lspin 0.7s linear infinite;
+          display: inline-block;
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .rl-lspin { animation: rl-lspin 0.7s linear infinite; }
         }
         @keyframes rl-lspin { to { transform: rotate(360deg); } }
       `}</style>

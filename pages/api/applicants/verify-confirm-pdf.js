@@ -9,6 +9,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadApplicantVerification } from '../../../lib/listingReportData';
 import { buildVerificationPdf } from '../../../lib/landlordReportPdf';
 import { loadPairingFonts } from '../../../lib/pdfFonts';
+import { logServerError } from '../../../lib/serverLog';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -23,11 +24,13 @@ export default async function handler(req, res) {
   const { listingId, linkId, applicationId } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant reference.' });
 
+  let fontPairingForLog = null;
   try {
     const admin = getSupabaseAdminClient();
     const loaded = await loadApplicantVerification(supabase, admin, listingId, linkId, applicationId, user.id);
     if (loaded.error) return res.status(loaded.status || 400).json({ error: loaded.error });
 
+    fontPairingForLog = loaded.profile?.brand_fonts?.id || null;
     const fonts = loadPairingFonts(loaded.profile?.brand_fonts);
     const bytes = await buildVerificationPdf({
       profile: loaded.profile,
@@ -43,7 +46,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Length', bytes.length);
     return res.status(200).send(Buffer.from(bytes));
   } catch (e) {
-    console.error('[verify-confirm-pdf] error:', e?.message || e);
-    return res.status(500).json({ error: 'Could not generate the verification PDF.' });
+    logServerError('[verify-confirm-pdf]', e, { listingId, linkId, fontPairing: fontPairingForLog });
+    return res.status(500).json({ error: 'Could not generate the verification PDF.', code: 'report_failed' });
   }
 }

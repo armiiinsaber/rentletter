@@ -8,6 +8,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
 import { loadPairingFonts } from '../../../lib/pdfFonts';
+import { logServerError } from '../../../lib/serverLog';
 import { humanRightsCodeName } from '../../../lib/provinces';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -32,6 +33,7 @@ export default async function handler(req, res) {
   const { listingId, note } = req.body || {};
   if (!listingId) return res.status(400).json({ error: 'listingId required.' });
 
+  let fontPairingForLog = null;
   try {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
@@ -51,6 +53,7 @@ export default async function handler(req, res) {
     const personalNote = String(note || '').slice(0, 1000);
     const n = ctx.active.length + ctx.setAside.length;
 
+    fontPairingForLog = ctx.profile?.brand_fonts?.id || null;
     const fonts = loadPairingFonts(ctx.profile?.brand_fonts);
     const bytes = await buildLandlordReportPdf({ ...ctx, fonts });
 
@@ -88,7 +91,7 @@ export default async function handler(req, res) {
     }
     return res.status(200).json({ ok: true, sentTo: landlordEmail });
   } catch (e) {
-    console.error('[listings/send-report] error:', e?.message || e);
-    return res.status(500).json({ error: 'Email send failed. Try again.' });
+    logServerError('[listings/send-report]', e, { listingId, fontPairing: fontPairingForLog });
+    return res.status(500).json({ error: 'Email send failed. Try again.', code: 'report_failed' });
   }
 }

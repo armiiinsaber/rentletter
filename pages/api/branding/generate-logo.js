@@ -7,6 +7,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { validateLogoSvg } from '../../../lib/svgSanitize';
+import { describeAiError } from '../../../lib/aiErrors';
+
+// Three full SVG concepts take well over the platform default (10s Hobby / 15s Pro).
+// Without this, the function was killed mid-generation and the client saw a generic error.
+export const config = { maxDuration: 60 };
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -193,7 +198,16 @@ export default async function handler(req, res) {
     }
 
     if (variations.length === 0) {
-      return res.status(502).json({ error: 'The generator returned nothing usable. Please try again or rephrase.' });
+      console.error('[branding/generate-logo] no usable variations', JSON.stringify({
+        stop_reason: message.stop_reason, parsed: parsed.length, rawChars: raw.length, rawHead: raw.slice(0, 200),
+      }));
+      const cutOff = message.stop_reason === 'max_tokens';
+      return res.status(502).json({
+        error: cutOff
+          ? 'The concepts came back too long to finish. Try a shorter description.'
+          : 'The generator returned nothing usable. Please try again or rephrase.',
+        code: cutOff ? 'ai_truncated' : 'ai_unusable',
+      });
     }
 
     return res.status(200).json({
@@ -202,7 +216,7 @@ export default async function handler(req, res) {
       limit: DAILY_LIMIT,
     });
   } catch (e) {
-    console.error('[branding/generate-logo] error:', e?.message || e);
-    return res.status(500).json({ error: 'Could not generate logos right now. Please try again.' });
+    const ai = describeAiError(e, '[branding/generate-logo]');
+    return res.status(ai.status).json({ error: ai.message || 'Could not generate logos right now. Please try again.', code: ai.code });
   }
 }

@@ -5,7 +5,17 @@
 // row) and the logos Storage bucket. One continuous "your profile & brand" flow, ordered most-
 // fundamental first: your details (identity) → logo → final aesthetic touches (colours + fonts).
 // No separate labelled sections — it reads top-to-bottom as one form.
-import { useState, useRef, useEffect } from 'react';
+//
+// SAVE MODEL (one rule, everywhere): everything on this screen autosaves.
+//   • Detail fields (name, brokerage, phone, license, province) save when you leave a field
+//     (blur / province change), debounced, and are flushed before any AI generation.
+//   • Brand colours + derived palette save 600ms after a change. Logo and font pairing save
+//     the moment they're chosen.
+// A sticky status strip at the top says exactly which state the form is in ("Saving…",
+// "All changes saved", "Unsaved — saving when you leave the field · Save now"). The bottom
+// Save button remains as an explicit flush (and closes the modal) but is no longer the only
+// way to persist anything.
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
@@ -42,6 +52,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
     license_number: profile?.license_number || '',
     province: normalizeProvince(profile?.province),
   });
+  const DETAIL_KEYS = ['full_name', 'brokerage', 'phone', 'license_number', 'province'];
+  const savedFormRef = useRef(savedForm); savedFormRef.current = savedForm;
   const [brandColor, setBrandColor] = useState(profile?.brand_color || '');
   const [brandColorSecondary, setBrandColorSecondary] = useState(profile?.brand_color_secondary || '');
   const [fontId, setFontId] = useState(profile?.brand_fonts?.id || '');
@@ -49,15 +61,24 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
 
   // Pick a font pairing → persist to profiles.brand_fonts (separate update so a
   // not-yet-added column can't affect other saves).
+  // NOTE: supabase-js returns { error } rather than throwing, so the previous try/catch could
+  // never notice a failed write — the card showed "IN USE" while nothing was persisted.
+  const [fontState, setFontState] = useState('idle'); // idle | saving | saved | error
   const selectFont = async (fp) => {
-    setFontId(fp.id); setSavedOk(false);
+    const prev = fontId;
+    setFontId(fp.id); setSavedOk(false); setFontState('saving'); setError('');
     try {
       const supabase = getSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from('profiles').update({ brand_fonts: fp }).eq('id', user.id).select().single();
-      if (data) onSaved?.(data);
-    } catch (e) { /* brand_fonts column not added yet — non-fatal */ }
+      if (!user) { setFontId(prev); setFontState('error'); setError('Your session expired. Please sign in again.'); return; }
+      const { data, error: upErr } = await supabase.from('profiles').update({ brand_fonts: fp }).eq('id', user.id).select().single();
+      if (upErr || !data) {
+        setFontId(prev); setFontState('error');
+        setError(`Could not save the font pairing${upErr?.message ? ': ' + upErr.message : ''}. Your reports keep using the previous pairing.`);
+        return;
+      }
+      onSaved?.(data); setFontState('saved');
+    } catch (e) { setFontId(prev); setFontState('error'); setError('Could not save the font pairing. Please try again.'); }
   };
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
   const [studioOpen, setStudioOpen] = useState(!profile?.logo_url);
@@ -116,37 +137,92 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
     setLogoBusy(false);
   };
 
-  // Returns true on success, false on failure — so the leave-guard can "Save & leave" reliably.
-  const save = async () => {
-    setSaving(true);
-    setError('');
+  // ── Detail-field persistence ───────────────────────────────────────────────────────────
+  // Single write path for the detail fields (+ colours). Used by: the Save button, blur
+  // autosave, "Save & leave", and LogoStudio's pre-generation flush. Reads the LATEST form via
+  // a ref so a blur-triggered save never writes stale values. Returns true on success.
+  const formRef = useRef(form); formRef.current = form;
+  const colorRef = useRef({ brandColor, brandColorSecondary }); colorRef.current = { brandColor, brandColorSecondary };
+  const savingRef = useRef(false);
+  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
+  const waitIdle = () => new Promise((r) => { const t = setInterval(() => { if (!savingRef.current) { clearInterval(t); r(); } }, 50); });
+  const persistDetails = useCallback(async () => {
+    if (savingRef.current) { // a blur-save is mid-flight — let it finish, then write the latest values
+      await waitIdle();
+      const f0 = formRef.current;
+      if (!DETAIL_KEYS.some((k) => f0[k] !== savedFormRef.current[k])) return true;
+    }
+    savingRef.current = true;
+    setSaving(true); setSaveState('saving'); setError('');
+    const f = formRef.current;
+    const { brandColor: bc, brandColorSecondary: bcs } = colorRef.current;
     try {
       const supabase = getSupabaseBrowserClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setError('Your session expired. Please sign in again.'); setSaving(false); return false; }
+      if (!user) { setError('Your session expired. Please sign in again.'); setSaveState('error'); return false; }
       const patch = {
-        full_name: form.full_name.trim() || null,
-        brokerage: form.brokerage.trim() || null,
-        phone: form.phone.trim() || null,
-        license_number: form.license_number.trim() || null,
-        province: normalizeProvince(form.province),
-        brand_color: /^#[0-9a-fA-F]{6}$/.test(brandColor) ? brandColor.toLowerCase() : null,
-        brand_color_secondary: /^#[0-9a-fA-F]{6}$/.test(brandColorSecondary) ? brandColorSecondary.toLowerCase() : null,
+        full_name: f.full_name.trim() || null,
+        brokerage: f.brokerage.trim() || null,
+        phone: f.phone.trim() || null,
+        license_number: f.license_number.trim() || null,
+        province: normalizeProvince(f.province),
+        brand_color: /^#[0-9a-fA-F]{6}$/.test(bc) ? bc.toLowerCase() : null,
+        brand_color_secondary: /^#[0-9a-fA-F]{6}$/.test(bcs) ? bcs.toLowerCase() : null,
       };
       const { data, error: upErr } = await supabase
         .from('profiles').update(patch).eq('id', user.id).select().single();
-      if (upErr) { setError(upErr.message); setSaving(false); return false; }
+      if (upErr) { setError(upErr.message); setSaveState('error'); return false; }
       onSaved?.(data);
-      setSavedForm({ ...form }); // detail fields are now saved — clears the dirty state
-      setSaving(false);
-      if (onClose) onClose();
-      else { setSavedOk(true); setTimeout(() => setSavedOk(false), 2600); }
+      setSavedForm({ ...f }); // detail fields are now saved — clears the dirty state
+      setSaveState('saved');
       return true;
     } catch (e) {
       setError('Could not save. Please try again.');
-      setSaving(false);
+      setSaveState('error');
       return false;
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
+  }, [onSaved]);
+
+  // Explicit Save (button / "Save & leave"). Closes the modal on success.
+  const save = async () => {
+    const ok = await persistDetails();
+    if (!ok) return false;
+    if (onClose) onClose();
+    else { setSavedOk(true); setTimeout(() => setSavedOk(false), 2600); }
+    return true;
+  };
+
+  // Blur autosave — fires when the realtor leaves a detail field with unsaved edits.
+  const autosaveTimer = useRef(null);
+  const autosave = () => {
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = setTimeout(() => {
+      const f = formRef.current;
+      const dirtyNow = DETAIL_KEYS.some((k) => f[k] !== savedFormRef.current[k]);
+      if (dirtyNow && !savingRef.current) persistDetails();
+    }, 250);
+  };
+  useEffect(() => () => { if (autosaveTimer.current) clearTimeout(autosaveTimer.current); }, []);
+
+  // Called by LogoStudio right before it hits the generator: the server builds the wordmark
+  // from the SAVED profile row, so unsaved name/brokerage edits must be flushed first.
+  const ensureDetailsSaved = async () => {
+    const f = formRef.current;
+    const dirtyNow = DETAIL_KEYS.some((k) => f[k] !== savedFormRef.current[k]);
+    if (!dirtyNow) return true;
+    return persistDetails(); // waits for any in-flight blur-save, then writes the latest values
+  };
+
+  // Scroll + focus the name field (from the LogoStudio gate notice).
+  const jumpToDetails = () => {
+    const el = document.getElementById('profile-field-full_name');
+    if (!el) return;
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    el.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    setTimeout(() => el.focus({ preventScroll: true }), reduce ? 0 : 350);
   };
 
   const fields = [
@@ -192,7 +268,6 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
   // ── Unsaved-changes (dirty) tracking for the DETAIL fields ────────────────────────────────
   // Only the fields the Save button persists count. The logo + brand colours auto-save on their
   // own, so they're already persisted and never make the form "dirty".
-  const DETAIL_KEYS = ['full_name', 'brokerage', 'phone', 'license_number', 'province'];
   const dirty = DETAIL_KEYS.some((k) => form[k] !== savedForm[k]);
 
   // Report dirty state up (lets the page guard "Back to dashboard") and expose save() to the parent.
@@ -213,6 +288,34 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href={GOOGLE_FONTS_HREF} />
       </Head>
+      {/* Sticky save-state strip — the ONE place that says whether this form is persisted. Sticks to
+          the top of the scroll container (the modal body, or the page) so it's visible from the name
+          field down to the font cards. Colours: ink while saving, green when saved, red when unsaved. */}
+      <div role="status" aria-live="polite"
+        style={{ position: 'sticky', top: 0, zIndex: 5, margin: '0 0 14px', padding: '8px 12px', background: C.paper, borderBottom: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 12.5, lineHeight: 1.4 }}>
+        {saving ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: C.inkSoft, fontWeight: 600 }}>
+            <span className="rl-savespin" aria-hidden="true" /> Saving…
+          </span>
+        ) : dirty ? (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: C.red, fontWeight: 700 }}>
+            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: C.red, display: 'inline-block', flexShrink: 0 }} />
+            Unsaved — saves when you leave the field
+          </span>
+        ) : saveState === 'error' ? (
+          <span style={{ color: C.red, fontWeight: 700 }}>Not saved — see the message below</span>
+        ) : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: C.green, fontWeight: 700 }}>
+            <span aria-hidden="true">✓</span> All changes saved
+          </span>
+        )}
+        {dirty && !saving && (
+          <button type="button" onClick={() => persistDetails()}
+            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.pill, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+            Save now
+          </button>
+        )}
+      </div>
       {error && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>}
 
       {/* One continuous flow, ordered most-fundamental first — your details, then logo, then the
@@ -220,19 +323,19 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {fields.map((f) => (
         <div key={f.k} style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
-          <input type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} placeholder={f.ph} style={inputStyle} />
+          <input id={`profile-field-${f.k}`} type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} onBlur={autosave} placeholder={f.ph} style={inputStyle} />
         </div>
       ))}
       {/* Province — drives province-specific behaviour (e.g. the tenant age-of-majority gate). */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Province</label>
-        <select value={form.province} onChange={(e) => set('province', e.target.value)} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+        <select value={form.province} onChange={(e) => { set('province', e.target.value); autosave(); }} onBlur={autosave} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
           {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
         <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>The province you operate in. Sets rules like the tenant age of majority (Ontario 18, BC 19).</div>
       </div>
       <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 26 }}>
-        These appear on PDF exports and email summaries you send to landlord clients. All optional.
+        These appear on PDF exports and email summaries you send to landlord clients. Saved automatically when you leave a field.
       </p>
 
       {/* Logo — upload or generate with the AI studio (which carries the brand colours). Flows
@@ -286,6 +389,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
             onPrimary={(v) => { setBrandColor(v); setSavedOk(false); }}
             onSecondary={(v) => { setBrandColorSecondary(v); setSavedOk(false); }}
             onChosen={(url, p) => { if (url) setLogoUrl(url); if (p) onSaved?.(p); }}
+            onEnsureProfileSaved={ensureDetailsSaved}
+            onJumpToDetails={jumpToDetails}
           />
           <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, margin: '10px 0 26px' }}>
             Your brand colours save automatically, feed the AI generator, and tint the landlord report accent.
@@ -320,7 +425,9 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       <div style={{ marginBottom: 24 }}>
         <label style={{ ...sectionLabel, marginBottom: 4 }}>Font pairing</label>
         <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
-          Pick a heading + body pairing for your business card, signature, and brand kit.
+          Pick a heading + body pairing. Every pairing here is embedded in your landlord reports — the heading sets your name, the body sets everything else. Script headings style your name only; report text stays in the clean body face.
+          {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> · Saving…</span>}
+          {fontState === 'saved' && <span style={{ color: C.green, fontWeight: 700 }}> · ✓ Saved</span>}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
           {FONT_PAIRINGS.map((fp) => {
@@ -337,17 +444,17 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
                 <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{fp.mood}</div>
                 <div style={{ fontFamily: fp.heading.css, fontWeight: fp.heading.weight, letterSpacing: fp.heading.letterSpacing, fontSize: 22, color: C.ink, lineHeight: 1.1 }}>Aa Heading</div>
                 <div style={{ fontFamily: fp.body.css, fontWeight: fp.body.weight, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginTop: 4 }}>The quick brown fox jumps over the lazy dog.</div>
+                <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 8, lineHeight: 1.4 }}>
+                  In reports: {fp.heading.script ? `your name in ${fp.heading.family}` : `headings in ${fp.heading.family}`} · text in {fp.body.family}
+                </div>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Save — persists the detail fields (+ brand colours) in one patch (logic unchanged). The
-          button emphasises + says "Save changes" while there are unsaved detail edits, and a clear
-          "Unsaved changes" note sits beside it; once saved it returns to a plain "✓ Saved" state.
-          (Note: the logo/branding save their own "Logo saved" toast — that never means the whole
-          form is saved; the detail fields still need this button.) */}
+      {/* Explicit Save — same write path as the blur autosave (persistDetails). Kept as a visible
+          flush + "close the modal" action; the sticky strip above is the primary save indicator. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <button onClick={save} disabled={saving}
           style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '14px 24px', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(215, 32, 39, 0.25)' : 'none' }}>
@@ -361,6 +468,16 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         )}
         {!saving && !dirty && savedOk && <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>✓ Saved</span>}
       </div>
+      <style jsx>{`
+        .rl-savespin {
+          width: 12px; height: 12px; flex-shrink: 0; border-radius: 50%; display: inline-block;
+          border: 2px solid ${C.rule}; border-top-color: ${C.ink};
+        }
+        @media (prefers-reduced-motion: no-preference) {
+          .rl-savespin { animation: rl-savespin 0.7s linear infinite; }
+        }
+        @keyframes rl-savespin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }

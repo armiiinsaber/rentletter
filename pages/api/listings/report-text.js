@@ -10,6 +10,10 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { reasonLabel } from '../../../lib/setAsideReasons';
 import { humanRightsCodeName } from '../../../lib/provinces';
+import { describeAiError } from '../../../lib/aiErrors';
+
+// An 800-token composition can exceed the platform default function duration.
+export const config = { maxDuration: 30 };
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -146,7 +150,7 @@ Write the paste-ready plain-text message now.`;
     if (!text) return res.status(500).json({ error: 'AI returned empty response.' });
     return res.status(200).json({ text });
   } catch (e) {
-    console.error('[listings/report-text] error:', e?.message || e);
-    return res.status(500).json({ error: 'Could not compose the message. Please try again.' });
+    const ai = describeAiError(e, '[listings/report-text]');
+    return res.status(ai.status).json({ error: ai.message || 'Could not compose the message. Please try again.', code: ai.code });
   }
 }
