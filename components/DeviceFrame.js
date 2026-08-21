@@ -59,7 +59,7 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
       <style jsx global>{`
         .df { position: relative; width: 100%; }
         .df-shell { position: relative; background: #101012; border: 1px solid #2a2a2e; overflow: hidden; display: flex; flex-direction: column; }
-        .df-content { position: relative; overflow: hidden; background: var(--df-bg); aspect-ratio: var(--df-aspect); min-width: 0; container-type: inline-size; }
+        .df-content { position: relative; overflow: hidden; background: var(--df-bg); aspect-ratio: var(--df-aspect); min-width: 0; }
         .df-content > * { min-width: 0; }
         /* warm shadow: the device sits on paper, not floating */
         .df-tone-paper .df-shell { box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 40px -18px rgba(15,15,16,0.45), 0 40px 70px -40px rgba(15,15,16,0.35); }

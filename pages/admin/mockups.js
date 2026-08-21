@@ -3,7 +3,7 @@
 // Behind the /admin session (redirects to /admin otherwise). Not linked publicly, noindex.
 // Each scene: a stage with a framing preset (Wide / Square / Portrait / Story) and a canvas
 // (paper / ink). The founder screenshots the stage; nothing else is needed.
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { C, R } from '../../components/theme';
 import { GlobalStyle, Wordmark } from '../../components/ui';
@@ -27,28 +27,68 @@ const PRESETS = [
 ];
 const CANVAS = { paper: { bg: `radial-gradient(120% 90% at 50% 0%, ${C.card} 0%, ${C.paper} 55%, ${C.paperDeep} 100%)`, tone: 'paper', fg: C.ink }, ink: { bg: 'radial-gradient(120% 90% at 50% 0%, #1c1c1e 0%, #101012 60%, #0a0a0b 100%)', tone: 'ink', fg: '#e8e4d9' } };
 
-// Scenes are laid out at a fixed DESIGN width and zoomed to the frame (tan(atan2()) turns the
-// container/design ratio into a unitless number), so a scene fills a 740px laptop screen the
-// same way it fills a 360px phone. Showcase-only — the hero keeps its own fluid sizing.
+// Scenes are laid out at a fixed DESIGN size and scaled to the device screen with a MEASURED
+// transform: scale() (ResizeObserver) — no container-query units, no CSS trig, so it behaves
+// identically in every browser. The device itself is sized from the measured stage so it fits
+// by width AND height on every preset. Showcase-only — the hero keeps its own fluid sizing.
 const DESIGN = { laptop: 560, phone: 330, tablet: 640 };
+
+function useSize(ref) {
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const el = ref.current; if (!el) return;
+    const read = () => { const r = el.getBoundingClientRect(); setSize({ w: r.width, h: r.height }); };
+    read();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(read) : null;
+    ro?.observe(el);
+    window.addEventListener('resize', read);
+    return () => { ro?.disconnect(); window.removeEventListener('resize', read); };
+  }, [ref]);
+  return size;
+}
+
+// Fills its (position: relative, overflow: hidden) parent: the scene renders at dw×dh and is
+// scaled by parentWidth/dw. The parent's aspect ratio equals dw/dh, so that also fills height.
+function ScaledScene({ dw, dh, children }) {
+  const ref = useRef(null);
+  const { w } = useSize(ref);
+  const scale = w ? w / dw : 0;
+  return (
+    <div ref={ref} style={{ position: 'absolute', inset: 0 }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, width: dw, height: dh, transform: `scale(${scale})`, transformOrigin: 'top left', visibility: scale ? 'visible' : 'hidden' }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Laptop/phone total height relative to content width (chrome + bezel + base, measured).
+const FRAME_H = { laptop: (cw, ratio) => cw * ratio + 64, phone: (cw, ratio) => cw * ratio + 76 };
 
 function Stage({ scene, preset, canvas, caption }) {
   const isPhone = scene.device === 'phone';
   const dw = DESIGN[scene.device] || 560;
   const [aw, ah] = String(scene.aspect || (isPhone ? '9 / 16' : '16 / 10')).split('/').map((n) => Number(n.trim()));
-  const dh = Math.round(dw * ah / aw);
-  // Device width = the smaller of a share of the stage width and a share of its height
-  // (container-query units), so laptops never overflow tall-or-short stages.
-  const width = isPhone
-    ? (preset.key === 'wide' ? 'min(34cqw, 44cqh)' : 'min(62cqw, 44cqh)')
-    : (preset.key === 'wide' ? 'min(78cqw, 104cqh)' : preset.key === 'square' ? 'min(86cqw, 104cqh)' : 'min(92cqw, 104cqh)');
+  const ratio = ah / aw;
+  const dh = Math.round(dw * ratio);
+  const stageRef = useRef(null);
+  const { w: sw, h: sh } = useSize(stageRef);
+  // Device width: a share of the stage width, capped so the whole device (with chrome/base and
+  // the caption band) fits the stage height. Computed in px from the measured stage.
+  let width = 0;
+  if (sw && sh) {
+    const shareW = isPhone ? (preset.key === 'wide' ? 0.34 : 0.58) : (preset.key === 'wide' ? 0.78 : preset.key === 'square' ? 0.86 : 0.9);
+    const maxH = sh * (caption ? 0.80 : 0.88);
+    // solve FRAME_H(cw) ≤ maxH for the content width, then add the shell padding (~20px)
+    const pad = isPhone ? 20 : 16;
+    const cwByH = (maxH - (isPhone ? 76 : 64)) / ratio;
+    width = Math.floor(Math.min(sw * shareW, cwByH + pad, isPhone ? 360 : 1e9));
+  }
   return (
-    <div className="mk-stage" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}>
-      <div style={{ width, maxWidth: isPhone ? 360 : 'none' }}>
+    <div ref={stageRef} className="mk-stage" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}>
+      <div style={{ width: width || undefined, visibility: width ? 'visible' : 'hidden', marginTop: caption ? '-4%' : 0 }}>
         <DeviceFrame variant={scene.device} url={scene.url} aspect={scene.aspect} tone={CANVAS[canvas].tone}>
-          <div className="mk-zoom" style={{ width: dw, height: dh, '--dw': `${dw}px` }}>
-            <scene.Scene phone={isPhone} />
-          </div>
+          <ScaledScene dw={dw} dh={dh}><scene.Scene phone={isPhone} /></ScaledScene>
         </DeviceFrame>
       </div>
       {caption && (
@@ -125,9 +165,7 @@ export default function Mockups() {
         .mk-grid[data-preset="square"], .mk-grid[data-preset="portrait"] { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
         .mk-grid[data-preset="story"] { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
         .mk-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
-        .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.rule}; outline-offset: -1px; container-type: size; padding-bottom: 0; }
-        .mk-stage > div:first-child { transform: translateY(-3%); }
-        .mk-zoom { position: relative; zoom: calc(tan(atan2(100cqw, var(--dw)))); transform-origin: top left; }
+        .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.rule}; outline-offset: -1px; }
         @media (max-width: 520px) { .mk-grid, .mk-grid[data-preset] { grid-template-columns: 1fr; } }
       `}</style>
     </>
