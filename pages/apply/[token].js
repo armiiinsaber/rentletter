@@ -58,7 +58,7 @@ export default function ApplyPage() {
   // token never travels in a URL we create). If present, offer to fill this form from that
   // profile via /api/application/manage `prefill`. The prefilled form still goes through the
   // same validation + review-and-confirm step — nothing is sent until they confirm.
-  const [saved, setSaved] = useState(null);          // { app, token } from localStorage
+  const [saved, setSaved] = useState(null);          // { source:'profile', email } | { source:'device', app, token }
   const [prefill, setPrefill] = useState({ state: 'idle', error: '', source: null, dismissed: false }); // state: idle|loading|applied|error
   // Reveal the form on load / scroll. Depends on `status` so sections that mount once the invite
   // resolves (status → 'ready') get observed. Presentation only — no effect on validation.
@@ -66,23 +66,36 @@ export default function ApplyPage() {
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
+  // Unified profile first (httpOnly session cookie set by the magic link — works on any device
+  // the tenant signed in on); device-stored owner token as the legacy fallback.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const app = localStorage.getItem('rentletter_app_number');
-    const tok = localStorage.getItem('rentletter_owner_token');
-    if (app && tok) setSaved({ app, token: tok });
+    (async () => {
+      try {
+        const r = await fetch('/api/tenant/prefill');
+        if (r.ok) { const j = await r.json(); setSaved({ source: 'profile', email: j.email, app: j.lastApplicationNumber, form: j.form, lastAddress: j.lastListingAddress }); return; }
+      } catch (e) { /* fall through */ }
+      const app = localStorage.getItem('rentletter_app_number');
+      const tok = localStorage.getItem('rentletter_owner_token');
+      if (app && tok) setSaved({ source: 'device', app, token: tok });
+    })();
   }, []);
 
   const useSavedProfile = async () => {
     if (!saved || prefill.state === 'loading') return;
     setPrefill((p) => ({ ...p, state: 'loading', error: '' }));
     try {
-      const r = await fetch('/api/application/manage', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ applicationNumber: saved.app, ownerToken: saved.token, action: 'prefill' }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j?.form) throw new Error(j?.error || 'Could not load your saved profile.');
+      let j;
+      if (saved.source === 'profile') {
+        j = { form: saved.form, sourceApplicationNumber: saved.app, sourceListingAddress: saved.lastAddress };
+      } else {
+        const r = await fetch('/api/application/manage', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationNumber: saved.app, ownerToken: saved.token, action: 'prefill' }),
+        });
+        j = await r.json().catch(() => ({}));
+        if (!r.ok || !j?.form) throw new Error(j?.error || 'Could not load your saved profile.');
+      }
       // Everything about the tenant comes from the profile; the UNIT facts stay from this invite.
       setForm((f) => ({ ...EMPTY_FORM, ...j.form, apartmentAddress: f.apartmentAddress, apartmentDescription: f.apartmentDescription }));
       setTouched({}); setTriedSubmit(false); setError('');
@@ -304,6 +317,12 @@ export default function ApplyPage() {
         } catch (e) {
           console.error('[apply] tag/mirror failed (non-fatal)', e);
         }
+        // 3b. Attach to the tenant's unified profile (by email) and refresh its facts. Owner token
+        // proves ownership; no session needed. Best-effort.
+        fetch('/api/tenant/sync-application', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ applicationNumber, ownerToken }),
+        }).catch(() => {});
         // 4. Best-effort: email the tenant their number + owner token — confirmation
         // only. No letter/resume fields: the legacy rent-letter PDF and tenant-résumé
         // attachments were removed from the product; /api/send now sends the lean
@@ -454,7 +473,9 @@ export default function ApplyPage() {
                     Fill this application from your saved profile
                   </div>
                   <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
-                    We’ll bring over what you entered for <span style={{ fontFamily: 'monospace', color: C.ink }}>{saved.app}</span> — employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.
+                    {saved.source === 'profile'
+                      ? <>We’ll bring over the details saved on your profile (<span style={{ color: C.ink, overflowWrap: 'anywhere' }}>{saved.email}</span>) — employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.</>
+                      : <>We’ll bring over what you entered for <span style={{ fontFamily: 'monospace', color: C.ink }}>{saved.app}</span> — employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.</>}
                   </p>
                   {prefill.state === 'error' && (
                     <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
@@ -478,7 +499,7 @@ export default function ApplyPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: C.green, marginBottom: 4 }}>
                     <Icon name="check" size={15} color={C.green} strokeWidth={2.5} /> Filled from your saved profile
                   </div>
-                  Check each section — especially <strong>income</strong> and your <strong>move-in date</strong> — then review and submit. This creates a separate application for this listing; your saved profile isn’t changed.
+                  Check each section — especially <strong>income</strong> and your <strong>move-in date</strong> — then review and submit. This creates a separate application for this listing. What you confirm here becomes your profile’s latest details.
                   {prefill.source?.address && form.apartmentAddress && prefill.source.address.trim().toLowerCase() === form.apartmentAddress.trim().toLowerCase() && (
                     <div style={{ marginTop: 10, padding: '10px 12px', background: C.amberTint, borderLeft: `3px solid ${C.gold}`, borderRadius: R.ctrl, color: C.ink }}>
                       <strong>Heads up:</strong> your saved profile was already submitted for this same address ({prefill.source.app}). Submitting again adds a second application to the realtor’s list — if you only want to update details, edit your profile instead.

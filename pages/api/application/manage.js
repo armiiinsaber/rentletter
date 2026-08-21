@@ -24,6 +24,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { upsertApplication } from '../../../lib/supabaseBridge';
 import { logServerError } from '../../../lib/serverLog';
+import { attachApplication } from '../../../lib/tenantProfileStore';
 
 const UPDATE_LIMIT_PER_HOUR = 20;
 const ONE_YEAR = 31536000;
@@ -73,6 +74,9 @@ export default async function handler(req, res) {
 
     // ─── ACTION: VIEW (default) ───
     if (!action || action === 'view') {
+      // Lazy association: a legacy owner-token visit links this application to its email's
+      // unified profile (no facts refresh — viewing isn't a statement of current truth).
+      attachApplication(application, { refreshFacts: false }).catch(() => {});
       const log = (await kvGet(`auditlog:${appNum}`)) || [];
       return res.status(200).json({
         applicationNumber: appNum,
@@ -138,12 +142,16 @@ export default async function handler(req, res) {
         try { await upsertApplication(getSupabaseAdminClient(), next); mirrored = true; }
         catch (e) { logServerError('[application/manage:update:mirror]', e, { applicationNumber: appNum }); }
       }
+      // Coherence with the unified profile: always keep the application linked; copy the edited
+      // facts INTO the profile only when the tenant asked ("also update my profile").
+      attachApplication(next, { refreshFacts: !!req.body?.syncProfile, force: !!req.body?.syncProfile }).catch(() => {});
       return res.status(200).json({
         ok: true,
         updatedAt: next.updatedAt,
         profileRevision: next.profileRevision,
         profile: publicProfile(next),
         mirrored,
+        profileSynced: !!req.body?.syncProfile,
       });
     }
 

@@ -223,7 +223,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                       Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
-                      Your owner key below is the only thing that unlocks it &mdash; save this email or keep it somewhere private.
+                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my-application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
                       Owner token
@@ -482,7 +482,7 @@ export default async function handler(req, res) {
                       Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
-                      Your owner key below is the only thing that unlocks it &mdash; save this email or keep it somewhere private.
+                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my-application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
                       Owner token
