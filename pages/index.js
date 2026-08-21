@@ -55,8 +55,8 @@ const StatCounter = ({ numStr, label }) => {
 
 // ─── HERO DEMO — looping, auto-advancing animated product demo ──────────────
 // Built entirely in code (no screenshot). Two crossfading scenes:
-//   1. REVIEW   — applicant cards arrive; one auto-highlights at a time,
-//                 revealing income / employment / fit-against-preferences.
+//   1. REVIEW   — applicant cards, already ranked by score; the highlight walks the list
+//                 top-down (top scorer first), revealing income / employment / fit.
 //   2. SHORTLIST — the same applicants re-sorted by score, a "Top pick" rises,
 //                 and a "Send to landlord" bar appears.
 // transform/opacity only; respects prefers-reduced-motion (static shortlist).
@@ -67,8 +67,10 @@ const HERO_APPLICANTS = [
   { id: 'david', initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Income clears 30%', true], ['4 yr tenure', true]] },
   { id: 'amara', initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['Income meets minimum', true], ['New to the city', false]] },
 ];
-const HERO_ARRIVAL = ['sarah', 'james', 'david', 'amara', 'priya']; // as they applied (review scene, all 5)
-const HERO_RANKED  = ['priya', 'james', 'sarah', 'david', 'amara']; // by score, desc (top 5)
+// Both scenes are ordered by score, desc — the mockup must show what the product does: the
+// emphasized applicant is the highest scorer. (Sorted from HERO_APPLICANTS, never hand-typed.)
+const HERO_RANKED  = [...HERO_APPLICANTS].sort((a, b) => b.score - a.score).map((a) => a.id);
+const HERO_ARRIVAL = HERO_RANKED; // review scene walks the ranked list top-down
 const HERO_BY_ID = Object.fromEntries(HERO_APPLICANTS.map(a => [a.id, a]));
 
 function HeroAvatar({ a, size = 30 }) {
@@ -898,7 +900,7 @@ export default function Home() {
                     </div>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                    {['Free during launch', 'No credit card', 'No setup'].map(t => (
+                    {['Founding realtor spots open', 'No credit card', 'No setup'].map(t => (
                       <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkMute }}>
                         <span style={{ color: C.green, display: 'inline-flex' }}><Icon name="check" size={15} color={C.green} strokeWidth={2} /></span>{t}
                       </span>
@@ -927,7 +929,7 @@ export default function Home() {
                         <span style={{ width: 11, height: 11, borderRadius: '50%', background: '#28c840' }} />
                       </div>
                       <div style={{ flex: 1, background: '#3c3c3e', borderRadius: 6, padding: '5px 12px', fontSize: 11, color: '#9a9a9f', letterSpacing: '0.01em', display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Icon name="shield" size={12} color="#9a9a9f" /> rentletter.ca/landlord
+                        <Icon name="shield" size={12} color="#9a9a9f" /> rentletter.ca/dashboard
                       </div>
                     </div>
                     {/* Animated, looping product demo — built in code (no screenshot) */}
@@ -1697,7 +1699,7 @@ export default function Home() {
                       {applicationNumber}
                     </div>
                     <p style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.55, maxWidth: 480 }}>
-                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants — for free — at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/landlord</span>
+                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants — for free — at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/dashboard</span>
                     </p>
                     <a href="/my-application"
                       style={{
