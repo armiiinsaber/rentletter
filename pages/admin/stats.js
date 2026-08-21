@@ -2,15 +2,19 @@
 // Internal observability dashboard. Gated by ADMIN_STATS_SECRET env var.
 // Pass ?key=YOUR_SECRET in the URL to access.
 
+import crypto from 'crypto';
 import { getCounter, getRecentEvents, getUniqueUserCount, COUNTERS } from '../../lib/stats';
+import { isAdmin } from '../../lib/adminAuth';
 
-export async function getServerSideProps({ query }) {
+export async function getServerSideProps({ query, req, res }) {
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  // Accept the founder admin session (/admin) OR the legacy ?key= secret (constant-time).
   const expectedKey = process.env.ADMIN_STATS_SECRET;
-  if (!expectedKey) {
-    return { props: { error: 'ADMIN_STATS_SECRET env var not set on server.' } };
-  }
-  if (query.key !== expectedKey) {
-    return { props: { error: 'Access denied. Append ?key=YOUR_SECRET to the URL.' } };
+  const viaSession = await isAdmin(req);
+  const keyOk = !!expectedKey && typeof query.key === 'string'
+    && crypto.timingSafeEqual(crypto.createHash('sha256').update(query.key).digest(), crypto.createHash('sha256').update(expectedKey).digest());
+  if (!viaSession && !keyOk) {
+    return { props: { error: expectedKey ? 'Access denied. Sign in at /admin, or append ?key=YOUR_SECRET.' : 'Access denied. Sign in at /admin.' } };
   }
 
   // Parallel fetch all counters + event streams

@@ -29,6 +29,12 @@ export async function getServerSideProps(ctx) {
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('listings').select('*').eq('profile_id', user.id).order('created_at', { ascending: false }),
   ]);
+  // Founder admin suspension (db/admin-suspend.sql): blocks the dashboard immediately; the
+  // auth-layer ban the admin action also applies stops new sign-ins. Nothing is deleted.
+  if (profile?.suspended_at) {
+    await supabase.auth.signOut();
+    return { redirect: { destination: '/signin?error=This%20account%20is%20suspended.%20Contact%20info%40rentletter.ca.', permanent: false } };
+  }
   // Backfill province once: new signups carry it in user metadata; existing accounts with no
   // province default to Ontario. Only writes when profiles.province is unset, so a realtor's
   // later manual change in settings is never overwritten. Gracefully no-ops if the column

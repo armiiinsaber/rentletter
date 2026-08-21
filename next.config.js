@@ -9,6 +9,11 @@ const nextConfig = {
   // The landlord-report routes embed the realtor's chosen TTF fonts into the PDF
   // (read from assets/fonts at runtime). Force those files into the serverless
   // function bundles so they're present in production.
+  // Founder admin: never indexed, never cached. (Auth is enforced server-side; this is hygiene.)
+  async headers() {
+    return [{ source: '/admin', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }, { key: 'Cache-Control', value: 'no-store' }] },
+            { source: '/api/admin/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }, { key: 'Cache-Control', value: 'no-store' }] }];
+  },
   outputFileTracingIncludes: {
     '/api/listings/report-pdf': ['./assets/fonts/**'],
     '/api/listings/send-report': ['./assets/fonts/**'],
