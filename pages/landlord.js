@@ -13,6 +13,7 @@ import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { normalizeProvince } from '../lib/provinces';
 import { formatUnit } from '../lib/unitType';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
+import ReferralInbox from '../components/dashboard/ReferralInbox';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
 import ChatWidget from '../components/ChatWidget';
 
@@ -333,6 +334,9 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
               </ol>
             </section>
           )}
+
+          {/* Referred to you — renders nothing when empty */}
+          <ReferralInbox listings={listings} />
 
           {/* Listings list */}
           {hasListings && (

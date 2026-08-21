@@ -4,7 +4,8 @@
 // routes through /auth/callback, which establishes the session and lands on the
 // dashboard. The DB trigger creates the profile + assigns founder/trial on
 // confirmation.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { isValidEmail } from '../lib/validation';
 import { PROVINCE_OPTIONS, DEFAULT_PROVINCE, normalizeProvince } from '../lib/provinces';
@@ -21,6 +22,19 @@ export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [agreed, setAgreed] = useState(false); // required: Terms + Privacy
+  // Referral growth loop: /signup?ref=1&from=Name&email=… — the referral is the reason to join.
+  // Only display strings ride the URL (no applicant data); the referral itself is matched to
+  // this email server-side after sign-in.
+  const router = useRouter();
+  const [referral, setReferral] = useState(null);
+  useEffect(() => {
+    if (!router.isReady) return;
+    if (router.query.ref === '1') {
+      setReferral({ from: String(router.query.from || '').slice(0, 80) });
+      if (router.query.email && !email) setEmail(String(router.query.email).slice(0, 200));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady]);
 
   const emailValid = isValidEmail(email);
   const passwordValid = password.length >= 8;
@@ -140,9 +154,11 @@ export default function SignUp() {
   return (
     <AuthShell
       title="Sign up"
-      eyebrow="Realtor dashboard"
-      heading="Create your account."
-      sub="Organize your applicants, rank everyone against your landlord's criteria, and send a polished report to your landlord client."
+      eyebrow={referral ? 'An applicant is waiting for you' : 'Realtor dashboard'}
+      heading={referral ? 'Create your account to see the referral.' : 'Create your account.'}
+      sub={referral
+        ? `${referral.from || 'A realtor'} referred an applicant to you — with the applicant’s approval, their full application is already waiting in your dashboard. Sign up with this email address and assign them to a listing in seconds.`
+        : "Organize your applicants, rank everyone against your landlord's criteria, and send a polished report to your landlord client."}
       footer={<>Already have an account? <a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Sign in</a></>}
     >
       <form onSubmit={submit} noValidate>

@@ -25,6 +25,7 @@ import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { upsertApplication } from '../../../lib/supabaseBridge';
 import { logServerError } from '../../../lib/serverLog';
 import { attachApplication } from '../../../lib/tenantProfileStore';
+import { revokeReferralByApplication } from '../../../lib/referrals';
 
 const UPDATE_LIMIT_PER_HOUR = 20;
 const ONE_YEAR = 31536000;
@@ -160,6 +161,8 @@ export default async function handler(req, res) {
       application.revoked = true;
       application.revokedAt = new Date().toISOString();
       await kvSet(`app:${appNum}`, application);
+      // A referred application: revoking it IS revoking the referral (Realtor 2 loses access).
+      revokeReferralByApplication(application, true).catch(() => {});
       return res.status(200).json({ ok: true, revoked: true });
     }
 
@@ -168,6 +171,7 @@ export default async function handler(req, res) {
       application.revoked = false;
       delete application.revokedAt;
       await kvSet(`app:${appNum}`, application);
+      revokeReferralByApplication(application, false).catch(() => {});
       return res.status(200).json({ ok: true, revoked: false });
     }
 

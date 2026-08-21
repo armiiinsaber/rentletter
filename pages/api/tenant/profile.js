@@ -38,7 +38,11 @@ async function enrich(apps) {
   // Revoked flag + current snapshot facts from KV (cheap, and KV is canonical for the tenant path).
   await Promise.all(out.map(async (a) => {
     const app = await kvGet(`app:${a.applicationNumber}`);
-    if (app) { a.revoked = !!app.revoked; a.updatedAt = app.updatedAt || null; a.profileRevision = app.profileRevision || 0; if (!a.listingName) a.listingName = app.apartment?.address || null; }
+    if (app) {
+      a.revoked = !!app.revoked; a.updatedAt = app.updatedAt || null; a.profileRevision = app.profileRevision || 0;
+      if (!a.listingName) a.listingName = app.apartment?.address || null;
+      if (app.referral) { a.referral = { fromName: app.referral.fromName, toName: app.referral.toName, approvedAt: app.referral.approvedAt, assignedListing: app.referral.assignedListing || null }; if (!a.listingName) a.listingName = `Referred to ${app.referral.toName || 'another realtor'}`; a.realtorName = a.realtorName || app.referral.toName || null; }
+    }
     else a.missing = true; // expired from KV (1-year TTL)
   }));
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY || !out.length) return out;

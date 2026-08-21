@@ -286,6 +286,7 @@ export default function MyProfile() {
                     <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 2, overflowWrap: 'anywhere' }}>
                       {a.realtorName ? `${a.realtorName}${a.realtorBrokerage ? ` · ${a.realtorBrokerage}` : ''} · ` : ''}{a.submittedAt ? dateLong(a.submittedAt) : ''}{a.updatedAt ? ` · edited ${timeAgo(a.updatedAt)}` : ''}
                     </div>
+                    {a.referral && <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3 }}>Shared with {a.referral.toName || 'another realtor'} by {a.referral.fromName || 'your realtor'} with your approval{a.referral.assignedListing ? ` · now on ${a.referral.assignedListing}` : ''}. Revoke it from its page to withdraw access.</div>}
                     <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{a.applicationNumber}</div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>

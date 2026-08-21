@@ -164,6 +164,7 @@ export default function ApplicationPage() {
               Sent to <strong style={{ color: C.ink }}>{realtorLabel}</strong> on {data.createdAt ? dateLong(data.createdAt) : '—'}.
               {data.updatedAt && <> <span style={{ color: C.amber, fontWeight: 600 }}>Edited {timeAgo(data.updatedAt)}</span>.</>}
               {' '}This is the record that realtor sees — not your profile.
+              {meta?.referral && <> It reached them through a referral from <strong style={{ color: C.ink }}>{meta.referral.fromName || 'your realtor'}</strong> that you approved{meta.referral.approvedAt ? ` on ${dateLong(meta.referral.approvedAt)}` : ''}. Revoking below withdraws their access.</>}
             </p>
           </div>
 

@@ -22,6 +22,8 @@ import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
+import ReferModal from '../../components/dashboard/ReferModal';
+import ReferralCaution from '../../components/dashboard/ReferralCaution';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -75,6 +77,15 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   const [profile, setProfile] = useState(initialProfile);
   const [listing, setListing] = useState(initialListing);
   const [applicants, setApplicants] = useState(initialApplicants || []);
+  // Realtor→realtor handoff: referrals this realtor has sent for applicants on this listing
+  // (keyed by linkId) + the applicant being referred right now.
+  const [referrals, setReferrals] = useState({});
+  const [referFor, setReferFor] = useState(null);
+  useEffect(() => {
+    if (!listing?.id) return;
+    fetch(`/api/referrals/list?listingId=${encodeURIComponent(listing.id)}`).then((r) => (r.ok ? r.json() : { byLink: {} })).then((j) => setReferrals(j.byLink || {})).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.id]);
   const [editOpen, setEditOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
   const [setAsideFor, setSetAsideFor] = useState(null); // applicant link being set aside
@@ -355,6 +366,12 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
               {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
               {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
+              {referrals[a.linkId] && (() => {
+                const r = referrals[a.linkId];
+                const map = { pending: ['Pending applicant approval', C.inkSoft, C.paperDeep], declined: ['Referral declined', C.inkMute, C.paperDeep], approved: [`Sent to ${r.to?.name || r.to?.email}`, C.green, C.greenTint], expired: ['Referral expired', C.inkMute, C.paperDeep], revoked: ['Referral revoked', C.inkMute, C.paperDeep] };
+                const [label, fg, bg] = map[r.status] || [r.status, C.inkMute, C.paperDeep];
+                return <span title={r.status === 'declined' ? 'The applicant declined. No reason is collected.' : ''} style={{ fontSize: 10, color: fg, background: bg, fontWeight: 700, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>{label.toUpperCase()}</span>;
+              })()}
               {editedAfterVerification(app, a.docVerifications).edited && <span title="The applicant updated their profile after their documents were verified" style={{ fontSize: 10, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, fontWeight: 700, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>EDITED AFTER VERIFICATION</span>}
             </div>
             <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
@@ -362,6 +379,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               {app.annual_income ? ` · $${Number(app.annual_income).toLocaleString()}/yr before tax` : ''}
             </div>
             <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{app.application_number}</div>
+            {app.referral_meta && <ReferralCaution meta={app.referral_meta} compact />}
             {isSetAside && (
               <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, padding: '6px 10px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
                 <strong style={{ color: C.ink }}>Set aside:</strong> {reasonLabel(a.decisionReasonCode)}
@@ -387,6 +405,12 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <button onClick={() => openSetAside(a)} title="Record a screenable reason to de-prioritize"
                 style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 Set aside
+              </button>
+            )}
+            {!app.referral_meta && !['pending', 'approved'].includes(referrals[a.linkId]?.status) && (
+              <button onClick={() => setReferFor(a)} title="Refer this applicant to another realtor — they must approve first"
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                Refer
               </button>
             )}
             <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
@@ -654,7 +678,11 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
         )}
 
         {/* Set-aside reason modal — an OHRC-safe, screenable reason is REQUIRED. */}
-        {setAsideFor && (
+        {referFor && (
+        <ReferModal listingId={listing.id} applicant={referFor} onClose={() => setReferFor(null)}
+          onCreated={(ref) => { setReferrals((m) => ({ ...m, [referFor.linkId]: ref })); setReferFor(null); }} />
+      )}
+      {setAsideFor && (
           <div onClick={() => setSetAsideFor(null)}
             style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px,4vw,32px)', zIndex: 100 }}>
             <div onClick={(e) => e.stopPropagation()} className="rl-modal"
