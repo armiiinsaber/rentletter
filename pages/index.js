@@ -1069,7 +1069,7 @@ export default function Home() {
                   Set up your first listing.
                 </h2>
                 <p style={{ fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.6, color: C.inkInverse, marginBottom: 32 }}>
-                  Free for Ontario &amp; BC realtors during launch. No credit card, no setup — your first applicant link is ready in minutes.
+                  Founding realtor spots are open for Ontario &amp; BC — free in exchange for your feedback. No credit card, no setup — your first applicant link is ready in minutes.
                 </p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <a href="/landlord" className="rl-btn" style={{
