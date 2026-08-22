@@ -14,6 +14,8 @@ import { normalizeProvince } from '../lib/provinces';
 import { formatUnit } from '../lib/unitType';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ReferralInbox from '../components/dashboard/ReferralInbox';
+import NoticedCards from '../components/dashboard/NoticedCards';
+import { computeNotices, buildBriefing } from '../lib/noticed';
 import ListingSetupModal from '../components/listings/ListingSetupModal';
 import ChatWidget from '../components/ChatWidget';
 
@@ -164,9 +166,30 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   };
 
   const hasListings = listings.length > 0;
+  // ── Assistant data for the briefing + "Rentletter noticed": the realtor's own applicants per
+  // listing (existing /api/listings/applicants, RLS-scoped), notifications feed, referrals. All
+  // best-effort; the page renders without them. No AI involved.
+  const [signals, setSignals] = useState({ applicantsByListing: {}, notifications: [], referralsInbox: [], referralsSent: [], loaded: false });
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const get = (u) => fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const [notif, inbox, sent, ...apps] = await Promise.all([
+        get('/api/notifications'), get('/api/referrals/inbox'), get('/api/referrals/list'),
+        ...listings.slice(0, 12).map((l) => get(`/api/listings/applicants?listingId=${encodeURIComponent(l.id)}`)),
+      ]);
+      if (cancelled) return;
+      const applicantsByListing = {};
+      listings.slice(0, 12).forEach((l, i) => { applicantsByListing[l.id] = apps[i]?.applicants || []; });
+      setSignals({ applicantsByListing, notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), loaded: true });
+    })();
+    return () => { cancelled = true; };
+  }, [listings]);
   // Derived, presentation-only summaries from data that already exists (no fabrication,
   // no new API calls — everything below comes from the listings/profile already loaded).
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
+  const noticeInput = { scope: 'home', listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsSent: signals.referralsSent, referralsInbox: signals.referralsInbox, profile };
+  const briefing = buildBriefing({ listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsInbox: signals.referralsInbox, notices: computeNotices(noticeInput), firstName });
   const activeLinks = listings.filter((l) => l.invite_token || l.invite_url).length;
   const provinceCode = normalizeProvince(profile?.province);
   const brokerage = (profile?.brokerage || '').trim();
@@ -224,16 +247,20 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
                 fixed header on iOS, causing a half-cut title. Plain, so the header cleanly covers it. */}
             <section className="dash-card dash-hero span-4">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
-              <h1 className="dash-h1" style={{ marginBottom: 10 }}>
-                {hasListings ? `Welcome back${firstName ? `, ${firstName}` : ''}` : 'Welcome to Rentletter'}
+              {/* DAILY BRIEFING (was B3 "graduate this line to applicant activity"): what arrived,
+                  what's waiting on the realtor, what to do next — derived deterministically from
+                  real data (lib/noticed.buildBriefing). Honest when quiet. */}
+              <h1 className="dash-h1" style={{ marginBottom: 10, textWrap: 'balance' }}>
+                {signals.loaded || !hasListings ? briefing.headline : `Welcome back${firstName ? `, ${firstName}` : ''}`}
               </h1>
-              {/* The pulse strip below OWNS the counts — this line never repeats them.
-                  B3: graduate this line to applicant activity. */}
-              <p className="dash-hero-sub">
-                {hasListings
-                  ? 'All your applicants, ranked and ready to review.'
-                  : 'Your next applicant will show up here.'}
-              </p>
+              {signals.loaded && (briefing.arrived.length || briefing.waiting.length) ? (
+                <ul className="dash-hero-sub" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 }}>
+                  {briefing.arrived.map((t) => <li key={t} style={{ display: 'flex', gap: 8 }}><span aria-hidden="true" style={{ color: C.red, fontWeight: 800 }}>•</span><span>{t}</span></li>)}
+                  {briefing.waiting.slice(0, 3).map((t) => <li key={t} style={{ display: 'flex', gap: 8 }}><span aria-hidden="true" style={{ color: C.inkMute }}>→</span><span>Waiting on you: {t}</span></li>)}
+                </ul>
+              ) : (
+                <p className="dash-hero-sub">{hasListings ? (signals.loaded ? 'Nothing is waiting on you right now.' : 'Checking what’s new…') : 'Your next applicant will show up here.'}</p>
+              )}
               <div style={{ marginTop: 18 }}>
                 <button onClick={() => setModalOpen(true)} className="dash-cta">
                   <Icon name="plus" size={17} /> New listing
@@ -334,6 +361,9 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
               </ol>
             </section>
           )}
+
+          {/* Rentletter noticed — deterministic, max 3, nothing when quiet */}
+          {signals.loaded && <NoticedCards input={noticeInput} style={{ gridColumn: 'span 4' }} />}
 
           {/* Referred to you — renders nothing when empty */}
           <ReferralInbox listings={listings} />

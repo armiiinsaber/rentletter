@@ -24,6 +24,8 @@ import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
+import NoticedCards from '../../components/dashboard/NoticedCards';
+import { narrateApplicants } from '../../lib/noticed';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -81,6 +83,18 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   // (keyed by linkId) + the applicant being referred right now.
   const [referrals, setReferrals] = useState({});
   const [referFor, setReferFor] = useState(null);
+  // "Rentletter noticed" card actions: focus an applicant's document request (optionally as a
+  // renewal) or email the report — the same things the buttons below do.
+  const [focusDocFor, setFocusDocFor] = useState(null); // { linkId, renew }
+  const onNoticeAction = (a) => {
+    if (a.event === 'request-docs') {
+      setFocusDocFor({ linkId: a.linkId, renew: !!a.renew, at: Date.now() });
+      setTimeout(() => document.getElementById(`applicant-${a.linkId}`)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 30);
+    } else if (a.event === 'send-report') {
+      document.getElementById('report')?.scrollIntoView({ block: 'start' });
+      sendEmail();
+    }
+  };
   useEffect(() => {
     if (!listing?.id) return;
     fetch(`/api/referrals/list?listingId=${encodeURIComponent(listing.id)}`).then((r) => (r.ok ? r.json() : { byLink: {} })).then((j) => setReferrals(j.byLink || {})).catch(() => {});
@@ -346,7 +360,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
     // a misleading "good to go" status while the actual best picks looked flagged in red.)
     const borderColor = top5 ? C.red : C.ruleDark;
     return (
-      <div key={a.linkId} style={{
+      <div key={a.linkId} id={`applicant-${a.linkId}`} style={{
         minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
@@ -450,7 +464,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
         />
         {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
             uploads via a secure link. Coexists with ApplicantDocIntel above. */}
-        <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} />
+        <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} focus={focusDocFor?.linkId === a.linkId ? focusDocFor : null} />
       </div>
     );
   };
@@ -574,12 +588,21 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             </section>
           </div>
 
+          {/* ── RENTLETTER NOTICED — deterministic process nudges (lib/noticed.js), max 3 ── */}
+          <NoticedCards style={{ marginBottom: 16 }} onAction={onNoticeAction}
+            input={{ scope: 'listing', listings: [listing], applicantsByListing: { [listing.id]: applicants }, profile,
+              referralsSent: Object.values(referrals).map((r) => ({ ...r, from: { listingId: listing.id }, applicantName: applicants.find((x) => referrals[x.linkId] === r)?.application?.full_name })) }} />
+
           {/* ── APPLICANTS — single ranked list (everyone, best fit first) ── */}
           <section className="rl-card rl-in" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Ranked applicants</h2>
               <span style={{ fontSize: 12.5, color: C.inkMute }}>{totalApplicants} total{setAsideList.length ? ` · ${setAsideList.length} set aside` : ''}</span>
             </div>
+            {/* Plain-language line (deterministic — lib/noticed.narrateApplicants) */}
+            {narrateApplicants(listing, applicants) && (
+              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12, maxWidth: 620 }}>{narrateApplicants(listing, applicants)}</p>
+            )}
 
             {totalApplicants === 0 ? (
               <div style={{ padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 12 }}>

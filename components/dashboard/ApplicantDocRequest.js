@@ -13,7 +13,7 @@ function shortDate(iso) {
   try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }); } catch (e) { return ''; }
 }
 
-export default function ApplicantDocRequest({ listingId, linkId, applicationId, hasActiveAnalysis }) {
+export default function ApplicantDocRequest({ listingId, linkId, applicationId, hasActiveAnalysis, focus = null }) {
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState(null); // null | 'requested' | 'received'
   const [url, setUrl] = useState('');
@@ -26,6 +26,9 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
   const [copied, setCopied] = useState(false);
   const [confirmRenew, setConfirmRenew] = useState(false); // guard before re-requesting over an active analysis
   const [error, setError] = useState('');
+  // Driven by a "Rentletter noticed" card: highlight this panel (and pre-arm the renewal confirm).
+  const [highlight, setHighlight] = useState(false);
+  useEffect(() => { if (focus) { setHighlight(true); if (focus.renew && hasActiveAnalysis) setConfirmRenew(true); const t = setTimeout(() => setHighlight(false), 4000); return () => clearTimeout(t); } }, [focus, hasActiveAnalysis]);
 
   // Load current status on mount (single lightweight KV read on the server).
   useEffect(() => {
@@ -83,7 +86,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) { /* ignore */ }
   };
 
-  const box = { marginTop: 12, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', background: C.card };
+  const box = { marginTop: 12, border: `1px solid ${highlight ? C.red : C.rule}`, boxShadow: highlight ? `0 0 0 2px ${C.redTint}` : 'none', borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', background: C.card };
 
   if (!loaded) {
     return <div style={{ ...box, color: C.inkMute, fontSize: 12.5 }}>Loading document request…</div>;
