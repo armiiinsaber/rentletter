@@ -197,7 +197,7 @@ export function DashboardHomeScene() {
 export const SCENES = [
   { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero — applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3' },
   { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives — co-branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/shortlist/…', Scene: LandlordReportScene, aspect: '4 / 3' },
-  { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read once, facts matched, an OHRC-safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3' },
+  { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read once, facts matched, an OHRC-safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
   { key: 'apply', title: 'Tenant application', blurb: 'How simple it is to apply — one step at a time, no account.', device: 'phone', Scene: TenantApplyScene },
   { key: 'upload', title: 'Secure document upload', blurb: 'The tenant’s secure-link experience: read once, discarded.', device: 'phone', Scene: TenantUploadScene },
   { key: 'home', title: 'Dashboard on a phone', blurb: 'Mobile-native: listings, applicants and new activity at a glance.', device: 'phone', Scene: DashboardHomeScene },

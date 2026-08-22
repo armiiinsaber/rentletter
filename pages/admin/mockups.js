@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { C, R } from '../../components/theme';
 import { GlobalStyle, Wordmark } from '../../components/ui';
-import DeviceFrame from '../../components/DeviceFrame';
+import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
 import { SCENES } from '../../components/mockups/scenes';
 import { isAdmin } from '../../lib/adminAuth';
 
@@ -68,7 +68,7 @@ const FRAME_H = { laptop: (cw, ratio) => cw * ratio + 64, phone: (cw, ratio) => 
 function Stage({ scene, preset, canvas, caption }) {
   const isPhone = scene.device === 'phone';
   const dw = DESIGN[scene.device] || 560;
-  const [aw, ah] = String(scene.aspect || (isPhone ? '9 / 16' : '16 / 10')).split('/').map((n) => Number(n.trim()));
+  const [aw, ah] = String(scene.aspect || DEFAULT_ASPECT[scene.device] || '16 / 10').split('/').map((n) => Number(n.trim()));
   const ratio = ah / aw;
   const dh = Math.round(dw * ratio);
   const stageRef = useRef(null);
@@ -87,7 +87,7 @@ function Stage({ scene, preset, canvas, caption }) {
   return (
     <div ref={stageRef} className="mk-stage" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}>
       <div style={{ width: width || undefined, visibility: width ? 'visible' : 'hidden', marginTop: caption ? '-4%' : 0 }}>
-        <DeviceFrame variant={scene.device} url={scene.url} aspect={scene.aspect} tone={CANVAS[canvas].tone}>
+        <DeviceFrame variant={scene.device} url={scene.url} aspect={scene.aspect} tone={CANVAS[canvas].tone} dark={!!scene.dark}>
           <ScaledScene dw={dw} dh={dh}><scene.Scene phone={isPhone} /></ScaledScene>
         </DeviceFrame>
       </div>

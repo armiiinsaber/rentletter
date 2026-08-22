@@ -745,7 +745,7 @@ export default function Home() {
                   }}>
                     {/* Device frame: laptop with browser chrome ≥720px, phone below — the SAME live
                         HeroDemo node either way (decorations swap via CSS; nothing re-mounts). */}
-                    <DeviceFrame variant="responsive" url="rentletter.ca/dashboard" aspect="4 / 3" phoneAspect="9 / 12">
+                    <DeviceFrame variant="responsive" url="rentletter.ca/dashboard" aspect="4 / 3" phoneAspect="9 / 10.5" bg={`linear-gradient(160deg, ${C.card}, ${C.paperDeep})`}>
                       <HeroDemo />
                     </DeviceFrame>
                   </div>
