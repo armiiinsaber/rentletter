@@ -30,7 +30,7 @@ export default function NoticedCards({ input, onAction, style }) {
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
         {cards.map((card) => (
-          <div key={card.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px', background: '#161618', border: '1px solid #2a2a2e', borderRadius: R.ctrl }}>
+          <div key={card.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: '#161618', border: '1px solid #2a2a2e', borderRadius: R.ctrl }}>
             <div style={{ flex: '1 1 200px', minWidth: 0 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere' }}>{card.title}</div>
               {card.detail && <div style={{ fontSize: 12.5, color: '#9a958a', lineHeight: 1.5, marginTop: 3 }}>{card.detail}</div>}
