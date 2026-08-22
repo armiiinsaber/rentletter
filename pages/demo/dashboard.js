@@ -1730,7 +1730,7 @@ export default function LandlordDashboard() {
                       letterSpacing: '0.1em', textTransform: 'uppercase',
                       display: 'inline-flex', alignItems: 'center', gap: 6,
                     }}>
-                      <Icon name="check" size={13} strokeWidth={2.5} /> Founding member{accountStatus.signupNumber ? ` · #${accountStatus.signupNumber} of 50` : ''}
+                      <Icon name="check" size={13} strokeWidth={2.5} /> Founding member
                     </span>
                     <span style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
                       You're one of the first realtors on Rentletter. Free forever — thank you for being early.

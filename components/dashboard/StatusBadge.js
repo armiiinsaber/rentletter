@@ -8,7 +8,7 @@ export default function StatusBadge({ profile }) {
   let bg = C.paperDeep, fg = C.inkSoft, border = C.rule, label = '—';
   if (s.status === 'founder') {
     bg = C.greenTint; fg = C.green; border = C.green;
-    label = s.signupNumber ? `Founder · #${s.signupNumber} of 50` : 'Founder · free forever';
+    label = 'Founder · free forever'; // the signup number is admin-only (see /admin)
   } else if (s.status === 'active') {
     bg = C.greenTint; fg = C.green; border = C.green; label = 'Subscribed';
   } else if (s.status === 'trial') {
