@@ -32,7 +32,7 @@ export default function ReferralInbox({ listings }) {
   };
 
   return (
-    <section id="referrals" className="dash-card rl-in span-4" style={{ padding: 'clamp(16px, 3vw, 24px)' }}>
+    <section id="referrals" className="dash-card span-4" style={{ padding: 'clamp(16px, 3vw, 24px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} />
         <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Referred to you</span>

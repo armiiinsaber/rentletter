@@ -371,7 +371,7 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
           )}
 
           {/* Rentletter noticed — deterministic, max 3, nothing when quiet */}
-          {signals.loaded && <NoticedCards input={noticeInput} style={{ gridColumn: 'span 4' }} />}
+          {signals.loaded && <NoticedCards input={noticeInput} className="span-4" />}
 
           {/* Referred to you — renders nothing when empty */}
           <ReferralInbox listings={listings} />

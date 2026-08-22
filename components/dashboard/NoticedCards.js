@@ -1,14 +1,15 @@
 // components/dashboard/NoticedCards.js
 // "Rentletter noticed" — up to three actionable cards (lib/noticed.js rules; no AI). Ink
 // instrument surface: this is the product speaking. One line of what, one action, dismissible.
-// Renders NOTHING when there's nothing to say. Reveal only via the page's reduced-motion-gated
-// .rl-in; no motion of its own.
+// Renders NOTHING when there's nothing to say. No reveal class: this block mounts AFTER the
+// page's async signals arrive, so the page's one-shot IntersectionObserver would never see it
+// and it would sit fully laid out at opacity 0 — an invisible screenful. It simply appears.
 import { useEffect, useMemo, useState } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { computeNotices, readDismissed, dismissNotice } from '../../lib/noticed';
 
-export default function NoticedCards({ input, onAction, style }) {
+export default function NoticedCards({ input, onAction, style, className = '' }) {
   const [dismissed, setDismissed] = useState([]);
   useEffect(() => { setDismissed(readDismissed()); }, []);
   const cards = useMemo(() => computeNotices({ ...input, dismissed }), [input, dismissed]);
@@ -22,7 +23,7 @@ export default function NoticedCards({ input, onAction, style }) {
   const dismiss = (card) => { dismissNotice(card.id); setDismissed(readDismissed()); };
 
   return (
-    <section className="rl-in" aria-label="Rentletter noticed" style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: 'clamp(14px, 3vw, 20px)', position: 'relative', overflow: 'hidden', ...style }}>
+    <section className={className} aria-label="Rentletter noticed" style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: 'clamp(14px, 3vw, 20px)', position: 'relative', overflow: 'hidden', ...style }}>
       <span aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 44, height: 3, background: C.red }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} />
