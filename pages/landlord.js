@@ -188,6 +188,14 @@ export default function LandlordDashboard({ userId, userEmail, initialProfile, i
   // Derived, presentation-only summaries from data that already exists (no fabrication,
   // no new API calls — everything below comes from the listings/profile already loaded).
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
+  useEffect(() => {
+    window.__rlAssistantContext = {
+      page: 'home', currentListingId: null,
+      listings: listings.map((l) => ({ id: l.id, name: l.name, address: l.address, landlord_email: l.landlord_email, landlord_name: l.landlord_name })),
+      applicants: listings.flatMap((l) => (signals.applicantsByListing[l.id] || []).filter((a) => a.decisionStatus !== 'withdrawn').map((a) => ({ linkId: a.linkId, listingId: l.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email }))),
+    };
+    return () => { delete window.__rlAssistantContext; };
+  }, [listings, signals]);
   const noticeInput = { scope: 'home', listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsSent: signals.referralsSent, referralsInbox: signals.referralsInbox, profile };
   const briefing = buildBriefing({ listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsInbox: signals.referralsInbox, notices: computeNotices(noticeInput), firstName });
   const activeLinks = listings.filter((l) => l.invite_token || l.invite_url).length;

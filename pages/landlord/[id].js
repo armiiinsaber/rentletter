@@ -86,6 +86,22 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   // "Rentletter noticed" card actions: focus an applicant's document request (optionally as a
   // renewal) or email the report — the same things the buttons below do.
   const [focusDocFor, setFocusDocFor] = useState(null); // { linkId, renew }
+  // ── Assistant (Layer 2): publish THIS realtor's own listing/applicants as the chat context
+  // (ids + names + emails already in the page), and apply results the assistant executed. ──
+  useEffect(() => {
+    window.__rlAssistantContext = {
+      page: 'listing', currentListingId: listing?.id,
+      listings: [{ id: listing.id, name: listing.name, address: listing.address, landlord_email: listing.landlord_email, landlord_name: listing.landlord_name }],
+      applicants: applicants.filter((a) => a.decisionStatus !== 'withdrawn').map((a) => ({ linkId: a.linkId, listingId: listing.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email })),
+    };
+    const onApplied = (e) => {
+      const d = e.detail || {};
+      if (d.action === 'mark_finalist' && d.linkId) setApplicants((prev) => prev.map((x) => (x.linkId === d.linkId ? { ...x, decisionPriority: d.decisionPriority } : x)));
+      if (d.action === 'update_preferences' && d.listingId === listing.id) { const { action, listingId, ...patch } = d; setListing((l) => ({ ...l, ...patch })); }
+    };
+    window.addEventListener('rl:assistant-applied', onApplied);
+    return () => { window.removeEventListener('rl:assistant-applied', onApplied); delete window.__rlAssistantContext; };
+  }, [listing, applicants]);
   const onNoticeAction = (a) => {
     if (a.event === 'request-docs') {
       setFocusDocFor({ linkId: a.linkId, renew: !!a.renew, at: Date.now() });
@@ -380,6 +396,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
               {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
               {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
+              {a.decisionPriority === 'finalist' && !isSetAside && <span title="Your finalist mark" style={{ fontSize: 10, color: C.paper, background: C.ink, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>FINALIST</span>}
               {referrals[a.linkId] && (() => {
                 const r = referrals[a.linkId];
                 const map = { pending: ['Pending applicant approval', C.inkSoft, C.paperDeep], declined: ['Referral declined', C.inkMute, C.paperDeep], approved: [`Sent to ${r.to?.name || r.to?.email}`, C.green, C.greenTint], expired: ['Referral expired', C.inkMute, C.paperDeep], revoked: ['Referral revoked', C.inkMute, C.paperDeep] };

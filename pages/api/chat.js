@@ -7,6 +7,7 @@
 //   4. Output filter — scans response for risky language and rewrites if needed
 
 import Anthropic from '@anthropic-ai/sdk';
+import { registryPrompt, validateIntent, ACTIONS } from '../../lib/assistantActions';
 import { SYSTEM_PROMPT, DASHBOARD_SYSTEM_PROMPT } from '../../lib/chatKnowledge.js';
 
 const anthropic = new Anthropic({
@@ -271,6 +272,65 @@ function postFilterResponse(text, mode = 'marketing') {
   return t;
 }
 
+// ─── DASHBOARD INTENT (Layer 2 of the assistant) ─────────────────────────────────────────────
+// When the dashboard sends a CONTEXT (the realtor's own listings/applicants as they see them),
+// one Haiku call maps the message to either an ACTION from lib/assistantActions (proposed to
+// the client, which shows a confirmation card and executes with the realtor's own auth), a
+// CLARIFY (which listing/applicant?), a QUESTION (falls through to the Sonnet how-to answer),
+// or OFFTOPIC. This REPLACES the YES/NO topic classifier call in dashboard mode, so cost is
+// one Haiku call per turn either way. The selection-advice pre-filter has already run; the
+// registry contains no selection/ranking/destructive action, so the model cannot propose one.
+const INTENT_SYSTEM = `You route messages from a REALTOR using the Rentletter dashboard. Output ONLY compact JSON, no prose.
+
+Available actions (the ONLY actions that exist):
+${registryPrompt()}
+
+Rules:
+- If the message asks to DO one of those actions, output {"type":"action","action":"<name>","params":{...}} using ids from the CONTEXT. Resolve names to ids yourself when unambiguous (case-insensitive, first names OK). Never invent ids.
+- If the action is clear but the listing or applicant is ambiguous or missing, output {"type":"clarify","action":"<name>","missing":"listing"|"applicant","params":{...known...}}.
+- If the message is a QUESTION about using Rentletter (how-to, what something means), output {"type":"question"}.
+- If it asks which tenant to pick, who is best/better, whether to approve/reject someone, or anything about a tenant's background, family, age, religion, disability, nationality, or income SOURCE, output {"type":"decline"}. You never rank, recommend, or judge tenants.
+- If unrelated to Rentletter, output {"type":"offtopic"}.
+- Preferences (update_preferences): params.patch keys are exactly the pref_* fields; numbers plain (e.g. 85000, 35), booleans true/false.
+- refer_applicant needs toName and toEmail in the message; if absent, output {"type":"clarify","action":"refer_applicant","missing":"toEmail","params":{...}}.
+- mark_finalist: params.finalist false when the realtor asks to remove/unmark.`;
+
+async function detectIntent(userMessage, context) {
+  const ctx = {
+    page: context.page || null, currentListingId: context.currentListingId || null,
+    listings: (context.listings || []).slice(0, 30).map((l) => ({ id: l.id, name: l.name })),
+    applicants: (context.applicants || []).slice(0, 60).map((a) => ({ linkId: a.linkId, name: a.name, listingId: a.listingId })),
+  };
+  try {
+    const r = await anthropic.messages.create({
+      model: 'claude-haiku-4-5-20251001', max_tokens: 300,
+      system: [{ type: 'text', text: INTENT_SYSTEM, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: `CONTEXT: ${JSON.stringify(ctx)}\nMESSAGE: ${userMessage.slice(0, 600)}` }],
+    });
+    const text = r.content.filter((b) => b.type === 'text').map((b) => b.text).join('').trim();
+    const m = text.match(/\{[\s\S]*\}/); if (!m) return { type: 'question' };
+    const j = JSON.parse(m[0]);
+    return j && typeof j.type === 'string' ? j : { type: 'question' };
+  } catch (e) { console.error('[chat] intent error:', e?.message || e); return { type: 'question' }; }
+}
+
+// Deterministic clarify copy: list the candidates so the realtor taps one (never guess).
+function clarifyReply(intent, context) {
+  const def = ACTIONS[intent.action];
+  const label = def ? def.label.toLowerCase() : 'that';
+  if (intent.missing === 'applicant') {
+    const opts = (context.applicants || []).slice(0, 8).map((a) => ({ label: a.name, params: { ...intent.params, linkId: a.linkId, listingId: a.listingId || intent.params?.listingId } }));
+    return { reply: `Which applicant? (${label})`, clarify: { action: intent.action, options: opts } };
+  }
+  if (intent.missing === 'listing') {
+    const opts = (context.listings || []).slice(0, 8).map((l) => ({ label: l.name, params: { ...intent.params, listingId: l.id } }));
+    return { reply: `Which listing? (${label})`, clarify: { action: intent.action, options: opts } };
+  }
+  if (intent.missing === 'toEmail') return { reply: 'Who should receive the referral? Give me their name and email — e.g. “refer James to Priya Patel, priya@brokerage.ca”.' };
+  if (intent.missing === 'prefs') return { reply: 'Which preference? I can set minimum income, max rent-to-income %, min years at job, min lease term, max occupants, or require a landlord reference / employer verification / guarantor.' };
+  return { reply: 'Can you say a bit more about what you’d like me to do?' };
+}
+
 // ─── HANDLER ──────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -281,7 +341,7 @@ export default async function handler(req, res) {
     return res.status(503).json({ error: 'Chat is temporarily unavailable.' });
   }
 
-  const { messages, mode: rawMode } = req.body || {};
+  const { messages, mode: rawMode, context } = req.body || {};
   // 'dashboard' = the in-app realtor product-help assistant; anything else = the homepage
   // marketing assistant (default, unchanged). Only the system prompt (and, for dashboard, an
   // extra selection-advice guardrail) differ — the safety stack around them is shared.
@@ -337,10 +397,29 @@ export default async function handler(req, res) {
     return res.status(200).json({ reply: preCheck.response });
   }
 
+  // ─── LAYER 1b: Dashboard INTENT (action / clarify / question / decline / offtopic) ───
+  // Only when the dashboard supplied its context. Proposals are returned, never executed here.
+  if (mode === 'dashboard' && context && typeof context === 'object') {
+    const intent = await detectIntent(userMessage, context);
+    if (intent.type === 'decline') return res.status(200).json({ reply: DASHBOARD_SELECTION_DECLINE });
+    if (intent.type === 'offtopic' && !DASHBOARD_ONTOPIC_HINTS.test(userMessage)) return res.status(200).json({ reply: DASHBOARD_OFF_TOPIC_DECLINE });
+    if (intent.type === 'action' && !ACTIONS[intent.action]) {
+      return res.status(200).json({ reply: 'That’s not something I can do from here. Deleting listings or applications, setting applicants aside, and recording withdrawals stay manual on the listing page — and choosing between applicants is always yours.' });
+    }
+    if (intent.type === 'action') {
+      const v = validateIntent(intent, context);
+      if (v?.action) return res.status(200).json({ reply: `Here’s what I’ll do — confirm to go ahead.`, proposal: v });
+      if (v?.missing) return res.status(200).json(clarifyReply({ ...intent, missing: v.missing }, context));
+    }
+    if (intent.type === 'clarify') return res.status(200).json(clarifyReply(intent, context));
+    // 'question' → fall through to the how-to answer (topic classifier already covered by intent)
+  }
+
   // ─── LAYER 2: Topic classifier ───────────────────────
-  // Skip for very short clarifying messages or first message (greeting)
+  // Skip for very short clarifying messages or first message (greeting); skipped in dashboard
+  // mode when the intent step above already classified the message.
   const isShortReply = userMessage.length < 25;
-  if (!isShortReply) {
+  if (!isShortReply && !(mode === 'dashboard' && context)) {
     const onTopic = await isOnTopic(userMessage, mode);
     if (!onTopic) {
       console.log(`[chat] Classifier rejected as off-topic (mode=${mode}): ${userMessage.slice(0, 80)}`);

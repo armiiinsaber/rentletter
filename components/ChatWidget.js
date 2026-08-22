@@ -3,11 +3,12 @@
 // Used on both home page and landlord dashboard.
 
 import { useState, useRef, useEffect } from 'react';
+import { ACTIONS } from '../lib/assistantActions';
 // Single token source — this file previously forked its own copy of the palette.
 import { C as COLORS } from './theme';
 
 const MARKETING_GREETING = "Hi! I'm the Rentletter assistant. I can help with how the product works, pricing, or how to use it. What can I help with?";
-const DASHBOARD_GREETING = "Hi! I'm your Rentletter product-help assistant. Ask me how to do anything in the dashboard — creating listings, invite links, the ranked list, verifying a finalist, sending the report. I explain how features work; deciding which applicant to choose is your call.";
+const DASHBOARD_GREETING = "Hi! I'm your Rentletter assistant. Ask me how anything works, or tell me what to do — “create the invite link for 88 Harbour”, “request documents from James”, “email the landlord report”, “set minimum income to $85k”. I’ll show you exactly what will happen and do it when you confirm. Which applicant to choose is always your call.";
 
 // Per-mode copy. mode="dashboard" is the in-app realtor product-help assistant; default is the
 // homepage marketing assistant (unchanged).
@@ -106,7 +107,10 @@ export default function ChatWidget({ mode = 'marketing' }) {
       const r = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, mode }),
+        // Dashboard: the page publishes the realtor's OWN listings/applicants (already in their
+        // browser) as context so the assistant can resolve "James" → an id. Only ids/names travel;
+        // the server never executes — it proposes, and execution happens here with this session.
+        body: JSON.stringify({ messages: newMessages.filter((m) => typeof m.content === 'string'), mode, context: isDashboard ? (window.__rlAssistantContext || null) : undefined }),
       });
       const bodyText = await r.text();
       let json = null;
@@ -115,7 +119,10 @@ export default function ChatWidget({ mode = 'marketing' }) {
       if (!r.ok) {
         setError(json?.error || 'Something went wrong. Try again or email info@rentletter.ca.');
       } else if (json?.reply) {
-        setMessages([...newMessages, { role: 'assistant', content: json.reply }]);
+        const msg = { role: 'assistant', content: json.reply };
+        if (json.proposal && ACTIONS[json.proposal.action]) msg.proposal = json.proposal;
+        if (json.clarify?.options?.length) msg.clarify = json.clarify;
+        setMessages([...newMessages, msg]);
       } else {
         setError('No response. Please try again.');
       }
@@ -125,6 +132,26 @@ export default function ChatWidget({ mode = 'marketing' }) {
     }
     setLoading(false);
   };
+
+  // ── Layer 2: confirmation → execution (never without a tap) ──
+  const ctxNow = () => (typeof window !== 'undefined' && window.__rlAssistantContext) || {};
+  const chooseOption = (msgIndex, clarify, opt) => {
+    const def = ACTIONS[clarify.action]; if (!def) return;
+    const params = { ...opt.params };
+    setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, clarify: null, chosen: opt.label } : m)).concat([{ role: 'assistant', content: 'Here’s what I’ll do — confirm to go ahead.', proposal: { action: clarify.action, params } }]));
+  };
+  const runProposal = async (msgIndex, proposal) => {
+    const def = ACTIONS[proposal.action]; if (!def) return;
+    setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, running: true } : m)));
+    try {
+      const result = await def.execute(ctxNow(), proposal.params);
+      setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, running: false, done: true } : m)).concat([{ role: 'assistant', content: `✓ ${result.text}` }]));
+      if (result.patch) window.dispatchEvent(new CustomEvent('rl:assistant-applied', { detail: { action: proposal.action, ...result.patch } }));
+    } catch (e) {
+      setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, running: false } : m)).concat([{ role: 'assistant', content: `That didn’t go through: ${e.message || 'unknown error'}. Nothing was changed.` }]));
+    }
+  };
+  const cancelProposal = (msgIndex) => setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, proposal: null, cancelled: true } : m)));
 
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -236,6 +263,33 @@ export default function ChatWidget({ mode = 'marketing' }) {
                 }}>
                   {m.content}
                 </div>
+                {/* CONFIRMATION CARD — what will happen, to whom, with what. Fires only on the button. */}
+                {m.proposal && (() => {
+                  const def = ACTIONS[m.proposal.action]; const d = def.describe(ctxNow(), m.proposal.params);
+                  return (
+                    <div style={{ width: '100%', marginTop: 8, background: COLORS.ink, color: COLORS.paper, borderRadius: 12, padding: '12px 14px', position: 'relative', overflow: 'hidden' }}>
+                      <span aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 36, height: 3, background: COLORS.red }} />
+                      <div style={{ fontSize: 10.5, color: '#ff6b70', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 6 }}>{m.done ? 'Done' : 'Confirm'}</div>
+                      <div style={{ fontSize: 14, fontWeight: 800, lineHeight: 1.3, marginBottom: 6 }}>{d.title}</div>
+                      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 3 }}>{d.lines.map((l, k) => <li key={k} style={{ fontSize: 12.5, color: '#c8c2b3', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{l}</li>)}</ul>
+                      {d.blocked && <div style={{ marginTop: 8, fontSize: 12.5, color: '#f0b9bb' }}>{d.blocked}</div>}
+                      {!m.done && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                          <button type="button" disabled={!!m.running || !!d.blocked} onClick={() => runProposal(i, m.proposal)} style={{ background: COLORS.red, color: COLORS.paper, border: 'none', borderRadius: 8, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: m.running || d.blocked ? 'not-allowed' : 'pointer', opacity: d.blocked ? 0.5 : 1, minHeight: 38 }}>{m.running ? 'Working…' : d.confirm}</button>
+                          <button type="button" disabled={!!m.running} onClick={() => cancelProposal(i)} style={{ background: 'transparent', color: '#c8c2b3', border: '1px solid #3a3a3e', borderRadius: 8, padding: '9px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 38 }}>Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {m.cancelled && <div style={{ fontSize: 12, color: COLORS.inkMute, marginTop: 6 }}>Cancelled — nothing was done.</div>}
+                {/* CLARIFY — the assistant never guesses which listing/applicant: pick one. */}
+                {m.clarify && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                    {m.clarify.options.map((o, k) => <button key={k} type="button" onClick={() => chooseOption(i, m.clarify, o)} style={{ background: COLORS.paper, color: COLORS.ink, border: `1px solid ${COLORS.ink}`, borderRadius: 999, padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 34 }}>{o.label}</button>)}
+                  </div>
+                )}
+                {m.chosen && <div style={{ fontSize: 12, color: COLORS.inkMute, marginTop: 6 }}>You chose {m.chosen}.</div>}
               </div>
             ))}
             {loading && (
