@@ -15,7 +15,7 @@ import { ScrollHeader, Wordmark } from '../ui';
 import { C, R, EASE } from '../theme';
 import StatusBadge from './StatusBadge';
 import NotificationBell from './NotificationBell';
-import { getSupabaseBrowserClient } from '../../lib/supabase/client';
+import { useAdapter } from '../../lib/dashboardAdapter';
 
 function initialsOf(profile) {
   const n = (profile?.full_name || '').trim();
@@ -27,11 +27,12 @@ function initialsOf(profile) {
 }
 
 export default function DashboardHeader({ profile }) {
+  const adapter = useAdapter();
   const router = useRouter();
   const signOut = async () => {
-    const supabase = getSupabaseBrowserClient();
+    const supabase = adapter.supabase();
     await supabase.auth.signOut();
-    router.replace('/signin');
+    router.replace(adapter.paths.signin);
   };
   return (
     <>
@@ -54,7 +55,7 @@ export default function DashboardHeader({ profile }) {
             <NotificationBell />
           </span>
           {/* Account avatar — native initials (never the uploaded logo); opens profile/branding. */}
-          <a href="/profile" title="You & your brand" aria-label="Open your profile and branding"
+          <a href={adapter.paths.profile} title="You & your brand" aria-label="Open your profile and branding"
             className="rl-hdr-reveal rl-hdr-avatar" style={{ '--d': '280ms' }}>
             {initialsOf(profile)}
           </a>

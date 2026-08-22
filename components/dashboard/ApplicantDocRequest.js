@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
+import { useAdapter } from '../../lib/dashboardAdapter';
 
 function shortDate(iso) {
   if (!iso) return '';
@@ -14,6 +15,7 @@ function shortDate(iso) {
 }
 
 export default function ApplicantDocRequest({ listingId, linkId, applicationId, hasActiveAnalysis, focus = null }) {
+  const adapter = useAdapter();
   const [loaded, setLoaded] = useState(false);
   const [status, setStatus] = useState(null); // null | 'requested' | 'received'
   const [url, setUrl] = useState('');
@@ -35,7 +37,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`/api/applicants/doc-request-status?listingId=${encodeURIComponent(listingId)}&linkId=${encodeURIComponent(linkId)}`);
+        const r = await adapter.fetch(`/api/applicants/doc-request-status?listingId=${encodeURIComponent(listingId)}&linkId=${encodeURIComponent(linkId)}`);
         const j = await r.json();
         if (cancelled) return;
         if (r.ok) {
@@ -57,7 +59,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
     if (sendEmail) setEmailBusy(true); else setBusy(true);
     setError(''); setEmailedNote('');
     try {
-      const r = await fetch('/api/applicants/request-documents', {
+      const r = await adapter.fetch('/api/applicants/request-documents', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, linkId, applicationId, sendEmail, renew }),
       });

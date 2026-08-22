@@ -4,8 +4,10 @@
 import { useState } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
+import { useAdapter } from '../../lib/dashboardAdapter';
 
 export default function ReferModal({ listingId, applicant, onClose, onCreated }) {
+  const adapter = useAdapter();
   const [toName, setToName] = useState('');
   const [toEmail, setToEmail] = useState('');
   const [note, setNote] = useState('');
@@ -18,7 +20,7 @@ export default function ReferModal({ listingId, applicant, onClose, onCreated })
     e.preventDefault(); if (!valid || busy) return;
     setBusy(true); setError('');
     try {
-      const r = await fetch('/api/referrals/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId, linkId: applicant.linkId, toName, toEmail, note }) });
+      const r = await adapter.fetch('/api/referrals/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId, linkId: applicant.linkId, toName, toEmail, note }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || 'Could not create the referral.');
       onCreated?.(j.referral);

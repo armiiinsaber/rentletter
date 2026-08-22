@@ -8,8 +8,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { computeNotices, readDismissed, dismissNotice } from '../../lib/noticed';
+import { useAdapter } from '../../lib/dashboardAdapter';
 
 export default function NoticedCards({ input, onAction, style, className = '' }) {
+  const adapter = useAdapter();
   const [dismissed, setDismissed] = useState([]);
   useEffect(() => { setDismissed(readDismissed()); }, []);
   const cards = useMemo(() => computeNotices({ ...input, dismissed }), [input, dismissed]);
@@ -17,7 +19,12 @@ export default function NoticedCards({ input, onAction, style, className = '' })
 
   const act = (card) => {
     const a = card.action; if (!a) return;
-    if (a.type === 'navigate') { window.location.href = a.href; return; }
+    if (a.type === 'navigate') {
+      // lib/noticed emits product paths; translate through the adapter so a demo stays in-route.
+      const m = String(a.href).match(/^\/landlord\/([^#?]+)(.*)$/);
+      const href = m ? adapter.paths.listing(m[1]) + (m[2] || '') : a.href === '/profile' ? adapter.paths.profile : a.href.startsWith('/landlord') ? adapter.paths.home + a.href.slice('/landlord'.length) : a.href;
+      window.location.href = href; return;
+    }
     onAction?.(a, card);
   };
   const dismiss = (card) => { dismissNotice(card.id); setDismissed(readDismissed()); };

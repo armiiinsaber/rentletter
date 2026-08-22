@@ -6,16 +6,18 @@ import { useState, useEffect } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import ReferralCaution from './ReferralCaution';
+import { useAdapter } from '../../lib/dashboardAdapter';
 
 const money = (n) => (n ? `$${Number(n).toLocaleString('en-CA')}` : null);
 const EMP = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
 
 export default function ReferralInbox({ listings }) {
+  const adapter = useAdapter();
   const [items, setItems] = useState(null);
   const [choice, setChoice] = useState({});
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
-  const load = async () => { try { const r = await fetch('/api/referrals/inbox'); if (r.ok) setItems((await r.json()).referrals || []); else setItems([]); } catch (e) { setItems([]); } };
+  const load = async () => { try { const r = await adapter.fetch('/api/referrals/inbox'); if (r.ok) setItems((await r.json()).referrals || []); else setItems([]); } catch (e) { setItems([]); } };
   useEffect(() => { load(); }, []);
   if (!items || items.length === 0) return null;
 
@@ -23,7 +25,7 @@ export default function ReferralInbox({ listings }) {
     const listingId = choice[ref.id]; if (!listingId) return;
     setBusy(ref.id); setError('');
     try {
-      const r = await fetch('/api/referrals/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referralId: ref.id, listingId }) });
+      const r = await adapter.fetch('/api/referrals/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ referralId: ref.id, listingId }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || 'Could not assign.');
       await load();
@@ -61,7 +63,7 @@ export default function ReferralInbox({ listings }) {
                       </div>
                     </div>
                     {assignedListing
-                      ? <a href={`/landlord/${assignedListing.id}`} style={{ fontSize: 12.5, fontWeight: 700, color: C.green, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}><Icon name="check" size={14} color={C.green} strokeWidth={2.5} /> On {assignedListing.name || 'your listing'}</a>
+                      ? <a href={adapter.paths.listing(assignedListing.id)} style={{ fontSize: 12.5, fontWeight: 700, color: C.green, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}><Icon name="check" size={14} color={C.green} strokeWidth={2.5} /> On {assignedListing.name || 'your listing'}</a>
                       : <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.ink, background: C.paperDeep, padding: '3px 8px', borderRadius: R.pill, flexShrink: 0 }}>Not yet assigned</span>}
                   </div>
                   <ReferralCaution meta={{ fromName: ref.from?.name, fromBrokerage: ref.from?.brokerage, approvedAt: ref.approvedAt, note: ref.note, verification: ref.verification }} compact />

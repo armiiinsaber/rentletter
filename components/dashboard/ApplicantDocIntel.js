@@ -8,6 +8,7 @@ import { C, R } from '../theme';
 import { Icon } from '../ui';
 import DocIntelReport from './DocIntelReport';
 import { editedAfterVerification, fmtShort } from '../../lib/profileEdits';
+import { useAdapter } from '../../lib/dashboardAdapter';
 
 const MAX = 6;
 const OK_MIME = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -23,6 +24,7 @@ function readAsBase64(file) {
 }
 
 export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt }) {
+  const adapter = useAdapter();
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
   const [files, setFiles] = useState([]); // File[]
@@ -69,7 +71,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setAnalyzing(true); setError('');
     try {
       const payload = await Promise.all(files.map(async (f) => ({ name: f.name, type: f.type, data: await readAsBase64(f) })));
-      const r = await fetch('/api/applicants/analyze-documents', {
+      const r = await adapter.fetch('/api/applicants/analyze-documents', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, linkId, applicationId, files: payload }),
       });
@@ -89,7 +91,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     if (insightLoading) return;
     setInsightLoading(true); setError('');
     try {
-      const r = await fetch('/api/applicants/insight', {
+      const r = await adapter.fetch('/api/applicants/insight', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, linkId, applicationId }),
       });
@@ -110,7 +112,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     if (managing) return null;
     setManaging(action); setError('');
     try {
-      const r = await fetch('/api/applicants/manage-analysis', {
+      const r = await adapter.fetch('/api/applicants/manage-analysis', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, linkId, applicationId, action, archivedId }),
       });
@@ -159,7 +161,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     if (pdfBusy) return;
     setPdfBusy(true); setError('');
     try {
-      const r = await fetch('/api/applicants/verify-confirm-pdf', {
+      const r = await adapter.fetch('/api/applicants/verify-confirm-pdf', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, linkId, applicationId }),
       });
@@ -177,7 +179,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     if (textBusy) return;
     setTextBusy(true); setError('');
     try {
-      const r = await fetch('/api/applicants/verify-confirm-text', {
+      const r = await adapter.fetch('/api/applicants/verify-confirm-text', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, linkId, applicationId }),
       });

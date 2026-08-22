@@ -4,6 +4,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ACTIONS } from '../lib/assistantActions';
+import { useAdapter } from '../lib/dashboardAdapter';
 // Single token source — this file previously forked its own copy of the palette.
 import { C as COLORS } from './theme';
 
@@ -30,6 +31,7 @@ const MODES = {
 export default function ChatWidget({ mode = 'marketing' }) {
   const cfg = MODES[mode] || MODES.marketing;
   const isDashboard = mode === 'dashboard';
+  const adapter = useAdapter(); // actions execute through the dashboard adapter; /api/chat stays a real call
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState([
     { role: 'assistant', content: cfg.greeting },
@@ -144,7 +146,7 @@ export default function ChatWidget({ mode = 'marketing' }) {
     const def = ACTIONS[proposal.action]; if (!def) return;
     setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, running: true } : m)));
     try {
-      const result = await def.execute(ctxNow(), proposal.params);
+      const result = await def.execute({ ...ctxNow(), adapter }, proposal.params);
       setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, running: false, done: true } : m)).concat([{ role: 'assistant', content: `✓ ${result.text}` }]));
       if (result.patch) window.dispatchEvent(new CustomEvent('rl:assistant-applied', { detail: { action: proposal.action, ...result.patch } }));
     } catch (e) {
@@ -265,7 +267,7 @@ export default function ChatWidget({ mode = 'marketing' }) {
                 </div>
                 {/* CONFIRMATION CARD — what will happen, to whom, with what. Fires only on the button. */}
                 {m.proposal && (() => {
-                  const def = ACTIONS[m.proposal.action]; const d = def.describe(ctxNow(), m.proposal.params);
+                  const def = ACTIONS[m.proposal.action]; const d = def.describe({ ...ctxNow(), adapter }, m.proposal.params);
                   return (
                     <div style={{ width: '100%', marginTop: 8, background: COLORS.ink, color: COLORS.paper, borderRadius: 12, padding: '12px 14px', position: 'relative', overflow: 'hidden' }}>
                       <span aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 36, height: 3, background: COLORS.red }} />

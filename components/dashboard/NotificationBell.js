@@ -11,6 +11,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
 import { Icon } from '../ui';
 import { C, R } from '../theme';
+import { useAdapter } from '../../lib/dashboardAdapter';
 
 function relTime(ts) {
   const s = Math.max(0, Math.floor((Date.now() - ts) / 1000));
@@ -23,6 +24,7 @@ function relTime(ts) {
 }
 
 export default function NotificationBell({ demo = false, items: demoItems = [] }) {
+  const adapter = useAdapter();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState(demo ? demoItems : []);
@@ -56,7 +58,7 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
     let cancel = false;
     (async () => {
       try {
-        const r = await fetch('/api/notifications');
+        const r = await adapter.fetch('/api/notifications');
         const j = await r.json().catch(() => ({}));
         if (cancel) return;
         setItems(Array.isArray(j.items) ? j.items : []);
@@ -96,14 +98,14 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
     if (next && !seen) {
       setSeen(true);
       setUnread(0);
-      if (!demo) fetch('/api/notifications', { method: 'POST' }).catch(() => {});
+      if (!demo) adapter.fetch('/api/notifications', { method: 'POST' }).catch(() => {});
     }
   };
 
   const openItem = (it) => {
     setOpen(false);
     if (demo || !it.listingId) return;
-    router.push(`/landlord/${it.listingId}`);
+    router.push(adapter.paths.listing(it.listingId));
   };
 
   const badge = seen ? 0 : unread;
