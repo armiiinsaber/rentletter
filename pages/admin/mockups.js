@@ -62,8 +62,6 @@ function ScaledScene({ dw, dh, children }) {
   );
 }
 
-// Laptop/phone total height relative to content width (chrome + bezel + base, measured).
-const FRAME_H = { laptop: (cw, ratio) => cw * ratio + 64, phone: (cw, ratio) => cw * ratio + 76 };
 
 function Stage({ scene, preset, canvas, caption }) {
   const isPhone = scene.device === 'phone';
@@ -81,7 +79,8 @@ function Stage({ scene, preset, canvas, caption }) {
     const maxH = sh * (caption ? 0.80 : 0.88);
     // solve FRAME_H(cw) ≤ maxH for the content width, then add the shell padding (~20px)
     const pad = isPhone ? 20 : 16;
-    const cwByH = (maxH - (isPhone ? 76 : 64)) / ratio;
+    // phone: status bar (34/330) + home band (22/330) scale with width; laptop chrome is fixed px
+    const cwByH = isPhone ? (maxH - 20) / (ratio + 56 / 330) : (maxH - 64) / ratio;
     width = Math.floor(Math.min(sw * shareW, cwByH + pad, isPhone ? 360 : 1e9));
   }
   return (

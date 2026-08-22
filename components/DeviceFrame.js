@@ -29,16 +29,29 @@ function BrowserBar({ url }) {
     </div>
   );
 }
+// One proportional SVG (viewBox 330×34) so time / island / glyphs scale together with the
+// screen width and can never overlap: time lives left of the island, signal·wifi·battery right
+// of it, with fixed safe margins in viewBox units. Island = 30% of screen width, as on a real
+// iPhone. Uses currentColor for glyphs (ink on paper, paper on ink via .df-dark).
 function StatusBar() {
   return (
-    <div className="df-status" aria-hidden="true">
-      <span className="df-time">9:41</span>
-      <span className="df-island" />
-      <span className="df-glyphs">
-        <span className="df-signal"><i /><i /><i /><i /></span>
-        <span className="df-batt"><i /></span>
-      </span>
-    </div>
+    <svg className="df-status" viewBox="0 0 330 34" width="100%" aria-hidden="true" focusable="false">
+      <text x="26" y="22" fontFamily="Inter, -apple-system, system-ui, sans-serif" fontSize="13" fontWeight="700" fill="currentColor">9:41</text>
+      <rect x="115.5" y="6" width="99" height="22" rx="11" fill="#000" />
+      {/* signal: 4 bars, bottoms aligned at y=22 */}
+      <rect x="254" y="18" width="3" height="4" rx="0.8" fill="currentColor" />
+      <rect x="258.5" y="16" width="3" height="6" rx="0.8" fill="currentColor" />
+      <rect x="263" y="14" width="3" height="8" rx="0.8" fill="currentColor" />
+      <rect x="267.5" y="12" width="3" height="10" rx="0.8" fill="currentColor" />
+      {/* wifi: three arcs + dot */}
+      <path d="M275 15.5a10 10 0 0 1 13 0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M277.6 18.3a6.4 6.4 0 0 1 7.8 0" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <circle cx="281.5" cy="21.3" r="1.3" fill="currentColor" />
+      {/* battery */}
+      <rect x="293" y="12" width="22" height="10.5" rx="3" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <rect x="295.2" y="14.2" width="15.5" height="6.1" rx="1.4" fill="currentColor" />
+      <rect x="316.2" y="14.8" width="1.8" height="5" rx="0.9" fill="currentColor" />
+    </svg>
   );
 }
 
@@ -97,18 +110,12 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
         .df-phone { max-width: 360px; margin-left: auto; margin-right: auto; }
         .df-phone .df-shell { border-radius: 44px; padding: 10px; }
         .df-phone .df-screen { border-radius: 34px; }
-        .df-status { position: relative; height: 34px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; color: #0f0f10; font-size: 12px; font-weight: 700; font-family: Inter, -apple-system, system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+        /* status bar + home band are proportional to screen width (viewBox / aspect-ratio), so
+           the phone looks identical at 211px (Story) and 360px. */
+        .df-status { display: block; width: 100%; height: auto; flex: none; color: #0f0f10; }
         .df-dark .df-status { color: #e8e4d9; }
-        .df-island { position: absolute; left: 50%; top: 7px; transform: translateX(-50%); width: 92px; height: 22px; border-radius: 14px; background: #000; }
-        .df-glyphs { display: inline-flex; align-items: center; gap: 6px; }
-        .df-signal { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; }
-        .df-signal i { width: 3px; background: currentColor; border-radius: 1px; display: inline-block; }
-        .df-signal i:nth-child(1) { height: 4px; } .df-signal i:nth-child(2) { height: 6px; } .df-signal i:nth-child(3) { height: 8px; } .df-signal i:nth-child(4) { height: 10px; }
-        .df-batt { width: 22px; height: 10px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; display: inline-block; }
-        .df-batt i { position: absolute; inset: 1.5px; right: 4px; background: currentColor; border-radius: 1px; }
-        .df-batt::after { content: ''; position: absolute; right: -4px; top: 2.5px; width: 2px; height: 4px; background: currentColor; border-radius: 0 1px 1px 0; }
-        .df-safe { position: relative; height: 22px; flex: none; }
-        .df-home { position: absolute; left: 50%; bottom: 7px; transform: translateX(-50%); width: 36%; height: 4px; border-radius: 2px; background: #0f0f10; opacity: 0.8; }
+        .df-safe { position: relative; width: 100%; aspect-ratio: 330 / 22; flex: none; }
+        .df-home { position: absolute; left: 50%; bottom: 30%; transform: translateX(-50%); width: 36%; height: 18%; border-radius: 999px; background: #0f0f10; opacity: 0.8; }
         .df-dark .df-home { background: #e8e4d9; }
 
         /* ── tablet: shell radius 26, bezel 16 → screen radius 10 ── */
