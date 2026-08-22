@@ -1714,31 +1714,9 @@ export default function LandlordDashboard() {
           )}
 
           {/* ── ACCOUNT STATUS BANNER ──────────────────────── */}
-          {/* Shows founder badge, trial countdown, or lapsed message. */}
+          {/* Shows the trial countdown or lapsed message. Founders see nothing here. */}
           {accountStatus && (
             <section style={{ padding: 'clamp(12px, 2.5vw, 18px) clamp(16px, 4vw, 32px) 0' }}>
-              {accountStatus.status === 'founder' && (
-                <ScrollFade>
-                  <div style={{
-                    background: C.greenTint, border: `1px solid ${C.green}`, borderRadius: R.card,
-                    padding: 'clamp(13px, 3vw, 17px) clamp(16px, 4vw, 22px)',
-                    display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
-                  }}>
-                    <span style={{
-                      background: C.green, color: C.paper, borderRadius: R.pill,
-                      padding: '5px 12px', fontSize: 10, fontWeight: 800,
-                      letterSpacing: '0.1em', textTransform: 'uppercase',
-                      display: 'inline-flex', alignItems: 'center', gap: 6,
-                    }}>
-                      <Icon name="check" size={13} strokeWidth={2.5} /> Founding member
-                    </span>
-                    <span style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.5 }}>
-                      You're one of the first realtors on Rentletter. Free forever — thank you for being early.
-                    </span>
-                  </div>
-                </ScrollFade>
-              )}
-
               {accountStatus.status === 'trial' && (
                 <div style={{
                   background: C.amberTint,

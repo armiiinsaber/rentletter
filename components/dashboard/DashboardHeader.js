@@ -40,11 +40,9 @@ export default function DashboardHeader({ profile }) {
         <a href="/" aria-label="Rentletter home" className="rl-hdr-mark rl-hdr-reveal" style={{ '--d': '40ms' }}>
           <Wordmark />
         </a>
-        {/* CENTER — account status badge. Like the landing header's centered nav, placing it between
-            the wordmark and the actions distributes the bar across the full width, so it reads
-            balanced instead of a cluster bunched in the corner with dead space. It's a launch-only
-            badge and the widest control, so it collapses below 560px — leaving a tidy wordmark +
-            actions row (the same clean two-part bar once the badge is retired in the real product). */}
+        {/* CENTER — account status (trial countdown / lapsed / subscribed). Founders get no badge
+            at all: the wrapper is empty and hidden, and the bar becomes the clean two-part
+            wordmark + actions row. When a badge IS shown it collapses below 560px. */}
         <span className="rl-hdr-reveal rl-hdr-status" style={{ '--d': '160ms', display: 'inline-flex' }}>
           <StatusBadge profile={profile} />
         </span>
@@ -84,10 +82,9 @@ export default function DashboardHeader({ profile }) {
           flex-wrap: nowrap;
           min-width: 0;
         }
-        /* The founder tag is a launch-only badge and the widest control. On small screens it would
-           force the bar to wrap to two rows, so it collapses below 560px — leaving a tidy single
-           row (wordmark left · bell · avatar · sign-out right). The bar reads balanced with the tag
-           (wider screens) and without it (mobile, and the real product once the badge is retired). */
+        /* No badge (founders) → no centre zone at all. A shown badge (trial/lapsed) is the widest
+           control and would wrap the bar on small screens, so it collapses below 560px. */
+        .rl-hdr-status:empty { display: none !important; }
         @media (max-width: 559px) {
           .rl-hdr-status { display: none !important; }
         }

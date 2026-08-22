@@ -1,15 +1,15 @@
 // components/dashboard/StatusBadge.js
-// Founder / trial / subscription badge derived from the profile. Display only.
+// Trial / subscription badge derived from the profile. Display only. Founder accounts show
+// NOTHING here — founder status (and the signup number) is visible only on /admin; the
+// first-50 business logic itself lives in pages/landlord.js and is untouched.
 import { C, R } from '../theme';
 import { evaluateProfile } from '../../lib/accountStatus';
 
 export default function StatusBadge({ profile }) {
   const s = evaluateProfile(profile);
+  if (s.status === 'founder' || s.status === 'unknown') return null;
   let bg = C.paperDeep, fg = C.inkSoft, border = C.rule, label = '—';
-  if (s.status === 'founder') {
-    bg = C.greenTint; fg = C.green; border = C.green;
-    label = 'Founder · free forever'; // the signup number is admin-only (see /admin)
-  } else if (s.status === 'active') {
+  if (s.status === 'active') {
     bg = C.greenTint; fg = C.green; border = C.green; label = 'Subscribed';
   } else if (s.status === 'trial') {
     bg = C.amberTint; fg = C.amber; border = C.amber;
