@@ -37,29 +37,39 @@ function HeroAvatar({ a, size = 30 }) {
   );
 }
 
-export default function HeroDemo() {
-  // Steps 0..2 = review-highlight the TOP THREE ranked cards (so the emphasized applicant is
-  // always a top scorer, whatever frame a screenshot catches); step 3 = shortlist.
+// Timeline — exported so the mockup exporter can reproduce one exact loop frame by frame.
+// Steps 0..2 review-highlight the TOP THREE ranked cards; step 3 is the shortlist hold. The
+// longest CSS transition in the scene is 600ms (scene crossfade).
+export const HERO_STEP_DURATIONS = [1500, 1400, 1600, 3800];
+export const HERO_TRANSITION_MS = 600;
+export const HERO_LOOP_MS = HERO_STEP_DURATIONS.reduce((a, b) => a + b, 0);
+
+// `step` (number) puts the demo under external control: the internal timer is off and the
+// scene shows exactly that step (transitions still run, so an exporter can scrub them).
+export default function HeroDemo({ step: controlledStep = null }) {
   const REVIEW_STEPS = 3;
-  const [step, setStep] = useState(0);
+  const [autoStep, setAutoStep] = useState(0);
   const [still, setStill] = useState(false);
+  const controlled = controlledStep !== null && controlledStep !== undefined;
+  const step = controlled ? controlledStep : autoStep;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || controlled) return;
     if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) {
       setStill(true);
       return;
     }
-    // One duration per step: 3 review highlights + the shortlist hold.
-    const durations = [1500, 1400, 1600, 3800];
+    const durations = HERO_STEP_DURATIONS;
     let t;
-    const tick = (s) => { t = setTimeout(() => { const n = (s + 1) % durations.length; setStep(n); tick(n); }, durations[s]); };
-    tick(0);
+    const tick = (s) => { t = setTimeout(() => { const n = (s + 1) % durations.length; setAutoStep(n); tick(n); }, durations[s]); };
+    tick(autoStep);
     return () => clearTimeout(t);
-  }, [REVIEW_STEPS]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlled]);
 
-  const reviewVisible = !still && step < REVIEW_STEPS;
-  const shortlistVisible = still || step === REVIEW_STEPS;
+  const stillNow = still && !controlled; // an exporter drives the scene even under reduced motion
+  const reviewVisible = !stillNow && step < REVIEW_STEPS;
+  const shortlistVisible = stillNow || step === REVIEW_STEPS;
 
   const sceneBase = {
     position: 'absolute', inset: 0, padding: 'clamp(14px, 4.5%, 22px)',
@@ -93,14 +103,14 @@ export default function HeroDemo() {
         <div style={{ height: 1, background: C.rule }} />
         {HERO_ARRIVAL.map((id, i) => {
           const a = HERO_BY_ID[id];
-          const active = !still && step === i;
+          const active = !stillNow && step === i;
           return (
             <div key={id} style={{
               ...cardBase,
               borderLeft: active ? `3px solid ${C.red}` : `1px solid ${C.rule}`,
               transform: active ? 'translateY(-1px) scale(1.015)' : 'none',
               boxShadow: active ? SH.raised : SH.rest,
-              opacity: (!still && step > i && step < REVIEW_STEPS) ? 0.55 : 1,
+              opacity: (!stillNow && step > i && step < REVIEW_STEPS) ? 0.55 : 1,
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                 <HeroAvatar a={a} size={28} />

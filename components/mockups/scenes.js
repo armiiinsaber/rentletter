@@ -23,7 +23,7 @@ const Eyebrow = ({ children, color = C.red, size = 9.5 }) => <div style={{ displ
 const pad = 'clamp(12px, 4%, 22px)';
 
 // 1 ── Ranked applicants (the live hero) ────────────────────────────────────────────────────
-export function RankedListScene() { return <HeroDemo />; }
+export function RankedListScene({ demoStep = null }) { return <HeroDemo step={demoStep} />; }
 
 // 2 ── The branded landlord report, as the landlord receives it ─────────────────────────────
 export function LandlordReportScene() {
@@ -195,7 +195,7 @@ export function DashboardHomeScene() {
 }
 
 export const SCENES = [
-  { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero — applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3' },
+  { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero — applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3', animated: true, stillStep: 3 },
   { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives — co-branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/shortlist/…', Scene: LandlordReportScene, aspect: '4 / 3' },
   { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read once, facts matched, an OHRC-safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
   { key: 'apply', title: 'Tenant application', blurb: 'How simple it is to apply — one step at a time, no account.', device: 'phone', Scene: TenantApplyScene },
