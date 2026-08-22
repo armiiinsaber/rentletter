@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "lint": "npx --yes eslint@9 --no-config-lookup --config eslint.config.mjs --no-inline-config \"pages/**/*.js\" \"components/**/*.js\" \"lib/**/*.js\"",
     "start": "next start"
   },
   "dependencies": {

@@ -4,7 +4,7 @@
 // and the listing's APPLICANTS (Supabase: listing_applicants ⨝ applications).
 // Decisions (ranked / set_aside + reason / withdrawn) persist to listing_applicants
 // under realtor RLS, so they survive sign-out/sign-in.
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../../components/ui';
