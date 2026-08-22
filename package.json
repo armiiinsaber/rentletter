@@ -4,7 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "lint": "npx --yes eslint@9 --no-config-lookup --config eslint.config.mjs --no-inline-config \"pages/**/*.js\" \"components/**/*.js\" \"lib/**/*.js\"",
+    "lint": "eslint \"pages/**/*.js\" \"components/**/*.js\" \"lib/**/*.js\"",
     "start": "next start"
   },
   "dependencies": {
@@ -22,5 +22,9 @@
     "react": "19.0.6",
     "react-dom": "19.0.6",
     "resend": "4.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5",
+    "eslint-plugin-react-hooks": "^7.1.1"
   }
 }

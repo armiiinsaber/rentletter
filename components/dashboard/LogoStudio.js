@@ -238,7 +238,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
     setRefineMode(false); setRefineHistory([]); setRefineResults([]); setRefineBrief(''); setError('');
   };
 
-  const useLogo = async (v, key) => {
+  const saveLogo = async (v, key) => {
     setUsingKey(key); setError(''); setSavedKey(null);
     try {
       const r = await fetch('/api/branding/use-logo', {
@@ -375,7 +375,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                   <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`r${roundIdx}v${i}d`} />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <button onClick={() => useLogo(v, key)} disabled={usingKey !== null || busy}
+                  <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
                     style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved as your logo' : 'Use this logo'}
                   </button>
@@ -422,7 +422,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               <BigSwatch svg={refineCurrent.svg} bg="#0f0f10" label="On dark" idKey={`cur-d-${refineHistory.length}`} />
             </div>
             <div style={{ marginTop: 12 }}>
-              <button onClick={() => useLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy}
+              <button onClick={() => saveLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy}
                 style={{ background: savedKey === 'refine-cur' ? C.green : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== 'refine-cur' ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {usingKey === 'refine-cur' ? 'Saving…' : savedKey === 'refine-cur' ? '✓ Saved as your logo' : 'Use this version'}
               </button>
@@ -460,7 +460,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                       <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`res${i}d-${refineHistory.length}`} />
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button onClick={() => useLogo(v, key)} disabled={usingKey !== null || busy}
+                      <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
                         style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1 }}>
                         {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved' : 'Use this'}
                       </button>

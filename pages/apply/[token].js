@@ -81,7 +81,7 @@ export default function ApplyPage() {
     })();
   }, []);
 
-  const useSavedProfile = async () => {
+  const applySavedProfile = async () => {
     if (!saved || prefill.state === 'loading') return;
     setPrefill((p) => ({ ...p, state: 'loading', error: '' }));
     try {
@@ -107,7 +107,7 @@ export default function ApplyPage() {
   // Deep link from the profile page / confirmation email: /apply/{token}#profile auto-fills.
   useEffect(() => {
     if (status !== 'ready' || !saved || prefill.state !== 'idle') return;
-    if (typeof window !== 'undefined' && (window.location.hash === '#profile' || new URLSearchParams(window.location.search).get('profile') === '1')) useSavedProfile();
+    if (typeof window !== 'undefined' && (window.location.hash === '#profile' || new URLSearchParams(window.location.search).get('profile') === '1')) applySavedProfile();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status, saved]);
   const markTouched = (k) => setTouched((t) => ({ ...t, [k]: true }));
@@ -483,7 +483,7 @@ export default function ApplyPage() {
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    <button type="button" onClick={useSavedProfile} disabled={prefill.state === 'loading'} className="rl-btn"
+                    <button type="button" onClick={applySavedProfile} disabled={prefill.state === 'loading'} className="rl-btn"
                       style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: prefill.state === 'loading' ? 'wait' : 'pointer', minHeight: 44, opacity: prefill.state === 'loading' ? 0.75 : 1 }}>
                       {prefill.state === 'loading' ? 'Loading your profile…' : 'Use my saved profile'}
                     </button>
