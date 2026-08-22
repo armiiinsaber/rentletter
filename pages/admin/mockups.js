@@ -78,10 +78,10 @@ function Stage({ scene, preset, canvas, caption }) {
     const shareW = isPhone ? (preset.key === 'wide' ? 0.34 : 0.58) : (preset.key === 'wide' ? 0.78 : preset.key === 'square' ? 0.86 : 0.9);
     const maxH = sh * (caption ? 0.80 : 0.88);
     // solve FRAME_H(cw) ≤ maxH for the content width, then add the shell padding (~20px)
-    const pad = isPhone ? 20 : 16;
-    // phone: status bar (34/330) + home band (22/330) scale with width; laptop chrome is fixed px
-    const cwByH = isPhone ? (maxH - 20) / (ratio + 56 / 330) : (maxH - 64) / ratio;
-    width = Math.floor(Math.min(sw * shareW, cwByH + pad, isPhone ? 360 : 1e9));
+    // Everything on the device scales with its width W: content W'·ratio (W' = W minus bezel),
+    // status 59/393, home band 22/330, phone bezel 2.8%×2; laptop bar 40/560, bezel 1.4%, base 2.1%.
+    const perW = isPhone ? (1 - 0.056) * (ratio + 59 / 393 + 22 / 330) + 0.056 : (1 - 0.028) * (ratio + 40 / 560) + 0.014 + 0.021;
+    width = Math.floor(Math.min(sw * shareW, maxH / perW, isPhone ? 360 : 1e9));
   }
   return (
     <div ref={stageRef} className="mk-stage" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}>
