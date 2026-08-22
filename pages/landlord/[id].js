@@ -86,6 +86,25 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   // "Rentletter noticed" card actions: focus an applicant's document request (optionally as a
   // renewal) or email the report — the same things the buttons below do.
   const [focusDocFor, setFocusDocFor] = useState(null); // { linkId, renew }
+  // ── Per-applicant reviewed state (db/reviewed-at.sql). An applicant is "reviewed" the first
+  // time the realtor OPENS their card here — never on page load, never by scrolling past.
+  // Unreviewed cards render collapsed (header only) with a quiet dot; opening expands + records.
+  const [openedNow, setOpenedNow] = useState(() => new Set()); // opened this session (expanded)
+  const tracking = applicants.some((a) => a.reviewTracking);
+  const isUnreviewed = (a) => a.reviewTracking && !a.reviewedAt && a.decisionStatus !== 'withdrawn';
+  const unreviewed = applicants.filter(isUnreviewed);
+  const openApplicant = async (a) => {
+    setOpenedNow((prev) => new Set(prev).add(a.linkId));
+    if (!isUnreviewed(a)) return;
+    const at = new Date().toISOString();
+    setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, reviewedAt: at } : x)));
+    try { const supabase = getSupabaseBrowserClient(); await supabase.from('listing_applicants').update({ reviewed_at: at }).eq('id', a.linkId); }
+    catch (e) { /* optimistic; the column is RLS-scoped to this realtor's own rows */ }
+  };
+  const jumpToFirstUnreviewed = () => {
+    const first = [...active, ...setAsideList].find(isUnreviewed); if (!first) return;
+    document.getElementById(`applicant-${first.linkId}`)?.scrollIntoView({ block: 'center', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  };
   // ── Assistant (Layer 2): publish THIS realtor's own listing/applicants as the chat context
   // (ids + names + emails already in the page), and apply results the assistant executed. ──
   useEffect(() => {
@@ -346,6 +365,8 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
   });
 
   const renderApplicantCard = (a, { rank, top5, isSetAside }) => {
+    const fresh = isUnreviewed(a);
+    const collapsed = fresh && !openedNow.has(a.linkId);
     const app = a.application || {};
     const overall = app.scorecard?.overall;
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
@@ -393,6 +414,8 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
           </span>
           <div style={{ flex: 1, minWidth: 180 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+              {/* unreviewed marker — space is always reserved so the row never shifts when it clears */}
+              {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0, alignSelf: 'center', marginRight: -2 }} />}
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
               {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
               {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
@@ -427,7 +450,12 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-            {isSetAside ? (
+            {collapsed ? (
+              <button onClick={() => openApplicant(a)} aria-expanded={false} aria-controls={`applicant-${a.linkId}-body`}
+                style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 38 }}>
+                Open <Icon name="chevronD" size={14} color={C.paper} />
+              </button>
+            ) : isSetAside ? (
               <button onClick={() => restoreApplicant(a)}
                 style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
                 Restore
@@ -450,6 +478,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             </button>
           </div>
         </div>
+        {!collapsed && (<div id={`applicant-${a.linkId}-body`}>
         {details.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px' }}>
             {details.map(([label, value]) => (
@@ -482,6 +511,7 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
         {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
             uploads via a secure link. Coexists with ApplicantDocIntel above. */}
         <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} focus={focusDocFor?.linkId === a.linkId ? focusDocFor : null} />
+        </div>)}
       </div>
     );
   };
@@ -618,7 +648,15 @@ export default function ListingDetail({ initialProfile, initialListing, initialA
             </div>
             {/* Plain-language line (deterministic — lib/noticed.narrateApplicants) */}
             {narrateApplicants(listing, applicants) && (
-              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12, maxWidth: 620 }}>{narrateApplicants(listing, applicants)}</p>
+              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: unreviewed.length ? 6 : 12, maxWidth: 620 }}>{narrateApplicants(listing, applicants)}</p>
+            )}
+            {/* WHICH applicants are new to you — a line, not a banner; gone when there are none. */}
+            {unreviewed.length > 0 && (
+              <p style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13, color: C.ink, marginBottom: 12 }}>
+                <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, flexShrink: 0 }} />
+                <span><strong>{unreviewed.length} not yet reviewed</strong> — marked with a dot; open a card to review it.</span>
+                <button type="button" onClick={jumpToFirstUnreviewed} style={{ background: 'transparent', border: 'none', padding: 0, color: C.red, fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', minHeight: 24 }}>Jump to first ↓</button>
+              </p>
             )}
 
             {totalApplicants === 0 ? (
