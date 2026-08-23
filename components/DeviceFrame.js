@@ -86,7 +86,10 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current; if (!el) return;
-    const set = () => { el.style.setProperty('--df-w', `${el.getBoundingClientRect().width}px`); };
+    // offsetWidth, NOT getBoundingClientRect: the film scales devices with ancestor transforms,
+    // and bezel/radius proportions must follow the LAYOUT width (stable, transform-independent) —
+    // rect width would bake in whatever camera zoom was current when the observer fired.
+    const set = () => { el.style.setProperty('--df-w', `${el.offsetWidth}px`); };
     set();
     const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(set) : null;
     ro?.observe(el);
