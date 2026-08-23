@@ -11,7 +11,8 @@ import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
 import { SCENES } from '../../components/mockups/scenes';
 import { isAdmin } from '../../lib/adminAuth';
 import { HERO_STEP_DURATIONS, HERO_TRANSITION_MS } from '../../components/mockups/HeroDemo';
-import { renderPng, dataUrlToBlob, download, zipFiles, slug, captureLoopFrames, encodeFrames, encodeFramesMp4, bestVideoType } from '../../lib/mockupExport';
+import { renderPng, dataUrlToBlob, download, zipFiles, slug, captureLoopFrames, captureTimelineFrames, encodeFrames, encodeFramesMp4, bestVideoType } from '../../lib/mockupExport';
+import ProductFilm, { FILM_DURATION } from '../../components/film/ProductFilm';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -69,6 +70,36 @@ function ScaledScene({ dw, dh, children }) {
   );
 }
 
+
+// The product film: fills the stage width, runs on its own clock, exposes a scrubber (mk-ui, not
+// exported). While the exporter drives it, `filmTime` is set per frame (controlled mode).
+function FilmStage({ scene, preset, canvas, register, onExport, busy }) {
+  const stageRef = useRef(null); const filmRef = useRef(null);
+  const [filmTime, setFilmTime] = useState(null);   // null = live clock
+  const [shown, setShown] = useState(0); const [playing, setPlaying] = useState(true);
+  useEffect(() => { register(scene.key, { el: stageRef.current, setDemoStep: setFilmTime }); return () => register(scene.key, null); }, [register, scene.key]);
+  const scrub = (v) => { const t = Number(v); filmRef.current?.pause(); setPlaying(false); setFilmTime(t); setShown(t); };
+  const resume = () => { const from = filmTime ?? shown; setFilmTime(null); setPlaying(true); requestAnimationFrame(() => { filmRef.current?.seek(from); filmRef.current?.play(); }); };
+  const restart = () => { setFilmTime(null); setPlaying(true); requestAnimationFrame(() => filmRef.current?.restart()); };
+  const pause = () => { filmRef.current?.pause(); setPlaying(false); setFilmTime(filmRef.current?.getTime() ?? shown); };
+  const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}.${String(Math.floor((t % 1) * 10))}`;
+  return (
+    <div ref={stageRef} className="mk-stage mk-film" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}
+      data-export-tone={CANVAS[canvas].tone} data-export-bg={CANVAS[canvas].stops.map(([c, p]) => `${c}@${p}`).join('|')} data-export-shadow="none">
+      <ProductFilm ref={filmRef} time={filmTime} onTime={setShown} style={{ alignSelf: 'center' }} />
+      <div className="mk-ui mk-export" aria-label="Export">
+        <button type="button" className="mk-xbtn" disabled={!!busy} onClick={() => onExport('png', scene)}>{busy === `png:${scene.key}` ? 'Rendering…' : 'PNG'}</button>
+        <button type="button" className="mk-xbtn" disabled={!!busy} onClick={() => onExport('video', scene)}>{busy === `video:${scene.key}` ? 'Recording…' : 'Video (43 s)'}</button>
+      </div>
+      <div className="mk-ui mk-scrub" aria-label="Film controls">
+        <button type="button" className="mk-xbtn" onClick={playing ? pause : resume}>{playing ? 'Pause' : 'Play'}</button>
+        <button type="button" className="mk-xbtn" onClick={restart}>Restart</button>
+        <input type="range" min="0" max={FILM_DURATION} step="0.05" value={filmTime ?? shown} onChange={(e) => scrub(e.target.value)} aria-label="Scrub" />
+        <span className="mk-time">{fmt(filmTime ?? shown)} / 0:43</span>
+      </div>
+    </div>
+  );
+}
 
 function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
   const isPhone = scene.device === 'phone';
@@ -134,7 +165,7 @@ export default function Mockups() {
   // Wait until no CSS transitions are running under el (max 1.5s) — rasterizing while the hero
   // demo is mid-crossfade can stall the serializer.
   const settle = async (el) => { const t0 = performance.now(); while (performance.now() - t0 < 1500) { await nextPaint(); if (!el?.getAnimations || el.getAnimations({ subtree: true }).length === 0) return; } };
-  const park = async (scene, st) => { st.setDemoStep(scene.stillStep ?? 0); await nextPaint(); st.el.getAnimations?.({ subtree: true }).forEach((a) => { try { a.cancel(); } catch (e) { /* ignore */ } }); await nextPaint(); };
+  const park = async (scene, st) => { st.setDemoStep(scene.film ? FILM_DURATION : (scene.stillStep ?? 0)); await nextPaint(); st.el.getAnimations?.({ subtree: true }).forEach((a) => { try { a.cancel(); } catch (e) { /* ignore */ } }); await nextPaint(); };
   const release = async (st) => { st.setDemoStep(null); await nextPaint(); await settle(st.el); };
   const fileBase = (scene) => `rentletter-${slug(scene.title)}-${preset.key}`;
 
@@ -149,7 +180,9 @@ export default function Mockups() {
   const videoBlob = async (scene) => {
     const st = stages.current.get(scene.key); if (!st?.el) throw new Error('Stage not mounted');
     try {
-      const frames = await captureLoopFrames({ stage: st.el, setStep: st.setDemoStep, durations: HERO_STEP_DURATIONS, transitionMs: HERO_TRANSITION_MS, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering frames ${i}/${n}`) });
+      const frames = scene.film
+        ? await captureTimelineFrames({ stage: st.el, setTime: st.setDemoStep, duration: FILM_DURATION, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering film frames ${i}/${n}`) })
+        : await captureLoopFrames({ stage: st.el, setStep: st.setDemoStep, durations: HERO_STEP_DURATIONS, transitionMs: HERO_TRANSITION_MS, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering frames ${i}/${n}`) });
       setProgress('Encoding…');
       let out = null;
       try { out = await encodeFramesMp4({ ...frames, onProgress: (i, n) => setProgress(`Encoding ${i}/${n}`) }); } catch (e) { console.warn('[mockups] WebCodecs MP4 failed, falling back to MediaRecorder:', e?.message || e); }
@@ -202,7 +235,7 @@ export default function Mockups() {
             <div className="mk-group"><span className="mk-label">Canvas</span>{['paper', 'ink'].map((c) => <button key={c} className={`mk-chip ${canvas === c ? 'on' : ''}`} onClick={() => setCanvas(c)}>{c === 'paper' ? 'Paper' : 'Ink'}</button>)}</div>
             <div className="mk-group"><span className="mk-label">Caption</span><button className={`mk-chip ${caption ? 'on' : ''}`} onClick={() => setCaption((v) => !v)}>{caption ? 'On' : 'Off'}</button></div>
             <div className="mk-group"><span className="mk-label">Show</span><select value={only} onChange={(e) => setOnly(e.target.value)} className="mk-select"><option value="">All scenes</option>{SCENES.map((s) => <option key={s.key} value={s.key}>{s.title}</option>)}</select></div>
-            <div className="mk-group"><span className="mk-label">Export</span>{[2, 3].map((d) => <button key={d} className={`mk-chip ${density === d ? 'on' : ''}`} onClick={() => setDensity(d)}>{d}×</button>)}
+            <div className="mk-group"><span className="mk-label">Export</span>{[1, 2, 3].map((d) => <button key={d} className={`mk-chip ${density === d ? 'on' : ''}`} onClick={() => setDensity(d)}>{d}×</button>)}
               <button className="mk-chip" style={{ background: C.red, color: C.paper, borderColor: C.red }} disabled={!!busy} onClick={downloadAll}>{busy === 'all' ? 'Working…' : 'Download all (zip)'}</button>
               {progress && <span style={{ fontSize: 12, color: C.inkSoft }}>{progress}</span>}
             </div>
@@ -219,7 +252,7 @@ export default function Mockups() {
                   <div><div style={{ fontSize: 10.5, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{String(i + 1).padStart(2, '0')} · {scene.device}</div><h2 style={{ fontSize: 17, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', lineHeight: 1.2 }}>{scene.title}</h2></div>
                   <p style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, maxWidth: 420, margin: 0 }}>{scene.blurb}</p>
                 </div>
-                <Stage scene={scene} preset={preset} canvas={canvas} caption={caption} register={register} onExport={onExport} busy={busy} />
+                {scene.film ? <FilmStage scene={scene} preset={preset} canvas={canvas} register={register} onExport={onExport} busy={busy} /> : <Stage scene={scene} preset={preset} canvas={canvas} caption={caption} register={register} onExport={onExport} busy={busy} />}
               </section>
             ))}
           </div>
@@ -244,10 +277,15 @@ export default function Mockups() {
         .mk-xbtn:disabled { opacity: 0.5; cursor: wait; }
         /* while exporting: shadows and the gradient are composited in canvas (lib/mockupExport.js) */
         .mk-stage.mk-exporting { background: none !important; }
-        .mk-stage.mk-exporting .df-shell { box-shadow: 0 0 0 1px #2a2a2e !important; }
-        .mk-stage.mk-exporting .df-tone-ink .df-shell { box-shadow: 0 0 0 1px #3a3a3e !important; }
-        .mk-stage.mk-exporting .df-base { box-shadow: none !important; }
-        .mk-stage.mk-exporting .df-base::after { display: none; }
+        .mk-stage.mk-exporting:not(.mk-film) .df-shell { box-shadow: 0 0 0 1px #2a2a2e !important; }
+        .mk-stage.mk-exporting:not(.mk-film) .df-tone-ink .df-shell { box-shadow: 0 0 0 1px #3a3a3e !important; }
+        .mk-stage.mk-exporting:not(.mk-film) .df-base { box-shadow: none !important; }
+        .mk-stage.mk-exporting:not(.mk-film) .df-base::after { display: none; }
+        .mk-film { flex-direction: column; }
+        .mk-scrub { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; background: rgba(250,248,243,0.92); border: 1px solid ${C.rule}; border-radius: ${R.pill}px; padding: 6px 10px; opacity: 0; }
+        .mk-stage:hover .mk-scrub, .mk-scrub:focus-within { opacity: 1; }
+        .mk-scrub input[type=range] { flex: 1; accent-color: ${C.red}; min-width: 0; }
+        .mk-time { font-size: 11px; font-variant-numeric: tabular-nums; color: ${C.inkSoft}; white-space: nowrap; }
         .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.rule}; outline-offset: -1px; }
         @media (max-width: 520px) { .mk-grid, .mk-grid[data-preset] { grid-template-columns: 1fr; } }
       `}</style>

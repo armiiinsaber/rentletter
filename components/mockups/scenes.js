@@ -195,6 +195,7 @@ export function DashboardHomeScene() {
 }
 
 export const SCENES = [
+  { key: 'film', title: 'Product film', blurb: 'The 43-second camera move through the product, synced to the narration timeline. Hover for the scrubber.', film: true, animated: true },
   { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero — applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3', animated: true, stillStep: 3 },
   { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives — co-branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/shortlist/…', Scene: LandlordReportScene, aspect: '4 / 3' },
   { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read once, facts matched, an OHRC-safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
