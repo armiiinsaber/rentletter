@@ -31,14 +31,13 @@ export const PHONE = { x: 760, y: 118, w: 212 };                 // where the ph
 export const LAPTOP_DESIGN = 560;                                // scene design width (mockups use 560)
 export const PHONE_DESIGN = 330;
 
-// ── CAMERA: look-at point (x, y) in world units, zoom, yaw/pitch in degrees ──
-// Moves happen in the narration pauses; holds are flat segments.
+// ── CAMERA: look-at point (x, y) in world units + zoom. Strictly 2D (pan + push) — no
+// perspective or yaw anywhere, so the exporter's flat SVG rasterization and live DOM render the
+// same pixels. Moves happen in the narration pauses; holds are flat segments.
 const CAM = {
   x: [[0, 500], [3, 500], [4.3, 500], [6.6, 500], [7.6, 866], [11, 866], [12.2, 500], [16, 500], [17, 500], [20, 500], [21, 500], [25, 500], [26.3, 500], [30, 500], [31, 500], [38, 500], [39, 500], [41, 500]],
   y: [[0, 290], [3, 288], [4.3, 290], [6.6, 290], [7.6, 318], [11, 318], [12.2, 296], [16, 296], [17, 262], [20, 262], [21, 298], [25, 298], [26.3, 296], [30, 296], [31, 298], [38, 298], [39, 292], [41, 300]],
   z: [[0, 0.90], [3, 0.98], [4.3, 1.30], [6.6, 1.30], [7.6, 1.22], [11, 1.22], [12.2, 1.26], [16, 1.26], [17, 1.40], [20, 1.40], [21, 1.32], [25, 1.32], [26.3, 1.16], [30, 1.16], [31, 1.30], [38, 1.30], [39, 1.02], [41, 0.84]],
-  ry: [[0, -7], [3, -4], [4.3, 0], [6.6, 0], [7.6, -9], [11, -9], [12.2, 0], [20, 0], [21, 2], [25, 2], [26.3, 0], [30, 0], [31, 7], [38, 7], [39, 0], [41, -5]],
-  rx: [[0, 4], [3, 2.5], [4.3, 0], [6.6, 0], [7.6, 1], [11, 1], [12.2, 0], [38, 0], [39, 1.5], [41, 3.5]],
 };
 // Narrow (portrait) stages use the same look-at points with a tighter zoom and gentler yaw, so the
 // framing adapts instead of the whole composition shrinking.
@@ -46,7 +45,7 @@ const NARROW_ZOOM = [[0, 1.45], [38, 1.45], [39, 1.12], [41, 0.98]];          //
 const NARROW_X = [[19.9, 0], [21, 44], [25, 44], [26.3, 0]];                   // the verification table reads from its right-hand columns
 export function camera(t, { narrow = false } = {}) {
   const z = kf(t, CAM.z) * (narrow ? kf(t, NARROW_ZOOM) : 1);
-  return { x: kf(t, CAM.x) + (narrow ? kf(t, NARROW_X) : 0), y: kf(t, CAM.y) + (narrow ? 6 : 0), z, ry: kf(t, CAM.ry) * (narrow ? 0.55 : 1), rx: kf(t, CAM.rx) * (narrow ? 0.55 : 1) };
+  return { x: kf(t, CAM.x) + (narrow ? kf(t, NARROW_X) : 0), y: kf(t, CAM.y) + (narrow ? 6 : 0), z };
 }
 
 // ── WHAT THE LAPTOP SHOWS, over time (opacity per screen; crossfades ~0.7s) ──
@@ -66,7 +65,7 @@ export function screenOpacity(t) {
 export function phonePose(t) {
   const enter = easeOut(P(t, 6.4, 7.6)); const leave = easeInOut(P(t, 11, 12.2));
   const k = enter * (1 - leave);
-  return { k, dy: (1 - enter) * 90 + leave * 70, ry: -14 + enter * 8 - leave * 6, scale: 0.92 + k * 0.08 };
+  return { k, dy: (1 - enter) * 90 + leave * 70, tilt: -4 + enter * 4 - leave * 3, scale: 0.92 + k * 0.08 };
 }
 
 // ── OVERLAYS ──

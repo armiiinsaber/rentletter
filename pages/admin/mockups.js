@@ -210,7 +210,7 @@ export default function Mockups() {
     setProgress(''); setBusy('');
   };
   // Test hook for automated verification (admin-only page; harmless).
-  useEffect(() => { window.__rlMockups = { still: (k) => stillBlob(SCENES.find((x) => x.key === k)), video: (k) => videoBlob(SCENES.find((x) => x.key === k)), scenes: SCENES.map((x) => x.key), bestVideoType }; return () => { delete window.__rlMockups; }; });
+  useEffect(() => { window.__rlMockups = { still: (k) => stillBlob(SCENES.find((x) => x.key === k)), video: (k) => videoBlob(SCENES.find((x) => x.key === k)), frameAt: async (k, t) => { const st = stages.current.get(k); st.setDemoStep(t); await nextPaint(); const r = await renderPng(st.el, { pixelRatio: density }); return r; }, scenes: SCENES.map((x) => x.key), bestVideoType }; return () => { delete window.__rlMockups; }; });
 
   return (
     <>

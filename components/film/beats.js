@@ -8,7 +8,7 @@ import { C, R, SH } from '../theme';
 import { Icon, TickMeter } from '../ui';
 import { CAST, Avatar, Eyebrow, money } from '../mockups/scenes';
 
-const fade = (k, dy = 6) => ({ opacity: k, transform: `translate3d(0, ${(1 - k) * dy}px, 0)` });
+const fade = (k, dy = 6) => ({ opacity: k, transform: `translate(0, ${(1 - k) * dy}px)` });
 const BRAND = '#1f3a5f';
 const pad = '16px 18px';
 
@@ -119,7 +119,7 @@ export function RankedScreen({ b }) {
           const y = (ai + (ri - ai) * b.sort) * rowH; const k = b.arrive[ai];
           const isTop = ri === 0; const topK = isTop ? b.top : 0; const sel = isTop ? b.select : 0;
           return (
-            <div key={a.name} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: rowH - 7, transform: `translate3d(${(1 - k) * 60}px, ${y}px, 0) scale(${1 + sel * 0.02})`, opacity: k, background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, boxShadow: sel > 0 ? SH.raised : SH.rest, display: 'flex', alignItems: 'center', gap: 9, padding: '0 12px', zIndex: isTop ? 2 : 1 }}>
+            <div key={a.name} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: rowH - 7, transform: `translate(${(1 - k) * 60}px, ${y}px) scale(${1 + sel * 0.02})`, opacity: k, background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, boxShadow: sel > 0 ? SH.raised : SH.rest, display: 'flex', alignItems: 'center', gap: 9, padding: '0 12px', zIndex: isTop ? 2 : 1 }}>
               <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.red, borderRadius: '8px 0 0 8px', opacity: topK }} />
               <span className="rl-serif" style={{ fontSize: 13, color: C.inkMute, width: 14, opacity: b.sort }}>{ri + 1}</span>
               <Avatar a={a} size={26} />
@@ -173,7 +173,7 @@ export function VerifyScreen({ b }) {
         </div>
         <div style={{ position: 'relative', height: 24 }}>
           <div style={{ position: 'absolute', left: 0, top: 0, display: 'flex', gap: 8 }}>
-            {files.map((n, i) => <span key={n} style={{ fontSize: 9.5, color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6, opacity: 1 - b.del[i], transform: `translate3d(0, ${-10 * b.del[i]}px, 0) scale(${1 - 0.2 * b.del[i]})` }}>📄 {n}</span>)}
+            {files.map((n, i) => <span key={n} style={{ fontSize: 9.5, color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6, opacity: 1 - b.del[i], transform: `translate(0, ${-10 * b.del[i]}px) scale(${1 - 0.2 * b.del[i]})` }}>📄 {n}</span>)}
           </div>
           <div style={{ position: 'absolute', left: 0, top: 2, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: '#e8e4d9', ...fade(b.deleted, 4) }}><span style={{ width: 3, height: 12, background: '#ff4d55' }} /><strong>3 files deleted.</strong><span style={{ color: '#9a958a' }}>Nothing is stored. Only the confirmed facts remain.</span></div>
         </div>
@@ -243,7 +243,7 @@ export function StudioScreen({ b }) {
           <div style={{ fontSize: 9.5, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Colour</div>
           <div style={{ position: 'relative', display: 'flex', gap: 8, marginBottom: 12 }}>
             {SWATCHES.map((c) => <span key={c} style={{ width: 24, height: 24, borderRadius: '50%', background: c }} />)}
-            <span aria-hidden="true" style={{ position: 'absolute', left: -3, top: -3, width: 30, height: 30, borderRadius: '50%', border: `2px solid ${C.ink}`, transform: `translate3d(${b.swatch * 32}px, 0, 0)` }} />
+            <span aria-hidden="true" style={{ position: 'absolute', left: -3, top: -3, width: 30, height: 30, borderRadius: '50%', border: `2px solid ${C.ink}`, transform: `translate(${b.swatch * 32}px, 0)` }} />
           </div>
           <div style={{ fontSize: 9.5, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Fonts</div>
           <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '8px 10px', marginBottom: 10 }}>

@@ -1,7 +1,7 @@
 // components/film/ProductFilm.js
 // The 43-second product film — a camera moving through the product, built from DOM.
 //
-//   stage (perspective)  →  pivot (scale · rotateX · rotateY = the camera)  →  world (1000×562)
+//   stage  →  pivot (2D scale = the camera's zoom)  →  world (1000×562, panned by translate)
 //       └ overlays (wordmark / tagline, in stage space)     └ laptop (DeviceFrame) ─ six screens
 //                                                           └ phone  (DeviceFrame) ─ the application
 //
@@ -91,13 +91,13 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
   const stageAspect = narrow ? '4 / 5' : '16 / 9';
 
   return (
-    <div ref={wrapRef} className={`rl-film ${className}`} style={{ position: 'relative', width: '100%', aspectRatio: stageAspect, overflow: 'hidden', background: `radial-gradient(120% 90% at 50% 0%, ${C.card} 0%, ${C.paper} 55%, ${C.paperDeep} 100%)`, perspective: 1400, perspectiveOrigin: '50% 45%', contain: 'layout paint', ...style }} data-film-time={t.toFixed(2)} aria-label="Rentletter product film">
-      {/* camera */}
-      <div style={{ position: 'absolute', left: '50%', top: '50%', width: 0, height: 0, transformStyle: 'preserve-3d', transform: `scale(${fit * cam.z}) rotateX(${cam.rx}deg) rotateY(${cam.ry}deg)`, willChange: 'transform' }}>
+    <div ref={wrapRef} className={`rl-film ${className}`} style={{ position: 'relative', width: '100%', aspectRatio: stageAspect, overflow: 'hidden', background: `radial-gradient(120% 90% at 50% 0%, ${C.card} 0%, ${C.paper} 55%, ${C.paperDeep} 100%)`, contain: 'layout paint', isolation: 'isolate', ...style }} data-film-time={t.toFixed(2)} aria-label="Rentletter product film">
+      {/* camera: a flat 2D scale + pan (no perspective / 3D context anywhere — see timeline.js) */}
+      <div style={{ position: 'absolute', left: '50%', top: '50%', width: 0, height: 0, transform: `scale(${fit * cam.z})`, willChange: 'transform' }}>
         {/* world */}
-        <div style={{ position: 'absolute', left: 0, top: 0, width: WORLD.w, height: WORLD.h, transform: `translate3d(${-cam.x}px, ${-cam.y}px, 0)`, transformStyle: 'preserve-3d' }}>
-          {/* laptop */}
-          <div style={{ position: 'absolute', left: LAPTOP.x, top: LAPTOP.y, width: LAPTOP.w }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, width: WORLD.w, height: WORLD.h, transform: `translate(${-cam.x}px, ${-cam.y}px)` }}>
+          {/* laptop — explicit stacking: below the phone */}
+          <div style={{ position: 'absolute', left: LAPTOP.x, top: LAPTOP.y, width: LAPTOP.w, zIndex: 1 }}>
             <DeviceFrame variant="laptop" url="rentletter.ca/dashboard" aspect="16 / 10" tone="paper" dark={so.verify > 0.5} style={{ boxShadow: 'none' }}>
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.listing} beatKey={keys.listing}><ListingScreen b={b.listing} /></Scaled>
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.ranked} beatKey={keys.ranked}><RankedScreen b={b.ranked} /></Scaled>
@@ -107,9 +107,10 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.report2} beatKey={keys.report2}><ReportScreen b={{ mast: 1, brand: 1, rows: [1, 1, 1], logo: 1, foot: 1 }} logo={b.report2.logo} /></Scaled>
             </DeviceFrame>
           </div>
-          {/* phone — enters for the tenant beat, leaves on the pull-back */}
+          {/* phone — enters for the tenant beat, leaves on the pull-back; always above the laptop,
+              fully opaque once in (opacity only ramps during its own entrance/exit) */}
           {ph.k > 0 && (
-            <div style={{ position: 'absolute', left: PHONE.x, top: PHONE.y, width: PHONE.w, opacity: ph.k, transform: `translate3d(0, ${ph.dy}px, 60px) rotateY(${ph.ry}deg) scale(${ph.scale})`, transformOrigin: '50% 60%' }}>
+            <div style={{ position: 'absolute', left: PHONE.x, top: PHONE.y, width: PHONE.w, zIndex: 2, opacity: ph.k, transform: `translate(0, ${ph.dy}px) rotate(${ph.tilt}deg) scale(${ph.scale})`, transformOrigin: '50% 60%' }}>
               <DeviceFrame variant="phone" tone="paper" style={{ boxShadow: 'none' }}>
                 <Scaled scale={PHONE_SCALE} w={PHONE_DESIGN} h={Math.round(PHONE_DESIGN * 1.62)} opacity={1} beatKey={keys.apply}><ApplyScreen b={b.apply} /></Scaled>
               </DeviceFrame>
@@ -118,14 +119,14 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
         </div>
       </div>
       {/* overlays — stage space */}
-      <div style={{ position: 'absolute', left: '5%', bottom: '6%', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: ov.wordmarkIntro * 0.85, transform: `translate3d(0, ${(1 - ov.wordmarkIntro) * 6}px, 0)` }} aria-hidden="true">
+      <div style={{ position: 'absolute', left: '5%', bottom: '6%', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: ov.wordmarkIntro * 0.85, transform: `translate(0, ${(1 - ov.wordmarkIntro) * 6}px)` }} aria-hidden="true">
         <span style={{ width: 3.5, height: 21, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', fontWeight: 800, letterSpacing: '-0.025em', color: C.ink }}>Rentletter</span>
       </div>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: narrow ? '7%' : '9%', textAlign: 'center', padding: '0 6%' }} aria-hidden={ov.endWordmark < 0.5}>
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, opacity: ov.endWordmark, transform: `translate3d(0, ${(1 - ov.endWordmark) * 10}px, 0)` }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, opacity: ov.endWordmark, transform: `translate(0, ${(1 - ov.endWordmark) * 10}px)` }}>
           <span style={{ width: 5, height: 30, background: C.red, borderRadius: 1 }} /><span className="rl-serif" style={{ fontSize: 'clamp(26px, 4vw, 42px)', letterSpacing: '-0.025em', color: C.ink, lineHeight: 1 }}>Rentletter</span>
         </div>
-        <div style={{ fontSize: 'clamp(12px, 1.5vw, 15px)', color: C.inkSoft, marginTop: 8, opacity: ov.endTagline, transform: `translate3d(0, ${(1 - ov.endTagline) * 6}px, 0)`, textWrap: 'balance' }}>The AI assistant for rental realtors.</div>
+        <div style={{ fontSize: 'clamp(12px, 1.5vw, 15px)', color: C.inkSoft, marginTop: 8, opacity: ov.endTagline, transform: `translate(0, ${(1 - ov.endTagline) * 6}px)`, textWrap: 'balance' }}>The AI assistant for rental realtors.</div>
       </div>
       {/* reduced motion: the film holds its final frame; say so once, quietly */}
       {reduced && !controlled && <div style={{ position: 'absolute', right: 10, top: 10, fontSize: 10, color: C.inkMute, background: C.paper, border: `1px solid ${C.rule}`, borderRadius: 999, padding: '3px 8px' }}>Motion reduced</div>}
