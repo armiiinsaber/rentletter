@@ -249,7 +249,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         body: JSON.stringify({ listingId: listing.id }),
       });
       const j = await r.json();
-      setSendMsg(r.ok ? `Sent to ${j.sentTo || listing.landlord_email}.` : (j?.error || 'Email send failed.'));
+      setSendMsg(r.ok ? (j.preview ? `Demo: nothing sent. In the product this goes to ${j.sentTo || listing.landlord_email}.` : `Sent to ${j.sentTo || listing.landlord_email}.`) : (j?.error || 'Email send failed.'));
     } catch (e) { setSendMsg('Email send failed.'); }
     setSending(false);
   };
