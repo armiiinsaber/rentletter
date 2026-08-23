@@ -7,6 +7,7 @@ import { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
 import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon } from '../components/ui';
+import { useRouter } from 'next/router';
 import { isAdmin } from '../lib/adminAuth';
 
 export async function getServerSideProps({ req, res }) {
@@ -30,6 +31,7 @@ const Eyebrow = ({ children }) => (
 );
 
 export default function Admin({ authed: initialAuthed }) {
+  const router = useRouter();
   const [authed, setAuthed] = useState(initialAuthed);
   const [pw, setPw] = useState('');
   const [loginErr, setLoginErr] = useState('');
@@ -60,6 +62,9 @@ export default function Admin({ authed: initialAuthed }) {
     const j = await r.json().catch(() => ({}));
     setBusy(false); setPw('');
     if (!r.ok) { setLoginErr(j.error || 'Sign-in failed.'); return; }
+    // Sent here from another admin page (e.g. /admin/crm)? Go back there. Admin paths only.
+    const next = typeof router.query.next === 'string' && /^\/admin(\/[a-z-]+)?$/.test(router.query.next) ? router.query.next : null;
+    if (next && next !== '/admin') { router.replace(next); return; }
     setAuthed(true);
   };
   const logout = async () => { await fetch('/api/admin/logout', { method: 'POST' }); setAuthed(false); setData(null); };
@@ -115,13 +120,17 @@ export default function Admin({ authed: initialAuthed }) {
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
         <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '14px clamp(16px, 3vw, 28px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><Wordmark /><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.paper, background: C.ink, padding: '3px 8px', borderRadius: R.pill }}>Admin</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><Wordmark /><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.paper, background: C.ink, padding: '3px 8px', borderRadius: R.pill }}>Admin</span>{authed && <nav className="ad-nav" aria-label="Admin"><a href="/admin" aria-current="page">Realtors</a><a href="/admin/crm">CRM</a><a href="/admin/mockups">Mockups</a></nav>}</div>
           {authed && <button onClick={logout} style={{ background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: R.pill, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: C.inkSoft }}>Sign out</button>}
         </header>
         {children}
         {toast && <div role="status" style={{ position: 'fixed', left: '50%', bottom: 20, transform: 'translateX(-50%)', zIndex: 300, background: C.ink, color: C.paper, padding: '12px 18px', borderRadius: R.pill, fontSize: 13.5, fontWeight: 600, maxWidth: '92vw', boxShadow: '0 8px 24px rgba(15,15,16,0.22)' }}>{toast}</div>}
       </div>
       <style jsx global>{`
+        .ad-nav { display: flex; gap: 2px; margin-left: 6px; }
+        .ad-nav a { font-size: 13px; font-weight: 600; color: ${C.inkSoft}; text-decoration: none; padding: 6px 10px; min-height: 32px; display: inline-flex; align-items: center; }
+        .ad-nav a[aria-current="page"] { color: ${C.ink}; box-shadow: inset 0 -2px 0 ${C.red}; }
+        @media (max-width: 480px) { .ad-nav a { padding: 6px 7px; font-size: 12.5px; } .ad-nav a[href="/admin/mockups"] { display: none; } }
         .ad-wrap { max-width: 1240px; margin: 0 auto; padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 28px) 72px; }
         .ad-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 22px; }
         .ad-stat { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: ${R.card}px; padding: 14px 16px; min-width: 0; }
