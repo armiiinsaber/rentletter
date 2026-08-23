@@ -17,9 +17,9 @@ export const CAST = [
   { initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: 78000, net: 59100, score: 3.6, tenure: '4 yrs', rent: 45 },
   { initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB', income: 71000, net: 54500, score: 3.3, tenure: '8 mo', rent: 49 },
 ];
-const money = (n) => `$${Number(n).toLocaleString('en-CA')}`;
-const Avatar = ({ a, size = 28 }) => <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', background: a.color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 700 }}>{a.initials}</span>;
-const Eyebrow = ({ children, color = C.red, size = 9.5 }) => <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}><span style={{ width: 16, height: 2, background: color, borderRadius: 1 }} /><span style={{ fontSize: size, color, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{children}</span></div>;
+export const money = (n) => `$${Number(n).toLocaleString('en-CA')}`;
+export const Avatar = ({ a, size = 28 }) => <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', background: a.color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 700 }}>{a.initials}</span>;
+export const Eyebrow = ({ children, color = C.red, size = 9.5 }) => <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}><span style={{ width: 16, height: 2, background: color, borderRadius: 1 }} /><span style={{ fontSize: size, color, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{children}</span></div>;
 const pad = 'clamp(12px, 4%, 22px)';
 
 // 1 ── Ranked applicants (the live hero) ────────────────────────────────────────────────────
