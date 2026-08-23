@@ -3,9 +3,7 @@
 // it fetches /api/notifications once on mount. Opening the panel clears the unread count and
 // marks everything seen (POST /api/notifications); items stay in the list, unread ones lose
 // their dot once opened. Tapping an item navigates to that listing.
-//
-// Demo mode (`demo` + `items`) renders hardcoded SAMPLE notifications and makes NO network
-// calls — so the demo can showcase the feature without touching real data.
+// The demo dashboard feeds this the same way through the dashboard adapter (no demo branch here).
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/router';
@@ -23,12 +21,12 @@ function relTime(ts) {
   return new Date(ts).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
 }
 
-export default function NotificationBell({ demo = false, items: demoItems = [] }) {
+export default function NotificationBell() {
   const adapter = useAdapter();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(demo ? demoItems : []);
-  const [unread, setUnread] = useState(demo ? demoItems.filter((i) => i.unread).length : 0);
+  const [items, setItems] = useState([]);
+  const [unread, setUnread] = useState(0);
   const [seen, setSeen] = useState(false); // once the panel has been opened, dots read as seen
   const [menuPos, setMenuPos] = useState(null); // {top,left,width} in viewport (fixed) coords
   const ref = useRef(null);      // the bell wrapper
@@ -54,7 +52,6 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
 
   // Fetch once on mount (real mode only).
   useEffect(() => {
-    if (demo) return;
     let cancel = false;
     (async () => {
       try {
@@ -66,7 +63,7 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
       } catch (e) { /* bell just stays empty */ }
     })();
     return () => { cancel = true; };
-  }, [demo]);
+  }, []);
 
   // Close on outside click / Escape; keep the panel aligned to the bell on resize/scroll.
   useEffect(() => {
@@ -98,13 +95,13 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
     if (next && !seen) {
       setSeen(true);
       setUnread(0);
-      if (!demo) adapter.fetch('/api/notifications', { method: 'POST' }).catch(() => {});
+      adapter.fetch('/api/notifications', { method: 'POST' }).catch(() => {});
     }
   };
 
   const openItem = (it) => {
     setOpen(false);
-    if (demo || !it.listingId) return;
+    if (!it.listingId) return;
     router.push(adapter.paths.listing(it.listingId));
   };
 
@@ -141,7 +138,6 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
         }}>
           <div style={{ padding: '13px 16px', borderBottom: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <span style={{ fontSize: 13, fontWeight: 800, color: C.ink }}>Notifications</span>
-            {demo && <span style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sample</span>}
           </div>
 
           {items.length === 0 ? (
@@ -159,7 +155,7 @@ export default function NotificationBell({ demo = false, items: demoItems = [] }
                       style={{
                         width: '100%', textAlign: 'left', display: 'flex', gap: 10, alignItems: 'flex-start',
                         padding: '12px 16px', background: isUnread ? '#fdf3f2' : 'transparent',
-                        border: 'none', borderBottom: `1px solid ${C.rule}`, cursor: demo ? 'default' : 'pointer',
+                        border: 'none', borderBottom: `1px solid ${C.rule}`, cursor: 'pointer',
                       }}>
                       <span aria-hidden="true" style={{
                         marginTop: 6, width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
