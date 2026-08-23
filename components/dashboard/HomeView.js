@@ -217,9 +217,24 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               {/* DAILY BRIEFING (was B3 "graduate this line to applicant activity"): what arrived,
                   what's waiting on the realtor, what to do next — derived deterministically from
                   real data (lib/noticed.buildBriefing). Honest when quiet. */}
-              <h1 className="dash-h1" style={{ marginBottom: 10, textWrap: 'balance' }}>
-                {signals.loaded || !hasListings ? briefing.headline : `Welcome back${firstName ? `, ${firstName}` : ''}`}
-              </h1>
+              {/* Two deliberate lines. Line 1 is the greeting + name: "Good evening," and the name
+                  are flex items, so they share a line when they fit and otherwise the NAME drops
+                  to its own line as a whole unit (never mid-phrase, never a stray word). Line 2
+                  is the framing sentence, balanced so a wrap never leaves an orphan. */}
+              {(() => {
+                const ready = signals.loaded || !hasListings;
+                const g = ready ? briefing.greeting : (firstName ? { word: 'Welcome back,', name: `${firstName}.` } : { word: 'Welcome back.', name: '' });
+                const f = ready ? briefing.framing : '';
+                return (
+                  <h1 className="dash-h1" style={{ marginBottom: 10 }}>
+                    <span className="dash-h1-greet">
+                      <span>{g.word}{g.name ? '\u00A0' : ''}</span>
+                      {g.name && <span className="dash-h1-name">{g.name}</span>}
+                    </span>
+                    {f && <span className="dash-h1-frame">{f}</span>}
+                  </h1>
+                );
+              })()}
               {signals.loaded && (briefing.arrived.length || briefing.waiting.length) ? (
                 <ul className="dash-hero-sub" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 }}>
                   {briefing.arrived.map((t) => <li key={t} style={{ display: 'flex', gap: 8 }}><span aria-hidden="true" style={{ color: C.red, fontWeight: 800 }}>•</span><span>{t}</span></li>)}
@@ -437,9 +452,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-dash { display: inline-block; width: 3px; height: 1em; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 
         /* ── Bento grid: single column on mobile → asymmetric 6-col on wide screens ── */
-        .dash-bento { display: grid; gap: 14px; grid-template-columns: 1fr; margin-bottom: 14px; }
+        .dash-bento { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; }
         @media (min-width: 840px) {
-          .dash-bento { grid-template-columns: repeat(6, 1fr); gap: 18px; margin-bottom: 18px; }
+          .dash-bento { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
           .dash-bento .span-4 { grid-column: span 4; }
           .dash-bento .span-2 { grid-column: span 2; }
         }
@@ -450,13 +465,22 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
            body     (inherited) Inter 400/500 — everything else
            data     (.dash-data) Inter 800 + tabular-nums — every number that must line up */
         .dash-h1 { font-family: ${FONT.serif}; font-size: clamp(30px, 4.8vw, 44px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; color: ${C.ink}; }
+        /* greeting line: word + name are flex items — one line when they fit, else the name drops
+           whole. The nbsp inside the word is the space between them; a name wider than the card
+           may break inside itself (last resort — no overflow at 390px). */
+        .dash-h1 { min-width: 0; max-width: 100%; }
+        .dash-h1-greet { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; max-width: 100%; }
+        .dash-h1-greet > span { white-space: nowrap; }
+        .dash-h1-greet > .dash-h1-name { white-space: normal; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+        .dash-h1-frame { display: block; text-wrap: balance; }
         .dash-h2 { font-size: clamp(18px, 2.6vw, 22px); font-weight: 800; letter-spacing: -0.02em; color: ${C.ink}; }
         .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .dash-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: ${C.inkMute}; margin-bottom: 10px; }
         .dash-hero-sub { font-size: clamp(14px, 1.9vw, 15.5px); color: ${C.inkSoft}; line-height: 1.6; max-width: 460px; }
+        .dash-hero-sub li > span:last-child { min-width: 0; flex: 1 1 0; text-wrap: pretty; overflow-wrap: anywhere; }
 
         /* ── Hero overview card — subtle warm gradient + faint brand glow ── */
-        .dash-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 32px);
+        .dash-hero { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 32px);
           background: linear-gradient(152deg, ${C.card} 0%, #fbf6ec 100%); }
         .dash-hero::before { content: ''; position: absolute; top: -45%; right: -14%; width: 62%; height: 130%; pointer-events: none;
           background: radial-gradient(circle at center, rgba(215, 32, 39, 0.07), transparent 62%); }
