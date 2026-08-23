@@ -27,7 +27,12 @@ const PRESETS = [
   { key: 'portrait', label: 'Portrait 4:5', ratio: '4 / 5', hint: 'Instagram / LinkedIn mobile' },
   { key: 'story', label: 'Story 9:16', ratio: '9 / 16', hint: 'Stories / Reels cover' },
 ];
-const CANVAS = { paper: { bg: `radial-gradient(120% 90% at 50% 0%, ${C.card} 0%, ${C.paper} 55%, ${C.paperDeep} 100%)`, tone: 'paper', fg: C.ink }, ink: { bg: 'radial-gradient(120% 90% at 50% 0%, #1c1c1e 0%, #101012 60%, #0a0a0b 100%)', tone: 'ink', fg: '#e8e4d9' } };
+// Canvas gradients are defined as stops so the export can redraw the SAME gradient in Canvas 2D
+// (lib/mockupExport.js) instead of capturing it from the DOM.
+const radial = (stops) => `radial-gradient(120% 90% at 50% 0%, ${stops.map(([c, p]) => `${c} ${Math.round(p * 100)}%`).join(', ')})`;
+const PAPER_STOPS = [[C.card, 0], [C.paper, 0.55], [C.paperDeep, 1]];
+const INK_STOPS = [['#1c1c1e', 0], ['#101012', 0.6], ['#0a0a0b', 1]];
+const CANVAS = { paper: { bg: radial(PAPER_STOPS), stops: PAPER_STOPS, tone: 'paper', fg: C.ink }, ink: { bg: radial(INK_STOPS), stops: INK_STOPS, tone: 'ink', fg: '#e8e4d9' } };
 
 // Scenes are laid out at a fixed DESIGN size and scaled to the device screen with a MEASURED
 // transform: scale() (ResizeObserver) — no container-query units, no CSS trig, so it behaves
@@ -79,8 +84,10 @@ function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
   // the caption band) fits the stage height. Computed in px from the measured stage.
   let width = 0;
   if (sw && sh) {
-    const shareW = isPhone ? (preset.key === 'wide' ? 0.34 : 0.58) : (preset.key === 'wide' ? 0.78 : preset.key === 'square' ? 0.86 : 0.9);
-    const maxH = sh * (caption ? 0.80 : 0.88);
+    // Laptop: the base is 110% of the lid, and the export composites a grounded shadow that needs
+    // ~9% of the device width of clear canvas on every side to fade to nothing (lib/mockupExport).
+    const shareW = isPhone ? (preset.key === 'wide' ? 0.34 : 0.58) : 0.72;
+    const maxH = sh * (caption ? 0.74 : 0.82);
     // solve FRAME_H(cw) ≤ maxH for the content width, then add the shell padding (~20px)
     // Everything on the device scales with its width W: content W'·ratio (W' = W minus bezel),
     // status 59/393, home band 22/330, phone bezel 2.8%×2; laptop bar 40/560, bezel 1.4%, base 2.1%.
@@ -88,7 +95,8 @@ function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
     width = Math.floor(Math.min(sw * shareW, maxH / perW, isPhone ? 360 : 1e9));
   }
   return (
-    <div ref={stageRef} className="mk-stage" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}>
+    <div ref={stageRef} className="mk-stage" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}
+      data-export-tone={CANVAS[canvas].tone} data-export-bg={CANVAS[canvas].stops.map(([c, p]) => `${c}@${p}`).join('|')}>
       <div style={{ width: width || undefined, visibility: width ? 'visible' : 'hidden', marginTop: caption ? '-4%' : 0 }}>
         <DeviceFrame variant={scene.device} url={scene.url} aspect={scene.aspect} tone={CANVAS[canvas].tone} dark={!!scene.dark}>
           <ScaledScene dw={dw} dh={dh}><scene.Scene phone={isPhone} demoStep={demoStep} /></ScaledScene>
@@ -234,6 +242,12 @@ export default function Mockups() {
         .mk-stage:hover .mk-export, .mk-export:focus-within { opacity: 1; }
         .mk-xbtn { background: ${C.paper}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: ${R.pill}px; padding: 6px 11px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 30px; box-shadow: 0 2px 8px rgba(15,15,16,0.12); }
         .mk-xbtn:disabled { opacity: 0.5; cursor: wait; }
+        /* while exporting: shadows and the gradient are composited in canvas (lib/mockupExport.js) */
+        .mk-stage.mk-exporting { background: none !important; }
+        .mk-stage.mk-exporting .df-shell { box-shadow: 0 0 0 1px #2a2a2e !important; }
+        .mk-stage.mk-exporting .df-tone-ink .df-shell { box-shadow: 0 0 0 1px #3a3a3e !important; }
+        .mk-stage.mk-exporting .df-base { box-shadow: none !important; }
+        .mk-stage.mk-exporting .df-base::after { display: none; }
         .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.rule}; outline-offset: -1px; }
         @media (max-width: 520px) { .mk-grid, .mk-grid[data-preset] { grid-template-columns: 1fr; } }
       `}</style>
