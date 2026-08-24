@@ -9,11 +9,13 @@ import { Icon, TickMeter } from '../ui';
 import { CAST, Avatar, Eyebrow, money } from '../mockups/scenes';
 
 const fade = (k, dy = 6) => ({ opacity: k, transform: `translate(0, ${(1 - k) * dy}px)` });
-const BRAND = '#1f3a5f';
+// The product's default masthead — what a report wears before a brand is set. The report at
+// 0:25 shows this; the report at 0:38 wears what the studio ends on (studioBrand, below).
+const DEFAULT_BRAND = '#1f3a5f';
 const pad = '16px 18px';
 
 // A generated logo mark (the studio's output) — roofline + serif monogram.
-export function LogoMark({ size = 28, color = BRAND, paper = C.paper, variant = 0 }) {
+export function LogoMark({ size = 28, color = DEFAULT_BRAND, paper = C.paper, variant = 0 }) {
   const s = size;
   if (variant === 1) return <svg width={s} height={s} viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="18" fill={color} /><text x="20" y="26" textAnchor="middle" fontFamily="Fraunces, Georgia, serif" fontWeight="600" fontSize="17" fill={paper}>SC</text></svg>;
   if (variant === 2) return <svg width={s} height={s} viewBox="0 0 40 40" aria-hidden="true"><rect x="3" y="3" width="34" height="34" rx="6" fill={color} /><path d="M11 27V15l9-6 9 6v12" fill="none" stroke={paper} strokeWidth="2.4" strokeLinejoin="round" /></svg>;
@@ -102,7 +104,7 @@ export function ApplyScreen({ b }) {
 }
 
 // 3 ── Applications arrive, then physically sort into rank ─────────────────────────────────
-const ARRIVAL = ['Sarah Chen', 'James Okafor', 'Priya Nair', 'David Tremblay', 'Amara Okonkwo'];
+const ARRIVAL = ['Mei Tanaka', 'James Okafor', 'Priya Nair', 'David Tremblay', 'Amara Okonkwo'];
 const RANKED = [...CAST].sort((a, b) => b.score - a.score).map((a) => a.name);
 export function RankedScreen({ b }) {
   const rowH = 44; const top = 60;
@@ -185,21 +187,32 @@ export function VerifyScreen({ b }) {
   );
 }
 
-// 5 ── The branded landlord report assembling ─────────────────────────────────────────────
-export function ReportScreen({ b, logo = 0 }) {
+// 5 ── The landlord report assembling — twice ─────────────────────────────────────────────
+// brand = null  → the DEFAULT report (navy masthead, initials square, Inter): the "before", 0:25.
+// brand = {…}   → HER report, wearing exactly what the studio set (colour, generated mark, font):
+//                 the "after", 0:38. The real report does the same — the brand colour becomes its
+//                 accent (lib/landlordReportPdf: guardAccent(brand_color, RED)) — so the accent
+//                 follows too; Rentletter's red only remains where no brand is set.
+export function ReportScreen({ b, brand = null, logo = 0 }) {
   const top = CAST.slice(0, 3);
+  const mast = brand ? brand.color : DEFAULT_BRAND;
+  const accent = brand ? brand.color : C.red;
+  const nameStyle = brand
+    ? { fontFamily: brand.font[1], fontWeight: brand.font[2], fontStyle: brand.font[3] ? 'italic' : 'normal', fontSize: 14.5, lineHeight: 1.1, letterSpacing: '-0.01em' }
+    : { fontSize: 13, fontWeight: 800, lineHeight: 1.1 };
   return (
     <Screen>
       <div style={{ position: 'relative', height: 54, ...fade(b.mast, -10) }}>
         <div style={{ position: 'absolute', inset: 0, background: C.paperDeep }} />
-        <div style={{ position: 'absolute', inset: 0, background: BRAND, opacity: b.brand }} />
+        <div style={{ position: 'absolute', inset: 0, background: mast, opacity: b.brand }} />
         <div style={{ position: 'absolute', inset: 0, color: b.brand > 0.5 ? C.paper : C.ink, padding: '0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ position: 'relative', width: 30, height: 30, display: 'inline-flex' }}>
-              <span style={{ position: 'absolute', inset: 0, borderRadius: 6, background: C.paper, color: BRAND, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, opacity: b.logo * (1 - logo) }}>SC</span>
-              <span style={{ position: 'absolute', inset: 0, display: 'inline-flex', opacity: logo, transform: `scale(${0.6 + 0.4 * logo})` }}><LogoMark size={30} color={C.paper} paper={BRAND} /></span>
+              {brand
+                ? <span style={{ position: 'absolute', inset: 0, display: 'inline-flex', opacity: logo, transform: `scale(${0.6 + 0.4 * logo})` }}><LogoMark size={30} color={C.paper} paper={brand.color} /></span>
+                : <span style={{ position: 'absolute', inset: 0, borderRadius: 6, background: C.paper, color: DEFAULT_BRAND, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: 13, opacity: b.logo }}>SC</span>}
             </span>
-            <div><div style={{ fontSize: 13, fontWeight: 800, lineHeight: 1.1 }}>Sarah Chen · Royal LePage</div><div style={{ fontSize: 10, opacity: 0.8 }}>Shortlist for 88 Harbour St, Unit 2104</div></div>
+            <div><div style={nameStyle}>Sarah Chen · Royal LePage</div><div style={{ fontSize: 10, opacity: 0.8 }}>Shortlist for 88 Harbour St, Unit 2104</div></div>
           </div>
           <div style={{ fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase', opacity: 0.8 }}>Prepared for <strong>M. Rossi</strong></div>
         </div>
@@ -210,11 +223,11 @@ export function ReportScreen({ b, logo = 0 }) {
           <div style={{ fontSize: 9.5, color: C.inkMute }}>Ranked on income, tenure, history · Aug 20, 2026</div>
         </div>
         {top.map((a, i) => (
-          <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${i === 0 ? C.red : C.rule}`, borderRadius: R.ctrl, ...fade(b.rows[i], 10) }}>
-            <span style={{ fontSize: 11, fontWeight: 800, color: i === 0 ? C.red : C.inkMute, width: 12 }}>{i + 1}</span>
+          <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${i === 0 ? accent : C.rule}`, borderRadius: R.ctrl, ...fade(b.rows[i], 10) }}>
+            <span style={{ fontSize: 11, fontWeight: 800, color: i === 0 ? accent : C.inkMute, width: 12 }}>{i + 1}</span>
             <Avatar a={a} size={24} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 700 }}>{a.name}{i === 0 && <span style={{ color: C.red, fontWeight: 600 }}> · Top pick</span>}</div>
+              <div style={{ fontSize: 12, fontWeight: 700 }}>{a.name}{i === 0 && <span style={{ color: accent, fontWeight: 600 }}> · Top pick</span>}</div>
               <div style={{ fontSize: 9.5, color: C.inkMute }}>{a.role} · {money(a.income)}/yr · {a.rent}% rent-to-income</div>
               <div style={{ fontSize: 9.5, color: C.green }}>✓ Documents verified · income & employer matched</div>
             </div>
@@ -228,11 +241,17 @@ export function ReportScreen({ b, logo = 0 }) {
 }
 
 // 6 ── The brand studio: colours, concepts, a logo, fonts ─────────────────────────────────
-const SWATCHES = ['#1f3a5f', '#2d7d4a', '#b07818', '#6b4a8a', '#d72027'];
-const FONTS = [['Fraunces', "'Fraunces', Georgia, serif", 600], ['Inter', "'Inter', sans-serif", 800], ['Fraunces Italic', "'Fraunces', Georgia, serif", 500]];
+export const SWATCHES = ['#1f3a5f', '#2d7d4a', '#b07818', '#6b4a8a', '#d72027'];
+export const FONTS = [['Fraunces', "'Fraunces', Georgia, serif", 600, false], ['Inter', "'Inter', sans-serif", 800, false], ['Fraunces Italic', "'Fraunces', Georgia, serif", 500, true]]; // [name, family, weight, italic]
+// What the studio ends on, read from the SAME beat values the studio renders from — so the final
+// report wears exactly the colour, mark and font the viewer just watched being chosen.
+export function studioBrand(s) {
+  const fi = Math.max(0, Math.min(FONTS.length - 1, Math.round(s.font)));
+  return { color: SWATCHES[Math.max(0, Math.min(SWATCHES.length - 1, Math.round(s.swatch)))], font: FONTS[fi] };
+}
 export function StudioScreen({ b }) {
-  const fi = Math.max(0, Math.min(2, Math.round(b.font)));
-  const [fname, ffam, fw] = FONTS[fi];
+  const fi = Math.max(0, Math.min(FONTS.length - 1, Math.round(b.font)));
+  const [fname, ffam, fw, fitalic] = FONTS[fi];
   return (
     <Screen>
       <Chrome />
@@ -248,7 +267,7 @@ export function StudioScreen({ b }) {
           <div style={{ fontSize: 9.5, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>Fonts</div>
           <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '8px 10px', marginBottom: 10 }}>
             <div style={{ fontSize: 9.5, color: C.inkMute, marginBottom: 2 }}>Heading · {fname}</div>
-            <div style={{ fontFamily: ffam, fontWeight: fw, fontStyle: fi === 2 ? 'italic' : 'normal', fontSize: 16, letterSpacing: '-0.01em' }}>Sarah Chen · Royal LePage</div>
+            <div style={{ fontFamily: ffam, fontWeight: fw, fontStyle: fitalic ? 'italic' : 'normal', fontSize: 16, letterSpacing: '-0.01em' }}>Sarah Chen · Royal LePage</div>
           </div>
           <div style={{ fontSize: 10, color: C.inkSoft, lineHeight: 1.5 }}>Change it until it looks right. Every report picks it up.</div>
         </div>
@@ -270,7 +289,7 @@ export function StudioScreen({ b }) {
             <div style={{ position: 'absolute', inset: 0, background: SWATCHES[Math.round(b.swatch)] }} />
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', gap: 9, padding: '0 12px', color: C.paper }}>
               <span style={{ display: 'inline-flex', transform: `scale(${0.5 + 0.5 * b.land}) rotate(${(1 - b.land) * -12}deg)`, opacity: b.land }}><LogoMark size={26} color={C.paper} paper={SWATCHES[Math.round(b.swatch)]} /></span>
-              <div><div style={{ fontFamily: ffam, fontWeight: fw, fontStyle: fi === 2 ? 'italic' : 'normal', fontSize: 12 }}>Sarah Chen · Royal LePage</div><div style={{ fontSize: 9, opacity: 0.8 }}>Report masthead preview</div></div>
+              <div><div style={{ fontFamily: ffam, fontWeight: fw, fontStyle: fitalic ? 'italic' : 'normal', fontSize: 12 }}>Sarah Chen · Royal LePage</div><div style={{ fontSize: 9, opacity: 0.8 }}>Report masthead preview</div></div>
             </div>
           </div>
         </div>

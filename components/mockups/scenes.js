@@ -1,6 +1,7 @@
 // components/mockups/scenes.js
 // The mockup CONTENT LIBRARY — product scenes built in code with FAKE sample data (the demo
-// cast: Priya Nair, James Okafor, Sarah Chen, David Tremblay, Amara Okonkwo — never real
+// cast: Priya Nair, James Okafor, Mei Tanaka, David Tremblay, Amara Okonkwo — never real
+// tenants; the REALTOR in every scene is Sarah Chen (Royal LePage), so no applicant shares her name
 // tenants). Each scene fills whatever DeviceFrame it's placed in (fluid sizes via clamp /
 // percentages) and is self-explanatory standalone. No animation except HeroDemo (which is
 // reduced-motion gated); everything here is static so it screenshots identically every time.
@@ -13,7 +14,7 @@ import HeroDemo from './HeroDemo';
 export const CAST = [
   { initials: 'PN', color: '#2d7d4a', name: 'Priya Nair', role: 'Senior UX · CIBC', income: 115000, net: 84400, score: 4.6, tenure: '5 yrs', rent: 31 },
   { initials: 'JO', color: '#3a6ea5', name: 'James Okafor', role: 'Software Eng · Shopify', income: 95000, net: 70300, score: 4.2, tenure: '1.5 yrs', rent: 37 },
-  { initials: 'SC', color: '#b07818', name: 'Sarah Chen', role: 'Marketing Mgr · Loblaw', income: 87000, net: 64900, score: 3.9, tenure: '3 yrs', rent: 41 },
+  { initials: 'MT', color: '#1f7a8c', name: 'Mei Tanaka', role: 'Marketing Mgr · Loblaw', income: 87000, net: 64900, score: 3.9, tenure: '3 yrs', rent: 41 },
   { initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: 78000, net: 59100, score: 3.6, tenure: '4 yrs', rent: 45 },
   { initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB', income: 71000, net: 54500, score: 3.3, tenure: '8 mo', rent: 49 },
 ];

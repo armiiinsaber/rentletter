@@ -11,7 +11,7 @@ import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
 import { SCENES } from '../../components/mockups/scenes';
 import { isAdmin } from '../../lib/adminAuth';
 import { HERO_STEP_DURATIONS, HERO_TRANSITION_MS } from '../../components/mockups/HeroDemo';
-import { renderPng, dataUrlToBlob, download, zipFiles, slug, captureLoopFrames, captureTimelineFrames, encodeFrames, encodeFramesMp4, bestVideoType } from '../../lib/mockupExport';
+import { renderPng, dataUrlToBlob, download, zipFiles, slug, captureLoopFrames, captureTimelineFrames, captureTimelineMp4, encodeFrames, encodeFramesMp4, bestVideoType } from '../../lib/mockupExport';
 import ProductFilm, { FILM_DURATION } from '../../components/film/ProductFilm';
 
 export async function getServerSideProps({ req, res }) {
@@ -85,7 +85,7 @@ function FilmStage({ scene, preset, canvas, register, onExport, busy }) {
   const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}.${String(Math.floor((t % 1) * 10))}`;
   return (
     <div ref={stageRef} className="mk-stage mk-film" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}
-      data-export-tone={CANVAS[canvas].tone} data-export-bg={CANVAS[canvas].stops.map(([c, p]) => `${c}@${p}`).join('|')} data-export-shadow="none">
+      data-export-tone="paper" data-export-bg={PAPER_STOPS.map(([c, p]) => `${c}@${p}`).join('|')}>
       <ProductFilm ref={filmRef} time={filmTime} onTime={setShown} style={{ alignSelf: 'center' }} />
       <div className="mk-ui mk-export" aria-label="Export">
         <button type="button" className="mk-xbtn" disabled={!!busy} onClick={() => onExport('png', scene)}>{busy === `png:${scene.key}` ? 'Rendering…' : 'PNG'}</button>
@@ -158,6 +158,7 @@ export default function Mockups() {
   const [density, setDensity] = useState(2);
   const [busy, setBusy] = useState('');
   const [progress, setProgress] = useState('');
+  const [lastExport, setLastExport] = useState(''); // "film · 3× · 3792×2133 · 612 MB" — so a density can be chosen on evidence
   const shown = SCENES.filter((s) => !only || s.key === only);
   const stages = useRef(new Map());
   const register = useCallback((key, entry) => { if (entry) stages.current.set(key, entry); else stages.current.delete(key); }, []);
@@ -180,6 +181,12 @@ export default function Mockups() {
   const videoBlob = async (scene) => {
     const st = stages.current.get(scene.key); if (!st?.el) throw new Error('Stage not mounted');
     try {
+      if (scene.film) {
+        // straight into H.264 — one fresh frame per tick, no JPEG in between (lib/mockupExport)
+        const out = await captureTimelineMp4({ stage: st.el, setTime: st.setDemoStep, duration: FILM_DURATION, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering + encoding film frames ${i}/${n} at ${density}×`) });
+        if (out) return { blob: out.blob, ext: 'mp4', width: out.width, height: out.height };
+        console.warn('[mockups] WebCodecs H.264 unavailable — capturing frames for the MediaRecorder fallback');
+      }
       const frames = scene.film
         ? await captureTimelineFrames({ stage: st.el, setTime: st.setDemoStep, duration: FILM_DURATION, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering film frames ${i}/${n}`) })
         : await captureLoopFrames({ stage: st.el, setStep: st.setDemoStep, durations: HERO_STEP_DURATIONS, transitionMs: HERO_TRANSITION_MS, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering frames ${i}/${n}`) });
@@ -194,7 +201,10 @@ export default function Mockups() {
     if (busy) return; setBusy(`${kind}:${scene.key}`);
     try {
       if (kind === 'png') download(await stillBlob(scene), `${fileBase(scene)}-${density}x.png`);
-      else { const { blob, ext } = await videoBlob(scene); download(blob, `${fileBase(scene)}-${density}x.${ext}`); }
+      else {
+        const { blob, ext, width, height } = await videoBlob(scene); download(blob, `${fileBase(scene)}-${density}x.${ext}`);
+        setLastExport(`${scene.title} · ${density}× · ${width && height ? `${width}×${height} · ` : ''}${(blob.size / 1e6).toFixed(0)} MB ${ext}`);
+      }
     } catch (e) { alert(`Export failed: ${e.message}`); }
     setBusy('');
   };
@@ -210,7 +220,7 @@ export default function Mockups() {
     setProgress(''); setBusy('');
   };
   // Test hook for automated verification (admin-only page; harmless).
-  useEffect(() => { window.__rlMockups = { still: (k) => stillBlob(SCENES.find((x) => x.key === k)), video: (k) => videoBlob(SCENES.find((x) => x.key === k)), frameAt: async (k, t) => { const st = stages.current.get(k); st.setDemoStep(t); await nextPaint(); const r = await renderPng(st.el, { pixelRatio: density }); return r; }, scenes: SCENES.map((x) => x.key), bestVideoType }; return () => { delete window.__rlMockups; }; });
+  useEffect(() => { window.__rlMockups = { still: (k) => stillBlob(SCENES.find((x) => x.key === k)), video: (k) => videoBlob(SCENES.find((x) => x.key === k)), filmClip: async (k, stopAfter) => { const st = stages.current.get(k); try { const out = await captureTimelineMp4({ stage: st.el, setTime: st.setDemoStep, duration: FILM_DURATION, fps: 30, pixelRatio: density, stopAfter }); return out && { size: out.blob.size, codec: out.codec, bitrate: out.bitrate, width: out.width, height: out.height }; } finally { await release(st); } }, frameAt: async (k, t) => { const st = stages.current.get(k); st.setDemoStep(t); await nextPaint(); const r = await renderPng(st.el, { pixelRatio: density }); return r; }, scenes: SCENES.map((x) => x.key), bestVideoType }; return () => { delete window.__rlMockups; }; });
 
   return (
     <>
@@ -238,11 +248,12 @@ export default function Mockups() {
             <div className="mk-group"><span className="mk-label">Export</span>{[1, 2, 3].map((d) => <button key={d} className={`mk-chip ${density === d ? 'on' : ''}`} onClick={() => setDensity(d)}>{d}×</button>)}
               <button className="mk-chip" style={{ background: C.red, color: C.paper, borderColor: C.red }} disabled={!!busy} onClick={downloadAll}>{busy === 'all' ? 'Working…' : 'Download all (zip)'}</button>
               {progress && <span style={{ fontSize: 12, color: C.inkSoft }}>{progress}</span>}
+              {!progress && lastExport && <span style={{ fontSize: 12, color: C.inkMute }}>Last export: {lastExport}</span>}
             </div>
           </div>
 
           <div className="mk-tips">
-            <strong style={{ color: C.ink }}>Export.</strong> PNG downloads the stage exactly as shown (device, scene, caption) at 2× or 3×; Video records one seamless 8.3 s loop of the ranked-list animation at 30 fps as MP4 (H.264) — ready for Instagram, LinkedIn and X; a WebM fallback only appears in browsers without WebCodecs. Download all zips every scene at the current framing. <strong style={{ color: C.ink }}>Screenshot tips</strong> if you prefer: Browser zoom 100% (⌘0), window at least 1440px wide for the laptop scenes. Use the OS screenshot tool (⌘⇧4 on Mac) and drag exactly the stage rectangle — the warm edge is the crop line. For Retina exports that’s 2× resolution automatically. “Story” stages are tall; scroll so the whole stage is on screen first. Reduced-motion on the OS freezes the ranked-list animation on the shortlist frame, which is usually the one you want.
+            <strong style={{ color: C.ink }}>Export.</strong> PNG downloads the stage exactly as shown (device, scene, caption) at 1×, 2× or 3×; Video records one seamless 8.3 s loop of the ranked-list animation at 30 fps as MP4 (H.264) — ready for Instagram, LinkedIn and X; a WebM fallback only appears in browsers without WebCodecs. The product film exports at the chosen density too — every frame is rasterized at that density and encoded straight to H.264 (bitrate scales with the frame: 2× ≈ 60 Mbps, 3× ≈ 135 Mbps). 3× is ~3800 px wide, takes several minutes and runs unattended; the size of the last export shows next to the density chips. Download all zips every scene at the current framing. <strong style={{ color: C.ink }}>Screenshot tips</strong> if you prefer: Browser zoom 100% (⌘0), window at least 1440px wide for the laptop scenes. Use the OS screenshot tool (⌘⇧4 on Mac) and drag exactly the stage rectangle — the warm edge is the crop line. For Retina exports that’s 2× resolution automatically. “Story” stages are tall; scroll so the whole stage is on screen first. Reduced-motion on the OS freezes the ranked-list animation on the shortlist frame, which is usually the one you want.
           </div>
 
           <div className="mk-grid" data-preset={preset.key}>
@@ -277,10 +288,11 @@ export default function Mockups() {
         .mk-xbtn:disabled { opacity: 0.5; cursor: wait; }
         /* while exporting: shadows and the gradient are composited in canvas (lib/mockupExport.js) */
         .mk-stage.mk-exporting { background: none !important; }
-        .mk-stage.mk-exporting:not(.mk-film) .df-shell { box-shadow: 0 0 0 1px #2a2a2e !important; }
-        .mk-stage.mk-exporting:not(.mk-film) .df-tone-ink .df-shell { box-shadow: 0 0 0 1px #3a3a3e !important; }
-        .mk-stage.mk-exporting:not(.mk-film) .df-base { box-shadow: none !important; }
-        .mk-stage.mk-exporting:not(.mk-film) .df-base::after { display: none; }
+        .mk-stage.mk-exporting .df-shell { box-shadow: 0 0 0 1px #2a2a2e !important; }
+        .mk-stage.mk-exporting .df-tone-ink .df-shell { box-shadow: 0 0 0 1px #3a3a3e !important; }
+        .mk-stage.mk-exporting .df-base { box-shadow: none !important; }
+        .mk-stage.mk-exporting .df-base::after { display: none; }
+        .mk-stage.mk-exporting .rl-film { background: none !important; } /* the canvas paints the gradient */
         .mk-film { flex-direction: column; }
         .mk-scrub { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; background: rgba(250,248,243,0.92); border: 1px solid ${C.rule}; border-radius: ${R.pill}px; padding: 6px 10px; opacity: 0; }
         .mk-stage:hover .mk-scrub, .mk-scrub:focus-within { opacity: 1; }

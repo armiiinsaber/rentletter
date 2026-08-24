@@ -19,7 +19,7 @@ import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } fr
 import DeviceFrame from '../DeviceFrame';
 import { C } from '../theme';
 import { FILM_DURATION, WORLD, LAPTOP, PHONE, LAPTOP_DESIGN, PHONE_DESIGN, camera, screenOpacity, phonePose, overlays, beats } from './timeline';
-import { ListingScreen, ApplyScreen, RankedScreen, VerifyScreen, ReportScreen, StudioScreen } from './beats';
+import { ListingScreen, ApplyScreen, RankedScreen, VerifyScreen, ReportScreen, StudioScreen, studioBrand } from './beats';
 
 const LAPTOP_SCALE = (LAPTOP.w * (1 - 0.028)) / LAPTOP_DESIGN;   // DeviceFrame laptop bezel is 1.4% a side
 const PHONE_SCALE = (PHONE.w * (1 - 0.056)) / PHONE_DESIGN;      // phone bezel 2.8% a side
@@ -104,7 +104,8 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.verify} beatKey={keys.verify}><VerifyScreen b={b.verify} /></Scaled>
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.report} beatKey={keys.report}><ReportScreen b={b.report} /></Scaled>
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.studio} beatKey={keys.studio}><StudioScreen b={b.studio} /></Scaled>
-              <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.report2} beatKey={keys.report2}><ReportScreen b={{ mast: 1, brand: 1, rows: [1, 1, 1], logo: 1, foot: 1 }} logo={b.report2.logo} /></Scaled>
+              {/* the same report, now wearing the brand the studio just produced (colour, mark, font) */}
+              <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.report2} beatKey={keys.report2 + keys.studio}><ReportScreen b={{ mast: 1, brand: 1, rows: [1, 1, 1], logo: 1, foot: 1 }} brand={studioBrand(b.studio)} logo={b.report2.logo} /></Scaled>
             </DeviceFrame>
           </div>
           {/* phone — enters for the tenant beat, leaves on the pull-back; always above the laptop,

@@ -14,7 +14,7 @@ import { Icon } from '../ui';
 //                 and a "Send to landlord" bar appears.
 // transform/opacity only; respects prefers-reduced-motion (static shortlist).
 const HERO_APPLICANTS = [
-  { id: 'sarah', initials: 'SC', color: '#b07818', name: 'Sarah Chen',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Income 30% of rent', true], ['Non-smoker', true]] },
+  { id: 'mei', initials: 'MT', color: '#1f7a8c', name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Income 30% of rent', true], ['Non-smoker', true]] },
   { id: 'james', initials: 'JO', color: '#3a6ea5', name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income comfortably clears', true], ['Tenure under 2 yrs', false]] },
   { id: 'priya', initials: 'PN', color: '#2d7d4a', name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income comfortably clears', true], ['5 yrs at employer', true]] },
   { id: 'david', initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Income clears 30%', true], ['4 yr tenure', true]] },

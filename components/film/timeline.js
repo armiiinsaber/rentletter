@@ -90,6 +90,6 @@ export function beats(t) {
     verify: { rows: [P(t, 20.6, 21.1), P(t, 21.2, 21.7), P(t, 21.8, 22.3), P(t, 22.4, 22.9)].map(easeOut), badge: easeOut(P(t, 23.0, 23.5)), del: [P(t, 23.7, 24.2), P(t, 23.95, 24.45), P(t, 24.2, 24.7)].map(easeInOut), deleted: easeOut(P(t, 24.5, 25.0)) },
     report: { mast: easeOut(P(t, 25.4, 26.0)), brand: easeInOut(P(t, 25.9, 26.7)), rows: [P(t, 26.4, 26.9), P(t, 26.9, 27.4), P(t, 27.4, 27.9)].map(easeOut), logo: easeOut(P(t, 28.3, 28.9)), foot: easeOut(P(t, 29.0, 29.5)) },
     studio: { swatch: kf(t, [[31.3, 0], [31.9, 1], [32.5, 1], [33.0, 2]], easeInOut), gen: window_(t, 32.9, 34.2, 0.3), concepts: [P(t, 33.8, 34.3), P(t, 34.3, 34.8), P(t, 34.8, 35.3)].map(easeOut), pick: easeOut(P(t, 35.7, 36.2)), font: kf(t, [[36.2, 0], [36.7, 1], [37.2, 2]], (k) => (k < 0.5 ? 0 : 1)), land: easeOut(P(t, 37.4, 38.0)) },
-    report2: { logo: easeOut(P(t, 37.9, 38.6)) },
+    report2: { logo: easeOut(P(t, 37.9, 38.6)) },   // her generated mark lands in her masthead (colour + font come straight from the studio's end state)
   };
 }
