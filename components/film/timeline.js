@@ -43,16 +43,29 @@ const CAM = {
 // framing adapts instead of the whole composition shrinking.
 const NARROW_ZOOM = [[0, 1.45], [38, 1.45], [39, 1.12], [41, 0.98]];          // pull further out at the end so the wordmark has room
 const NARROW_X = [[19.9, 0], [21, 44], [25, 44], [26.3, 0]];                   // the verification table reads from its right-hand columns
+// ── OPENING (0–3 s): one continuous pull. Starts tight on the top applicant's score in the
+// ranked list (tick meter + number, world ≈ x 669–777, y 200–220 — measured), holds while the
+// score resolves, then pulls back through the list to the full laptop, landing EXACTLY on the
+// CAM keyframe at t = 3 so nothing after it moves. Zoom is interpolated in log space (constant
+// perceived speed) with an ease-in-out, so it neither snaps at the start nor overshoots the end.
+const INTRO = { from: { x: 722, y: 211, z: 6.0 }, hold: 0.55, end: 3 };
+function introCamera(t) {
+  const to = { x: kf(3, CAM.x), y: kf(3, CAM.y), z: kf(3, CAM.z) };
+  const k = easeInOut(P(t, INTRO.hold, INTRO.end));
+  return { x: lerp(INTRO.from.x, to.x, k), y: lerp(INTRO.from.y, to.y, k), z: Math.exp(lerp(Math.log(INTRO.from.z), Math.log(to.z), k)) };
+}
 export function camera(t, { narrow = false } = {}) {
+  if (t < INTRO.end) { const c = introCamera(t); return { x: c.x + (narrow ? kf(t, NARROW_X) : 0), y: c.y + (narrow ? 6 : 0), z: c.z * (narrow ? kf(t, NARROW_ZOOM) : 1) }; }
   const z = kf(t, CAM.z) * (narrow ? kf(t, NARROW_ZOOM) : 1);
   return { x: kf(t, CAM.x) + (narrow ? kf(t, NARROW_X) : 0), y: kf(t, CAM.y) + (narrow ? 6 : 0), z };
 }
 
 // ── WHAT THE LAPTOP SHOWS, over time (opacity per screen; crossfades ~0.7s) ──
-export const SCREENS = ['listing', 'ranked', 'verify', 'report', 'studio', 'report2'];
+export const SCREENS = ['intro', 'listing', 'ranked', 'verify', 'report', 'studio', 'report2'];
 export function screenOpacity(t) {
   return {
-    listing: 1 - P(t, 11.2, 11.9),
+    intro: 1 - P(t, 2.2, 2.85),                            // the settled ranked list the film opens on
+    listing: P(t, 2.2, 2.85) * (1 - P(t, 11.2, 11.9)),     // = 1 by 2.85 s → the 3 s frame is unchanged
     ranked: window_(t, 11.2, 20.4, 0.7),
     verify: window_(t, 19.9, 25.6, 0.6),
     report: window_(t, 25.0, 30.8, 0.6),
@@ -71,7 +84,7 @@ export function phonePose(t) {
 // ── OVERLAYS ──
 export function overlays(t) {
   return {
-    wordmarkIntro: window_(t, 0.6, 3.4, 0.8),           // subtle, bottom-left
+    wordmarkIntro: Math.min(P(t, 2.3, 2.6), 1 - P(t, 2.6, 3.4)),   // subtle, bottom-left; in only once the pull-back has cleared the list (by 2.3 s that corner is off the screen); identical to before from 2.6 s on
     endWordmark: P(t, 39.6, 40.8),
     endTagline: P(t, 40.6, 41.8),
   };
@@ -80,6 +93,8 @@ export function overlays(t) {
 // Beat progress values handed to the screens (each 0..1, eased where it should feel organic).
 export function beats(t) {
   return {
+    // opening: the list is already ranked; the top score resolves under the tight camera
+    intro: { arrive: [1, 1, 1, 1, 1], sort: 1, top: easeOut(P(t, 0.9, 1.5)), select: 0, askBtn: 0, press: 0, asked: 0, score: easeOut(P(t, 0.15, 1.05)) },
     listing: { linkBtn: easeOut(P(t, 3.9, 4.5)), link: easeOut(P(t, 4.9, 5.6)), sent: easeOut(P(t, 5.9, 6.5)) },
     apply: { fields: [P(t, 7.6, 8.1), P(t, 8.3, 8.8), P(t, 9.0, 9.5), P(t, 9.7, 10.2)].map(easeOut), estimate: easeOut(P(t, 10.1, 10.5)), progress: lerp(0.22, 0.33, easeInOut(P(t, 7.6, 10.4))), cont: easeInOut(P(t, 10.5, 10.9)) },
     ranked: {

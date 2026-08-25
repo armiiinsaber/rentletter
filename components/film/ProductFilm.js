@@ -99,6 +99,8 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
           {/* laptop — explicit stacking: below the phone */}
           <div style={{ position: 'absolute', left: LAPTOP.x, top: LAPTOP.y, width: LAPTOP.w, zIndex: 1 }}>
             <DeviceFrame variant="laptop" url="rentletter.ca/dashboard" aspect="16 / 10" tone="paper" dark={so.verify > 0.5} style={{ boxShadow: 'none' }}>
+              {/* opening shot: the ranked list, already settled, the top score resolving under a tight camera */}
+              <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.intro} beatKey={keys.intro}><RankedScreen b={b.intro} /></Scaled>
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.listing} beatKey={keys.listing}><ListingScreen b={b.listing} /></Scaled>
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.ranked} beatKey={keys.ranked}><RankedScreen b={b.ranked} /></Scaled>
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.verify} beatKey={keys.verify}><VerifyScreen b={b.verify} /></Scaled>

@@ -106,8 +106,11 @@ export function ApplyScreen({ b }) {
 // 3 ── Applications arrive, then physically sort into rank ─────────────────────────────────
 const ARRIVAL = ['Mei Tanaka', 'James Okafor', 'Priya Nair', 'David Tremblay', 'Amara Okonkwo'];
 const RANKED = [...CAST].sort((a, b) => b.score - a.score).map((a) => a.name);
+// `b.score` (optional, opening shot only): 0..1 — the top applicant's score resolves from 0 to its
+// value (ticks fill, the number counts up). Absent → scores are static, as in the 0:11 beat.
 export function RankedScreen({ b }) {
   const rowH = 44; const top = 60;
+  const scoreK = typeof b.score === 'number' ? b.score : 1;
   return (
     <Screen>
       <Chrome />
@@ -120,6 +123,7 @@ export function RankedScreen({ b }) {
           const ai = ARRIVAL.indexOf(a.name), ri = RANKED.indexOf(a.name);
           const y = (ai + (ri - ai) * b.sort) * rowH; const k = b.arrive[ai];
           const isTop = ri === 0; const topK = isTop ? b.top : 0; const sel = isTop ? b.select : 0;
+          const score = isTop ? Math.round(a.score * scoreK * 10) / 10 : a.score; // rounded: TickMeter prints the value
           return (
             <div key={a.name} style={{ position: 'absolute', left: 0, right: 0, top: 0, height: rowH - 7, transform: `translate(${(1 - k) * 60}px, ${y}px) scale(${1 + sel * 0.02})`, opacity: k, background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, boxShadow: sel > 0 ? SH.raised : SH.rest, display: 'flex', alignItems: 'center', gap: 9, padding: '0 12px', zIndex: isTop ? 2 : 1 }}>
               <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: C.red, borderRadius: '8px 0 0 8px', opacity: topK }} />
@@ -129,8 +133,8 @@ export function RankedScreen({ b }) {
                 <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}<span style={{ color: C.red, fontWeight: 600, opacity: topK }}> · Top pick</span></div>
                 <div style={{ fontSize: 10, color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr · {a.tenure} tenure</div>
               </div>
-              <TickMeter value={a.score} size={10} />
-              <span style={{ fontSize: 11.5, fontWeight: 700, color: topK > 0.5 ? C.paper : C.ink, background: topK > 0.5 ? C.red : C.paperDeep, borderRadius: R.pill, padding: '2px 8px' }}>{a.score.toFixed(1)}</span>
+              <TickMeter value={score} size={10} />
+              <span style={{ fontSize: 11.5, fontWeight: 700, color: topK > 0.5 ? C.paper : C.ink, background: topK > 0.5 ? C.red : C.paperDeep, borderRadius: R.pill, padding: '2px 8px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{score.toFixed(1)}</span>
             </div>
           );
         })}
