@@ -51,7 +51,7 @@ const NARROW_X = [[19.9, 0], [21, 44], [25, 44], [26.3, 0]];                   /
 const INTRO = { from: { x: 722, y: 211, z: 6.0 }, hold: 0.55, end: 3 };
 // 9:16 sees 1.78× more height per unit of zoom, so the tall opening starts tighter and looks a
 // little lower — the row stays cropped on the score instead of reaching up into the header.
-const INTRO_STORY_FROM = { x: 722, y: 232, z: 7.0 };
+const INTRO_STORY_FROM = { x: 733, y: 245, z: 7.0 };   // ticks + pill (world x 669–777) inside the 5%/15% side margins
 function introCamera(t, track, from = INTRO.from) {
   const to = { x: kf(3, track.x), y: kf(3, track.y), z: kf(3, track.z) };
   const k = easeInOut(P(t, INTRO.hold, INTRO.end));
@@ -59,15 +59,18 @@ function introCamera(t, track, from = INTRO.from) {
 }
 
 // ── STORY (9:16): its own look-at/zoom track, composed for a tall frame instead of cropping the
-// wide one. The film fills 9:16 there (ProductFilm frame="story"), so the visible world is
-// (1000/z) × (1778/z): at z 1.6 the laptop SCREEN (≈ 622 × 389 world, x 189–811) fills the width
-// edge to edge with its bezel cropped — every headline and column legible at phone size — and
-// the phone beat pushes to z 3.2 so the form fills the frame. Same shot times as CAM; holds are
-// flat; the opening pull and the end pull-back land on this track's own values.
+// wide one, INSIDE the Reels safe area: Instagram overlays the top ~10% (header), the right
+// ~15% (like/comment/share column) and the bottom ~20% (username, caption, audio); we also keep
+// 5% clear on the left. So the readable box is 80% × 70% of the frame, centred at (45%, 45%) —
+// every look-at below is the content centre shifted by +5% of the visible world in x and y
+// (the camera puts the look-at at the frame centre), and zoom is chosen so the readable width
+// fits 80%: the laptop screen's text (≈ 582 world wide) at z 1.35, the phone (212) at z 2.7,
+// the whole laptop for the end card at z 1.15 with the wordmark lifted above the bottom 20%.
+// Visible world = (1000/z) × (1778/z). Same shot times as CAM; holds are flat.
 const STORY = {
-  x: [[0, 500], [3, 500], [6.6, 500], [7.6, 866], [11, 866], [12.2, 500], [39, 500], [41, 500]],
-  y: [[0, 295], [3, 295], [6.6, 295], [7.6, 300], [11, 300], [12.2, 295], [39, 295], [41, 300]],
-  z: [[0, 1.6], [3, 1.6], [6.6, 1.6], [7.6, 3.2], [11, 3.2], [12.2, 1.6], [39, 1.6], [41, 1.05]],
+  x: [[0, 537], [3, 537], [6.6, 537], [7.6, 884], [11, 884], [12.2, 537], [39, 537], [41, 543]],
+  y: [[0, 361], [3, 361], [6.6, 361], [7.6, 348], [11, 348], [12.2, 361], [39, 361], [41, 308]],
+  z: [[0, 1.35], [3, 1.35], [6.6, 1.35], [7.6, 2.7], [11, 2.7], [12.2, 1.35], [39, 1.35], [41, 1.15]],
 };
 export function camera(t, { narrow = false, story = false } = {}) {
   if (story) return t < INTRO.end ? introCamera(t, STORY, INTRO_STORY_FROM) : { x: kf(t, STORY.x), y: kf(t, STORY.y), z: kf(t, STORY.z) };
