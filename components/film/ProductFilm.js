@@ -10,6 +10,7 @@
 // the same pixels. No CSS transitions; transform + opacity only.
 //
 //   <ProductFilm />                       autoplay from 0 (reduced motion → the final frame, still)
+//   <ProductFilm frame="story" />         9:16 — fills a tall frame with its own camera track
 //   <ProductFilm time={12.5} />           controlled (exporter / scrubber)
 //   ref: play() pause() seek(t) restart() getTime() isPlaying()
 //
@@ -47,7 +48,7 @@ function useWidth(ref) {
   return w;
 }
 
-const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = true, loop = false, onTime, style, className = '' }, ref) {
+const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = true, loop = false, onTime, style, className = '', frame = 'wide' }, ref) {
   const controlled = typeof time === 'number';
   const reduced = useReducedMotion();
   const [t, setT] = useState(controlled ? time : 0);
@@ -55,7 +56,8 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
   const clock = useRef({ raf: 0, t0: 0, base: 0 });
   const wrapRef = useRef(null);
   const width = useWidth(wrapRef);
-  const narrow = width > 0 && width < 720;
+  const story = frame === 'story';
+  const narrow = !story && width > 0 && width < 720;
 
   // ── the clock ──
   const stop = () => { cancelAnimationFrame(clock.current.raf); clock.current.raf = 0; setPlaying(false); };
@@ -84,11 +86,11 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
   }, [controlled, time, reduced, autoplay]);
 
   // ── everything below is a pure function of t ──
-  const cam = camera(t, { narrow });
+  const cam = camera(t, { narrow, story });
   const so = screenOpacity(t); const ph = phonePose(t); const ov = overlays(t); const b = beats(t);
   const fit = width ? width / WORLD.w : 1;
   const keys = Object.fromEntries(Object.entries(b).map(([k, v]) => [k, JSON.stringify(v)]));
-  const stageAspect = narrow ? '4 / 5' : '16 / 9';
+  const stageAspect = story ? '9 / 16' : narrow ? '4 / 5' : '16 / 9';
 
   return (
     <div ref={wrapRef} className={`rl-film ${className}`} style={{ position: 'relative', width: '100%', aspectRatio: stageAspect, overflow: 'hidden', background: `radial-gradient(120% 90% at 50% 0%, ${C.card} 0%, ${C.paper} 55%, ${C.paperDeep} 100%)`, contain: 'layout paint', isolation: 'isolate', ...style }} data-film-time={t.toFixed(2)} aria-label="Rentletter product film">
@@ -125,7 +127,7 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
       <div style={{ position: 'absolute', left: '5%', bottom: '6%', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: ov.wordmarkIntro * 0.85, transform: `translate(0, ${(1 - ov.wordmarkIntro) * 6}px)` }} aria-hidden="true">
         <span style={{ width: 3.5, height: 21, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', fontWeight: 800, letterSpacing: '-0.025em', color: C.ink }}>Rentletter</span>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: narrow ? '7%' : '9%', textAlign: 'center', padding: '0 6%' }} aria-hidden={ov.endWordmark < 0.5}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: story ? '8%' : narrow ? '7%' : '9%', textAlign: 'center', padding: '0 6%' }} aria-hidden={ov.endWordmark < 0.5}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, opacity: ov.endWordmark, transform: `translate(0, ${(1 - ov.endWordmark) * 10}px)` }}>
           <span style={{ width: 5, height: 30, background: C.red, borderRadius: 1 }} /><span className="rl-serif" style={{ fontSize: 'clamp(26px, 4vw, 42px)', letterSpacing: '-0.025em', color: C.ink, lineHeight: 1 }}>Rentletter</span>
         </div>

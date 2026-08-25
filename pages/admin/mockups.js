@@ -86,7 +86,7 @@ function FilmStage({ scene, preset, canvas, register, onExport, busy }) {
   return (
     <div ref={stageRef} className="mk-stage mk-film" style={{ aspectRatio: preset.ratio, background: CANVAS[canvas].bg }}
       data-export-tone="paper" data-export-bg={PAPER_STOPS.map(([c, p]) => `${c}@${p}`).join('|')}>
-      <ProductFilm ref={filmRef} time={filmTime} onTime={setShown} style={{ alignSelf: 'center' }} />
+      <ProductFilm ref={filmRef} time={filmTime} onTime={setShown} frame={preset.key === 'story' ? 'story' : 'wide'} style={{ alignSelf: 'center' }} />
       <div className="mk-ui mk-export" aria-label="Export">
         <button type="button" className="mk-xbtn" disabled={!!busy} onClick={() => onExport('png', scene)}>{busy === `png:${scene.key}` ? 'Rendering…' : 'PNG'}</button>
         <button type="button" className="mk-xbtn" disabled={!!busy} onClick={() => onExport('video', scene)}>{busy === `video:${scene.key}` ? 'Recording…' : 'Video (43 s)'}</button>

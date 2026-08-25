@@ -49,13 +49,29 @@ const NARROW_X = [[19.9, 0], [21, 44], [25, 44], [26.3, 0]];                   /
 // CAM keyframe at t = 3 so nothing after it moves. Zoom is interpolated in log space (constant
 // perceived speed) with an ease-in-out, so it neither snaps at the start nor overshoots the end.
 const INTRO = { from: { x: 722, y: 211, z: 6.0 }, hold: 0.55, end: 3 };
-function introCamera(t) {
-  const to = { x: kf(3, CAM.x), y: kf(3, CAM.y), z: kf(3, CAM.z) };
+// 9:16 sees 1.78× more height per unit of zoom, so the tall opening starts tighter and looks a
+// little lower — the row stays cropped on the score instead of reaching up into the header.
+const INTRO_STORY_FROM = { x: 722, y: 232, z: 7.0 };
+function introCamera(t, track, from = INTRO.from) {
+  const to = { x: kf(3, track.x), y: kf(3, track.y), z: kf(3, track.z) };
   const k = easeInOut(P(t, INTRO.hold, INTRO.end));
-  return { x: lerp(INTRO.from.x, to.x, k), y: lerp(INTRO.from.y, to.y, k), z: Math.exp(lerp(Math.log(INTRO.from.z), Math.log(to.z), k)) };
+  return { x: lerp(from.x, to.x, k), y: lerp(from.y, to.y, k), z: Math.exp(lerp(Math.log(from.z), Math.log(to.z), k)) };
 }
-export function camera(t, { narrow = false } = {}) {
-  if (t < INTRO.end) { const c = introCamera(t); return { x: c.x + (narrow ? kf(t, NARROW_X) : 0), y: c.y + (narrow ? 6 : 0), z: c.z * (narrow ? kf(t, NARROW_ZOOM) : 1) }; }
+
+// ── STORY (9:16): its own look-at/zoom track, composed for a tall frame instead of cropping the
+// wide one. The film fills 9:16 there (ProductFilm frame="story"), so the visible world is
+// (1000/z) × (1778/z): at z 1.6 the laptop SCREEN (≈ 622 × 389 world, x 189–811) fills the width
+// edge to edge with its bezel cropped — every headline and column legible at phone size — and
+// the phone beat pushes to z 3.2 so the form fills the frame. Same shot times as CAM; holds are
+// flat; the opening pull and the end pull-back land on this track's own values.
+const STORY = {
+  x: [[0, 500], [3, 500], [6.6, 500], [7.6, 866], [11, 866], [12.2, 500], [39, 500], [41, 500]],
+  y: [[0, 295], [3, 295], [6.6, 295], [7.6, 300], [11, 300], [12.2, 295], [39, 295], [41, 300]],
+  z: [[0, 1.6], [3, 1.6], [6.6, 1.6], [7.6, 3.2], [11, 3.2], [12.2, 1.6], [39, 1.6], [41, 1.05]],
+};
+export function camera(t, { narrow = false, story = false } = {}) {
+  if (story) return t < INTRO.end ? introCamera(t, STORY, INTRO_STORY_FROM) : { x: kf(t, STORY.x), y: kf(t, STORY.y), z: kf(t, STORY.z) };
+  if (t < INTRO.end) { const c = introCamera(t, CAM); return { x: c.x + (narrow ? kf(t, NARROW_X) : 0), y: c.y + (narrow ? 6 : 0), z: c.z * (narrow ? kf(t, NARROW_ZOOM) : 1) }; }
   const z = kf(t, CAM.z) * (narrow ? kf(t, NARROW_ZOOM) : 1);
   return { x: kf(t, CAM.x) + (narrow ? kf(t, NARROW_X) : 0), y: kf(t, CAM.y) + (narrow ? 6 : 0), z };
 }
