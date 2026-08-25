@@ -150,7 +150,9 @@ export function RankedScreen({ b }) {
 // 4 ── Verification: rows resolve, then the files are deleted ─────────────────────────────
 export function VerifyScreen({ b }) {
   const rows = [['Income', '$115,000', '$114,600 (T4)'], ['Employer', 'CIBC', 'CIBC World Markets'], ['Job title', 'Senior UX', 'Senior UX Designer'], ['Pay frequency', '—', 'Semi-monthly']];
-  const files = ['pay-stub-jul.pdf', 'employment-letter.pdf', 'credit-report.pdf'];
+  // Short names on purpose: the exact filename carries no meaning, and short leaves headroom
+  // however the capture engine measures text (see the pill styles below).
+  const files = ['pay-stub.pdf', 'employment.pdf', 'credit.pdf'];
   return (
     <Screen dark>
       <div style={{ padding: pad, display: 'flex', flexDirection: 'column', gap: 9, position: 'absolute', inset: 0 }}>
@@ -174,8 +176,18 @@ export function VerifyScreen({ b }) {
           ); })}
         </div>
         <div style={{ position: 'relative', height: 24 }}>
-          <div style={{ position: 'absolute', left: 0, top: 0, display: 'flex', gap: 8 }}>
-            {files.map((n, i) => <span key={n} style={{ fontSize: 9.5, color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6, opacity: 1 - b.del[i], transform: `translate(0, ${-10 * b.del[i]}px) scale(${1 - 0.2 * b.del[i]})` }}>📄 {n}</span>)}
+          {/* Escape-proof pills: html-to-image measures text differently from the live DOM (the
+              font-size mangling in lib/mockupExport is one cause), so a label that fits live can
+              overflow in the export. Each pill is a nowrap flex box that CLIPS its label
+              (overflow hidden, ellipsis, min-width 0, explicit max-width), and the row itself
+              never wraps — text can only truncate inside its pill, never spill out of it. */}
+          <div style={{ position: 'absolute', left: 0, right: 0, top: 0, display: 'flex', flexWrap: 'nowrap', gap: 8, overflow: 'hidden' }}>
+            {files.map((n, i) => (
+              <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flex: '0 1 auto', minWidth: 0, maxWidth: 150, boxSizing: 'border-box', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: 9.5, lineHeight: '12px', color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6, opacity: 1 - b.del[i], transform: `translate(0, ${-10 * b.del[i]}px) scale(${1 - 0.2 * b.del[i]})` }}>
+                <span aria-hidden="true" style={{ flexShrink: 0 }}>📄</span>
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</span>
+              </span>
+            ))}
           </div>
           <div style={{ position: 'absolute', left: 0, top: 2, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: '#e8e4d9', ...fade(b.deleted, 4) }}><span style={{ width: 3, height: 12, background: '#ff4d55' }} /><strong>3 files deleted.</strong><span style={{ color: '#9a958a' }}>Nothing is stored. Only the confirmed facts remain.</span></div>
         </div>
