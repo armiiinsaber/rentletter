@@ -8,6 +8,7 @@ import { normalizeProvince } from '../lib/provinces';
 import HomeView from '../components/dashboard/HomeView';
 import { getEntitlement } from '../lib/entitlements';
 import { readPromoCookie, redeemPromoFromCookie } from '../lib/promoCookie';
+import { needsOnboarding } from '../lib/onboarding';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -46,6 +47,9 @@ export async function getServerSideProps(ctx) {
     if (r?.ok) { const { data: fresh } = await supabase.from('profiles').select('*').eq('id', user.id).single(); if (fresh) profile = fresh; }
   }
   const finalProfile = profile || { id: user.id, email: user.email };
+  // First run: identity and province are required before the dashboard means anything. Skipped
+  // branding or a skipped first listing never redirect (lib/onboarding.js).
+  if (needsOnboarding(finalProfile)) return { redirect: { destination: '/onboarding', permanent: false } };
   return {
     props: {
       userId: user.id,

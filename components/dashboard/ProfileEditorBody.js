@@ -36,7 +36,9 @@ const sectionLabel = { display: 'block', fontSize: 11, color: C.inkSoft, fontWei
 
 // onClose: when provided (modal), Save closes it. When omitted (page), Save shows an
 // inline "Saved" confirmation instead.
-export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyChange, saveRef }) {
+// logoOnly: render just the logo block (upload + AI studio). Used by first run onboarding, which
+// collects the identity fields on its own screen; the editor's data flow is unchanged.
+export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyChange, saveRef, logoOnly = false }) {
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
     brokerage: profile?.brokerage || '',
@@ -291,7 +293,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {/* Sticky save-state strip — the ONE place that says whether this form is persisted. Sticks to
           the top of the scroll container (the modal body, or the page) so it's visible from the name
           field down to the font cards. Colours: ink while saving, green when saved, red when unsaved. */}
-      <div role="status" aria-live="polite"
+      {!logoOnly && <div role="status" aria-live="polite"
         style={{ position: 'sticky', top: 0, zIndex: 5, margin: '0 0 14px', padding: '8px 12px', background: C.paper, borderBottom: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 12.5, lineHeight: 1.4 }}>
         {saving ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: C.inkSoft, fontWeight: 600 }}>
@@ -315,11 +317,12 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
             Save now
           </button>
         )}
-      </div>
+      </div>}
       {error && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>}
 
       {/* One continuous flow, ordered most-fundamental first — your details, then logo, then the
           final aesthetic touches (colours + fonts). No section headers: it reads as one form. */}
+      {!logoOnly && <>
       {fields.map((f) => (
         <div key={f.k} style={{ marginBottom: 16 }}>
           <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
@@ -337,6 +340,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 26 }}>
         These appear on PDF exports and email summaries you send to landlord clients. Saved automatically when you leave a field.
       </p>
+      </>}
 
       {/* Logo — upload or generate with the AI studio (which carries the brand colours). Flows
           straight on from the details above; no divider or section header. */}
@@ -398,6 +402,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         </div>
       )}
 
+      {!logoOnly && <>
       {/* ── BRAND PALETTE — auto-generated from the two brand colours ── */}
       {palette && (
         <div style={{ marginBottom: 24 }}>
@@ -478,6 +483,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         }
         @keyframes rl-savespin { to { transform: rotate(360deg); } }
       `}</style>
+      </>}
     </div>
   );
 }

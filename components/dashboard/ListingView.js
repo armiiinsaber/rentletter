@@ -13,6 +13,7 @@ import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
+import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
 import ChatWidget from '../../components/ChatWidget';
 import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
@@ -134,6 +135,20 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [inviteUrl, setInviteUrl] = useState(initialListing.invite_url || '');
+  // Signing name on reports (lib/reportSignature): profiles.report_signature wins, else the display
+  // name. Editable here because the person signing a report is not always the account holder.
+  const [sigEditing, setSigEditing] = useState(false);
+  const [sigDraft, setSigDraft] = useState('');
+  const [sigBusy, setSigBusy] = useState(false);
+  const saveSignature = async () => {
+    const v = cleanSignature(sigDraft); setSigBusy(true);
+    try {
+      const supabase = adapter.supabase();
+      const { data, error: sErr } = await supabase.from('profiles').update({ report_signature: v || null }).eq('id', profile.id).select().single();
+      if (sErr) setError(sErr.message); else { setProfile((p) => ({ ...(data || p), report_signature: v || null })); setSigEditing(false); }
+    } catch (e) { setError('Could not save the signing name.'); }
+    setSigBusy(false);
+  };
   const [inviteLoading, setInviteLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [addRL, setAddRL] = useState('');
@@ -710,6 +725,24 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Present the full ranked list of {totalApplicants} applicant{totalApplicants === 1 ? '' : 's'} (top 5 highlighted{setAsideList.length ? `, ${setAsideList.length} set aside` : ''}) as a branded PDF report or a paste-ready message.
               </p>
 
+              {/* Who signs this report */}
+              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '12px 14px', marginBottom: 10, fontSize: 13 }}>
+                <span style={{ color: C.inkMute, fontWeight: 600 }}>Signed by: </span>
+                {sigEditing ? (
+                  <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                    <input value={sigDraft} onChange={(e) => setSigDraft(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Signing name on reports" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveSignature(); } if (e.key === 'Escape') setSigEditing(false); }}
+                      style={{ flex: '1 1 200px', minWidth: 0, padding: '10px 12px', fontSize: 16, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 44 }} />
+                    <button type="button" onClick={saveSignature} disabled={sigBusy} className="rl-btn" style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '0 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>{sigBusy ? 'Saving…' : 'Save'}</button>
+                    <button type="button" onClick={() => setSigEditing(false)} disabled={sigBusy} style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '0 12px', fontSize: 13, fontWeight: 600, color: C.inkSoft, cursor: 'pointer', minHeight: 44 }}>Cancel</button>
+                  </span>
+                ) : (
+                  <>
+                    <span style={{ color: C.ink, fontWeight: 600 }}>{signingName(profile)}</span>
+                    <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ marginLeft: 10, background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 13, padding: 0, minHeight: 28 }}>Change</button>
+                    <span style={{ display: 'block', fontSize: 12, color: C.inkMute, marginTop: 4, textWrap: 'pretty' }}>The name that signs this report and every report after it.</span>
+                  </>
+                )}
+              </div>
               {/* Landlord contact captured on the listing */}
               <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
                 <span style={{ color: C.inkMute, fontWeight: 600 }}>Landlord client: </span>

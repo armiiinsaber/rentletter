@@ -11,6 +11,7 @@ import { loadPairingFonts } from '../../../lib/pdfFonts';
 import { logServerError } from '../../../lib/serverLog';
 import { humanRightsCodeName } from '../../../lib/provinces';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
+import { signingName } from '../../../lib/reportSignature';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -48,7 +49,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Add the landlord's email to this listing first (Edit listing)." });
     }
 
-    const realtorName = String(ctx.profile?.full_name || 'Your realtor').slice(0, 120);
+    const realtorName = signingName(ctx.profile);
     const brokerage = String(ctx.profile?.brokerage || '').slice(0, 120);
     const phone = String(ctx.profile?.phone || '').slice(0, 40);
     const realtorEmail = user.email;

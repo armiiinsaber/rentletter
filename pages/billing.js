@@ -6,6 +6,7 @@ import { C } from '../components/theme';
 import { GlobalStyle } from '../components/ui';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import { PlanPicker } from '../components/dashboard/Paywall';
+import PromoEntry from '../components/dashboard/PromoEntry';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getEntitlement } from '../lib/entitlements';
 import { PLANS, money } from '../lib/billingConfig';
@@ -48,6 +49,7 @@ export default function Billing({ profile, entitlement: e }) {
               <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 36px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>{e.status === 'trialing' ? `${e.daysLeft} day${e.daysLeft === 1 ? '' : 's'} left on your trial.` : 'Pick a plan.'}</h1>
               <p style={{ fontSize: 15.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18, textWrap: 'balance' }}>{e.status === 'trialing' ? 'Subscribe now and nothing changes on the day the trial ends.' : 'Monthly or annual, cancel any time from the billing portal.'}</p>
               <PlanPicker hasCustomer={!!profile.stripe_customer_id} />
+              <div style={{ marginTop: 22 }}><PromoEntry /></div>
             </>
           )}
         </main>

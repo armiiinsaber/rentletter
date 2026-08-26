@@ -80,6 +80,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const [listings, setListings] = useState(Array.isArray(initialListings) ? initialListings : null);
   const [listingsError, setListingsError] = useState(initialListingsError);
   const [modalOpen, setModalOpen] = useState(false);
+  useEffect(() => { try { if (new URLSearchParams(window.location.search).get('new') === '1') setModalOpen(true); } catch (e) { /* ignore */ } }, []);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 

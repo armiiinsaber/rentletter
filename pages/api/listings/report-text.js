@@ -12,6 +12,7 @@ import { reasonLabel } from '../../../lib/setAsideReasons';
 import { humanRightsCodeName } from '../../../lib/provinces';
 import { describeAiError } from '../../../lib/aiErrors';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
+import { signingName } from '../../../lib/reportSignature';
 
 // An 800-token composition can exceed the platform default function duration.
 export const config = { maxDuration: 30 };
@@ -45,7 +46,7 @@ export default async function handler(req, res) {
     }
 
     const realtor = {
-      name: ctx.profile?.full_name || 'Your realtor',
+      name: signingName(ctx.profile),
       brokerage: ctx.profile?.brokerage || null,
       phone: ctx.profile?.phone || null,
     };

@@ -27,7 +27,7 @@ const EMPTY = {
 };
 
 const inputStyle = {
-  width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl,
+  width: '100%', padding: '11px 12px', fontSize: 16, borderRadius: R.ctrl,
   border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none',
 };
 const fieldLabel = { fontSize: 13, color: C.ink, fontWeight: 600, display: 'block', marginBottom: 4 };
@@ -47,7 +47,9 @@ function dateOrNull(v) {
   return v && String(v).trim() ? v : null;
 }
 
-export default function ListingSetupModal({ mode = 'create', initial = null, onCancel, onSave, saving = false }) {
+// inline: render the same form in the page flow (no scrim, no fixed positioning). Used by first
+// run onboarding, so there is exactly one create listing form in the product.
+export default function ListingSetupModal({ mode = 'create', initial = null, onCancel, onSave, saving = false, inline = false }) {
   const seed = { ...EMPTY };
   if (initial) {
     for (const k of Object.keys(EMPTY)) {
@@ -162,14 +164,14 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
 
   return (
     <div
-      onClick={onCancel}
-      style={{
+      onClick={inline ? undefined : onCancel}
+      style={inline ? { display: 'block' } : {
         position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.5)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         padding: 'clamp(16px, 4vw, 32px)', zIndex: 100,
       }}>
       <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-        style={{ background: C.paper, maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}` }}>
+        style={inline ? { background: C.card, width: '100%', border: `1px solid ${C.rule}` } : { background: C.paper, maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}` }}>
 
         {/* Header */}
         <div style={{ padding: 'clamp(20px, 4vw, 28px)', borderBottom: `1px solid ${C.rule}` }}>
@@ -181,7 +183,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           </h3>
           {creating && (
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
-              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required — address, monthly rent, unit type, and your landlord client's name and email. Everything else can be set now or edited later.
+              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: address, monthly rent, unit type, and your landlord client's name and email. Everything else can be set now or edited later.
             </p>
           )}
         </div>

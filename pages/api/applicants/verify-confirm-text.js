@@ -7,6 +7,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadApplicantVerification, verificationConfirmText } from '../../../lib/listingReportData';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
+import { signingName } from '../../../lib/reportSignature';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -29,7 +30,7 @@ export default async function handler(req, res) {
     if (loaded.error) return res.status(loaded.status || 400).json({ error: loaded.error });
 
     const text = verificationConfirmText({
-      realtorName: loaded.profile?.full_name || 'Your realtor',
+      realtorName: signingName(loaded.profile),
       brokerage: loaded.profile?.brokerage || '',
       phone: loaded.profile?.phone || '',
       unitName: loaded.listing?.name || loaded.listing?.address || '',
