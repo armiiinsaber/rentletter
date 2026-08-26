@@ -6,6 +6,8 @@
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { normalizeProvince } from '../lib/provinces';
 import HomeView from '../components/dashboard/HomeView';
+import { getEntitlement } from '../lib/entitlements';
+import { readPromoCookie, redeemPromoFromCookie } from '../lib/promoCookie';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -37,12 +39,20 @@ export async function getServerSideProps(ctx) {
     if (updated) profile = updated;
     else profile = { ...profile, province: chosen };
   }
+  // A pending invitation (rl_promo) that didn't get redeemed in the auth callback — e.g. the
+  // realtor signed in with a password instead of the email link — is redeemed here, once.
+  if (profile && readPromoCookie(ctx.req) && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    const r = await redeemPromoFromCookie(ctx.req, ctx.res, user.id);
+    if (r?.ok) { const { data: fresh } = await supabase.from('profiles').select('*').eq('id', user.id).single(); if (fresh) profile = fresh; }
+  }
+  const finalProfile = profile || { id: user.id, email: user.email };
   return {
     props: {
       userId: user.id,
       userEmail: user.email || '',
-      initialProfile: profile || { id: user.id, email: user.email },
+      initialProfile: finalProfile,
       initialListings: listings || [],
+      entitlement: getEntitlement(finalProfile),
     },
   };
 }

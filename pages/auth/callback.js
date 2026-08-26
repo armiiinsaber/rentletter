@@ -4,6 +4,7 @@
 // redirects to ?next (defaults to the dashboard). The PKCE code verifier was
 // stored as a cookie by the browser client at signUp / resetPasswordForEmail.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
+import { redeemPromoFromCookie } from '../../lib/promoCookie';
 
 export async function getServerSideProps(ctx) {
   const code = typeof ctx.query.code === 'string' ? ctx.query.code : null;
@@ -17,7 +18,12 @@ export async function getServerSideProps(ctx) {
 
   if (code) {
     const supabase = getSupabaseServerClient(ctx.req, ctx.res);
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error && data?.user?.id) {
+      // Personal invitation (/join/<code> set rl_promo): grant it now that the account exists.
+      // Best effort — whatever happens, the signup succeeds; a failure leaves plan = 'none'.
+      await redeemPromoFromCookie(ctx.req, ctx.res, data.user.id);
+    }
     if (error) {
       return {
         redirect: {

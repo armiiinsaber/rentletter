@@ -28,12 +28,12 @@ function ago(iso) {
 const priorNumbers = (r) => (r.signupNumberHistory?.length ? `Previously ${r.signupNumberHistory.map((h) => `#${h.from} (until ${new Date(h.at).toLocaleDateString('en-CA', { dateStyle: 'medium' })})`).join(', ')}` : undefined);
 
 const StatusPill = ({ r }) => (r.suspended ? <span className="ad-pill danger">Suspended</span> : r.active ? <span className="ad-pill green">Active</span> : <span className="ad-pill quiet">Quiet</span>);
-const FounderPill = ({ r }) => (r.accountStatus === 'founder' ? (
+const FounderPill = ({ r }) => (r.accountStatus === 'founding' ? (
   <span title={priorNumbers(r)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
     <span className="ad-pill green">Founder{r.signupNumber ? <span className="ad-num"> #{r.signupNumber}</span> : ''}</span>
     {r.signupNumberHistory?.length > 0 && <span className="ad-num" style={{ fontSize: 11, color: C.instMute, whiteSpace: 'nowrap' }}>was #{r.signupNumberHistory.map((h) => h.from).join(', #')}</span>}
   </span>
-) : r.accountStatus === 'trial' ? <span className="ad-pill amber">Trial</span> : r.accountStatus === 'lapsed' ? <span className="ad-pill quiet">Lapsed</span> : null);
+) : r.accountStatus === 'trialing' ? <span className="ad-pill amber">Trial</span> : r.accountStatus === 'trial_expired' ? <span className="ad-pill quiet">Trial ended</span> : r.accountStatus === 'paid' ? <span className="ad-pill green">Paid</span> : r.accountStatus === 'past_due' ? <span className="ad-pill amber">Past due</span> : null);
 
 const COLS = [['email', 'Email'], ['name', 'Name'], ['brokerage', 'Brokerage'], ['province', 'Prov'], ['signupAt', 'Signed up'], ['listings', 'Listings'], ['applications', 'Applications'], ['lastActivity', 'Last activity'], ['active', 'Status']];
 
@@ -200,7 +200,7 @@ export default function Admin({ authed: initialAuthed }) {
                 <tr key={r.id} className={sel.has(r.id) ? 'sel' : ''}>
                   <td><input type="checkbox" aria-label={`Select ${r.email || r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
                   <td className="ad-mono" style={{ overflowWrap: 'anywhere' }}>{r.email || '—'}</td>
-                  <td style={{ fontWeight: 700 }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>—</span>} <FounderPill r={r} /></td>
+                  <td style={{ fontWeight: 700 }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>—</span>} <FounderPill r={r} />{r.promoCodeUsed && <span className="ad-mono" style={{ color: C.instMute, marginLeft: 6 }} title="Promo code used">{r.promoCodeUsed}</span>}</td>
                   <td>{r.brokerage || '—'}</td>
                   <td>{r.province || '—'}</td>
                   <td className="ad-num" style={{ whiteSpace: 'nowrap' }}>{fmtDate(r.signupAt)}</td>

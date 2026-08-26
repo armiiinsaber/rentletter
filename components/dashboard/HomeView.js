@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../../components/ui';
+import { getEntitlement } from '../../lib/entitlements';
 import { C, R, SH, EASE, FONT } from '../../components/theme';
 import { normalizeProvince } from '../../lib/provinces';
 import { formatUnit } from '../../lib/unitType';
@@ -95,7 +96,7 @@ function useLogoAccent(logoUrl) {
   return accent;
 }
 
-export default function HomeView({ userId, userEmail, initialProfile, initialListings }) {
+export default function HomeView({ userId, userEmail, initialProfile, initialListings, entitlement: initialEntitlement = null }) {
   const adapter = useAdapter();
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
@@ -173,6 +174,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const briefing = buildBriefing({ listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsInbox: signals.referralsInbox, notices: computeNotices(noticeInput), firstName });
   const activeLinks = listings.filter((l) => l.invite_token || l.invite_url).length;
   const provinceCode = normalizeProvince(profile?.province);
+  // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
+  // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
+  const entitlement = initialEntitlement || getEntitlement(profile);
+  const trialLine = entitlement.status === 'trialing' && entitlement.daysLeft != null && entitlement.daysLeft <= 7
+    ? `${entitlement.daysLeft === 1 ? '1 day' : `${entitlement.daysLeft} days`} left on your trial` : null;
   const brokerage = (profile?.brokerage || '').trim();
   const newThisWeek = listings.filter((l) => {
     const t = l.created_at ? new Date(l.created_at).getTime() : NaN;
@@ -318,6 +324,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </div>
             </div>
           )}
+          {/* one quiet line, only inside the last week of a trial — no banner, no colour alarm */}
+          {trialLine && <p className="dash-pulse-note dash-data">{trialLine}</p>}
 
           {error && (
             <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
@@ -525,6 +533,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-pulse-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px; }
         .dash-pulse-val { font-size: clamp(26px, 5.6vw, 34px); line-height: 1; color: ${C.ink}; }
         .dash-pulse-label { font-size: 10.5px; font-weight: 700; color: ${C.inkMute}; line-height: 1.25; letter-spacing: 0.08em; text-transform: uppercase; }
+        .dash-pulse-note { font-size: 12.5px; color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: 6px 0 14px; }
         .dash-pulse-delta { font-size: 10.5px; font-weight: 700; color: ${C.green}; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .dash-pulse-tick { width: 3px; height: clamp(24px, 4vw, 30px); background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 

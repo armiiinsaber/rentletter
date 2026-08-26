@@ -1,23 +1,24 @@
 // components/dashboard/StatusBadge.js
 // Trial / subscription badge derived from the profile. Display only. Founder accounts show
-// NOTHING here — founder status (and the signup number) is visible only on /admin; the
-// first-50 business logic itself lives in pages/landlord.js and is untouched.
+// NOTHING here — founder status (and the signup number) is visible only on /admin. Access is
+// decided by lib/entitlements.js; this only labels it.
 import { C, R } from '../theme';
 import { evaluateProfile } from '../../lib/accountStatus';
 
 export default function StatusBadge({ profile }) {
   const s = evaluateProfile(profile);
-  if (s.status === 'founder' || s.status === 'unknown') return null;
+  // founding → nothing; none → nothing (no gating yet — that ships with checkout)
+  if (s.status === 'founding' || s.status === 'unknown' || s.status === 'none') return null;
   let bg = C.paperDeep, fg = C.inkSoft, border = C.rule, label = '—';
-  if (s.status === 'active') {
+  if (s.status === 'paid') {
     bg = C.greenTint; fg = C.green; border = C.green; label = 'Subscribed';
-  } else if (s.status === 'trial') {
+  } else if (s.status === 'trialing') {
     bg = C.amberTint; fg = C.amber; border = C.amber;
     label = `Trial · ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} left`;
-  } else if (s.status === 'lapsed') {
+  } else if (s.status === 'trial_expired') {
     bg = C.redTint; fg = C.red; border = C.red; label = 'Trial ended';
-  } else if (s.status === 'pending') {
-    bg = C.paperDeep; fg = C.inkMute; border = C.rule; label = 'Confirm your email';
+  } else if (s.status === 'past_due') {
+    bg = C.amberTint; fg = C.amber; border = C.amber; label = 'Payment past due';
   }
   return (
     <span style={{
