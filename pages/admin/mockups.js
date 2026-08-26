@@ -4,9 +4,8 @@
 // Each scene: a stage with a framing preset (Wide / Square / Portrait / Story) and a canvas
 // (paper / ink). The founder screenshots the stage; nothing else is needed.
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Head from 'next/head';
 import { C, R } from '../../components/theme';
-import { GlobalStyle, Wordmark } from '../../components/ui';
+import AdminShell from '../../components/admin/AdminShell';
 import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
 import { SCENES } from '../../components/mockups/scenes';
 import { isAdmin } from '../../lib/adminAuth';
@@ -223,24 +222,11 @@ export default function Mockups() {
   useEffect(() => { window.__rlMockups = { still: (k) => stillBlob(SCENES.find((x) => x.key === k)), video: (k) => videoBlob(SCENES.find((x) => x.key === k)), filmClip: async (k, stopAfter) => { const st = stages.current.get(k); try { const out = await captureTimelineMp4({ stage: st.el, setTime: st.setDemoStep, duration: FILM_DURATION, fps: 30, pixelRatio: density, stopAfter }); return out && { size: out.blob.size, codec: out.codec, bitrate: out.bitrate, width: out.width, height: out.height }; } finally { await release(st); } }, frameAt: async (k, t) => { const st = stages.current.get(k); st.setDemoStep(t); await nextPaint(); const r = await renderPng(st.el, { pixelRatio: density }); return r; }, scenes: SCENES.map((x) => x.key), bestVideoType }; return () => { delete window.__rlMockups; }; });
 
   return (
-    <>
-      <Head><title>Mockups — Rentletter admin</title><meta name="robots" content="noindex, nofollow" /></Head>
-      <GlobalStyle />
-      <div style={{ minHeight: '100vh', background: C.paper }}>
-        <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '14px clamp(16px, 3vw, 28px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><Wordmark /><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.paper, background: C.ink, padding: '3px 8px', borderRadius: R.pill }}>Mockups</span></div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <a href="/admin" style={{ fontSize: 12.5, color: C.inkSoft, fontWeight: 600, textDecoration: 'none' }}>← Admin</a>
-            {/* revokes THIS device's session server-side (its own KV key); other devices stay signed in */}
-            <button type="button" onClick={async () => { await fetch('/api/admin/logout', { method: 'POST' }); window.location.href = '/admin'; }} style={{ background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: R.pill, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: C.inkSoft }}>Sign out</button>
-          </div>
-        </header>
-
+    <AdminShell page="mockups" title="Mockups">
+      <div style={{ minHeight: '60vh' }}>
         <div className="mk-wrap">
-          <div style={{ marginBottom: 18 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}><span style={{ width: 22, height: 2, background: C.red }} /><span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Product mockups</span></div>
-            <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 4vw, 36px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.05, marginBottom: 8 }}>Screenshot-ready scenes.</h1>
-            <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, maxWidth: 640 }}>Every scene is built in code with sample data — no real tenants, nothing to redact. Pick a framing, pick a canvas, screenshot the stage.</p>
+          <div className="ad-head">
+            <div><div className="ad-eyebrow">Mockups</div><h1 className="ad-h1">Screenshot-ready scenes.</h1></div>
           </div>
 
           {/* Controls — sticky so they travel with you down the page */}
@@ -251,21 +237,22 @@ export default function Mockups() {
             <div className="mk-group"><span className="mk-label">Show</span><select value={only} onChange={(e) => setOnly(e.target.value)} className="mk-select"><option value="">All scenes</option>{SCENES.map((s) => <option key={s.key} value={s.key}>{s.title}</option>)}</select></div>
             <div className="mk-group"><span className="mk-label">Export</span>{[1, 2, 3].map((d) => <button key={d} className={`mk-chip ${density === d ? 'on' : ''}`} onClick={() => setDensity(d)}>{d}×</button>)}
               <button className="mk-chip" style={{ background: C.red, color: C.paper, borderColor: C.red }} disabled={!!busy} onClick={downloadAll}>{busy === 'all' ? 'Working…' : 'Download all (zip)'}</button>
-              {progress && <span style={{ fontSize: 12, color: C.inkSoft }}>{progress}</span>}
-              {!progress && lastExport && <span style={{ fontSize: 12, color: C.inkMute }}>Last export: {lastExport}</span>}
+              {progress && <span style={{ fontSize: 12, color: C.instText }}>{progress}</span>}
+              {!progress && lastExport && <span style={{ fontSize: 12, color: C.instMute }}>Last export: {lastExport}</span>}
             </div>
           </div>
 
-          <div className="mk-tips">
-            <strong style={{ color: C.ink }}>Export.</strong> PNG downloads the stage exactly as shown (device, scene, caption) at 1×, 2× or 3×; Video records one seamless 8.3 s loop of the ranked-list animation at 30 fps as MP4 (H.264) — ready for Instagram, LinkedIn and X; a WebM fallback only appears in browsers without WebCodecs. The product film exports at the chosen density too — every frame is rasterized at that density and encoded straight to H.264 (bitrate scales with the frame: 2× ≈ 60 Mbps, 3× ≈ 135 Mbps). 3× is ~3800 px wide, takes several minutes and runs unattended; the size of the last export shows next to the density chips. Download all zips every scene at the current framing. <strong style={{ color: C.ink }}>Screenshot tips</strong> if you prefer: Browser zoom 100% (⌘0), window at least 1440px wide for the laptop scenes. Use the OS screenshot tool (⌘⇧4 on Mac) and drag exactly the stage rectangle — the warm edge is the crop line. For Retina exports that’s 2× resolution automatically. “Story” stages are tall; scroll so the whole stage is on screen first. Reduced-motion on the OS freezes the ranked-list animation on the shortlist frame, which is usually the one you want.
-          </div>
+          <details className="mk-tips">
+            <summary>How exports work</summary>
+            <p>PNG downloads the stage as shown at 1×, 2× or 3×. Video renders the ranked-list loop (8.3 s) or the product film (43 s) frame by frame straight into H.264 at the chosen density — 3× is ~3800 px wide and takes a few minutes; the last export’s size shows next to the density chips. WebM appears only in browsers without WebCodecs. Exports are done in Chrome.</p>
+          </details>
 
           <div className="mk-grid" data-preset={preset.key}>
             {shown.map((scene, i) => (
               <section key={scene.key} className="mk-item">
                 <div className="mk-head">
-                  <div><div style={{ fontSize: 10.5, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{String(i + 1).padStart(2, '0')} · {scene.device}</div><h2 style={{ fontSize: 17, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', lineHeight: 1.2 }}>{scene.title}</h2></div>
-                  <p style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, maxWidth: 420, margin: 0 }}>{scene.blurb}</p>
+                  <div><div style={{ fontSize: 10.5, color: C.instMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{String(i + 1).padStart(2, '0')} · {scene.device}</div><h2 style={{ fontSize: 17, fontWeight: 800, color: C.instText, letterSpacing: '-0.015em', lineHeight: 1.2 }}>{scene.title}</h2></div>
+                  <p style={{ fontSize: 12.5, color: C.instMute, lineHeight: 1.5, maxWidth: 420, margin: 0 }}>{scene.blurb}</p>
                 </div>
                 {scene.film ? <FilmStage scene={scene} preset={preset} canvas={canvas} register={register} onExport={onExport} busy={busy} /> : <Stage scene={scene} preset={preset} canvas={canvas} caption={caption} register={register} onExport={onExport} busy={busy} />}
               </section>
@@ -275,17 +262,19 @@ export default function Mockups() {
       </div>
       <style jsx global>{`
         .mk-wrap { max-width: 1320px; margin: 0 auto; padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 28px) 80px; }
-        .mk-controls { position: sticky; top: 0; z-index: 20; background: rgba(250,248,243,0.92); backdrop-filter: blur(8px); border: 1px solid ${C.rule}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 14px 22px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+        .mk-controls { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 20; background: rgba(27,27,30,0.92); backdrop-filter: blur(8px); border: 1px solid ${C.instRule}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 14px 22px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
         .mk-group { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-        .mk-label { font-size: 10px; color: ${C.inkMute}; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-right: 4px; }
-        .mk-chip { background: ${C.card}; border: 1px solid ${C.ruleDark}; color: ${C.ink}; border-radius: ${R.pill}px; padding: 6px 11px; font-size: 12.5px; font-weight: 600; cursor: pointer; min-height: 32px; }
-        .mk-chip.on { background: ${C.ink}; color: ${C.paper}; border-color: ${C.ink}; }
-        .mk-select { border: 1px solid ${C.ruleDark}; border-radius: ${R.ctrl}px; padding: 6px 10px; font-size: 12.5px; background: ${C.card}; color: ${C.ink}; min-height: 32px; }
-        .mk-tips { padding: 12px 14px; background: ${C.paperDeep}; border-radius: ${R.ctrl}px; font-size: 12.5px; color: ${C.inkSoft}; line-height: 1.55; margin-bottom: 22px; }
+        .mk-label { font-size: 10px; color: ${C.instMute}; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-right: 4px; }
+        .mk-chip { background: transparent; border: 1px solid ${C.instRule}; color: ${C.instText}; border-radius: ${R.pill}px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 36px; }
+        .mk-chip.on { background: ${C.instText}; color: ${C.inst}; border-color: ${C.instText}; }
+        .mk-select { border: 1px solid ${C.instRule}; border-radius: ${R.ctrl}px; padding: 6px 10px; font-size: 16px; background: ${C.inst}; color: ${C.instText}; min-height: 40px; max-width: 100%; }
+        .mk-tips { font-size: 12.5px; color: ${C.instMute}; line-height: 1.55; margin-bottom: 18px; }
+        .mk-tips summary { cursor: pointer; color: ${C.instText}; font-weight: 700; min-height: 36px; display: flex; align-items: center; }
+        .mk-tips p { margin-top: 8px; text-wrap: pretty; }
         .mk-grid { display: grid; gap: 28px; grid-template-columns: 1fr; }
         .mk-grid[data-preset="square"], .mk-grid[data-preset="portrait"] { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
         .mk-grid[data-preset="story"] { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
-        .mk-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+        .mk-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; color: ${C.instText}; }
         .mk-export { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: 0.55; transition: opacity 160ms ease; }
         .mk-stage:hover .mk-export, .mk-export:focus-within { opacity: 1; }
         .mk-xbtn { background: ${C.paper}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: ${R.pill}px; padding: 6px 11px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 30px; box-shadow: 0 2px 8px rgba(15,15,16,0.12); }
@@ -302,9 +291,9 @@ export default function Mockups() {
         .mk-stage:hover .mk-scrub, .mk-scrub:focus-within { opacity: 1; }
         .mk-scrub input[type=range] { flex: 1; accent-color: ${C.red}; min-width: 0; }
         .mk-time { font-size: 11px; font-variant-numeric: tabular-nums; color: ${C.inkSoft}; white-space: nowrap; }
-        .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.rule}; outline-offset: -1px; }
+        .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.instRule}; outline-offset: -1px; }
         @media (max-width: 520px) { .mk-grid, .mk-grid[data-preset] { grid-template-columns: 1fr; } }
       `}</style>
-    </>
+    </AdminShell>
   );
 }
