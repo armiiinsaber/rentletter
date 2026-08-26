@@ -1,7 +1,8 @@
 -- db/billing-and-promos.sql
 -- Billing state on profiles + personalised promo codes. Run once in the Supabase SQL editor.
 -- IDEMPOTENT: every statement is IF NOT EXISTS / OR REPLACE / guarded, so running it twice is a
--- no-op. Nothing here changes existing rows: every current profile stays at plan = 'none'.
+-- no-op. ONE statement touches existing rows — the backfill at the very end, which moves the
+-- legacy first-50 founders to plan = 'founding'; every other existing profile stays at 'none'.
 --
 --   profiles.plan            'none' | 'founding' | 'trial' | 'paid'   (lib/entitlements.js is the
 --                            ONLY reader that turns this into access — nothing else reads it)
@@ -132,3 +133,14 @@ END $$;
 
 REVOKE ALL ON FUNCTION public.redeem_promo_code(text, uuid) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.redeem_promo_code(text, uuid) TO service_role;
+
+-- ── Backfill: legacy founders → plan = 'founding' ─────────────────────────────────────────────
+-- THE ONE STATEMENT IN THIS FILE THAT TOUCHES EXISTING ROWS. The first-50 founders were recorded
+-- under the old scheme (is_founder / subscription_status = 'founder'); from here on plan is the
+-- only thing that decides founding status (lib/entitlements.js no longer reads the old flags).
+-- Idempotent and scoped: only rows still at plan = 'none' qualify, so a second run matches
+-- nothing, and nobody who isn't a legacy founder is touched.
+UPDATE public.profiles
+   SET plan = 'founding', trial_ends_at = NULL
+ WHERE plan = 'none'
+   AND (is_founder IS TRUE OR subscription_status = 'founder');
