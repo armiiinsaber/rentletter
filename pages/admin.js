@@ -1,15 +1,15 @@
 // pages/admin.js
-// FOUNDER-ONLY internal dashboard. Not a product surface. Password-gated (ADMIN_PASSWORD) with a
-// 7-day HttpOnly/Strict session; every read + action is re-checked server-side in /api/admin/*.
-// Shows realtor onboarding at a glance; lets the founder suspend or HARD-DELETE accounts.
-// Tenants appear as one count — no tenant PII is ever sent to this page.
+// FOUNDER-ONLY internal dashboard. Password-gated (ADMIN_PASSWORD) with a 1-year HttpOnly/Strict
+// session; every read + action is re-checked server-side in /api/admin/*. Shows realtor
+// onboarding at a glance; lets the founder suspend or HARD-DELETE accounts. Tenants appear as
+// one count — no tenant PII is ever sent to this page. Shell + styles: components/admin/AdminShell.
 import { useState, useEffect, useMemo } from 'react';
-import Head from 'next/head';
-import { C, R } from '../components/theme';
-import { GlobalStyle, Wordmark, Icon } from '../components/ui';
 import { useRouter } from 'next/router';
+import { C, R } from '../components/theme';
+import { Icon } from '../components/ui';
 import { isAdmin } from '../lib/adminAuth';
 import { adminFetch, waitForAdminSession } from '../components/admin/adminFetch';
+import AdminShell, { Sheet, Info } from '../components/admin/AdminShell';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -24,15 +24,18 @@ function ago(iso) {
   if (d <= 0) return 'today'; if (d === 1) return 'yesterday'; if (d < 30) return `${d}d ago`;
   const m = Math.floor(d / 30); return m < 12 ? `${m}mo ago` : `${Math.floor(m / 12)}y ago`;
 }
-const Eyebrow = ({ children }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-    <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} />
-    <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{children}</span>
-  </div>
-);
-
 // "Previously #3 (Aug 26, 2026)" — the founder number history recorded on renumber.
 const priorNumbers = (r) => (r.signupNumberHistory?.length ? `Previously ${r.signupNumberHistory.map((h) => `#${h.from} (until ${new Date(h.at).toLocaleDateString('en-CA', { dateStyle: 'medium' })})`).join(', ')}` : undefined);
+
+const StatusPill = ({ r }) => (r.suspended ? <span className="ad-pill danger">Suspended</span> : r.active ? <span className="ad-pill green">Active</span> : <span className="ad-pill quiet">Quiet</span>);
+const FounderPill = ({ r }) => (r.accountStatus === 'founder' ? (
+  <span title={priorNumbers(r)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+    <span className="ad-pill green">Founder{r.signupNumber ? <span className="ad-num"> #{r.signupNumber}</span> : ''}</span>
+    {r.signupNumberHistory?.length > 0 && <span className="ad-num" style={{ fontSize: 11, color: C.instMute, whiteSpace: 'nowrap' }}>was #{r.signupNumberHistory.map((h) => h.from).join(', #')}</span>}
+  </span>
+) : r.accountStatus === 'trial' ? <span className="ad-pill amber">Trial</span> : r.accountStatus === 'lapsed' ? <span className="ad-pill quiet">Lapsed</span> : null);
+
+const COLS = [['email', 'Email'], ['name', 'Name'], ['brokerage', 'Brokerage'], ['province', 'Prov'], ['signupAt', 'Signed up'], ['listings', 'Listings'], ['applications', 'Applications'], ['lastActivity', 'Last activity'], ['active', 'Status']];
 
 export default function Admin({ authed: initialAuthed }) {
   const router = useRouter();
@@ -49,6 +52,7 @@ export default function Admin({ authed: initialAuthed }) {
   const [typed, setTyped] = useState({});
   const [orphans, setOrphans] = useState(true);
   const [toast, setToast] = useState('');
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const load = async () => {
     setErr('');
@@ -74,7 +78,6 @@ export default function Admin({ authed: initialAuthed }) {
     if (next && next !== '/admin') { router.replace(next); return; }
     setAuthed(true);
   };
-  const logout = async () => { await fetch('/api/admin/logout', { method: 'POST' }); setAuthed(false); setData(null); };
 
   const rows = useMemo(() => {
     if (!data) return [];
@@ -89,7 +92,7 @@ export default function Admin({ authed: initialAuthed }) {
     return list;
   }, [data, q, sort]);
   const toggleSort = (key) => setSort((s) => ({ key, dir: s.key === key && s.dir === 'desc' ? 'asc' : 'desc' }));
-  const toggle = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggle = (id) => setSel((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const selected = data ? data.realtors.filter((r) => sel.has(r.id)) : [];
 
   const openAction = async (kind) => {
@@ -97,9 +100,9 @@ export default function Admin({ authed: initialAuthed }) {
     setTyped({}); setOrphans(true);
     if (kind === 'delete') {
       setBusy(true);
-      const r = await fetch('/api/admin/realtors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'preview', ids: selected.map((s) => s.id) }) });
-      const j = await r.json(); setBusy(false);
-      if (!r.ok) { setErr(j.error || 'Preview failed.'); return; }
+      const { r, j } = await adminFetch('/api/admin/realtors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'preview', ids: selected.map((s) => s.id) }) });
+      setBusy(false);
+      if (!r || !r.ok) { setErr(j.error || 'Preview failed.'); return; }
       setModal({ kind, preview: j });
     } else setModal({ kind, preview: { accounts: selected } });
   };
@@ -108,213 +111,218 @@ export default function Admin({ authed: initialAuthed }) {
     setBusy(true); setErr('');
     const body = { action: modal.kind, ids: modal.preview.accounts.map((a) => a.id) };
     if (modal.kind === 'delete') { body.confirmEmails = Object.values(typed); body.deleteOrphanApplications = orphans; }
-    const r = await fetch('/api/admin/realtors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({}));
+    const { r, j } = await adminFetch('/api/admin/realtors', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, { retry5xx: 0 });
     setBusy(false);
-    if (!r.ok) { setErr(j.error || 'Action failed.'); return; }
+    if (!r || !r.ok) { setErr(j.error || 'Action failed.'); return; }
     const res = j.result || j;
+    const shifted = j.renumber?.shifts?.length;
     setToast(modal.kind === 'delete'
-      ? `Deleted ${res.profiles} account${res.profiles === 1 ? '' : 's'} · ${res.listings} listings · ${res.junctionRows} applicant links · ${res.applications} orphaned applications${res.errors?.length ? ` · ${res.errors.length} step(s) errored (see audit)` : ''}`
+      ? `Deleted ${res.profiles} account${res.profiles === 1 ? '' : 's'} · ${res.listings} listings · ${res.junctionRows} links · ${res.applications} orphaned apps${shifted ? ` · ${shifted} founder${shifted === 1 ? '' : 's'} renumbered` : ''}${res.errors?.length ? ` · ${res.errors.length} step(s) errored (see audit)` : ''}`
       : `${modal.kind === 'suspend' ? 'Suspended' : 'Reinstated'} ${j.banned}${j.columnMissing ? ' (auth-layer only — run db/admin-suspend.sql)' : ''}`);
     setTimeout(() => setToast(''), 6000);
     setModal(null); setSel(new Set()); load();
   };
   const allTyped = modal?.kind === 'delete' && modal.preview.accounts.every((a) => a.email && String(typed[a.id] || '').trim().toLowerCase() === a.email.toLowerCase());
 
-  const shell = (children) => (
-    <>
-      <Head><title>Admin — Rentletter</title><meta name="robots" content="noindex, nofollow" /></Head>
-      <GlobalStyle />
-      <div style={{ minHeight: '100vh', background: C.paper }}>
-        <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '14px clamp(16px, 3vw, 28px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><Wordmark /><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.paper, background: C.ink, padding: '3px 8px', borderRadius: R.pill }}>Admin</span>{authed && <nav className="ad-nav" aria-label="Admin"><a href="/admin" aria-current="page">Realtors</a><a href="/admin/crm">CRM</a><a href="/admin/mockups">Mockups</a></nav>}</div>
-          {authed && <button onClick={logout} style={{ background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: R.pill, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: C.inkSoft }}>Sign out</button>}
-        </header>
-        {children}
-        {toast && <div role="status" style={{ position: 'fixed', left: '50%', bottom: 20, transform: 'translateX(-50%)', zIndex: 300, background: C.ink, color: C.paper, padding: '12px 18px', borderRadius: R.pill, fontSize: 13.5, fontWeight: 600, maxWidth: '92vw', boxShadow: '0 8px 24px rgba(15,15,16,0.22)' }}>{toast}</div>}
-      </div>
-      <style jsx global>{`
-        .ad-nav { display: flex; gap: 2px; margin-left: 6px; }
-        .ad-nav a { font-size: 13px; font-weight: 600; color: ${C.inkSoft}; text-decoration: none; padding: 6px 10px; min-height: 32px; display: inline-flex; align-items: center; }
-        .ad-nav a[aria-current="page"] { color: ${C.ink}; box-shadow: inset 0 -2px 0 ${C.red}; }
-        @media (max-width: 480px) { .ad-nav a { padding: 6px 7px; font-size: 12.5px; } .ad-nav a[href="/admin/mockups"] { display: none; } }
-        .ad-wrap { max-width: 1240px; margin: 0 auto; padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 28px) 72px; }
-        .ad-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 22px; }
-        .ad-stat { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: ${R.card}px; padding: 14px 16px; min-width: 0; }
-        .ad-stat-l { font-size: 10.5px; color: ${C.inkMute}; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
-        .ad-stat-v { font-size: 30px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
-        .ad-card { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: ${R.card}px; overflow: hidden; }
-        .ad-tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        table.ad { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 860px; }
-        table.ad th { text-align: left; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.inkMute}; font-weight: 700; padding: 10px 12px; border-bottom: 1px solid ${C.rule}; white-space: nowrap; cursor: pointer; user-select: none; background: ${C.paperDeep}; }
-        table.ad td { padding: 10px 12px; border-bottom: 1px solid ${C.rule}; vertical-align: middle; color: ${C.ink}; }
-        table.ad tr:last-child td { border-bottom: none; }
-        table.ad tr.sel td { background: #fff7f7; }
-        .ad-pill { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border-radius: ${R.pill}px; white-space: nowrap; }
-        .ad-btn { border: none; border-radius: ${R.ctrl}px; padding: 9px 14px; font-size: 13px; font-weight: 700; cursor: pointer; min-height: 38px; }
-        .ad-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-        .ad-input { width: 100%; padding: 11px 12px; font-size: 14px; border: 1px solid ${C.ruleDark}; border-radius: ${R.ctrl}px; background: ${C.card}; color: ${C.ink}; outline: none; }
-        .ad-bar { position: sticky; bottom: 0; background: ${C.ink}; color: ${C.paper}; border-radius: ${R.card}px; padding: 12px 16px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; box-shadow: 0 -6px 20px rgba(15,15,16,0.12); }
-      `}</style>
-    </>
-  );
-
   if (!authed) {
-    return shell(
-      <div className="ad-wrap" style={{ maxWidth: 440 }}>
-        <Eyebrow>Founder access</Eyebrow>
-        <h1 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 38px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.05, marginBottom: 18, textWrap: 'balance' }}>Admin sign-in</h1>
-        <form onSubmit={login}>
-          <input className="ad-input" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password" aria-label="Password" style={{ marginBottom: 12, padding: 14 }} />
-          {loginErr && <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13 }}>{loginErr}</div>}
-          <button type="submit" className="ad-btn" disabled={busy || !pw} style={{ width: '100%', background: C.ink, color: C.paper, minHeight: 48 }}>{busy ? 'Checking…' : 'Sign in'}</button>
-        </form>
-        <p style={{ marginTop: 14, fontSize: 12, color: C.inkMute, lineHeight: 1.5 }}>Five attempts per 15 minutes. Sessions last 7 days.</p>
-      </div>
+    return (
+      <AdminShell page="realtors" title="Sign in" signedIn={false}>
+        <div className="ad-wrap" style={{ maxWidth: 440 }}>
+          <div className="ad-eyebrow">Founder access</div>
+          <h1 className="ad-h1" style={{ marginBottom: 18 }}>Sign in.</h1>
+          <form onSubmit={login}>
+            <input className="ad-input" type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Password" aria-label="Password" style={{ marginBottom: 12, minHeight: 50 }} autoFocus />
+            {loginErr && <div role="alert" className="ad-alert" style={{ marginBottom: 12 }}><span>{loginErr}</span></div>}
+            <button type="submit" className="ad-btn primary" disabled={busy || !pw} style={{ width: '100%', minHeight: 50 }}>{busy ? 'Checking…' : 'Sign in'}</button>
+          </form>
+        </div>
+      </AdminShell>
     );
   }
 
   const c = data?.counts;
-  return shell(
-    <div className="ad-wrap">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-        <div>
-          <Eyebrow>Onboarding</Eyebrow>
-          <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 4vw, 36px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.05 }}>Realtors, this morning.</h1>
+  const audit = data?.audit || [];
+  return (
+    <AdminShell page="realtors" title="Realtors">
+      <div className="ad-wrap">
+        <div className="ad-head">
+          <div style={{ minWidth: 0 }}>
+            <div className="ad-eyebrow">Realtors</div>
+            <h1 className="ad-h1">{c ? <>{c.realtors} signed up, <span className="ad-num">{c.activeRealtors}</span> active.</> : 'Realtors.'}</h1>
+          </div>
+          <div className="ad-quiet" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {data ? `As of ${new Date(data.generatedAt).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })}` : 'Loading…'}
+            <button type="button" className="ad-link" onClick={load}>Refresh</button>
+          </div>
         </div>
-        <div style={{ fontSize: 12, color: C.inkMute }}>{data ? `As of ${new Date(data.generatedAt).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })}` : 'Loading…'} · <button onClick={load} style={{ background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 12, padding: 0 }}>Refresh</button></div>
-      </div>
-      {err && <div role="alert" style={{ marginBottom: 14, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}><span style={{ flex: '1 1 200px' }}>{err}</span>{!data && <button type="button" onClick={load} disabled={busy} style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>Try again</button>}</div>}
+        {err && <div role="alert" className="ad-alert" style={{ marginBottom: 14 }}><span>{err}</span>{!data && <button type="button" className="ad-btn secondary sm" onClick={load} disabled={busy}>Try again</button>}</div>}
 
-      {c && (
-        <>
+        {c && (
           <div className="ad-stats">
-            {[['Realtors', c.realtors], ['Active realtors', c.activeRealtors], ['Suspended', c.suspended], ['Listings', c.listings], ['Applications', c.applications], ['Tenants', c.tenants ?? '—']].map(([l, v]) => (
-              <div className="ad-stat" key={l}><div className="ad-stat-l">{l}</div><div className="ad-stat-v">{v}</div></div>
+            {[
+              ['Active', c.activeRealtors, data.activeDefinition],
+              ['Suspended', c.suspended, null],
+              ['Listings', c.listings, null],
+              ['Applications', c.applications, null],
+            ].map(([l, v, info]) => (
+              <div className="ad-stat" key={l}><div className="ad-stat-l">{l}{info && <Info text={`Active = ${info}.`} />}</div><div className="ad-stat-v ad-num">{v}</div></div>
             ))}
           </div>
-          <p style={{ fontSize: 12, color: C.inkMute, marginTop: -12, marginBottom: 22, lineHeight: 1.5 }}>
-            <strong style={{ color: C.inkSoft }}>Active</strong> = {data.activeDefinition}. <strong style={{ color: C.inkSoft }}>Tenants</strong> = {c.tenantsBasis} — count only; no tenant data is shown here.
-          </p>
-        </>
-      )}
+        )}
 
-      {data?.brokerages?.length > 0 && (
-        <div style={{ marginBottom: 22 }}>
-          <Eyebrow>Brokerages with more than one realtor</Eyebrow>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+        {data?.brokerages?.length > 0 && (
+          <div className="ad-chips" aria-label="Brokerages with more than one realtor">
             {data.brokerages.map((b) => (
-              <button key={b.name} onClick={() => setQ(b.name)} className="ad-card" style={{ textAlign: 'left', padding: '12px 14px', cursor: 'pointer', border: `1px solid ${C.rule}` }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: C.ink, marginBottom: 4, overflowWrap: 'anywhere' }}>{b.name}</div>
-                <div style={{ fontSize: 12, color: C.inkSoft }}>{b.realtors} realtors · {b.active} active · {b.listings} listings · {b.applications} applications</div>
+              <button key={b.name} type="button" className={`ad-chip ${q === b.name ? 'on' : ''}`} onClick={() => setQ(q === b.name ? '' : b.name)} title={`${b.realtors} realtors · ${b.active} active · ${b.listings} listings`}>
+                {b.name} <span className="ad-num">{b.realtors}</span>
               </button>
             ))}
           </div>
-        </div>
-      )}
+        )}
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
-        <input className="ad-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, brokerage, email, province…" style={{ flex: '1 1 260px', minWidth: 0 }} />
-        <span style={{ fontSize: 12, color: C.inkMute }}>{rows.length} of {data?.realtors?.length ?? 0}</span>
-      </div>
-      <div className="ad-card">
-        <div className="ad-tablewrap">
-          <table className="ad">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 10 }}>
+          <div style={{ position: 'relative', flex: '1 1 240px', minWidth: 0 }}>
+            <Icon name="search" size={16} color={C.instMute} style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
+            <input className="ad-input" type="search" inputMode="search" autoCapitalize="none" autoCorrect="off" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search email, name, brokerage" aria-label="Search realtors" style={{ paddingLeft: 38 }} />
+          </div>
+          <span className="ad-quiet ad-num">{rows.length} of {data?.realtors?.length ?? 0}</span>
+        </div>
+
+        {/* ≥ 720px: a table (Email → Name → Brokerage; email is the only guaranteed field). */}
+        <div className="ad-card ad-table-card">
+          <table className="ad-table">
             <thead><tr>
-              <th style={{ cursor: 'default', width: 36 }}><input type="checkbox" aria-label="Select all shown" checked={rows.length > 0 && rows.every((r) => sel.has(r.id))} onChange={(e) => setSel(e.target.checked ? new Set([...sel, ...rows.map((r) => r.id)]) : new Set([...sel].filter((id) => !rows.some((r) => r.id === id))))} /></th>
-              {[['name', 'Name'], ['brokerage', 'Brokerage'], ['email', 'Email'], ['province', 'Prov'], ['signupAt', 'Signed up'], ['listings', 'Listings'], ['applications', 'Applications'], ['lastActivity', 'Last activity'], ['active', 'Status']].map(([k, l]) => (
-                <th key={k} onClick={() => toggleSort(k)}>{l}{sort.key === k ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</th>
-              ))}
+              <th style={{ width: 40 }}><input type="checkbox" aria-label="Select all shown" checked={rows.length > 0 && rows.every((r) => sel.has(r.id))} onChange={(e) => setSel(e.target.checked ? new Set([...sel, ...rows.map((r) => r.id)]) : new Set([...sel].filter((id) => !rows.some((r) => r.id === id))))} /></th>
+              {COLS.map(([k, l]) => <th key={k}><button type="button" onClick={() => toggleSort(k)} aria-sort={sort.key === k ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined}>{l}{sort.key === k ? (sort.dir === 'asc' ? ' ↑' : ' ↓') : ''}</button></th>)}
             </tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className={sel.has(r.id) ? 'sel' : ''}>
                   <td><input type="checkbox" aria-label={`Select ${r.email || r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
-                  <td style={{ fontWeight: 700 }}>{r.name || <span style={{ color: C.inkMute, fontWeight: 500 }}>—</span>}{r.accountStatus === 'founder' && <span className="ad-pill" title={priorNumbers(r)} style={{ marginLeft: 6, color: C.green, background: C.greenTint }}>Founder{r.signupNumber ? ` #${r.signupNumber}` : ''}</span>}{r.accountStatus === 'founder' && r.signupNumberHistory?.length > 0 && <span style={{ marginLeft: 5, fontSize: 11, color: C.inkMute, fontWeight: 500, whiteSpace: 'nowrap' }} title={priorNumbers(r)}>was #{r.signupNumberHistory.map((h) => h.from).join(', #')}</span>}</td>
+                  <td className="ad-mono" style={{ overflowWrap: 'anywhere' }}>{r.email || '—'}</td>
+                  <td style={{ fontWeight: 700 }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>—</span>} <FounderPill r={r} /></td>
                   <td>{r.brokerage || '—'}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.email || '—'}</td>
                   <td>{r.province || '—'}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(r.signupAt)}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.listings}</td>
-                  <td style={{ fontVariantNumeric: 'tabular-nums' }}>{r.applications}</td>
-                  <td style={{ whiteSpace: 'nowrap' }} title={r.lastActivity || ''}>{ago(r.lastActivity)}</td>
-                  <td>{r.suspended ? <span className="ad-pill" style={{ color: C.paper, background: C.danger }}>Suspended</span> : r.active ? <span className="ad-pill" style={{ color: C.green, background: C.greenTint }}>Active</span> : <span className="ad-pill" style={{ color: C.inkMute, background: C.paperDeep }}>Quiet</span>}</td>
+                  <td className="ad-num" style={{ whiteSpace: 'nowrap' }}>{fmtDate(r.signupAt)}</td>
+                  <td className="ad-num">{r.listings}</td>
+                  <td className="ad-num">{r.applications}</td>
+                  <td className="ad-num" style={{ whiteSpace: 'nowrap' }} title={r.lastActivity || ''}>{ago(r.lastActivity)}</td>
+                  <td><StatusPill r={r} /></td>
                 </tr>
               ))}
-              {data && rows.length === 0 && <tr><td colSpan={10} style={{ color: C.inkMute, textAlign: 'center', padding: 24 }}>{data.realtors.length ? 'No realtors match that search.' : 'No realtors yet.'}</td></tr>}
+              {data && rows.length === 0 && <tr><td colSpan={10} style={{ color: C.instMute, textAlign: 'center', padding: 24 }}>{data.realtors.length ? 'No realtors match that search.' : 'No realtors yet.'}</td></tr>}
             </tbody>
           </table>
         </div>
+        {/* < 720px: cards. */}
+        <div className="ad-list">
+          {rows.map((r) => (
+            <label key={r.id} className={`ad-card ad-row ${sel.has(r.id) ? 'sel' : ''}`}>
+              <input type="checkbox" aria-label={`Select ${r.email || r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} />
+              <div style={{ minWidth: 0, flex: 1, display: 'grid', gap: 4 }}>
+                <div className="ad-mono" style={{ color: C.instText, fontSize: 13.5, overflowWrap: 'anywhere' }}>{r.email || '—'}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, overflowWrap: 'anywhere' }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>No name</span>}{r.brokerage ? <span style={{ color: C.instMute, fontWeight: 500 }}> · {r.brokerage}</span> : ''}</div>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}><StatusPill r={r} /><FounderPill r={r} /></div>
+                <div className="ad-quiet ad-num" style={{ fontSize: 12.5 }}>{r.listings} listing{r.listings === 1 ? '' : 's'} · {r.applications} app{r.applications === 1 ? '' : 's'} · joined {fmtDate(r.signupAt)} · seen {ago(r.lastActivity)}</div>
+              </div>
+            </label>
+          ))}
+          {data && rows.length === 0 && <div className="ad-quiet" style={{ padding: '20px 0', textAlign: 'center' }}>{data.realtors.length ? 'No realtors match that search.' : 'No realtors yet.'}</div>}
+        </div>
+
+        {selected.length > 0 && (
+          <div className="ad-bar" role="region" aria-label="Selected accounts">
+            <span className="ad-num" style={{ fontSize: 13.5, fontWeight: 700, flex: '1 1 auto' }}>{selected.length} selected</span>
+            <button type="button" className="ad-btn secondary sm" disabled={busy} onClick={() => openAction('suspend')}>Suspend</button>
+            <button type="button" className="ad-btn secondary sm" disabled={busy} onClick={() => openAction('unsuspend')}>Reinstate</button>
+            <button type="button" className="ad-btn danger sm" disabled={busy} onClick={() => openAction('delete')}>Delete…</button>
+            <button type="button" className="ad-btn ghost sm" onClick={() => setSel(new Set())}>Clear</button>
+          </div>
+        )}
+
+        {audit.length > 0 && (
+          <section style={{ marginTop: 28 }}>
+            <button type="button" className="ad-disclose" aria-expanded={auditOpen} onClick={() => setAuditOpen((o) => !o)}>
+              <span className="ad-eyebrow" style={{ marginBottom: 0 }}>Audit trail</span><span className="ad-num ad-quiet">{audit.length} {audit.length === 1 ? 'entry' : 'entries'}</span><Icon name="chevronD" size={16} color={C.instMute} style={{ marginLeft: 'auto', transform: auditOpen ? 'rotate(180deg)' : 'none' }} />
+            </button>
+            {auditOpen && (
+              <div className="ad-card" style={{ fontSize: 12.5, marginTop: 8 }}>
+                {audit.slice(0, 40).map((a, i) => (
+                  <div key={i} className="ad-audit-row" style={{ borderBottom: i < Math.min(audit.length, 40) - 1 ? `1px solid ${C.instRule}` : 'none' }}>
+                    <span className="ad-mono ad-num" style={{ color: C.instMute, whiteSpace: 'nowrap' }}>{new Date(a.at).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    <span style={{ fontWeight: 700, color: a.action === 'delete' ? C.instDangerText : C.instText }}>{a.action}</span>
+                    {a.action === 'founder_renumber' && <span style={{ overflowWrap: 'anywhere', color: C.instMute }}>{(a.deleted || []).map((d) => `${d.email}${d.number ? ` (#${d.number})` : ''}`).join(', ')} deleted → {a.shifts?.length ? a.shifts.map((s) => `#${s.from}→#${s.to}`).join(', ') : 'no one shifted'}{a.historyColumnMissing ? ' · history column missing (db/founder-renumber.sql)' : ''}{a.errors?.length ? ` · ${a.errors.length} error(s)` : ''}</span>}
+                    <span style={{ overflowWrap: 'anywhere', color: C.instMute }}>{a.accounts ? a.accounts.map((x) => x.email || x.id).join(', ') : a.ids ? `${a.ids.length} account(s)` : ''}{a.profiles != null ? ` · ${a.listings} listings, ${a.junctionRows} links, ${a.applications} orphaned apps` : ''}{a.errors?.length && a.action !== 'founder_renumber' ? ` · ${a.errors.length} error(s): ${a.errors.join('; ')}` : ''}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
       </div>
 
-      {selected.length > 0 && (
-        <div className="ad-bar">
-          <span style={{ fontSize: 13, fontWeight: 700, flex: '1 1 auto' }}>{selected.length} selected</span>
-          <button className="ad-btn" disabled={busy} onClick={() => openAction('suspend')} style={{ background: '#2a2a2e', color: C.paper }}>Suspend</button>
-          <button className="ad-btn" disabled={busy} onClick={() => openAction('unsuspend')} style={{ background: '#2a2a2e', color: C.paper }}>Reinstate</button>
-          <button className="ad-btn" disabled={busy} onClick={() => openAction('delete')} style={{ background: C.danger, color: C.paper }}>Delete permanently…</button>
-          <button className="ad-btn" onClick={() => setSel(new Set())} style={{ background: 'transparent', color: '#c8c2b3', border: '1px solid #3a3a3e' }}>Clear</button>
-        </div>
-      )}
-
-      {data?.audit?.length > 0 && (
-        <div style={{ marginTop: 28 }}>
-          <Eyebrow>Admin audit trail</Eyebrow>
-          <div className="ad-card" style={{ fontSize: 12.5 }}>
-            {data.audit.slice(0, 20).map((a, i) => (
-              <div key={i} style={{ padding: '8px 12px', borderBottom: i < Math.min(data.audit.length, 20) - 1 ? `1px solid ${C.rule}` : 'none', display: 'flex', gap: 12, flexWrap: 'wrap', color: C.inkSoft }}>
-                <span style={{ fontFamily: 'monospace', color: C.inkMute, whiteSpace: 'nowrap' }}>{new Date(a.at).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</span>
-                <span style={{ fontWeight: 700, color: a.action === 'delete' ? C.danger : C.ink }}>{a.action}</span>
-                {a.action === 'founder_renumber' && <span style={{ overflowWrap: 'anywhere' }}>{(a.deleted || []).map((d) => `${d.email}${d.number ? ` (#${d.number})` : ''}`).join(', ')} deleted → {a.shifts?.length ? a.shifts.map((s) => `#${s.from}→#${s.to}`).join(', ') : 'no one shifted'}{a.historyColumnMissing ? ' · history column missing (db/founder-renumber.sql)' : ''}{a.errors?.length ? ` · ${a.errors.length} error(s)` : ''}</span>}
-                <span style={{ overflowWrap: 'anywhere' }}>{a.accounts ? a.accounts.map((x) => x.email || x.id).join(', ') : a.ids ? `${a.ids.length} account(s)` : ''}{a.profiles != null ? ` · ${a.listings} listings, ${a.junctionRows} links, ${a.applications} orphaned apps` : ''}{a.errors?.length ? ` · errors: ${a.errors.join('; ')}` : ''}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
       {modal && (
-        <div onClick={() => !busy && setModal(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, zIndex: 200 }}>
-          <div onClick={(e) => e.stopPropagation()} className="rl-modal" style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: 'clamp(18px, 3vw, 26px)' }}>
-            {modal.kind === 'delete' ? (
-              <>
-                <div style={{ fontSize: 11, color: C.danger, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Permanent deletion</div>
-                <h2 style={{ fontSize: 22, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 10 }}>Delete {modal.preview.accounts.length === 1 ? 'this account' : `${modal.preview.accounts.length} accounts`} and everything they own</h2>
-                <div style={{ padding: '12px 14px', background: C.dangerTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 14 }}>
-                  <strong>This cannot be undone.</strong> It removes, in order: {modal.preview.junctionRows} applicant link{modal.preview.junctionRows === 1 ? '' : 's'} (with any decisions and document verifications on them), {modal.preview.listings} listing{modal.preview.listings === 1 ? '' : 's'} and their invite links, the profile{modal.preview.accounts.length === 1 ? '' : 's'}, brand assets, and the sign-in{modal.preview.accounts.length === 1 ? '' : 's'}. Applications linked to <em>other</em> realtors' listings ({modal.preview.applicationsSharedElsewhere}) and tenant profiles are never touched.
+        modal.kind === 'delete' ? (
+          <Sheet eyebrow="Permanent deletion" title={`Delete ${modal.preview.accounts.length === 1 ? 'this account' : `${modal.preview.accounts.length} accounts`} and everything they own`} onClose={() => !busy && setModal(null)}
+            footer={<><button type="button" className="ad-btn secondary" disabled={busy} onClick={() => setModal(null)}>Cancel</button><button type="button" className="ad-btn danger" disabled={busy || !allTyped} onClick={runAction} style={{ marginLeft: 'auto' }}>{busy ? 'Deleting…' : `Delete ${modal.preview.accounts.length === 1 ? 'account' : `${modal.preview.accounts.length} accounts`}`}</button></>}>
+            <div className="ad-alert" style={{ marginBottom: 14 }}>
+              <span><strong>This cannot be undone.</strong> Removes {modal.preview.junctionRows} applicant link{modal.preview.junctionRows === 1 ? '' : 's'} (with decisions and verifications), {modal.preview.listings} listing{modal.preview.listings === 1 ? '' : 's'} and their invite links, the profile, logo and auth user.{modal.preview.applicationsSharedElsewhere ? ` ${modal.preview.applicationsSharedElsewhere} application${modal.preview.applicationsSharedElsewhere === 1 ? '' : 's'} also on other listings stay.` : ''}</span>
+            </div>
+            <div className="ad-well" style={{ overflow: 'hidden', marginBottom: 14 }}>
+              {modal.preview.accounts.map((a, i) => (
+                <div key={a.id} style={{ padding: '12px 12px', borderTop: i ? `1px solid ${C.instRule}` : 'none', display: 'grid', gap: 8 }}>
+                  <div style={{ fontSize: 13.5, overflowWrap: 'anywhere' }}><span className="ad-mono" style={{ fontSize: 13 }}>{a.email || 'no email on auth user'}</span>{a.name ? <> · <strong>{a.name}</strong></> : ''}{a.brokerage ? ` · ${a.brokerage}` : ''}</div>
+                  <input className="ad-input" type="email" inputMode="email" autoCapitalize="none" autoCorrect="off" placeholder={`Type ${a.email || 'the email'} to confirm`} value={typed[a.id] || ''} onChange={(e) => setTyped((t) => ({ ...t, [a.id]: e.target.value }))} autoComplete="off" spellCheck={false} />
                 </div>
-                <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.ctrl, overflow: 'hidden', marginBottom: 14 }}>
-                  {modal.preview.accounts.map((a, i) => (
-                    <div key={a.id} style={{ padding: '10px 12px', borderTop: i ? `1px solid ${C.rule}` : 'none', display: 'grid', gap: 6 }}>
-                      <div style={{ fontSize: 13 }}><strong>{a.name || 'Unnamed'}</strong>{a.brokerage ? ` · ${a.brokerage}` : ''} · <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{a.email || 'no email on auth user'}</span></div>
-                      <input className="ad-input" placeholder={`Type ${a.email || 'the email'} to confirm`} value={typed[a.id] || ''} onChange={(e) => setTyped((t) => ({ ...t, [a.id]: e.target.value }))} autoComplete="off" spellCheck={false} style={{ padding: '9px 10px', fontFamily: 'monospace', fontSize: 13, borderColor: typed[a.id] && a.email && typed[a.id].trim().toLowerCase() === a.email.toLowerCase() ? C.green : C.ruleDark }} />
-                    </div>
-                  ))}
-                </div>
-                <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: C.ink, lineHeight: 1.5, marginBottom: 16, cursor: 'pointer' }}>
-                  <input type="checkbox" checked={orphans} onChange={(e) => setOrphans(e.target.checked)} style={{ marginTop: 3, accentColor: C.danger }} />
-                  <span>Also delete the <strong>{modal.preview.applicationsOrphaned}</strong> application record{modal.preview.applicationsOrphaned === 1 ? '' : 's'} that would be left linked to nothing (test submissions). The tenants' own copies (KV snapshots, profiles) are kept either way.</span>
-                </label>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                  <button className="ad-btn" disabled={busy} onClick={() => setModal(null)} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}` }}>Cancel</button>
-                  <button className="ad-btn" disabled={busy || !allTyped} onClick={runAction} style={{ background: C.danger, color: C.paper }}>{busy ? 'Deleting…' : `Delete ${modal.preview.accounts.length === 1 ? 'account' : `${modal.preview.accounts.length} accounts`} permanently`}</button>
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize: 11, color: C.red, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>{modal.kind === 'suspend' ? 'Suspend' : 'Reinstate'}</div>
-                <h2 style={{ fontSize: 20, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 10 }}>{modal.kind === 'suspend' ? 'Block sign-in for' : 'Restore access for'} {modal.preview.accounts.length} account{modal.preview.accounts.length === 1 ? '' : 's'}?</h2>
-                <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>{modal.kind === 'suspend' ? 'Nothing is deleted. Their dashboard redirects to sign-in and new sign-ins are refused until you reinstate.' : 'Lifts the sign-in ban and clears the suspended flag.'}</p>
-                <ul style={{ margin: '0 0 16px', paddingLeft: 18, fontSize: 13, color: C.ink, lineHeight: 1.6 }}>{modal.preview.accounts.map((a) => <li key={a.id}>{a.name || 'Unnamed'} · <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{a.email}</span></li>)}</ul>
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-                  <button className="ad-btn" disabled={busy} onClick={() => setModal(null)} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}` }}>Cancel</button>
-                  <button className="ad-btn" disabled={busy} onClick={runAction} style={{ background: C.ink, color: C.paper }}>{busy ? 'Working…' : (modal.kind === 'suspend' ? 'Suspend' : 'Reinstate')}</button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+              ))}
+            </div>
+            <label className="ad-check" style={{ alignItems: 'flex-start', fontWeight: 500, fontSize: 14, lineHeight: 1.5, marginBottom: 6 }}>
+              <input type="checkbox" checked={orphans} onChange={(e) => setOrphans(e.target.checked)} style={{ marginTop: 3, accentColor: C.instDanger }} />
+              <span>Also delete the <strong className="ad-num">{modal.preview.applicationsOrphaned}</strong> application record{modal.preview.applicationsOrphaned === 1 ? '' : 's'} left linked to nothing. Tenants’ own profiles are untouched.</span>
+            </label>
+          </Sheet>
+        ) : (
+          <Sheet eyebrow={modal.kind === 'suspend' ? 'Suspend' : 'Reinstate'} title={`${modal.kind === 'suspend' ? 'Block sign-in for' : 'Restore access for'} ${modal.preview.accounts.length === 1 ? 'this account' : `${modal.preview.accounts.length} accounts`}`} onClose={() => !busy && setModal(null)}
+            footer={<><button type="button" className="ad-btn secondary" disabled={busy} onClick={() => setModal(null)}>Cancel</button><button type="button" className="ad-btn primary" disabled={busy} onClick={runAction} style={{ marginLeft: 'auto' }}>{busy ? 'Working…' : (modal.kind === 'suspend' ? 'Suspend' : 'Reinstate')}</button></>}>
+            <p className="ad-quiet" style={{ fontSize: 14, color: C.instText, marginBottom: 12 }}>{modal.kind === 'suspend' ? 'Nothing is deleted. Their dashboard redirects to sign-in and new sign-ins are refused until you reinstate.' : 'Lifts the block; everything they had is still there.'}</p>
+            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, lineHeight: 1.7 }}>{modal.preview.accounts.map((a) => <li key={a.id} style={{ overflowWrap: 'anywhere' }}><span className="ad-mono">{a.email || a.id}</span>{a.name ? ` · ${a.name}` : ''}</li>)}</ul>
+          </Sheet>
+        )
       )}
-    </div>
+      {toast && <div role="status" className="ad-toast">{toast}</div>}
+
+      <style jsx global>{`
+        .ad-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+        .ad-stat { background: ${C.instRaise}; border: 1px solid ${C.instRule}; border-radius: ${R.card}px; padding: 12px 14px; min-width: 0; }
+        .ad-stat-l { font-size: 10.5px; color: ${C.instMute}; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; white-space: nowrap; }
+        .ad-stat-v { font-size: clamp(22px, 5vw, 30px); font-weight: 800; color: ${C.instText}; letter-spacing: -0.02em; line-height: 1; }
+        @media (max-width: 480px) { .ad-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        .ad-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+        .ad-chip { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid ${C.instRule}; color: ${C.instText}; border-radius: ${R.pill}px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 36px; max-width: 100%; }
+        .ad-chip > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ad-chip .ad-num { color: ${C.instMute}; }
+        .ad-chip.on { background: ${C.instText}; color: ${C.inst}; border-color: ${C.instText}; }
+        .ad-chip.on .ad-num { color: ${C.inst}; }
+        .ad-table-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        .ad-table { width: 100%; border-collapse: collapse; font-size: 13.5px; min-width: 900px; }
+        .ad-table th { text-align: left; padding: 0; border-bottom: 1px solid ${C.instRule}; white-space: nowrap; }
+        .ad-table th button { font: inherit; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.instMute}; font-weight: 700; padding: 12px 12px; background: transparent; border: none; cursor: pointer; width: 100%; text-align: left; min-height: 44px; }
+        .ad-table th button[aria-sort] { color: ${C.instText}; }
+        .ad-table td { padding: 10px 12px; border-bottom: 1px solid ${C.instRule}; vertical-align: middle; color: ${C.instText}; }
+        .ad-table tr:last-child td { border-bottom: none; }
+        .ad-table tr.sel td { background: rgba(255,90,95,0.08); }
+        .ad-table input[type="checkbox"], .ad-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: ${C.red}; }
+        .ad-list { display: none; gap: 8px; }
+        .ad-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
+        .ad-row input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; }
+        .ad-row.sel { border-color: ${C.redBright}; }
+        @media (max-width: 719px) { .ad-table-card { display: none; } .ad-list { display: grid; } }
+        .ad-bar { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 40; background: ${C.instText}; color: ${C.inst}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; box-shadow: 0 -6px 24px rgba(0,0,0,0.4); }
+        .ad-bar .ad-btn.secondary { color: ${C.inst}; border-color: rgba(16,16,18,0.35); }
+        .ad-bar .ad-btn.ghost { color: rgba(16,16,18,0.7); }
+        .ad-disclose { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: none; padding: 10px 0; cursor: pointer; text-align: left; min-height: 44px; }
+        .ad-audit-row { padding: 10px 12px; display: flex; gap: 10px 12px; flex-wrap: wrap; color: ${C.instText}; }
+      `}</style>
+    </AdminShell>
   );
 }

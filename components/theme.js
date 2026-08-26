@@ -14,6 +14,14 @@ export const C = {
   instRule: '#2a2a2e',   // hairline on an instrument panel
   instText: '#e8e4d9',   // primary text on instrument (warm, not pure white)
   instMute: '#8f8b81',   // secondary text on instrument
+  // Status on instrument surfaces — the paper status colours don't reach contrast on ink
+  // (green #2d7d4a on #101012 is ~3.4:1), so each has a lifted twin here. Brand signal on
+  // instrument stays redBright; DANGER on instrument is a distinct, cooler red (fill + text)
+  // so "overdue"/"delete" never reads as the brand mark.
+  instGreen: '#5fbf85',
+  instAmber: '#e0a84a',
+  instDanger: '#ad2229',     // fill (instText on it ≈ 5.4:1)
+  instDangerText: '#ff8a8f', // small text / borders on instrument (≈ 7.5:1 on inst)
   // Ink
   ink: '#0f0f10',
   inkSoft: '#3a3a3c',
