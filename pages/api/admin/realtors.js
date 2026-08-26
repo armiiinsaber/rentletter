@@ -31,6 +31,15 @@ export default async function handler(req, res) {
       if (missing.length) return res.status(400).json({ error: `Type the email of every account to confirm (${missing.length} missing).`, code: 'confirm_mismatch' });
       const out = await deleteRealtors(ids, { deleteOrphanApplications: !!req.body?.deleteOrphanApplications });
       await audit(req, 'delete', { accounts: out.preview.accounts.map((a) => ({ id: a.id, email: a.email, name: a.name })), ...out.result, deleteOrphanApplications: !!req.body?.deleteOrphanApplications });
+      if (out.foundersDeleted?.length) {
+        // The founder sequence closed: what was deleted, who shifted, from what to what.
+        const email = (id) => out.preview.accounts.find((a) => a.id === id)?.email || id;
+        await audit(req, 'founder_renumber', {
+          deleted: out.foundersDeleted.map((f) => ({ id: f.id, email: email(f.id), number: f.number })),
+          shifts: (out.renumber?.shifts || []).map((s) => ({ id: s.id, from: s.from, to: s.to })),
+          historyColumnMissing: !!out.renumber?.historyColumnMissing, errors: out.renumber?.errors || [],
+        });
+      }
       return res.status(200).json({ ok: true, ...out });
     }
     return res.status(400).json({ error: 'Unknown action.' });

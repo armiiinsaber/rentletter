@@ -30,6 +30,9 @@ const Eyebrow = ({ children }) => (
   </div>
 );
 
+// "Previously #3 (Aug 26, 2026)" — the founder number history recorded on renumber.
+const priorNumbers = (r) => (r.signupNumberHistory?.length ? `Previously ${r.signupNumberHistory.map((h) => `#${h.from} (until ${new Date(h.at).toLocaleDateString('en-CA', { dateStyle: 'medium' })})`).join(', ')}` : undefined);
+
 export default function Admin({ authed: initialAuthed }) {
   const router = useRouter();
   const [authed, setAuthed] = useState(initialAuthed);
@@ -223,7 +226,7 @@ export default function Admin({ authed: initialAuthed }) {
               {rows.map((r) => (
                 <tr key={r.id} className={sel.has(r.id) ? 'sel' : ''}>
                   <td><input type="checkbox" aria-label={`Select ${r.email || r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
-                  <td style={{ fontWeight: 700 }}>{r.name || <span style={{ color: C.inkMute, fontWeight: 500 }}>—</span>}{r.accountStatus === 'founder' && <span className="ad-pill" style={{ marginLeft: 6, color: C.green, background: C.greenTint }}>Founder{r.signupNumber ? ` #${r.signupNumber}` : ''}</span>}</td>
+                  <td style={{ fontWeight: 700 }}>{r.name || <span style={{ color: C.inkMute, fontWeight: 500 }}>—</span>}{r.accountStatus === 'founder' && <span className="ad-pill" title={priorNumbers(r)} style={{ marginLeft: 6, color: C.green, background: C.greenTint }}>Founder{r.signupNumber ? ` #${r.signupNumber}` : ''}</span>}{r.accountStatus === 'founder' && r.signupNumberHistory?.length > 0 && <span style={{ marginLeft: 5, fontSize: 11, color: C.inkMute, fontWeight: 500, whiteSpace: 'nowrap' }} title={priorNumbers(r)}>was #{r.signupNumberHistory.map((h) => h.from).join(', #')}</span>}</td>
                   <td>{r.brokerage || '—'}</td>
                   <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{r.email || '—'}</td>
                   <td>{r.province || '—'}</td>
@@ -258,6 +261,7 @@ export default function Admin({ authed: initialAuthed }) {
               <div key={i} style={{ padding: '8px 12px', borderBottom: i < Math.min(data.audit.length, 20) - 1 ? `1px solid ${C.rule}` : 'none', display: 'flex', gap: 12, flexWrap: 'wrap', color: C.inkSoft }}>
                 <span style={{ fontFamily: 'monospace', color: C.inkMute, whiteSpace: 'nowrap' }}>{new Date(a.at).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</span>
                 <span style={{ fontWeight: 700, color: a.action === 'delete' ? C.danger : C.ink }}>{a.action}</span>
+                {a.action === 'founder_renumber' && <span style={{ overflowWrap: 'anywhere' }}>{(a.deleted || []).map((d) => `${d.email}${d.number ? ` (#${d.number})` : ''}`).join(', ')} deleted → {a.shifts?.length ? a.shifts.map((s) => `#${s.from}→#${s.to}`).join(', ') : 'no one shifted'}{a.historyColumnMissing ? ' · history column missing (db/founder-renumber.sql)' : ''}{a.errors?.length ? ` · ${a.errors.length} error(s)` : ''}</span>}
                 <span style={{ overflowWrap: 'anywhere' }}>{a.accounts ? a.accounts.map((x) => x.email || x.id).join(', ') : a.ids ? `${a.ids.length} account(s)` : ''}{a.profiles != null ? ` · ${a.listings} listings, ${a.junctionRows} links, ${a.applications} orphaned apps` : ''}{a.errors?.length ? ` · errors: ${a.errors.join('; ')}` : ''}</span>
               </div>
             ))}
