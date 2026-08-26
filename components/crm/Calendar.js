@@ -44,13 +44,13 @@ export default function Calendar({ leads, onOpen, onReschedule }) {
     <div className={`crm-cal ${dragging ? 'dragging' : ''}`}>
       <div className="crm-cal-h">
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
-          <h2 className="rl-serif crm-cal-t">{monthLabel(cur.y, cur.m)}</h2>
-          <span style={{ fontSize: 12.5, color: C.inkMute }}>{monthCount ? `${monthCount} on the calendar` : 'Nothing scheduled'}</span>
+          <h2 className="ad-h2 crm-cal-t">{monthLabel(cur.y, cur.m)}</h2>
+          <span className="ad-quiet ad-num">{monthCount ? `${monthCount} this month` : 'Nothing this month'}</span>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button type="button" className="crm-btn ghost" onClick={() => go(-1)} aria-label="Previous month"><Icon name="chevron" size={14} style={{ transform: 'rotate(180deg)' }} /></button>
-          <button type="button" className="crm-btn ghost" onClick={() => { const d = new Date(); setCur({ y: d.getFullYear(), m: d.getMonth() }); setSel(t); }}>Today</button>
-          <button type="button" className="crm-btn ghost" onClick={() => go(1)} aria-label="Next month"><Icon name="chevron" size={14} /></button>
+          <button type="button" className="ad-btn secondary sm" onClick={() => go(-1)} aria-label="Previous month"><Icon name="chevron" size={14} style={{ transform: 'rotate(180deg)' }} /></button>
+          <button type="button" className="ad-btn secondary sm" onClick={() => { const d = new Date(); setCur({ y: d.getFullYear(), m: d.getMonth() }); setSel(t); }}>Today</button>
+          <button type="button" className="ad-btn secondary sm" onClick={() => go(1)} aria-label="Next month"><Icon name="chevron" size={14} /></button>
         </div>
       </div>
       <div className="crm-cal-dow" aria-hidden="true">{DOW.map((d) => <span key={d}>{d}</span>)}</div>
@@ -70,9 +70,9 @@ export default function Calendar({ leads, onOpen, onReschedule }) {
         <span><span className="crm-dot demo upcoming" /> Demo</span><span><span className="crm-dot fu upcoming" /> Follow-up</span><span><span className="crm-dot fu overdue" /> Overdue</span><span><span className="crm-dot demo past" /> Done</span>
       </div>
       <section className="crm-cal-day" aria-label={`Items on ${fmtDay(sel, { year: true })}`}>
-        <div className="crm-eyebrow">{sel === t ? 'Today' : `${weekday(sel)} ${fmtDay(sel)}`}</div>
-        {selItems.length ? <div className="crm-cal-day-list">{selItems.map((it) => <Chip key={`${it.kind}:${it.lead.id}`} it={it} bind={bind} lifted={dragging?.id === `${it.kind}:${it.lead.id}`} onOpen={onOpen} compact />)}</div> : <p className="crm-quiet" style={{ margin: 0 }}>{sel === t ? 'Nothing scheduled today.' : 'Nothing on this day.'}</p>}
-        <p className="crm-quiet" style={{ marginBottom: 0 }}>Drag an item onto a day to reschedule it — on a phone, press and hold first.</p>
+        <div className="ad-eyebrow">{sel === t ? 'Today' : `${weekday(sel)} ${fmtDay(sel)}`}</div>
+        {selItems.length ? <div className="crm-cal-day-list">{selItems.map((it) => <Chip key={`${it.kind}:${it.lead.id}`} it={it} bind={bind} lifted={dragging?.id === `${it.kind}:${it.lead.id}`} onOpen={onOpen} compact />)}</div> : <p className="ad-quiet" style={{ margin: 0 }}>{sel === t ? 'Nothing scheduled today.' : 'Nothing on this day.'}</p>}
+        <p className="ad-quiet" style={{ marginBottom: 0, fontSize: 12.5 }}>Drag an item to another day to reschedule (press and hold on a phone).</p>
       </section>
     </div>
   );

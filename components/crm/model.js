@@ -79,6 +79,23 @@ export function morning(leads, now = new Date()) {
   return { overdue: overdue.sort(byWhen), today: todayList.sort(byWhen), week: week.sort(byWhen) };
 }
 
+// Agenda: every open lead's next demo / follow-up, bucketed in time. Overdue, today, the rest of
+// this week, then the next 30 days. Sorted by when, then time.
+export function agenda(leads, now = new Date()) {
+  const t = ymd(now); const weekEnd = addDays(t, 7); const laterEnd = addDays(t, 30);
+  const out = { overdue: [], today: [], week: [], later: [] };
+  const put = (it) => { const b = it.when < t ? 'overdue' : it.when === t ? 'today' : it.when <= weekEnd ? 'week' : it.when <= laterEnd ? 'later' : null; if (b) out[b].push({ ...it, bucket: b }); };
+  for (const l of leads) {
+    const s = leadStatus(l, now);
+    if (s.closed) continue;
+    if (l.stage === 'demo_booked' && s.demoDay) put({ lead: l, kind: 'demo', when: s.demoDay, ts: l.demo_at });
+    if (s.fu) put({ lead: l, kind: 'fu', when: s.fu, ts: null });
+  }
+  const byWhen = (a, b) => (a.when < b.when ? -1 : a.when > b.when ? 1 : String(a.ts || '').localeCompare(String(b.ts || '')));
+  for (const k of Object.keys(out)) out[k].sort(byWhen);
+  return out;
+}
+
 // Calendar items for a month: { day, lead, kind: 'demo'|'fu', tone }
 export function calendarItems(leads, now = new Date()) {
   const out = [];
