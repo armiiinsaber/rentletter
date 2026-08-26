@@ -17,7 +17,7 @@ import ProductFilm, { FILM_DURATION } from '../../components/film/ProductFilm';
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.setHeader('Cache-Control', 'no-store');
-  if (!(await isAdmin(req))) return { redirect: { destination: '/admin', permanent: false } };
+  if (!(await isAdmin(req))) return { redirect: { destination: '/admin?next=/admin/mockups', permanent: false } };
   return { props: {} };
 }
 

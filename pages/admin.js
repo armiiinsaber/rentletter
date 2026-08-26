@@ -9,6 +9,7 @@ import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon } from '../components/ui';
 import { useRouter } from 'next/router';
 import { isAdmin } from '../lib/adminAuth';
+import { adminFetch, waitForAdminSession } from '../components/admin/adminFetch';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -51,10 +52,9 @@ export default function Admin({ authed: initialAuthed }) {
 
   const load = async () => {
     setErr('');
-    const r = await fetch('/api/admin/overview');
-    if (r.status === 401) { setAuthed(false); return; }
-    const j = await r.json();
-    if (!r.ok) { setErr(j.error || 'Failed to load.'); return; }
+    const { r, j } = await adminFetch('/api/admin/overview'); // retries a 401 (session store catching up) and one 5xx/network failure
+    if (r && r.status === 401) { setAuthed(false); return; }
+    if (!r || !r.ok) { setErr(j.error || (r ? `Failed to load (${r.status}).` : 'Failed to load — no response.')); return; }
     setData(j);
   };
   useEffect(() => { if (authed) load(); }, [authed]);
@@ -65,6 +65,10 @@ export default function Admin({ authed: initialAuthed }) {
     const j = await r.json().catch(() => ({}));
     setBusy(false); setPw('');
     if (!r.ok) { setLoginErr(j.error || 'Sign-in failed.'); return; }
+    // Complete the round-trip: the session is written to a replicating store, so wait until it
+    // reads back before rendering anything that needs it (else the first fetch is told 401).
+    setBusy(true); const ready = await waitForAdminSession(); setBusy(false);
+    if (!ready) { setLoginErr('Signed in, but the session isn’t readable yet — try again in a moment.'); return; }
     // Sent here from another admin page (e.g. /admin/crm)? Go back there. Admin paths only.
     const next = typeof router.query.next === 'string' && /^\/admin(\/[a-z-]+)?$/.test(router.query.next) ? router.query.next : null;
     if (next && next !== '/admin') { router.replace(next); return; }
@@ -180,7 +184,7 @@ export default function Admin({ authed: initialAuthed }) {
         </div>
         <div style={{ fontSize: 12, color: C.inkMute }}>{data ? `As of ${new Date(data.generatedAt).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })}` : 'Loading…'} · <button onClick={load} style={{ background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 12, padding: 0 }}>Refresh</button></div>
       </div>
-      {err && <div role="alert" style={{ marginBottom: 14, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13 }}>{err}</div>}
+      {err && <div role="alert" style={{ marginBottom: 14, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}><span style={{ flex: '1 1 200px' }}>{err}</span>{!data && <button type="button" onClick={load} disabled={busy} style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '7px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>Try again</button>}</div>}
 
       {c && (
         <>

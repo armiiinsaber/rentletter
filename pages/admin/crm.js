@@ -8,6 +8,7 @@ import Head from 'next/head';
 import { C, R, SH } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { isAdmin } from '../../lib/adminAuth';
+import { adminFetch } from '../../components/admin/adminFetch';
 import Board from '../../components/crm/Board';
 import Calendar from '../../components/crm/Calendar';
 import Morning from '../../components/crm/Morning';
@@ -41,10 +42,11 @@ export default function Crm() {
     return j;
   }, []);
   const load = useCallback(async () => {
-    const r = await fetch('/api/admin/crm'); const j = await r.json().catch(() => ({}));
-    if (r.status === 401) { setState('signedout'); return; }
+    setState((s) => (s === 'ready' ? s : 'loading'));
+    const { r, j } = await adminFetch('/api/admin/crm'); // retries a 401 (session store catching up) and one 5xx/network failure
+    if (r && r.status === 401) { setState('signedout'); return; }
     if (j.code === 'migration_missing') { setState('migration'); return; }
-    if (!r.ok) { setErr(j.error || 'Could not load.'); setState('error'); return; }
+    if (!r || !r.ok) { setErr(j.error || (r ? `Could not load (${r.status}).` : 'Could not load — no response.')); setState('error'); return; }
     setData(j); setState('ready');
   }, []);
   useEffect(() => { load(); }, [load]);
