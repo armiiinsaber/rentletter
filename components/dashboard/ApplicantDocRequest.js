@@ -4,7 +4,7 @@
 // single-applicant upload link the tenant opens to upload their own documents, with an optional
 // "email to tenant" (Resend). Also reflects the request status (requested → received). Real
 // dashboard only (calls the API). No raw files touch this component.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -30,7 +30,11 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
   const [error, setError] = useState('');
   // Driven by a "Rentletter noticed" card: highlight this panel (and pre-arm the renewal confirm).
   const [highlight, setHighlight] = useState(false);
-  useEffect(() => { if (focus) { setHighlight(true); if (focus.renew && hasActiveAnalysis) setConfirmRenew(true); const t = setTimeout(() => setHighlight(false), 4000); return () => clearTimeout(t); } }, [focus, hasActiveAnalysis]);
+  const boxRef = useRef(null);
+  useEffect(() => { if (focus) { setHighlight(true); if (focus.renew && hasActiveAnalysis) setConfirmRenew(true); const t = setTimeout(() => setHighlight(false), 4000); return () => clearTimeout(t); } return undefined; }, [focus, hasActiveAnalysis]);
+  // Once the panel has its status, put keyboard focus on its first control so the realtor can act
+  // immediately (the card was scrolled into view by the caller; no second scroll here).
+  useEffect(() => { if (focus && loaded) boxRef.current?.querySelector('button')?.focus({ preventScroll: true }); }, [focus, loaded]);
 
   // Load current status on mount (single lightweight KV read on the server).
   useEffect(() => {
@@ -91,11 +95,11 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
   const box = { marginTop: 12, border: `1px solid ${highlight ? C.red : C.rule}`, boxShadow: highlight ? `0 0 0 2px ${C.redTint}` : 'none', borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', background: C.card };
 
   if (!loaded) {
-    return <div style={{ ...box, color: C.inkMute, fontSize: 12.5 }}>Loading document request…</div>;
+    return <div ref={boxRef} style={{ ...box, color: C.inkMute, fontSize: 12.5 }}>Loading document request…</div>;
   }
 
   return (
-    <div style={box}>
+    <div ref={boxRef} style={box}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
         <Icon name="doc" size={15} color={C.ink} />
         <span style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>Request documents from tenant</span>

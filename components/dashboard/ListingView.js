@@ -85,15 +85,38 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     window.addEventListener('rl:assistant-applied', onApplied);
     return () => { window.removeEventListener('rl:assistant-applied', onApplied); delete window.__rlAssistantContext; };
   }, [listing, applicants]);
+  // "Request documents" — from a Noticed card here or from the home page (deep link
+  // #docs=<linkId>[&renew]). Unreviewed cards render COLLAPSED, and the document-request panel
+  // only exists inside an expanded card, so this must open the card first (which also marks it
+  // reviewed — exactly what clicking Open does), then scroll to it and light up the panel.
+  const focusApplicantDocs = (linkId, renew = false) => {
+    const a = applicants.find((x) => x.linkId === linkId); if (!a) return;
+    openApplicant(a);
+    setFocusDocFor({ linkId, renew: !!renew, at: Date.now() });
+    setTimeout(() => document.getElementById(`applicant-${linkId}`)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 30);
+  };
   const onNoticeAction = (a) => {
-    if (a.event === 'request-docs') {
-      setFocusDocFor({ linkId: a.linkId, renew: !!a.renew, at: Date.now() });
-      setTimeout(() => document.getElementById(`applicant-${a.linkId}`)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 30);
-    } else if (a.event === 'send-report') {
-      document.getElementById('report')?.scrollIntoView({ block: 'start' });
+    if (a.event === 'request-docs') focusApplicantDocs(a.linkId, a.renew);
+    else if (a.event === 'send-report') {
+      document.getElementById('report')?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
       sendEmail();
     }
   };
+  // Deep links from the home page's Noticed cards: #docs=<linkId>[&renew] opens that applicant's
+  // document request; #report scrolls to "Present to landlord". The browser's own hash jump
+  // fires before the async panels (doc-request status, notices) have loaded and pushed the page
+  // around, so #report is re-aimed as the content settles.
+  useEffect(() => {
+    const hash = String(window.location.hash || '');
+    const m = hash.match(/^#docs=([^&]+)(&renew)?$/);
+    if (m) { focusApplicantDocs(decodeURIComponent(m[1]), !!m[2]); return undefined; }
+    if (hash !== '#report') return undefined;
+    const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const aim = () => document.getElementById('report')?.scrollIntoView({ block: 'start', behavior });
+    const timers = [0, 700, 1600].map((ms) => setTimeout(aim, ms));
+    return () => timers.forEach(clearTimeout);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   useEffect(() => {
     if (!listing?.id) return;
     adapter.fetch(`/api/referrals/list?listingId=${encodeURIComponent(listing.id)}`).then((r) => (r.ok ? r.json() : { byLink: {} })).then((j) => setReferrals(j.byLink || {})).catch(() => {});
@@ -676,7 +699,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
           {/* ── PRESENT TO LANDLORD (appears once anyone has applied) ── */}
           {totalApplicants > 0 && (
-            <section className="rl-card rl-in" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16 }}>
+            <section id="report" className="rl-card rl-in" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16, scrollMarginTop: 16 }}>
               <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Present to landlord</div>
               <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, maxWidth: 560 }}>
                 Present the full ranked list of {totalApplicants} applicant{totalApplicants === 1 ? '' : 's'} (top 5 highlighted{setAsideList.length ? `, ${setAsideList.length} set aside` : ''}) as a branded PDF report or a paste-ready message.

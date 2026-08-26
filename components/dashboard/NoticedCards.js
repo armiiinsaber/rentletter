@@ -23,6 +23,12 @@ export default function NoticedCards({ input, onAction, style, className = '' })
       // lib/noticed emits product paths; translate through the adapter so a demo stays in-route.
       const m = String(a.href).match(/^\/landlord\/([^#?]+)(.*)$/);
       const href = m ? adapter.paths.listing(m[1]) + (m[2] || '') : a.href === '/profile' ? adapter.paths.profile : a.href.startsWith('/landlord') ? adapter.paths.home + a.href.slice('/landlord'.length) : a.href;
+      // Same page + an anchor: scroll there ourselves (assigning an identical hash does nothing).
+      const url = new URL(href, window.location.href);
+      if (url.pathname === window.location.pathname && url.hash) {
+        const el = document.getElementById(url.hash.slice(1));
+        if (el) { window.history.replaceState(null, '', url.hash); el.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); return; }
+      }
       window.location.href = href; return;
     }
     onAction?.(a, card);

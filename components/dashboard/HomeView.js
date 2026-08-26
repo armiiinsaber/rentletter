@@ -155,6 +155,20 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     };
     return () => { delete window.__rlAssistantContext; };
   }, [listings, signals]);
+  // Event-type Noticed actions on the home page go to the listing page, which owns the applicant
+  // cards: #docs=<linkId>[&renew] makes ListingView open that applicant (marking them reviewed),
+  // scroll to them and light up the document-request panel.
+  const onNoticeAction = (a) => {
+    if (a.event === 'request-docs' && a.listingId && a.linkId) window.location.href = `${adapter.paths.listing(a.listingId)}#docs=${encodeURIComponent(a.linkId)}${a.renew ? '&renew' : ''}`;
+  };
+  // "#referrals" deep link (the Assign action): the inbox mounts only after its own fetch, so a
+  // plain hash jump on page load finds nothing — wait for the section, then scroll to it.
+  useEffect(() => {
+    if (window.location.hash !== '#referrals') return undefined;
+    let tries = 0; const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    const t = setInterval(() => { const el = document.getElementById('referrals'); if (el) { el.scrollIntoView({ block: 'start', behavior }); clearInterval(t); } else if (++tries > 40) clearInterval(t); }, 150);
+    return () => clearInterval(t);
+  }, []);
   const noticeInput = { scope: 'home', listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsSent: signals.referralsSent, referralsInbox: signals.referralsInbox, profile };
   const briefing = buildBriefing({ listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsInbox: signals.referralsInbox, notices: computeNotices(noticeInput), firstName });
   const activeLinks = listings.filter((l) => l.invite_token || l.invite_url).length;
@@ -345,7 +359,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           )}
 
           {/* Rentletter noticed — deterministic, max 3, nothing when quiet */}
-          {signals.loaded && <NoticedCards input={noticeInput} className="span-4" />}
+          {signals.loaded && <NoticedCards input={noticeInput} className="span-4" onAction={onNoticeAction} />}
 
           {/* Referred to you — renders nothing when empty */}
           <ReferralInbox listings={listings} />
