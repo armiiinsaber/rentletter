@@ -7,6 +7,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../../components/ui';
 import { getEntitlement } from '../../lib/entitlements';
+import Paywall from './Paywall';
 import { C, R, SH, EASE, FONT } from '../../components/theme';
 import { normalizeProvince } from '../../lib/provinces';
 import { formatUnit } from '../../lib/unitType';
@@ -177,8 +178,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
   const entitlement = initialEntitlement || getEntitlement(profile);
-  const trialLine = entitlement.status === 'trialing' && entitlement.daysLeft != null && entitlement.daysLeft <= 7
-    ? `${entitlement.daysLeft === 1 ? '1 day' : `${entitlement.daysLeft} days`} left on your trial` : null;
+  const trialDays = entitlement.status === 'trialing' && entitlement.daysLeft != null && entitlement.daysLeft <= 7 ? entitlement.daysLeft : null;
+  // Back from Checkout before the webhook landed → "payment received" instead of the paywall.
+  const checkoutFlag = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('checkout') : null;
+  const locked = !entitlement.canUseProduct;
   const brokerage = (profile?.brokerage || '').trim();
   const newThisWeek = listings.filter((l) => {
     const t = l.created_at ? new Date(l.created_at).getTime() : NaN;
@@ -214,7 +217,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             solid canvas background + safe-area padding cover the notch region at the top. */}
         <DashboardHeader profile={profile} />
 
-        <div style={{
+        {locked && (
+          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
+            <Paywall entitlement={entitlement} profile={profile} pending={checkoutFlag === 'success'} />
+          </div>
+        )}
+        {!locked && <div style={{
           maxWidth: 1100, margin: '0 auto',
           // The header is now in normal flow directly above, so it takes its own space — content just
           // follows below it. No measured offset needed; a small top gap is all that's required.
@@ -325,7 +333,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </div>
           )}
           {/* one quiet line, only inside the last week of a trial — no banner, no colour alarm */}
-          {trialLine && <p className="dash-pulse-note dash-data">{trialLine}</p>}
+          {trialDays != null && <p className="dash-pulse-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
           {error && (
             <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
@@ -412,7 +420,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           <p style={{ marginTop: 28, fontSize: 12, color: C.inkMute, textAlign: 'center' }}>
             Signed in as {userEmail}. Your listings are private to your account.
           </p>
-        </div>
+        </div>}
 
         {modalOpen && (
           <ListingSetupModal mode="create" onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />

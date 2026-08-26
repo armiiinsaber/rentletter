@@ -11,6 +11,8 @@ import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
+import Paywall from './Paywall';
+import { getEntitlement } from '../../lib/entitlements';
 import ChatWidget from '../../components/ChatWidget';
 import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
@@ -41,6 +43,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const adapter = useAdapter();
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
+  // Access verdict (lib/entitlements.js) — read only; the paywall replaces the page when false.
+  const entitlement = getEntitlement(profile); const locked = !entitlement.canUseProduct;
   const [listing, setListing] = useState(initialListing);
   const [applicants, setApplicants] = useState(initialApplicants || []);
   // Realtor→realtor handoff: referrals this realtor has sent for applicants on this listing
@@ -512,7 +516,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} />
 
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
+        {locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
+        {!locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
           <a href={adapter.paths.home} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkSoft, textDecoration: 'none', marginBottom: 18 }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
@@ -736,7 +741,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               )}
             </section>
           )}
-        </div>
+        </div>}
 
         {editOpen && (
           <ListingSetupModal mode="edit" initial={listing} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
