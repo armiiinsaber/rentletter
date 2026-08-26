@@ -229,7 +229,11 @@ export default function Mockups() {
       <div style={{ minHeight: '100vh', background: C.paper }}>
         <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '14px clamp(16px, 3vw, 28px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><Wordmark /><span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.paper, background: C.ink, padding: '3px 8px', borderRadius: R.pill }}>Mockups</span></div>
-          <a href="/admin" style={{ fontSize: 12.5, color: C.inkSoft, fontWeight: 600, textDecoration: 'none' }}>← Admin</a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <a href="/admin" style={{ fontSize: 12.5, color: C.inkSoft, fontWeight: 600, textDecoration: 'none' }}>← Admin</a>
+            {/* revokes THIS device's session server-side (its own KV key); other devices stay signed in */}
+            <button type="button" onClick={async () => { await fetch('/api/admin/logout', { method: 'POST' }); window.location.href = '/admin'; }} style={{ background: 'transparent', border: `1px solid ${C.rule}`, borderRadius: R.pill, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: C.inkSoft }}>Sign out</button>
+          </div>
         </header>
 
         <div className="mk-wrap">
