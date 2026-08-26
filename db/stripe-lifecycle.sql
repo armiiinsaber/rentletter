@@ -1,7 +1,8 @@
 -- db/stripe-lifecycle.sql
 -- Stripe subscription lifecycle on profiles + the webhook's idempotency ledger. Run once in the
 -- Supabase SQL editor, AFTER db/billing-and-promos.sql. IDEMPOTENT: every statement is
--- IF NOT EXISTS / guarded. No statement touches existing rows.
+-- IF NOT EXISTS / guarded. ONE statement touches existing rows: the grandfather backfill at
+-- the end (pre-cutoff accounts still at 'none' → a trial with a fixed end date).
 --
 --   profiles.grace_ends_at       set by invoice.payment_failed (now() + 7 days); access continues
 --                                until then (lib/entitlements.js), cleared when payment succeeds
@@ -35,3 +36,15 @@ ALTER TABLE public.stripe_events ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.stripe_events FROM anon, authenticated;
 
 COMMENT ON TABLE public.stripe_events IS 'Webhook idempotency ledger: one row per Stripe event id, inserted before any side effect.';
+
+-- ── Grandfather: accounts that existed before this deploy ─────────────────────────────────────
+-- THE ONE STATEMENT IN THIS FILE THAT TOUCHES EXISTING ROWS. Every profile created before the
+-- cutoff and still at plan = 'none' becomes a trial that ends on a FIXED date — not now() + n,
+-- so re-running can never extend anyone. founding / trial / paid rows are untouched; on a
+-- second run nothing is still at 'none' from before the cutoff, so it matches nothing.
+-- (Run db/billing-and-promos.sql first: it moves the legacy founders to 'founding', so they are
+-- already out of scope here.)
+UPDATE public.profiles
+   SET plan = 'trial', trial_ends_at = '2026-12-31T23:59:59Z'
+ WHERE plan = 'none'
+   AND created_at < '2026-08-27T00:00:00Z';

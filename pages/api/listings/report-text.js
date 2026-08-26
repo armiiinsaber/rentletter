@@ -11,6 +11,7 @@ import { loadReportContext } from '../../../lib/listingReportData';
 import { reasonLabel } from '../../../lib/setAsideReasons';
 import { humanRightsCodeName } from '../../../lib/provinces';
 import { describeAiError } from '../../../lib/aiErrors';
+import { requireEntitlement } from '../../../lib/requireEntitlement';
 
 // An 800-token composition can exceed the platform default function duration.
 export const config = { maxDuration: 30 };
@@ -29,6 +30,8 @@ export default async function handler(req, res) {
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!(await requireEntitlement(req, res, supabase, user))) return;
 
   const { listingId } = req.body || {};
   if (!listingId) return res.status(400).json({ error: 'listingId required.' });

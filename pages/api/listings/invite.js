@@ -7,6 +7,7 @@
 import crypto from 'crypto';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { normalizeProvince } from '../../../lib/provinces';
+import { requireEntitlement } from '../../../lib/requireEntitlement';
 
 function kvBase() {
   return (process.env.KV_REST_API_URL || '').replace(/\/+$/, '');
@@ -19,6 +20,8 @@ export default async function handler(req, res) {
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user }, error: userErr } = await supabase.auth.getUser();
   if (userErr || !user) return res.status(401).json({ error: 'Not signed in.' });
+  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!(await requireEntitlement(req, res, supabase, user))) return;
 
   const { listingId, regenerate } = req.body || {};
   if (!listingId) return res.status(400).json({ error: 'listingId required.' });

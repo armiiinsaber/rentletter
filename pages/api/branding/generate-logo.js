@@ -8,6 +8,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { validateLogoSvg } from '../../../lib/svgSanitize';
 import { describeAiError } from '../../../lib/aiErrors';
+import { requireEntitlement } from '../../../lib/requireEntitlement';
 
 // Three full SVG concepts take well over the platform default (10s Hobby / 15s Pro).
 // Without this, the function was killed mid-generation and the client saw a generic error.
@@ -144,6 +145,8 @@ export default async function handler(req, res) {
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!(await requireEntitlement(req, res, supabase, user))) return;
 
   const { brief, refineFrom, conversationContext, brandColor: bodyColor, brandColorSecondary: bodyColor2 } = req.body || {};
   if (!brief && !refineFrom) return res.status(400).json({ error: 'Tell us what you want your logo to look like.' });

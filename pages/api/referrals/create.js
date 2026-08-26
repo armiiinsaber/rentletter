@@ -8,10 +8,13 @@ import { createReferral, kvReady } from '../../../lib/referrals';
 import { consentEmail } from '../../../lib/referralEmails';
 import { isEmail, normalizeEmail } from '../../../lib/tenantProfileStore';
 import { logServerError } from '../../../lib/serverLog';
+import { requireEntitlement } from '../../../lib/requireEntitlement';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const ctx = await requireRealtor(req, res); if (!ctx) return;
+  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!(await requireEntitlement(req, res, ctx.supabase, ctx.user))) return;
   if (!kvReady()) return res.status(503).json({ error: 'Service temporarily unavailable.' });
   const { listingId, linkId, toName, toEmail, note } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant.' });

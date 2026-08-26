@@ -3,9 +3,12 @@
 import { requireRealtor } from '../../../lib/realtorAuth';
 import { getReferral, assignReferral } from '../../../lib/referrals';
 import { logServerError } from '../../../lib/serverLog';
+import { requireEntitlement } from '../../../lib/requireEntitlement';
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const ctx = await requireRealtor(req, res); if (!ctx) return;
+  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!(await requireEntitlement(req, res, ctx.supabase, ctx.user))) return;
   const { referralId, listingId } = req.body || {};
   const ref = await getReferral(referralId);
   if (!ref) return res.status(404).json({ error: 'Referral not found.' });

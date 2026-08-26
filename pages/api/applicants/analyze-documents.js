@@ -15,6 +15,7 @@ import {
   ALLOWED_DOC_MIME, MAX_DOCS, MAX_TOTAL_BYTES,
 } from '../../../lib/applicantAnalysis';
 import { withActiveReport } from '../../../lib/docVerifications';
+import { requireEntitlement } from '../../../lib/requireEntitlement';
 
 // Allow the batch payload (≤6 docs, base64) through Next's default 1MB body cap.
 export const config = { api: { bodyParser: { sizeLimit: '26mb' } } };
@@ -29,6 +30,8 @@ export default async function handler(req, res) {
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!(await requireEntitlement(req, res, supabase, user))) return;
 
   const { listingId, linkId, applicationId, files } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant reference.' });

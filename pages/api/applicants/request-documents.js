@@ -12,6 +12,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { authorizeApplicant } from '../../../lib/applicantAnalysis';
 import { kvReady, kvGetJson, kvSetJson, reqKey, appKey, newDocReqToken, isDocReqToken, DOCREQ_TTL } from '../../../lib/docRequest';
+import { requireEntitlement } from '../../../lib/requireEntitlement';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -27,6 +28,8 @@ export default async function handler(req, res) {
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!(await requireEntitlement(req, res, supabase, user))) return;
 
   const { listingId, linkId, applicationId, sendEmail, renew } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant reference.' });
