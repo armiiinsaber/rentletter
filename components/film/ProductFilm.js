@@ -124,10 +124,10 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
         </div>
       </div>
       {/* overlays — stage space (Story: lifted above Instagram's bottom-20% caption band) */}
-      <div style={{ position: 'absolute', left: story ? '7%' : '5%', bottom: story ? '23%' : '6%', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: ov.wordmarkIntro * 0.85, transform: `translate(0, ${(1 - ov.wordmarkIntro) * 6}px)` }} aria-hidden="true">
+      <div style={{ position: 'absolute', left: story ? '7%' : '5%', bottom: story ? '24%' : '6%', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: ov.wordmarkIntro * 0.85, transform: `translate(0, ${(1 - ov.wordmarkIntro) * 6}px)` }} aria-hidden="true">
         <span style={{ width: 3.5, height: 21, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', fontWeight: 800, letterSpacing: '-0.025em', color: C.ink }}>Rentletter</span>
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: story ? '24%' : narrow ? '7%' : '9%', textAlign: 'center', padding: '0 6%' }} aria-hidden={ov.endWordmark < 0.5}>
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: story ? '30%' : narrow ? '7%' : '9%', textAlign: 'center', padding: '0 6%' }} aria-hidden={ov.endWordmark < 0.5}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, opacity: ov.endWordmark, transform: `translate(0, ${(1 - ov.endWordmark) * 10}px)` }}>
           <span style={{ width: 5, height: 30, background: C.red, borderRadius: 1 }} /><span className="rl-serif" style={{ fontSize: 'clamp(26px, 4vw, 42px)', letterSpacing: '-0.025em', color: C.ink, lineHeight: 1 }}>Rentletter</span>
         </div>
