@@ -10,8 +10,9 @@
 //   • a staggered page-load reveal (wordmark first, then the control cluster left→right)
 //   • hover / press / focus micro-interactions on the avatar, sign-out, and bell
 //   • all motion is transform/opacity only and gated behind prefers-reduced-motion.
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
-import { ScrollHeader, Wordmark } from '../ui';
+import { ScrollHeader, Wordmark, Icon } from '../ui';
 import { C, R, EASE } from '../theme';
 import StatusBadge from './StatusBadge';
 import NotificationBell from './NotificationBell';
@@ -29,6 +30,17 @@ function initialsOf(profile) {
 export default function DashboardHeader({ profile }) {
   const adapter = useAdapter();
   const router = useRouter();
+  // Avatar menu: profile, branding, sign out. Closes on outside tap and Escape.
+  const [menu, setMenu] = useState(false);
+  const menuRef = useRef(null);
+  useEffect(() => {
+    if (!menu) return undefined;
+    const close = (e) => { if (!menuRef.current?.contains(e.target)) setMenu(false); };
+    const key = (e) => { if (e.key === 'Escape') setMenu(false); };
+    document.addEventListener('pointerdown', close); document.addEventListener('keydown', key);
+    return () => { document.removeEventListener('pointerdown', close); document.removeEventListener('keydown', key); };
+  }, [menu]);
+  const brandingHref = `${adapter.paths.profile}${adapter.paths.profile.includes('#') ? '' : '#branding'}`;
   const signOut = async () => {
     const supabase = adapter.supabase();
     await supabase.auth.signOut();
@@ -54,11 +66,20 @@ export default function DashboardHeader({ profile }) {
           <span className="rl-hdr-reveal rl-hdr-bellwrap" style={{ '--d': '220ms', display: 'inline-flex' }}>
             <NotificationBell />
           </span>
-          {/* Account avatar — native initials (never the uploaded logo); opens profile/branding. */}
-          <a href={adapter.paths.profile} title="You & your brand" aria-label="Open your profile and branding"
-            className="rl-hdr-reveal rl-hdr-avatar" style={{ '--d': '280ms' }}>
-            {initialsOf(profile)}
-          </a>
+          {/* Account avatar: native initials (never the uploaded logo). Opens the account menu. */}
+          <span ref={menuRef} className="rl-hdr-menuwrap">
+            <button type="button" title="Account" aria-label="Account menu" aria-haspopup="menu" aria-expanded={menu}
+              className="rl-hdr-reveal rl-hdr-avatar" style={{ '--d': '280ms' }} onClick={() => setMenu((m) => !m)}>
+              {initialsOf(profile)}
+            </button>
+            {menu && (
+              <div className="rl-hdr-menu" role="menu">
+                <a role="menuitem" href={adapter.paths.profile} className="rl-hdr-mi"><Icon name="user" size={15} /> Profile</a>
+                <a role="menuitem" href={brandingHref} className="rl-hdr-mi"><Icon name="edit" size={15} /> Branding</a>
+                <button type="button" role="menuitem" onClick={signOut} className="rl-hdr-mi"><Icon name="arrow" size={15} /> Sign out</button>
+              </div>
+            )}
+          </span>
           <button onClick={signOut} title="Sign out"
             className="rl-hdr-reveal rl-hdr-signout" style={{ '--d': '340ms' }}>
             Sign out
@@ -89,7 +110,12 @@ export default function DashboardHeader({ profile }) {
         @media (max-width: 559px) {
           .rl-hdr-status { display: none !important; }
         }
+        .rl-hdr-menuwrap { position: relative; display: inline-flex; }
+        .rl-hdr-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 90; min-width: 200px; background: ${C.card}; border: 1px solid ${C.rule}; border-radius: 12px; box-shadow: 0 4px 8px rgba(15,15,16,0.06), 0 22px 48px rgba(15,15,16,0.14); padding: 6px; display: grid; gap: 2px; }
+        .rl-hdr-mi { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: none; border-radius: 8px; padding: 0 12px; min-height: 44px; font: inherit; font-size: 14px; font-weight: 600; color: ${C.ink}; text-decoration: none; cursor: pointer; }
+        .rl-hdr-mi:hover { background: ${C.paperDeep}; }
         .rl-hdr-avatar {
+          border: none;
           width: 34px;
           height: 34px;
           box-sizing: border-box;

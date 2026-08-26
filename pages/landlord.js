@@ -18,7 +18,7 @@ export async function getServerSideProps(ctx) {
   if (!user) {
     return { redirect: { destination: '/signin?next=/landlord', permanent: false } };
   }
-  let [{ data: profile }, { data: listings }] = await Promise.all([
+  let [{ data: profile }, { data: listings, error: listingsError }] = await Promise.all([
     supabase.from('profiles').select('*').eq('id', user.id).single(),
     supabase.from('listings').select('*').eq('profile_id', user.id).order('created_at', { ascending: false }),
   ]);
@@ -51,7 +51,10 @@ export async function getServerSideProps(ctx) {
       userId: user.id,
       userEmail: user.email || '',
       initialProfile: finalProfile,
-      initialListings: listings || [],
+      // null = the query FAILED (the client retries and shows a skeleton, never the empty state);
+      // [] = the query succeeded with zero rows (the only case that may show "add your first listing").
+      initialListings: listingsError ? null : (listings || []),
+      listingsError: listingsError ? String(listingsError.message || 'Could not load your listings.') : null,
       entitlement: getEntitlement(finalProfile),
     },
   };

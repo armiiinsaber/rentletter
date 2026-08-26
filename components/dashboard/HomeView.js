@@ -8,13 +8,11 @@ import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../../components/ui';
 import { getEntitlement } from '../../lib/entitlements';
 import Paywall from './Paywall';
-import { C, R, SH, EASE, FONT } from '../../components/theme';
-import { normalizeProvince } from '../../lib/provinces';
+import { C, R, EASE, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ReferralInbox from '../../components/dashboard/ReferralInbox';
 import NoticedCards from '../../components/dashboard/NoticedCards';
-import { computeNotices, buildBriefing } from '../../lib/noticed';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ChatWidget from '../../components/ChatWidget';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -29,30 +27,6 @@ function initialsOf(profile) {
     return ((parts[0]?.[0] || '') + (parts[1]?.[0] || '')).toUpperCase() || n[0].toUpperCase();
   }
   return (profile?.email || '?')[0].toUpperCase();
-}
-
-// Count-up for pulse-strip numbers. Initial state is the FINAL value so SSR, no-JS,
-// and reduced-motion all read the real number; motion-welcome browsers animate
-// 0 → value once on first load (rAF, ease-out, 400ms — inside the motion budget).
-function CountUp({ value }) {
-  const target = Number(value) || 0;
-  const [shown, setShown] = useState(target);
-  useEffect(() => {
-    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    if (target <= 0) return;
-    let raf = 0;
-    const t0 = performance.now();
-    const tick = (now) => {
-      const p = Math.min((now - t0) / 400, 1);
-      setShown(Math.round(target * (1 - Math.pow(1 - p, 3))));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-    // Runs once on mount by design — the strip counts up on first load only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return <>{shown}</>;
 }
 
 // Dominant colour of the uploaded logo, sampled client-side on a downsampled canvas
@@ -97,11 +71,14 @@ function useLogoAccent(logoUrl) {
   return accent;
 }
 
-export default function HomeView({ userId, userEmail, initialProfile, initialListings, entitlement: initialEntitlement = null }) {
+export default function HomeView({ userId, userEmail, initialProfile, initialListings, listingsError: initialListingsError = null, entitlement: initialEntitlement = null }) {
   const adapter = useAdapter();
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
-  const [listings, setListings] = useState(initialListings);
+  // listings: null = not known yet (the server query failed; the client retries below),
+  // [] = known to be empty (the only state that may show the guided empty state).
+  const [listings, setListings] = useState(Array.isArray(initialListings) ? initialListings : null);
+  const [listingsError, setListingsError] = useState(initialListingsError);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -126,7 +103,26 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     }
   };
 
-  const hasListings = listings.length > 0;
+  const listingsLoaded = Array.isArray(listings);
+  const hasListings = listingsLoaded && listings.length > 0;
+  // Client retry when the server-side listings query failed (an expired access token being
+  // refreshed under RLS is the usual reason). Until it resolves the page shows a skeleton,
+  // never the empty state.
+  useEffect(() => {
+    if (listingsLoaded) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const supabase = adapter.supabase();
+        const { data, error: qErr } = await supabase.from('listings').select('*').eq('profile_id', userId).order('created_at', { ascending: false });
+        if (cancelled) return;
+        if (qErr) { setListingsError(qErr.message || 'Could not load your listings.'); return; }
+        setListingsError(null); setListings(data || []);
+      } catch (e) { if (!cancelled) setListingsError('Could not load your listings.'); }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingsLoaded]);
   // ── Assistant data for the briefing + "Rentletter noticed": the realtor's own applicants per
   // listing (existing /api/listings/applicants, RLS-scoped), notifications feed, referrals. All
   // best-effort; the page renders without them. No AI involved.
@@ -135,13 +131,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     let cancelled = false;
     (async () => {
       const get = (u) => adapter.fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+      const ls = (listings || []).slice(0, 12);
       const [notif, inbox, sent, ...apps] = await Promise.all([
         get('/api/notifications'), get('/api/referrals/inbox'), get('/api/referrals/list'),
-        ...listings.slice(0, 12).map((l) => get(`/api/listings/applicants?listingId=${encodeURIComponent(l.id)}`)),
+        ...ls.map((l) => get(`/api/listings/applicants?listingId=${encodeURIComponent(l.id)}`)),
       ]);
       if (cancelled) return;
       const applicantsByListing = {};
-      listings.slice(0, 12).forEach((l, i) => { applicantsByListing[l.id] = apps[i]?.applicants || []; });
+      ls.forEach((l, i) => { applicantsByListing[l.id] = apps[i]?.applicants || []; });
       setSignals({ applicantsByListing, notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), loaded: true });
     })();
     return () => { cancelled = true; };
@@ -152,8 +149,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   useEffect(() => {
     window.__rlAssistantContext = {
       page: 'home', currentListingId: null,
-      listings: listings.map((l) => ({ id: l.id, name: l.name, address: l.address, landlord_email: l.landlord_email, landlord_name: l.landlord_name })),
-      applicants: listings.flatMap((l) => (signals.applicantsByListing[l.id] || []).filter((a) => a.decisionStatus !== 'withdrawn').map((a) => ({ linkId: a.linkId, listingId: l.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email }))),
+      listings: (listings || []).map((l) => ({ id: l.id, name: l.name, address: l.address, landlord_email: l.landlord_email, landlord_name: l.landlord_name })),
+      applicants: (listings || []).flatMap((l) => (signals.applicantsByListing[l.id] || []).filter((a) => a.decisionStatus !== 'withdrawn').map((a) => ({ linkId: a.linkId, listingId: l.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email }))),
     };
     return () => { delete window.__rlAssistantContext; };
   }, [listings, signals]);
@@ -171,10 +168,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     const t = setInterval(() => { const el = document.getElementById('referrals'); if (el) { el.scrollIntoView({ block: 'start', behavior }); clearInterval(t); } else if (++tries > 40) clearInterval(t); }, 150);
     return () => clearInterval(t);
   }, []);
-  const noticeInput = { scope: 'home', listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsSent: signals.referralsSent, referralsInbox: signals.referralsInbox, profile };
-  const briefing = buildBriefing({ listings, applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsInbox: signals.referralsInbox, notices: computeNotices(noticeInput), firstName });
-  const activeLinks = listings.filter((l) => l.invite_token || l.invite_url).length;
-  const provinceCode = normalizeProvince(profile?.province);
+  const noticeInput = { scope: 'home', listings: listings || [], applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsSent: signals.referralsSent, referralsInbox: signals.referralsInbox, profile };
+  // Greeting: time of day plus first name, nothing else. The name is its own flex item so a
+  // long one drops to its own line whole (never a stray word).
+  const hour = new Date().getHours();
+  const greetWord = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
   const entitlement = initialEntitlement || getEntitlement(profile);
@@ -183,15 +181,15 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const checkoutFlag = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('checkout') : null;
   const locked = !entitlement.canUseProduct;
   const brokerage = (profile?.brokerage || '').trim();
-  const newThisWeek = listings.filter((l) => {
-    const t = l.created_at ? new Date(l.created_at).getTime() : NaN;
-    return Number.isFinite(t) && Date.now() - t < 7 * 24 * 60 * 60 * 1000;
-  }).length;
+  // Branding is complete when there is a display name, a brokerage, and a logo (uploaded or
+  // generated, both land in logo_url). Complete → the brand card leaves the dashboard; branding
+  // is reached from the avatar menu instead.
+  const brandComplete = !!((profile?.full_name || '').trim() && brokerage && profile?.logo_url);
   // Logo-derived accent for the brand card only; product red when absent/too light.
   const logoAccent = useLogoAccent(profile?.logo_url || '');
   const brandAccent = logoAccent || C.red;
   // Reveal major sections on load / scroll (subtle, matches the header language).
-  useReveal(`${listings.length}-${hasListings}`);
+  useReveal(`${listingsLoaded ? listings.length : 'x'}-${hasListings}-${signals.loaded}`);
 
   // Header note: the dashboard header is a plain in-flow element (position: static, see .dash-bg
   // override) that scrolls away with the page. Because nothing is fixed/sticky, there is no floating
@@ -233,127 +231,66 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           // its bottom offset + 16px breathing room, plus the home-indicator inset. Nothing in
           // flow (the "Signed in as" footer line included) can ever sit under the FAB, and the
           // page ends right after this zone — no extra void below.
-          paddingBottom: 'calc(96px + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'calc(clamp(16px, 3vw, 24px) + 56px + 12px + env(safe-area-inset-bottom, 0px))',
         }}>
 
-          {/* ── OVERVIEW BENTO — hero + branding ── */}
-          <div className="rl-in dash-bento">
-            {/* Hero card — NO scroll transform (see note above): a transformed hero paints above the
-                fixed header on iOS, causing a half-cut title. Plain, so the header cleanly covers it. */}
-            <section className="dash-card dash-hero span-4">
-              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
-              {/* DAILY BRIEFING (was B3 "graduate this line to applicant activity"): what arrived,
-                  what's waiting on the realtor, what to do next — derived deterministically from
-                  real data (lib/noticed.buildBriefing). Honest when quiet. */}
-              {/* Two deliberate lines. Line 1 is the greeting + name: "Good evening," and the name
-                  are flex items, so they share a line when they fit and otherwise the NAME drops
-                  to its own line as a whole unit (never mid-phrase, never a stray word). Line 2
-                  is the framing sentence, balanced so a wrap never leaves an orphan. */}
-              {(() => {
-                const ready = signals.loaded || !hasListings;
-                const g = ready ? briefing.greeting : (firstName ? { word: 'Welcome back,', name: `${firstName}.` } : { word: 'Welcome back.', name: '' });
-                const f = ready ? briefing.framing : '';
-                return (
-                  <h1 className="dash-h1" style={{ marginBottom: 10 }}>
-                    <span className="dash-h1-greet">
-                      <span>{g.word}{g.name ? '\u00A0' : ''}</span>
-                      {g.name && <span className="dash-h1-name">{g.name}</span>}
-                    </span>
-                    {f && <span className="dash-h1-frame">{f}</span>}
-                  </h1>
-                );
-              })()}
-              {signals.loaded && (briefing.arrived.length || briefing.waiting.length) ? (
-                <ul className="dash-hero-sub" style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 }}>
-                  {briefing.arrived.map((t) => <li key={t} style={{ display: 'flex', gap: 8 }}><span aria-hidden="true" style={{ color: C.red, fontWeight: 800 }}>•</span><span>{t}</span></li>)}
-                  {briefing.waiting.slice(0, 3).map((t) => <li key={t} style={{ display: 'flex', gap: 8 }}><span aria-hidden="true" style={{ color: C.inkMute }}>→</span><span>Waiting on you: {t}</span></li>)}
-                </ul>
-              ) : (
-                <p className="dash-hero-sub">{hasListings ? (signals.loaded ? 'Nothing is waiting on you right now.' : 'Checking what’s new…') : 'Your next applicant will show up here.'}</p>
-              )}
-              <div style={{ marginTop: 18 }}>
-                <button onClick={() => setModalOpen(true)} className="dash-cta">
-                  <Icon name="plus" size={17} /> New listing
-                </button>
-              </div>
-            </section>
-
-            {/* Branding — the one action worth featuring here. A crafted, on-brand tile that
-                previews the realtor's identity (as it appears on their reports) and invites
-                setup. Whole card → /profile. Help/FAQ live in the ? assistant; compliance in
-                the footer + its page — not featured here. */}
-            <a href={adapter.paths.profile} className="dash-card dash-card-int dash-brand span-2"
-              title="You & your brand" aria-label="Set up your profile and branding"
-              style={{ borderLeft: `3px solid ${brandAccent}` }}>
-              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
-              {/* Identity sits directly on the card surface — masthead byline, not an input
-                  field. Transparent logos render with no white tile; the neutral backing only
-                  appears as the no-logo fallback (initials). */}
-              <div className="dash-brand-identity">
-                {profile?.logo_url
-                  ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
-                  : <span className="dash-brand-initials" aria-hidden="true">{initialsOf(profile)}</span>}
-                <span className="dash-brand-id">
-                  <span className="dash-brand-name">{profile?.full_name || 'Your name'}</span>
-                  <span className="dash-brand-brok">{brokerage || 'Add your brokerage'}</span>
-                </span>
-              </div>
-              <p className="dash-brand-desc">
-                Your logo, colours, and details — they appear on every report you send to landlords.
-              </p>
-              <span className="dash-brand-foot">
-                Set up branding <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+          {/* 1. GREETING + PRIMARY ACTION */}
+          <section className="dash-card dash-hero rl-in">
+            <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
+            <h1 className="dash-h1">
+              <span className="dash-h1-greet">
+                <span>{greetWord}{firstName ? ',\u00A0' : '.'}</span>
+                {firstName && <span className="dash-h1-name">{firstName}.</span>}
               </span>
-            </a>
-          </div>
-
-          {/* ── PULSE STRIP — one horizontal instrument (real, derived numbers). Red tick-marks
-              divide the stats (signature motif); numbers count up once on load (final values
-              render instantly under reduced-motion / no-JS). The empty delta slots keep the
-              three number baselines level when a real delta is shown. ── */}
-          {hasListings && (
-            <div className="rl-in dash-pulse" style={{ '--rl-d': '70ms' }}>
-              <div className="dash-pulse-cell">
-                <span className="dash-data dash-pulse-val"><CountUp value={listings.length} /></span>
-                <span className="dash-pulse-label">{listings.length === 1 ? 'Listing' : 'Listings'}</span>
-                {newThisWeek > 0 && <span className="dash-pulse-delta">+{newThisWeek} this week</span>}
-              </div>
-              <span className="dash-pulse-tick" aria-hidden="true" />
-              <div className="dash-pulse-cell">
-                <span className="dash-data dash-pulse-val"><CountUp value={activeLinks} /></span>
-                <span className="dash-pulse-label">{activeLinks === 1 ? 'Link' : 'Links'}</span>
-                {newThisWeek > 0 && <span className="dash-pulse-delta" aria-hidden="true">&nbsp;</span>}
-              </div>
-              <span className="dash-pulse-tick" aria-hidden="true" />
-              <div className="dash-pulse-cell">
-                <span className="dash-data dash-pulse-val">{provinceCode}</span>
-                <span className="dash-pulse-label">Market</span>
-                {newThisWeek > 0 && <span className="dash-pulse-delta" aria-hidden="true">&nbsp;</span>}
-              </div>
+            </h1>
+            <div style={{ marginTop: 18 }}>
+              <button onClick={() => setModalOpen(true)} className="dash-cta">
+                <Icon name="plus" size={17} /> New listing
+              </button>
             </div>
-          )}
-          {/* one quiet line, only inside the last week of a trial — no banner, no colour alarm */}
-          {trialDays != null && <p className="dash-pulse-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
+          </section>
+          {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
+          {/* 2. THE ASSISTANT: Rentletter noticed (deterministic, max 3, nothing when quiet). Mounts
+              after the signals arrive, so it carries no reveal class (a block that mounts after the
+              observer is created would sit at opacity 0 forever). It simply appears. */}
+          {signals.loaded && <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} /></div>}
+
+          {/* Referred to you (renders nothing when empty) */}
+          <ReferralInbox listings={listings || []} />
+
+          {/* 3. YOUR LISTINGS */}
           {error && (
-            <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
+            <div className="dash-block" style={{ padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
               {error}
             </div>
           )}
-
-          {/* Guided empty state */}
-          {!hasListings && (
-            <section className="dash-card rl-in" style={{ overflow: 'hidden', '--rl-d': '90ms' }}>
+          {listingsError && !listingsLoaded && (
+            <section className="dash-card dash-block" style={{ padding: 'clamp(20px, 4vw, 28px)' }} role="alert">
+              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your listings</div>
+              <h2 className="dash-h2" style={{ marginBottom: 6 }}>We couldn’t load your listings.</h2>
+              <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
+              <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
+            </section>
+          )}
+          {!listingsLoaded && !listingsError && (
+            <div className="dash-block" aria-busy="true" aria-label="Loading your listings">
+              <div className="dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>
+              <div className="dash-grid">{[0, 1].map((i) => <div key={i} className="dash-card dash-skel"><span className="dash-skel-line" style={{ width: '70%', height: 18 }} /><span className="dash-skel-line" style={{ width: '45%' }} /><span className="dash-skel-line" style={{ width: '38%' }} /><span className="dash-skel-line" style={{ width: '30%', marginTop: 'auto' }} /></div>)}</div>
+            </div>
+          )}
+          {listingsLoaded && !hasListings && (
+            <section className="dash-card dash-block" style={{ overflow: 'hidden' }} data-note="no reveal class: primary content that must never sit at opacity 0">
               <div style={{ padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)', borderBottom: `1px solid ${C.rule}` }}>
                 <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Getting started</div>
-                <h2 style={{ fontFamily: FONT.serif, fontSize: 'clamp(24px, 4.5vw, 32px)', fontWeight: 600, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 10 }}>
+                <h2 style={{ fontFamily: FONT.serif, fontSize: 'clamp(24px, 4.5vw, 32px)', fontWeight: 600, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 10, textWrap: 'balance' }}>
                   Add your first listing.
                 </h2>
-                <p style={{ fontSize: 'clamp(14px, 3vw, 16px)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 560, marginBottom: 22 }}>
+                <p style={{ fontSize: 'clamp(14px, 3vw, 16px)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 560, marginBottom: 22, textWrap: 'pretty' }}>
                   A listing holds one unit, its invite link, and every application that comes in. Create one to get your shareable link.
                 </p>
                 <button onClick={() => setModalOpen(true)} className="rl-btn"
-                  style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '15px 26px', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 9, minHeight: 52 }}>
+                  style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '15px 26px', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 9, minHeight: 48 }}>
                   <Icon name="plus" size={17} /> Add your first listing
                 </button>
               </div>
@@ -362,64 +299,74 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                   { n: '1', t: 'Add a listing', d: "Enter the unit address, rent, and your landlord client's preferences." },
                   { n: '2', t: 'Share the invite link', d: 'Send one link to prospective tenants. No accounts needed.' },
                   { n: '3', t: 'Applicants appear here', d: 'Standardized applications land on the listing automatically.' },
-                  { n: '4', t: 'Review & rank', d: 'Everyone is ranked against your criteria, best fit first. Set aside with a reason, then present the full ranked list to your landlord.' },
-                ].map((s, i) => (
-                  <li key={s.n} style={{ padding: 'clamp(18px, 4vw, 24px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, borderLeft: i % 2 === 1 ? `1px solid ${C.rule}` : 'none' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', marginBottom: 8 }}>STEP {s.n}</div>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{s.t}</div>
-                    <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>{s.d}</div>
+                  { n: '4', t: 'Review and rank', d: 'Everyone is ranked against your criteria, best fit first. Set aside with a reason, then present the full ranked list to your landlord.' },
+                ].map((st, i) => (
+                  <li key={st.n} style={{ padding: 'clamp(18px, 4vw, 24px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, borderLeft: i % 2 === 1 ? `1px solid ${C.rule}` : 'none' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', marginBottom: 8 }}>STEP {st.n}</div>
+                    <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{st.t}</div>
+                    <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, textWrap: 'pretty' }}>{st.d}</div>
                   </li>
                 ))}
               </ol>
             </section>
           )}
-
-          {/* Rentletter noticed — deterministic, max 3, nothing when quiet */}
-          {signals.loaded && <NoticedCards input={noticeInput} className="span-4" onAction={onNoticeAction} />}
-
-          {/* Referred to you — renders nothing when empty */}
-          <ReferralInbox listings={listings} />
-
-          {/* Listings list */}
           {hasListings && (
-            <div className="rl-in dash-section-head" style={{ '--rl-d': '90ms' }}>
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
-                <span className="dash-dash" style={{ height: 15, alignSelf: 'center' }} />
-                <h2 className="dash-h2">Your listings</h2>
-                <span className="dash-count">{listings.length}</span>
-              </span>
-              {/* "New listing" lives once, on the hero card above — no duplicate here. */}
+            <div className="dash-block">
+              <div className="rl-in dash-section-head" style={{ '--rl-d': '60ms' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+                  <span className="dash-dash" style={{ height: 15, alignSelf: 'center' }} />
+                  <h2 className="dash-h2">Your listings</h2>
+                  <span className="dash-count">{listings.length}</span>
+                </span>
+              </div>
+              <div className="rl-in dash-grid" style={{ '--rl-d': '90ms' }}>
+                {listings.map((l) => (
+                  <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
+                    style={{ textDecoration: 'none', color: C.ink, padding: 'clamp(20px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ fontSize: 17.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.25, overflowWrap: 'anywhere', textWrap: 'balance' }}>
+                      {l.name || l.address || 'Untitled listing'}
+                    </div>
+                    <div style={{ fontSize: 13.5, color: C.inkSoft, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
+                      {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}
+                      {formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
+                    </div>
+                    {(l.invite_token || l.invite_url) ? (
+                      <span className="dash-lchip dash-lchip-on"><span className="dash-lchip-dot" /> Invite link active</span>
+                    ) : (
+                      <span className="dash-lchip"><span className="dash-lchip-dot dash-lchip-dot-off" /> No invite link yet</span>
+                    )}
+                    <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${C.rule}`, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
+                      Open listing <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
+                    </div>
+                  </a>
+                ))}
+              </div>
             </div>
           )}
-          {hasListings && (
-            <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16, '--rl-d': '120ms' }}>
-              {listings.map((l) => (
-                <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
-                  style={{ textDecoration: 'none', color: C.ink, padding: 'clamp(20px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                  <div style={{ fontSize: 17.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.25, overflowWrap: 'anywhere' }}>
-                    {l.name || l.address || 'Untitled listing'}
-                  </div>
-                  <div style={{ fontSize: 13.5, color: C.inkSoft, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-                    {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}
-                    {formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
-                  </div>
-                  {(l.invite_token || l.invite_url) ? (
-                    <span className="dash-lchip dash-lchip-on"><span className="dash-lchip-dot" /> Invite link active</span>
-                  ) : (
-                    <span className="dash-lchip"><span className="dash-lchip-dot dash-lchip-dot-off" /> No invite link yet</span>
-                  )}
-                  <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${C.rule}`, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
-                    Open listing <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
-                  </div>
-                </a>
-              ))}
-            </div>
+
+          {/* 4. BRAND CARD, only while branding is incomplete. Whole card opens the profile. */}
+          {!brandComplete && (
+            <a href={adapter.paths.profile} className="dash-card dash-card-int dash-brand dash-block rl-in" style={{ borderLeft: `3px solid ${brandAccent}`, '--rl-d': '120ms' }}
+              title="You and your brand" aria-label="Set up your profile and branding">
+              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
+              <div className="dash-brand-identity">
+                {profile?.logo_url
+                  ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
+                  : <span className="dash-brand-initials" aria-hidden="true">{initialsOf(profile)}</span>}
+                <span className="dash-brand-id">
+                  <span className="dash-brand-name">{profile?.full_name || 'Your name'}</span>
+                  <span className="dash-brand-brok">{brokerage || 'Add your brokerage'}</span>
+                  <span className="dash-brand-desc">Your logo, name, and brokerage appear on every report you send.</span>
+                </span>
+              </div>
+              <span className="dash-brand-foot">
+                {profile?.full_name && brokerage ? 'Add your logo' : 'Set up branding'} <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+              </span>
+            </a>
           )}
 
           {/* Session privacy note (kept reassuring; sessions are real accounts now) */}
-          <p style={{ marginTop: 28, fontSize: 12, color: C.inkMute, textAlign: 'center' }}>
-            Signed in as {userEmail}. Your listings are private to your account.
-          </p>
+          <p className="dash-signed">Signed in as {userEmail}. Your listings are private to your account.</p>
         </div>}
 
         {modalOpen && (
@@ -481,20 +428,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* Red-dash brand motif for section eyebrows/heads. */
         .dash-dash { display: inline-block; width: 3px; height: 1em; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 
-        /* ── Bento grid: single column on mobile → asymmetric 6-col on wide screens ── */
-        .dash-bento { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; }
-        @media (min-width: 840px) {
-          .dash-bento { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 18px; margin-bottom: 18px; }
-          .dash-bento .span-4 { grid-column: span 4; }
-          .dash-bento .span-2 { grid-column: span 2; }
-        }
-
         /* ── Type scale — four tiers, used consistently on this screen ──
            display  (.dash-h1)  Fraunces serif — the hero title, same face as the landing hero
            heading  (.dash-h2)  Inter 800, tight tracking — section titles
            body     (inherited) Inter 400/500 — everything else
            data     (.dash-data) Inter 800 + tabular-nums — every number that must line up */
-        .dash-h1 { font-family: ${FONT.serif}; font-size: clamp(30px, 4.8vw, 44px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.05; color: ${C.ink}; }
+        .dash-h1 { font-family: ${FONT.serif}; font-size: clamp(28px, 7.2vw, 40px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.08; color: ${C.ink}; }
         /* greeting line: word + name are flex items — one line when they fit, else the name drops
            whole. The nbsp inside the word is the space between them; a name wider than the card
            may break inside itself (last resort — no overflow at 390px). */
@@ -502,12 +441,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-h1-greet { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; max-width: 100%; }
         .dash-h1-greet > span { white-space: nowrap; }
         .dash-h1-greet > .dash-h1-name { white-space: normal; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-        .dash-h1-frame { display: block; text-wrap: balance; }
         .dash-h2 { font-size: clamp(18px, 2.6vw, 22px); font-weight: 800; letter-spacing: -0.02em; color: ${C.ink}; }
         .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .dash-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: ${C.inkMute}; margin-bottom: 10px; }
-        .dash-hero-sub { font-size: clamp(14px, 1.9vw, 15.5px); color: ${C.inkSoft}; line-height: 1.6; max-width: 460px; }
-        .dash-hero-sub li > span:last-child { min-width: 0; flex: 1 1 0; text-wrap: pretty; overflow-wrap: anywhere; }
 
         /* ── Hero overview card — subtle warm gradient + faint brand glow ── */
         .dash-hero { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 32px);
@@ -519,32 +455,31 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
         /* ── Branding tile — identity moment, whole card → /profile. The card's 3px left edge
            (inline style) carries the colour sampled from the uploaded logo, red otherwise. ── */
-        .dash-brand { display: flex; flex-direction: column; gap: 14px; padding: clamp(18px, 2.6vw, 24px); text-decoration: none; color: ${C.ink}; }
-        .dash-brand-identity { display: flex; align-items: center; gap: 14px; min-width: 0; }
+        .dash-brand { display: flex; flex-direction: column; gap: 14px; padding: clamp(18px, 3vw, 24px); text-decoration: none; color: ${C.ink}; }
+        .dash-brand-identity { display: flex; align-items: center; gap: clamp(14px, 4vw, 22px); min-width: 0; }
         /* Transparent logo art sits straight on the card surface — no tile, no frame. */
-        .dash-brand-logo { width: 60px; height: 60px; object-fit: contain; flex-shrink: 0; }
+        .dash-brand-logo { width: clamp(72px, 20vw, 96px); height: clamp(72px, 20vw, 96px); object-fit: contain; flex-shrink: 0; }
         /* Neutral backing exists ONLY as the no-logo fallback (initials as a placeholder mark). */
-        .dash-brand-initials { width: 56px; height: 56px; border-radius: 14px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: 21px; color: ${C.inkSoft}; flex-shrink: 0; }
-        .dash-brand-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .dash-brand-initials { width: clamp(64px, 18vw, 84px); height: clamp(64px, 18vw, 84px); border-radius: 14px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: 21px; color: ${C.inkSoft}; flex-shrink: 0; }
+        .dash-brand-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
         /* Masthead byline: name in the display serif, brokerage muted below. */
-        .dash-brand-name { font-family: ${FONT.serif}; font-size: clamp(17px, 2.2vw, 20px); font-weight: 600; color: ${C.ink}; letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .dash-brand-brok { font-size: 12.5px; color: ${C.inkMute}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .dash-brand-desc { font-size: 12.5px; color: ${C.inkSoft}; line-height: 1.55; margin: 0; }
+        .dash-brand-name { font-family: ${FONT.serif}; font-size: clamp(20px, 5.4vw, 24px); font-weight: 600; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
+        .dash-brand-brok { font-size: 13.5px; color: ${C.inkMute}; overflow-wrap: anywhere; }
+        .dash-brand-desc { font-size: 13px; color: ${C.inkSoft}; line-height: 1.5; margin-top: 4px; text-wrap: pretty; white-space: normal; }
         .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: ${C.red}; }
 
-        /* ── Pulse strip — ONE instrument: shared card surface, no internal cell borders; the
-           stats are divided by red tick-marks (signature motif). Values share one size so the
-           numbers and the province code sit on the same line; labels are one word in small caps. ── */
-        .dash-pulse { display: flex; align-items: center; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 16px; margin-bottom: 4px;
-          padding: clamp(18px, 3vw, 24px) clamp(8px, 2.5vw, 24px);
-          box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
-        .dash-pulse-cell { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 7px; }
-        .dash-pulse-val { font-size: clamp(26px, 5.6vw, 34px); line-height: 1; color: ${C.ink}; }
-        .dash-pulse-label { font-size: 10.5px; font-weight: 700; color: ${C.inkMute}; line-height: 1.25; letter-spacing: 0.08em; text-transform: uppercase; }
-        .dash-pulse-note { font-size: 12.5px; color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: 6px 0 14px; }
-        .dash-pulse-delta { font-size: 10.5px; font-weight: 700; color: ${C.green}; line-height: 1.2; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .dash-pulse-tick { width: 3px; height: clamp(24px, 4vw, 30px); background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
-
+        /* ── Section rhythm: one gap between blocks, and a short note under the greeting ── */
+        .dash-block { margin-top: clamp(14px, 2.6vw, 18px); }
+        .dash-note { font-size: 12.5px; color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: 10px 4px 0; }
+        .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+        .dash-signed { margin-top: clamp(20px, 3vw, 28px); font-size: 12px; color: ${C.inkMute}; text-align: center; text-wrap: balance; }
+        /* Skeleton: the listing card's shape (title, rent line, chip, footer), no spinner. */
+        .dash-skel { padding: clamp(20px, 3vw, 24px); display: flex; flex-direction: column; gap: 14px; min-height: 172px; }
+        .dash-skel-line { display: block; height: 12px; border-radius: 6px; background: ${C.paperDeep}; }
+        @media (prefers-reduced-motion: no-preference) {
+          .dash-skel-line { background: linear-gradient(90deg, ${C.paperDeep} 0%, #ebe5d8 50%, ${C.paperDeep} 100%); background-size: 200% 100%; animation: dash-shimmer 1.4s ease-in-out infinite; }
+          @keyframes dash-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+        }
         /* ── Listing invite-link status chip (real data) ── */
         .dash-lchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; }
         .dash-lchip-on { color: ${C.green}; }

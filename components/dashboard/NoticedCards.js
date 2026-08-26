@@ -37,7 +37,6 @@ export default function NoticedCards({ input, onAction, style, className = '' })
 
   return (
     <section className={className} aria-label="Rentletter noticed" style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: 'clamp(14px, 3vw, 20px)', position: 'relative', overflow: 'hidden', ...style }}>
-      <span aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 44, height: 3, background: C.red }} />
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} />
         <span style={{ fontSize: 11, color: C.redBright || C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Rentletter noticed</span>
@@ -46,8 +45,8 @@ export default function NoticedCards({ input, onAction, style, className = '' })
         {cards.map((card) => (
           <div key={card.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: '#161618', border: '1px solid #2a2a2e', borderRadius: R.ctrl }}>
             <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere' }}>{card.title}</div>
-              {card.detail && <div style={{ fontSize: 12.5, color: '#9a958a', lineHeight: 1.5, marginTop: 3 }}>{card.detail}</div>}
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'balance' }}>{card.title}</div>
+              {card.detail && <div style={{ fontSize: 12.5, color: '#9a958a', lineHeight: 1.5, marginTop: 3, textWrap: 'pretty' }}>{card.detail}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
               {card.action && (

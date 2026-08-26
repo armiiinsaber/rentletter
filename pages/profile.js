@@ -73,7 +73,7 @@ export default function ProfileHub({ initialProfile }) {
 
           {/* Identity + branding + AI studio + colours. (A display name / username field
               joins the identity section next stage.) */}
-          <section className="rl-card rl-in" style={{ padding: 'clamp(20px, 4vw, 32px)', '--rl-d': '90ms' }}>
+          <section id="branding" className="rl-card rl-in" style={{ padding: 'clamp(20px, 4vw, 32px)', '--rl-d': '90ms', scrollMarginTop: 16 }}>
             <ProfileEditorBody profile={profile} onSaved={setProfile} onDirtyChange={setDirty} saveRef={saveRef} />
           </section>
         </div>
