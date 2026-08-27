@@ -10,6 +10,24 @@ import { getEntitlement } from '../lib/entitlements';
 import { readPromoCookie, redeemPromoFromCookie } from '../lib/promoCookie';
 import { needsOnboarding } from '../lib/onboarding';
 import { loadSignals } from '../lib/dashboardSignals';
+import { logServerError } from '../lib/serverLog';
+
+// The profile read, with failure and absence kept apart. A FAILED read (RLS with an access token
+// mid refresh is the usual cause) is retried once; if it fails again the request goes back to
+// sign in rather than rendering with a substitute profile, which carries no plan and would put
+// a paying or founding member behind the paywall. A SUCCESSFUL read with no row is a real new
+// account: maybeSingle() returns data null with no error, and that null falls through to the
+// existing { id, email } fallback and needsOnboarding exactly as before.
+async function readProfile(supabase, user, tag) {
+  const read = () => supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
+  const first = await read();
+  if (!first.error) return { failed: false, profile: first.data || null };
+  const second = await read();
+  logServerError(tag, first.error, { userId: user.id, retried: true, retrySucceeded: !second.error, retryMessage: second.error ? String(second.error.message || '').slice(0, 200) : null });
+  if (second.error) return { failed: true, profile: null };
+  return { failed: false, profile: second.data || null };
+}
+const sessionRedirect = (next) => ({ redirect: { destination: `/signin?error=${encodeURIComponent('We could not confirm your session. Please sign in again.')}&next=${encodeURIComponent(next)}`, permanent: false } });
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -20,10 +38,12 @@ export async function getServerSideProps(ctx) {
   if (!user) {
     return { redirect: { destination: '/signin?next=/landlord', permanent: false } };
   }
-  let [{ data: profile }, { data: listings, error: listingsError }] = await Promise.all([
-    supabase.from('profiles').select('*').eq('id', user.id).single(),
+  const [profileRead, { data: listings, error: listingsError }] = await Promise.all([
+    readProfile(supabase, user, '[landlord] profile read'),
     supabase.from('listings').select('*').eq('profile_id', user.id).order('created_at', { ascending: false }),
   ]);
+  if (profileRead.failed) return sessionRedirect('/landlord');
+  let profile = profileRead.profile; // null only when the read succeeded and found no row
   // Founder admin suspension (db/admin-suspend.sql): blocks the dashboard immediately; the
   // auth-layer ban the admin action also applies stops new sign-ins. Nothing is deleted.
   if (profile?.suspended_at) {
