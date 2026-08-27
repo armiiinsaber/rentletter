@@ -2,11 +2,12 @@
 // PUBLIC bridge endpoint, called by /apply/[token] AFTER the tenant's submission
 // was written to KV (generate.js) and linked to the invite (tag-invite-submission.js).
 // It mirrors the KV app:{RL} into Supabase `applications` (service-role) and links
-// it to the invite's listing via `listing_applicants` (added_via='invite').
+// it to the invite's listing via `listing_applicants` (added_via ADDED_VIA.INVITE).
 //
 // Non-blocking by design: if Supabase isn't configured it no-ops with 200 so the
 // tenant flow is never affected. KV remains the source of truth for the tenant path.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { ADDED_VIA } from '../../../lib/listingApplicantsVocabulary';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvGet, kvLrange } from '../../../lib/kv';
 import { upsertApplication, linkApplicantToListing } from '../../../lib/supabaseBridge';
@@ -50,7 +51,7 @@ export default async function handler(req, res) {
     const applicationId = await upsertApplication(admin, app);
     let linked = false;
     if (listing?.id) {
-      await linkApplicantToListing(admin, listing.id, applicationId, 'invite');
+      await linkApplicantToListing(admin, listing.id, applicationId, ADDED_VIA.INVITE);
       linked = true;
     }
     return res.status(200).json({ ok: true, mirrored: true, linked });

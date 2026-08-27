@@ -3,6 +3,7 @@
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
 import { useEffect, useState } from 'react';
+import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, useReveal } from '../../components/ui';
@@ -151,7 +152,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     window.__rlAssistantContext = {
       page: 'home', currentListingId: null,
       listings: (listings || []).map((l) => ({ id: l.id, name: l.name, address: l.address, landlord_email: l.landlord_email, landlord_name: l.landlord_name })),
-      applicants: (listings || []).flatMap((l) => (signals.applicantsByListing[l.id] || []).filter((a) => a.decisionStatus !== 'withdrawn').map((a) => ({ linkId: a.linkId, listingId: l.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email }))),
+      applicants: (listings || []).flatMap((l) => (signals.applicantsByListing[l.id] || []).filter((a) => !isWithdrawn(a)).map((a) => ({ linkId: a.linkId, listingId: l.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email }))),
     };
     return () => { delete window.__rlAssistantContext; };
   }, [listings, signals]);

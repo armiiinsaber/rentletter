@@ -10,6 +10,7 @@
 //                              confirmed). Rate-limited.
 //     sign-out               → destroy the session + clear the cookie.
 import { Resend } from 'resend';
+import { DECISION_STATUS } from '../../../lib/listingApplicantsVocabulary';
 import { timingSafeEqual } from 'crypto';
 import { kvGet } from '../../../lib/kv';
 import {
@@ -24,17 +25,23 @@ import { logServerError } from '../../../lib/serverLog';
 function safeEqual(a, b) { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || '')); return x.length > 0 && x.length === y.length && timingSafeEqual(x, y); }
 
 // Tenant-safe status wording. Realtor decisions are shown softly and never with reasons.
+// A withdrawal (withdrawn_at) always wins over decision_status: a tenant who withdrew is never
+// told they were "not selected".
 const STATUS = {
-  none: { key: 'submitted', label: 'Submitted' },
-  ranked: { key: 'review', label: 'Under review' },
-  set_aside: { key: 'not_selected', label: 'Not selected for this unit' },
+  submitted: { key: 'submitted', label: 'Submitted' },
+  not_selected: { key: 'not_selected', label: 'Not selected for this unit' },
   withdrawn: { key: 'withdrawn', label: 'Withdrawn' },
+};
+const statusFor = (link) => {
+  if (link.withdrawn_at) return STATUS.withdrawn;
+  if (link.decision_status === DECISION_STATUS.REJECT) return STATUS.not_selected;
+  return STATUS.submitted;
 };
 
 // Enrich the profile's application refs with listing name / realtor / status from Supabase.
 // Graceful: without Supabase (or before mirroring) each app simply reads "Submitted".
 async function enrich(apps) {
-  const out = apps.map((a) => ({ ...a, listingName: a.listingAddress || null, realtorName: null, status: STATUS.none, revoked: false }));
+  const out = apps.map((a) => ({ ...a, listingName: a.listingAddress || null, realtorName: null, status: STATUS.submitted, revoked: false }));
   // Revoked flag + current snapshot facts from KV (cheap, and KV is canonical for the tenant path).
   await Promise.all(out.map(async (a) => {
     const app = await kvGet(`app:${a.applicationNumber}`);
@@ -51,9 +58,12 @@ async function enrich(apps) {
     const { data: rows } = await admin.from('applications').select('id, application_number').in('application_number', out.map((a) => a.applicationNumber));
     const byId = new Map((rows || []).map((r) => [r.id, r.application_number]));
     if (!byId.size) return out;
-    const { data: links } = await admin.from('listing_applicants')
-      .select('application_id, decision_status, decision_changed_at, created_at, listing:listings(name, address, profile_id)')
+    const linksQ = (cols) => admin.from('listing_applicants')
+      .select(`application_id, decision_status, decision_changed_at, created_at, ${cols}listing:listings(name, address, profile_id)`)
       .in('application_id', [...byId.keys()]).order('created_at', { ascending: true });
+    let linksRes = await linksQ('withdrawn_at, ');
+    if (linksRes.error) linksRes = await linksQ(''); // before db/listing-applicants-vocabulary.sql has run
+    const links = linksRes.data;
     const realtorIds = [...new Set((links || []).map((l) => l.listing?.profile_id).filter(Boolean))];
     let realtors = new Map();
     if (realtorIds.length) {
@@ -67,8 +77,8 @@ async function enrich(apps) {
       a.listingName = l.listing?.name || l.listing?.address || a.listingName;
       const r = realtors.get(l.listing?.profile_id);
       a.realtorName = r?.full_name || null; a.realtorBrokerage = r?.brokerage || null;
-      a.status = STATUS[l.decision_status] || STATUS.none;
-      a.statusChangedAt = l.decision_changed_at || null;
+      a.status = statusFor(l);
+      a.statusChangedAt = l.withdrawn_at || l.decision_changed_at || null;
     }
   } catch (e) { /* columns/tables may not exist yet — statuses stay "Submitted" */ }
   return out;

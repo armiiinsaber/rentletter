@@ -5,7 +5,7 @@
 //   Notifications are computed from existing listing_applicants timestamps for listings the
 //   signed-in realtor OWNS:
 //     * NEW application -> listing_applicants.created_at
-//     * WITHDRAWAL      -> decision_status = 'withdrawn' AND decision_changed_at
+//     * WITHDRAWAL      -> listing_applicants.withdrawn_at (db/listing-applicants-vocabulary.sql)
 //   "unread" = event timestamp newer than the realtor's profiles.notifications_last_seen marker.
 // POST -> { ok:true }  marks everything seen (sets notifications_last_seen = now).
 //
@@ -64,13 +64,17 @@ export default async function handler(req, res) {
 
     // 3. Applicant links for the owned listings (service-role; already ownership-constrained).
     const admin = getSupabaseAdminClient();
-    const { data: rows } = await admin
+    const linksQ = (cols) => admin
       .from('listing_applicants')
-      .select('id, listing_id, application_id, created_at, decision_status, decision_changed_at')
+      .select(cols)
       .in('listing_id', listingIds)
       .order('created_at', { ascending: false })
       .limit(MAX_ROWS);
-    const links = rows || [];
+    let linksRes = await linksQ('id, listing_id, application_id, created_at, withdrawn_at');
+    // Before db/listing-applicants-vocabulary.sql has run the column is absent: fall back so the
+    // "new application" events still work; withdrawal events start the moment it exists.
+    if (linksRes.error) linksRes = await linksQ('id, listing_id, application_id, created_at');
+    const links = linksRes.data || [];
 
     // 4. Resolve applicant display names (never select owner_token).
     const appIds = [...new Set(links.map((r) => r.application_id).filter((v) => v != null))];
@@ -93,8 +97,8 @@ export default async function handler(req, res) {
           title: `New application from ${name}`, ts: createdTs, unread: createdTs > lastSeen,
         });
       }
-      if (r.decision_status === 'withdrawn' && r.decision_changed_at) {
-        const wTs = new Date(r.decision_changed_at).getTime();
+      if (r.withdrawn_at) {
+        const wTs = new Date(r.withdrawn_at).getTime();
         items.push({
           id: `wd:${r.id}`, type: 'withdrawn', name, listingId: r.listing_id, listingName: lname,
           title: `${name} withdrew`, ts: wTs, unread: wTs > lastSeen,

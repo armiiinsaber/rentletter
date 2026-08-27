@@ -3,8 +3,9 @@
 // RL onto one of their listings. We authorize ownership of the listing (RLS via
 // the realtor's session), read app:{RL} from KV, mirror it into Supabase
 // `applications` (service-role), and link it via `listing_applicants`
-// (added_via='lookup'). Mirrors lookup.js semantics (rejects revoked apps).
+// (added_via ADDED_VIA.LOOKUP). Mirrors lookup.js semantics (rejects revoked apps).
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { ADDED_VIA } from '../../../lib/listingApplicantsVocabulary';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { kvGet } from '../../../lib/kv';
 import { upsertApplication, linkApplicantToListing } from '../../../lib/supabaseBridge';
@@ -44,7 +45,7 @@ export default async function handler(req, res) {
   try {
     const admin = getSupabaseAdminClient();
     const applicationId = await upsertApplication(admin, app);
-    await linkApplicantToListing(admin, listing.id, applicationId, 'lookup');
+    await linkApplicantToListing(admin, listing.id, applicationId, ADDED_VIA.LOOKUP);
     return res.status(200).json({ ok: true, applicationNumber: appNum });
   } catch (e) {
     console.error('[listings/add-applicant] error:', e?.message || e);

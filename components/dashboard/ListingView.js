@@ -21,6 +21,7 @@ import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
+import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import NoticedCards from '../../components/dashboard/NoticedCards';
@@ -62,7 +63,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // Unreviewed cards render collapsed (header only) with a quiet dot; opening expands + records.
   const [openedNow, setOpenedNow] = useState(() => new Set()); // opened this session (expanded)
   const tracking = applicants.some((a) => a.reviewTracking);
-  const isUnreviewed = (a) => a.reviewTracking && !a.reviewedAt && a.decisionStatus !== 'withdrawn';
+  const isUnreviewed = (a) => a.reviewTracking && !a.reviewedAt && !isWithdrawn(a);
   const unreviewed = applicants.filter(isUnreviewed);
   const openApplicant = async (a) => {
     setOpenedNow((prev) => new Set(prev).add(a.linkId));
@@ -82,7 +83,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     window.__rlAssistantContext = {
       page: 'listing', currentListingId: listing?.id,
       listings: [{ id: listing.id, name: listing.name, address: listing.address, landlord_email: listing.landlord_email, landlord_name: listing.landlord_name }],
-      applicants: applicants.filter((a) => a.decisionStatus !== 'withdrawn').map((a) => ({ linkId: a.linkId, listingId: listing.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email })),
+      applicants: applicants.filter((a) => !isWithdrawn(a)).map((a) => ({ linkId: a.linkId, listingId: listing.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email })),
     };
     const onApplied = (e) => {
       const d = e.detail || {};
@@ -301,7 +302,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setSending(false);
   };
 
-  // Persist a decision to listing_applicants (realtor RLS). Optimistic local update.
+  // Persist a decision to listing_applicants (realtor RLS). Optimistic local update. Values come
+  // from lib/listingApplicantsVocabulary.js; a withdrawal is its own column (withdrawn_at).
   const setDecision = async (linkId, patch) => {
     const changedAt = new Date().toISOString();
     setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? { ...a, ...patch, decisionChangedAt: changedAt } : a)));
@@ -309,6 +311,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       const supabase = adapter.supabase();
       const dbPatch = { decision_changed_at: changedAt };
       if ('decisionStatus' in patch) dbPatch.decision_status = patch.decisionStatus;
+      if ('withdrawnAt' in patch) dbPatch.withdrawn_at = patch.withdrawnAt;
       if ('decisionReasonCode' in patch) dbPatch.decision_reason_code = patch.decisionReasonCode;
       if ('decisionNotes' in patch) dbPatch.decision_notes = patch.decisionNotes;
       const { error: upErr } = await supabase.from('listing_applicants').update(dbPatch).eq('id', linkId);
@@ -323,15 +326,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const openSetAside = (a) => { setSetAsideFor(a); setSetAsideCode(''); setSetAsideNote(''); };
   const confirmSetAside = () => {
     if (!setAsideFor || !setAsideCode) return;
-    setDecision(setAsideFor.linkId, { decisionStatus: 'set_aside', decisionReasonCode: setAsideCode, decisionNotes: setAsideNote.trim() || null });
+    setDecision(setAsideFor.linkId, { decisionStatus: DECISION_STATUS.REJECT, decisionReasonCode: setAsideCode, decisionNotes: setAsideNote.trim() || null });
     setSetAsideFor(null);
   };
   const restoreApplicant = (a) =>
-    setDecision(a.linkId, { decisionStatus: 'ranked', decisionReasonCode: null });
+    setDecision(a.linkId, { decisionStatus: DECISION_STATUS.NONE, decisionReasonCode: null });
   // Remove = genuine tenant WITHDRAWAL only (not a screening decision).
   const withdrawApplicant = (a) => {
-    if (!confirm(`Mark ${a.application?.full_name || 'this applicant'} as withdrawn? Use this only if the tenant withdrew — it removes them from your ranked list.`)) return;
-    setDecision(a.linkId, { decisionStatus: 'withdrawn', decisionReasonCode: null });
+    if (!confirm(`Mark ${a.application?.full_name || 'this applicant'} as withdrawn? Use this only if the tenant withdrew. It removes them from your ranked list.`)) return;
+    setDecision(a.linkId, { withdrawnAt: new Date().toISOString(), decisionReasonCode: null });
   };
 
   const l = listing;
@@ -343,12 +346,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     l.pref_employment_part_time && 'Part-time',
   ].filter(Boolean).join(', ') || '—';
 
-  // Pure scorecard-vs-criteria ranking (matches lib/listingReportData). Everyone is
-  // in: active best-fit-first, set-aside below, withdrawn excluded.
-  const norm = (s) => (s === 'set_aside' ? 'set_aside' : s === 'withdrawn' ? 'withdrawn' : 'ranked');
+  // Pure scorecard vs criteria ranking (matches lib/listingReportData). Everyone is
+  // in: active best fit first, set aside below, withdrawn excluded (withdrawn_at rule).
   const byScore = (x, y) => (y.application?.scorecard?.overall ?? 0) - (x.application?.scorecard?.overall ?? 0);
-  const active = applicants.filter((a) => norm(a.decisionStatus) === 'ranked').sort(byScore);
-  const setAsideList = applicants.filter((a) => norm(a.decisionStatus) === 'set_aside').sort(byScore);
+  const active = applicants.filter(isActive).sort(byScore);
+  const setAsideList = applicants.filter(isSetAsideApplicant).sort(byScore);
   // Reordering: cards travel to their new rank (FLIP, transforms only) instead of the list redrawing.
   useFlip(rankedRef, active.map((a) => a.linkId).join('|'));
   useFlip(asideRef, setAsideList.map((a) => a.linkId).join('|'));
@@ -434,7 +436,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <VerifiedMark verified={isVerified(a)} id={a.linkId} />
               {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
               {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
-              {a.decisionPriority === 'finalist' && !isSetAside && <span title="Your finalist mark" style={{ fontSize: 10, color: C.paper, background: C.ink, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>FINALIST</span>}
+              {isFinalist(a) && !isSetAside && <span title="Your finalist mark" style={{ fontSize: 10, color: C.paper, background: C.ink, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>FINALIST</span>}
               {referrals[a.linkId] && (() => {
                 const r = referrals[a.linkId];
                 const map = { pending: ['Pending applicant approval', C.inkSoft, C.paperDeep], declined: ['Referral declined', C.inkMute, C.paperDeep], approved: [`Sent to ${r.to?.name || r.to?.email}`, C.green, C.greenTint], expired: ['Referral expired', C.inkMute, C.paperDeep], revoked: ['Referral revoked', C.inkMute, C.paperDeep] };

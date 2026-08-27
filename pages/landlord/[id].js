@@ -2,7 +2,7 @@
 // Listing DETAIL — Supabase-backed (RLS), gated. Listing info + landlord
 // preferences, edit/delete, the tenant invite link (KV via /api/listings/invite),
 // and the listing's APPLICANTS (Supabase: listing_applicants ⨝ applications).
-// Decisions (ranked / set_aside + reason / withdrawn) persist to listing_applicants
+// Decisions (active / set aside with a reason / withdrawn_at) persist to listing_applicants
 // under realtor RLS, so they survive sign-out/sign-in.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../lib/supabase/admin';
