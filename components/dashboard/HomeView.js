@@ -253,7 +253,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </div>
           )}
           {ready && <>
-          {/* 1. GREETING + PRIMARY ACTION */}
+          {/* 1. GREETING + PRIMARY ACTION. With no listings yet this is THE card: the greeting, one
+              sentence on what adding a listing gets them, one button. Nothing teaches; it starts. */}
           <section className="dash-card dash-hero rl-in">
             <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
             <h1 className="dash-h1">
@@ -262,9 +263,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                 {firstName && <span className="dash-h1-name">{firstName}.</span>}
               </span>
             </h1>
+            {listingsLoaded && !hasListings && (
+              <p style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', color: C.inkSoft, lineHeight: 1.5, marginTop: 12, maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
+            )}
             <div style={{ marginTop: 18 }}>
               <button onClick={() => setModalOpen(true)} className="dash-cta">
-                <Icon name="plus" size={17} /> New listing
+                <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
               </button>
             </div>
           </section>
@@ -273,7 +277,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {/* 2. THE ASSISTANT, compact: the Needs you zone as it renders here, and a way into the
               full panel (bell, or Open). The timeline lives in the panel only. Referrals to
               assign are part of the panel's Needs you zone, so the page stays three sections. */}
-          <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} onOpen={openAssistant} /></div>
+          {hasListings && <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} onOpen={openAssistant} /></div>}
 
           {/* 3. YOUR LISTINGS */}
           {error && (
@@ -287,37 +291,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               <h2 className="dash-h2" style={{ marginBottom: 6 }}>We couldn’t load your listings.</h2>
               <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
               <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
-            </section>
-          )}
-          {listingsLoaded && !hasListings && (
-            <section className="dash-card dash-block" style={{ overflow: 'hidden' }} data-note="no reveal class: primary content that must never sit at opacity 0">
-              <div style={{ padding: 'clamp(24px, 5vw, 40px) clamp(20px, 4vw, 36px)', borderBottom: `1px solid ${C.rule}` }}>
-                <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Getting started</div>
-                <h2 style={{ fontFamily: FONT.serif, fontSize: 'clamp(24px, 4.5vw, 32px)', fontWeight: 600, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 10, textWrap: 'balance' }}>
-                  Add your first listing.
-                </h2>
-                <p style={{ fontSize: 'clamp(14px, 3vw, 16px)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 560, marginBottom: 22, textWrap: 'pretty' }}>
-                  A listing holds one unit, its invite link, and every application that comes in. Create one to get your shareable link.
-                </p>
-                <button onClick={() => setModalOpen(true)} className="rl-btn"
-                  style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '15px 26px', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 9, minHeight: 48 }}>
-                  <Icon name="plus" size={17} /> Add your first listing
-                </button>
-              </div>
-              <ol style={{ listStyle: 'none', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 0, margin: 0 }}>
-                {[
-                  { n: '1', t: 'Add a listing', d: "Enter the unit address, rent, and your landlord client's preferences." },
-                  { n: '2', t: 'Share the invite link', d: 'Send one link to prospective tenants. No accounts needed.' },
-                  { n: '3', t: 'Applicants appear here', d: 'Standardized applications land on the listing automatically.' },
-                  { n: '4', t: 'Review and rank', d: 'Everyone is ranked against your criteria, best fit first. Set aside with a reason, then present the full ranked list to your landlord.' },
-                ].map((st, i) => (
-                  <li key={st.n} style={{ padding: 'clamp(18px, 4vw, 24px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, borderLeft: i % 2 === 1 ? `1px solid ${C.rule}` : 'none' }}>
-                    <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', marginBottom: 8 }}>STEP {st.n}</div>
-                    <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink, marginBottom: 4 }}>{st.t}</div>
-                    <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, textWrap: 'pretty' }}>{st.d}</div>
-                  </li>
-                ))}
-              </ol>
             </section>
           )}
           {hasListings && (
@@ -354,8 +327,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </div>
           )}
 
-          {/* 4. BRAND CARD, only while branding is incomplete. Whole card opens the profile. */}
-          {!brandComplete && (
+          {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
+              listing state is one card, nothing else). Whole card opens the profile. */}
+          {hasListings && !brandComplete && (
             <a href={adapter.paths.profile} className="dash-card dash-card-int dash-brand dash-block rl-in" style={{ borderLeft: `3px solid ${brandAccent}`, '--rl-d': '120ms' }}
               title="You and your brand" aria-label="Set up your profile and branding">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
