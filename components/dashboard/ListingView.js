@@ -207,6 +207,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       reportEvent(adapter, { type: 'listing_updated', listingId: listing.id });
       setSaving(false);
       setEditOpen(false);
+      refreshApplicants(); // scores and rent shares are derived from the listing's current rent at read time
     } catch (e) {
       setError('Could not save changes.'); setSaving(false);
     }
