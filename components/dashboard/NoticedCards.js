@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
-import { computeNotices, readDismissed, dismissNotice } from '../../lib/noticed';
+import { computeNotices, readDismissed, dismissNotice, latestSignalAt, relativeTime } from '../../lib/noticed';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { DURATION, prefersReducedMotion } from '../../lib/motion';
 
@@ -22,6 +22,11 @@ export default function NoticedCards({ input, onAction, style, className = '', a
   const timers = useRef([]);
   useEffect(() => { setDismissed(readDismissed()); return () => timers.current.forEach(clearTimeout); }, []);
   const cards = useMemo(() => computeNotices({ ...input, dismissed }), [input, dismissed]);
+  // When the observation was made: the newest event on the timeline when the server had one,
+  // else the newest fact the rules read (a notification, a referral, a document analysis).
+  const noticedAt = useMemo(() => input?.latestEventAt || latestSignalAt(input), [input]);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { setNow(Date.now()); }, [noticedAt]);
   // Leave first, then do. Navigation actions go at once (the page is leaving anyway).
   const leaveThen = (card, fn) => {
     if (!animateOut || prefersReducedMotion()) { fn(); onChanged?.(); return; }
@@ -54,16 +59,17 @@ export default function NoticedCards({ input, onAction, style, className = '', a
 
   return (
     <section className={className} aria-label="Rentletter noticed" style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: 'clamp(14px, 3vw, 20px)', position: 'relative', overflow: 'hidden', ...style }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-        <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} />
-        <span style={{ fontSize: 11, color: C.redBright || C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Rentletter noticed</span>
+      <div className="nc-head" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', marginBottom: 10 }}>
+        <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1, flexShrink: 0 }} />
+        <span style={{ fontSize: 11, color: C.redBright || C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentletter noticed</span>
+        {noticedAt && <span className="nc-when" style={{ fontSize: 11, color: '#6f6b63', whiteSpace: 'nowrap' }} title={new Date(noticedAt).toLocaleString('en-CA')}>noticed {relativeTime(noticedAt, now)}</span>}
         {onOpen && <button type="button" onClick={onOpen} style={{ marginLeft: 'auto', background: 'transparent', color: '#9a958a', border: '1px solid #2a2a2e', borderRadius: R.pill, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>Open</button>}
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
         {cards.map((card) => (
           <div key={card.id} className={leaving[card.id] ? 'm-card-leave' : ''} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: '#161618', border: '1px solid #2a2a2e', borderRadius: R.ctrl }}>
-            <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'balance' }}>{card.title}</div>
+            <div style={{ flex: '1 1 100%', minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{card.title}</div>
               {card.detail && <div style={{ fontSize: 12.5, color: '#9a958a', lineHeight: 1.5, marginTop: 3, textWrap: 'pretty' }}>{card.detail}</div>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
@@ -79,6 +85,9 @@ export default function NoticedCards({ input, onAction, style, className = '', a
           </div>
         ))}
       </div>
+      <style jsx>{`
+        @media (max-width: 480px) { .nc-head :global(.nc-when) { flex-basis: 100%; order: 3; padding-left: 32px; margin-top: -2px; } }
+      `}</style>
     </section>
   );
 }

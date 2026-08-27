@@ -146,7 +146,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       if (cancelled) return;
       const applicantsByListing = {};
       ls.forEach((l, i) => { applicantsByListing[l.id] = apps[i]?.applicants || []; });
-      setSignals({ applicantsByListing, notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), loaded: true });
+      setSignals({ applicantsByListing, notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), latestEventAt: null, loaded: true });
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -238,11 +238,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           paddingTop: 'clamp(8px, 2vw, 16px)',
           paddingRight: 'clamp(16px, 4vw, 32px)',
           paddingLeft: 'clamp(16px, 4vw, 32px)',
-          // Reserved clearance for the fixed "?" assistant launcher: 56px FAB + up to 24px of
-          // its bottom offset + 16px breathing room, plus the home-indicator inset. Nothing in
-          // flow (the "Signed in as" footer line included) can ever sit under the FAB, and the
-          // page ends right after this zone — no extra void below.
-          paddingBottom: 'calc(clamp(16px, 3vw, 24px) + 56px + 12px + env(safe-area-inset-bottom, 0px))',
+          // The page ends just under the last element. The fixed "?" launcher occupies only the
+          // bottom right corner, so the clearance lives in the "Signed in as" line instead: it is
+          // left aligned, narrower than the launcher's column, and as tall as the launcher's zone.
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}>
 
           {!ready && !listingsError && (
@@ -457,7 +456,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-block { margin-top: clamp(14px, 2.6vw, 18px); }
         .dash-note { font-size: 12.5px; color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: 10px 4px 0; }
         .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-        .dash-signed { margin-top: clamp(20px, 3vw, 28px); font-size: 12px; color: ${C.inkMute}; text-align: center; text-wrap: balance; }
+        .dash-signed { margin-top: clamp(20px, 3vw, 28px); font-size: 12px; color: ${C.inkMute}; text-align: left; text-wrap: pretty; max-width: calc(100% - 84px); min-height: calc(clamp(16px, 3vw, 24px) + 56px); box-sizing: border-box; padding-bottom: 8px; }
         /* Skeleton: the listing card's shape (title, rent line, chip, footer), no spinner. */
         .dash-skel { padding: clamp(20px, 3vw, 24px); display: flex; flex-direction: column; gap: 14px; min-height: 172px; }
         .dash-skel-line { display: block; height: 12px; border-radius: 6px; background: ${C.paperDeep}; }
