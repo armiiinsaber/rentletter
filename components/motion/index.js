@@ -104,6 +104,9 @@ export function MotionStyles() {
       .m-swipe-under.good { background: ${C.greenTint}; color: ${C.green}; }
       .m-swipe-label { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 12px; border: 1px solid currentColor; border-radius: 999px; transform: scale(0.92); }
       .m-swipe-under.armed .m-swipe-label { transform: scale(1.06); }
+      /* g. the open applicant card: the body enters on the enter curve; section chevrons turn. */
+      .m-chev { display: inline-flex; color: ${C.inkMute}; }
+      .m-chev.open { transform: rotate(180deg); }
       @media ${MOTION_QUERY} {
         .m-verified-land { animation: m-land var(--m-base) var(--m-emphasis) both; transform-origin: left center; }
         @keyframes m-land { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
@@ -111,6 +114,8 @@ export function MotionStyles() {
         @keyframes m-depart { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(40px, -72px) scale(0.7); } }
         .m-xfade > * { animation: m-in var(--m-base) var(--m-enter) both; }
         .m-swipe-label { transition: transform var(--m-short) var(--m-emphasis); }
+        .m-chev { transition: transform var(--m-short) var(--m-settle); }
+        .m-expand { animation: m-in var(--m-base) var(--m-enter) both; transform-origin: top center; }
         @keyframes m-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
       }
     `}</style>

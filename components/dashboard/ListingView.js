@@ -23,6 +23,7 @@ import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
+import { synthesisLine } from '../../lib/applicantSynthesis';
 import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
@@ -62,19 +63,25 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [focusDocFor, setFocusDocFor] = useState(null); // { linkId, renew }
   // ── Per-applicant reviewed state (db/reviewed-at.sql). An applicant is "reviewed" the first
   // time the realtor OPENS their card here — never on page load, never by scrolling past.
-  // Unreviewed cards render collapsed (header only) with a quiet dot; opening expands + records.
-  const [openedNow, setOpenedNow] = useState(() => new Set()); // opened this session (expanded)
+  // Every card rests collapsed (name, score, verified state, one line of synthesis). ONE card is
+  // open at a time: opening another closes the first. Opening records the review.
+  const [openId, setOpenId] = useState(null);
+  // Sections inside the open card, keyed `${linkId}:${section}`; unset means the section default.
+  const [sectionState, setSectionState] = useState({});
+  const sectionOpen = (linkId, key, def) => { const v = sectionState[`${linkId}:${key}`]; return v == null ? def : v; };
+  const toggleSection = (linkId, key, def) => setSectionState((m) => ({ ...m, [`${linkId}:${key}`]: !sectionOpen(linkId, key, def) }));
   const tracking = applicants.some((a) => a.reviewTracking);
   const isUnreviewed = (a) => a.reviewTracking && !a.reviewedAt && !isWithdrawn(a);
   const unreviewed = applicants.filter(isUnreviewed);
   const openApplicant = async (a) => {
-    setOpenedNow((prev) => new Set(prev).add(a.linkId));
+    setOpenId(a.linkId);
     if (!isUnreviewed(a)) return;
     const at = new Date().toISOString();
     setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, reviewedAt: at } : x)));
     try { const supabase = adapter.supabase(); await supabase.from('listing_applicants').update({ reviewed_at: at }).eq('id', a.linkId); }
     catch (e) { /* optimistic; the column is RLS-scoped to this realtor's own rows */ }
   };
+  const toggleApplicant = (a) => { if (openId === a.linkId) setOpenId(null); else openApplicant(a); };
   const jumpToFirstUnreviewed = () => {
     const first = [...active, ...setAsideList].find(isUnreviewed); if (!first) return;
     document.getElementById(`applicant-${first.linkId}`)?.scrollIntoView({ block: 'center', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -429,40 +436,71 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     };
   });
 
+  const EMP_LABEL = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
+  const pill = (text, fg, bg, extra = {}) => <span style={{ fontSize: 10, color: fg, background: bg, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill, whiteSpace: 'nowrap', ...extra }}>{text}</span>;
+  // A labelled, collapsible section inside the open card. Only the chevron moves (transform).
+  const renderSection = (a, key, title, defOpen, body) => {
+    const on = sectionOpen(a.linkId, key, defOpen);
+    return (
+      <div key={key} style={{ borderTop: `1px solid ${C.rule}`, marginTop: 10 }}>
+        <button type="button" aria-expanded={on} aria-controls={`applicant-${a.linkId}-${key}`} onClick={() => toggleSection(a.linkId, key, defOpen)}
+          style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'transparent', border: 'none', padding: '6px 0', cursor: 'pointer', font: 'inherit', color: C.inkMute, textAlign: 'left' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{title}</span>
+          <span className={`m-chev ${on ? 'open' : ''}`} aria-hidden="true"><Icon name="chevronD" size={16} /></span>
+        </button>
+        {on && <div id={`applicant-${a.linkId}-${key}`} style={{ paddingBottom: 12 }}>{body}</div>}
+      </div>
+    );
+  };
+  const renderRows = (rows) => (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px' }}>
+      {rows.map(([label, value]) => (
+        <div key={label} style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+          <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderApplicantCard = (a, { rank, top5, isSetAside }) => {
     const fresh = isUnreviewed(a);
-    const collapsed = fresh && !openedNow.has(a.linkId);
+    const open = openId === a.linkId;
     const app = a.application || {};
     const overall = app.scorecard?.overall;
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
-    const details = [
+    const present = (rows) => rows.filter(([, v]) => v != null && v !== '');
+    // The facts, grouped. A group with nothing in it does not render.
+    const incomeRows = present([
       ['Income (before tax)', app.annual_income ? `${money(app.annual_income)}/yr` : null],
       ['After tax', app.net_income ? `${money(app.net_income)}/yr${app.net_income_source === 'stated' ? ' (stated)' : ' (estimate)'}` : null],
       ['Household income', coIncome ? `${money((Number(app.annual_income) || 0) + Number(coIncome))}/yr (joint, before tax)` : null],
-      [app.employment_type === 'self-employed' ? 'Business' : 'Employer', app.employer ? `${app.employer}${app.employment_type ? ` · ${({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[app.employment_type]}` : ''}` : null],
+      [app.employment_type === 'self-employed' ? 'Business' : 'Employer', app.employer ? `${app.employer}${app.employment_type ? ` · ${EMP_LABEL[app.employment_type] || app.employment_type}` : ''}` : null],
+      ['Role', app.job_title || null],
       ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
-      ['Rent-to-income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
+      ['Rent to income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
+    ]);
+    const tenancyRows = present([
       ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
       ['Years at address', app.years_at_previous ? `${app.years_at_previous} yrs` : null],
-      // Tenancy Profile: landlord-reference capture from the upgraded apply form
-      // (existing columns — prev_landlord_name / prev_landlord_contact).
-      ['Landlord reference', app.prev_landlord_name
-        ? [app.prev_landlord_name, app.prev_landlord_contact].filter(Boolean).join(' · ')
-        : null],
-      ['Move-in', app.move_in_date || null],
+      // Landlord reference capture from the apply form (existing columns prev_landlord_name / prev_landlord_contact).
+      ['Landlord reference', app.prev_landlord_name ? [app.prev_landlord_name, app.prev_landlord_contact].filter(Boolean).join(' · ') : 'None on file'],
+      ['References', Array.isArray(app.references) ? `${app.references.length} provided` : null],
+    ]);
+    const livingRows = present([
+      ['Move in', app.move_in_date || null],
       ['Occupants', app.number_of_occupants != null ? String(app.number_of_occupants) : null],
       ['Smoker', smokerLabel],
       ['Pets', app.pets || 'None'],
-      ['References', Array.isArray(app.references) ? `${app.references.length} provided` : null],
-    ].filter(([, v]) => v != null && v !== '');
-    // Brand red = EMPHASIS on the top picks only; everyone else is neutral. (Previously the
-    // non-top applicants got a green left-bar applied purely by rank position, which read as
-    // a misleading "good to go" status while the actual best picks looked flagged in red.)
+    ]);
+    // Brand red = EMPHASIS on the top picks only; everyone else is neutral.
     const borderColor = top5 ? C.red : C.ruleDark;
     const leftAction = !isSetAside ? { label: 'Set aside' } : null;
     const rightAction = isSetAside ? { label: 'Restore', tone: 'good' } : null;
+    const ref = referrals[a.linkId];
+    const refMap = { pending: ['Pending applicant approval', C.inkSoft, C.paperDeep], declined: ['Referral declined', C.inkMute, C.paperDeep], approved: [`Sent to ${ref?.to?.name || ref?.to?.email}`, C.green, C.greenTint], expired: ['Referral expired', C.inkMute, C.paperDeep], revoked: ['Referral revoked', C.inkMute, C.paperDeep] };
     return (
       <SwipeCard key={a.linkId} flipKey={a.linkId} id={`applicant-${a.linkId}`} leftAction={leftAction} rightAction={rightAction}
         onCommit={(side) => onSwipeCommit(a, side)} departing={departing[a.linkId]?.side || null}
@@ -470,7 +508,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div style={{
         minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
-        borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
+        borderRadius: R.card, padding: open ? 'clamp(14px, 3vw, 18px)' : '12px clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
         boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
       }}>
         {recent?.linkId === a.linkId && (
@@ -479,120 +517,100 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <button type="button" onClick={undoRecent} style={{ minHeight: 40, padding: '0 14px', background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Undo</button>
           </div>
         )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          {rank != null && (
-            <span aria-label={`Rank ${rank}`} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: top5 ? C.red : C.paperDeep, color: top5 ? C.paper : C.inkSoft, border: `1px solid ${top5 ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
-              {rank}
-            </span>
-          )}
-          <span aria-hidden="true" style={{ width: 38, height: 38, flexShrink: 0, borderRadius: '50%', background: isSetAside ? C.inkMute : C.ink, color: C.paper, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700 }}>
-            {initialsOf(app.full_name)}
-          </span>
-          <div style={{ flex: 1, minWidth: 180 }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-              {/* unreviewed marker — space is always reserved so the row never shifts when it clears */}
-              {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0, alignSelf: 'center', marginRight: -2 }} />}
-              <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
+        {/* THE CARD AT REST: name, score, verified state, one line of why. Tap to open. A div with
+            a button role (a real button would be excluded from the drag gesture). */}
+        <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
+          onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
+          style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 26 }}>
+            {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
               <VerifiedMark verified={isVerified(a)} id={a.linkId} />
-              {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
-              {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
-              {isFinalist(a) && !isSetAside && <span title="Your finalist mark" style={{ fontSize: 10, color: C.paper, background: C.ink, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>FINALIST</span>}
-              {referrals[a.linkId] && (() => {
-                const r = referrals[a.linkId];
-                const map = { pending: ['Pending applicant approval', C.inkSoft, C.paperDeep], declined: ['Referral declined', C.inkMute, C.paperDeep], approved: [`Sent to ${r.to?.name || r.to?.email}`, C.green, C.greenTint], expired: ['Referral expired', C.inkMute, C.paperDeep], revoked: ['Referral revoked', C.inkMute, C.paperDeep] };
-                const [label, fg, bg] = map[r.status] || [r.status, C.inkMute, C.paperDeep];
-                return <span title={r.status === 'declined' ? 'The applicant declined. No reason is collected.' : ''} style={{ fontSize: 10, color: fg, background: bg, fontWeight: 700, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>{label.toUpperCase()}</span>;
-              })()}
-              {editedAfterVerification(app, a.docVerifications).edited && <span title="The applicant updated their profile after their documents were verified" style={{ fontSize: 10, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, fontWeight: 700, letterSpacing: '0.06em', padding: '2px 7px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>EDITED AFTER VERIFICATION</span>}
             </div>
-            <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 2 }}>
-              {[app.job_title, app.employer].filter(Boolean).join(' · ') || 'Role not listed'}
-              {app.annual_income ? ` · $${Number(app.annual_income).toLocaleString()}/yr before tax` : ''}
-            </div>
-            <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{app.application_number}</div>
-            {app.referral_meta && <ReferralCaution meta={app.referral_meta} compact />}
-            {isSetAside && (
-              <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 6, padding: '6px 10px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
-                <strong style={{ color: C.ink }}>Set aside:</strong> {reasonLabel(a.decisionReasonCode)}
-                {a.decisionNotes ? ` — ${a.decisionNotes}` : ''}
-              </div>
-            )}
-          </div>
-          {overall != null && (
-            <div style={{ textAlign: 'right', minWidth: 54, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+            {overall != null && (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} renderValue={(shown, target) => (
-                <>
-                  <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }} aria-label={`${Number(target).toFixed(1)} out of 5`}>
-                    {Number(shown).toFixed(1)}<span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}> / 5</span>
-                  </div>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5`}>
                   <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} />
-                </>
+                  <span style={{ fontSize: 18, fontWeight: 800, color: C.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{Number(shown).toFixed(1)}</span>
+                </span>
               )} />
-              <div style={{ fontSize: 9, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600 }}>Scorecard</div>
+            )}
+            <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
+          </div>
+          <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+        </div>
+
+        {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
+          {/* Status line: rank and marks that only matter once you are looking at this person. */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+            {rank != null && pill(`Rank ${rank}`, top5 ? C.paper : C.inkSoft, top5 ? C.red : C.paperDeep)}
+            {top5 && pill('Top 5', C.red, C.card, { border: `1px solid ${C.red}` })}
+            {isSetAside && pill('Set aside', C.inkSoft, C.rule)}
+            {isFinalist(a) && !isSetAside && pill('Finalist', C.paper, C.ink)}
+            {ref && (() => { const [label, fg, bg] = refMap[ref.status] || [ref.status, C.inkMute, C.paperDeep]; return pill(label, fg, bg); })()}
+            {editedAfterVerification(app, a.docVerifications).edited && pill('Edited after verification', C.amber, C.amberTint, { border: `1px solid ${C.amber}` })}
+            <span style={{ fontSize: 11, color: C.inkMute, fontFamily: 'monospace', marginLeft: 'auto' }}>{app.application_number}</span>
+          </div>
+          {app.referral_meta && <ReferralCaution meta={app.referral_meta} compact />}
+          {isSetAside && (
+            <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 10, padding: '6px 10px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
+              <strong style={{ color: C.ink }}>Set aside:</strong> {reasonLabel(a.decisionReasonCode)}
+              {a.decisionNotes ? `. ${a.decisionNotes}` : ''}
             </div>
           )}
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-            {collapsed ? (
-              <button onClick={() => openApplicant(a)} aria-expanded={false} aria-controls={`applicant-${a.linkId}-body`}
-                style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 38 }}>
-                Open <Icon name="chevronD" size={14} color={C.paper} />
-              </button>
-            ) : isSetAside ? (
+
+          {/* THE FACTS, grouped. Money and tenancy open by default; the rest on request. */}
+          <div style={{ marginTop: 12 }}>
+            {incomeRows.length > 0 && renderSection(a, 'income', 'Income and employment', true, renderRows(incomeRows))}
+            {tenancyRows.length > 0 && renderSection(a, 'tenancy', 'Tenancy and landlord reference', true, renderRows(tenancyRows))}
+            {livingRows.length > 0 && renderSection(a, 'living', 'Living situation', false, renderRows(livingRows))}
+            {app.personality && renderSection(a, 'words', 'In their own words', false, (
+              <div style={{ padding: '10px 14px', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ruleDark}` }}>
+                <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{app.personality}”</div>
+              </div>
+            ))}
+          </div>
+
+          <ApplicantDocIntel
+            listingId={listing.id}
+            linkId={a.linkId}
+            applicationId={app.id}
+            applicantName={app.full_name}
+            initialVerifications={a.docVerifications}
+            initialArchived={a.docArchived}
+            initialInsight={a.aiInsight}
+            profileUpdatedAt={app.profile_updated_at}
+            onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
+          />
+          {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
+              uploads via a secure link. Coexists with ApplicantDocIntel above. */}
+          <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} focus={focusDocFor?.linkId === a.linkId ? focusDocFor : null} />
+
+          {/* ACTIONS, after the facts. The drag is the fast path; these are the deliberate one. */}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+            {isSetAside ? (
               <button onClick={() => restoreApplicant(a)}
-                style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
                 Restore
               </button>
             ) : (
               <button onClick={() => openSetAside(a)} title="Record a screenable reason to de-prioritize"
-                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
                 Set aside
               </button>
             )}
-            {!app.referral_meta && !['pending', 'approved'].includes(referrals[a.linkId]?.status) && (
-              <button onClick={() => setReferFor(a)} title="Refer this applicant to another realtor — they must approve first"
-                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+            {!app.referral_meta && !['pending', 'approved'].includes(ref?.status) && (
+              <button onClick={() => setReferFor(a)} title="Refer this applicant to another realtor. They must approve first"
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
                 Refer
               </button>
             )}
             <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
-              style={{ background: 'transparent', color: C.inkMute, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+              style={{ background: 'transparent', color: C.inkMute, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', minHeight: 40, marginLeft: 'auto' }}>
               Withdrew
             </button>
           </div>
-        </div>
-        {!collapsed && (<div id={`applicant-${a.linkId}-body`}>
-        {details.length > 0 && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px' }}>
-            {details.map(([label, value]) => (
-              <div key={label} style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-                <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
-              </div>
-            ))}
-          </div>
-        )}
-        {/* Tenant voice — the applicant's own words, shown verbatim and clearly attributed.
-            Existing `personality` column; the apply form now frames, caps, and steers it. */}
-        {app.personality && (
-          <div style={{ marginTop: 12, padding: '10px 14px', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ruleDark}` }}>
-            <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4 }}>In their own words</div>
-            <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{app.personality}”</div>
-          </div>
-        )}
-        <ApplicantDocIntel
-          listingId={listing.id}
-          linkId={a.linkId}
-          applicationId={app.id}
-          applicantName={app.full_name}
-          initialVerifications={a.docVerifications}
-          initialArchived={a.docArchived}
-          initialInsight={a.aiInsight}
-          profileUpdatedAt={app.profile_updated_at}
-          onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
-        />
-        {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
-            uploads via a secure link. Coexists with ApplicantDocIntel above. */}
-        <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} focus={focusDocFor?.linkId === a.linkId ? focusDocFor : null} />
         </div>)}
       </div>
       </SwipeCard>
@@ -768,7 +786,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     ⇄ Compare top tenants
                   </button>
                 )}
-                <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+                <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
                   {active.map((a, idx) => (
                     <React.Fragment key={a.linkId}>
                       {idx === 5 && (
@@ -789,7 +807,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
                       De-prioritized for the screenable reasons noted. Still shown to your landlord, at the bottom.
                     </p>
-                    <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+                    <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
                       {setAsideList.map((a) => renderApplicantCard(a, { rank: null, top5: false, isSetAside: true }))}
                     </div>
                   </div>

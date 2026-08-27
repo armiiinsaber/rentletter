@@ -5,6 +5,7 @@
     "dev": "next dev",
     "build": "next build",
     "lint": "eslint \"pages/**/*.js\" \"components/**/*.js\" \"lib/**/*.js\"",
+    "test": "node --test \"tests/**/*.test.mjs\"",
     "start": "next start"
   },
   "dependencies": {
