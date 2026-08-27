@@ -27,6 +27,18 @@ export default function NoticedCards({ input, onAction, style, className = '', a
   const noticedAt = useMemo(() => input?.latestEventAt || latestSignalAt(input), [input]);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { setNow(Date.now()); }, [noticedAt]);
+  // The when line. Fresh (48 hours): "noticed 4 minutes ago". Older: a present tense line from
+  // what is already in `input`, "watching 4 applicants on 1 listing". Nothing to say: nothing.
+  const whenLine = useMemo(() => {
+    const FRESH = 48 * 3600000;
+    if (noticedAt && now - new Date(noticedAt).getTime() <= FRESH) return `noticed ${relativeTime(noticedAt, now)}`;
+    const listings = Array.isArray(input?.listings) ? input.listings.length : 0;
+    const applicants = Object.values(input?.applicantsByListing || {}).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
+    const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    if (applicants > 0 && listings > 0) return `watching ${plural(applicants, 'applicant')} on ${plural(listings, 'listing')}`;
+    if (listings > 0) return `watching ${plural(listings, 'listing')}`;
+    return null;
+  }, [noticedAt, now, input]);
   // Leave first, then do. Navigation actions go at once (the page is leaving anyway).
   const leaveThen = (card, fn) => {
     if (!animateOut || prefersReducedMotion()) { fn(); onChanged?.(); return; }
@@ -60,9 +72,10 @@ export default function NoticedCards({ input, onAction, style, className = '', a
   return (
     <section className={className} aria-label="Rentletter noticed" style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: 'clamp(14px, 3vw, 20px)', position: 'relative', overflow: 'hidden', ...style }}>
       <div className="nc-head" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', marginBottom: 10 }}>
+        <span className="rl-dot" aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: C.redBright, flexShrink: 0, marginRight: -4 }} />
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1, flexShrink: 0 }} />
         <span style={{ fontSize: 11, color: C.redBright || C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentletter noticed</span>
-        {noticedAt && <span className="nc-when" style={{ fontSize: 11, color: '#6f6b63', whiteSpace: 'nowrap' }} title={new Date(noticedAt).toLocaleString('en-CA')}>noticed {relativeTime(noticedAt, now)}</span>}
+        {whenLine && <span className="nc-when" style={{ fontSize: 11, color: '#6f6b63', whiteSpace: 'nowrap' }} title={noticedAt ? new Date(noticedAt).toLocaleString('en-CA') : undefined}>{whenLine}</span>}
         {onOpen && <button type="button" onClick={onOpen} style={{ marginLeft: 'auto', background: 'transparent', color: '#9a958a', border: '1px solid #2a2a2e', borderRadius: R.pill, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>Open</button>}
       </div>
       <div style={{ display: 'grid', gap: 8 }}>
@@ -72,7 +85,7 @@ export default function NoticedCards({ input, onAction, style, className = '', a
               <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{card.title}</div>
               {card.detail && <div style={{ fontSize: 12.5, color: '#9a958a', lineHeight: 1.5, marginTop: 3, textWrap: 'pretty' }}>{card.detail}</div>}
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', flexShrink: 0 }}>
               {card.action && (
                 <button type="button" onClick={() => act(card)} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', minHeight: 36, whiteSpace: 'nowrap' }}>
                   {card.action.label}
