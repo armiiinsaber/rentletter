@@ -13,7 +13,7 @@ const EMP = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Con
 
 // initialItems: the inbox as loaded with the page (HomeView's signals), so this block is part of
 // the first paint instead of mounting after its own fetch. Refetches only after an assignment.
-export default function ReferralInbox({ listings, initialItems = null }) {
+export default function ReferralInbox({ listings, initialItems = null, onChanged, embedded = false }) {
   const adapter = useAdapter();
   const [items, setItems] = useState(Array.isArray(initialItems) ? initialItems : null);
   const [choice, setChoice] = useState({});
@@ -31,12 +31,13 @@ export default function ReferralInbox({ listings, initialItems = null }) {
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || 'Could not assign.');
       await load();
+      onChanged?.();
     } catch (e) { setError(e.message); }
     setBusy('');
   };
 
   return (
-    <section id="referrals" className="dash-card span-4" style={{ padding: 'clamp(16px, 3vw, 24px)' }}>
+    <section id="referrals" className={embedded ? '' : 'dash-card span-4'} style={{ padding: embedded ? '4px 0 0' : 'clamp(16px, 3vw, 24px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} />
         <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Referred to you</span>

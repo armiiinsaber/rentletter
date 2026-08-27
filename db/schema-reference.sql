@@ -37,3 +37,18 @@
 --   decision_changed_at   timestamptz
 --   reviewed_at           timestamptz   (db/reviewed-at.sql)
 --   doc_verifications     jsonb
+
+-- ── public.events (db/events.sql) ────────────────────────────────────────────────────────────
+--   type  text  CHECK (type IN (
+--     'applicant_applied', 'documents_requested', 'documents_uploaded', 'verification_completed',
+--     'verification_failed', 'report_generated', 'report_sent', 'applicant_set_aside',
+--     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'referral_received',
+--     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',
+--     'listing_created', 'listing_updated', 'branding_updated'))
+--   The single source of truth in code is lib/eventTypes.js (EVENT_TYPES). tests/events.test.mjs
+--   reads db/events.sql and fails when the two lists differ.
+--   Append only: service role inserts (lib/events.js recordEvent); realtors SELECT their own rows
+--   under RLS; INSERT, UPDATE, DELETE are revoked from anon and authenticated.
+-- ── public.event_reads ───────────────────────────────────────────────────────────────────────
+--   profile_id uuid PRIMARY KEY, last_read_at timestamptz. One watermark per realtor, set by
+--   POST /api/events/read when the assistant panel opens. Service role writes only.

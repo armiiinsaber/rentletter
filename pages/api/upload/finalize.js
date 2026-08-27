@@ -12,6 +12,8 @@
 // failure returns an error WITHOUT marking received or clearing staging, so the client can retry
 // finalize only (no re-analysis).
 import { kvReady, kvGetJson, kvSetJson, kvDel, reqKey, appKey, stagingKey, isDocReqToken, DOCREQ_TTL } from '../../../lib/docRequest';
+import { recordForListing } from '../../../lib/events';
+import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { generateApplicantInsight, computeNameMatch } from '../../../lib/applicantAnalysis';
@@ -171,6 +173,12 @@ export default async function handler(req, res) {
         else if (!(upRows || []).length) { console.error('[upload/finalize] persist affected 0 rows'); persistFailed = true; }
         else {
           verified = true;
+          {
+            const facts = verificationFacts(newDocV);
+            const outcome = facts.incomeVerified || facts.employmentVerified ? 'verification_completed' : 'verification_failed';
+            await recordForListing(admin, rec.listingId, 'documents_uploaded', { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, documents: items.length } });
+            await recordForListing(admin, rec.listingId, outcome, { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, by: 'tenant', nameMatch: run.nameMatch || null } });
+          }
           console.log('[verif-trace][tenant-finalize] linkId=%s applicationId=%s affectedRows=%j',
             rec.linkId, rec.applicationId, (upRows || []).map((r) => ({ id: r.id, application_id: r.application_id })));
 

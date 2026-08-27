@@ -18,6 +18,8 @@
 // rows — and the realtor's doc_verifications / ai_insight / decisions on them — are not
 // touched). KV TTL is refreshed so an edit never resurrects an already-expired record.
 import { timingSafeEqual } from 'crypto';
+import { recordProfileEditEvents } from '../../../lib/events';
+import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { kvGet, kvIncr, kvExpire } from '../../../lib/kv';
 import { buildApplicationFromForm, formFromApplication, publicProfile } from '../../../lib/tenantProfile';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -142,6 +144,7 @@ export default async function handler(req, res) {
       if (isSupabaseConfigured() && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         try { await upsertApplication(getSupabaseAdminClient(), next); mirrored = true; }
         catch (e) { logServerError('[application/manage:update:mirror]', e, { applicationNumber: appNum }); }
+        if (mirrored) await recordProfileEditEvents(getSupabaseAdminClient(), appNum, (docv) => verificationFacts(docv).documents);
       }
       // Coherence with the unified profile: always keep the application linked; copy the edited
       // facts INTO the profile only when the tenant asked ("also update my profile").

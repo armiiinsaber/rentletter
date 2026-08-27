@@ -15,7 +15,7 @@ import { useRouter } from 'next/router';
 import { ScrollHeader, Wordmark, Icon } from '../ui';
 import { C, R, EASE } from '../theme';
 import StatusBadge from './StatusBadge';
-import NotificationBell from './NotificationBell';
+import AssistantBell from './AssistantBell';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
 function initialsOf(profile) {
@@ -27,7 +27,7 @@ function initialsOf(profile) {
   return (profile?.email || '?')[0].toUpperCase();
 }
 
-export default function DashboardHeader({ profile }) {
+export default function DashboardHeader({ profile, signals = null, onAssistantAction }) {
   const adapter = useAdapter();
   const router = useRouter();
   // Avatar menu: profile, branding, sign out. Closes on outside tap and Escape.
@@ -62,9 +62,9 @@ export default function DashboardHeader({ profile }) {
         {/* RIGHT — account actions grouped with an even rhythm (matched 34px controls, 12px gaps).
             Reveals left→right after the wordmark and badge. */}
         <div className="rl-hdr-cluster">
-          {/* Bell — on-load notifications for this realtor's listings (logic untouched). */}
+          {/* Bell: the assistant. Badge = what needs the realtor; the panel adds what happened. */}
           <span className="rl-hdr-reveal rl-hdr-bellwrap" style={{ '--d': '220ms', display: 'inline-flex' }}>
-            <NotificationBell />
+            <AssistantBell profile={profile} signals={signals} onAction={onAssistantAction} />
           </span>
           {/* Account avatar: native initials (never the uploaded logo). Opens the account menu. */}
           <span ref={menuRef} className="rl-hdr-menuwrap">

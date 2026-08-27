@@ -9,37 +9,7 @@ import HomeView from '../components/dashboard/HomeView';
 import { getEntitlement } from '../lib/entitlements';
 import { readPromoCookie, redeemPromoFromCookie } from '../lib/promoCookie';
 import { needsOnboarding } from '../lib/onboarding';
-import { getSupabaseAdminClient } from '../lib/supabase/admin';
-import { fetchListingApplicants, attachDocVerifications } from '../lib/supabaseBridge';
-import { notificationsFor, EMPTY_FEED } from '../lib/notificationsFeed';
-import { inboxFor, listFromRealtor, effectiveStatus } from '../lib/referrals';
-
-// Everything the first screen needs, loaded on the server WITH the listings so the dashboard
-// commits in one paint: the assistant block ("Rentletter noticed") reads the applicants per
-// listing, the notification feed and the referrals. Each part is best effort on its own; if the
-// whole thing fails the page falls back to the client fetch and holds its skeleton until then.
-async function loadSignals({ supabase, user, listings }) {
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
-  const admin = getSupabaseAdminClient();
-  const safe = (p, fallback) => p.catch((e) => { console.warn('[dashboard] signal skipped:', e?.message || e); return fallback; });
-  const ls = (listings || []).slice(0, 12);
-  const [notif, inbox, sent, ...apps] = await Promise.all([
-    safe(notificationsFor({ supabase, admin, userId: user.id }), { ...EMPTY_FEED }),
-    safe(inboxFor(user), []),
-    safe(listFromRealtor(user.id), []),
-    ...ls.map((l) => safe(fetchListingApplicants(admin, l.id).then((a) => attachDocVerifications(admin, l.id, a, 'dashboard')), [])),
-  ]);
-  const applicantsByListing = {};
-  ls.forEach((l, i) => { applicantsByListing[l.id] = apps[i] || []; });
-  // Same shape as /api/referrals/list: one entry per linkId, newest first.
-  const byLink = {};
-  for (const r of sent || []) {
-    if (!r?.from?.linkId || byLink[r.from.linkId]) continue;
-    byLink[r.from.linkId] = { id: r.id, status: effectiveStatus(r), to: { name: r.to?.name, email: r.to?.email, hasAccount: !!r.to?.profileId }, createdAt: r.createdAt, decidedAt: r.decidedAt, assigned: !!r.assignedListingId, from: r.from, applicantName: r.applicantName };
-  }
-  // getServerSideProps needs plain JSON (no undefined).
-  return JSON.parse(JSON.stringify({ applicantsByListing, notifications: notif?.items || [], referralsInbox: inbox || [], referralsSent: Object.values(byLink), loaded: true }));
-}
+import { loadSignals } from '../lib/dashboardSignals';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {

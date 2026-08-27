@@ -3,6 +3,7 @@
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
 import { useEffect, useState } from 'react';
+import { reportEvent } from '../../lib/clientEvents';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -12,7 +13,7 @@ import Paywall from './Paywall';
 import { C, R, EASE, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
-import ReferralInbox from '../../components/dashboard/ReferralInbox';
+import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import NoticedCards from '../../components/dashboard/NoticedCards';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ChatWidget from '../../components/ChatWidget';
@@ -98,6 +99,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       if (insErr) { setError(insErr.message); setSaving(false); return; }
       setSaving(false);
       setModalOpen(false);
+      reportEvent(adapter, { type: 'listing_created', listingId: data.id });
       router.push(adapter.paths.listing(data.id));
     } catch (e) {
       setError('Could not create the listing. Please try again.');
@@ -165,16 +167,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // Event-type Noticed actions on the home page go to the listing page, which owns the applicant
   // cards: #docs=<linkId>[&renew] makes ListingView open that applicant (marking them reviewed),
   // scroll to them and light up the document-request panel.
+  const openAssistant = () => window.dispatchEvent(new CustomEvent(OPEN_EVENT));
   const onNoticeAction = (a) => {
+    if (a.type === 'panel') { openAssistant(); return; }
     if (a.event === 'request-docs' && a.listingId && a.linkId) window.location.href = `${adapter.paths.listing(a.listingId)}#docs=${encodeURIComponent(a.linkId)}${a.renew ? '&renew' : ''}`;
   };
   // "#referrals" deep link (the Assign action): the inbox mounts only after its own fetch, so a
   // plain hash jump on page load finds nothing — wait for the section, then scroll to it.
   useEffect(() => {
     if (window.location.hash !== '#referrals') return undefined;
-    let tries = 0; const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
-    const t = setInterval(() => { const el = document.getElementById('referrals'); if (el) { el.scrollIntoView({ block: 'start', behavior }); clearInterval(t); } else if (++tries > 40) clearInterval(t); }, 150);
-    return () => clearInterval(t);
+    const t = setTimeout(() => window.dispatchEvent(new CustomEvent(OPEN_EVENT)), 300);
+    return () => clearTimeout(t);
   }, []);
   const noticeInput = { scope: 'home', listings: listings || [], applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsSent: signals.referralsSent, referralsInbox: signals.referralsInbox, profile };
   // Greeting: time of day plus first name, nothing else. The name is its own flex item so a
@@ -221,7 +224,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       <div className="dash-bg" style={{ overflowX: 'clip' }}>
         {/* Static, in-flow header (see .dash-bg .rl-header below) — it scrolls away with the page; its
             solid canvas background + safe-area padding cover the notch region at the top. */}
-        <DashboardHeader profile={profile} />
+        <DashboardHeader profile={profile} signals={signals.loaded ? { ...signals, listings: listings || [] } : null} onAssistantAction={onNoticeAction} />
 
         {locked && (
           <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
@@ -267,13 +270,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           </section>
           {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
-          {/* 2. THE ASSISTANT: Rentletter noticed (deterministic, max 3, nothing when quiet). Its
-              inputs are part of the first paint (ready), so it commits with the greeting and the
-              listings, never after them. */}
-          <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} /></div>
-
-          {/* Referred to you (renders nothing when empty) */}
-          <ReferralInbox listings={listings || []} initialItems={signals.referralsInbox} />
+          {/* 2. THE ASSISTANT, compact: the Needs you zone as it renders here, and a way into the
+              full panel (bell, or Open). The timeline lives in the panel only. Referrals to
+              assign are part of the panel's Needs you zone, so the page stays three sections. */}
+          <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} onOpen={openAssistant} /></div>
 
           {/* 3. YOUR LISTINGS */}
           {error && (

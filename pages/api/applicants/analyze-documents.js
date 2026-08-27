@@ -9,6 +9,8 @@
 // dropped as soon as the call returns. Only the STRUCTURED RESULT (no images) is persisted
 // to listing_applicants.doc_verifications. OHRC-safe by construction (prompt + facts shape).
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { recordEvent } from '../../../lib/events';
+import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import {
   authorizeApplicant, runDocumentAnalysis,
@@ -111,5 +113,10 @@ export default async function handler(req, res) {
     return res.status(200).json({ result: run, verifications, saved: false });
   }
 
+  {
+    const facts = verificationFacts([run]);
+    const outcome = facts.incomeVerified || facts.employmentVerified ? 'verification_completed' : 'verification_failed';
+    await recordEvent(getSupabaseAdminClient(), { profileId: user.id, listingId: ctx.listing.id, applicationId: ctx.junction.application_id, type: outcome, payload: { applicantName: ctx.application?.full_name || null, listingName: ctx.listing.name || ctx.listing.address || null, linkId, by: 'realtor', nameMatch: run.nameMatch || null } });
+  }
   return res.status(200).json({ result: run, verifications, saved: true });
 }

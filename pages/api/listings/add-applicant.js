@@ -5,6 +5,7 @@
 // `applications` (service-role), and link it via `listing_applicants`
 // (added_via ADDED_VIA.LOOKUP). Mirrors lookup.js semantics (rejects revoked apps).
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { recordForListing } from '../../../lib/events';
 import { ADDED_VIA } from '../../../lib/listingApplicantsVocabulary';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { kvGet } from '../../../lib/kv';
@@ -46,6 +47,7 @@ export default async function handler(req, res) {
     const admin = getSupabaseAdminClient();
     const applicationId = await upsertApplication(admin, app);
     await linkApplicantToListing(admin, listing.id, applicationId, ADDED_VIA.LOOKUP);
+    await recordForListing(admin, listing.id, 'applicant_applied', { applicationId, payload: { via: 'lookup' } });
     return res.status(200).json({ ok: true, applicationNumber: appNum });
   } catch (e) {
     console.error('[listings/add-applicant] error:', e?.message || e);

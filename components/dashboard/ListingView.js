@@ -24,10 +24,12 @@ import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import { synthesisLine } from '../../lib/applicantSynthesis';
+import { reportEvent } from '../../lib/clientEvents';
 import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import NoticedCards from '../../components/dashboard/NoticedCards';
+import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { narrateApplicants } from '../../lib/noticed';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
@@ -113,6 +115,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setTimeout(() => document.getElementById(`applicant-${linkId}`)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 30);
   };
   const onNoticeAction = (a) => {
+    if (a.type === 'panel') { window.dispatchEvent(new CustomEvent(OPEN_EVENT)); return; }
     if (a.event === 'request-docs') focusApplicantDocs(a.linkId, a.renew);
     else if (a.event === 'send-report') {
       document.getElementById('report')?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
@@ -201,6 +204,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         .from('listings').update(values).eq('id', listing.id).select().single();
       if (upErr) { setError(upErr.message); setSaving(false); return; }
       setListing(data);
+      reportEvent(adapter, { type: 'listing_updated', listingId: listing.id });
       setSaving(false);
       setEditOpen(false);
     } catch (e) {
@@ -353,6 +357,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     if (!setAsideFor || !setAsideCode) return;
     const linkId = setAsideFor.linkId;
     setDecision(linkId, { decisionStatus: DECISION_STATUS.REJECT, decisionReasonCode: setAsideCode, decisionNotes: setAsideNote.trim() || null });
+    reportEvent(adapter, { type: 'applicant_set_aside', linkId, payload: { reason: reasonLabel(setAsideCode) } });
     if (dragSetAsideRef.current === linkId) { // reached by a drag: the card leaves, and Undo is offered
       dragSetAsideRef.current = null;
       depart(linkId, 'left', false);
@@ -360,8 +365,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     }
     setSetAsideFor(null);
   };
-  const restoreApplicant = (a) =>
+  const restoreApplicant = (a) => {
     setDecision(a.linkId, { decisionStatus: DECISION_STATUS.NONE, decisionReasonCode: null });
+    reportEvent(adapter, { type: 'applicant_restored', linkId: a.linkId });
+  };
   // The two drag commits. Set aside still REQUIRES a screenable reason, so pushing a card left
   // opens the same reason sheet the button opens (the card springs back under it); confirming
   // there is the commit. Pushing a set aside card right restores it at once.
@@ -380,6 +387,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const withdrawApplicant = (a) => {
     if (!confirm(`Mark ${a.application?.full_name || 'this applicant'} as withdrawn? Use this only if the tenant withdrew. It removes them from your ranked list.`)) return;
     setDecision(a.linkId, { withdrawnAt: new Date().toISOString(), decisionReasonCode: null });
+    reportEvent(adapter, { type: 'applicant_withdrew', linkId: a.linkId });
   };
 
   const l = listing;
@@ -625,7 +633,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <GlobalStyle />
       <MotionStyles />
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
-        <DashboardHeader profile={profile} />
+        <DashboardHeader profile={profile} onAssistantAction={onNoticeAction} />
 
         {locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
         {!locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>

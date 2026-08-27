@@ -4,6 +4,7 @@
 // leaving and returning never restarts. 'done' profiles are sent to the dashboard. The screens
 // themselves live in components/onboarding/OnboardingFlow. No access decisions here.
 import { useState } from 'react';
+import { reportEvent } from '../lib/clientEvents';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../components/theme';
@@ -59,6 +60,7 @@ export default function Onboarding({ userId, initialProfile }) {
       let inviteUrl = null;
       try { const r = await fetch('/api/listings/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: data.id }) }); const j = await r.json().catch(() => ({})); if (r.ok && j.url) inviteUrl = j.url; } catch (e) { /* the listing page can mint it */ }
       setListingBusy(false);
+      reportEvent(null, { type: 'listing_created', listingId: data.id });
       await finish({ inviteUrl, listingId: data.id });
     } catch (e) { setListingErr('Could not create the listing. Please try again.'); setListingBusy(false); }
   };

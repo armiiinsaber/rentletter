@@ -3,6 +3,7 @@
 // listing ownership via RLS, reads the shortlist (service-role, owner_token
 // stripped), and streams a branded PDF. GET so it can be opened/downloaded directly.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { recordEvent } from '../../../lib/events';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
@@ -41,6 +42,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Length', bytes.length);
+    await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_generated', payload: { listingName: ctx.listing.name || ctx.listing.address || null, format: 'pdf' } });
     return res.status(200).send(Buffer.from(bytes));
   } catch (e) {
     logServerError('[listings/report-pdf]', e, { listingId, fontPairing: fontPairingForLog });

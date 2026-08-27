@@ -16,6 +16,7 @@
 // Save button remains as an explicit flush (and closes the modal) but is no longer the only
 // way to persist anything.
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { reportEvent } from '../../lib/clientEvents';
 import Head from 'next/head';
 import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
@@ -252,7 +253,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         if (!user) return;
         const { data } = await supabase.from('profiles')
           .update({ brand_color: p, brand_color_secondary: s }).eq('id', user.id).select().single();
-        if (data) onSaved?.(data);
+        if (data) { onSaved?.(data); reportEvent(null, { type: 'branding_updated', payload: { what: 'colours' } }); }
         if (p && s) {
           try {
             const { data: d2 } = await supabase.from('profiles')

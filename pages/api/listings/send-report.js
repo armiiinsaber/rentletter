@@ -3,6 +3,7 @@
 // landlord_email captured on the listing, with the realtor as reply-to. Supabase auth
 // + RLS ownership; service-role read of the shortlist. Reuses the PDF builder.
 import { Resend } from 'resend';
+import { recordEvent } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
@@ -93,6 +94,7 @@ export default async function handler(req, res) {
       console.error('[send-report] Resend error:', result.error);
       return res.status(500).json({ error: 'Email send failed. Try again.' });
     }
+    await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_sent', payload: { listingName: ctx.listing.name || ctx.listing.address || null, landlordEmail, landlordName: ctx.listing.landlord_name || null, applicants: n } });
     return res.status(200).json({ ok: true, sentTo: landlordEmail });
   } catch (e) {
     logServerError('[listings/send-report]', e, { listingId, fontPairing: fontPairingForLog });

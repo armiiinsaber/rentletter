@@ -5,6 +5,7 @@
 // are drawn only from screenable facts (income, tenure, references, fit) — never
 // protected grounds. Copy-only; no SMS/Twilio.
 import Anthropic from '@anthropic-ai/sdk';
+import { recordEvent } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
@@ -156,6 +157,7 @@ Write the paste-ready plain-text message now.`;
     // Belt-and-suspenders: strip any stray markdown emphasis characters.
     text = text.replace(/[*_`#]+/g, '');
     if (!text) return res.status(500).json({ error: 'AI returned empty response.' });
+    await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_generated', payload: { listingName: ctx.listing.name || ctx.listing.address || null, format: 'text' } });
     return res.status(200).json({ text });
   } catch (e) {
     const ai = describeAiError(e, '[listings/report-text]');

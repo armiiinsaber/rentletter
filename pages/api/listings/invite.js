@@ -5,6 +5,8 @@
 // routes are left untouched. Also persists invite_token/invite_url back onto the
 // Supabase listing row (RLS, realtor owns it).
 import crypto from 'crypto';
+import { recordEvent } from '../../../lib/events';
+import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { normalizeProvince } from '../../../lib/provinces';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
@@ -102,6 +104,7 @@ export default async function handler(req, res) {
 
     // Persist token + url back onto the listing (RLS — realtor owns it).
     await supabase.from('listings').update({ invite_token: token, invite_url: url }).eq('id', listing.id);
+    if (process.env.SUPABASE_SERVICE_ROLE_KEY) await recordEvent(getSupabaseAdminClient(), { profileId: user.id, listingId: listing.id, type: 'invite_link_created', payload: { listingName: listing.name || listing.address || null, regenerated: !!(regenerate && listing.invite_token) } });
 
     return res.status(200).json({ ok: true, token, url });
   } catch (e) {

@@ -7,6 +7,7 @@
 // avoids any cookie-token-for-Storage ambiguity in the bundled API runtime. The
 // existing PDF/text branding then "just works".
 import { Resvg } from '@resvg/resvg-js';
+import { recordEvent } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { validateLogoSvg } from '../../../lib/svgSanitize';
@@ -79,6 +80,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'Saved the image but could not update your profile.' });
     }
 
+    await recordEvent(getSupabaseAdminClient(), { profileId: user.id, type: 'branding_updated', payload: { what: 'logo' } });
     return res.status(200).json({ logo_url: url, profile });
   } catch (e) {
     console.error('[use-logo] error:', e?.message || e);
