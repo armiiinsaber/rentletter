@@ -16,6 +16,8 @@ import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
 import { isVerified } from '../../lib/noticed';
 import { AnimatedScore, useFlip, VerifiedMark, ReportDeparture, MotionStyles } from '../motion';
+import SwipeCard from '../motion/swipe';
+import { DURATION, prefersReducedMotion } from '../../lib/motion';
 import ChatWidget from '../../components/ChatWidget';
 import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
@@ -163,6 +165,22 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [sendMsg, setSendMsg] = useState('');
   const [departToken, setDepartToken] = useState(0); // the report leaving the screen after a successful send
   const rankedRef = useRef(null); const asideRef = useRef(null);
+  // ── Direct manipulation (components/motion/swipe.js). A card pushed past the threshold commits
+  // its decision at once; it then stays in place for one beat while it slides out (departing),
+  // after which it re-renders in its new list and FLIP closes the gap. `recent` is the inline
+  // undo for a drag commit; the buttons keep their own paths untouched.
+  const [departing, setDeparting] = useState({}); // linkId -> { side, wasSetAside }
+  const [recent, setRecent] = useState(null); // { linkId, kind, prev } for the inline Undo
+  const recentTimer = useRef(null);
+  const dragSetAsideRef = useRef(null); // linkId whose set aside sheet was opened by a drag
+  const [hintFor, setHintFor] = useState(null); // the card that nudges once, on the first visit
+  const [hintText, setHintText] = useState(false);
+  const depart = (linkId, side, wasSetAside) => {
+    setDeparting((d) => ({ ...d, [linkId]: { side, wasSetAside } }));
+    setTimeout(() => setDeparting((d) => { const n = { ...d }; delete n[linkId]; return n; }), prefersReducedMotion() ? 0 : DURATION.base + 40);
+  };
+  const noteRecent = (linkId, kind, prev) => { setRecent({ linkId, kind, prev }); clearTimeout(recentTimer.current); recentTimer.current = setTimeout(() => setRecent(null), 7000); };
+  useEffect(() => () => clearTimeout(recentTimer.current), []);
   // Reveal sections on load + as they scroll into view. Re-run when the applicant set changes
   // so newly-rendered cards get observed.
   useReveal(`${applicants.length}-${compareOpen}-${editOpen}`);
@@ -323,14 +341,34 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
   // Set aside REQUIRES an OHRC-safe screenable reason. Applicant stays in the list,
   // marked + sorted to the bottom — the defensible paper trail.
-  const openSetAside = (a) => { setSetAsideFor(a); setSetAsideCode(''); setSetAsideNote(''); };
+  const openSetAside = (a) => { dragSetAsideRef.current = null; setSetAsideFor(a); setSetAsideCode(''); setSetAsideNote(''); };
   const confirmSetAside = () => {
     if (!setAsideFor || !setAsideCode) return;
-    setDecision(setAsideFor.linkId, { decisionStatus: DECISION_STATUS.REJECT, decisionReasonCode: setAsideCode, decisionNotes: setAsideNote.trim() || null });
+    const linkId = setAsideFor.linkId;
+    setDecision(linkId, { decisionStatus: DECISION_STATUS.REJECT, decisionReasonCode: setAsideCode, decisionNotes: setAsideNote.trim() || null });
+    if (dragSetAsideRef.current === linkId) { // reached by a drag: the card leaves, and Undo is offered
+      dragSetAsideRef.current = null;
+      depart(linkId, 'left', false);
+      noteRecent(linkId, 'Set aside', { decisionStatus: DECISION_STATUS.NONE, decisionReasonCode: null, decisionNotes: null });
+    }
     setSetAsideFor(null);
   };
   const restoreApplicant = (a) =>
     setDecision(a.linkId, { decisionStatus: DECISION_STATUS.NONE, decisionReasonCode: null });
+  // The two drag commits. Set aside still REQUIRES a screenable reason, so pushing a card left
+  // opens the same reason sheet the button opens (the card springs back under it); confirming
+  // there is the commit. Pushing a set aside card right restores it at once.
+  const onSwipeCommit = (a, side) => {
+    if (side === 'left' && isActive(a)) { openSetAside(a); dragSetAsideRef.current = a.linkId; return false; }
+    if (side === 'right' && isSetAsideApplicant(a)) {
+      restoreApplicant(a);
+      depart(a.linkId, 'right', true);
+      noteRecent(a.linkId, 'Restored', { decisionStatus: DECISION_STATUS.REJECT, decisionReasonCode: a.decisionReasonCode || null, decisionNotes: a.decisionNotes || null });
+      return true;
+    }
+    return false;
+  };
+  const undoRecent = () => { if (!recent) return; setDecision(recent.linkId, recent.prev); setRecent(null); clearTimeout(recentTimer.current); };
   // Remove = genuine tenant WITHDRAWAL only (not a screening decision).
   const withdrawApplicant = (a) => {
     if (!confirm(`Mark ${a.application?.full_name || 'this applicant'} as withdrawn? Use this only if the tenant withdrew. It removes them from your ranked list.`)) return;
@@ -349,8 +387,19 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // Pure scorecard vs criteria ranking (matches lib/listingReportData). Everyone is
   // in: active best fit first, set aside below, withdrawn excluded (withdrawn_at rule).
   const byScore = (x, y) => (y.application?.scorecard?.overall ?? 0) - (x.application?.scorecard?.overall ?? 0);
-  const active = applicants.filter(isActive).sort(byScore);
-  const setAsideList = applicants.filter(isSetAsideApplicant).sort(byScore);
+  // A departing card is shown where it WAS for one beat (its state has already changed).
+  const shownActive = (a) => (departing[a.linkId] ? !departing[a.linkId].wasSetAside : isActive(a));
+  const shownAside = (a) => (departing[a.linkId] ? departing[a.linkId].wasSetAside : isSetAsideApplicant(a));
+  const active = applicants.filter((a) => !isWithdrawn(a) && shownActive(a)).sort(byScore);
+  const setAsideList = applicants.filter((a) => !isWithdrawn(a) && shownAside(a)).sort(byScore);
+  // First visit to a listing with applicants: the top card nudges once to show the gesture, and a
+  // one line caption stays for this visit. Persisted in localStorage; never shown again.
+  useEffect(() => {
+    if (locked || !active.length) return;
+    try { if (localStorage.getItem('rl_swipe_hint')) return; localStorage.setItem('rl_swipe_hint', new Date().toISOString()); } catch (e) { return; }
+    setHintFor(active[0].linkId); setHintText(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active.length, locked]);
   // Reordering: cards travel to their new rank (FLIP, transforms only) instead of the list redrawing.
   useFlip(rankedRef, active.map((a) => a.linkId).join('|'));
   useFlip(asideRef, setAsideList.map((a) => a.linkId).join('|'));
@@ -412,13 +461,24 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     // non-top applicants got a green left-bar applied purely by rank position, which read as
     // a misleading "good to go" status while the actual best picks looked flagged in red.)
     const borderColor = top5 ? C.red : C.ruleDark;
+    const leftAction = !isSetAside ? { label: 'Set aside' } : null;
+    const rightAction = isSetAside ? { label: 'Restore', tone: 'good' } : null;
     return (
-      <div key={a.linkId} id={`applicant-${a.linkId}`} data-flip-key={a.linkId} style={{
+      <SwipeCard key={a.linkId} flipKey={a.linkId} id={`applicant-${a.linkId}`} leftAction={leftAction} rightAction={rightAction}
+        onCommit={(side) => onSwipeCommit(a, side)} departing={departing[a.linkId]?.side || null}
+        hint={hintFor === a.linkId} onHintDone={() => setHintFor(null)}>
+      <div style={{
         minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
         boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
       }}>
+        {recent?.linkId === a.linkId && (
+          <div data-no-swipe role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, padding: '6px 6px 6px 12px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, fontSize: 13, color: C.inkSoft }}>
+            <span><strong style={{ color: C.ink }}>{recent.kind}.</strong> Not what you meant?</span>
+            <button type="button" onClick={undoRecent} style={{ minHeight: 40, padding: '0 14px', background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Undo</button>
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
           {rank != null && (
             <span aria-label={`Rank ${rank}`} style={{ width: 30, height: 30, flexShrink: 0, borderRadius: '50%', background: top5 ? C.red : C.paperDeep, color: top5 ? C.paper : C.inkSoft, border: `1px solid ${top5 ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800 }}>
@@ -535,6 +595,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} focus={focusDocFor?.linkId === a.linkId ? focusDocFor : null} />
         </div>)}
       </div>
+      </SwipeCard>
     );
   };
 
@@ -698,6 +759,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
                   Everyone who applied, ranked against your stated criteria. Your <strong>top 5</strong> are highlighted. To de-prioritize someone, <strong>Set aside</strong> with a screenable reason — they stay in the list, sorted to the bottom.
                 </p>
+                {hintText && (
+                  <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
+                )}
                 {active.length >= 2 && (
                   <button onClick={() => setCompareOpen(true)} className="rl-btn"
                     style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}>

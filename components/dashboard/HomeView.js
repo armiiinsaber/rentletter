@@ -72,7 +72,7 @@ function useLogoAccent(logoUrl) {
   return accent;
 }
 
-export default function HomeView({ userId, userEmail, initialProfile, initialListings, listingsError: initialListingsError = null, entitlement: initialEntitlement = null }) {
+export default function HomeView({ userId, userEmail, initialProfile, initialListings, listingsError: initialListingsError = null, entitlement: initialEntitlement = null, initialSignals = null }) {
   const adapter = useAdapter();
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
@@ -125,11 +125,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingsLoaded]);
-  // ── Assistant data for the briefing + "Rentletter noticed": the realtor's own applicants per
-  // listing (existing /api/listings/applicants, RLS-scoped), notifications feed, referrals. All
-  // best-effort; the page renders without them. No AI involved.
-  const [signals, setSignals] = useState({ applicantsByListing: {}, notifications: [], referralsInbox: [], referralsSent: [], loaded: false });
+  // ── Assistant data for "Rentletter noticed": the realtor's own applicants per listing,
+  // notifications feed, referrals. Normally these arrive WITH the page (pages/landlord.js loads
+  // them server side as initialSignals) so the dashboard commits in one paint. Without them
+  // (demo workspace, or a server side failure) they are fetched here and the page holds its
+  // skeleton until they land, so nothing ever appears after the rest. No AI involved.
+  const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : { applicantsByListing: {}, notifications: [], referralsInbox: [], referralsSent: [], loaded: false }));
   useEffect(() => {
+    if (signals.loaded && initialSignals) return undefined; // came with the page
     let cancelled = false;
     (async () => {
       const get = (u) => adapter.fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
@@ -144,7 +147,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       setSignals({ applicantsByListing, notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), loaded: true });
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listings]);
+  // The first screen commits as one piece: listings known AND the assistant inputs in hand.
+  const ready = listingsLoaded && signals.loaded;
   // Derived, presentation-only summaries from data that already exists (no fabrication,
   // no new API calls — everything below comes from the listings/profile already loaded).
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
@@ -236,6 +242,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           paddingBottom: 'calc(clamp(16px, 3vw, 24px) + 56px + 12px + env(safe-area-inset-bottom, 0px))',
         }}>
 
+          {!ready && !listingsError && (
+            <div aria-busy="true" aria-label="Loading your workspace">
+              <div className="dash-card dash-hero dash-skel" style={{ minHeight: 168 }}><span className="dash-skel-line" style={{ width: '32%', height: 10 }} /><span className="dash-skel-line" style={{ width: '58%', height: 30 }} /><span className="dash-skel-line" style={{ width: 128, height: 44, borderRadius: 12 }} /></div>
+              <div className="dash-block dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>
+              <div className="dash-grid">{[0, 1].map((i) => <div key={i} className="dash-card dash-skel"><span className="dash-skel-line" style={{ width: '70%', height: 18 }} /><span className="dash-skel-line" style={{ width: '45%' }} /><span className="dash-skel-line" style={{ width: '38%' }} /><span className="dash-skel-line" style={{ width: '30%', marginTop: 'auto' }} /></div>)}</div>
+            </div>
+          )}
+          {ready && <>
           {/* 1. GREETING + PRIMARY ACTION */}
           <section className="dash-card dash-hero rl-in">
             <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
@@ -253,13 +267,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           </section>
           {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
-          {/* 2. THE ASSISTANT: Rentletter noticed (deterministic, max 3, nothing when quiet). Mounts
-              after the signals arrive, so it carries no reveal class (a block that mounts after the
-              observer is created would sit at opacity 0 forever). It simply appears. */}
-          {signals.loaded && <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} /></div>}
+          {/* 2. THE ASSISTANT: Rentletter noticed (deterministic, max 3, nothing when quiet). Its
+              inputs are part of the first paint (ready), so it commits with the greeting and the
+              listings, never after them. */}
+          <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} /></div>
 
           {/* Referred to you (renders nothing when empty) */}
-          <ReferralInbox listings={listings || []} />
+          <ReferralInbox listings={listings || []} initialItems={signals.referralsInbox} />
 
           {/* 3. YOUR LISTINGS */}
           {error && (
@@ -274,12 +288,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
               <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
             </section>
-          )}
-          {!listingsLoaded && !listingsError && (
-            <div className="dash-block" aria-busy="true" aria-label="Loading your listings">
-              <div className="dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>
-              <div className="dash-grid">{[0, 1].map((i) => <div key={i} className="dash-card dash-skel"><span className="dash-skel-line" style={{ width: '70%', height: 18 }} /><span className="dash-skel-line" style={{ width: '45%' }} /><span className="dash-skel-line" style={{ width: '38%' }} /><span className="dash-skel-line" style={{ width: '30%', marginTop: 'auto' }} /></div>)}</div>
-            </div>
           )}
           {listingsLoaded && !hasListings && (
             <section className="dash-card dash-block" style={{ overflow: 'hidden' }} data-note="no reveal class: primary content that must never sit at opacity 0">
@@ -369,6 +377,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
           {/* Session privacy note (kept reassuring; sessions are real accounts now) */}
           <p className="dash-signed">Signed in as {userEmail}. Your listings are private to your account.</p>
+          </>}
         </div>}
 
         {modalOpen && (

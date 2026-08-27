@@ -11,14 +11,16 @@ import { useAdapter } from '../../lib/dashboardAdapter';
 const money = (n) => (n ? `$${Number(n).toLocaleString('en-CA')}` : null);
 const EMP = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
 
-export default function ReferralInbox({ listings }) {
+// initialItems: the inbox as loaded with the page (HomeView's signals), so this block is part of
+// the first paint instead of mounting after its own fetch. Refetches only after an assignment.
+export default function ReferralInbox({ listings, initialItems = null }) {
   const adapter = useAdapter();
-  const [items, setItems] = useState(null);
+  const [items, setItems] = useState(Array.isArray(initialItems) ? initialItems : null);
   const [choice, setChoice] = useState({});
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const load = async () => { try { const r = await adapter.fetch('/api/referrals/inbox'); if (r.ok) setItems((await r.json()).referrals || []); else setItems([]); } catch (e) { setItems([]); } };
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (!Array.isArray(initialItems)) load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   if (!items || items.length === 0) return null;
 
   const assign = async (ref) => {

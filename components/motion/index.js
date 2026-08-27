@@ -94,12 +94,23 @@ export function MotionStyles() {
       .m-depart-line { display: block; height: 3px; border-radius: 2px; background: ${C.rule}; }
       .m-depart-line.short { width: 60%; }
       .m-xfade { display: contents; }
+      /* f. the swipe card (components/motion/swipe.js): the action sits behind the card and is
+         revealed as the card moves; only the card's transform and the underlay's opacity change. */
+      .m-swipe { position: relative; min-width: 0; }
+      .m-swipe-card { position: relative; touch-action: pan-y; will-change: transform; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+      .m-swipe-under { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 16px; border-radius: 16px; opacity: 0; pointer-events: none; background: ${C.paperDeep}; color: ${C.ink}; }
+      .m-swipe-under.left { justify-content: flex-start; }
+      .m-swipe-under.right { justify-content: flex-end; }
+      .m-swipe-under.good { background: ${C.greenTint}; color: ${C.green}; }
+      .m-swipe-label { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 12px; border: 1px solid currentColor; border-radius: 999px; transform: scale(0.92); }
+      .m-swipe-under.armed .m-swipe-label { transform: scale(1.06); }
       @media ${MOTION_QUERY} {
         .m-verified-land { animation: m-land var(--m-base) var(--m-emphasis) both; transform-origin: left center; }
         @keyframes m-land { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: none; } }
         .m-depart-card { animation: m-depart var(--m-long) var(--m-settle) both; }
         @keyframes m-depart { 0% { opacity: 1; transform: translate(0, 0) scale(1); } 100% { opacity: 0; transform: translate(40px, -72px) scale(0.7); } }
         .m-xfade > * { animation: m-in var(--m-base) var(--m-enter) both; }
+        .m-swipe-label { transition: transform var(--m-short) var(--m-emphasis); }
         @keyframes m-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
       }
     `}</style>
