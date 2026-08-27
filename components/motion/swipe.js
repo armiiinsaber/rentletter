@@ -4,7 +4,9 @@
 // action behind it: push LEFT to set aside (away, down the list), push RIGHT to restore (back).
 // Release past a distance or above a velocity commits; anything less springs back on the settle
 // curve. Vertical gestures belong to the scroller: the card carries touch-action: pan-y, and the
-// first movement decides the axis, so a scroll is never taken over.
+// first movement decides the axis, so a scroll is never taken over. Fingers are handled by
+// native touch listeners (see the gesture core below for why pointer events are not enough on
+// iOS); mouse and pen use pointer events.
 //
 // The state change is the parent's (onCommit fires the moment the finger lifts); the motion
 // here is presentational and follows. Reduced motion: the drag still tracks the finger (it is
@@ -32,7 +34,7 @@ export default function SwipeCard({ flipKey, id, leftAction, rightAction, onComm
   const cardRef = useRef(null);
   const leftRef = useRef(null);   // underlay revealed when the card moves RIGHT
   const rightRef = useRef(null);  // underlay revealed when the card moves LEFT
-  const g = useRef({ active: false, lock: null, id: null, startX: 0, startY: 0, base: 0, x: 0, samples: [], dragged: false });
+  const g = useRef({ active: false, touch: false, lock: null, id: null, startX: 0, startY: 0, base: 0, x: 0, samples: [], dragged: false });
   const actions = useRef({ leftAction, rightAction, onCommit, departing });
   actions.current = { leftAction, rightAction, onCommit, departing };
 
@@ -61,46 +63,43 @@ export default function SwipeCard({ flipKey, id, leftAction, rightAction, onComm
   };
   const armedAt = (x) => { const w = cardRef.current?.offsetWidth || 320; return Math.abs(x) >= w * SWIPE.commitFraction; };
 
-  const onPointerDown = (e) => {
-    const s = g.current;
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (actions.current.departing) return; // already committed and leaving: the landing state is set
-    if (e.target.closest('button, a, input, select, textarea, label, [data-no-swipe]')) return;
-    const card = cardRef.current; if (!card) return;
+  // ── The gesture core. One implementation, two inputs: pointer events for mouse and pen, and
+  // NATIVE touch events for fingers. Touch is not routed through pointer events on purpose: on
+  // iOS, WebKit hands a touch to its own scroller as soon as the finger passes the system pan
+  // slop unless the page cancels the FIRST cancelable touchmove; pointer events cannot cancel
+  // scrolling at all (by spec), setPointerCapture does not survive the resulting pointercancel,
+  // and React registers touch listeners as passive, so a preventDefault from a React onTouchMove
+  // is ignored. The listeners below are attached directly with { passive: false }.
+  const canBegin = (target) => !actions.current.departing && !!cardRef.current && !target.closest('button, a, input, select, textarea, label, [data-no-swipe]');
+  const begin = (x, y, t, id, viaTouch) => {
+    const s = g.current; const card = cardRef.current;
     // Take over from wherever the card is right now (mid spring back, mid hint).
     const current = readTranslateX(card);
     setTransition(false);
-    s.active = true; s.lock = null; s.id = e.pointerId; s.startX = e.clientX; s.startY = e.clientY; s.base = current; s.x = current; s.samples = [{ t: e.timeStamp, x: current }]; s.dragged = false;
+    s.active = true; s.touch = viaTouch; s.lock = null; s.id = id; s.startX = x; s.startY = y; s.base = current; s.x = current; s.samples = [{ t, x: current }]; s.dragged = false;
     paint(current, armedAt(current));
   };
-  const onPointerMove = (e) => {
-    const s = g.current; if (!s.active || e.pointerId !== s.id) return;
-    const dx = e.clientX - s.startX, dy = e.clientY - s.startY;
-    if (!s.lock) {
-      if (Math.abs(dy) >= SWIPE.axisLock && Math.abs(dy) > Math.abs(dx)) { s.lock = 'v'; s.active = false; if (s.base) settle(s.base); return; } // the scroller's gesture
-      if (Math.abs(dx) >= SWIPE.axisLock && Math.abs(dx) > Math.abs(dy)) { s.lock = 'h'; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* capture is best effort */ } }
-      else return;
-    }
-    if (s.lock !== 'h') return;
+  const track = (dx, t) => {
+    const s = g.current;
     s.dragged = true;
-    e.preventDefault();
     const x = resist(s.base + dx);
     s.x = x;
-    s.samples.push({ t: e.timeStamp, x }); if (s.samples.length > 8) s.samples.shift();
+    s.samples.push({ t, x }); if (s.samples.length > 8) s.samples.shift();
     paint(x, armedAt(x));
   };
   // Spring back to rest (settle curve; instant under reduced motion).
   const settle = (from) => {
+    if (prefersReducedMotion()) { setTransition(false); paint(0, false); return; } // instantly at rest, this frame
     setTransition(true);
     paint(from, false);
     requestAnimationFrame(() => { paint(0, false); });
   };
-  const onPointerUp = (e) => {
-    const s = g.current; if (!s.active || e.pointerId !== s.id) return;
+  const release = (t) => {
+    const s = g.current;
     s.active = false;
     if (s.lock !== 'h') { if (s.x) settle(s.x); return; }
     const x = s.x; const w = cardRef.current?.offsetWidth || 320;
-    const oldest = s.samples.find((p) => e.timeStamp - p.t <= 100) || s.samples[0];
+    const oldest = s.samples.find((p) => t - p.t <= 100) || s.samples[0];
     const latest = s.samples[s.samples.length - 1];
     const v = oldest && latest && latest.t > oldest.t ? (latest.x - oldest.x) / (latest.t - oldest.t) : 0;
     const dirAction = x < 0 ? actions.current.leftAction : actions.current.rightAction;
@@ -112,6 +111,73 @@ export default function SwipeCard({ flipKey, id, leftAction, rightAction, onComm
     }
     settle(x);
   };
+
+  // Mouse and pen: pointer events, with an 8px axis lock and pointer capture once horizontal.
+  // Touch pointers are ignored here; the finger path is the native touch listeners below.
+  const onPointerDown = (e) => {
+    if (e.pointerType === 'touch') return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (!canBegin(e.target)) return;
+    begin(e.clientX, e.clientY, e.timeStamp, e.pointerId, false);
+  };
+  const onPointerMove = (e) => {
+    const s = g.current; if (!s.active || s.touch || e.pointerId !== s.id) return;
+    const dx = e.clientX - s.startX, dy = e.clientY - s.startY;
+    if (!s.lock) {
+      if (Math.abs(dy) >= SWIPE.axisLock && Math.abs(dy) > Math.abs(dx)) { s.lock = 'v'; s.active = false; if (s.base) settle(s.base); return; } // the scroller's gesture
+      if (Math.abs(dx) >= SWIPE.axisLock && Math.abs(dx) > Math.abs(dy)) { s.lock = 'h'; try { e.currentTarget.setPointerCapture(e.pointerId); } catch (err) { /* capture is best effort */ } }
+      else return;
+    }
+    if (s.lock !== 'h') return;
+    e.preventDefault();
+    track(dx, e.timeStamp);
+  };
+  const onPointerUp = (e) => {
+    const s = g.current; if (!s.active || s.touch || e.pointerId !== s.id) return;
+    release(e.timeStamp);
+  };
+
+  // Fingers: native touch events. The axis is decided on the FIRST touchmove that shows any
+  // direction, and a horizontal one is cancelled right there, before WebKit can start a scroll.
+  // A vertical one is never touched again: the browser scrolls exactly as it would without us.
+  // If the browser has already claimed the touch (touchmove no longer cancelable) the gesture is
+  // handed over, whatever its direction, so a scroll can never be hijacked.
+  useEffect(() => {
+    const card = cardRef.current; if (!card) return undefined;
+    const onStart = (e) => {
+      if (e.touches.length !== 1 || g.current.active) return;
+      if (!canBegin(e.target)) return;
+      const t = e.touches[0];
+      begin(t.clientX, t.clientY, e.timeStamp, t.identifier, true);
+    };
+    const onMove = (e) => {
+      const s = g.current; if (!s.active || !s.touch) return;
+      let t = null; for (const tt of e.touches) if (tt.identifier === s.id) t = tt;
+      if (!t) return;
+      const dx = t.clientX - s.startX, dy = t.clientY - s.startY;
+      if (!s.lock) {
+        if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return; // no direction to read yet
+        if (Math.abs(dx) > Math.abs(dy) && e.cancelable) s.lock = 'h';
+        else { s.lock = 'v'; s.active = false; if (s.base) settle(s.base); return; } // the scroller's gesture
+      }
+      if (s.lock !== 'h') return;
+      e.preventDefault(); // keeps the browser from starting a scroll mid drag (touch-action: pan-y allows one)
+      track(dx, e.timeStamp);
+    };
+    const onEnd = (e) => {
+      const s = g.current; if (!s.active || !s.touch) return;
+      let still = false; for (const tt of e.touches) if (tt.identifier === s.id) still = true;
+      if (still) return; // another finger lifted
+      release(e.timeStamp);
+    };
+    card.addEventListener('touchstart', onStart, { passive: true });
+    card.addEventListener('touchmove', onMove, { passive: false });
+    card.addEventListener('touchend', onEnd, { passive: true });
+    card.addEventListener('touchcancel', onEnd, { passive: true });
+    return () => { card.removeEventListener('touchstart', onStart); card.removeEventListener('touchmove', onMove); card.removeEventListener('touchend', onEnd); card.removeEventListener('touchcancel', onEnd); };
+    // Handlers read only refs (g, cardRef, actions), so binding once is correct.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // A drag that ends over a button must not click it.
   const onClickCapture = (e) => { if (g.current.dragged) { g.current.dragged = false; e.stopPropagation(); e.preventDefault(); } };
 
