@@ -19,5 +19,5 @@ export default async function handler(req, res) {
   // Full profile row (billing columns) via the service role — the RLS client's select is trimmed.
   const { data: profile } = await ctx.supabase.from('profiles').select('*').eq('id', ctx.user.id).maybeSingle();
   try { const s = await createCheckout({ profile: profile || { id: ctx.user.id }, email: ctx.user.email, interval }); return res.status(200).json({ url: s.url }); }
-  catch (e) { if (e.status && e.status < 500) return res.status(e.status).json({ error: e.message }); logServerError('[billing/checkout]', e); return res.status(500).json({ error: 'Could not start checkout.' }); }
+  catch (e) { if (e.status && e.status < 500) return res.status(e.status).json({ error: e.message }); logServerError('[billing/checkout]', e); return res.status(500).json({ error: 'Checkout didn’t open. Try again in a minute, or write to info@rentletter.ca and we’ll set you up.' }); }
 }

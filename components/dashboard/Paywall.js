@@ -19,7 +19,7 @@ const copyFor = (e) => (e.status === 'past_due' ? COPY.past_due : e.status === '
 async function post(url, body) {
   const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
   const j = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(j.error || 'Something went wrong.');
+  if (!r.ok) throw new Error(j.error || 'That didn’t work. Try again in a minute, or write to info@rentletter.ca.');
   return j;
 }
 

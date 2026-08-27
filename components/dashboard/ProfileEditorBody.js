@@ -23,6 +23,7 @@ import { buildPalette, PALETTE_ORDER, readableText } from '../../lib/brandPalett
 import { FONT_PAIRINGS, GOOGLE_FONTS_HREF, suggestPairingId } from '../../lib/brandFonts';
 import { PROVINCE_OPTIONS, normalizeProvince } from '../../lib/provinces';
 import LogoStudio from './LogoStudio';
+import { Crossfade, MotionStyles } from '../motion';
 
 const inputStyle = {
   width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl,
@@ -285,6 +286,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
 
   return (
     <div>
+      <MotionStyles />
       <Head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -344,16 +346,18 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
 
       {/* Logo — upload or generate with the AI studio (which carries the brand colours). Flows
           straight on from the details above; no divider or section header. */}
-      <div style={{ border: `1px solid ${C.rule}`, borderLeft: `4px solid ${accentPreview}`, borderRadius: R.card, padding: 16, background: C.paperDeep, marginBottom: 10 }}>
+      <div style={{ position: 'relative', border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 16, paddingLeft: 20, background: C.paperDeep, marginBottom: 10, overflow: 'hidden' }}>
+        {/* the accent edge re-enters on every colour change instead of snapping */}
+        <Crossfade watch={accentPreview}><span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: accentPreview }} /></Crossfade>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           {/* top-left logo slot (the brand placement) */}
           <div style={{ width: 88, height: 56, borderRadius: 8, background: '#fff', border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, padding: 6 }}>
-            {logoUrl
+            <Crossfade watch={logoUrl || 'none'}>{logoUrl
               ? <img src={logoUrl} alt="Your logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-              : <span style={{ fontSize: 10.5, color: C.inkMute, textAlign: 'center', lineHeight: 1.3 }}>No logo yet</span>}
+              : <span style={{ fontSize: 10.5, color: C.inkMute, textAlign: 'center', lineHeight: 1.3 }}>No logo yet</span>}</Crossfade>
           </div>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.full_name || 'Your name'}</div>
+            <Crossfade watch={fontId || 'default'}><div style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.full_name || 'Your name'}</div></Crossfade>
             {(form.brokerage || !logoUrl) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 1 }}>{form.brokerage || 'Your brokerage'}</div>}
             {form.phone && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>{form.phone}</div>}
           </div>

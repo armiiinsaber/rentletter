@@ -2,10 +2,10 @@
 // ONE listing — extracted verbatim from pages/landlord/[id].js so the real page (Supabase SSR)
 // and /demo/dashboard (in-memory fixture) render the SAME component. All I/O goes through
 // useAdapter() (lib/dashboardAdapter).
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, useReveal } from '../../components/ui';
+import { GlobalStyle, Icon, TickMeter, useReveal } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -14,6 +14,8 @@ import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest'
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
+import { isVerified } from '../../lib/noticed';
+import { AnimatedScore, useFlip, VerifiedMark, ReportDeparture, MotionStyles } from '../motion';
 import ChatWidget from '../../components/ChatWidget';
 import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
@@ -158,6 +160,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [textCopied, setTextCopied] = useState(false);
   const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState('');
+  const [departToken, setDepartToken] = useState(0); // the report leaving the screen after a successful send
+  const rankedRef = useRef(null); const asideRef = useRef(null);
   // Reveal sections on load + as they scroll into view. Re-run when the applicant set changes
   // so newly-rendered cards get observed.
   useReveal(`${applicants.length}-${compareOpen}-${editOpen}`);
@@ -291,6 +295,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         body: JSON.stringify({ listingId: listing.id }),
       });
       const j = await r.json();
+      if (r.ok) setDepartToken((n) => n + 1);
       setSendMsg(r.ok ? (j.preview ? `Demo: nothing sent. In the product this goes to ${j.sentTo || listing.landlord_email}.` : `Sent to ${j.sentTo || listing.landlord_email}.`) : (j?.error || 'Email send failed.'));
     } catch (e) { setSendMsg('Email send failed.'); }
     setSending(false);
@@ -344,6 +349,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const byScore = (x, y) => (y.application?.scorecard?.overall ?? 0) - (x.application?.scorecard?.overall ?? 0);
   const active = applicants.filter((a) => norm(a.decisionStatus) === 'ranked').sort(byScore);
   const setAsideList = applicants.filter((a) => norm(a.decisionStatus) === 'set_aside').sort(byScore);
+  // Reordering: cards travel to their new rank (FLIP, transforms only) instead of the list redrawing.
+  useFlip(rankedRef, active.map((a) => a.linkId).join('|'));
+  useFlip(asideRef, setAsideList.map((a) => a.linkId).join('|'));
   const totalApplicants = active.length + setAsideList.length;
 
   // Normalize the ACTIVE ranked list into the shared Compare shape (screenable facts only;
@@ -403,7 +411,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     // a misleading "good to go" status while the actual best picks looked flagged in red.)
     const borderColor = top5 ? C.red : C.ruleDark;
     return (
-      <div key={a.linkId} id={`applicant-${a.linkId}`} style={{
+      <div key={a.linkId} id={`applicant-${a.linkId}`} data-flip-key={a.linkId} style={{
         minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
@@ -423,6 +431,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               {/* unreviewed marker — space is always reserved so the row never shifts when it clears */}
               {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0, alignSelf: 'center', marginRight: -2 }} />}
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{app.full_name || 'Applicant'}</span>
+              <VerifiedMark verified={isVerified(a)} id={a.linkId} />
               {top5 && <span style={{ fontSize: 10, color: C.paper, background: C.red, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>TOP 5</span>}
               {isSetAside && <span style={{ fontSize: 10, color: C.inkSoft, background: C.rule, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>SET ASIDE</span>}
               {a.decisionPriority === 'finalist' && !isSetAside && <span title="Your finalist mark" style={{ fontSize: 10, color: C.paper, background: C.ink, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill }}>FINALIST</span>}
@@ -448,11 +457,16 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
           </div>
           {overall != null && (
-            <div style={{ textAlign: 'right', minWidth: 54 }}>
-              <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1 }}>
-                {Number(overall).toFixed(1)}<span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}> / 5</span>
-              </div>
-              <div style={{ fontSize: 9, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600, marginTop: 2 }}>Scorecard</div>
+            <div style={{ textAlign: 'right', minWidth: 54, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+              <AnimatedScore value={overall} index={rank ? rank - 1 : 0} renderValue={(shown, target) => (
+                <>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: C.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }} aria-label={`${Number(target).toFixed(1)} out of 5`}>
+                    {Number(shown).toFixed(1)}<span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}> / 5</span>
+                  </div>
+                  <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} />
+                </>
+              )} />
+              <div style={{ fontSize: 9, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600 }}>Scorecard</div>
             </div>
           )}
           <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
@@ -528,6 +542,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         <title>{l.name || 'Listing'} — Rentletter</title>
       </Head>
       <GlobalStyle />
+      <MotionStyles />
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} />
 
@@ -687,7 +702,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     ⇄ Compare top tenants
                   </button>
                 )}
-                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+                <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
                   {active.map((a, idx) => (
                     <React.Fragment key={a.linkId}>
                       {idx === 5 && (
@@ -708,7 +723,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
                       De-prioritized for the screenable reasons noted. Still shown to your landlord, at the bottom.
                     </p>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
+                    <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 12 }}>
                       {setAsideList.map((a) => renderApplicantCard(a, { rank: null, top5: false, isSetAside: true }))}
                     </div>
                   </div>
@@ -768,6 +783,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   style={{ background: (sending || !l.landlord_email) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                   <Icon name="mail" size={16} color={C.paper} /> {sending ? 'Sending…' : 'Email report'}
                 </button>
+                <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
               {sendMsg && (
                 <div style={{ marginTop: 12, fontSize: 13, color: C.inkSoft }}>{sendMsg}</div>
