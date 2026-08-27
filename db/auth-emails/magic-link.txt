@@ -1,0 +1,10 @@
+Rentletter
+
+Here is your sign in link for Rentletter.
+
+Sign in to Rentletter:
+{{ .ConfirmationURL }}
+
+The link works once and expires in an hour. If you did not ask for it, ignore this email.
+
+Rentletter, rentletter.ca

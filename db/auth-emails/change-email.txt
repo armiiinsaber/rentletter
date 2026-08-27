@@ -1,0 +1,10 @@
+Rentletter
+
+Confirm the change of your Rentletter email from {{ .Email }} to {{ .NewEmail }}.
+
+Confirm new email:
+{{ .ConfirmationURL }}
+
+The link works once and expires in an hour. If you did not ask for this, ignore this email and nothing changes.
+
+Rentletter, rentletter.ca

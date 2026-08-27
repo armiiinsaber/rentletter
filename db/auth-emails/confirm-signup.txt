@@ -1,0 +1,10 @@
+Rentletter
+
+Confirm this address to open your Rentletter workspace.
+
+Confirm my email:
+{{ .ConfirmationURL }}
+
+The link works once and expires in an hour. If you did not sign up, ignore this email.
+
+Rentletter, rentletter.ca
