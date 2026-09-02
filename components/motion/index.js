@@ -10,18 +10,24 @@ import { CURVE, DURATION, MOTION_VARS, MOTION_QUERY, prefersReducedMotion, tween
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 // a. SCORE REVEAL: the number counts up and the meter fills to position. Stagger by index,
-// capped, so ten scores settle together inside about three quarters of a second.
-export function AnimatedScore({ value, index = 0, max = 5, size = 14, showValue = true, onDark = false, renderValue }) {
+// capped, so ten scores settle together inside about three quarters of a second. `refill` is
+// a key: when it changes after mount (the meter's variant flips from muted to full because
+// documents landed or the realtor confirmed the employer) the fill restarts from empty, the
+// same tween as the mount fill. A changed value alone continues from the last shown number.
+export function AnimatedScore({ value, index = 0, max = 5, size = 14, showValue = true, onDark = false, renderValue, refill }) {
   const target = Math.max(0, Math.min(Number(value) || 0, max));
   const [shown, setShown] = useState(target); // SSR and reduced motion read the real value
   const lastShown = useRef(null); // null until the first frame: the first reveal counts from 0
+  const lastRefill = useRef(refill);
   useEffect(() => {
-    const from = lastShown.current == null ? 0 : lastShown.current;
+    const restart = lastShown.current == null || lastRefill.current !== refill;
+    lastRefill.current = refill;
+    const from = restart ? 0 : lastShown.current;
     const delay = Math.min(index, 6) * 50;
     const cancel = tween({ from, to: target, ms: DURATION.long, delay, onFrame: (v) => { lastShown.current = v; setShown(v); } });
     return () => cancel(false); // stop only: the next run (or unmount) owns the final value
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [target]);
+  }, [target, refill]);
   return renderValue ? renderValue(shown, target) : <TickMeter value={Math.round(shown * 10) / 10} max={max} size={size} showValue={showValue} onDark={onDark} />;
 }
 

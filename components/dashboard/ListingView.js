@@ -521,7 +521,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     // Where this applicant is in the process (lib/applicantState.js). The collapsed card's body is
     // that state's next action and nothing else; the expanded card is unchanged.
     const st = applicantState({ application: app, junction: a, verification: a.docVerifications?.[0] || null, listing });
-    const fitSecondary = st.state === 'new' || st.state === 'requested' || st.state === 'checked' || st.state === 'mismatch';
+    // The meter renders on every active card. Its colour carries the confidence: muted grey while
+    // the Fit rests on stated facts, the editorial red once documents match or the realtor verified.
+    const meterMuted = !!fit && fit.label === 'stated';
     const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
     const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
     const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 10, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
@@ -601,15 +603,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
               <VerifiedMark verified={st.state === 'verified'} id={a.linkId} />
             </div>
-            {overall != null && fitSecondary ? (
-              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, flexShrink: 0 }} aria-label={`${Number(overall).toFixed(1)} out of 5, ${fit.label}`}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: C.inkMute, fontVariantNumeric: 'tabular-nums' }}>{Number(overall).toFixed(1)}</span>
-                <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
-              </span>
-            ) : overall != null ? (
-              <AnimatedScore value={overall} index={rank ? rank - 1 : 0} renderValue={(shown, target) => (
+            {overall != null ? (
+              <AnimatedScore value={overall} index={rank ? rank - 1 : 0} refill={meterMuted ? 'muted' : 'full'} renderValue={(shown, target) => (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5, ${fit.label}`}>
-                  <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} />
+                  <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} muted={meterMuted} />
                   <span style={{ fontSize: 18, fontWeight: 800, color: C.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{Number(shown).toFixed(1)}</span>
                   <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
                 </span>

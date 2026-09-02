@@ -217,12 +217,15 @@ export const useReveal = (dep) => {
 // "4.2/5" text: filled ticks in signal red, a half-opacity tick for the fraction,
 // empty ticks in rule. Pass showValue to print the tabular-nums numeral beside it.
 // Purely presentational — no motion, safe under reduced-motion.
-export const TickMeter = ({ value, max = 5, size = 14, showValue = true, onDark = false }) => {
+// muted: the same meter with grey ticks instead of the editorial red. The colour carries the
+// confidence: muted while the Fit rests on stated facts, red once documents match or the realtor
+// has verified (the caller decides from fit.label; components/dashboard/ListingView.js).
+export const TickMeter = ({ value, max = 5, size = 14, showValue = true, onDark = false, muted = false }) => {
   const v = Math.max(0, Math.min(Number(value) || 0, max));
   const full = Math.floor(v);
   const hasPartial = v - full >= 0.25 && full < max;
   const empty = onDark ? C.instRule : C.rule;
-  const fill = onDark ? C.redBright : C.red;
+  const fill = muted ? (onDark ? C.instMute : C.inkMute) : (onDark ? C.redBright : C.red);
   return (
     <span role="img" aria-label={`${v} out of ${max}`}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
