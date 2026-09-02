@@ -11,10 +11,11 @@ import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
+import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
+import { computeFit } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
-import { isVerified } from '../../lib/noticed';
 import { AnimatedScore, useFlip, VerifiedMark, ReportDeparture, MotionStyles } from '../motion';
 import SwipeCard from '../motion/swipe';
 import { DURATION, prefersReducedMotion } from '../../lib/motion';
@@ -115,6 +116,17 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setFocusDocFor({ linkId, renew: !!renew, at: Date.now() });
     setTimeout(() => document.getElementById(`applicant-${linkId}`)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 30);
   };
+  // "Verify" on a matched card: open it and land on the screening checklist.
+  const focusChecklist = (linkId) => {
+    const a = applicants.find((x) => x.linkId === linkId); if (!a) return;
+    openApplicant(a);
+    setTimeout(() => document.getElementById(`checklist-${linkId}`)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 30);
+  };
+  // A confirmation changed: keep the row and recompute Fit here so the header label and number
+  // move at once (same computeFit the server runs, lib/fitScore.js; listing is the current row).
+  const patchConfirmations = (linkId, confirmations) => setApplicants((prev) => prev.map((x) => (x.linkId === linkId
+    ? { ...x, confirmations, application: { ...x.application, fit: computeFit({ application: x.application, listing, verification: x.docVerifications?.[0] || null, confirmations }) } }
+    : x)));
   const onNoticeAction = (a) => {
     if (a.type === 'panel') { window.dispatchEvent(new CustomEvent(OPEN_EVENT)); return; }
     if (a.event === 'request-docs') focusApplicantDocs(a.linkId, a.renew);
@@ -490,6 +502,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 10, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
     const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 2, background: 'transparent', color: C.ink, border: 'none', fontSize: 13, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
     const stateLine = { fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
+    const confirmedBy = (by) => (!by || by === 'You' || by === String(profile?.full_name || '').trim() ? 'you' : by);
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
@@ -561,7 +574,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
-              <VerifiedMark verified={st.state === 'verified' && isVerified(a)} id={a.linkId} />
+              <VerifiedMark verified={st.state === 'verified'} id={a.linkId} />
             </div>
             {overall != null && fitSecondary ? (
               <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, flexShrink: 0 }} aria-label={`${Number(overall).toFixed(1)} out of 5, ${fit.label}`}>
@@ -581,10 +594,18 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
-          {st.state === 'verified' && (<>
+          {st.state === 'matched' && (<>
             <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             {missed.length > 0 && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 3, lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
+            {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
           </>)}
+          {st.state === 'verified' && (<>
+            <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+            <div style={stateLine}>Verified by {confirmedBy(a.confirmations?.employer?.by)}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+          </>)}
+          {st.state === 'sent' && (
+            <div style={stateLine}>Sent to landlord{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+          )}
           {st.state === 'new' && (<>
             <div style={stateLine}>No documents yet</div>
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
@@ -634,6 +655,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </div>
             ))}
           </div>
+
+          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} />
 
           <ApplicantDocIntel
             listingId={listing.id}

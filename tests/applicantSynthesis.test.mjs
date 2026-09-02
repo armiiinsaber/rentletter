@@ -11,9 +11,11 @@ const verifiedReport = (overrides = {}) => ({
 });
 const applicant = (app = {}, docVerifications = []) => ({ linkId: 'l1', application: app, docVerifications });
 
-test('verified income with a landlord reference and a ratio', () => {
+test('documented income with a landlord reference and a ratio; verified once the employer is confirmed', () => {
   const a = applicant({ annual_income: 90000, rent_to_income_ratio: 34, prev_landlord_name: 'J. Wong', references: [{}, {}] }, [verifiedReport()]);
-  assert.equal(synthesisLine(a), 'Verified income at 2.9x rent, landlord reference on file');
+  assert.equal(synthesisLine(a), 'Documented income at 2.9x rent, landlord reference on file');
+  assert.equal(synthesisLine({ ...a, confirmations: { employer: { at: '2026-09-02T14:00:00Z', by: 'Armin' } } }), 'Verified income at 2.9x rent, landlord reference on file');
+  assert.equal(synthesisLine({ ...applicant({ annual_income: 90000, rent_to_income_ratio: 34 }), confirmations: { employer: { at: 'x', by: 'Armin' } } }), 'Verified income at 2.9x rent, no reference yet');
   assert.equal(synthesisFacts(a).incomeVerified, true);
 });
 

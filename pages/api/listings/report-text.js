@@ -5,6 +5,7 @@
 // are drawn only from screenable facts (income, tenure, references, fit) — never
 // protected grounds. Copy-only; no SMS/Twilio.
 import Anthropic from '@anthropic-ai/sdk';
+import { confirmedSummary } from '../../../lib/landlordReportPdf';
 import { recordEvent } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -75,7 +76,8 @@ export default async function handler(req, res) {
         rentToIncomePct: a.rent_to_income_ratio ?? null,
         referencesProvided: Array.isArray(a.references) ? a.references.length : 0,
         fitScore: a.fit?.score ?? null,
-        fitLabel: a.fit?.label ?? null, // 'verified' | 'stated'
+        fitLabel: a.fit?.label ?? null, // 'verified' | 'docs match' | 'stated'
+        confirmed: confirmedSummary(row.confirmations), // "Confirmed by Armin: employer, previous landlord · Sep 2" or null
       };
     };
     const ranked = ctx.active.map(toCandidate);
@@ -121,7 +123,8 @@ RULES:
 - Labelled lines indented exactly 7 spaces. Each: label, one space, "." leader dots, one space, value — padded so the "label + dots" segment is 15 chars wide and EVERY value lines up. Labels verbatim in order: Income, Tenure, References, Fit. Omit a line only if the fact is missing.
 - Income value: "$<amount>/yr before tax" then two spaces then "(<pct>% rent-to-income)" if a ratio exists. If householdIncome is present, use it and write "$<total>/yr before tax (household)". If netIncome is present add a second labelled line "After tax ...... $<netIncome>/yr" followed by " (estimate)" unless netIncomeSource is "stated".
 - Role: if employmentType is "self-employed", write "<role>, <employer> (self-employed)".
-- Fit value: ONE short factual phrase from the data (e.g. "comfortable on income", "within typical range", "long, stable tenure"). Under ~4 words.
+- Fit value: ONE short factual phrase from the data (e.g. "comfortable on income", "within typical range", "long, stable tenure"). Under ~4 words. Append the fitLabel in uppercase in parentheses: "(VERIFIED)", "(DOCS MATCH)" or "(STATED)".
+- If a candidate has "confirmed", add one more labelled line after Fit, label "Confirmed", value the confirmed string verbatim. Omit the line when confirmed is null.
 - This is a RANKING-ONLY shortlist: do NOT include any document-verification content — no "Documents verified", no "Not verified", no credit score, no verified-facts line. Verification is sent separately, per finalist.
 - SET ASIDE: one line per applicant — "- <NAME IN UPPERCASE> — <reason verbatim from the data>". No labelled block, no scores. These were de-prioritized for screenable reasons; present them neutrally.
 - Between candidate blocks (within a section) put a blank line, a 28 em-dash rule, a blank line. Use one em-dash rule before the sign-off.

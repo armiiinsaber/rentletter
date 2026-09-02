@@ -42,7 +42,8 @@
 --   type  text  CHECK (type IN (
 --     'applicant_applied', 'documents_requested', 'documents_uploaded', 'verification_completed',
 --     'verification_failed', 'report_generated', 'report_sent', 'applicant_set_aside',
---     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'referral_received',
+--     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed',
+--     'referral_received',
 --     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',
 --     'listing_created', 'listing_updated', 'branding_updated'))
 --   The single source of truth in code is lib/eventTypes.js (EVENT_TYPES). tests/events.test.mjs

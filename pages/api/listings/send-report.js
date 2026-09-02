@@ -15,6 +15,7 @@ import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { signingName } from '../../../lib/reportSignature';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+let lastSentWarned = false; // the last_sent_at column (db/screening.sql) missing is logged once, never fails a send
 
 function esc(s) {
   return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -94,6 +95,11 @@ export default async function handler(req, res) {
       console.error('[send-report] Resend error:', result.error);
       return res.status(500).json({ error: 'Email send failed. Try again.' });
     }
+    // Every applicant on this report: last_sent_at = now (db/screening.sql). Tolerated when absent.
+    try {
+      const ids = [...ctx.active, ...ctx.setAside].map((r) => r.linkId).filter(Boolean);
+      if (ids.length) { const { error: sentErr } = await admin.from('listing_applicants').update({ last_sent_at: new Date().toISOString() }).in('id', ids); if (sentErr && !lastSentWarned) { lastSentWarned = true; console.warn('[send-report] last_sent_at not recorded (run db/screening.sql):', sentErr.message); } }
+    } catch (e) { if (!lastSentWarned) { lastSentWarned = true; console.warn('[send-report] last_sent_at not recorded:', e?.message || e); } }
     await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_sent', payload: { listingName: ctx.listing.name || ctx.listing.address || null, landlordEmail, landlordName: ctx.listing.landlord_name || null, applicants: n } });
     return res.status(200).json({ ok: true, sentTo: landlordEmail });
   } catch (e) {

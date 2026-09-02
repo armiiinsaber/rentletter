@@ -35,6 +35,7 @@ DO $$ BEGIN
       'applicant_restored',
       'applicant_withdrew',
       'applicant_marked_finalist',
+      'applicant_confirmed',
       'referral_received',
       'referral_accepted',
       'invite_link_created',

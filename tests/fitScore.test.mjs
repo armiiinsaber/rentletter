@@ -2,14 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { computeFit, readVerification } from '../lib/fitScore.js';
 
-// Fixed record for every case: a landlord reference, one reference, three years at the job.
+// Fixed record for every case: a landlord reference the realtor has CALLED (confirmations.landlord), one
+// reference, three years at the job. A landlord name alone is worth 1.0 in R; the call is worth 1.5.
 const record = { prev_landlord_name: 'A. Patel', references: [{ name: 'R' }], years_at_job: '3', reason_for_moving: 'moving for work', disclosures: null };
 const app = (income, extra = {}) => ({ ...record, annual_income: income, co_applicant: null, ...extra });
 const report = ({ income = true, employer = true, nameMatch = 'match' } = {}) => ({
   analyzedAt: '2026-08-01T00:00:00Z', nameMatch, documents: [{ documentType: 'pay stub' }],
   comparisons: [{ field: 'Income', stated: '$90,000', found: '$90,000', status: income ? 'match' : 'close' }, { field: 'Employer', stated: 'X', found: 'X', status: employer ? 'match' : 'mismatch' }],
 });
-const fit = (income, rent, listing = {}, verification = null, extra = {}) => computeFit({ application: app(income, extra), listing: { monthly_rent: rent, ...listing }, verification });
+const CALLED = { landlord: { at: '2026-09-02T14:00:00Z', by: 'Armin' } };
+const fit = (income, rent, listing = {}, verification = null, extra = {}, confirmations = CALLED) => computeFit({ application: app(income, extra), listing: { monthly_rent: rent, ...listing }, verification, confirmations });
 const say = (label, f) => console.log(`  ${label}: score ${f.score} ${f.label}  A ${f.A} E ${f.E} R ${f.R}  ratio ${f.ratio}%`);
 
 test('a. 170000 at 4700 then 1000', () => {
@@ -27,7 +29,7 @@ test('b. 60000 at 2000 then 2600', () => {
 test('c. 90000 at 2500 stated, then income and employer matched', () => {
   const s = fit(90000, 2500), v = fit(90000, 2500, {}, report()); say('90000 @ 2500 stated', s); say('90000 @ 2500 verified', v);
   assert.equal(s.score, 4.0); assert.equal(s.label, 'stated');
-  assert.equal(v.E, 5.0); assert.equal(v.score, 4.9); assert.equal(v.label, 'verified'); assert.equal(v.incomeSource, 'verified'); assert.equal(v.incomeUsed, 90000);
+  assert.equal(v.E, 5.0); assert.equal(v.score, 4.9); assert.equal(v.label, 'docs match', 'documents matching is not verification'); assert.equal(v.incomeSource, 'verified'); assert.equal(v.incomeUsed, 90000);
 });
 
 test('d. free text never enters: identical objects for different reason_for_moving and disclosures', () => {
@@ -83,4 +85,31 @@ test('the verified income figure is parsed from found; an implausible figure fal
   assert.equal(monthly.incomeUsed, 90000); assert.equal(monthly.incomeSource, 'verified');
   const co = fit(60000, 2000, {}, null, { co_applicant: { annualIncome: 60000 } });
   assert.equal(co.incomeUsed, 120000); assert.equal(co.ratio, 20);
+});
+
+test('confirmations: a stated landlord only gives R 4.5 and case a becomes 3.9 stated', () => {
+  const f = fit(170000, 4700, {}, null, {}, {}); say('170000 @ 4700, landlord name only', f);
+  assert.equal(f.R, 4.5); assert.equal(f.score, 3.9); assert.equal(f.label, 'stated');
+});
+
+test('confirmations: employer confirmed with no documents gives E 5.0 and the label verified', () => {
+  const f = fit(90000, 2500, {}, null, {}, { ...CALLED, employer: { at: '2026-09-02T14:00:00Z', by: 'Armin' } }); say('employer confirmed, no docs', f);
+  assert.equal(f.E, 5.0); assert.equal(f.label, 'verified'); assert.equal(f.score, 4.9);
+  assert.equal(f.confirmations.employer.by, 'Armin');
+  const req = fit(90000, 2500, { pref_requires_employer_verification: true }, null, {}, { employer: { at: 'x', by: 'Armin' } });
+  assert.equal(req.criteria.find((k) => k.key === 'pref_requires_employer_verification').status, 'met');
+});
+
+test('confirmations: id confirmed on a name mismatch report lifts E from 1.0 to the documents', () => {
+  const without = fit(90000, 2500, {}, report({ nameMatch: 'mismatch' }));
+  const withId = fit(90000, 2500, {}, report({ nameMatch: 'mismatch' }), {}, { ...CALLED, id: { at: 'x', by: 'Armin' } });
+  say('mismatch, no id', without); say('mismatch, id confirmed', withId);
+  assert.equal(without.E, 1.0); assert.equal(withId.E, 5.0); assert.equal(withId.label, 'docs match');
+});
+
+test('the label is docs match, not verified, when only the documents matched', () => {
+  const f = fit(90000, 2500, {}, report()); say('docs matched, nothing confirmed', f);
+  assert.equal(f.label, 'docs match'); assert.equal(f.E, 5.0);
+  assert.equal(fit(90000, 2500, {}, report({ employer: false })).label, 'docs match');
+  assert.equal(fit(90000, 2500).label, 'stated');
 });
