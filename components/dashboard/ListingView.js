@@ -24,6 +24,7 @@ import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import { synthesisLine } from '../../lib/applicantSynthesis';
+import { applicantState } from '../../lib/applicantState';
 import { reportEvent } from '../../lib/clientEvents';
 import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
@@ -480,6 +481,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const fit = app.fit || null;
     const overall = fit ? fit.score : null;
     const missed = (fit?.criteria || []).filter((c) => c.status === 'missed').map((c) => c.detail);
+    // Where this applicant is in the process (lib/applicantState.js). The collapsed card's body is
+    // that state's next action and nothing else; the expanded card is unchanged.
+    const st = applicantState({ application: app, junction: a, verification: a.docVerifications?.[0] || null, listing });
+    const fitSecondary = st.state === 'new' || st.state === 'requested' || st.state === 'checked' || st.state === 'mismatch';
+    const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
+    const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
+    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 10, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
+    const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 2, background: 'transparent', color: C.ink, border: 'none', fontSize: 13, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
+    const stateLine = { fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
@@ -529,8 +539,21 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <button type="button" onClick={undoRecent} style={{ minHeight: 40, padding: '0 14px', background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Undo</button>
           </div>
         )}
-        {/* THE CARD AT REST: name, score, verified state, one line of why. Tap to open. A div with
-            a button role (a real button would be excluded from the drag gesture). */}
+        {/* THE CARD AT REST. A div with a button role (a real button would be excluded from the drag
+            gesture). Set aside: one muted line. Otherwise the header row, then the body for the
+            applicant's state: their next action, nothing that does not apply. */}
+        {st.state === 'set_aside' ? (
+          <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
+            onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: C.inkMute, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+              <span style={{ fontWeight: 700, color: C.inkSoft }}>{app.full_name || 'Applicant'}</span>
+              {a.decisionReasonCode ? ` · ${reasonLabel(a.decisionReasonCode)}` : ''}
+            </div>
+            <button type="button" onClick={stop(() => restoreApplicant(a))} style={{ ...textBtn, marginTop: 0, color: C.green, flexShrink: 0 }}>Restore</button>
+            <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
+          </div>
+        ) : (
         <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
           onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
           style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
@@ -538,9 +561,14 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
-              <VerifiedMark verified={isVerified(a)} id={a.linkId} />
+              <VerifiedMark verified={st.state === 'verified' && isVerified(a)} id={a.linkId} />
             </div>
-            {overall != null ? (
+            {overall != null && fitSecondary ? (
+              <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 5, flexShrink: 0 }} aria-label={`${Number(overall).toFixed(1)} out of 5, ${fit.label}`}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: C.inkMute, fontVariantNumeric: 'tabular-nums' }}>{Number(overall).toFixed(1)}</span>
+                <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
+              </span>
+            ) : overall != null ? (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} renderValue={(shown, target) => (
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5, ${fit.label}`}>
                   <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} />
@@ -553,9 +581,28 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-          {missed.length > 0 && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 3, lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
+          {st.state === 'verified' && (<>
+            <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+            {missed.length > 0 && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 3, lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
+          </>)}
+          {st.state === 'new' && (<>
+            <div style={stateLine}>No documents yet</div>
+            {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
+          </>)}
+          {st.state === 'requested' && (<>
+            <div style={stateLine}>Documents requested{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+            {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
+          </>)}
+          {st.state === 'checked' && (<>
+            <div style={stateLine}>Documents on file · nothing matched</div>
+            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
+          </>)}
+          {st.state === 'mismatch' && (<>
+            <div style={stateLine}>Name on documents did not match</div>
+            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
+          </>)}
         </div>
+        )}
 
         {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
           {/* Status line: rank and marks that only matter once you are looking at this person. */}
