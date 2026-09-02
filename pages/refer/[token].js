@@ -120,7 +120,7 @@ export default function ReferralConsent() {
                 </div>
                 {data.verification && (
                   <div style={{ marginTop: 12, padding: '10px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55 }}>
-                    Also shared: a <strong style={{ color: C.ink }}>summary</strong> of the document check {from.split(' (')[0]} ran{data.verification.analyzedAt ? ` on ${dateLong(data.verification.analyzedAt)}` : ''} — which facts matched, and when. The documents themselves are never stored or shared.
+                    Also shared: a <strong style={{ color: C.ink }}>summary</strong> of the document check {from.split(' (')[0]} ran{data.verification.analyzedAt ? ` on ${dateLong(data.verification.analyzedAt)}` : ''}, which facts matched, and when. The documents themselves stay with that realtor for 14 days at most and are not shared.
                   </div>
                 )}
               </div>

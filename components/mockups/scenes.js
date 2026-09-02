@@ -74,7 +74,7 @@ export function VerificationScene({ phone = false }) {
     <div style={{ position: 'absolute', inset: 0, background: '#101012', color: '#e8e4d9', overflow: 'hidden', padding: pad, display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.6%, 10px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <Eyebrow color="#ff4d55">Document verification</Eyebrow>
-        <span style={{ fontSize: 9, color: '#9a958a', whiteSpace: 'nowrap' }}>3 documents · read once, discarded</span>
+        <span style={{ fontSize: 9, color: '#9a958a', whiteSpace: 'nowrap' }}>3 documents · held 14 days</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Avatar a={CAST[0]} size={30} />
@@ -140,7 +140,7 @@ export function TenantUploadScene() {
   const Doc = ({ name, state }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
       <span style={{ width: 26, height: 26, borderRadius: 6, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📄</span>
-      <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div><div style={{ fontSize: 9.5, color: state === 'done' ? C.green : C.inkMute }}>{state === 'done' ? 'Read and discarded — facts kept' : 'Reading…'}</div></div>
+      <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div><div style={{ fontSize: 9.5, color: state === 'done' ? C.green : C.inkMute }}>{state === 'done' ? 'Read · held 14 days for review' : 'Reading…'}</div></div>
       {state === 'done' ? <Icon name="check" size={14} color={C.green} strokeWidth={2.5} /> : <span style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${C.rule}`, borderTopColor: C.red, display: 'inline-block' }} />}
     </div>
   );
@@ -148,7 +148,7 @@ export function TenantUploadScene() {
     <div style={{ position: 'absolute', inset: 0, background: C.paper, overflow: 'hidden', display: 'flex', flexDirection: 'column', padding: '14px' }}>
       <Eyebrow>Secure document request</Eyebrow>
       <div className="rl-serif" style={{ fontSize: 'clamp(16px, 4.4vw, 20px)', color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 6 }}>Sarah Chen asked for two documents.</div>
-      <div style={{ fontSize: 10.5, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>For 88 Harbour St. Each file is read once by Rentletter to confirm the facts on your application, then deleted. Nothing is stored or forwarded.</div>
+      <div style={{ fontSize: 10.5, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>For 88 Harbour St. Each file is read by Rentletter to confirm the facts on your application, then held for your realtor to view for 14 days and deleted. Nothing is forwarded.</div>
       <div style={{ border: `1.5px dashed ${C.ruleDark}`, borderRadius: R.card, padding: '14px 10px', textAlign: 'center', marginBottom: 10 }}>
         <div style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>Tap to add a document</div>
         <div style={{ fontSize: 9.5, color: C.inkMute, marginTop: 2 }}>Pay stub, employment letter, or credit report · PDF or photo</div>
@@ -199,8 +199,8 @@ export const SCENES = [
   { key: 'film', title: 'Product film', blurb: 'The 43-second camera move through the product, synced to the narration timeline. Hover for the scrubber.', film: true, animated: true },
   { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero — applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3', animated: true, stillStep: 3 },
   { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives — co-branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/shortlist/…', Scene: LandlordReportScene, aspect: '4 / 3' },
-  { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read once, facts matched, an OHRC-safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
+  { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read, facts matched, an OHRC-safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
   { key: 'apply', title: 'Tenant application', blurb: 'How simple it is to apply — one step at a time, no account.', device: 'phone', Scene: TenantApplyScene },
-  { key: 'upload', title: 'Secure document upload', blurb: 'The tenant’s secure-link experience: read once, discarded.', device: 'phone', Scene: TenantUploadScene },
+  { key: 'upload', title: 'Secure document upload', blurb: 'The tenant’s secure-link experience: read, held 14 days, deleted.', device: 'phone', Scene: TenantUploadScene },
   { key: 'home', title: 'Dashboard on a phone', blurb: 'Mobile-native: listings, applicants and new activity at a glance.', device: 'phone', Scene: DashboardHomeScene },
 ];

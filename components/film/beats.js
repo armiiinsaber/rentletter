@@ -160,7 +160,7 @@ export function VerifyScreen({ b }) {
   return (
     <Screen dark>
       <div style={{ padding: pad, display: 'flex', flexDirection: 'column', gap: 9, position: 'absolute', inset: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><Eyebrow color="#ff4d55">Document verification</Eyebrow><span style={{ fontSize: 9, color: '#9a958a' }}>3 documents · read once</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><Eyebrow color="#ff4d55">Document verification</Eyebrow><span style={{ fontSize: 9, color: '#9a958a' }}>3 documents · held 14 days</span></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Avatar a={CAST[0]} size={30} />
           <div style={{ minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 800 }}>Priya Nair</div><div style={{ fontSize: 10, color: '#9a958a' }}>Name on documents matches the applicant</div></div>
@@ -193,7 +193,7 @@ export function VerifyScreen({ b }) {
               </span>
             ))}
           </div>
-          <div style={{ position: 'absolute', left: 0, top: 2, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: '#e8e4d9', ...fade(b.deleted, 4) }}><span style={{ width: 3, height: 12, background: '#ff4d55' }} /><strong>3 files deleted.</strong><span style={{ color: '#9a958a' }}>Nothing is stored. Only the confirmed facts remain.</span></div>
+          <div style={{ position: 'absolute', left: 0, top: 2, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: '#e8e4d9', ...fade(b.deleted, 4) }}><span style={{ width: 3, height: 12, background: '#ff4d55' }} /><strong>3 files deleted.</strong><span style={{ color: '#9a958a' }}>Held 14 days for review, then gone. The confirmed facts remain.</span></div>
         </div>
         <div style={{ marginTop: 'auto', padding: '8px 12px', background: '#161618', border: '1px solid #2a2a2e', borderLeft: '3px solid #ff4d55', borderRadius: R.ctrl, fontSize: 10, lineHeight: 1.5, color: '#c8c2b3', ...fade(b.badge, 4) }}>
           <strong style={{ color: '#e8e4d9' }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; tenure and title are consistent across documents.

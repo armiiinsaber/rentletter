@@ -158,7 +158,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
       ) : (
         <>
           <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
-            Instead of collecting the finalist’s documents yourself, send them a secure link to upload their own — no email back-and-forth. Their files are analyzed then discarded; nothing is stored.
+            Instead of collecting the finalist’s documents yourself, send them a secure link to upload their own, no email back and forth. Their files are analyzed, then held for your review for 14 days or until you delete them.
           </div>
           <button onClick={() => request(false)} disabled={busy}
             style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>

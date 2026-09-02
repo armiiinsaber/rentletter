@@ -7,14 +7,17 @@
 // The docreq token is the authorization (this route is public): it was minted by the realtor and
 // maps to exactly one applicant. We run the SAME shared engine the realtor path uses
 // (lib/applicantAnalysis.runDocumentAnalysis) on a ONE-ELEMENT array — no forked logic — and
-// stage ONLY the extracted facts under docreq:{token}:staging. PROCESS-AND-DISCARD: the raw bytes
-// live in memory for this single Claude call and are nulled before responding; nothing raw is ever
-// written to disk, Storage, KV, or logs. Nothing is written to listing_applicants here — that
-// happens once, in /api/upload/finalize.
+// stage ONLY the extracted facts under docreq:{token}:staging. The AI reads and discards: the
+// raw bytes live in memory for this single Claude call and are nulled inside the engine. AFTER the
+// analysis of this file succeeds, the original is written once to the private bucket for the
+// realtor's review (lib/documentStore.js, 14 days or until deleted, db/documents.sql); nothing raw
+// goes to KV or logs. Nothing is written to listing_applicants here, that happens once, in
+// /api/upload/finalize.
 import { kvReady, kvGetJson, kvSetJson, reqKey, stagingKey, isDocReqToken, STAGING_TTL } from '../../../lib/docRequest';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { runDocumentAnalysis, ALLOWED_DOC_MIME } from '../../../lib/applicantAnalysis';
+import { storeAnalyzedDocuments, kindOf } from '../../../lib/documentStore';
 
 // One document per request → a single base64 file (client-capped at ~3MB raw ≈ 4MB base64, under
 // Vercel's 4.5MB body cap). ONE Claude vision call: allow a modest duration for multi-page PDFs.
@@ -58,11 +61,11 @@ export default async function handler(req, res) {
   // applicant the token maps to). Needed so runDocumentAnalysis can compare the document to the
   // application's STATED values. Null-safe: if it can't bind, analysis still runs (comparisons come
   // back not-found) and the real two-key write guard is enforced later in finalize.
-  let application = null, listing = null;
+  let application = null, listing = null, admin = null;
   try {
     const supaOk = isSupabaseConfigured() && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (supaOk && rec.linkId && rec.listingId) {
-      const admin = getSupabaseAdminClient();
+      admin = getSupabaseAdminClient();
       const { data: junction } = await admin
         .from('listing_applicants').select('*, application:applications(*)')
         .eq('id', rec.linkId).eq('listing_id', rec.listingId).maybeSingle();
@@ -91,6 +94,15 @@ export default async function handler(req, res) {
   }
   if (!run || !Array.isArray(run.documents) || !run.documents.length) {
     return res.status(502).json({ error: `We couldn't read ${name}. Please try again.` });
+  }
+
+  // Held for the realtor's review: the original bytes (`data`, kept in scope for exactly this) go
+  // to the private bucket ONLY here, after the analysis of this file succeeded. The first file of
+  // a submission replaces the applicant's previously held files. A storage failure is logged and
+  // the analysis result still returns. Skipped when the token could not be bound to an applicant.
+  if (admin && application && listing && listing.profile_id) {
+    const firstOfSubmission = Object.keys(staging.items).length === 0;
+    await storeAnalyzedDocuments(admin, { profileId: listing.profile_id, listingId: rec.listingId, linkId: rec.linkId, applicationId: application.id || rec.applicationId || null, applicantName: application.full_name || null, uploadedBy: 'tenant', replace: firstOfSubmission, files: [{ mime, bytes: Buffer.from(data, 'base64'), kind: kindOf(run.documents[0]) }] });
   }
 
   // Stage ONLY the extracted facts for this file (no images, no raw bytes).

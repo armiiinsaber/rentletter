@@ -7,10 +7,12 @@
 //   2. Guided checklist of what to upload + a multi-file picker (document types; no forced camera).
 //   3. Review-and-confirm step (double-check the files) with a transparent analyze-then-discard note.
 //   4. Submit → analyze ONE file per request (POST /api/upload/analyze-file, with live progress),
-//      then POST /api/upload/finalize once → success. Files are received transiently, NEVER stored;
+//      then POST /api/upload/finalize once → success. Each file is analyzed, then the original is held
+//      for the realtor's review for RETENTION_DAYS (lib/documentRetention.js) or until they delete it;
 //      per-file requests keep every request under Vercel's 4.5MB body cap and 60s function limit.
 // Expired/invalid/already-received tokens are handled with friendly messages.
 import { useState, useEffect, useRef } from 'react';
+import { RETENTION_DAYS } from '../../lib/documentRetention';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
@@ -180,7 +182,7 @@ export default function UploadPage() {
 
   const disclosure = (
     <div style={{ background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '13px 15px', fontSize: 12.5, color: C.inkSoft, lineHeight: 1.6 }}>
-      <strong style={{ color: C.ink }}>How your documents are used:</strong> they’re analyzed to verify income, employment, and credit for your rental application, then <strong style={{ color: C.ink }}>discarded — we do not store them</strong>. Only the listing realtor sees the verified summary.
+      <strong style={{ color: C.ink }}>How your documents are used:</strong> they’re analyzed to verify income, employment, and credit for your rental application. <strong style={{ color: C.ink }}>Your realtor can view them for {RETENTION_DAYS} days, then they are deleted.</strong> Only the listing realtor sees them and the verified summary.
     </div>
   );
 
@@ -277,6 +279,7 @@ export default function UploadPage() {
                     <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 12 }}>Upload what you have — you can add several files (PDF or image).</div>
                   </div>
 
+                  <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 10, textWrap: 'pretty' }}>Your realtor can view these for {RETENTION_DAYS} days, then they are deleted. Do not upload anything showing your SIN.</div>
                   {/* Uploader */}
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}

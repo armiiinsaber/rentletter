@@ -4,10 +4,12 @@
 // categorizes each, extracts ONLY screenable facts, cross-references them, and compares to
 // the application's stated values. Returns ONE organized report.
 //
-// PROCESS-AND-DISCARD: the raw file bytes exist ONLY in this function's memory for the
-// single Claude call. They are NEVER written to disk, Storage/buckets, or logs, and are
-// dropped as soon as the call returns. Only the STRUCTURED RESULT (no images) is persisted
-// to listing_applicants.doc_verifications. OHRC-safe by construction (prompt + facts shape).
+// The AI reads and discards: the raw bytes exist in this function's memory for the single
+// Claude call and the engine nulls its copy. AFTER the analysis succeeds, the originals are
+// written once to the private bucket for the realtor's review (lib/documentStore.js, 14 days
+// or until deleted, db/documents.sql); a re analysis replaces the previously held files. Nothing
+// raw goes to logs. The STRUCTURED RESULT (no images) is persisted to
+// listing_applicants.doc_verifications. OHRC-safe by construction (prompt + facts shape).
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { recordEvent } from '../../../lib/events';
 import { verificationFacts } from '../../../lib/applicantSynthesis';
@@ -18,6 +20,7 @@ import {
 } from '../../../lib/applicantAnalysis';
 import { withActiveReport } from '../../../lib/docVerifications';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
+import { storeAnalyzedDocuments, listStoredDocuments, toClientDocument, kindOf } from '../../../lib/documentStore';
 
 // Allow the batch payload (≤6 docs, base64) through Next's default 1MB body cap.
 export const config = { api: { bodyParser: { sizeLimit: '26mb' } } };
@@ -41,7 +44,7 @@ export default async function handler(req, res) {
   if (files.length > MAX_DOCS) return res.status(400).json({ error: `Up to ${MAX_DOCS} documents at a time.` });
 
   // Validate each file (type + decode size) and total payload. We measure bytes from the
-  // base64 length; we do NOT store the bytes.
+  // base64 length; the bytes are held only after the analysis succeeds (below).
   let totalBytes = 0;
   for (const f of files) {
     const mime = String(f?.type || '').toLowerCase();
@@ -64,6 +67,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Could not load that applicant.' });
   }
   if (!ctx) return res.status(404).json({ error: 'Applicant not found.' });
+  // Explicit ownership: the listing must carry profile_id === user.id (never left to RLS).
+  if (String(ctx.listing.profile_id) !== String(user.id)) return res.status(403).json({ error: 'Not your applicant.' });
 
   // STRICT per-applicant binding: the row we are about to write (id = linkId) MUST be the exact
   // applicant these documents were uploaded for. Cross-check the application_id so a stale/wrong
@@ -77,15 +82,30 @@ export default async function handler(req, res) {
   // Run the SAME shared analysis engine the tenant self-upload path uses, so the persisted
   // result is IDENTICAL regardless of who uploaded. PROCESS-AND-DISCARD happens inside (the raw
   // bytes are nulled before it returns; nothing raw is written to disk, Storage, or logs).
+  // The originals, kept for the store step after a successful analysis (the engine nulls f.data).
+  let originals = files.map((f) => ({ mime: String(f.type || '').toLowerCase(), data: String(f.data || '') }));
   let run;
   try {
     run = await runDocumentAnalysis({ files, application: ctx.application, listing: ctx.listing });
   } catch (e) {
+    originals = null; // analysis failed: nothing is held
     if (e?.code === 'unreadable') {
       return res.status(502).json({ error: 'The analysis came back unreadable. Please try again.' });
     }
-    // 'ai_error' | 'config' | anything else → generic read failure (bytes already discarded).
+    // 'ai_error' | 'config' | anything else → generic read failure (nothing stored, bytes dropped).
     return res.status(502).json({ error: 'Could not read those documents. Please try again.' });
+  }
+
+  // Held for the realtor's review: the originals go to the private bucket ONLY here, after the
+  // analysis succeeded. Replaces this applicant's previously held files. A storage failure is
+  // logged and the analysis result still returns. `held` is the new list for the dashboard, or
+  // null when db/documents.sql has not run.
+  let held = null;
+  {
+    const admin = getSupabaseAdminClient();
+    const stored = await storeAnalyzedDocuments(admin, { profileId: user.id, listingId: ctx.listing.id, linkId, applicationId: ctx.junction.application_id, applicantName: ctx.application?.full_name || null, uploadedBy: 'realtor', replace: true, files: originals.map((o, i) => ({ mime: o.mime, bytes: Buffer.from(o.data, 'base64'), kind: kindOf(run.documents[i]) })) });
+    originals = null;
+    if (!stored.absent) { try { const { byLink } = await listStoredDocuments(admin, [linkId]); held = (byLink.get(linkId) || []).map(toClientDocument); } catch (e) { console.warn('[analyze-documents] held list skipped:', e?.message || e); } }
   }
 
   // Persist ONLY the structured result. New analysis becomes the ACTIVE report; any archived
@@ -106,11 +126,11 @@ export default async function handler(req, res) {
     if (upErr) {
       console.error('[analyze-documents] persist error:', upErr.message);
       // Still return the result so the realtor sees it; warn that it wasn't saved.
-      return res.status(200).json({ result: run, verifications, saved: false });
+      return res.status(200).json({ result: run, verifications, saved: false, held });
     }
   } catch (e) {
     console.error('[analyze-documents] persist exception:', e?.message || e);
-    return res.status(200).json({ result: run, verifications, saved: false });
+    return res.status(200).json({ result: run, verifications, saved: false, held });
   }
 
   {
@@ -118,5 +138,5 @@ export default async function handler(req, res) {
     const outcome = facts.incomeVerified || facts.employmentVerified ? 'verification_completed' : 'verification_failed';
     await recordEvent(getSupabaseAdminClient(), { profileId: user.id, listingId: ctx.listing.id, applicationId: ctx.junction.application_id, type: outcome, payload: { applicantName: ctx.application?.full_name || null, listingName: ctx.listing.name || ctx.listing.address || null, linkId, by: 'realtor', nameMatch: run.nameMatch || null } });
   }
-  return res.status(200).json({ result: run, verifications, saved: true });
+  return res.status(200).json({ result: run, verifications, saved: true, held });
 }

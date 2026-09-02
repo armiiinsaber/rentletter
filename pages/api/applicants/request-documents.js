@@ -109,7 +109,7 @@ export default async function handler(req, res) {
           ${escapeHtml(realtorName)} has requested a few documents to finalize your rental application${address ? ` for <strong style="color:#0f0f10;">${escapeHtml(address)}</strong>` : ''}. You can upload them securely here:
         </p>
         <p style="margin:0 0 20px;"><a href="${url}" style="display:inline-block;background:#d72027;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 22px;border-radius:12px;">Upload your documents</a></p>
-        <p style="margin:0 0 6px;font-size:13px;color:#86868b;line-height:1.6;">Your documents are analyzed to verify income, employment, and credit, then discarded — they are not stored. Only the listing realtor sees the verified summary.</p>
+        <p style="margin:0 0 6px;font-size:13px;color:#86868b;line-height:1.6;">Your documents are analyzed to verify income, employment, and credit. Your realtor can view them for 14 days, then they are deleted. Only the listing realtor sees them. Do not send anything showing your SIN.</p>
         <p style="margin:14px 0 0;font-size:12px;color:#86868b;">This link is private to you and expires in 7 days.</p>
       </td></tr>
     </table>

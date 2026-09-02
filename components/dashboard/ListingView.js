@@ -12,6 +12,7 @@ import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
+import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import { computeFit } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
@@ -115,6 +116,30 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     openApplicant(a);
     setFocusDocFor({ linkId, renew: !!renew, at: Date.now() });
     setTimeout(() => document.getElementById(`applicant-${linkId}`)?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }), 30);
+  };
+  // Held documents (db/documents.sql): View fetches a 60 second signed URL through the route and
+  // opens the in app viewer; Delete all removes every held file for the applicant. Both return an
+  // error string for the caller to show, or null.
+  const [viewer, setViewer] = useState(null);
+  const viewDocument = async (doc) => {
+    try {
+      const r = await adapter.fetch('/api/documents/open', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ documentId: doc.id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return j.error || 'Could not open that document.';
+      const at = new Date().toISOString();
+      setApplicants((prev) => prev.map((x) => (Array.isArray(x.storedDocuments) && x.storedDocuments.some((d) => d.id === doc.id) ? { ...x, storedDocuments: x.storedDocuments.map((d) => (d.id === doc.id ? { ...d, openedCount: (d.openedCount || 0) + 1, lastOpenedAt: at } : d)) } : x)));
+      setViewer({ url: j.url, mime: j.mime, kind: j.kind || doc.kind });
+      return null;
+    } catch (e) { return 'Could not open that document.'; }
+  };
+  const deleteDocuments = async (linkId) => {
+    try {
+      const r = await adapter.fetch('/api/documents/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingApplicantId: linkId }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return j.error || 'Could not delete those documents.';
+      setApplicants((prev) => prev.map((x) => (x.linkId === linkId && Array.isArray(x.storedDocuments) ? { ...x, storedDocuments: x.storedDocuments.map((d) => (d.deletedAt ? d : { ...d, deletedAt: j.deletedAt, deletedBy: j.deletedBy })) } : x)));
+      return null;
+    } catch (e) { return 'Could not delete those documents.'; }
   };
   // "Verify" on a matched card: open it and land on the screening checklist.
   const focusChecklist = (linkId) => {
@@ -656,7 +681,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             ))}
           </div>
 
-          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} />
+          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} heldDocuments={a.storedDocuments} onViewDocument={viewDocument} />
 
           <ApplicantDocIntel
             listingId={listing.id}
@@ -668,6 +693,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             initialInsight={a.aiInsight}
             profileUpdatedAt={app.profile_updated_at}
             onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
+            heldDocuments={a.storedDocuments}
+            realtorName={profile?.full_name}
+            onViewDocument={viewDocument}
+            onDeleteDocuments={() => deleteDocuments(a.linkId)}
           />
           {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
               uploads via a secure link. Coexists with ApplicantDocIntel above. */}
@@ -1015,6 +1044,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       </div>
       {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
       <ChatWidget mode="dashboard" />
+      <DocumentViewer doc={viewer} onClose={() => setViewer(null)} />
     </>
   );
 }

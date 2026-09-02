@@ -2,13 +2,16 @@
 // Realtor-side "Analyze documents" area for one applicant (real dashboard only — it calls
 // the API). Drag/drop or pick UP TO 6 files → one Analyze action → ONE organized report
 // (rendered by DocIntelReport) → optional "Generate AI insight". The raw files are read to
-// base64 in the browser, POSTed once, and never re-stored; the server processes-and-discards.
+// base64 in the browser and POSTed once; after the analysis succeeds the server holds the
+// originals for the realtor's review (14 days or until deleted, lib/documentRetention.js), listed
+// here under "Documents held" with View (the in app viewer) and Delete all.
 import { useState, useRef } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import DocIntelReport from './DocIntelReport';
 import { editedAfterVerification, fmtShort } from '../../lib/profileEdits';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { RETENTION_DAYS, daysUntil } from '../../lib/documentRetention';
 
 const MAX = 6;
 const OK_MIME = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -23,7 +26,63 @@ function readAsBase64(file) {
   });
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt }) {
+// The files held for this applicant (applicant.storedDocuments): kind, who uploaded, when, the
+// day they go, a View button each, and one Delete all with a confirm step. Once nothing is live
+// the section reads "Deleted Sep 2 · by you" or "Deleted Sep 16 · expired". Not rendered when
+// the list is null (db/documents.sql not run) or empty.
+function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState('');
+  const [err, setErr] = useState('');
+  const fmt = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
+  const cap = (s) => { const t = String(s || 'document'); return t.charAt(0).toUpperCase() + t.slice(1); };
+  const live = docs.filter((d) => !d.deletedAt);
+  const gone = docs.filter((d) => d.deletedAt).sort((a, b) => String(b.deletedAt).localeCompare(String(a.deletedAt)));
+  const byLabel = (by) => (by === 'expired' ? 'expired' : by === 'reanalyze' ? 'replaced by a new analysis' : !by || by === 'You' || by === realtorName ? 'by you' : `by ${by}`);
+  const goes = (d) => { const n = daysUntil(d.expiresAt); return n === 0 ? 'Deleted today' : n === 1 ? 'Deleted tomorrow' : `Deleted in ${n} days`; };
+  const view = async (d) => { if (busy) return; setBusy(d.id); setErr(''); const e = await onView?.(d); if (e) setErr(e); setBusy(''); };
+  const del = async () => { if (busy) return; setBusy('delete'); setErr(''); const e = await onDeleteAll?.(); if (e) setErr(e); else setConfirm(false); setBusy(''); };
+  const heading = <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute, marginBottom: 6 }}>Documents held</div>;
+  const btn44 = { minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: R.ctrl, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 14px' };
+  if (!live.length) {
+    const last = gone[0];
+    return (
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.rule}` }}>
+        {heading}
+        <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4 }}>{last ? `Deleted ${fmt(last.deletedAt)} · ${byLabel(last.deletedBy)}` : 'None held'}</div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.rule}` }}>
+      {heading}
+      <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 8, lineHeight: 1.4 }}>Only you can view these. Each view is logged. Gone after {RETENTION_DAYS} days or when you delete them.</div>
+      <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, overflow: 'hidden' }}>
+        {live.map((d, i) => (
+          <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{cap(d.kind)}</div>
+              <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.4, marginTop: 1 }}>{d.uploadedBy === 'tenant' ? 'from tenant' : 'you'} · {fmt(d.uploadedAt)} · {goes(d)}</div>
+            </div>
+            <button type="button" onClick={() => view(d)} disabled={!!busy} aria-label={`View ${d.kind}`} style={{ ...btn44, minWidth: 64, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, opacity: busy === d.id ? 0.6 : 1 }}>{busy === d.id ? 'Opening' : 'View'}</button>
+          </div>
+        ))}
+      </div>
+      {!confirm ? (
+        <button type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 4, background: 'transparent', border: 'none', color: C.danger, textDecoration: 'underline' }}>Delete all documents</button>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
+          <span style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
+          <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.danger, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}>{busy === 'delete' ? 'Deleting' : 'Delete'}</button>
+          <button type="button" onClick={() => setConfirm(false)} disabled={busy === 'delete'} style={{ ...btn44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}` }}>Cancel</button>
+        </div>
+      )}
+      {err ? <div role="alert" style={{ marginTop: 6, fontSize: 12.5, color: C.danger }}>{err}</div> : null}
+    </div>
+  );
+}
+
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments }) {
   const adapter = useAdapter();
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
@@ -79,7 +138,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       if (!r.ok) { setError(j?.error || 'Could not analyze those documents.'); setAnalyzing(false); return; }
       setResult(j.result);
       setFiles([]);
-      onSaved?.({ docVerifications: j.verifications });
+      onSaved?.({ docVerifications: j.verifications, ...(j.held !== undefined ? { storedDocuments: j.held } : {}) });
       if (j.saved === false) setError('Analysis ran but could not be saved — it may not persist on refresh.');
     } catch (e) {
       setError('Could not analyze those documents.');
@@ -260,8 +319,12 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
               {analyzing && <span className="rl-dispin" aria-hidden="true" />}
               {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Re-analyze' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
             </button>
-            <span style={{ fontSize: 11.5, color: C.inkMute }}>Files are read once and discarded — never stored.</span>
+            <span style={{ fontSize: 11.5, color: C.inkMute }}>Held for your review · deleted in {RETENTION_DAYS} days or when you delete them</span>
           </div>
+
+          {Array.isArray(heldDocuments) && heldDocuments.length > 0 && (
+            <HeldDocuments docs={heldDocuments} realtorName={realtorName} onView={onViewDocument} onDeleteAll={onDeleteDocuments} />
+          )}
 
           {error && <div style={{ marginTop: 10, fontSize: 13, color: C.red }}>{error}</div>}
 

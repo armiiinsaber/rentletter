@@ -13,12 +13,13 @@ import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { readVerification } from '../../lib/fitScore';
+import { isIdKind } from '../../lib/documentRetention';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
 const kShort = (n) => (Number(n) >= 1000 ? `$${Math.round(Number(n) / 1000)}k` : `$${Number(n)}`);
 
-export default function ScreeningChecklist({ applicant, listing, profile, onChange }) {
+export default function ScreeningChecklist({ applicant, listing, profile, onChange, heldDocuments, onViewDocument }) {
   const adapter = useAdapter();
   const app = applicant.application || {};
   const fit = app.fit || null;
@@ -26,6 +27,10 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   useEffect(() => { setConf(applicant.confirmations || {}); }, [applicant.confirmations]);
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
+  // A held ID document (government id, passport, licence) puts "View ID" beside Saw ID.
+  const idDoc = (Array.isArray(heldDocuments) ? heldDocuments : []).find((d) => d && !d.deletedAt && isIdKind(d.kind)) || null;
+  const [viewBusy, setViewBusy] = useState(false);
+  const viewId = async () => { if (viewBusy || !idDoc) return; setViewBusy(true); setError(''); const e = await onViewDocument?.(idDoc); if (e) setError(e); setViewBusy(false); };
   const myName = String(profile?.full_name || '').trim() || 'You';
 
   const report = applicant.docVerifications?.[0] || null;
@@ -94,11 +99,16 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 {row.second ? <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{row.second}</div> : null}
               </div>
               {row.key && !shared ? (
-                <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
-                  aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)} by ${c.by}. Tap to undo.` : row.verb}
-                  style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                  {on ? <><Icon name="check" size={14} /><span>{shortDate(c.at)} · {c.by}</span></> : row.verb}
-                </button>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                  <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
+                    aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)} by ${c.by}. Tap to undo.` : row.verb}
+                    style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
+                    {on ? <><Icon name="check" size={14} /><span>{shortDate(c.at)} · {c.by}</span></> : row.verb}
+                  </button>
+                  {row.key === 'id' && idDoc ? (
+                    <button type="button" onClick={viewId} disabled={viewBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 13, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: viewBusy ? 0.6 : 1 }}>{viewBusy ? 'Opening' : 'View ID'}</button>
+                  ) : null}
+                </div>
               ) : row.key && shared ? (
                 <div style={{ fontSize: 12, color: C.inkMute, flexShrink: 0, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{on ? `Confirmed · ${shortDate(c.at)}` : 'One call, with the income row'}</div>
               ) : null}

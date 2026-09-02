@@ -331,7 +331,7 @@ export default function MyProfile() {
             {emailMsg && <div role="status" className="mp-note" style={{ marginTop: 12 }}>{emailMsg}</div>}
           </div>
 
-          <p style={{ marginTop: 26, fontSize: 12.5, color: C.inkMute, lineHeight: 1.6, maxWidth: 600 }}>Your profile holds the facts you typed — never documents. Anything you upload for a realtor is analysed and discarded, not stored here.</p>
+          <p style={{ marginTop: 26, fontSize: 12.5, color: C.inkMute, lineHeight: 1.6, maxWidth: 600 }}>Your profile holds the facts you typed, never documents. Anything you upload for a realtor is held for that realtor only for 14 days, then deleted. It is not stored here.</p>
         </div>
         {toast && <div role="status" onClick={() => setToast('')} style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 300, background: C.green, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: '0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}><Icon name="check" size={15} strokeWidth={2.5} /> {toast}</div>}
       </div>

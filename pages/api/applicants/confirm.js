@@ -1,13 +1,14 @@
 // /api/applicants/confirm  POST { linkId, key, on }
 // The realtor confirms a screenable fact for one applicant: key in id | employer | landlord |
 // reference; on true records { at: now, by: display name }, on false removes it. Realtor
-// authenticated, entitlement gated, ownership checked under the realtor's own session (RLS on
-// listings), written through the service role into listing_applicants.confirmations
+// authenticated, entitlement gated, explicit ownership check (the junction row's listing must
+// carry profile_id === user.id, lib/ownApplicant.js), written through the service role into listing_applicants.confirmations
 // (db/screening.sql). Records applicant_confirmed on the timeline. Returns the new object.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { recordEvent } from '../../../lib/events';
+import { ownedApplicant, realtorName } from '../../../lib/ownApplicant';
 import { logServerError } from '../../../lib/serverLog';
 
 const KEYS = ['id', 'employer', 'landlord', 'reference'];
@@ -28,14 +29,12 @@ export default async function handler(req, res) {
 
   try {
     const admin = getSupabaseAdminClient();
-    const { data: junction, error: jErr } = await admin.from('listing_applicants').select('*').eq('id', String(linkId)).maybeSingle();
-    if (jErr) throw jErr;
-    if (!junction) return res.status(404).json({ error: 'Applicant not found.' });
-    // Ownership: the listing must be readable under the realtor's own session (RLS: owner only).
-    const { data: owned } = await supabase.from('listings').select('id, name, address').eq('id', junction.listing_id).maybeSingle();
-    if (!owned) return res.status(403).json({ error: 'Not your listing.' });
+    // Explicit ownership: the junction row's listing must carry profile_id === user.id.
+    const own = await ownedApplicant(admin, linkId, user.id);
+    if (!own) return res.status(own === null ? 404 : 403).json({ error: own === null ? 'Applicant not found.' : 'Not your applicant.' });
+    const { junction, listing: owned } = own;
 
-    const by = String(gate.profile?.full_name || '').trim() || String(user.email || '').trim() || 'the realtor';
+    const by = realtorName(gate.profile, user);
     const current = junction.confirmations && typeof junction.confirmations === 'object' ? junction.confirmations : {};
     const next = { ...current };
     if (on) next[key] = { at: new Date().toISOString(), by }; else delete next[key];
