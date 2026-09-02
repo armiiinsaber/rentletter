@@ -65,8 +65,6 @@ export default async function handler(req, res) {
       incomeStability: application.scorecard?.incomeStability?.score,
       rentAffordability: application.scorecard?.rentAffordability?.score,
       rentalHistory: application.scorecard?.rentalHistory?.score,
-      longTermIntent: application.scorecard?.longTermIntent?.score,
-      disclosures: application.scorecard?.disclosures?.score,
       overall: application.scorecard?.overall,
     },
   };
