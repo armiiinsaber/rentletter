@@ -74,7 +74,8 @@ export default async function handler(req, res) {
         yearsAtJob: a.years_at_job || null,
         rentToIncomePct: a.rent_to_income_ratio ?? null,
         referencesProvided: Array.isArray(a.references) ? a.references.length : 0,
-        scorecardOverall: a.scorecard?.overall ?? null,
+        fitScore: a.fit?.score ?? null,
+        fitLabel: a.fit?.label ?? null, // 'verified' | 'stated'
       };
     };
     const ranked = ctx.active.map(toCandidate);

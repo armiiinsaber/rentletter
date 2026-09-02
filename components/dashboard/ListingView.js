@@ -402,7 +402,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
   // Pure scorecard vs criteria ranking (matches lib/listingReportData). Everyone is
   // in: active best fit first, set aside below, withdrawn excluded (withdrawn_at rule).
-  const byScore = (x, y) => (y.application?.scorecard?.overall ?? 0) - (x.application?.scorecard?.overall ?? 0);
+  const fitScore = (a) => (a.application?.fit?.score != null ? a.application.fit.score : -1); // no Fit sorts last
+  const byScore = (x, y) => fitScore(y) - fitScore(x);
   // A departing card is shown where it WAS for one beat (its state has already changed).
   const shownActive = (a) => (departing[a.linkId] ? !departing[a.linkId].wasSetAside : isActive(a));
   const shownAside = (a) => (departing[a.linkId] ? departing[a.linkId].wasSetAside : isSetAsideApplicant(a));
@@ -428,7 +429,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     return {
       id: a.linkId, rank: idx + 1, name: app.full_name || 'Applicant',
-      overall: app.scorecard?.overall ?? null,
+      overall: app.fit?.score ?? null,
       annualIncome: toNum(app.annual_income),
       householdIncome: coIncome != null ? (toNum(app.annual_income) || 0) + (toNum(coIncome) || 0) : null,
       rentToIncome: toNum(app.rent_to_income_ratio),
@@ -476,7 +477,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const fresh = isUnreviewed(a);
     const open = openId === a.linkId;
     const app = a.application || {};
-    const overall = app.scorecard?.overall;
+    const fit = app.fit || null;
+    const overall = fit ? fit.score : null;
+    const missed = (fit?.criteria || []).filter((c) => c.status === 'missed').map((c) => c.detail);
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
@@ -537,17 +540,21 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
               <VerifiedMark verified={isVerified(a)} id={a.linkId} />
             </div>
-            {overall != null && (
+            {overall != null ? (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} renderValue={(shown, target) => (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5`}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5, ${fit.label}`}>
                   <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} />
                   <span style={{ fontSize: 18, fontWeight: 800, color: C.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{Number(shown).toFixed(1)}</span>
+                  <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
                 </span>
               )} />
+            ) : (
+              <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>Rent share unknown</span>
             )}
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
           <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+          {missed.length > 0 && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 3, lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
         </div>
 
         {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
