@@ -4,6 +4,7 @@
 // showed when it was opened. Session, entitlement, KV per profile (assistant:{profileId}, 90
 // days). Without KV the GET is empty and the POST answers 503, and nothing else is affected.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { kvReady, kvGetJson, kvSetJson } from '../../../lib/docRequest';
 import { logServerError } from '../../../lib/serverLog';
@@ -37,6 +38,7 @@ export default async function handler(req, res) {
     } else return res.status(400).json({ error: 'key and signature, or openedKeys, are required.' });
     const ok = await kvSetJson(keyFor(user.id), next, TTL);
     if (!ok) return res.status(503).json({ error: 'Not available right now.' });
+    invalidateSignals(user.id);
     return res.status(200).json({ ok: true, ...next });
   } catch (e) {
     logServerError('[assistant/dismiss]', e, { userId: user.id });

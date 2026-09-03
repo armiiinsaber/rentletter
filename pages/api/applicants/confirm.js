@@ -5,6 +5,7 @@
 // carry profile_id === user.id, lib/ownApplicant.js), written through the service role into listing_applicants.confirmations
 // (db/screening.sql). Records applicant_confirmed on the timeline. Returns the new object.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { recordEvent } from '../../../lib/events';
@@ -48,6 +49,7 @@ export default async function handler(req, res) {
     let applicantName = null;
     try { const { data: app } = await admin.from('applications').select('full_name').eq('id', junction.application_id).maybeSingle(); applicantName = app?.full_name || null; } catch (e) { /* name is decoration on the event */ }
     await recordEvent(admin, { profileId: user.id, listingId: owned.id, applicationId: junction.application_id, type: 'applicant_confirmed', payload: { key, on, applicantName, listingName: owned.name || owned.address || null, linkId: junction.id } });
+    invalidateSignals(user.id);
     return res.status(200).json({ ok: true, confirmations: next });
   } catch (e) {
     logServerError('[applicants/confirm]', e, { linkId, key, on, userId: user.id });

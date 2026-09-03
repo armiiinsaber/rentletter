@@ -8,6 +8,7 @@
 // realtor may optionally email the link to the tenant via Resend (uses the tenant's application
 // email; never exposes owner_token or internal ids to the tenant). PRIVACY: no raw files here.
 import { Resend } from 'resend';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { recordForListing } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -131,7 +132,7 @@ export default async function handler(req, res) {
     }
 
     await recordForListing(getSupabaseAdminClient(), listingId, 'documents_requested', { applicationId: ctx.junction.application_id, linkId, payload: { renewed: !!renew, emailed } });
-    return res.status(200).json({ ok: true, token, url, status, requestedAt, tenantEmail: tenantEmail || null, emailed, emailError });
+    invalidateSignals(user.id); return res.status(200).json({ ok: true, token, url, status, requestedAt, tenantEmail: tenantEmail || null, emailed, emailError });
   } catch (e) {
     console.error('[request-documents] error:', e?.message || e);
     return res.status(500).json({ error: 'Could not create the document request.' });

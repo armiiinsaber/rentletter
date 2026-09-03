@@ -6,6 +6,7 @@
 // Only CLIENT_EVENT_TYPES are accepted here. Nothing a client sends can insert an event by
 // itself, and there is no route to update or delete one.
 import { requireRealtor } from '../../../lib/realtorAuth';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { CLIENT_EVENT_TYPES } from '../../../lib/eventTypes';
 import { recordEvent } from '../../../lib/events';
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Missing reference.' });
     }
     const ok = await recordEvent(admin, ev);
-    return res.status(200).json({ ok });
+    invalidateSignals(ctx.user.id); return res.status(200).json({ ok });
   } catch (e) {
     console.warn('[events/record] failed:', e?.message || e);
     return res.status(200).json({ ok: false });

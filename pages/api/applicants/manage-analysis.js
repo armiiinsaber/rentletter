@@ -13,6 +13,7 @@
 // The jsonb is stored in the {active,archived} shape (see lib/docVerifications); old rows upgrade
 // transparently. owner_token is never selected or returned.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { authorizeApplicant } from '../../../lib/applicantAnalysis';
 import { normalizeDocV, withArchivedActive, withoutActive, withoutArchived } from '../../../lib/docVerifications';
@@ -88,7 +89,7 @@ export default async function handler(req, res) {
 
   // Return the fresh state the client needs (display array for the active report + archive list).
   const n = normalizeDocV(newDocV);
-  return res.status(200).json({
+  invalidateSignals(user.id); return res.status(200).json({
     ok: true,
     docVerifications: n.active ? [n.active] : [],
     docArchived: n.archived,

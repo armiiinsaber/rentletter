@@ -11,6 +11,7 @@
 // raw goes to logs. The STRUCTURED RESULT (no images) is persisted to
 // listing_applicants.doc_verifications. OHRC-safe by construction (prompt + facts shape).
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { recordEvent } from '../../../lib/events';
 import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -100,6 +101,7 @@ export default async function handler(req, res) {
   // analysis succeeded. Replaces this applicant's previously held files. A storage failure is
   // logged and the analysis result still returns. `held` is the new list for the dashboard, or
   // null when db/documents.sql has not run.
+  invalidateSignals(user.id);
   let held = null;
   {
     const admin = getSupabaseAdminClient();
@@ -121,8 +123,6 @@ export default async function handler(req, res) {
       .update({ doc_verifications: newDocV })
       .eq('id', linkId)
       .select('id, application_id');
-    console.log('[verif-trace][write] linkId=%s applicationId=%s junction.id=%s junction.application_id=%s affectedRows=%j',
-      linkId, applicationId, ctx.junction?.id, ctx.junction?.application_id, (upRows || []).map((r) => ({ id: r.id, application_id: r.application_id })));
     if (upErr) {
       console.error('[analyze-documents] persist error:', upErr.message);
       // Still return the result so the realtor sees it; warn that it wasn't saved.

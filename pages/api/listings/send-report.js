@@ -3,6 +3,7 @@
 // landlord_email captured on the listing, with the realtor as reply-to. Supabase auth
 // + RLS ownership; service-role read of the shortlist. Reuses the PDF builder.
 import { Resend } from 'resend';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { recordEvent } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
 
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  if (!user) { logServerError('[listings/send-report] 401', new Error('no session on send'), { listingId: req.body?.listingId || null, hasCookies: !!(req.cookies && Object.keys(req.cookies).length) }); return res.status(401).json({ error: 'Not signed in.' }); }
   // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
   if (!(await requireEntitlement(req, res, supabase, user))) return;
 
@@ -101,6 +102,7 @@ export default async function handler(req, res) {
       if (ids.length) { const { error: sentErr } = await admin.from('listing_applicants').update({ last_sent_at: new Date().toISOString() }).in('id', ids); if (sentErr && !lastSentWarned) { lastSentWarned = true; console.warn('[send-report] last_sent_at not recorded (run db/screening.sql):', sentErr.message); } }
     } catch (e) { if (!lastSentWarned) { lastSentWarned = true; console.warn('[send-report] last_sent_at not recorded:', e?.message || e); } }
     await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_sent', payload: { listingName: ctx.listing.name || ctx.listing.address || null, landlordEmail, landlordName: ctx.listing.landlord_name || null, applicants: n } });
+    invalidateSignals(user.id);
     return res.status(200).json({ ok: true, sentTo: landlordEmail });
   } catch (e) {
     logServerError('[listings/send-report]', e, { listingId, fontPairing: fontPairingForLog });

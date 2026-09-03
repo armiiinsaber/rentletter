@@ -12,6 +12,7 @@
 // failure returns an error WITHOUT marking received or clearing staging, so the client can retry
 // finalize only (no re-analysis).
 import { kvReady, kvGetJson, kvSetJson, kvDel, reqKey, appKey, stagingKey, isDocReqToken, DOCREQ_TTL } from '../../../lib/docRequest';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { recordForListing } from '../../../lib/events';
 import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
@@ -179,8 +180,7 @@ export default async function handler(req, res) {
             await recordForListing(admin, rec.listingId, 'documents_uploaded', { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, documents: items.length } });
             await recordForListing(admin, rec.listingId, outcome, { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, by: 'tenant', nameMatch: run.nameMatch || null } });
           }
-          console.log('[verif-trace][tenant-finalize] linkId=%s applicationId=%s affectedRows=%j',
-            rec.linkId, rec.applicationId, (upRows || []).map((r) => ({ id: r.id, application_id: r.application_id })));
+          if (listing?.profile_id) invalidateSignals(listing.profile_id); // the realtor's bell picks the upload up within the minute
 
           // Auto-generate + persist the OHRC-safe insight (best-effort) so the realtor sees the
           // complete read on next load — the tenant uploads async and isn't there to click it.

@@ -2,7 +2,7 @@
 // Realtor 2's "Referred to you" — approved referrals addressed to the signed-in realtor's
 // email. Assigning one to a listing turns it into an ordinary applicant there, ranked against
 // THAT listing. Renders nothing when the inbox is empty.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import ReferralCaution from './ReferralCaution';
@@ -21,6 +21,13 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
   const [error, setError] = useState('');
   const load = async () => { try { const r = await adapter.fetch('/api/referrals/inbox'); if (r.ok) setItems((await r.json()).referrals || []); else setItems([]); } catch (e) { setItems([]); } };
   useEffect(() => { if (!Array.isArray(initialItems)) load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // The claim by profile id moved out of the read path: once, when unclaimed referrals are shown.
+  const claimedOnce = useRef(false);
+  useEffect(() => {
+    if (claimedOnce.current || !Array.isArray(items) || !items.some((r) => r && r.claimed === false)) return;
+    claimedOnce.current = true;
+    adapter.fetch('/api/referrals/claim', { method: 'POST' }).catch(() => {});
+  }, [items]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!items || items.length === 0) return null;
 
   const assign = async (ref) => {

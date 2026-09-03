@@ -3,6 +3,7 @@
 // rows marked deleted_at with deleted_by = the realtor's display name, document_deleted recorded
 // with the count. The analysis results are untouched. Session, entitlement, explicit ownership.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { ownedApplicant, realtorName } from '../../../lib/ownApplicant';
@@ -35,6 +36,7 @@ export default async function handler(req, res) {
     if (absent) return res.status(503).json({ error: 'Documents are not set up yet (run db/documents.sql).' });
     const deletedAt = new Date().toISOString();
     if (count > 0) await recordEvent(admin, { profileId: user.id, listingId: own.listing.id, applicationId: own.junction.application_id, type: 'document_deleted', payload: { count, linkId: own.junction.id, listingName: own.listing.name || own.listing.address || null } });
+    invalidateSignals(user.id);
     return res.status(200).json({ ok: true, deleted: count, deletedAt, deletedBy });
   } catch (e) {
     logServerError('[documents/delete]', e, { listingApplicantId, userId: user.id });

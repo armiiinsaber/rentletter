@@ -6,6 +6,7 @@
 // verification (e.g. data mis-saved before the write-guard fix) so the applicant reverts to
 // "Not verified — no documents provided" on the dashboard AND the landlord report.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
+import { invalidateSignals } from '../../../lib/signalsCache';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { authorizeApplicant } from '../../../lib/applicantAnalysis';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
@@ -59,5 +60,5 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Could not clear the analysis. Please try again.' });
   }
 
-  return res.status(200).json({ ok: true, cleared: true });
+  invalidateSignals(user.id); return res.status(200).json({ ok: true, cleared: true });
 }

@@ -342,6 +342,24 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       patchSignalsListing(listing.id, j.applicants);
     } catch (e) { /* the row keeps what it has until the next load */ }
   };
+  // The page came back (the tab became visible again, or iOS restored it from the back cache):
+  // refetch the applicants through the adapter so a tenant upload that landed while the realtor
+  // was away shows up. At most once every 15 seconds; nothing runs while the page is hidden.
+  const lastVisibleFetch = useRef(0);
+  useEffect(() => {
+    const onBack = () => {
+      if (document.visibilityState !== 'visible') return;
+      const now = Date.now();
+      if (now - lastVisibleFetch.current < 15000) return;
+      lastVisibleFetch.current = now;
+      refreshApplicants();
+    };
+    const onShow = (e) => { if (e.persisted) onBack(); else lastVisibleFetch.current = Date.now(); };
+    document.addEventListener('visibilitychange', onBack);
+    window.addEventListener('pageshow', onShow);
+    return () => { document.removeEventListener('visibilitychange', onBack); window.removeEventListener('pageshow', onShow); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.id]);
   // Refresh applicants from Supabase (after adding by RL).
   const refreshApplicants = async () => {
     try {
