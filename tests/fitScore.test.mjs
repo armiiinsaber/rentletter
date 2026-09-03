@@ -174,10 +174,36 @@ test('fitReason: at most eight words from record facts, omitted within 0.02, nev
   assert.equal(line, 'Fewer references · shorter tenancy', 'the two facts with the largest weight in the gap');
   assert.ok(line.split(/\s+/).length <= 8);
   assert.equal(fitReason(rec('1', '3.3', 0, { prev_landlord_name: null, prev_address: '1 Main' }), rec('1', '3.3', 0)), 'No landlord reference');
-  assert.equal(fitReason(rec('2', '1', 0, {}, report({ nameMatch: 'mismatch' })), rec('2', '1', 0)), 'Documents not matched');
+  assert.equal(fitReason(rec('2', '1', 0, {}, report({ nameMatch: 'mismatch' })), rec('2', '1', 0)), 'Documents did not match');
   assert.equal(fitReason(rec('2', '1', 0), rec('2', '1', 2)), 'Fewer references');
   assert.equal(fitReason(computeFit({ application: { annual_income: 60000, years_at_job: '2', years_at_previous: '1', prev_landlord_name: 'L', references: [] }, listing: { monthly_rent: 2200 } }), rec('2', '1', 0)), 'Higher rent share');
   assert.equal(fitReason(rec('2', '1', 0), rec('2', '1', 0)), null);
   assert.equal(fitReason(rec('2', '1', 0), { ...rec('2', '1', 0), scoreExact: rec('2', '1', 0).scoreExact + 0.01 }), null);
-  for (const r of ['Fewer references · shorter tenancy', 'No landlord reference', 'Documents not matched', 'Fewer references', 'Higher rent share']) assert.ok(!/income|\$/.test(r));
+  for (const r of ['Fewer references · shorter tenancy', 'No landlord reference', 'Documents did not match', 'Fewer references', 'Higher rent share', 'No documents yet', 'Employer not confirmed', 'Below your income minimum']) assert.ok(!/\$|income level/.test(r));
+});
+
+test('fitReason covers evidence and affordability: no documents, documents did not match, higher rent share, record only', () => {
+  const same = (extra = {}, verification = null, confirmations = {}, rent = 1000, income = 60000) => computeFit({
+    application: { annual_income: income, co_applicant: null, years_at_job: '2', years_at_previous: '1', prev_landlord_name: 'L. Wong', references: [], ...extra },
+    listing: { monthly_rent: rent }, verification, confirmations,
+  });
+  const wei = same({}, report()), david = same();
+  const noDocs = fitReason(david, wei); console.log(`  docs match above stated, same record: "${noDocs}"  (${wei.scoreExact.toFixed(3)} over ${david.scoreExact.toFixed(3)})`);
+  assert.equal(noDocs, 'No documents yet');
+  const checkDocs = same({}, report({ nameMatch: 'mismatch' })), stated = same();
+  const didNot = fitReason(checkDocs, stated); console.log(`  check docs below stated: "${didNot}"  (${stated.scoreExact.toFixed(3)} over ${checkDocs.scoreExact.toFixed(3)})`);
+  assert.equal(checkDocs.label, 'check docs'); assert.equal(didNot, 'Documents did not match');
+  const easy = same({}, null, {}, 2200, 90000), tight = same({}, null, {}, 2200, 60000);
+  const share = fitReason(tight, easy); console.log(`  two stated, rent share 29% vs 44% at $2,200: "${share}"  (A ${easy.A} over ${tight.A})`);
+  assert.equal(share, 'Higher rent share'); assert.ok(!/income|\$/.test(share));
+  const confirmed = same({}, null, { employer: { at: 'x', by: 'A' } }), unconfirmed = same({}, report());
+  console.log(`  verified above docs match: "${fitReason(unconfirmed, confirmed)}"`);
+  assert.equal(fitReason(unconfirmed, confirmed), null, 'E is 5.0 for both, so no evidence fact; the gap here is 0');
+  const capped = same({}, null, {}, 1000, 60000); const cappedFit = computeFit({ application: { annual_income: 60000, years_at_job: '2', years_at_previous: '1', prev_landlord_name: 'L. Wong', references: [] }, listing: { monthly_rent: 1000, pref_min_annual_income: 75000 } });
+  const minLine = fitReason(cappedFit, computeFit({ application: { annual_income: 80000, years_at_job: '2', years_at_previous: '1', prev_landlord_name: 'L. Wong', references: [] }, listing: { monthly_rent: 1000, pref_min_annual_income: 75000 } }));
+  console.log(`  below the listing's income minimum: "${minLine}"`); assert.equal(minLine, 'Below your income minimum'); assert.ok(capped);
+  const recordOnly = fitReason(rec('2', '1', 0), rec('5', '4.3', 2)); console.log(`  record only: "${recordOnly}"`);
+  assert.equal(recordOnly, 'Fewer references · shorter tenancy');
+  const weiLike = fitReason(rec('1.5', '2', 2), rec('5', '4', 2)); console.log(`  record only, tenure and tenancy: "${weiLike}"`);
+  assert.equal(weiLike, 'Shorter tenure · shorter tenancy');
 });
