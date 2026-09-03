@@ -27,7 +27,7 @@ export default function Billing({ profile, entitlement: e }) {
   const renews = profile.current_period_end ? new Date(profile.current_period_end).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' }) : null;
   return (
     <>
-      <Head><title>Plans — Rentletter</title><meta name="robots" content="noindex, nofollow" /></Head>
+      <Head><title>Plans · Rentletter</title><meta name="robots" content="noindex, nofollow" /></Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
         <DashboardHeader profile={profile} />

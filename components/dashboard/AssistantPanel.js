@@ -52,7 +52,7 @@ function ActionRow({ item, phase, onGo, onDismiss }) {
         <span style={{ display: 'block', fontSize: 'var(--t-body)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{item.title}</span>
         <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{item.detail}</span>
       </div>
-      <button type="button" onClick={onGo} style={{ minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: C.red, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>{item.verb}</button>
+      <button type="button" onClick={onGo} style={{ minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: C.ink, textDecoration: 'underline', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>{item.verb}</button>
       <button type="button" className="al-x" onClick={onDismiss} aria-label={`Dismiss: ${item.title}`} title="Dismiss until something changes" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', flexShrink: 0 }}><Icon name="x" size={14} /></button>
     </li>
   );
@@ -174,8 +174,8 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
       <div role="tablist" aria-label="Assistant sections" style={{ display: 'flex', gap: 0, padding: '0 clamp(14px, 4vw, 24px)', borderBottom: `1px solid ${C.rule}`, flexShrink: 0 }}>
         {TABS.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-            style={{ minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.red : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkMute, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {label}{id === 'next' && items.length ? <span aria-hidden="true" style={{ marginLeft: 'var(--s-1)', fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.red, borderRadius: 9, padding: 'var(--s-1) var(--s-1)' }}>{items.length}</span> : null}
+            style={{ minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.ink : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkMute, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {label}{id === 'next' && items.length ? <span aria-hidden="true" style={{ marginLeft: 'var(--s-1)', fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.ink, borderRadius: 9, padding: 'var(--s-1) var(--s-1)' }}>{items.length}</span> : null}
           </button>
         ))}
       </div>

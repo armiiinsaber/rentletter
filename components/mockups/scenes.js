@@ -50,14 +50,14 @@ export function LandlordReportScene() {
             <Avatar a={a} size={26} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 'clamp(11px, 2.8vw, 13px)', fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}{i === 0 && <span style={{ color: C.red, fontWeight: 600 }}> · Top pick</span>}</div>
-              <div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr before tax · {a.rent}% rent-to-income</div>
+              <div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr before tax · {a.rent}% rent to income</div>
               <div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: C.green, marginTop: 2 }}>✓ Documents verified Aug 18 · income & employer matched</div>
             </div>
             <TickMeter value={a.score} size={11} />
           </div>
         ))}
         <div style={{ marginTop: 'auto', padding: 'clamp(7px, 2%, 10px) clamp(9px, 2.4%, 13px)', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 'clamp(8.5px, 2vw, 10px)', color: C.inkSoft, lineHeight: 1.45 }}>
-          Fit against your stated preferences: min income $75k ✓ · non-smoker ✓ · move-in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.
+          Fit against your stated preferences: min income $75k ✓ · non smoker ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.
         </div>
       </div>
     </div>
@@ -67,7 +67,7 @@ export function LandlordReportScene() {
 // 3 ── Document verification result (the AI / instrument surface) ──────────────────────────
 export function VerificationScene({ phone = false }) {
   const rows = [
-    ['Income', '$115,000', '$114,600 (T4)', 'match'], ['Employer', 'CIBC', 'CIBC World Markets', 'match'], ['Job title', 'Senior UX', 'Senior UX Designer', 'match'], ['Pay frequency', '—', 'Semi-monthly', 'found'],
+    ['Income', '$115,000', '$114,600 (T4)', 'match'], ['Employer', 'CIBC', 'CIBC World Markets', 'match'], ['Job title', 'Senior UX', 'Senior UX Designer', 'match'], ['Pay frequency', 'not set', 'Semi-monthly', 'found'],
   ];
   const tone = { match: [C.green, C.greenTint, '✓ Verified'], found: [C.inkSoft, C.paperDeep, 'Found'], close: [C.amber, C.amberTint, '≈ Close'] };
   return (
@@ -119,11 +119,11 @@ export function TenantApplyScene() {
       </div>
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9, flex: 1, minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><span style={{ fontSize: 10, color: C.inkMute }}>03</span><span style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>Employment</span><span style={{ fontSize: 9, color: C.inkMute }}>Required</span></div>
-        <F label="Employment type" value="Full-time" done />
+        <F label="Employment type" value="Full time" done />
         <F label="Job title *" value="Senior UX Designer" done />
         <F label="Employer *" value="CIBC" done />
         <F label="Annual income before tax (CAD) *" value="$115,000" done />
-        <div style={{ padding: '7px 10px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45 }}>Estimated after-tax income: <strong style={{ color: C.ink }}>$84,400</strong> — Ontario, 2026 rates. Correct it if yours differs.</div>
+        <div style={{ padding: '7px 10px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45 }}>Estimated after tax income: <strong style={{ color: C.ink }}>$84,400</strong>, Ontario, 2026 rates. Correct it if yours differs.</div>
         <div style={{ marginTop: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.inkMute, marginBottom: 4 }}><span>Step 3 of 9</span><span>About 4 minutes left</span></div>
           <div style={{ height: 3, background: C.rule, borderRadius: 2, marginBottom: 10 }}><div style={{ width: '33%', height: '100%', background: C.red, borderRadius: 2 }} /></div>
@@ -197,10 +197,10 @@ export function DashboardHomeScene() {
 
 export const SCENES = [
   { key: 'film', title: 'Product film', blurb: 'The 43-second camera move through the product, synced to the narration timeline. Hover for the scrubber.', film: true, animated: true },
-  { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero — applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3', animated: true, stillStep: 3 },
-  { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives — co-branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/shortlist/…', Scene: LandlordReportScene, aspect: '4 / 3' },
-  { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read, facts matched, an OHRC-safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
-  { key: 'apply', title: 'Tenant application', blurb: 'How simple it is to apply — one step at a time, no account.', device: 'phone', Scene: TenantApplyScene },
-  { key: 'upload', title: 'Secure document upload', blurb: 'The tenant’s secure-link experience: read, held 14 days, deleted.', device: 'phone', Scene: TenantUploadScene },
-  { key: 'home', title: 'Dashboard on a phone', blurb: 'Mobile-native: listings, applicants and new activity at a glance.', device: 'phone', Scene: DashboardHomeScene },
+  { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero, applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3', animated: true, stillStep: 3 },
+  { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives, co branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/shortlist/…', Scene: LandlordReportScene, aspect: '4 / 3' },
+  { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read, facts matched, an OHRC safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
+  { key: 'apply', title: 'Tenant application', blurb: 'How simple it is to apply, one step at a time, no account.', device: 'phone', Scene: TenantApplyScene },
+  { key: 'upload', title: 'Secure document upload', blurb: 'The tenant’s secure link experience: read, held 14 days, deleted.', device: 'phone', Scene: TenantUploadScene },
+  { key: 'home', title: 'Dashboard on a phone', blurb: 'Mobile native: listings, applicants and new activity at a glance.', device: 'phone', Scene: DashboardHomeScene },
 ];

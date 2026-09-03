@@ -50,7 +50,7 @@ export default function ForgotPassword() {
         sub="If an account exists for that address, we've emailed a link to reset your password."
         footer={<a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
       >
-        <div style={authNoticeStyle}>Sent to <strong>{email.trim()}</strong>. The link expires soon — check spam if it doesn't arrive.</div>
+        <div style={authNoticeStyle}>Sent to <strong>{email.trim()}</strong>. The link expires soon, check spam if it doesn't arrive.</div>
       </AuthShell>
     );
   }

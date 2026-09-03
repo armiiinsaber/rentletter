@@ -60,7 +60,7 @@ export default async function handler(req, res) {
 
   // Build the email
   const subjectPrefix = isRealtor ? `[${realtorName}] ` : '';
-  const subject = `${subjectPrefix}Rentletter shortlist — ${shortlisted.length} favourite${shortlisted.length === 1 ? '' : 's'} of ${applications.length}`;
+  const subject = `${subjectPrefix}Rentletter shortlist · ${shortlisted.length} favourite${shortlisted.length === 1 ? '' : 's'} of ${applications.length}`;
 
   const unitLine = unit && (unit.address || unit.monthlyRent)
     ? `${escapeHtml(unit.address || 'Unit')}${unit.monthlyRent ? ` · $${escapeHtml(unit.monthlyRent)}/mo` : ''}${unit.bedrooms ? ` · ${escapeHtml(unit.bedrooms)} bed` : ''}`

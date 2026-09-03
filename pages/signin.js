@@ -34,7 +34,7 @@ export default function SignIn() {
       });
       if (signInError) {
         const msg = /email not confirmed/i.test(signInError.message)
-          ? 'Please confirm your email first — check your inbox for the confirmation link.'
+          ? 'Please confirm your email first, check your inbox for the confirmation link.'
           : /invalid login credentials/i.test(signInError.message)
             ? 'Incorrect email or password.'
             : signInError.message;

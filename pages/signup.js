@@ -55,7 +55,7 @@ export default function SignUp() {
 
     // Weak password (check before the generic 422 "already exists" mapping below).
     if (code.includes('weak_password') || (m.includes('password') && (m.includes('weak') || m.includes('at least') || m.includes('should be') || m.includes('characters') || m.includes('short')))) {
-      return 'That password is too weak — use at least 8 characters.';
+      return 'That password is too weak, use at least 8 characters.';
     }
     // Already registered (most common when re-testing the same email). When email
     // confirmation is on, Supabase usually returns status 422 / a user_already_exists code.
@@ -74,7 +74,7 @@ export default function SignUp() {
     }
     // Sign-ups disabled on the project.
     if (code.includes('signup_disabled') || m.includes('signups not allowed') || m.includes('signup is disabled')) {
-      return 'Sign-ups are temporarily unavailable. Please try again later.';
+      return 'Sign ups are temporarily unavailable. Please try again later.';
     }
     // A clean, human-readable message? Show it. Otherwise the generic fallback — never the
     // raw object or "{}".
@@ -142,7 +142,7 @@ export default function SignUp() {
         footer={<>Wrong address? <a href="/signup" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Start over</a></>}
       >
         <div style={authNoticeStyle}>
-          Confirmation sent to <strong>{email.trim()}</strong>. The link expires soon — if it doesn't arrive, check spam or try again.
+          Confirmation sent to <strong>{email.trim()}</strong>. The link expires soon, if it doesn't arrive, check spam or try again.
         </div>
         <a href="/signin" style={{ ...authButtonStyle(true), display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }}>
           Go to sign in
@@ -157,12 +157,12 @@ export default function SignUp() {
       eyebrow={referral ? 'An applicant is waiting for you' : 'Realtor dashboard'}
       heading={referral ? 'Create your account to see the referral.' : 'Create your account.'}
       sub={referral
-        ? `${referral.from || 'A realtor'} referred an applicant to you — with the applicant’s approval, their full application is already waiting in your dashboard. Sign up with this email address and assign them to a listing in seconds.`
+        ? `${referral.from || 'A realtor'} referred an applicant to you, with the applicant’s approval, their full application is already waiting in your dashboard. Sign up with this email address and assign them to a listing in seconds.`
         : "Organize your applicants, rank everyone against your landlord's criteria, and send a polished report to your landlord client."}
       footer={<>Already have an account? <a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Sign in</a></>}
     >
       <form onSubmit={submit} noValidate>
-        {/* Render the error ONLY when it's a non-empty string — never a raw object (an
+        {/* Render the error ONLY when it's a non-empty string, never a raw object (an
             object child would render/throw oddly, e.g. the reported "{}"). Defensive: keeps
             the form to exactly Email / Password / Confirm / agreement / submit. */}
         {typeof error === 'string' && error.trim() ? <div style={authErrorStyle}>{error}</div> : null}
@@ -190,12 +190,12 @@ export default function SignUp() {
         <input
           id="confirm" type="password" autoComplete="new-password"
           value={confirm} onChange={(e) => setConfirm(e.target.value)} onBlur={() => setTouched(true)}
-          placeholder="Re-enter your password" style={authInputStyle}
+          placeholder="Re enter your password" style={authInputStyle}
         />
         {touched && confirm.length > 0 && !confirmValid && (
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don’t match.</div>
         )}
-        {/* Province — determines province-specific behaviour (e.g. tenant age of majority). */}
+        {/* Province · determines province-specific behaviour (e.g. tenant age of majority). */}
         <label style={authLabelStyle} htmlFor="province">Province</label>
         <select
           id="province" value={province} onChange={(e) => setProvince(e.target.value)}
@@ -204,7 +204,7 @@ export default function SignUp() {
           {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
         <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 4 }}>Where you operate. You can change this later in your profile.</div>
-        {/* Required agreement — makes the Terms binding at signup. */}
+        {/* Required agreement, makes the Terms binding at signup. */}
         <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 18, marginBottom: 6, cursor: 'pointer', fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
           <input
             type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}

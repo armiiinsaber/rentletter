@@ -85,7 +85,7 @@ CONTEXT: The landlord has ALREADY made their decision. Your job is to articulate
 CRITICAL COMPLIANCE RULES:
 - The rationale MUST be based exclusively on financial fit, employment stability, rental history, references, stated intent, household composition relative to unit size, and disclosed lifestyle factors that affect the unit (smoking, pets if relevant).
 - The rationale MUST NOT reference any of these (Ontario Human Rights Code protected grounds): race, ancestry, place of origin, citizenship, ethnic origin, creed/religion, sex, sexual orientation, gender identity, age, marital status, family status, disability, or receipt of public assistance.
-- If a tenant is a student, refer to them as "an applicant whose income is education-stage" rather than referencing age.
+- If a tenant is a student, refer to them as "an applicant whose income is education stage" rather than referencing age.
 - If a tenant has a co-applicant, refer to "the household" rather than "the couple" or any relational language.
 - Be factual. Anchor every claim to the data in the facts block.
 - Do NOT speculate about facts not in the data. If references have not been confirmed yet, do not assert they were positive — say only that references were provided.

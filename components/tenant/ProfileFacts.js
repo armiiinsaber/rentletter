@@ -10,7 +10,7 @@ import { Field, Textarea, SelectField, ToggleField } from '../apply/fields';
 import { serializePets } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 
-export const EMP_LABEL = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
+export const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
 const PROV_NAME = { ON: 'Ontario', BC: 'British Columbia' };
 export const money = (v) => { const n = Number(String(v ?? '').replace(/[^\d.]/g, '')); return n ? `$${n.toLocaleString('en-CA')}` : null; };
 const phoneDigits = (v) => String(v || '').replace(/\D/g, '');
@@ -140,13 +140,13 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
           <Row label="After tax" value={money(f.netIncome) ? `${money(f.netIncome)} CAD/yr ${f.netIncomeSource === 'stated' ? '(you entered)' : '(estimate)'}` : null} />
         </>}>
         {draft && <>
-          <SelectField label="Employment type" value={d.employmentType} onChange={(v) => updateEmployment({ employmentType: v })} options={[{ value: '', label: 'Select…' }, { value: 'full-time', label: 'Full-time' }, { value: 'part-time', label: 'Part-time' }, { value: 'contract', label: 'Contract' }, { value: 'self-employed', label: 'Self-employed (own or family business)' }]} />
+          <SelectField label="Employment type" value={d.employmentType} onChange={(v) => updateEmployment({ employmentType: v })} options={[{ value: '', label: 'Select…' }, { value: 'full-time', label: 'Full time' }, { value: 'part-time', label: 'Part time' }, { value: 'contract', label: 'Contract' }, { value: 'self-employed', label: 'Self employed (own or family business)' }]} />
           <Field label="Job title" required value={d.jobTitle} onChange={(v) => set('jobTitle', v)} />
-          <Field label={d.employmentType === 'self-employed' ? 'Registered business name' : 'Employer'} required value={d.employer} onChange={(v) => updateEmployment({ employer: v })} hint={d.employmentType === 'self-employed' ? 'The business as it’s registered — your own, or a family business you work for.' : undefined} />
+          <Field label={d.employmentType === 'self-employed' ? 'Registered business name' : 'Employer'} required value={d.employer} onChange={(v) => updateEmployment({ employer: v })} hint={d.employmentType === 'self-employed' ? 'The business as it’s registered, your own, or a family business you work for.' : undefined} />
           <Field label={d.employmentType === 'self-employed' ? 'Years in business' : 'Years at this job'} value={d.yearsAtJob} onChange={(v) => set('yearsAtJob', v)} placeholder="3" />
-          <Field label="Annual income before tax (CAD)" required value={d.annualIncome} onChange={updateGross} placeholder="85,000" type="number" inputMode="numeric" hint="Gross — before deductions." />
+          <Field label="Annual income before tax (CAD)" required value={d.annualIncome} onChange={updateGross} placeholder="85,000" type="number" inputMode="numeric" hint="Gross · before deductions." />
           <div>
-            <Field label="Estimated after-tax income (CAD/yr)" value={d.netIncome} onChange={updateNet} type="number" inputMode="numeric" hint={d.netIncomeSource === 'stated' ? 'You entered this yourself.' : `Estimate for ${PROV_NAME[province]} at ${TAX_YEAR} rates — please correct if yours is different.`} />
+            <Field label="Estimated after tax income (CAD/yr)" value={d.netIncome} onChange={updateNet} type="number" inputMode="numeric" hint={d.netIncomeSource === 'stated' ? 'You entered this yourself.' : `Estimate for ${PROV_NAME[province]} at ${TAX_YEAR} rates, please correct if yours is different.`} />
             {d.netIncomeSource === 'stated' && <button type="button" onClick={resetNet} style={{ marginTop: 6, background: 'transparent', border: 'none', padding: 0, color: C.red, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>Use the {PROV_NAME[province]} estimate instead</button>}
           </div>
         </>}
@@ -166,13 +166,13 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
           <Row label="Time there" value={tenureLabel(f.yearsAtPrevious)} />
           <Row label="Rent" value={money(f.currentRent) ? `${money(f.currentRent)}/mo` : null} />
           <Row label="Landlord reference" value={f.previousLandlordName ? `${f.previousLandlordName}${contactParts.length ? ` · ${contactParts.join(' · ')}` : ''}` : null} />
-        </> : <Empty>No previous rental listed. Plenty of strong applications start here — if you’ve rented before, adding a landlord reference is the single biggest upgrade you can make.</Empty>}>
+        </> : <Empty>No previous rental listed. Plenty of strong applications start here, if you’ve rented before, adding a landlord reference is the single biggest upgrade you can make.</Empty>}>
         {draft && <>
           <SelectField label="Your rental situation" value={d.rentalStatus} onChange={updateRentalStatus} options={[{ value: 'current', label: 'I’m renting now' }, { value: 'previous', label: 'I’ve rented before, but not right now' }, { value: 'none', label: 'No previous rental to list' }]} />
           {d.rentalStatus !== 'none' && <>
             <Field label="Rental address" value={d.previousAddress} onChange={(v) => set('previousAddress', v)} />
             <div className="mp-grid2">
-              <SelectField label="Time there — years" value={d.tenureYears} onChange={(v) => updateTenure({ tenureYears: v })} options={[{ value: '', label: 'Select…' }, ...Array.from({ length: 10 }, (_, i) => ({ value: String(i), label: String(i) })), { value: '10', label: '10+' }]} />
+              <SelectField label="Time there · years" value={d.tenureYears} onChange={(v) => updateTenure({ tenureYears: v })} options={[{ value: '', label: 'Select…' }, ...Array.from({ length: 10 }, (_, i) => ({ value: String(i), label: String(i) })), { value: '10', label: '10+' }]} />
               <SelectField label="… plus months" value={d.tenureMonths} onChange={(v) => updateTenure({ tenureMonths: v })} options={[{ value: '', label: '0' }, ...Array.from({ length: 11 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))]} />
               <Field label="Rent (CAD/mo)" value={d.currentRent} onChange={(v) => set('currentRent', v)} type="number" inputMode="numeric" />
             </div>
@@ -186,16 +186,16 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
       </Section>
 
       <Section {...sec('move')} title="Your move" blurb="Update this before you apply somewhere new if your timing has changed."
-        rows={<><Row label="Move-in date" value={dateNice(f.moveInDate)} /><Row label="Reason" value={f.reasonForMoving} multiline /></>}>
+        rows={<><Row label="Move in date" value={dateNice(f.moveInDate)} /><Row label="Reason" value={f.reasonForMoving} multiline /></>}>
         {draft && <>
-          <Field label="Desired move-in date" value={d.moveInDate} onChange={(v) => set('moveInDate', v)} type="date" />
+          <Field label="Desired move in date" value={d.moveInDate} onChange={(v) => set('moveInDate', v)} type="date" />
           <Textarea label="Why are you moving?" value={d.reasonForMoving} onChange={(v) => set('reasonForMoving', v)} />
         </>}
       </Section>
 
       <Section {...sec('household')} title="Household, pets & parking"
         rows={<>
-          <Row label="Occupants" value={f.numberOfOccupants ? `${f.numberOfOccupants}${f.occupantsDetails ? ` — ${f.occupantsDetails}` : ''}` : null} />
+          <Row label="Occupants" value={f.numberOfOccupants ? `${f.numberOfOccupants}${f.occupantsDetails ? ` · ${f.occupantsDetails}` : ''}` : null} />
           <Row label="Smoking / vaping" value={{ no: 'No', yes: 'Yes', outdoor: 'Outdoor only' }[f.smoker] || 'No'} />
           <Row label="Pets" value={f.pets || 'None'} />
           <Row label="Co-tenant" value={f.hasCoApplicant ? [f.coApplicantName, [f.coApplicantJobTitle, f.coApplicantEmployer].filter(Boolean).join(' at '), money(f.coApplicantIncome) ? `${money(f.coApplicantIncome)}/yr` : null].filter(Boolean).join(' · ') || 'Yes' : 'Applying on my own'} />
@@ -214,14 +214,14 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
               <div className="mp-grid2">
                 <SelectField label="Type" value={d.petType} onChange={(v) => updatePets({ petType: v })} options={[{ value: 'cat', label: 'Cat' }, { value: 'dog', label: 'Dog' }, { value: 'catdog', label: 'Cats & dogs' }, { value: 'other', label: 'Other' }]} />
                 <SelectField label="How many" value={d.petCount} onChange={(v) => updatePets({ petCount: v })} options={[{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3+', label: '3 or more' }]} />
-                <SelectField label="Size of largest (optional)" value={d.petSize} onChange={(v) => updatePets({ petSize: v })} options={[{ value: '', label: 'Select…' }, { value: 'small', label: 'Small (under 25 lb)' }, { value: 'medium', label: 'Medium (25–60 lb)' }, { value: 'large', label: 'Large (60+ lb)' }]} />
+                <SelectField label="Size of largest (optional)" value={d.petSize} onChange={(v) => updatePets({ petSize: v })} options={[{ value: '', label: 'Select…' }, { value: 'small', label: 'Small (under 25 lb)' }, { value: 'medium', label: 'Medium (25 to 60 lb)' }, { value: 'large', label: 'Large (60+ lb)' }]} />
               </div>
               <ToggleField label="Spayed / neutered" value={d.petSpayedNeutered} onChange={(v) => updatePets({ petSpayedNeutered: v })} />
               <ToggleField label="House-trained" value={d.petTrained} onChange={(v) => updatePets({ petTrained: v })} />
               <Field label="Anything else about your pet(s) (optional)" value={d.petNotes} onChange={(v) => updatePets({ petNotes: v })} />
             </div>
           )}
-          <ToggleField label="Applying with a co-tenant? (another adult who’ll be on the lease)" value={d.hasCoApplicant} onChange={(v) => set('hasCoApplicant', v)} />
+          <ToggleField label="Applying with a co tenant? (another adult who’ll be on the lease)" value={d.hasCoApplicant} onChange={(v) => set('hasCoApplicant', v)} />
           {d.hasCoApplicant && (
             <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, display: 'flex', flexDirection: 'column', gap: 18 }}>
               <Field label="Full name" value={d.coApplicantName} onChange={(v) => set('coApplicantName', v)} />
@@ -245,7 +245,7 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
         rows={<>
           {f.personality
             ? <blockquote className="mp-quote" style={{ margin: '2px 0 14px', paddingLeft: 16, borderLeft: `3px solid ${C.red}` }}>“{f.personality}”</blockquote>
-            : <div style={{ marginBottom: 10 }}><Empty>You haven’t added an intro yet. A few lines about how you live — work-from-home, quiet evenings, long-term plans — is what makes an application feel like a person.</Empty></div>}
+            : <div style={{ marginBottom: 10 }}><Empty>You haven’t added an intro yet. A few lines about how you live, work from home, quiet evenings, long term plans, is what makes an application feel like a person.</Empty></div>}
           <Row label="Anything addressed" value={f.redFlags} multiline />
         </>}>
         {draft && <>
@@ -260,7 +260,7 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
 
       <Section {...sec('references')} title="References"
         rows={refs.length ? refs.map((n) => <Row key={n} label={`Reference ${n}`} value={[f[`reference${n}Name`], f[`reference${n}Relationship`], f[`reference${n}Contact`]].filter(Boolean).join(' · ')} />)
-          : <Empty>No references yet. Two people who can vouch for you — named, with a way to reach them — are more persuasive than “references available.”</Empty>}>
+          : <Empty>No references yet. Two people who can vouch for you, named, with a way to reach them, are more persuasive than “references available.”</Empty>}>
         {draft && [1, 2].map((n) => (
           <div key={n} style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}`, display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Reference {n}</div>

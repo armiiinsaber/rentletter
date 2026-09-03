@@ -61,7 +61,7 @@ export default async function handler(req, res) {
     cover.drawText(`Generated ${new Date().toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' })}`, { x: 48, y, size: 11, font: helv, color: INK_MUTE });
 
     y -= 24;
-    cover.drawText('Self-reported data from tenants. Verify references independently.', { x: 48, y, size: 10, font: helv, color: INK_MUTE });
+    cover.drawText('Self reported data from tenants. Verify references independently.', { x: 48, y, size: 10, font: helv, color: INK_MUTE });
 
     // Realtor branding block — appears on cover when set
     if (isRealtor) {
@@ -89,7 +89,7 @@ export default async function handler(req, res) {
       cover.drawText(safe(app.tenant?.fullName || 'Unknown'), { x: 68, y, size: 11, font: helvBold, color: INK });
       const role = `${app.employment?.jobTitle || ''} · ${app.employment?.employer || ''}`;
       cover.drawText(safe(role).slice(0, 60), { x: 230, y, size: 10, font: helv, color: INK_SOFT });
-      const overall = app.scorecard?.overall != null ? String(app.scorecard.overall) : '—';
+      const overall = app.scorecard?.overall != null ? String(app.scorecard.overall) : 'not set';
       cover.drawText(`Score ${overall}/5`, { x: 500, y, size: 10, font: helvBold, color: INK });
       y -= 18;
     });
@@ -132,7 +132,7 @@ export default async function handler(req, res) {
       const drawRow = (label, value) => {
         if (py < 80) return;
         page.drawText(label.toUpperCase(), { x: 48, y: py, size: 8, font: helvBold, color: INK_MUTE });
-        page.drawText(safe(value || '—').slice(0, 80), { x: 48, y: py - 14, size: 11, font: helv, color: INK });
+        page.drawText(safe(value || 'not set').slice(0, 80), { x: 48, y: py - 14, size: 11, font: helv, color: INK });
         py -= 34;
       };
 
@@ -142,14 +142,14 @@ export default async function handler(req, res) {
         const combined = (app.employment?.annualIncome || 0) + (app.coApplicant?.annualIncome || 0);
         drawRow('Combined household', `$${combined.toLocaleString()} CAD/year (joint with ${app.coApplicant?.name || 'co-applicant'})`);
       }
-      drawRow('Rent-to-income', app.apartment?.rentToIncomeRatio ? `${app.apartment.rentToIncomeRatio}%` : '—');
-      drawRow('Apartment', `${app.apartment?.address || '—'} · ${app.apartment?.description || ''}`);
-      drawRow('Move-in', app.move?.moveInDate || '—');
+      drawRow('Rent-to-income', app.apartment?.rentToIncomeRatio ? `${app.apartment.rentToIncomeRatio}%` : 'not set');
+      drawRow('Apartment', `${app.apartment?.address || ', '} · ${app.apartment?.description || ''}`);
+      drawRow('Move-in', app.move?.moveInDate || 'not set');
       drawRow('Rental history', app.rental?.previousAddress
         ? `${app.rental.yearsAtPrevious || '?'} years at ${app.rental.previousAddress}`
-        : 'First-time renter or not provided');
-      drawRow('Reason for moving', app.move?.reasonForMoving || '—');
-      drawRow('Smoker', app.household?.smoker === 'no' ? 'Non-smoker' : app.household?.smoker === 'outdoor' ? 'Outdoor only' : app.household?.smoker === 'yes' ? 'Yes' : '—');
+        : 'First time renter or not provided');
+      drawRow('Reason for moving', app.move?.reasonForMoving || 'not set');
+      drawRow('Smoker', app.household?.smoker === 'no' ? 'Non-smoker' : app.household?.smoker === 'outdoor' ? 'Outdoor only' : app.household?.smoker === 'yes' ? 'Yes' : 'not set');
       drawRow('Pets', app.lifestyle?.pets || 'None');
       drawRow('Vehicle', app.vehicle?.makeModel ? `${app.vehicle.makeModel}${app.vehicle.year ? ` (${app.vehicle.year})` : ''}` : 'None');
 
@@ -165,7 +165,7 @@ export default async function handler(req, res) {
           // continue on next page
           const cont = pdfDoc.addPage([612, 792]);
           py = 720;
-          cont.drawText(`${safe(app.tenant?.fullName)} — continued`, { x: 48, y: py, size: 12, font: helvBold, color: INK });
+          cont.drawText(`${safe(app.tenant?.fullName)} · continued`, { x: 48, y: py, size: 12, font: helvBold, color: INK });
           py -= 30;
         }
         page.drawText('DISCLOSURES', { x: 48, y: py, size: 8, font: helvBold, color: RED });
@@ -191,7 +191,7 @@ export default async function handler(req, res) {
 
       // Footer
       page.drawLine({ start: { x: 48, y: 60 }, end: { x: 564, y: 60 }, thickness: 0.5, color: RULE });
-      page.drawText(`Self-reported data · Verify references · rentletter.ca/landlord`, {
+      page.drawText(`Self reported data · Verify references · rentletter.ca/landlord`, {
         x: 48, y: 46, size: 8, font: helv, color: INK_MUTE,
       });
     }

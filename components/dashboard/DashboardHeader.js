@@ -30,17 +30,17 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
   return (
     <>
       <ScrollHeader maxWidth={1100}>
-        {/* LEFT — wordmark → homepage (keeps the session). First beat of the reveal. */}
+        {/* LEFT, wordmark → homepage (keeps the session). First beat of the reveal. */}
         <a href="/" aria-label="Rentletter home" className="rl-hdr-mark rl-hdr-reveal" style={{ '--d': '40ms' }}>
           <Wordmark />
         </a>
-        {/* CENTER — account status (trial countdown / lapsed / subscribed). Founders get no badge
+        {/* CENTER, account status (trial countdown / lapsed / subscribed). Founders get no badge
             at all: the wrapper is empty and hidden, and the bar becomes the clean two-part
             wordmark + actions row. When a badge IS shown it collapses below 560px. */}
         <span className="rl-hdr-reveal rl-hdr-status" style={{ '--d': '160ms', display: 'inline-flex' }}>
           <StatusBadge profile={profile} />
         </span>
-        {/* RIGHT — account actions grouped with an even rhythm (matched 34px controls, 12px gaps).
+        {/* RIGHT, account actions grouped with an even rhythm (matched 34px controls, 12px gaps).
             Reveals left→right after the wordmark and badge. */}
         <div className="rl-hdr-cluster">
           {/* Bell: the assistant. Badge = what needs the realtor; the panel adds what happened. */}

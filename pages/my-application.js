@@ -19,7 +19,7 @@ import { ProfileStyles, FactSections, Eyebrow, Empty } from '../components/tenan
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
-const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return '—'; } };
+const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return 'not set'; } };
 function timeAgo(iso) {
   if (!iso) return '';
   const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -74,8 +74,8 @@ export default function MyProfile() {
     // Legacy email deep link → that application's page (the token leaves the URL there).
     if (q.app && q.token) { router.replace(`/my-application/${String(q.app).toUpperCase()}?token=${encodeURIComponent(String(q.token))}`); return; }
     const flags = {
-      link: { expired: ['warn', 'That link has expired or was already used. Request a fresh one below.'], error: ['warn', 'We couldn’t open that link. Request a fresh one below.'], unavailable: ['warn', 'Sign-in is temporarily unavailable. Please try again shortly.'] },
-      email: { changed: ['ok', 'Your email is updated — that address is now how you sign in.'], expired: ['warn', 'That confirmation link expired. Request the email change again.'], taken: ['warn', 'That email already has its own profile. Sign in with it instead — merging profiles isn’t available yet.'], error: ['warn', 'We couldn’t complete the email change. Try again.'] },
+      link: { expired: ['warn', 'That link has expired or was already used. Request a fresh one below.'], error: ['warn', 'We couldn’t open that link. Request a fresh one below.'], unavailable: ['warn', 'Sign in is temporarily unavailable. Please try again shortly.'] },
+      email: { changed: ['ok', 'Your email is updated, that address is now how you sign in.'], expired: ['warn', 'That confirmation link expired. Request the email change again.'], taken: ['warn', 'That email already has its own profile. Sign in with it instead, merging profiles isn’t available yet.'], error: ['warn', 'We couldn’t complete the email change. Try again.'] },
     };
     for (const k of ['link', 'email']) if (q[k] && flags[k][q[k]]) { const [tone, text] = flags[k][q[k]]; setNotice({ tone, text }); }
     if (q.link || q.email) router.replace('/my-application', undefined, { shallow: true });
@@ -123,7 +123,7 @@ export default function MyProfile() {
       const j = await post({ action: 'update-facts', form: draft });
       setProfile((p) => ({ ...p, facts: j.facts, factsUpdatedAt: j.factsUpdatedAt, profileRevision: j.profileRevision }));
       const id = editing; setEditing(null); setDraft(null); setJustSaved(id);
-      setToast('Saved to your profile — applies to your next applications');
+      setToast('Saved to your profile, applies to your next applications');
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => { setToast(''); setJustSaved(null); }, 4500);
     } catch (err) { setSaveError(err.message); }
@@ -133,7 +133,7 @@ export default function MyProfile() {
   const goApplyWithProfile = (e) => {
     e.preventDefault();
     const m = String(inviteLink).match(/apply\/([a-f0-9]{20})/i);
-    if (!m) { setInviteErr('That doesn’t look like a Rentletter invite link — it looks like rentletter.ca/apply/… Paste the whole link.'); return; }
+    if (!m) { setInviteErr('That doesn’t look like a Rentletter invite link, it looks like rentletter.ca/apply/… Paste the whole link.'); return; }
     setInviteErr(''); router.push(`/apply/${m[1].toLowerCase()}#profile`);
   };
   const requestEmailChange = async (e) => {
@@ -163,13 +163,13 @@ export default function MyProfile() {
 
   // ════════════════════════════════════════════════════════════════════════════════════════
   if (phase === 'boot') {
-    return (<><Head><title>My profile — Rentletter</title></Head><GlobalStyle /><ProfileStyles /><div style={{ minHeight: '100vh', background: C.paper }}>{header(null)}<div className="mp-wrap"><p style={{ color: C.inkSoft }}>Opening your profile…</p></div></div></>);
+    return (<><Head><title>My profile · Rentletter</title></Head><GlobalStyle /><ProfileStyles /><div style={{ minHeight: '100vh', background: C.paper }}>{header(null)}<div className="mp-wrap"><p style={{ color: C.inkSoft }}>Opening your profile…</p></div></div></>);
   }
 
   if (phase === 'entry' || phase === 'sent') {
     return (
       <>
-        <Head><title>Tenant profile — Rentletter</title><meta name="robots" content="noindex" /></Head>
+        <Head><title>Tenant profile · Rentletter</title><meta name="robots" content="noindex" /></Head>
         <GlobalStyle /><ProfileStyles />
         <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', flexDirection: 'column' }}>
           {header(<a href="/" className="mp-ghost"><span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={13} /></span> Home</a>)}
@@ -179,13 +179,13 @@ export default function MyProfile() {
               {phase === 'sent' ? (
                 <div className="rl-in">
                   <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 6vw, 48px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 16, textWrap: 'balance' }}>Check your inbox.</h1>
-                  <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22 }}>If <strong style={{ color: C.ink, overflowWrap: 'anywhere' }}>{email}</strong> has an application with us, we’ve sent a link. It works once and expires in 15 minutes — open it on whichever device you’re on.</p>
+                  <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22 }}>If <strong style={{ color: C.ink, overflowWrap: 'anywhere' }}>{email}</strong> has an application with us, we’ve sent a link. It works once and expires in 15 minutes, open it on whichever device you’re on.</p>
                   <div className="mp-note" style={{ marginBottom: 18 }}>Nothing arrived? Check spam for “Rentletter”, make sure it’s the email you applied with, then <button type="button" onClick={() => setPhase('entry')} style={{ background: 'transparent', border: 'none', padding: 0, color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>try again</button>.</div>
                 </div>
               ) : (
                 <>
                   <h1 className="rl-serif rl-in" style={{ fontSize: 'clamp(32px, 6vw, 48px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 16, textWrap: 'balance', '--rl-d': '60ms' }}>Your rental profile, in one place.</h1>
-                  <p className="rl-in" style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 26, '--rl-d': '110ms' }}>Every application you’ve sent, your details ready to reuse, and control over who sees what. Enter the email you applied with and we’ll send you a link — no password.</p>
+                  <p className="rl-in" style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 26, '--rl-d': '110ms' }}>Every application you’ve sent, your details ready to reuse, and control over who sees what. Enter the email you applied with and we’ll send you a link · no password.</p>
                   {noticeEl}
                   <form className="rl-in" style={{ '--rl-d': '160ms' }} onSubmit={requestLink}>
                     <label htmlFor="tp-email" style={{ display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Email</label>
@@ -221,7 +221,7 @@ export default function MyProfile() {
 
   return (
     <>
-      <Head><title>{f?.fullName ? `${f.fullName} — Profile — Rentletter` : 'My profile — Rentletter'}</title><meta name="robots" content="noindex" /></Head>
+      <Head><title>{f?.fullName ? `${f.fullName}, Profile · Rentletter` : 'My profile · Rentletter'}</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle /><ProfileStyles />
       <div style={{ minHeight: '100vh', background: C.paper }}>
         {header(<button onClick={signOut} className="mp-ghost">Sign out</button>)}
@@ -243,7 +243,7 @@ export default function MyProfile() {
             <Eyebrow>Apply in seconds</Eyebrow>
             <h2 style={{ fontSize: 'clamp(20px, 4vw, 26px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 8, textWrap: 'balance' }}>{f ? 'Your next listing, without the retyping' : 'Your first application builds your profile'}</h2>
             <p style={{ fontSize: 14, color: '#c8c2b3', lineHeight: 1.6, marginBottom: f ? 16 : 0, maxWidth: 520 }}>
-              {f ? 'Paste the invite link a realtor sent you. Their application opens with your profile already filled in — you check it and confirm before anything is sent. Each listing gets its own application; your profile stays the source.' : 'Apply through any realtor’s invite link and what you submit becomes your saved profile — ready to reuse for the next one.'}
+              {f ? 'Paste the invite link a realtor sent you. Their application opens with your profile already filled in, you check it and confirm before anything is sent. Each listing gets its own application; your profile stays the source.' : 'Apply through any realtor’s invite link and what you submit becomes your saved profile, ready to reuse for the next one.'}
             </p>
             {f && (
               <form onSubmit={goApplyWithProfile} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
@@ -260,13 +260,13 @@ export default function MyProfile() {
           <div className="rl-in" style={{ marginBottom: 14 }}>
             <Eyebrow>Your details</Eyebrow>
             <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 28px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, textWrap: 'balance', marginBottom: 6 }}>What your next application starts from</h2>
-            <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 560 }}>Edits here apply to applications you send from now on. Anything you’ve already sent keeps exactly what you sent — open it below to change that one.</p>
+            <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 560 }}>Edits here apply to applications you send from now on. Anything you’ve already sent keeps exactly what you sent, open it below to change that one.</p>
           </div>
           {saveError && <div role="alert" className="mp-alert" style={{ marginBottom: 14 }}>{saveError}</div>}
           {f ? (
             <FactSections facts={f} draft={draft} editing={editing} setDraft={setDraft} canEdit={!editing} saving={saving} justSaved={justSaved} onEdit={startEdit} onCancel={cancelEdit} onSave={saveEdit} contactEditable={false} saveLabel="Save to my profile" />
           ) : (
-            <div className="rl-card rl-in mp-section"><Empty>No details saved yet. They’ll appear here after your first application — or add an application you’ve already sent, below.</Empty></div>
+            <div className="rl-card rl-in mp-section"><Empty>No details saved yet. They’ll appear here after your first application, or add an application you’ve already sent, below.</Empty></div>
           )}
 
           {/* Applications */}
@@ -311,7 +311,7 @@ export default function MyProfile() {
 
           {/* Email */}
           <div className="rl-in" style={{ marginBottom: 14 }}>
-            <Eyebrow>Sign-in email</Eyebrow>
+            <Eyebrow>Sign in email</Eyebrow>
             <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 28px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, textWrap: 'balance' }}>Where your links go</h2>
           </div>
           <div className="rl-in rl-card mp-section">

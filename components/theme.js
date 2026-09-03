@@ -42,7 +42,7 @@ export const C = {
   // Status
   green: '#2d7d4a',
   greenTint: '#eef5f0',
-  verified: '#2d7d4a',   // alias with intent — document-verification UI uses this name
+  verified: '#2d7d4a',   // alias with intent · document-verification UI uses this name
   amber: '#b07818',
   amberTint: '#fdf6e9',
   gold: '#b08d57',       // premium notice accent (AI studio gates/limits)

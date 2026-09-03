@@ -96,10 +96,10 @@ Output the JSON array now.`;
 
 function buildUserMessage({ brief, refineFrom, conversationContext, fullName, brokerage, brandColor, brandColorSecondary }) {
   const lines = [];
-  lines.push(`REALTOR NAME: ${fullName || '(not set — use a tasteful placeholder monogram only if truly absent)'}`);
+  lines.push(`REALTOR NAME: ${fullName || '(not set, use a tasteful placeholder monogram only if truly absent)'}`);
   lines.push(`BROKERAGE: ${brokerage || '(none provided)'}`);
-  if (brandColor) lines.push(`PRIMARY BRAND COLOUR: ${brandColor} — the dominant colour of the mark/wordmark.`);
-  if (brandColorSecondary) lines.push(`SECONDARY BRAND COLOUR: ${brandColorSecondary} — the accent (e.g. the wordmark, a supporting detail, or the secondary part of the mark).`);
+  if (brandColor) lines.push(`PRIMARY BRAND COLOUR: ${brandColor}, the dominant colour of the mark/wordmark.`);
+  if (brandColorSecondary) lines.push(`SECONDARY BRAND COLOUR: ${brandColorSecondary}, the accent (e.g. the wordmark, a supporting detail, or the secondary part of the mark).`);
   if (brandColor || brandColorSecondary) lines.push(`Use BOTH brand colours intentionally together (plus a neutral ink/charcoal if needed). UNLESS the brief explicitly names a different colour, build the palette from these.`);
   lines.push('');
   if (Array.isArray(conversationContext) && conversationContext.length) {
@@ -108,7 +108,7 @@ function buildUserMessage({ brief, refineFrom, conversationContext, fullName, br
     lines.push('');
   }
   if (refineFrom) {
-    lines.push('REFINE this exact logo. Preserve its concept, composition, lockup and letterforms — change ONLY what the instruction asks. Return 3 close refinements of THIS SAME logo (not new concepts):');
+    lines.push('REFINE this exact logo. Preserve its concept, composition, lockup and letterforms, change ONLY what the instruction asks. Return 3 close refinements of THIS SAME logo (not new concepts):');
     lines.push('```');
     lines.push(String(refineFrom).slice(0, 12000));
     lines.push('```');
@@ -173,7 +173,7 @@ export default async function handler(req, res) {
   const count = await kvIncr(dayKey);
   if (count === 1) await kvExpire(dayKey, 90000); // ~25h
   if (count !== null && count > DAILY_LIMIT) {
-    return res.status(429).json({ error: `You've hit today's logo-generation limit (${DAILY_LIMIT}). Your saved logo is untouched — try again tomorrow.`, limit: DAILY_LIMIT, used: count - 1 });
+    return res.status(429).json({ error: `You've hit today's logo generation limit (${DAILY_LIMIT}). Your saved logo is untouched, try again tomorrow.`, limit: DAILY_LIMIT, used: count - 1 });
   }
 
   try {

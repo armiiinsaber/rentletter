@@ -51,7 +51,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
           setReceivedAt(j.receivedAt || null);
           setTenantEmail(j.tenantEmail || null);
         }
-      } catch (e) { /* non-fatal — the action still works */ }
+      } catch (e) { /* non-fatal, the action still works */ }
       if (!cancelled) setLoaded(true);
     })();
     return () => { cancelled = true; };
@@ -75,7 +75,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
         setRequestedAt(j.requestedAt || requestedAt);
         if (renew) { setReceivedAt(null); setConfirmRenew(false); } // fresh request → back to pending
         if (j.tenantEmail !== undefined) setTenantEmail(j.tenantEmail);
-        if (sendEmail) setEmailedNote(j.emailed ? `Emailed to ${j.tenantEmail || 'the tenant'}` : (j.emailError || 'Could not email — share the link instead.'));
+        if (sendEmail) setEmailedNote(j.emailed ? `Emailed to ${j.tenantEmail || 'the tenant'}` : (j.emailError || 'Could not email, share the link instead.'));
       }
     } catch (e) { setError('Could not create the document request.'); }
     if (sendEmail) setEmailBusy(false); else setBusy(false);
@@ -110,7 +110,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
       {status === 'received' ? (
         <div>
           <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55 }}>
-            The tenant uploaded their documents{receivedAt ? ` on ${shortDate(receivedAt)}` : ''}. They’re analyzed automatically — see the verification in the document panel above.
+            The tenant uploaded their documents{receivedAt ? ` on ${shortDate(receivedAt)}` : ''}. They’re analyzed automatically, see the verification in the document panel above.
           </div>
           {!confirmRenew ? (
             <div style={{ marginTop: 'var(--s-3)', display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -141,7 +141,7 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
       ) : status === 'requested' ? (
         <>
           <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-2)' }}>
-            Secure link sent{requestedAt ? ` (${shortDate(requestedAt)})` : ''} — waiting for the tenant to upload. Copy the link or email it to them.
+            Secure link sent{requestedAt ? ` (${shortDate(requestedAt)})` : ''}, waiting for the tenant to upload. Copy the link or email it to them.
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-2)', marginBottom: 'var(--s-2)' }}>
             <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{url}</span>

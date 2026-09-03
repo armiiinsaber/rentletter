@@ -13,9 +13,9 @@ We are committed to handling personal information responsibly and collecting onl
 
 ## 1. Who this policy covers
 The Service is used by three types of people, and this policy applies to all of them:
-- **Realtors** (our customers) — real estate professionals who hold accounts and use the Service to manage rental applications.
-- **Applicants (tenants)** — individuals who submit rental application information through a realtor's invitation link.
-- **Landlords** — property owners or their representatives who receive screening reports from a realtor.
+- **Realtors** (our customers), real estate professionals who hold accounts and use the Service to manage rental applications.
+- **Applicants (tenants)**, individuals who submit rental application information through a realtor's invitation link.
+- **Landlords**, property owners or their representatives who receive screening reports from a realtor.
 
 ## 2. Information we collect
 **2.1 Realtor account information.** When a realtor creates an account, we collect their name, email address, password (stored in hashed form), brokerage name, phone number, and professional licence number, along with branding preferences (such as a logo, brand colours, and fonts) used to personalize reports.
@@ -28,13 +28,13 @@ The Service is used by three types of people, and this policy applies to all of 
 
 ## 3. How we use personal information
 We use personal information to:
-- Provide and operate the Service — receiving applications, organizing and ranking them against a landlord's stated criteria, verifying applicant-provided documents, generating insights, and producing reports for landlords.
+- Provide and operate the Service · receiving applications, organizing and ranking them against a landlord's stated criteria, verifying applicant-provided documents, generating insights, and producing reports for landlords.
 - Create and manage realtor accounts and apply realtor branding to reports.
 - Communicate with users, including transactional emails (such as account confirmation and report delivery).
 - Maintain the security, integrity, and proper functioning of the Service.
 - Comply with legal obligations.
 
-**Rentletter assesses applicants only on the basis of factual, screenable criteria** relevant to tenancy (such as income, rent-to-income ratio, employment, rental tenure, and references). The Service is designed not to assess or surface characteristics protected under human rights legislation. Final decisions about any applicant are made by the realtor and/or landlord, not by Rentletter.
+**Rentletter assesses applicants only on the basis of factual, screenable criteria** relevant to tenancy (such as income, rent to income ratio, employment, rental tenure, and references). The Service is designed not to assess or surface characteristics protected under human rights legislation. Final decisions about any applicant are made by the realtor and/or landlord, not by Rentletter.
 
 ## 4. Consent
 We collect, use, and disclose personal information with consent, except where otherwise permitted or required by law. Applicants provide their information directly when applying and consent to its use for the purpose of having their rental application assessed and shared with the relevant realtor and landlord. Realtors are responsible for ensuring they have an appropriate basis to collect and submit any information they provide to the Service. You may withdraw consent as described in Section 9, subject to legal and contractual limits.
@@ -48,10 +48,10 @@ We do not sell personal information. We share it only as needed to operate the S
 
 ## 6. Service providers and cross-border processing
 We use trusted third-party providers to deliver the Service. Some of these providers process data outside Canada (including in the United States). Where information is processed outside Canada, it may be subject to the laws of that jurisdiction, including lawful access by courts and government authorities. Our current key providers are:
-- **Supabase** — database, authentication, and storage hosting. Our primary application data is hosted in a **Canadian region**.
-- **Anthropic** — artificial-intelligence processing used to read uploaded documents, generate applicant insights, and produce report text. This processing occurs in the **United States**. Documents are processed transiently and are not retained by us (see Section 2.3).
-- **Resend** — transactional email delivery (for example, account confirmation and report emails). This provider operates in the **United States**.
-- **Vercel** — application hosting and delivery.
+- **Supabase** · database, authentication, and storage hosting. Our primary application data is hosted in a **Canadian region**.
+- **Anthropic** · artificial-intelligence processing used to read uploaded documents, generate applicant insights, and produce report text. This processing occurs in the **United States**. Documents are processed transiently and are not retained by us (see Section 2.3).
+- **Resend**, transactional email delivery (for example, account confirmation and report emails). This provider operates in the **United States**.
+- **Vercel**, application hosting and delivery.
 
 We enter into agreements with our providers requiring them to protect personal information and to use it only to provide services to us. The list of providers may change as the Service evolves; we will update this policy accordingly.
 
@@ -92,7 +92,7 @@ export default function PrivacyPolicy() {
   return (
     <LegalPage
       content={CONTENT}
-      metaTitle="Privacy Policy — Rentletter"
+      metaTitle="Privacy Policy · Rentletter"
       metaDescription="How Rentletter collects, uses, and protects personal information under PIPEDA and Canadian privacy law."
     />
   );

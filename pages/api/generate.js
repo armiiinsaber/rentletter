@@ -193,7 +193,7 @@ function buildTemplatedResume(data) {
     redFlags,
   } = data;
 
-  const fmtIncome = (n) => n ? `$${Number(n).toLocaleString()}` : '—';
+  const fmtIncome = (n) => n ? `$${Number(n).toLocaleString()}` : 'not set';
   const yearsLabel = (y) => {
     if (!y) return null;
     const n = parseFloat(y);
@@ -211,18 +211,18 @@ function buildTemplatedResume(data) {
   if (phone) lines.push(`Phone: ${phone}`);
   if (email) lines.push(`Email: ${email}`);
   lines.push(``);
-  lines.push(`— EMPLOYMENT —`);
+  lines.push(` · EMPLOYMENT · `);
   lines.push(`${jobTitle} at ${employer || 'employer'}`);
   if (yearsAtJob) lines.push(`Tenure: ${yearsLabel(yearsAtJob)}`);
   lines.push(`Annual income: ${fmtIncome(annualIncome)}`);
   if (monthlyIncome) lines.push(`Monthly income: ${fmtIncome(monthlyIncome)}`);
   if (estimatedRent && rentToIncomeRatio) {
-    lines.push(`Rent-to-income ratio: ${rentToIncomeRatio}% (rent $${estimatedRent.toLocaleString()} / monthly income $${monthlyIncome.toLocaleString()})`);
+    lines.push(`Rent to income ratio: ${rentToIncomeRatio}% (rent $${estimatedRent.toLocaleString()} / monthly income $${monthlyIncome.toLocaleString()})`);
   }
   lines.push(``);
 
   if (previousAddress || previousLandlordName) {
-    lines.push(`— RENTAL HISTORY —`);
+    lines.push(` · RENTAL HISTORY · `);
     if (previousAddress) lines.push(`Previous address: ${previousAddress}`);
     if (yearsAtPrevious) lines.push(`Duration: ${yearsLabel(yearsAtPrevious)}`);
     if (previousLandlordName) {
@@ -232,14 +232,14 @@ function buildTemplatedResume(data) {
     lines.push(``);
   }
 
-  lines.push(`— UNIT OF INTEREST —`);
+  lines.push(` · UNIT OF INTEREST · `);
   if (apartmentAddress) lines.push(`Address: ${apartmentAddress}`);
   if (apartmentDescription) lines.push(`Details: ${apartmentDescription}`);
-  if (moveDate) lines.push(`Desired move-in: ${moveDate}`);
+  if (moveDate) lines.push(`Desired move in: ${moveDate}`);
   if (reasonForMoving) lines.push(`Reason for moving: ${reasonForMoving}`);
   lines.push(``);
 
-  lines.push(`— HOUSEHOLD —`);
+  lines.push(` · HOUSEHOLD · `);
   lines.push(`Occupants: ${numberOfOccupants || '1'}`);
   if (occupantsDetails) lines.push(`Details: ${occupantsDetails}`);
   lines.push(`Smoker: ${smoker === 'yes' ? 'Yes' : 'No'}`);
@@ -252,7 +252,7 @@ function buildTemplatedResume(data) {
   lines.push(``);
 
   if (hasCoApplicant && coApplicantName) {
-    lines.push(`— CO-APPLICANT —`);
+    lines.push(` · CO-APPLICANT · `);
     lines.push(`Name: ${coApplicantName}`);
     if (coApplicantRelationship) lines.push(`Relationship: ${coApplicantRelationship}`);
     if (coApplicantJobTitle) lines.push(`Role: ${coApplicantJobTitle}${coApplicantEmployer ? ` at ${coApplicantEmployer}` : ''}`);
@@ -261,21 +261,21 @@ function buildTemplatedResume(data) {
   }
 
   if (Array.isArray(references) && references.length > 0) {
-    lines.push(`— REFERENCES —`);
+    lines.push(` · REFERENCES · `);
     references.forEach((r, i) => {
-      lines.push(`${i + 1}. ${r.name}${r.relationship ? ` (${r.relationship})` : ''}${r.contact ? ` — ${r.contact}` : ''}`);
+      lines.push(`${i + 1}. ${r.name}${r.relationship ? ` (${r.relationship})` : ''}${r.contact ? `, ${r.contact}` : ''}`);
     });
     lines.push(``);
   }
 
   if (personality) {
-    lines.push(`— ABOUT THE APPLICANT —`);
+    lines.push(` · ABOUT THE APPLICANT · `);
     lines.push(personality);
     lines.push(``);
   }
 
   if (redFlags) {
-    lines.push(`— DISCLOSURES —`);
+    lines.push(` · DISCLOSURES · `);
     lines.push(redFlags);
     lines.push(``);
   }
@@ -376,7 +376,7 @@ ${estimatedRent ? `- Estimated rent: $${estimatedRent.toLocaleString()}/month` :
 ${rentToIncomeRatio ? `- Rent-to-income ratio: ${rentToIncomeRatio}% (${rentToIncomeRatio <= 30 ? 'within 30% guideline' : rentToIncomeRatio <= 35 ? 'slightly above 30% guideline but manageable' : 'above standard guideline'})` : ''}
 
 CURRENT RENTAL:
-${previousAddress ? `- Current address: ${previousAddress}${yearsAtPrevious ? ` (${yearsAtPrevious} years there)` : ''}` : '- No previous rental in Canada / first-time renter'}
+${previousAddress ? `- Current address: ${previousAddress}${yearsAtPrevious ? ` (${yearsAtPrevious} years there)` : ''}` : '- No previous rental in Canada / first time renter'}
 ${currentRent ? `- Current rent: $${parseInt(currentRent).toLocaleString()}/month` : ''}
 ${previousLandlordName ? `- Current/previous landlord: ${previousLandlordName}${previousLandlordContact ? ` (${previousLandlordContact})` : ''}` : ''}
 
@@ -420,10 +420,10 @@ NOTE: Reference these by name in the Tenant Resume's References section. This is
   const systemPrompt = `You are the senior rental application strategist at Rentletter, a Toronto-based service that has helped thousands of renters win competitive apartments. You combine professional copywriting with deep understanding of how landlords, property managers, and realtors actually evaluate applications.
 
 ═══════════════════════════════════════════════════
-THE RENTLETTER METHOD — OUR PROPRIETARY FORMAT
+THE RENTLETTER METHOD · OUR PROPRIETARY FORMAT
 ═══════════════════════════════════════════════════
 
-Every Rentletter output contains FIVE signature elements that no other service produces. These are our trademark format. Together, they make the landlord's decision easier and the realtor's job lighter — which is why both end up recommending Rentletter to tenants.
+Every Rentletter output contains FIVE signature elements that no other service produces. These are our trademark format. Together, they make the landlord's decision easier and the realtor's job lighter, which is why both end up recommending Rentletter to tenants.
 
 OUR CORE PRINCIPLE: We don't sell the tenant. We REMOVE FRICTION from the landlord's decision. Every element exists to answer a question the landlord would otherwise have to ask, calculate, or chase down.
 
@@ -436,7 +436,7 @@ DOCUMENT 1: THE COVER LETTER
 The Cover Letter has FOUR parts in this exact order:
 
 ──────────────────────────────────────────
-PART A — THE QUICK READ (signature element #1)
+PART A · THE QUICK READ (signature element #1)
 ──────────────────────────────────────────
 
 Right at the top of the letter, before any body text, present a scannable summary. Format it EXACTLY like this:
@@ -445,24 +445,24 @@ Right at the top of the letter, before any body text, present a scannable summar
   ──────────────
   Tenant      [Full name], [age if available]
   Income      $[monthly amount]/month ([X] years at [Employer])
-  History     [Years] at previous address, reference available [or: First-time renter — strong alternative documentation]
+  History     [Years] at previous address, reference available [or: First-time renter, strong alternative documentation]
   Move-in     [Formatted date] (flexibility noted if applicable)
   Fit         [Rent-to-income ratio]% of monthly income[, if calculable: " (within standard 30% guideline)"]
 
 If rent isn't known, omit the "Fit" line. Use thin ruled lines (──────) to separate visually.
 
 ──────────────────────────────────────────
-PART B — THE BODY
+PART B · THE BODY
 ──────────────────────────────────────────
 
 After The Quick Read, leave a blank line, then write the cover letter proper.
 
 CRITICAL TONE RULES:
 - 200-260 words, three short paragraphs
-- Warm, professional, confident — NEVER desperate, NEVER salesy, NEVER over-formal, NEVER like a sales pitch
-- The voice should feel like a competent professional writing to a peer — not a tenant begging for a favour
+- Warm, professional, confident · NEVER desperate, NEVER salesy, NEVER over-formal, NEVER like a sales pitch
+- The voice should feel like a competent professional writing to a peer, not a tenant begging for a favour
 - Lead with what the tenant brings (stability, fit), framed as RELEVANT facts, not as self-promotion
-- Be SPECIFIC — weave their actual details in as evidence, not as claims
+- Be SPECIFIC, weave their actual details in as evidence, not as claims
 - Address weak points (bad credit, gap, frequent moves) honestly and briefly, with context
 - Use Canadian English spelling (favour, neighbour, organize)
 
@@ -471,23 +471,23 @@ CRITICAL PROHIBITIONS:
 - NEVER use AI-sounding constructions: excessive em dashes, "I am thrilled to," "I am excited about the opportunity," tricolon sentences
 - NEVER mention AI, automation, or how this letter was generated
 - NEVER use sales-marketing language: "leveraging," "passionate about," "thriving environment"
-- NEVER make claims you can't verify ("I'm extremely responsible") — replace with facts the landlord can verify ("3-year tenure at Shopify, current landlord reference available")
+- NEVER make claims you can't verify ("I'm extremely responsible"), replace with facts the landlord can verify ("3-year tenure at Shopify, current landlord reference available")
 
-OPENING LINE: Open with a SPECIFIC observation about THIS apartment or neighbourhood — not "Dear Landlord." For example: "I came across your listing at 123 King Street — a one-bedroom in a low-rise building on a quiet residential block — and it's a strong match for what I've been looking for."
+OPENING LINE: Open with a SPECIFIC observation about THIS apartment or neighbourhood, not "Dear Landlord." For example: "I came across your listing at 123 King Street, a one bedroom in a low rise building on a quiet residential block, and it's a strong match for what I've been looking for."
 
 ──────────────────────────────────────────
-PART C — "WHY THIS UNIT" CLOSER (signature element #2)
+PART C, "WHY THIS UNIT" CLOSER (signature element #2)
 ──────────────────────────────────────────
 
 The final paragraph of the body (2-3 sentences max) must EXPLICITLY connect the tenant's specific situation to THIS specific apartment. Reference something concrete:
 - The neighbourhood + their job/lifestyle ("the 15-minute walk to my office at Shopify")
-- The unit type + how they live ("the corner-unit setup with two exposures works well for my work-from-home routine")
-- A specific feature + a tenant trait ("the quieter side-street location matches my preference for a calm space to recover after long shifts")
+- The unit type + how they live ("the corner unit setup with two exposures works well for my work from home routine")
+- A specific feature + a tenant trait ("the quieter side street location matches my preference for a calm space to recover after long shifts")
 
 This must feel like the tenant did genuine homework on this specific place, not a template.
 
 ──────────────────────────────────────────
-PART D — THE VERIFICATION PACK + SIGN-OFF (signature element #3)
+PART D · THE VERIFICATION PACK + SIGN-OFF (signature element #3)
 ──────────────────────────────────────────
 
 Immediately after the "Why This Unit" paragraph, include this exact structure:
@@ -495,9 +495,9 @@ Immediately after the "Why This Unit" paragraph, include this exact structure:
 "Sincerely,
 [Full name]
 
-Ready on request: [list documents based on what the tenant has — pay stubs, employment letter, credit report, government ID, previous landlord reference, character references]. Can deliver within 2 hours of your request."
+Ready on request: [list documents based on what the tenant has, pay stubs, employment letter, credit report, government ID, previous landlord reference, character references]. Can deliver within 2 hours of your request."
 
-THE VERIFICATION PACK MATTERS BECAUSE: it pre-empts the landlord's next question ("what documents do you have?") and signals high responsiveness without sounding eager. The "within 2 hours" line is the trust signal — it tells the landlord this is a tenant who will not waste their time with delayed email chains.
+THE VERIFICATION PACK MATTERS BECAUSE: it pre-empts the landlord's next question ("what documents do you have?") and signals high responsiveness without sounding eager. The "within 2 hours" line is the trust signal, it tells the landlord this is a tenant who will not waste their time with delayed email chains.
 
 Always include this section. Adjust the document list based on what the tenant actually has (e.g., for first-time renters, omit "previous landlord reference" and add "employer reference" + "character references").
 
@@ -524,15 +524,15 @@ EMPLOYMENT
 RENTAL HISTORY
 ──────────────────────────────────────────
 - Previous address: [address] ([years there])
-- Previous landlord: [name] — [contact info]
-- (For first-time renters: "First-time renter — alternative references and 3× monthly income documentation available")
+- Previous landlord: [name] · [contact info]
+- (For first-time renters: "First time renter, alternative references and 3× monthly income documentation available")
 
 ──────────────────────────────────────────
 REFERENCES AVAILABLE
 ──────────────────────────────────────────
-If the tenant has provided REFERENCES BY NAME in the input data, list each one with their name and relationship (do not include contact info in the document — landlord can request it). Format:
-- Sarah Johnson — Current manager at [employer]
-- David Chen — Personal reference, friend of 5 years
+If the tenant has provided REFERENCES BY NAME in the input data, list each one with their name and relationship (do not include contact info in the document, landlord can request it). Format:
+- Sarah Johnson, Current manager at [employer]
+- David Chen, Personal reference, friend of 5 years
 If no named references are provided, list role-based references that are available on request:
 - Previous landlord [if applicable]
 - Employer (HR or direct manager)
@@ -556,17 +556,17 @@ This matters because most rentals consider total household income for affordabil
 ──────────────────────────────────────────
 LIFESTYLE
 ──────────────────────────────────────────
-Brief, factual bullets — 3-5 max. Always include smoker status. Examples:
-- Non-smoker (or "Outdoor smoking only" or "Smoker" — match the input)
+Brief, factual bullets · 3-5 max. Always include smoker status. Examples:
+- Non-smoker (or "Outdoor smoking only" or "Smoker", match the input)
 - Quiet weekday routine; works from home [X] days/week
 - No parties, no overnight commercial activity
-- Pets: [if any — frame with reassurance: "one well-trained 4-year-old cat, indoor only, full vet records available"]
+- Pets: [if any, frame with reassurance: "one well trained 4-year old cat, indoor only, full vet records available"]
 
 ──────────────────────────────────────────
 VEHICLE (only if provided)
 ──────────────────────────────────────────
 If vehicle information is provided, include a single line:
-- Vehicle: [Make/model] ([Year]) — relevant if parking is included with the unit
+- Vehicle: [Make/model] ([Year]), relevant if parking is included with the unit
 
 ──────────────────────────────────────────
 DISCLOSURES [only include if there are real items to address]
@@ -592,18 +592,18 @@ Immediately after the Disclosures section (or after Lifestyle if there are no di
 The Tiebreakers section identifies 2-3 specific FACTS about this tenant that make them the easy choice when a landlord is comparing applicants. These are NOT sales claims. They are concrete, verifiable, low-friction realities.
 
 GOOD tiebreakers (frame as facts that REDUCE landlord risk or workload):
-- "Flexible move-in date — can accommodate landlord's preferred timeline within 2 weeks"
-- "Works from home 4 days/week — minimal building wear, quiet daytime presence"
-- "Prefers 2+ year leases — low turnover risk for the landlord"
-- "Has been pre-approved by a guarantor with verified income — added security if needed"
-- "Has tenant insurance already arranged — proof of coverage available at lease signing"
+- "Flexible move in date, can accommodate landlord's preferred timeline within 2 weeks"
+- "Works from home 4 days/week, minimal building wear, quiet daytime presence"
+- "Prefers 2+ year leases, low turnover risk for the landlord"
+- "Has been pre approved by a guarantor with verified income, added security if needed"
+- "Has tenant insurance already arranged, proof of coverage available at lease signing"
 - "Available for a 5-minute phone conversation any evening this week"
-- "Has visited the building twice — knows the area, no buyer's remorse risk"
-- "Single applicant, no roommates — single point of communication, one decision-maker"
+- "Has visited the building twice, knows the area, no buyer's remorse risk"
+- "Single applicant, no roommates, single point of communication, one decision maker"
 - "Already approved by guarantor" / "Employer letter is already drafted and ready"
-- "Has $X in savings (3× annual rent) — additional reassurance available"
+- "Has $X in savings (3× annual rent), additional reassurance available"
 
-BAD tiebreakers (avoid — these sound salesy or like claims):
+BAD tiebreakers (avoid, these sound salesy or like claims):
 - "I'm very responsible"
 - "I would be an ideal tenant"
 - "I take great care of properties"
@@ -622,16 +622,16 @@ The final section of the tenant resume. Include this exact structure:
   ────────────────────────────────────
   DECISION TIME
   ────────────────────────────────────
-  Ready to sign by: [calculate a reasonable lease-sign date — typically 3-5 days before move-in]
+  Ready to sign by: [calculate a reasonable lease-sign date, typically 3-5 days before move-in]
   
   If you have any concerns, a 5-minute phone call can resolve them. 
-  Available: [based on what makes sense for the tenant profile — e.g., "weekday evenings 6-8pm, weekends anytime" or "weekdays 12-1pm and after 5pm"]
+  Available: [based on what makes sense for the tenant profile, e.g., "weekday evenings 6-8pm, weekends anytime" or "weekdays 12-1pm and after 5pm"]
   ────────────────────────────────────
 
-This section signals decisiveness and lowers the cost of any objection — instead of an email chain, it offers a 5-minute call. Most landlords appreciate the clarity. This is what makes Rentletter applications close 3x faster than generic ones.
+This section signals decisiveness and lowers the cost of any objection, instead of an email chain, it offers a 5-minute call. Most landlords appreciate the clarity. This is what makes Rentletter applications close 3x faster than generic ones.
 
 ═══════════════════════════════════════════════════
-OUTPUT FORMAT — STRICT
+OUTPUT FORMAT · STRICT
 ═══════════════════════════════════════════════════
 
 Output your response in this EXACT format with NO other text before, after, or between sections:
@@ -656,7 +656,7 @@ A realtor wants three things:
 2. A tenant who makes them look good to the landlord
 3. A fast close so they earn their commission without 10 follow-ups
 
-The Rentletter Method serves both. The Quick Read makes the first 10 seconds productive. The Tiebreakers give the landlord language to justify the choice. The Verification Pack eliminates document chase. Decision Time closes the loop. Every element exists to REMOVE FRICTION — not to sell.
+The Rentletter Method serves both. The Quick Read makes the first 10 seconds productive. The Tiebreakers give the landlord language to justify the choice. The Verification Pack eliminates document chase. Decision Time closes the loop. Every element exists to REMOVE FRICTION, not to sell.
 
 NEVER reference Rentletter, AI, or the format itself in the output. The output should read like a uniquely thorough, professional tenant who happens to think the way a great applicant thinks.`;
 
@@ -758,11 +758,11 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
         jobTitle,
         employer,
         yearsAtJob: yearsAtJob || null,
-        annualIncome: annualIncomeNum, // GROSS (before tax) — scored
+        annualIncome: annualIncomeNum, // GROSS (before tax) · scored
         monthlyIncome,
         employmentType: ['full-time', 'part-time', 'contract', 'self-employed'].includes(employmentType) ? employmentType : null,
         businessName: employmentType === 'self-employed' && businessName ? String(businessName).slice(0, 160) : null,
-        netIncome: parseInt(netIncome) > 0 ? parseInt(netIncome) : null, // after tax — display only
+        netIncome: parseInt(netIncome) > 0 ? parseInt(netIncome) : null, // after tax · display only
         netIncomeSource: netIncomeSource === 'stated' ? 'stated' : 'estimated',
       },
       rental: {

@@ -9,7 +9,7 @@ import { useAdapter } from '../lib/dashboardAdapter';
 import { C as COLORS } from './theme';
 
 const MARKETING_GREETING = "Hi! I'm the Rentletter assistant. I can help with how the product works, pricing, or how to use it. What can I help with?";
-const DASHBOARD_GREETING = "Hi! I'm your Rentletter assistant. Ask me how anything works, or tell me what to do — “create the invite link for 88 Harbour”, “request documents from James”, “email the landlord report”, “set minimum income to $85k”. I’ll show you exactly what will happen and do it when you confirm. Which applicant to choose is always your call.";
+const DASHBOARD_GREETING = "Hi! I'm your Rentletter assistant. Ask me how anything works, or tell me what to do, “create the invite link for 88 Harbour”, “request documents from James”, “email the landlord report”, “set minimum income to $85k”. I’ll show you exactly what will happen and do it when you confirm. Which applicant to choose is always your call.";
 
 // Per-mode copy. mode="dashboard" is the in-app realtor product-help assistant; default is the
 // homepage marketing assistant (unchanged).
@@ -23,7 +23,7 @@ const MODES = {
   dashboard: {
     greeting: DASHBOARD_GREETING,
     eyebrow: 'Product help · Beta',
-    title: 'How-to assistant',
+    title: 'How to assistant',
     placeholder: 'Ask how to use the dashboard...',
   },
 };
@@ -142,7 +142,7 @@ export default function ChatWidget({ mode = 'marketing', embedded = false }) {
   const chooseOption = (msgIndex, clarify, opt) => {
     const def = ACTIONS[clarify.action]; if (!def) return;
     const params = { ...opt.params };
-    setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, clarify: null, chosen: opt.label } : m)).concat([{ role: 'assistant', content: 'Here’s what I’ll do — confirm to go ahead.', proposal: { action: clarify.action, params } }]));
+    setMessages((prev) => prev.map((m, i) => (i === msgIndex ? { ...m, clarify: null, chosen: opt.label } : m)).concat([{ role: 'assistant', content: 'Here’s what I’ll do, confirm to go ahead.', proposal: { action: clarify.action, params } }]));
   };
   const runProposal = async (msgIndex, proposal) => {
     const def = ACTIONS[proposal.action]; if (!def) return;
@@ -268,7 +268,7 @@ export default function ChatWidget({ mode = 'marketing', embedded = false }) {
                 }}>
                   {m.content}
                 </div>
-                {/* CONFIRMATION CARD — what will happen, to whom, with what. Fires only on the button. */}
+                {/* CONFIRMATION CARD, what will happen, to whom, with what. Fires only on the button. */}
                 {m.proposal && (() => {
                   const def = ACTIONS[m.proposal.action]; const d = def.describe({ ...ctxNow(), adapter }, m.proposal.params);
                   return (
@@ -287,8 +287,8 @@ export default function ChatWidget({ mode = 'marketing', embedded = false }) {
                     </div>
                   );
                 })()}
-                {m.cancelled && <div style={{ fontSize: 12, color: COLORS.inkMute, marginTop: 6 }}>Cancelled — nothing was done.</div>}
-                {/* CLARIFY — the assistant never guesses which listing/applicant: pick one. */}
+                {m.cancelled && <div style={{ fontSize: 12, color: COLORS.inkMute, marginTop: 6 }}>Cancelled, nothing was done.</div>}
+                {/* CLARIFY, the assistant never guesses which listing/applicant: pick one. */}
                 {m.clarify && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
                     {m.clarify.options.map((o, k) => <button key={k} type="button" onClick={() => chooseOption(i, m.clarify, o)} style={{ background: COLORS.paper, color: COLORS.ink, border: `1px solid ${COLORS.ink}`, borderRadius: 999, padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 34 }}>{o.label}</button>)}
@@ -379,8 +379,8 @@ export default function ChatWidget({ mode = 'marketing', embedded = false }) {
             </div>
             <div style={{ fontSize: 10, color: COLORS.inkMute, marginTop: 8, lineHeight: 1.45, textAlign: 'center' }}>
               {isDashboard
-                ? <>Product how-to only — not tenant-selection or legal advice. Deciding who to choose is your judgment. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.</>
-                : <>AI assistant — general info only, not legal or financial advice. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.</>}
+                ? <>Product how to only, not tenant selection or legal advice. Deciding who to choose is your judgment. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.</>
+                : <>AI assistant, general info only, not legal or financial advice. For account help, email <a href="mailto:info@rentletter.ca" style={{ color: COLORS.inkSoft }}>info@rentletter.ca</a>.</>}
             </div>
           </div>
 

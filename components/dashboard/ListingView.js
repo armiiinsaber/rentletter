@@ -17,10 +17,9 @@ import { computeFit, compareFit } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
-import { AnimatedScore, useFlip, VerifiedMark, ReportDeparture, MotionStyles } from '../motion';
+import { AnimatedScore, useFlip, ReportDeparture, MotionStyles } from '../motion';
 import SwipeCard from '../motion/swipe';
 import { DURATION, prefersReducedMotion } from '../../lib/motion';
-import ChatWidget from '../../components/ChatWidget';
 import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
@@ -31,11 +30,10 @@ import { reportEvent } from '../../lib/clientEvents';
 import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
-import NoticedCards from '../../components/dashboard/NoticedCards';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing } from '../../lib/assistantStore';
-import { narrateApplicants } from '../../lib/noticed';
+import { stateLine } from '../../lib/listingStateLine.js';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
 const Row = ({ label, value }) => (
@@ -49,7 +47,7 @@ const yn = (b) => (b ? 'Yes' : 'No');
 
 function initialsOf(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return '—';
+  if (!parts.length) return 'not set';
   return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
 }
 
@@ -89,10 +87,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     catch (e) { /* optimistic; the column is RLS-scoped to this realtor's own rows */ }
   };
   const toggleApplicant = (a) => { if (openId === a.linkId) setOpenId(null); else openApplicant(a); };
-  const jumpToFirstUnreviewed = () => {
-    const first = [...active, ...setAsideList].find(isUnreviewed); if (!first) return;
-    document.getElementById(`applicant-${first.linkId}`)?.scrollIntoView({ block: 'center', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-  };
   // ── Assistant (Layer 2): publish THIS realtor's own listing/applicants as the chat context
   // (ids + names + emails already in the page), and apply results the assistant executed. ──
   useEffect(() => {
@@ -497,11 +491,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const l = listing;
   const inviteShareUrl = fullInviteUrl(); // complete URL shown + copied
   const employment = [
-    l.pref_employment_full_time && 'Full-time',
+    l.pref_employment_full_time && 'Full time',
     l.pref_employment_contract && 'Contract',
-    l.pref_employment_self_employed && 'Self-employed',
-    l.pref_employment_part_time && 'Part-time',
-  ].filter(Boolean).join(', ') || '—';
+    l.pref_employment_self_employed && 'Self employed',
+    l.pref_employment_part_time && 'Part time',
+  ].filter(Boolean).join(', ') || 'not set';
 
   // Pure scorecard vs criteria ranking (matches lib/listingReportData). Everyone is
   // in: active best fit first, set aside below, withdrawn excluded (withdrawn_at rule).
@@ -539,7 +533,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       rentToIncome: toNum(app.rent_to_income_ratio),
       jobTenureYears: toNum(app.years_at_job),
       employer: app.employer || null,
-      employmentType: ({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[app.employment_type] || employmentTypeFromTitle(app.job_title),
+      employmentType: ({ 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' })[app.employment_type] || employmentTypeFromTitle(app.job_title),
       yearsAtAddress: toNum(app.years_at_previous),
       currentRent: toNum(app.current_rent),
       references: Array.isArray(app.references) ? app.references.length : null,
@@ -550,7 +544,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     };
   });
 
-  const EMP_LABEL = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
+  const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
   const pill = (text, fg, bg, extra = {}) => <span style={{ fontSize: 'var(--t-eyebrow)', color: fg, background: bg, fontWeight: 700, letterSpacing: '0.08em', padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, whiteSpace: 'nowrap', ...extra }}>{text}</span>;
   // A labelled, collapsible section inside the open card. Only the chevron moves (transform).
   const renderSection = (a, key, title, defOpen, body) => {
@@ -577,7 +571,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     </div>
   );
 
-  const renderApplicantCard = (a, { rank, top5, isSetAside }) => {
+  // The red budget: the first active card with a primary action owns the page's one red button.
+  const actionStates = ['new', 'matched', 'checked', 'mismatch'];
+  const primaryLinkId = (active.find((x) => actionStates.includes(applicantState({ junction: x, verification: x.docVerifications?.[0] || null }).state)) || {}).linkId || null;
+  const renderApplicantCard = (a, { rank, isSetAside }) => {
     const fresh = isUnreviewed(a);
     const open = openId === a.linkId;
     const app = a.application || {};
@@ -592,7 +589,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const meterMuted = !!fit && (fit.label === 'stated' || fit.label === 'check docs');
     const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
     const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
-    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+    const isPrimaryCard = a.linkId === primaryLinkId;
+    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: isPrimaryCard ? 'var(--action)' : 'transparent', color: isPrimaryCard ? C.paper : C.ink, border: isPrimaryCard ? 'none' : `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
     const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', color: C.ink, border: 'none', fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
     const stateLine = { fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
     const confirmedBy = (by) => (!by || by === 'You' || by === String(profile?.full_name || '').trim() ? 'you' : by);
@@ -623,8 +621,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       ['Smoker', smokerLabel],
       ['Pets', app.pets || 'None'],
     ]);
-    // Brand red = EMPHASIS on the top picks only; everyone else is neutral.
-    const borderColor = top5 ? C.red : C.ruleDark;
+    // The rank one active card carries the red edge; everyone else sits on the rule colour.
+    const first = rank === 1 && !isSetAside;
+    const borderColor = first ? 'var(--action)' : C.ruleDark;
     const leftAction = !isSetAside ? { label: 'Set aside' } : null;
     const rightAction = isSetAside ? { label: 'Restore', tone: 'good' } : null;
     const ref = referrals[a.linkId];
@@ -635,9 +634,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         hint={hintFor === a.linkId} onHintDone={() => setHintFor(null)}>
       <div style={{
         minWidth: 0,
-        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
+        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${first ? 'var(--action)' : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'var(--card-pad)', opacity: isSetAside ? 0.94 : 1,
-        boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
       }}>
         {recent?.linkId === a.linkId && (
           <div data-no-swipe role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', marginBottom: 'var(--s-3)', padding: 'var(--s-1) var(--s-1) var(--s-1) var(--s-3)', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.inkSoft }}>
@@ -667,7 +665,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
             <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 'var(--t-body)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
-              <VerifiedMark verified={st.state === 'verified'} id={a.linkId} />
             </div>
             {overall != null ? (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} refill={meterMuted ? 'muted' : 'full'} renderValue={(shown, target) => (
@@ -716,8 +713,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
           {/* Status line: rank and marks that only matter once you are looking at this person. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-3)' }}>
-            {rank != null && pill(`Rank ${rank}`, top5 ? C.paper : C.inkSoft, top5 ? C.red : C.paperDeep)}
-            {top5 && pill('Top 5', C.red, C.card, { border: `1px solid ${C.red}` })}
+            {rank != null && pill(`Rank ${rank}`, C.inkSoft, C.paperDeep)}
             {isSetAside && pill('Set aside', C.inkSoft, C.rule)}
             {isFinalist(a) && !isSetAside && pill('Finalist', C.paper, C.ink)}
             {ref && (() => { const [label, fg, bg] = refMap[ref.status] || [ref.status, C.inkMute, C.paperDeep]; return pill(label, fg, bg); })()}
@@ -775,7 +771,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Restore
               </button>
             ) : (
-              <button onClick={() => openSetAside(a)} title="Record a screenable reason to de-prioritize"
+              <button onClick={() => openSetAside(a)} title="Record a screenable reason to set aside"
                 style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
                 Set aside
               </button>
@@ -800,7 +796,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   return (
     <>
       <Head>
-        <title>{l.name || 'Listing'} — Rentletter</title>
+        <title>{l.name || 'Listing'} · Rentletter</title>
       </Head>
       <GlobalStyle />
       <MotionStyles />
@@ -829,7 +825,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Edit
               </button>
               <button onClick={remove}
-                style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
+                style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
                 Delete
               </button>
             </div>
@@ -843,19 +839,19 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {/* Unit + preferences */}
             <section className="rl-card" style={{ minWidth: 0, padding: 'var(--s-4)' }}>
               <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
-              <Row label="Address" value={l.address || '—'} />
-              <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : '—'} />
-              <Row label="Unit type" value={formatUnit(l.bedrooms) || '—'} />
-              <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : '—'} />
+              <Row label="Address" value={l.address || 'not set'} />
+              <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'not set'} />
+              <Row label="Unit type" value={formatUnit(l.bedrooms) || 'not set'} />
+              <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />
               <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
               <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
               <Row label="EV parking" value={l.ev_parking === 'yes' ? 'Yes' : 'No'} />
-              <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : '—'} />
-              <Row label="Max rent-to-income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : '—'} />
-              <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : '—'} />
+              <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
+              <Row label="Max rent to income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : 'not set'} />
+              <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
               <Row label="Employment" value={employment} />
-              <Row label="Min lease term" value={l.pref_min_lease_term_months != null ? `${l.pref_min_lease_term_months} mo` : '—'} />
-              <Row label="Max occupants" value={l.pref_max_occupants != null ? l.pref_max_occupants : '—'} />
+              <Row label="Min lease term" value={l.pref_min_lease_term_months != null ? `${l.pref_min_lease_term_months} mo` : 'not set'} />
+              <Row label="Max occupants" value={l.pref_max_occupants != null ? l.pref_max_occupants : 'not set'} />
               <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
               <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
               <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted)} />
@@ -897,7 +893,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </>
               ) : (
                 <button onClick={() => getInvite(false)} disabled={inviteLoading} className="rl-btn"
-                  style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+                  style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   {inviteLoading ? 'Creating…' : <><Icon name="link" size={16} /> Get invite link</>}
                 </button>
               )}
@@ -918,77 +914,49 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             </section>
           </div>
 
-          {/* ── RENTLETTER NOTICED — deterministic process nudges (lib/noticed.js), max 3 ── */}
-          <NoticedCards style={{ marginBottom: 'var(--s-4)' }} onAction={onNoticeAction}
-            input={{ scope: 'listing', listings: [listing], applicantsByListing: { [listing.id]: applicants }, profile,
-              referralsSent: Object.values(referrals).map((r) => ({ ...r, from: { listingId: listing.id }, applicantName: applicants.find((x) => referrals[x.linkId] === r)?.application?.full_name })) }} />
 
-          {/* ── APPLICANTS — single ranked list (everyone, best fit first) ── */}
+          {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
           <section className="rl-card rl-in" style={{ padding: 'var(--s-4)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', flexWrap: 'wrap', marginBottom: 'var(--s-1)' }}>
-              <h2 className="t-d3" style={{ color: C.ink }}>Ranked applicants</h2>
-              <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute }}>{totalApplicants} total{setAsideList.length ? ` · ${setAsideList.length} set aside` : ''}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
+              <h1 className="t-d3" style={{ color: C.ink }}>Applicants</h1>
+              <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
             </div>
-            {/* Plain-language line (deterministic — lib/noticed.narrateApplicants) */}
-            {narrateApplicants(listing, applicants) && (
-              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: unreviewed.length ? 6 : 12, maxWidth: 620 }}>{narrateApplicants(listing, applicants)}</p>
-            )}
-            {/* WHICH applicants are new to you — a line, not a banner; gone when there are none. */}
-            {unreviewed.length > 0 && (
-              <p style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', fontSize: 'var(--t-body-2)', color: C.ink, marginBottom: 'var(--s-3)' }}>
-                <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, flexShrink: 0 }} />
-                <span><strong>{unreviewed.length} not yet reviewed</strong> — marked with a dot; open a card to review it.</span>
-                <button type="button" onClick={jumpToFirstUnreviewed} style={{ background: 'transparent', border: 'none', padding: 0, color: C.red, fontWeight: 700, fontSize: 'var(--t-body-2)', cursor: 'pointer', textDecoration: 'underline', minHeight: 24 }}>Jump to first ↓</button>
-              </p>
-            )}
+            {stateLine(active) && <p className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}>{stateLine(active)}</p>}
 
             {totalApplicants === 0 ? (
               <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
                 <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>
                 <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, marginBottom: 'var(--s-1)' }}>No applicants yet</div>
                 <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
-                  Share your invite link above. As tenants apply, they appear here ranked against your stated criteria — best fit first.
+                  Share your invite link above. As tenants apply, they appear here ranked against your stated criteria, best fit first.
                 </p>
               </div>
             ) : compareOpen ? (
               <CompareTenants pool={comparePool} onClose={() => setCompareOpen(false)} />
             ) : (
               <>
-                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)' , textWrap: 'pretty' }}>
-                  Everyone who applied, ranked against your stated criteria. Your <strong>top 5</strong> are highlighted. To de-prioritize someone, <strong>Set aside</strong> with a screenable reason — they stay in the list, sorted to the bottom.
-                </p>
                 {hintText && (
                   <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)' }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
-                )}
-                {active.length >= 2 && (
-                  <button onClick={() => setCompareOpen(true)} className="rl-btn"
-                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', marginBottom: 'var(--s-4)', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                    ⇄ Compare top tenants
-                  </button>
                 )}
                 <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
                   {active.map((a, idx) => (
                     <React.Fragment key={a.linkId}>
-                      {idx === 5 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', margin: '4px 0' }}>
-                          <div style={{ flex: 1, height: 1, background: C.rule }} />
-                          <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Below your top 5</span>
-                          <div style={{ flex: 1, height: 1, background: C.rule }} />
-                        </div>
-                      )}
-                      {renderApplicantCard(a, { rank: idx + 1, top5: idx < 5, isSetAside: false })}
+                      {renderApplicantCard(a, { rank: idx + 1, isSetAside: false })}
                     </React.Fragment>
                   ))}
                 </div>
+                {active.length >= 2 && (
+                  <button type="button" onClick={() => setCompareOpen(true)} style={{ marginTop: 'var(--s-4)', minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Compare</button>
+                )}
 
                 {setAsideList.length > 0 && (
                   <div style={{ marginTop: 'var(--gap-section)' }}>
                     <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Set aside ({setAsideList.length})</div>
                     <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)' }}>
-                      De-prioritized for the screenable reasons noted. Still shown to your landlord, at the bottom.
+                      Set aside for the screenable reasons noted. Still shown to your landlord, at the bottom.
                     </p>
                     <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
-                      {setAsideList.map((a) => renderApplicantCard(a, { rank: null, top5: false, isSetAside: true }))}
+                      {setAsideList.map((a) => renderApplicantCard(a, { rank: null, isSetAside: true }))}
                     </div>
                   </div>
                 )}
@@ -1000,9 +968,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {totalApplicants > 0 && (
             <section id="report" className="rl-card rl-in" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
               <div style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Present to landlord</div>
-              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)', maxWidth: 560 }}>
-                Present the full ranked list of {totalApplicants} applicant{totalApplicants === 1 ? '' : 's'} (top 5 highlighted{setAsideList.length ? `, ${setAsideList.length} set aside` : ''}) as a branded PDF report or a paste-ready message.
-              </p>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}>Send the ranked list as a branded PDF or a message.</p>
 
               {/* Who signs this report */}
               <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-3)', marginBottom: 'var(--s-2)', fontSize: 'var(--t-body-2)' }}>
@@ -1017,7 +983,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 ) : (
                   <>
                     <span style={{ color: C.ink, fontWeight: 600 }}>{signingName(profile)}</span>
-                    <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ marginLeft: 'var(--s-2)', background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 'var(--t-body-2)', padding: 0, minHeight: 28 }}>Change</button>
+                    <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ marginLeft: 'var(--s-2)', background: 'transparent', border: 'none', color: C.ink, fontWeight: 700, cursor: 'pointer', fontSize: 'var(--t-body-2)', padding: 0, minHeight: 28 }}>Change</button>
                     <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>The name that signs this report and every report after it.</span>
                   </>
                 )}
@@ -1030,7 +996,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     {[l.landlord_name, l.landlord_email, l.landlord_phone].filter(Boolean).map((part) => <span key={part} style={{ display: 'block', overflowWrap: 'anywhere' }}>{part}</span>)}
                   </span>
                 ) : (
-                  <span style={{ color: C.inkMute }}>Not set — add it via <button onClick={() => setEditOpen(true)} style={{ background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'var(--t-body-2)' }}>Edit listing</button> to email them.</span>
+                  <span style={{ color: C.inkMute }}>Not set. Add it via <button onClick={() => setEditOpen(true)} style={{ background: 'transparent', border: 'none', color: C.ink, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'var(--t-body-2)' }}>Edit listing</button> to email them.</span>
                 )}
               </div>
 
@@ -1044,7 +1010,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Icon name="copy" size={16} /> {textBusy ? 'Composing…' : textCopied ? 'Copied!' : 'Copy text for landlord'}
                 </button>
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
-                  style={{ background: (sending || !l.landlord_email) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+                  style={{ background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   <Icon name="mail" size={16} color={C.paper} /> {sending ? 'Sending…' : 'Email report'}
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
@@ -1060,7 +1026,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <ListingSetupModal mode="edit" initial={listing} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
         )}
 
-        {/* Set-aside reason modal — an OHRC-safe, screenable reason is REQUIRED. */}
+        {/* Set-aside reason modal, an OHRC-safe, screenable reason is REQUIRED. */}
         {referFor && (
         <ReferModal listingId={listing.id} applicant={referFor} onClose={() => setReferFor(null)}
           onCreated={(ref) => { setReferrals((m) => ({ ...m, [referFor.linkId]: ref })); setReferFor(null); }} />
@@ -1075,7 +1041,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 {setAsideFor.application?.full_name || 'Applicant'}
               </h3>
               <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-4)' }}>
-                Choose a screenable reason. They stay in the list (sorted to the bottom) with this reason recorded — your defensible paper trail. This is not a rejection.
+                Choose a screenable reason. They stay in the list (sorted to the bottom) with this reason recorded, your defensible paper trail. This is not a rejection.
               </p>
               <label style={{ display: 'block', fontSize: 'var(--t-eyebrow)', color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Reason (required)</label>
               <select value={setAsideCode} onChange={(e) => setSetAsideCode(e.target.value)}
@@ -1107,8 +1073,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </div>
         )}
       </div>
-      {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
-      <ChatWidget mode="dashboard" />
       <DocumentViewer doc={viewer} onClose={() => setViewer(null)} />
     </>
   );

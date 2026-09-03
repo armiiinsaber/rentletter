@@ -94,11 +94,11 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
 
   return (
     <div ref={wrapRef} className={`rl-film ${className}`} style={{ position: 'relative', width: '100%', aspectRatio: stageAspect, overflow: 'hidden', background: `radial-gradient(120% 90% at 50% 0%, ${C.card} 0%, ${C.paper} 55%, ${C.paperDeep} 100%)`, contain: 'layout paint', isolation: 'isolate', ...style }} data-film-time={t.toFixed(2)} aria-label="Rentletter product film">
-      {/* camera: a flat 2D scale + pan (no perspective / 3D context anywhere — see timeline.js) */}
+      {/* camera: a flat 2D scale + pan (no perspective / 3D context anywhere, see timeline.js) */}
       <div style={{ position: 'absolute', left: '50%', top: '50%', width: 0, height: 0, transform: `scale(${fit * cam.z})`, willChange: 'transform' }}>
         {/* world */}
         <div style={{ position: 'absolute', left: 0, top: 0, width: WORLD.w, height: WORLD.h, transform: `translate(${-cam.x}px, ${-cam.y}px)` }}>
-          {/* laptop — explicit stacking: below the phone */}
+          {/* laptop, explicit stacking: below the phone */}
           <div style={{ position: 'absolute', left: LAPTOP.x, top: LAPTOP.y, width: LAPTOP.w, zIndex: 1 }}>
             <DeviceFrame variant="laptop" url="rentletter.ca/dashboard" aspect="16 / 10" tone="paper" dark={so.verify > 0.5} style={{ boxShadow: 'none' }}>
               {/* opening shot: the ranked list, already settled, the top score resolving under a tight camera */}
@@ -112,7 +112,7 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
               <Scaled scale={LAPTOP_SCALE} w={LAPTOP_DESIGN} h={LAPTOP_SCREEN_H} opacity={so.report2} beatKey={keys.report2 + keys.studio}><ReportScreen b={{ mast: 1, brand: 1, rows: [1, 1, 1], logo: 1, foot: 1 }} brand={studioBrand(b.studio)} logo={b.report2.logo} /></Scaled>
             </DeviceFrame>
           </div>
-          {/* phone — enters for the tenant beat, leaves on the pull-back; always above the laptop,
+          {/* phone, enters for the tenant beat, leaves on the pull-back; always above the laptop,
               fully opaque once in (opacity only ramps during its own entrance/exit) */}
           {ph.k > 0 && (
             <div style={{ position: 'absolute', left: PHONE.x, top: PHONE.y, width: PHONE.w, zIndex: 2, opacity: ph.k, transform: `translate(0, ${ph.dy}px) rotate(${ph.tilt}deg) scale(${ph.scale})`, transformOrigin: '50% 60%' }}>
@@ -123,7 +123,7 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
           )}
         </div>
       </div>
-      {/* overlays — stage space (Story: lifted above Instagram's bottom-20% caption band) */}
+      {/* overlays, stage space (Story: lifted above Instagram's bottom-20% caption band) */}
       <div style={{ position: 'absolute', left: story ? '7%' : '5%', bottom: story ? '24%' : '6%', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: ov.wordmarkIntro * 0.85, transform: `translate(0, ${(1 - ov.wordmarkIntro) * 6}px)` }} aria-hidden="true">
         <span style={{ width: 3.5, height: 21, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', fontWeight: 800, letterSpacing: '-0.025em', color: C.ink }}>Rentletter</span>
       </div>

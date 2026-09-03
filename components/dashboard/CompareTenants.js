@@ -18,7 +18,7 @@ export function employmentTypeFromTitle(title) {
   const m = String(title || '').match(/\b(part[\s-]?time|full[\s-]?time|contract|seasonal|temporary|self[\s-]?employed|freelance)\b/i);
   if (!m) return null;
   const t = m[1].toLowerCase().replace(/[\s-]+/g, '-');
-  return ({ 'part-time': 'Part-time', 'full-time': 'Full-time', contract: 'Contract', seasonal: 'Seasonal', temporary: 'Temporary', 'self-employed': 'Self-employed', freelance: 'Freelance' }[t] || m[1]);
+  return ({ 'part-time': 'Part time', 'full-time': 'Full time', contract: 'Contract', seasonal: 'Seasonal', temporary: 'Temporary', 'self-employed': 'Self employed', freelance: 'Freelance' }[t] || m[1]);
 }
 
 const money = (n) => `$${Number(n).toLocaleString()}`;
@@ -33,14 +33,14 @@ const CATEGORIES = [
   { key: 'overall', label: 'Overall grade', kind: 'grade' },
   { key: 'annualIncome', label: 'Income (before tax)', kind: 'num', better: 'high', fmt: money },
   { key: 'householdIncome', label: 'Household income', kind: 'num', better: 'high', fmt: money },
-  { key: 'rentToIncome', label: 'Rent-to-income', kind: 'num', better: 'low', fmt: (v) => `${v}%` },
+  { key: 'rentToIncome', label: 'Rent to income', kind: 'num', better: 'low', fmt: (v) => `${v}%` },
   { key: 'jobTenureYears', label: 'Job tenure', kind: 'num', better: 'high', fmt: yrs },
   { key: 'employer', label: 'Employer', kind: 'text' },
   { key: 'employmentType', label: 'Employment type', kind: 'text' },
   { key: 'yearsAtAddress', label: 'Years at address', kind: 'num', better: 'high', fmt: yrs },
   { key: 'currentRent', label: 'Current rent', kind: 'num', fmt: (v) => `${money(v)}/mo` },
   { key: 'references', label: 'References', kind: 'num', better: 'high', fmt: (v) => `${v} provided` },
-  { key: 'moveInDate', label: 'Move-in date', kind: 'date', better: 'early', fmt: fmtDate },
+  { key: 'moveInDate', label: 'Move in date', kind: 'date', better: 'early', fmt: fmtDate },
   { key: 'occupants', label: 'Occupants', kind: 'num', fmt: (v) => String(v) },
   { key: 'smoker', label: 'Smoker', kind: 'text' },
   { key: 'pets', label: 'Pets', kind: 'text' },
@@ -48,9 +48,9 @@ const CATEGORIES = [
 
 function valueOf(cat, t) {
   if (cat.kind === 'rank') return `#${t.rank}`;
-  if (cat.kind === 'grade') return t.overall != null ? `${Number(t.overall).toFixed(1)} / 5` : '—';
+  if (cat.kind === 'grade') return t.overall != null ? `${Number(t.overall).toFixed(1)} / 5` : 'not set';
   const v = t[cat.key];
-  if (v == null || v === '') return '—';
+  if (v == null || v === '') return 'not set';
   return cat.fmt ? cat.fmt(v) : String(v);
 }
 
@@ -96,7 +96,7 @@ export default function CompareTenants({ pool, onClose }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <div>
           <div style={{ fontSize: 'clamp(16px,3.5vw,19px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Compare tenants</div>
-          <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 2 }}>A side-by-side lens on screenable facts — your ranking is unchanged.</div>
+          <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 2 }}>A side by side lens on screenable facts, your ranking is unchanged.</div>
         </div>
         <button onClick={onClose} className="rl-btn"
           style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -104,7 +104,7 @@ export default function CompareTenants({ pool, onClose }) {
         </button>
       </div>
 
-      {/* Editing strip — swap any slot, remove (min 2), add (max 3) */}
+      {/* Editing strip, swap any slot, remove (min 2), add (max 3) */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '12px 0 16px' }}>
         {selected.map((t, idx) => (
           <div key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.pill, padding: '4px 6px 4px 10px' }}>
@@ -126,7 +126,7 @@ export default function CompareTenants({ pool, onClose }) {
         )}
       </div>
 
-      {/* DESKTOP — side-by-side columns */}
+      {/* DESKTOP, side-by-side columns */}
       <div className="cmp-desktop">
         <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, overflow: 'hidden' }}>
           {/* header row */}
@@ -156,7 +156,7 @@ export default function CompareTenants({ pool, onClose }) {
         </div>
       </div>
 
-      {/* MOBILE — category-by-category, every value labelled, no horizontal scroll */}
+      {/* MOBILE · category-by-category, every value labelled, no horizontal scroll */}
       <div className="cmp-mobile">
         <div style={{ display: 'grid', gap: 10 }}>
           {CATEGORIES.map((c) => (

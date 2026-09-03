@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   }
 
   if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    return res.status(503).json({ error: 'Sign-in temporarily unavailable.' });
+    return res.status(503).json({ error: 'Sign in temporarily unavailable.' });
   }
 
   try {
@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     });
     const data = await lookupRes.json();
     if (!data?.result) {
-      return res.status(404).json({ error: 'Sign-in link expired or invalid. Please request a new one.' });
+      return res.status(404).json({ error: 'Sign in link expired or invalid. Please request a new one.' });
     }
     const record = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
 
@@ -53,6 +53,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, email: record.email, sessionToken });
   } catch (e) {
     console.error('Verify magic link error:', e);
-    return res.status(500).json({ error: 'Sign-in failed.' });
+    return res.status(500).json({ error: 'Sign in failed.' });
   }
 }

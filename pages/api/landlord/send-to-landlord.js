@@ -69,8 +69,8 @@ export default async function handler(req, res) {
     : null;
 
   const subject = isUpdate
-    ? `Updated shortlist from ${realtorName} — ${shortlisted.length} candidate${shortlisted.length === 1 ? '' : 's'}${unit?.address ? ` for ${String(unit.address).slice(0, 60)}` : ''}`
-    : `Shortlist from ${realtorName} — ${shortlisted.length} candidate${shortlisted.length === 1 ? '' : 's'}${unit?.address ? ` for ${String(unit.address).slice(0, 60)}` : ''}`;
+    ? `Updated shortlist from ${realtorName} · ${shortlisted.length} candidate${shortlisted.length === 1 ? '' : 's'}${unit?.address ? ` for ${String(unit.address).slice(0, 60)}` : ''}`
+    : `Shortlist from ${realtorName} · ${shortlisted.length} candidate${shortlisted.length === 1 ? '' : 's'}${unit?.address ? ` for ${String(unit.address).slice(0, 60)}` : ''}`;
 
   const shortlistedRows = shortlisted.map(a => {
     const score = a.scorecard?.overall || 0;
@@ -127,7 +127,7 @@ export default async function handler(req, res) {
         </td></tr>
         ` : ''}
 
-        <!-- Share URL CTA — interactive landlord view -->
+        <!-- Share URL CTA, interactive landlord view -->
         ${shareUrl ? `
         <tr><td style="padding-top:24px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#0f0f10;">
@@ -139,7 +139,7 @@ export default async function handler(req, res) {
                 ${isUpdate ? 'Your realtor updated this shortlist.' : 'See your shortlist online.'}
               </h2>
               <p style="font-family:'Inter',sans-serif;font-size:13px;color:#c8c2b3;line-height:1.6;margin:0 0 18px;">
-                Open the live page below to see full candidate details, compare them side-by-side, add notes for your realtor, or remove anyone you've ruled out. No sign-up required — just your private link.
+                Open the live page below to see full candidate details, compare them side-by-side, add notes for your realtor, or remove anyone you've ruled out. No sign-up required, just your private link.
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                 <tr><td style="background:#d72027;">
@@ -167,7 +167,7 @@ export default async function handler(req, res) {
         <!-- Footer -->
         <tr><td style="padding-top:32px;padding-bottom:8px;">
           <p style="font-family:'Inter',sans-serif;font-size:13px;color:#3a3a3c;line-height:1.6;margin:0 0 14px;">
-            Reply to this email to discuss the candidates or schedule next steps. Each candidate has a verified Rentletter application number — let me know which you'd like to move forward with.
+            Reply to this email to discuss the candidates or schedule next steps. Each candidate has a verified Rentletter application number, let me know which you'd like to move forward with.
           </p>
         </td></tr>
 

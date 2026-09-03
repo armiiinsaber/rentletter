@@ -54,7 +54,7 @@ export default async function handler(req, res) {
   if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
     console.error('[manage-analysis] applicant binding mismatch — linkId row application_id',
       ctx.junction.application_id, '!== expected', applicationId, '(refusing to write)');
-    return res.status(409).json({ error: 'Applicant reference mismatch — please reload the page and try again.' });
+    return res.status(409).json({ error: 'Applicant reference mismatch, please reload the page and try again.' });
   }
 
   const raw = ctx.junction.doc_verifications;
@@ -62,7 +62,7 @@ export default async function handler(req, res) {
   let clearInsight = false;
   if (action === 'archive') { newDocV = withArchivedActive(raw, ctx.junction.ai_insight || null); clearInsight = true; }
   else if (action === 'delete') { newDocV = withoutActive(raw); clearInsight = true; }
-  else { newDocV = withoutArchived(raw, archivedId); } // delete-archived — active untouched
+  else { newDocV = withoutArchived(raw, archivedId); } // delete-archived · active untouched
 
   try {
     const admin = getSupabaseAdminClient();

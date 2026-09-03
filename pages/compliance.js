@@ -11,7 +11,7 @@ export default function CompliancePage() {
   return (
     <>
       <Head>
-        <title>Compliance & Fair Housing — Rentletter</title>
+        <title>Compliance & Fair Housing · Rentletter</title>
         <meta name="description" content="How Rentletter helps Canadian property managers meet HRTO and provincial human rights obligations during tenant screening." />
       </Head>
       <GlobalStyle />
@@ -47,7 +47,7 @@ export default function CompliancePage() {
 
           <Section title="What Rentletter is">
             <p>Rentletter is a standardized rental application and screening platform. Prospective tenants submit a structured application that includes employment, income, household composition, rental history, and references. Landlords and property managers receive these applications via a dashboard where they can review, compare, shortlist, and document decisions.</p>
-            <p>Rentletter does not perform credit checks, criminal record checks, or background verification. It is a structured intake and decision-documentation layer that complements (rather than replaces) traditional verification services.</p>
+            <p>Rentletter does not perform credit checks, criminal record checks, or background verification. It is a structured intake and decision documentation layer that complements (rather than replaces) traditional verification services.</p>
           </Section>
 
           <Section title="Protected grounds under the Ontario Human Rights Code">
@@ -60,12 +60,12 @@ export default function CompliancePage() {
               Every applicant submits the same structured fields. The application form does not request information about protected characteristics such as religion, ethnic origin, citizenship status, family planning, disability, or receipt of public assistance. By collecting only objective, non-protected information, Rentletter helps reduce the risk that screening decisions are influenced by protected grounds, whether intentionally or implicitly.
             </SubSection>
 
-            <SubSection title="2. AI-drafted rationale focuses on legitimate factors">
+            <SubSection title="2. AI drafted rationale focuses on legitimate factors">
               When a landlord uses the optional AI rationale feature, the system is instructed to base reasoning only on legitimate, non-discriminatory factors: income-to-rent ratio, employment stability, rental history, references, and stated move-in alignment. The system is prompted to avoid any reference to protected characteristics. Output is editable by the user before being saved.
             </SubSection>
 
             <SubSection title="3. Documented decision trail">
-              Every accept, reject, or shortlist action is timestamped and saved with the user account that took the action. Optional written reasons can be attached to each decision. This produces a contemporaneous record that demonstrates the basis for screening decisions — useful in the event of a Human Rights Tribunal of Ontario (HRTO) complaint or equivalent provincial proceeding.
+              Every accept, reject, or shortlist action is timestamped and saved with the user account that took the action. Optional written reasons can be attached to each decision. This produces a contemporaneous record that demonstrates the basis for screening decisions, useful in the event of a Human Rights Tribunal of Ontario (HRTO) complaint or equivalent provincial proceeding.
             </SubSection>
 
             <SubSection title="4. Consistent treatment across applicants">
@@ -80,8 +80,8 @@ export default function CompliancePage() {
           <Section title="What Rentletter does NOT do">
             <ul style={ul}>
               <li style={li}>It does not make screening decisions on the user's behalf. All accept/reject/shortlist actions are taken by the user.</li>
-              <li style={li}>It does not provide legal advice. The platform supports the user's decision-making but does not warrant compliance with any specific human rights legislation.</li>
-              <li style={li}>It does not run credit checks, criminal record checks, or third-party verification services.</li>
+              <li style={li}>It does not provide legal advice. The platform supports the user's decision making but does not warrant compliance with any specific human rights legislation.</li>
+              <li style={li}>It does not run credit checks, criminal record checks, or third party verification services.</li>
               <li style={li}>It does not assess or score applicants based on protected characteristics.</li>
             </ul>
           </Section>
@@ -91,14 +91,14 @@ export default function CompliancePage() {
             <p>Rentletter is governed by Canadian privacy law (PIPEDA) and, where applicable, provincial privacy statutes.</p>
           </Section>
 
-          <Section title="For institutional buyers — what we can provide">
-            <p>If you are a property management company, build-to-rent operator, student housing operator, or other institutional user evaluating Rentletter, we can provide on request:</p>
+          <Section title="For institutional buyers, what we can provide">
+            <p>If you are a property management company, build to rent operator, student housing operator, or other institutional user evaluating Rentletter, we can provide on request:</p>
             <ul style={ul}>
               <li style={li}>A data processing agreement (DPA) suitable for institutional data handling requirements</li>
               <li style={li}>A security overview describing infrastructure, encryption, access controls, and breach notification</li>
               <li style={li}>A custom audit log export tailored to your retention and reporting needs</li>
               <li style={li}>A pilot deployment with a sandboxed environment scoped to a subset of your portfolio</li>
-              <li style={li}>White-label branding so deliverables to your owners or stakeholders carry your brand</li>
+              <li style={li}>White label branding so deliverables to your owners or stakeholders carry your brand</li>
             </ul>
             <p style={{ marginTop: 16 }}>Contact <a href="mailto:info@rentletter.ca" style={{ color: C.red, textDecoration: 'underline' }}>info@rentletter.ca</a> for institutional evaluations.</p>
           </Section>

@@ -9,7 +9,7 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
   return (
     <>
       <Head>
-        <title>{title} — Rentletter</title>
+        <title>{title} · Rentletter</title>
         <meta name="description" content="Rentletter realtor dashboard." />
       </Head>
       <GlobalStyle />

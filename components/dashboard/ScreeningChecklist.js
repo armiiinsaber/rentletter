@@ -43,7 +43,10 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const incomeMiss = fit && minIncome && fit.incomeUsed != null && fit.incomeUsed < minIncome ? ` · your min ${kShort(minIncome)}` : '';
   const maxPct = Number(listing?.pref_rent_to_income_max_pct) > 0 ? Number(listing.pref_rent_to_income_max_pct) : 40;
   const refs = Array.isArray(app.references) ? app.references.filter((r) => r && (r.name || r.contact || r.phone || r.email)).length : 0;
-  const said = (parts) => parts.filter(Boolean).join(', ');
+  const said = (parts) => parts.map((p) => String(p || '').trim()).filter(Boolean).join(', ');
+  // The previous landlord's contact: an email and a phone go on separate lines, so a number never
+  // wraps in the middle.
+  const contactLines = (raw) => { const t = String(raw || '').trim(); if (!t) return []; const email = (t.match(/\S+@\S+/) || [])[0]; const rest = email ? t.replace(email, '').replace(/^[\s·,;|]+|[\s·,;|]+$/g, '') : t; return [email, rest].filter(Boolean); };
 
   const toggle = async (key) => {
     if (busy) return;
@@ -67,7 +70,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     { key: 'id', title: 'Identity', said: app.full_name || 'no name given', docs: nameFact, verb: 'Saw ID' },
     { key: 'employer', title: 'Income', said: app.annual_income ? `${money(app.annual_income)} a year` : 'no income given', docs: incomeFact + incomeMiss, verb: 'Called employer' },
     { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true },
-    { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? `Contact: ${app.prev_landlord_contact}` : null, docs: null, verb: 'Called landlord' },
+    { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' },
     { key: 'reference', title: 'References', said: refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
   ];
@@ -75,7 +78,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const btn = (on) => ({
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--s-1)', minHeight: 44, minWidth: 156, padding: '0 var(--s-3)',
     borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-    background: on ? C.red : 'transparent', color: on ? C.paper : C.ink, border: on ? `1.5px solid ${C.red}` : `1.5px solid ${C.ink}`,
+    background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: on ? 999 : R.ctrl,
   });
 
   return (
@@ -96,21 +99,25 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
                   Said: {row.said}{row.docs != null ? <> · Docs: {row.docs}</> : null}
                 </div>
-                {row.second ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{row.second}</div> : null}
+                {Array.isArray(row.second) && row.second.length ? row.second.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line}</div>) : null}
               </div>
               {row.key && !shared ? (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-3)', flexShrink: 0 }}>
                   <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
-                    aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)} by ${c.by}. Tap to undo.` : row.verb}
+                    aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                     style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                    {on ? <><Icon name="check" size={14} /><span>{shortDate(c.at)} · {c.by}</span></> : row.verb}
+                    {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed · {shortDate(c.at)}</span></> : row.verb}
                   </button>
                   {row.key === 'id' && idDoc ? (
                     <button type="button" onClick={viewId} disabled={viewBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: viewBusy ? 0.6 : 1 }}>{viewBusy ? 'Opening' : 'View ID'}</button>
                   ) : null}
                 </div>
               ) : row.key && shared ? (
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, flexShrink: 0, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{on ? `Confirmed · ${shortDate(c.at)}` : 'One call, with the income row'}</div>
+                <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
+                  aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
+                  style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
+                  {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed · {shortDate(c.at)}</span></> : row.verb}
+                </button>
               ) : null}
             </div>
           );

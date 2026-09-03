@@ -94,7 +94,7 @@ const SELECTION_ADVICE_PATTERNS = [
 
 // Exact decline + redirect used whenever selection advice is requested (pre- and post-filter).
 const DASHBOARD_SELECTION_DECLINE =
-  "That's your professional judgment as the realtor — I can't recommend or endorse which applicant to choose. What I can do is explain how the ranking is calculated (income, rent-to-income, employment tenure, rental history, and references) so you can interpret it and decide for yourself. Want me to walk through how a score is built?";
+  "That's your professional judgment as the realtor, I can't recommend or endorse which applicant to choose. What I can do is explain how the ranking is calculated (income, rent to income, employment tenure, rental history, and references) so you can interpret it and decide for yourself. Want me to walk through how a score is built?";
 
 // Dashboard off-topic decline — the realtor's help assistant, NOT the marketing chat. No
 // "landlord dashboard" wording, no "try ChatGPT" (off-brand for an in-product paid tool).
@@ -129,7 +129,7 @@ function preFilterMessage(text, mode = 'marketing') {
         reason: 'off_topic',
         response: mode === 'dashboard'
           ? DASHBOARD_OFF_TOPIC_DECLINE
-          : "I can only help with questions about Rentletter — pricing, how it works, the landlord dashboard, application numbers, etc. For general questions, try ChatGPT or Google.",
+          : "I can only help with questions about Rentletter, pricing, how it works, the landlord dashboard, application numbers, etc. For general questions, try ChatGPT or Google.",
       };
     }
   }
@@ -140,7 +140,7 @@ function preFilterMessage(text, mode = 'marketing') {
       return {
         allow: false,
         reason: 'legal',
-        response: "I can't give legal advice. For specific landlord-tenant questions in Ontario, contact the Landlord and Tenant Board (LTB) or consult a lawyer. The Human Rights Tribunal of Ontario (HRTO) handles discrimination complaints. For general info about how Rentletter helps with compliance, I'm happy to explain.",
+        response: "I can't give legal advice. For specific landlord tenant questions in Ontario, contact the Landlord and Tenant Board (LTB) or consult a lawyer. The Human Rights Tribunal of Ontario (HRTO) handles discrimination complaints. For general info about how Rentletter helps with compliance, I'm happy to explain.",
       };
     }
   }
@@ -192,8 +192,8 @@ const DASHBOARD_CLASSIFIER_PROMPT = `You are a topic classifier for the Rentlett
 
 ON-TOPIC (YES) — anything about using Rentletter:
 - "How do I create a listing?" / "How do I invite a tenant?" / "How do I get the invite link?"
-- "How does the ranking work?" / "What does set-aside mean?" / "Difference between set-aside and withdrew?"
-- "How do I verify a finalist?" / "What is the name-match?" / "How do I send the report to my landlord?"
+- "How does the ranking work?" / "What does set aside mean?" / "Difference between set aside and withdrew?"
+- "How do I verify a finalist?" / "What is the name match?" / "How do I send the report to my landlord?"
 - "How do notifications work?" / "How do I edit a listing?" / "What are the required fields?"
 - Anything about listings, invite links, applicants, the ranked list, the score/factors, verification, documents, reports, notifications, preferences, compliance, or how to use any dashboard feature.
 
@@ -327,7 +327,7 @@ function clarifyReply(intent, context) {
     return { reply: `Which listing? (${label})`, clarify: { action: intent.action, options: opts } };
   }
   if (intent.missing === 'toEmail') return { reply: 'Who should receive the referral? Give me their name and email — e.g. “refer James to Priya Patel, priya@brokerage.ca”.' };
-  if (intent.missing === 'prefs') return { reply: 'Which preference? I can set minimum income, max rent-to-income %, min years at job, min lease term, max occupants, or require a landlord reference / employer verification / guarantor.' };
+  if (intent.missing === 'prefs') return { reply: 'Which preference? I can set minimum income, max rent to income %, min years at job, min lease term, max occupants, or require a landlord reference / employer verification / guarantor.' };
   return { reply: 'Can you say a bit more about what you’d like me to do?' };
 }
 
@@ -404,11 +404,11 @@ export default async function handler(req, res) {
     if (intent.type === 'decline') return res.status(200).json({ reply: DASHBOARD_SELECTION_DECLINE });
     if (intent.type === 'offtopic' && !DASHBOARD_ONTOPIC_HINTS.test(userMessage)) return res.status(200).json({ reply: DASHBOARD_OFF_TOPIC_DECLINE });
     if (intent.type === 'action' && !ACTIONS[intent.action]) {
-      return res.status(200).json({ reply: 'That’s not something I can do from here. Deleting listings or applications, setting applicants aside, and recording withdrawals stay manual on the listing page — and choosing between applicants is always yours.' });
+      return res.status(200).json({ reply: 'That’s not something I can do from here. Deleting listings or applications, setting applicants aside, and recording withdrawals stay manual on the listing page, and choosing between applicants is always yours.' });
     }
     if (intent.type === 'action') {
       const v = validateIntent(intent, context);
-      if (v?.action) return res.status(200).json({ reply: `Here’s what I’ll do — confirm to go ahead.`, proposal: v });
+      if (v?.action) return res.status(200).json({ reply: `Here’s what I’ll do, confirm to go ahead.`, proposal: v });
       if (v?.missing) return res.status(200).json(clarifyReply({ ...intent, missing: v.missing }, context));
     }
     if (intent.type === 'clarify') return res.status(200).json(clarifyReply(intent, context));
@@ -426,7 +426,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         reply: mode === 'dashboard'
           ? DASHBOARD_OFF_TOPIC_DECLINE
-          : "I can only help with questions about Rentletter — how it works, pricing, the landlord dashboard, application numbers, etc. For other questions, please try a general AI assistant like ChatGPT.",
+          : "I can only help with questions about Rentletter, how it works, pricing, the landlord dashboard, application numbers, etc. For other questions, please try a general AI assistant like ChatGPT.",
       });
     }
   }

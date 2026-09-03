@@ -114,7 +114,7 @@ export default async function handler(req, res) {
       await resend.emails.send({
         from: 'Rentletter <hello@rentletter.ca>',
         to: customerEmail,
-        subject: 'Your 30-day search pass — Rentletter',
+        subject: 'Your 30-day search pass · Rentletter',
         html: buildPassEmail(passToken, passUrl, new Date(expiresAt)),
       });
     }
@@ -249,7 +249,7 @@ function buildPassEmail(token, passUrl, expiresDate) {
                       Quick tip
                     </p>
                     <p style="font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#3a3a3c;margin:0;">
-                      Save this email or bookmark the link. The pass works from any device — phone, laptop, anywhere — as long as you have the URL.
+                      Save this email or bookmark the link. The pass works from any device, phone, laptop, anywhere, as long as you have the URL.
                     </p>
                   </td>
                 </tr>

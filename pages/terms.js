@@ -27,7 +27,7 @@ As a Realtor using the Service, you agree that:
 ## 4. Applicants
 Individuals who submit rental application information ("Applicants") do so to have their application assessed by the relevant Realtor and landlord. Applicant information is handled in accordance with our Privacy Policy. Applicants are responsible for the accuracy of the information they provide.
 
-## 5. AI features — no guarantee of accuracy
+## 5. AI features, no guarantee of accuracy
 The Service uses automated and artificial-intelligence features to read documents, extract and compare information, and generate insights and report text. These features are provided to assist you and **may contain errors or omissions**. Rentletter does not warrant that any extracted data, verification result, ranking, or insight is accurate, complete, or current. You are responsible for independently verifying any information before relying on it or acting on it. Automated output is not a background check, credit check, or guarantee of an applicant's suitability, identity, income, or truthfulness.
 
 ## 6. Acceptable use
@@ -72,7 +72,7 @@ export default function Terms() {
   return (
     <LegalPage
       content={CONTENT}
-      metaTitle="Terms of Service — Rentletter"
+      metaTitle="Terms of Service · Rentletter"
       metaDescription="The terms that govern your use of Rentletter, operated by 1001557180 Ontario Inc."
     />
   );

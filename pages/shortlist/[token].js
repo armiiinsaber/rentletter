@@ -37,8 +37,8 @@ function computeFit(applicant, prefs) {
   const rent = applicant.apartment?.estimatedRent;
   if (prefs.rentToIncomeMaxPct && monthly && rent) {
     const ratio = Math.round((rent / monthly) * 100);
-    if (ratio <= Number(prefs.rentToIncomeMaxPct)) matches.push(`Rent-to-income ratio ${ratio}% (within requested ≤${prefs.rentToIncomeMaxPct}%)`);
-    else misses.push(`Rent-to-income ratio ${ratio}% (above requested ≤${prefs.rentToIncomeMaxPct}%)`);
+    if (ratio <= Number(prefs.rentToIncomeMaxPct)) matches.push(`Rent to income ratio ${ratio}% (within requested ≤${prefs.rentToIncomeMaxPct}%)`);
+    else misses.push(`Rent to income ratio ${ratio}% (above requested ≤${prefs.rentToIncomeMaxPct}%)`);
   }
 
   // Years at job
@@ -60,7 +60,7 @@ function computeFit(applicant, prefs) {
   if (prefs.smokingAllowed === false) {
     const smoker = applicant.household?.smoker;
     if (smoker === 'no') matches.push('Non-smoker');
-    else if (smoker === 'yes') misses.push('Applicant smokes (unit is non-smoking)');
+    else if (smoker === 'yes') misses.push('Applicant smokes (unit is non smoking)');
   }
 
   // Pets
@@ -80,7 +80,7 @@ function computeFit(applicant, prefs) {
 }
 
 function formatMoney(n) {
-  if (n == null) return '—';
+  if (n == null) return 'not set';
   return '$' + Number(n).toLocaleString();
 }
 
@@ -192,7 +192,7 @@ export default function LandlordShortlistView() {
   return (
     <>
       <Head>
-        <title>{data.realtor.name ? `Shortlist from ${data.realtor.name} — Rentletter` : 'Your shortlist — Rentletter'}</title>
+        <title>{data.realtor.name ? `Shortlist from ${data.realtor.name} · Rentletter` : 'Your shortlist · Rentletter'}</title>
         <meta name="robots" content="noindex" />
       </Head>
       <GlobalStyle />
@@ -256,15 +256,15 @@ export default function LandlordShortlistView() {
             )}
           </div>
 
-          {/* YOUR STATED PREFERENCES — shown if realtor captured them */}
+          {/* YOUR STATED PREFERENCES, shown if realtor captured them */}
           {data.preferences && (() => {
             const prefs = data.preferences;
             const items = [];
             if (prefs.minAnnualIncome) items.push({ l: 'Minimum annual income', v: `$${Number(prefs.minAnnualIncome).toLocaleString()}` });
-            if (prefs.rentToIncomeMaxPct) items.push({ l: 'Max rent-to-income', v: `${prefs.rentToIncomeMaxPct}%` });
+            if (prefs.rentToIncomeMaxPct) items.push({ l: 'Max rent to income', v: `${prefs.rentToIncomeMaxPct}%` });
             if (prefs.minYearsAtJob) items.push({ l: 'Min tenure at job', v: `${prefs.minYearsAtJob} year${Number(prefs.minYearsAtJob) === 1 ? '' : 's'}` });
-            if (prefs.earliestMoveIn) items.push({ l: 'Earliest move-in', v: prefs.earliestMoveIn });
-            if (prefs.latestMoveIn) items.push({ l: 'Latest move-in', v: prefs.latestMoveIn });
+            if (prefs.earliestMoveIn) items.push({ l: 'Earliest move in', v: prefs.earliestMoveIn });
+            if (prefs.latestMoveIn) items.push({ l: 'Latest move in', v: prefs.latestMoveIn });
             if (prefs.minLeaseTermMonths) items.push({ l: 'Min lease term', v: `${prefs.minLeaseTermMonths} months` });
             if (prefs.maxOccupants) items.push({ l: 'Max occupants', v: prefs.maxOccupants });
             if (prefs.smokingAllowed === false) items.push({ l: 'Smoking', v: 'Not allowed' });
@@ -313,7 +313,7 @@ export default function LandlordShortlistView() {
                     borderBottom: view === v ? `2px solid ${C.red}` : '2px solid transparent',
                     cursor: 'pointer', marginBottom: -1,
                   }}>
-                  {v === 'list' ? 'List view' : 'Compare side-by-side'}
+                  {v === 'list' ? 'List view' : 'Compare side by side'}
                 </button>
               ))}
             </div>
@@ -489,10 +489,10 @@ export default function LandlordShortlistView() {
                           {app.household?.hasPets === 'yes' && 'Pets'}
                         </td>
                         <td style={cellBody}>
-                          <strong>{app.scorecard?.overall ?? '—'}/5</strong>
+                          <strong>{app.scorecard?.overall ?? 'not set'}/5</strong>
                         </td>
                         <td style={cellBody}>
-                          {dec.notes ? dec.notes.slice(0, 80) + (dec.notes.length > 80 ? '...' : '') : '—'}
+                          {dec.notes ? dec.notes.slice(0, 80) + (dec.notes.length > 80 ? '...' : '') : 'not set'}
                         </td>
                       </tr>
                     );
@@ -544,7 +544,7 @@ export default function LandlordShortlistView() {
             </div>
           )}
 
-          {/* Bottom — call-to-action to realtor */}
+          {/* Bottom, call-to-action to realtor */}
           <section className="rl-in" style={{ marginTop: 60, padding: 'clamp(24px, 5vw, 40px)', background: C.ink, color: C.paper, borderRadius: R.card }}>
             <div style={{ fontSize: 11, color: '#f0b8bb', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Ready to decide?
@@ -598,7 +598,7 @@ export default function LandlordShortlistView() {
                 <textarea
                   value={noteDraft}
                   onChange={e => setNoteDraft(e.target.value)}
-                  placeholder="e.g., I'd like to interview this candidate first. Concerned about the move-in date — can they start earlier?"
+                  placeholder="e.g., I'd like to interview this candidate first. Concerned about the move in date, can they start earlier?"
                   rows={5}
                   style={{ width: '100%', padding: 14, fontSize: 14, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, outline: 'none', fontFamily: 'inherit', resize: 'vertical', marginBottom: 14, lineHeight: 1.55 }}
                 />
@@ -661,12 +661,12 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12, marginBottom: 24 }}>
-        <Stat label="Income (before tax)" value={a.employment?.annualIncome ? `$${Number(a.employment.annualIncome).toLocaleString()}/yr` : '—'} />
+        <Stat label="Income (before tax)" value={a.employment?.annualIncome ? `$${Number(a.employment.annualIncome).toLocaleString()}/yr` : 'not set'} />
         {a.employment?.netIncome ? <Stat label={a.employment.netIncomeSource === 'stated' ? 'After tax (stated)' : 'After tax (estimate)'} value={`$${Number(a.employment.netIncome).toLocaleString()}/yr`} /> : null}
-        <Stat label="Employment" value={a.employment?.duration || '—'} />
+        <Stat label="Employment" value={a.employment?.duration || 'not set'} />
         <Stat label="Household" value={`${a.household?.totalOccupants || 1} occupant${a.household?.totalOccupants > 1 ? 's' : ''}`} />
-        <Stat label="Move-in" value={a.lifestyle?.movein || '—'} />
-        <Stat label="Score" value={a.scorecard?.overall != null ? `${a.scorecard.overall}/5` : '—'} />
+        <Stat label="Move-in" value={a.lifestyle?.movein || 'not set'} />
+        <Stat label="Score" value={a.scorecard?.overall != null ? `${a.scorecard.overall}/5` : 'not set'} />
       </div>
 
       {/* References */}

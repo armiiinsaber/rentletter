@@ -37,7 +37,7 @@ function formatPhone(v) {
 // come from the listing's province (the owning realtor's), resolved from the invite.
 function underAgeMsg(province) {
   const min = ageOfMajority(province);
-  return `You must be at least ${min} (the age of majority in ${provinceName(province)}) to submit a rental application on your own. Applicants under ${min} need a guarantor — support for that is coming soon.`;
+  return `You must be at least ${min} (the age of majority in ${provinceName(province)}) to submit a rental application on your own. Applicants under ${min} need a guarantor, support for that is coming soon.`;
 }
 
 export default function ApplyPage() {
@@ -258,7 +258,7 @@ export default function ApplyPage() {
   const openReview = () => {
     if (!allVitalValid) {
       setTriedSubmit(true);
-      setError('Please complete the required fields marked with * — some are missing or need fixing. They’re highlighted below.');
+      setError('Please complete the required fields marked with *, some are missing or need fixing. They’re highlighted below.');
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
@@ -294,7 +294,7 @@ export default function ApplyPage() {
       // Keep the profile on this device so the next invite link offers "use my saved profile".
       try {
         if (ownerToken) { localStorage.setItem('rentletter_app_number', applicationNumber); localStorage.setItem('rentletter_owner_token', ownerToken); }
-      } catch (e) { /* private mode — the email carries the same keys */ }
+      } catch (e) { /* private mode, the email carries the same keys */ }
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
       // Background: tag the invite (KV), then mirror into Supabase (the bridge —
@@ -358,8 +358,8 @@ export default function ApplyPage() {
   return (
     <>
       <Head>
-        <title>Apply — Rentletter</title>
-        <meta name="description" content="Submit your rental application — no account needed." />
+        <title>Apply · Rentletter</title>
+        <meta name="description" content="Submit your rental application, no account needed." />
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
@@ -401,7 +401,7 @@ export default function ApplyPage() {
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 24 }}>
                 Your application has been sent{invite?.realtorName ? <> to <strong style={{ color: C.ink }}>{invite.realtorName}</strong></> : ''}
-                {invite?.listingName ? <> for <strong style={{ color: C.ink }}>{invite.listingName}</strong></> : ''}. Save your application number below — it’s how the listing realtor pulls up your application.
+                {invite?.listingName ? <> for <strong style={{ color: C.ink }}>{invite.listingName}</strong></> : ''}. Save your application number below, it’s how the listing realtor pulls up your application.
               </p>
 
               <div style={{ background: C.paperDeep, borderRadius: R.card, padding: 'clamp(18px, 4vw, 24px)', marginBottom: 20 }}>
@@ -420,8 +420,8 @@ export default function ApplyPage() {
 
               {result.ownerToken && (
                 <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, padding: '14px 16px', fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>
-                  <strong style={{ color: C.ink }}>Keep this private —</strong> your owner key opens your profile at{' '}
-                  <a href="/my-application" style={{ color: C.red, textDecoration: 'underline', fontWeight: 600 }}>rentletter.ca/my-application</a>, where you can see who viewed your application, update your details, revoke it — and apply to your next listing in seconds without retyping:
+                  <strong style={{ color: C.ink }}>Keep this private · </strong> your owner key opens your profile at{' '}
+                  <a href="/my-application" style={{ color: C.red, textDecoration: 'underline', fontWeight: 600 }}>rentletter.ca/my application</a>, where you can see who viewed your application, update your details, revoke it, and apply to your next listing in seconds without retyping:
                   <div className="rl-serif" style={{ marginTop: 8, color: C.ink, wordBreak: 'break-all', fontSize: 13 }}>{result.ownerToken}</div>
                   {form.email && <div style={{ marginTop: 8 }}>We also emailed a copy to {form.email}.</div>}
                 </div>
@@ -458,12 +458,12 @@ export default function ApplyPage() {
                     </div>
                   )}
                   <div style={{ fontSize: 12, color: '#9a958a', marginTop: 10 }}>
-                    The unit details above were entered by the listing realtor — you only need to tell us about yourself below.
+                    The unit details above were entered by the listing realtor, you only need to tell us about yourself below.
                   </div>
                 </div>
               )}
 
-              {/* Saved-profile offer — the "apply in seconds" entry point. Shown only when this
+              {/* Saved-profile offer, the "apply in seconds" entry point. Shown only when this
                   device holds a saved profile (from /my-application) and it hasn't been applied. */}
               {saved && prefill.state !== 'applied' && !prefill.dismissed && (
                 <div className="rl-in" style={{ position: 'relative', overflow: 'hidden', background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(16px, 4vw, 22px) clamp(18px, 4vw, 24px)', marginBottom: 24 }}>
@@ -474,8 +474,8 @@ export default function ApplyPage() {
                   </div>
                   <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
                     {saved.source === 'profile'
-                      ? <>We’ll bring over the details saved on your profile (<span style={{ color: C.ink, overflowWrap: 'anywhere' }}>{saved.email}</span>) — employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.</>
-                      : <>We’ll bring over what you entered for <span style={{ fontFamily: 'monospace', color: C.ink }}>{saved.app}</span> — employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.</>}
+                      ? <>We’ll bring over the details saved on your profile (<span style={{ color: C.ink, overflowWrap: 'anywhere' }}>{saved.email}</span>), employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.</>
+                      : <>We’ll bring over what you entered for <span style={{ fontFamily: 'monospace', color: C.ink }}>{saved.app}</span>, employment, income, rental history, household, your intro. You check it and confirm before anything is sent to this realtor.</>}
                   </p>
                   {prefill.state === 'error' && (
                     <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
@@ -499,10 +499,10 @@ export default function ApplyPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: C.green, marginBottom: 4 }}>
                     <Icon name="check" size={15} color={C.green} strokeWidth={2.5} /> Filled from your saved profile
                   </div>
-                  Check each section — especially <strong>income</strong> and your <strong>move-in date</strong> — then review and submit. This creates a separate application for this listing. What you confirm here becomes your profile’s latest details.
+                  Check each section · especially <strong>income</strong> and your <strong>move in date</strong>, then review and submit. This creates a separate application for this listing. What you confirm here becomes your profile’s latest details.
                   {prefill.source?.address && form.apartmentAddress && prefill.source.address.trim().toLowerCase() === form.apartmentAddress.trim().toLowerCase() && (
                     <div style={{ marginTop: 10, padding: '10px 12px', background: C.amberTint, borderLeft: `3px solid ${C.gold}`, borderRadius: R.ctrl, color: C.ink }}>
-                      <strong>Heads up:</strong> your saved profile was already submitted for this same address ({prefill.source.app}). Submitting again adds a second application to the realtor’s list — if you only want to update details, edit your profile instead.
+                      <strong>Heads up:</strong> your saved profile was already submitted for this same address ({prefill.source.app}). Submitting again adds a second application to the realtor’s list, if you only want to update details, edit your profile instead.
                     </div>
                   )}
                 </div>
@@ -512,7 +512,7 @@ export default function ApplyPage() {
                 Tell us about you
               </h1>
               <p className="rl-in" style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55, '--rl-d': '120ms' }}>
-                No account needed — the unit details are already filled in by the listing realtor, so just tell us about you. The more specific, the better; skip anything that doesn’t apply — though the optional sections help: landlords are more confident with a fuller picture.
+                No account needed, the unit details are already filled in by the listing realtor, so just tell us about you. The more specific, the better; skip anything that doesn’t apply, though the optional sections help: landlords are more confident with a fuller picture.
               </p>
 
               {error && (
@@ -521,19 +521,19 @@ export default function ApplyPage() {
                 </div>
               )}
 
-              {/* Privacy / human-rights-code note — province-aware (ON: OHRC, BC: BC code). */}
+              {/* Privacy / human-rights-code note, province-aware (ON: OHRC, BC: BC code). */}
               <div style={{ marginBottom: 40, padding: '18px 22px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, fontSize: 13, color: C.inkSoft, lineHeight: 1.6 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                   Designed to be privacy-first
                 </div>
-                We collect what landlords need to make a good decision — not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with {humanRightsCodeName(listingProvince)} best practices.
+                We collect what landlords need to make a good decision, not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with {humanRightsCodeName(listingProvince)} best practices.
               </div>
 
               <FormSection num="01" title="Where to send it" required>
                 <Field label="Email" required value={form.email} onChange={(v) => update('email', v)} onBlur={() => markTouched('email')} error={emailError} placeholder="you@example.com" type="email" inputMode="email" />
               </FormSection>
 
-              {/* No "apartment" section — those details belong to the listing the realtor
+              {/* No "apartment" section, those details belong to the listing the realtor
                   created (shown read-only in the banner above), not to tenant input. */}
 
               <FormSection num="02" title="About you" required>
@@ -548,26 +548,26 @@ export default function ApplyPage() {
                   { value: 'full-time', label: 'Full-time' },
                   { value: 'part-time', label: 'Part-time' },
                   { value: 'contract', label: 'Contract' },
-                  { value: 'self-employed', label: 'Self-employed (own or family business)' },
+                  { value: 'self-employed', label: 'Self employed (own or family business)' },
                 ]} />
                 <Field label="Job title" required value={form.jobTitle} onChange={(v) => update('jobTitle', v)} onBlur={() => markTouched('jobTitle')} error={showErr('jobTitle') && !vital.jobTitle ? 'Job title is required.' : ''} placeholder={selfEmployed ? 'Owner / Electrician / Consultant' : 'Software engineer'} />
-                {/* Self-employed: this is the registered business name — same field, same bar. */}
+                {/* Self-employed: this is the registered business name, same field, same bar. */}
                 <Field label={selfEmployed ? 'Registered business name' : 'Employer'} required value={form.employer} onChange={(v) => updateEmployment({ employer: v })} onBlur={() => markTouched('employer')}
                   error={showErr('employer') && !vital.employer ? (selfEmployed ? 'Business name is required.' : 'Employer is required.') : ''}
                   placeholder={selfEmployed ? 'Doe Electrical Ltd.' : 'Shopify'}
-                  hint={selfEmployed ? 'The business as it’s registered — your own, or a family business you work for.' : undefined} />
+                  hint={selfEmployed ? 'The business as it’s registered, your own, or a family business you work for.' : undefined} />
                 <Field label={selfEmployed ? 'Years in business' : 'Years at this job'} value={form.yearsAtJob} onChange={(v) => update('yearsAtJob', v)} placeholder="3" />
                 <div>
                   <Field label="Annual income before tax (CAD)" required value={form.annualIncome} onChange={updateGross} onBlur={() => markTouched('annualIncome')} error={showErr('annualIncome') && !vital.annualIncome ? 'Annual income before tax is required.' : ''} placeholder="85,000" type="number" inputMode="numeric"
-                    hint="Gross — your yearly pay before deductions (offer letter / T4 box 14)." />
+                    hint="Gross, your yearly pay before deductions (offer letter / T4 box 14)." />
                 </div>
                 {/* Editable estimate. Never scored; shown to the landlord alongside gross, clearly labelled. */}
                 {String(form.annualIncome).trim() && (
                   <div>
-                    <Field label="Estimated after-tax income (CAD/yr)" value={form.netIncome} onChange={updateNet} type="number" inputMode="numeric" placeholder="63,000"
+                    <Field label="Estimated after tax income (CAD/yr)" value={form.netIncome} onChange={updateNet} type="number" inputMode="numeric" placeholder="63,000"
                       hint={form.netIncomeSource === 'stated'
                         ? 'You entered this yourself.'
-                        : `Estimate for ${provinceName(listingProvince)} at ${TAX_YEAR} rates (federal + provincial tax, CPP, EI) — please correct if yours is different.`} />
+                        : `Estimate for ${provinceName(listingProvince)} at ${TAX_YEAR} rates (federal + provincial tax, CPP, EI), please correct if yours is different.`} />
                     {form.netIncomeSource === 'stated' && (
                       <button type="button" onClick={resetNetToEstimate} style={{ marginTop: 6, background: 'transparent', border: 'none', padding: 0, color: C.red, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
                         Use the {provinceName(listingProvince)} estimate instead
@@ -579,7 +579,7 @@ export default function ApplyPage() {
 
               <FormSection num="04" title="Rental history">
                 <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
-                  A landlord who can vouch for your tenancy is the strongest signal you can give — it carries more weight than anything else on this form.
+                  A landlord who can vouch for your tenancy is the strongest signal you can give, it carries more weight than anything else on this form.
                 </p>
                 <SelectField label="Your rental situation" value={form.rentalStatus} onChange={updateRentalStatus} options={[
                   { value: 'current', label: 'I’m renting now' },
@@ -590,7 +590,7 @@ export default function ApplyPage() {
                   <>
                     <Field label={form.rentalStatus === 'current' ? 'Current rental address' : 'Most recent rental address'} value={form.previousAddress} onChange={(v) => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                      <SelectField label="Time there — years" value={form.tenureYears} onChange={(v) => updateTenure({ tenureYears: v })} options={[
+                      <SelectField label="Time there · years" value={form.tenureYears} onChange={(v) => updateTenure({ tenureYears: v })} options={[
                         { value: '', label: 'Select…' },
                         ...Array.from({ length: 10 }, (_, i) => ({ value: String(i), label: String(i) })),
                         { value: '10', label: '10+' },
@@ -609,19 +609,19 @@ export default function ApplyPage() {
                         <Field label="Their phone" value={form.prevLandlordPhone} onChange={(v) => updateReference({ prevLandlordPhone: formatPhone(v) })} placeholder="(416) 555-0142" type="tel" inputMode="tel" />
                       </div>
                       <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: 0 }}>
-                        Either works — both is best. The listing realtor may contact them for a short reference about the tenancy itself (rent paid on time, condition of the unit) — never about you personally.
+                        Either works, both is best. The listing realtor may contact them for a short reference about the tenancy itself (rent paid on time, condition of the unit), never about you personally.
                       </p>
                     </div>
                   </>
                 ) : (
                   <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, margin: 0 }}>
-                    No problem — plenty of strong applications start here. The rest of your application carries the weight.
+                    No problem, plenty of strong applications start here. The rest of your application carries the weight.
                   </p>
                 )}
               </FormSection>
 
               <FormSection num="05" title="Your move" required>
-                <Field label="Desired move-in date" required value={form.moveInDate} onChange={(v) => update('moveInDate', v)} onBlur={() => markTouched('moveInDate')} error={showErr('moveInDate') && !vital.moveInDate ? 'Move-in date is required.' : ''} type="date" />
+                <Field label="Desired move in date" required value={form.moveInDate} onChange={(v) => update('moveInDate', v)} onBlur={() => markTouched('moveInDate')} error={showErr('moveInDate') && !vital.moveInDate ? 'Move in date is required.' : ''} type="date" />
                 <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={(v) => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
               </FormSection>
 
@@ -634,9 +634,9 @@ export default function ApplyPage() {
                     { value: 'yes', label: 'Yes' },
                   ]} />
                 </div>
-                <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={(v) => update('occupantsDetails', v)} placeholder="One roommate — also on this application." />
+                <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={(v) => update('occupantsDetails', v)} placeholder="One roommate, also on this application." />
 
-                {/* Structured pet capture — serialized into the stored `pets` string (see
+                {/* Structured pet capture, serialized into the stored `pets` string (see
                     serializePets), so every screen that displays pets today keeps working. */}
                 <ToggleField label="Do you have pets?" value={form.hasPets} onChange={(v) => updatePets({ hasPets: v })} />
                 {form.hasPets && (
@@ -657,7 +657,7 @@ export default function ApplyPage() {
                       <SelectField label="Size of largest (optional)" value={form.petSize} onChange={(v) => updatePets({ petSize: v })} options={[
                         { value: '', label: 'Select…' },
                         { value: 'small', label: 'Small (under 25 lb)' },
-                        { value: 'medium', label: 'Medium (25–60 lb)' },
+                        { value: 'medium', label: 'Medium (25 to 60 lb)' },
                         { value: 'large', label: 'Large (60+ lb)' },
                       ]} />
                     </div>
@@ -671,10 +671,10 @@ export default function ApplyPage() {
                     on the lease, never the nature of the relationship (marital status is a
                     protected ground). coApplicantRelationship stays in state as '' so the
                     payload shape is unchanged. */}
-                <ToggleField label="Applying with a co-tenant? (another adult who’ll be on the lease)" value={form.hasCoApplicant} onChange={(v) => update('hasCoApplicant', v)} />
+                <ToggleField label="Applying with a co tenant? (another adult who’ll be on the lease)" value={form.hasCoApplicant} onChange={(v) => update('hasCoApplicant', v)} />
                 {form.hasCoApplicant && (
                   <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Co-tenant</div>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Co tenant</div>
                     <Field label="Full name" value={form.coApplicantName} onChange={(v) => update('coApplicantName', v)} placeholder="Alex Smith" />
                     <Field label="Age" value={form.coApplicantAge} onChange={(v) => update('coApplicantAge', v)} placeholder="30" type="number" />
                     <Field label="Job title" value={form.coApplicantJobTitle} onChange={(v) => update('coApplicantJobTitle', v)} placeholder="Designer" />
@@ -686,7 +686,7 @@ export default function ApplyPage() {
 
               <FormSection num="07" title="In your own words">
                 <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
-                  Optional — but landlords are more confident with a fuller picture, in your voice.
+                  Optional, but landlords are more confident with a fuller picture, in your voice.
                 </p>
                 <div>
                   <Textarea label="Tell the landlord a bit about yourself and how you live" value={form.personality} onChange={(v) => update('personality', v.slice(0, 500))} placeholder="e.g. I work from home most days, keep a quiet routine, and take good care of my space." />
@@ -755,7 +755,7 @@ export default function ApplyPage() {
                 {status === 'submitting' ? 'Submitting…' : 'Review & submit'}
               </button>
               {status === 'ready' && !allVitalValid && (() => {
-                const labels = { fullName: 'Full name', dateOfBirth: `Date of birth (${minAge}+)`, email: 'Valid email', phone: '10-digit phone', annualIncome: 'Income before tax', employer: selfEmployed ? 'Business name' : 'Employer', jobTitle: 'Job title', moveInDate: 'Move-in date', unit: 'Unit details' };
+                const labels = { fullName: 'Full name', dateOfBirth: `Date of birth (${minAge}+)`, email: 'Valid email', phone: '10-digit phone', annualIncome: 'Income before tax', employer: selfEmployed ? 'Business name' : 'Employer', jobTitle: 'Job title', moveInDate: 'Move in date', unit: 'Unit details' };
                 const missing = Object.keys(vital).filter((k) => !vital[k]).map((k) => labels[k]);
                 return (
                   <p style={{ fontSize: 12.5, color: C.inkMute, textAlign: 'center', marginTop: 12, lineHeight: 1.5 }}>
@@ -764,28 +764,28 @@ export default function ApplyPage() {
                 );
               })()}
               <p style={{ fontSize: 12, color: C.inkMute, textAlign: 'center', marginTop: 14, lineHeight: 1.5 }}>
-                Free for applicants. You’ll get an application number to share — the listing realtor sees it in their dashboard.
+                Free for applicants. You’ll get an application number to share, the listing realtor sees it in their dashboard.
               </p>
 
-              {/* REVIEW-AND-CONFIRM — the deliberate final checkpoint before submitting. */}
+              {/* REVIEW-AND-CONFIRM, the deliberate final checkpoint before submitting. */}
               {reviewing && (() => {
                 const fmtDate = (v) => { try { return new Date(`${v}T00:00:00`).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return v; } };
                 const incomeNum = Number(String(form.annualIncome).replace(/[^\d.]/g, '')) || 0;
                 const rows = [
                   ['Full name', form.fullName.trim()],
-                  ['Date of birth', form.dateOfBirth ? `${fmtDate(form.dateOfBirth)}${derivedAge != null ? ` (age ${derivedAge})` : ''}` : '—'],
+                  ['Date of birth', form.dateOfBirth ? `${fmtDate(form.dateOfBirth)}${derivedAge != null ? ` (age ${derivedAge})` : ''}` : 'not set'],
                   ['Email', form.email.trim()],
                   ['Phone', form.phone.trim()],
-                  ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : '—'],
-                  ['After tax', Number(form.netIncome) ? `$${Number(form.netIncome).toLocaleString()}/yr ${form.netIncomeSource === 'stated' ? '(you entered)' : '(estimate)'}` : '—'],
+                  ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : 'not set'],
+                  ['After tax', Number(form.netIncome) ? `$${Number(form.netIncome).toLocaleString()}/yr ${form.netIncomeSource === 'stated' ? '(you entered)' : '(estimate)'}` : 'not set'],
                   [form.employmentType === 'self-employed' ? 'Business' : 'Employer', `${form.employer.trim()}${form.employmentType ? ` · ${({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[form.employmentType]}` : ''}`],
                   ['Job title', form.jobTitle.trim()],
-                  ['Move-in date', form.moveInDate ? fmtDate(form.moveInDate) : '—'],
+                  ['Move in date', form.moveInDate ? fmtDate(form.moveInDate) : 'not set'],
                   ['Rental history', form.rentalStatus === 'none'
                     ? 'No previous rental listed'
-                    : [form.yearsAtPrevious ? `${form.yearsAtPrevious} yrs` : null, form.previousLandlordName.trim() ? `reference: ${form.previousLandlordName.trim()}` : null].filter(Boolean).join(' · ') || '—'],
+                    : [form.yearsAtPrevious ? `${form.yearsAtPrevious} yrs` : null, form.previousLandlordName.trim() ? `reference: ${form.previousLandlordName.trim()}` : null].filter(Boolean).join(' · ') || 'not set'],
                   ['Pets', form.pets || 'None'],
-                  ['In your own words', form.personality.trim() ? `Included (${form.personality.trim().length} chars)` : '—'],
+                  ['In your own words', form.personality.trim() ? `Included (${form.personality.trim().length} chars)` : 'not set'],
                 ];
                 const submitting = status === 'submitting';
                 return (
@@ -796,23 +796,23 @@ export default function ApplyPage() {
                       style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(20px, 4vw, 28px)' }}>
                       <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Review your application</div>
                       <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>Please review before you submit</h3>
-                      <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>The listing realtor and the landlord screen on this information, so make sure it’s accurate — you can go back and edit anything.</p>
+                      <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>The listing realtor and the landlord screen on this information, so make sure it’s accurate, you can go back and edit anything.</p>
                       <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
                         {rows.map(([k, v]) => (
                           <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '5px 0', fontSize: 13 }}>
                             <span style={{ color: C.inkMute, fontWeight: 600, minWidth: 0, flexShrink: 0 }}>{k}</span>
-                            <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{v || '—'}</span>
+                            <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{v || 'not set'}</span>
                           </div>
                         ))}
                       </div>
                       {/* One-shot SUBMISSION: this creates the application for this listing once.
                           The tenant can later edit the facts on /my-application (the same record,
-                          same RL) — but resubmitting through the invite creates a second
+                          same RL), but resubmitting through the invite creates a second
                           application, so the warning stands. */}
                       <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px', background: C.paperDeep, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, marginBottom: 16, fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>
                         <span style={{ marginTop: 1, flexShrink: 0, color: C.red, display: 'inline-flex' }}><Icon name="shield" size={15} /></span>
                         <span>
-                          Take a second to double-check everything above — <strong style={{ color: C.ink }}>once you submit, you can’t edit it here</strong>. Later changes go through your profile page, and submitting this form again would create a second application.
+                          Take a second to double-check everything above, <strong style={{ color: C.ink }}>once you submit, you can’t edit it here</strong>. Later changes go through your profile page, and submitting this form again would create a second application.
                         </span>
                       </div>
                       <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>

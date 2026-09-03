@@ -42,7 +42,7 @@ export default async function handler(req, res) {
   if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
     console.error('[clear-analysis] applicant binding mismatch — linkId row application_id',
       ctx.junction.application_id, '!== expected', applicationId, '(refusing to clear)');
-    return res.status(409).json({ error: 'Applicant reference mismatch — please reload the page and try again.' });
+    return res.status(409).json({ error: 'Applicant reference mismatch, please reload the page and try again.' });
   }
 
   try {

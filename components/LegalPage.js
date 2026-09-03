@@ -53,7 +53,7 @@ export default function LegalPage({ content, metaTitle, metaDescription }) {
         </ScrollHeader>
 
         <main style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(28px, 6vw, 56px) clamp(20px, 4vw, 40px) 72px' }}>
-          {/* Draft banner — at the very top of every legal page. */}
+          {/* Draft banner, at the very top of every legal page. */}
           <div role="note" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: C.amberTint, border: `1px solid ${C.amber}`, borderLeft: `4px solid ${C.amber}`, borderRadius: R.ctrl, padding: '11px 14px', marginBottom: 28 }}>
             <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.paper, background: C.amber, padding: '3px 9px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>Draft</span>
             <span style={{ fontSize: 13.5, color: C.ink, fontWeight: 600 }}>Pending legal review.</span>

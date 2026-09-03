@@ -41,7 +41,7 @@ export default async function handler(req, res) {
   if (!ALLOWED_DOC_MIME.includes(mime)) { file.data = null; return res.status(400).json({ error: 'Please upload a PDF or image (JPG or PNG).' }); }
   const size = Math.floor((data.length * 3) / 4);
   // Per-file guard mirrors the client (~3MB raw) — keeps us safely under the platform body cap.
-  if (size > 4 * 1024 * 1024) { file.data = null; return res.status(413).json({ error: 'This file is too large — please upload a version under 3MB.' }); }
+  if (size > 4 * 1024 * 1024) { file.data = null; return res.status(413).json({ error: 'This file is too large, please upload a version under 3MB.' }); }
 
   const rec = await kvGetJson(reqKey(token));
   if (!rec) { file.data = null; return res.status(404).json({ error: 'This upload link has expired or is no longer active.' }); }

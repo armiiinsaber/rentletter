@@ -14,12 +14,12 @@ const FAQS = [
   {
     category: 'General',
     q: 'What is Rentletter?',
-    a: 'Rentletter is a tenant-screening dashboard for Canadian realtors, landlords, and property managers. You create a listing, share one application link, and standardized applications land in your dashboard. From there you compare candidates, shortlist your top picks, document each decision, and send a co-branded shortlist to your landlord client. Built in Toronto, available across Canada.',
+    a: 'Rentletter is a tenant screening dashboard for Canadian realtors, landlords, and property managers. You create a listing, share one application link, and standardized applications land in your dashboard. From there you compare candidates, shortlist your top picks, document each decision, and send a co branded shortlist to your landlord client. Built in Toronto, available across Canada.',
   },
   {
     category: 'General',
     q: 'Does it run credit or background checks?',
-    a: 'No. Rentletter organizes and presents your applicants — it standardizes applications, compares candidates, and documents your decisions. It is not a verification or credit-check product. Run any checks through whatever service you already use.',
+    a: 'No. Rentletter organizes and presents your applicants, it standardizes applications, compares candidates, and documents your decisions. It is not a verification or credit check product. Run any checks through whatever service you already use.',
   },
   {
     category: 'General',
@@ -29,24 +29,24 @@ const FAQS = [
   {
     category: 'General',
     q: 'Who is behind Rentletter?',
-    a: 'Rentletter is an independent product built in Toronto. For anything this page does not cover, email info@rentletter.ca or use the chat in the corner — the Rentletter team responds within 24 hours.',
+    a: 'Rentletter is an independent product built in Toronto. For anything this page does not cover, email info@rentletter.ca or use the chat in the corner, the Rentletter team responds within 24 hours.',
   },
 
   // ─── FOR REALTORS ────────────────────────────────
   {
     category: 'For realtors',
     q: 'How much does it cost?',
-    a: 'The first 50 realtors to sign up are founding members — free forever. After that, new accounts get a 7-day free trial, then $49.99/month (HST included). No setup fees, cancel any time.',
+    a: 'The first 50 realtors to sign up are founding members, free forever. After that, new accounts get a 7-day free trial, then $49.99/month (HST included). No setup fees, cancel any time.',
   },
   {
     category: 'For realtors',
     q: 'How does it actually work?',
-    a: 'Create a listing, then share its application link with prospective tenants by text or email. Each applicant fills the same standardized form, so everything arrives in one comparable format. You shortlist, add notes, and send a polished report — with your name and brokerage on it — to your landlord client.',
+    a: 'Create a listing, then share its application link with prospective tenants by text or email. Each applicant fills the same standardized form, so everything arrives in one comparable format. You shortlist, add notes, and send a polished report, with your name and brokerage on it, to your landlord client.',
   },
   {
     category: 'For realtors',
     q: 'What does my landlord client see?',
-    a: 'A clean, co-branded shortlist page: your branding, the unit, your landlord’s stated preferences, and each candidate scored against those preferences. They can add their own notes and remove anyone they are not interested in — all of which syncs back to you.',
+    a: 'A clean, co branded shortlist page: your branding, the unit, your landlord’s stated preferences, and each candidate scored against those preferences. They can add their own notes and remove anyone they are not interested in, all of which syncs back to you.',
   },
   {
     category: 'For realtors',
@@ -58,12 +58,12 @@ const FAQS = [
   {
     category: 'For landlords renting it yourself',
     q: 'I don’t use a realtor. Can I still use Rentletter?',
-    a: 'Yes. If you are renting your own unit and want to handle it yourself — and keep the commission — Rentletter gives you the same dashboard realtors use. Post one link, collect standardized applications, compare candidates side by side, and pick with confidence.',
+    a: 'Yes. If you are renting your own unit and want to handle it yourself, and keep the commission, Rentletter gives you the same dashboard realtors use. Post one link, collect standardized applications, compare candidates side by side, and pick with confidence.',
   },
   {
     category: 'For landlords renting it yourself',
     q: 'Why not just take applications by email?',
-    a: 'Email gets you ten different formats, missing details, and no easy way to compare. Rentletter sends every applicant through the same form, so you see the same facts for everyone, in one place — and you have a documented record of how you decided.',
+    a: 'Email gets you ten different formats, missing details, and no easy way to compare. Rentletter sends every applicant through the same form, so you see the same facts for everyone, in one place, and you have a documented record of how you decided.',
   },
   {
     category: 'For landlords renting it yourself',
@@ -80,24 +80,24 @@ const FAQS = [
   {
     category: 'For property managers',
     q: 'Is this a full property-management system?',
-    a: 'No. Rentletter is focused on the applicant funnel — collecting, comparing, and presenting applicants for a vacancy. It is not a rent-collection or maintenance platform. It is the clean front end to your leasing decision.',
+    a: 'No. Rentletter is focused on the applicant funnel, collecting, comparing, and presenting applicants for a vacancy. It is not a rent collection or maintenance platform. It is the clean front end to your leasing decision.',
   },
 
   // ─── COMPLIANCE + DATA ───────────────────────────
   {
     category: 'Compliance and data',
     q: 'How does it help with the Ontario Human Rights Code?',
-    a: 'Rentletter keeps your attention on legally screenable factors — income, employment, rental history, references, and stated intent — and never asks about protected grounds. The optional AI rationale feature drafts your reasons in compliant language and excludes protected grounds. You remain responsible for your own compliance; Rentletter is a tool, not legal advice.',
+    a: 'Rentletter keeps your attention on legally screenable factors, income, employment, rental history, references, and stated intent, and never asks about protected grounds. The optional AI rationale feature drafts your reasons in compliant language and excludes protected grounds. You remain responsible for your own compliance; Rentletter is a tool, not legal advice.',
   },
   {
     category: 'Compliance and data',
     q: 'What is the AI rationale feature?',
-    a: 'After you decide on an applicant, you can ask the AI to draft a short written rationale focused on legitimate factors. It gives you a clear, documented record of your reasoning — useful if a decision is ever questioned. It is not legal advice.',
+    a: 'After you decide on an applicant, you can ask the AI to draft a short written rationale focused on legitimate factors. It gives you a clear, documented record of your reasoning, useful if a decision is ever questioned. It is not legal advice.',
   },
   {
     category: 'Compliance and data',
     q: 'Where is my data stored, and do you sell it?',
-    a: 'Data is encrypted and stored on North American infrastructure. We never sell, rent, or trade your information, and we use no advertising cookies. Tenant applications and inactive workspaces expire automatically — see the Privacy Policy for retention details.',
+    a: 'Data is encrypted and stored on North American infrastructure. We never sell, rent, or trade your information, and we use no advertising cookies. Tenant applications and inactive workspaces expire automatically, see the Privacy Policy for retention details.',
   },
   {
     category: 'Compliance and data',
@@ -113,8 +113,8 @@ export default function FAQ() {
   return (
     <>
       <Head>
-        <title>FAQ — Rentletter</title>
-        <meta name="description" content="Common questions about Rentletter — for realtors, landlords, and property managers." />
+        <title>FAQ · Rentletter</title>
+        <meta name="description" content="Common questions about Rentletter, for realtors, landlords, and property managers." />
       </Head>
       <GlobalStyle />
 
@@ -138,7 +138,7 @@ export default function FAQ() {
           <p style={{ fontSize: 'clamp(15px, 3vw, 17px)', color: C.inkSoft, marginBottom: 40, lineHeight: 1.6, maxWidth: 600 }}>
             Can&apos;t find what you need? Email{' '}
             <a href="mailto:info@rentletter.ca" style={{ color: C.red, textDecoration: 'underline' }}>info@rentletter.ca</a>{' '}
-            or use the chat in the corner — the Rentletter team replies within 24 hours.
+            or use the chat in the corner, the Rentletter team replies within 24 hours.
           </p>
 
           {categories.map(cat => (
@@ -193,7 +193,7 @@ export default function FAQ() {
               Talk to the Rentletter team.
             </h3>
             <p style={{ fontSize: 14.5, color: C.inkInverse, lineHeight: 1.6, marginBottom: 20, maxWidth: 520 }}>
-              Real human responses within 24 hours — or open the chat assistant in the corner for instant answers about how the product works.
+              Real human responses within 24 hours, or open the chat assistant in the corner for instant answers about how the product works.
             </p>
             <a href="mailto:info@rentletter.ca" className="rl-btn" style={{
               display: 'inline-flex', alignItems: 'center', gap: 9,

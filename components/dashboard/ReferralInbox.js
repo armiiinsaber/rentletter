@@ -69,7 +69,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                         {[a.jobTitle, a.employer].filter(Boolean).join(' at ') || 'Role not listed'}{EMP[a.employmentType] ? ` · ${EMP[a.employmentType]}` : ''}{a.annualIncome ? ` · ${money(a.annualIncome)}/yr before tax` : ''}{a.netIncome ? ` · ~${money(a.netIncome)} after tax` : ''}
                       </div>
                       <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>
-                        {[a.yearsAtJob ? `${a.yearsAtJob} yrs in role` : null, a.rentalYears ? `${a.rentalYears} yrs renting${a.hasLandlordRef ? ' · landlord ref' : ''}` : null, a.occupants ? `${a.occupants} occupant(s)` : null, a.pets ? `pets: ${a.pets}` : null, a.moveInDate ? `move-in ${a.moveInDate}` : null].filter(Boolean).join(' · ')}
+                        {[a.yearsAtJob ? `${a.yearsAtJob} yrs in role` : null, a.rentalYears ? `${a.rentalYears} yrs renting${a.hasLandlordRef ? ' · landlord ref' : ''}` : null, a.occupants ? `${a.occupants} occupant(s)` : null, a.pets ? `pets: ${a.pets}` : null, a.moveInDate ? `move in ${a.moveInDate}` : null].filter(Boolean).join(' · ')}
                       </div>
                     </div>
                     {assignedListing

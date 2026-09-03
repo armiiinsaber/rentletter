@@ -77,7 +77,7 @@ export default async function handler(req, res) {
   if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
     console.error('[analyze-documents] applicant binding mismatch — linkId row application_id',
       ctx.junction.application_id, '!== expected', applicationId, '(refusing to write)');
-    return res.status(409).json({ error: 'Applicant reference mismatch — please reload the page and try again.' });
+    return res.status(409).json({ error: 'Applicant reference mismatch, please reload the page and try again.' });
   }
 
   // Run the SAME shared analysis engine the tenant self-upload path uses, so the persisted

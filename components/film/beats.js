@@ -41,7 +41,7 @@ export function ListingScreen({ b }) {
           <div className="rl-serif" style={{ fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1.05, marginBottom: 4 }}>88 Harbour St, Unit 2104</div>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 12 }}>$2,600/mo · 2 bed · Toronto</div>
           <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: '10px 12px', display: 'grid', gap: 6 }}>
-            {[['Min annual income', '$75,000'], ['Max rent-to-income', '40%'], ['Min lease term', '12 mo'], ['Landlord reference', 'Required']].map(([k, v]) => (
+            {[['Min annual income', '$75,000'], ['Max rent to income', '40%'], ['Min lease term', '12 mo'], ['Landlord reference', 'Required']].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, borderBottom: `1px solid ${C.rule}`, paddingBottom: 5 }}><span style={{ color: C.inkMute }}>{k}</span><span style={{ fontWeight: 700 }}>{v}</span></div>
             ))}
             <div style={{ fontSize: 9.5, color: C.inkMute }}>Landlord client · Marco Rossi</div>
@@ -52,7 +52,7 @@ export function ListingScreen({ b }) {
           <div style={{ fontSize: 10.5, color: C.inkSoft, lineHeight: 1.5, marginBottom: 10 }}>One link for everyone who wants to apply. Applications land here, ranked.</div>
           <div style={{ position: 'relative', height: 36 }}>
             <div style={{ position: 'absolute', inset: 0, background: b.link > 0.4 ? C.ink : C.red, color: C.paper, borderRadius: R.ctrl, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12, fontWeight: 700, opacity: Math.max(0, 1 - b.link * 2.2) * b.linkBtn, transform: `scale(${1 - 0.04 * b.link})` }}><Icon name="link" size={13} color={C.paper} /> Get invite link</div>
-            <div style={{ position: 'absolute', inset: 0, border: `1px solid ${C.ruleDark}`, background: C.paper, borderRadius: R.ctrl, display: 'flex', alignItems: 'center', padding: '0 10px', gap: 8, fontSize: 11.5, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', ...fade(b.link, 8) }}>
+            <div style={{ position: 'absolute', inset: 0, border: `1px solid ${C.ruleDark}`, background: C.paper, borderRadius: R.ctrl, display: 'flex', alignItems: 'center', padding: '0 10px', gap: 8, fontSize: 11.5, fontFamily: 'ui monospace, SFMono-Regular, Menlo, monospace', ...fade(b.link, 8) }}>
               <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>rentletter.ca/apply/a8f3k2</span>
               <span style={{ fontSize: 10, fontWeight: 800, color: C.paper, background: C.ink, padding: '3px 8px', borderRadius: R.pill }}>{b.sent > 0.5 ? 'Copied' : 'Copy'}</span>
             </div>
@@ -87,11 +87,11 @@ export function ApplyScreen({ b }) {
       </div>
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9, position: 'absolute', top: 66, bottom: 0, left: 0, right: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><span style={{ fontSize: 10, color: C.inkMute }}>03</span><span style={{ fontSize: 14, fontWeight: 700 }}>Employment</span><span style={{ fontSize: 9, color: C.inkMute }}>Required</span></div>
-        <F label="Employment type" value="Full-time" k={b.fields[0]} />
+        <F label="Employment type" value="Full time" k={b.fields[0]} />
         <F label="Job title *" value="Senior UX Designer" k={b.fields[1]} />
         <F label="Employer *" value="CIBC" k={b.fields[2]} />
         <F label="Annual income before tax (CAD) *" value="$115,000" k={b.fields[3]} />
-        <div style={{ padding: '7px 10px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.estimate, 6) }}>Estimated after-tax income: <strong style={{ color: C.ink }}>$84,400</strong> — Ontario, 2026 rates. You can edit it.</div>
+        <div style={{ padding: '7px 10px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.estimate, 6) }}>Estimated after tax income: <strong style={{ color: C.ink }}>$84,400</strong>, Ontario, 2026 rates. You can edit it.</div>
         <div style={{ marginTop: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.inkMute, marginBottom: 4 }}><span>Step 3 of 9</span><span>About 2 minutes</span></div>
           <div style={{ height: 3, background: C.rule, borderRadius: 2, marginBottom: 10, overflow: 'hidden' }}><div style={{ width: '100%', height: '100%', background: C.red, borderRadius: 2, transformOrigin: 'left', transform: `scaleX(${b.progress})` }} /></div>
@@ -153,7 +153,7 @@ export function RankedScreen({ b }) {
 
 // 4 ── Verification: rows resolve, then the files are deleted ─────────────────────────────
 export function VerifyScreen({ b }) {
-  const rows = [['Income', '$115,000', '$114,600 (T4)'], ['Employer', 'CIBC', 'CIBC World Markets'], ['Job title', 'Senior UX', 'Senior UX Designer'], ['Pay frequency', '—', 'Semi-monthly']];
+  const rows = [['Income', '$115,000', '$114,600 (T4)'], ['Employer', 'CIBC', 'CIBC World Markets'], ['Job title', 'Senior UX', 'Senior UX Designer'], ['Pay frequency', 'not set', 'Semi-monthly']];
   // Short names on purpose: the exact filename carries no meaning, and short leaves headroom
   // however the capture engine measures text (see the pill styles below).
   const files = ['pay-stub.pdf', 'employment.pdf', 'credit.pdf'];
@@ -184,7 +184,7 @@ export function VerifyScreen({ b }) {
               font-size mangling in lib/mockupExport is one cause), so a label that fits live can
               overflow in the export. Each pill is a nowrap flex box that CLIPS its label
               (overflow hidden, ellipsis, min-width 0, explicit max-width), and the row itself
-              never wraps — text can only truncate inside its pill, never spill out of it. */}
+              never wraps, text can only truncate inside its pill, never spill out of it. */}
           <div style={{ position: 'absolute', left: 0, right: 0, top: 0, display: 'flex', flexWrap: 'nowrap', gap: 8, overflow: 'hidden' }}>
             {files.map((n, i) => (
               <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flex: '0 1 auto', minWidth: 0, maxWidth: 150, boxSizing: 'border-box', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: 9.5, lineHeight: '12px', color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6, opacity: 1 - b.del[i], transform: `translate(0, ${-10 * b.del[i]}px) scale(${1 - 0.2 * b.del[i]})` }}>
@@ -244,13 +244,13 @@ export function ReportScreen({ b, brand = null, logo = 0 }) {
             <Avatar a={a} size={24} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700 }}>{a.name}{i === 0 && <span style={{ color: accent, fontWeight: 600 }}> · Top pick</span>}</div>
-              <div style={{ fontSize: 9.5, color: C.inkMute }}>{a.role} · {money(a.income)}/yr · {a.rent}% rent-to-income</div>
+              <div style={{ fontSize: 9.5, color: C.inkMute }}>{a.role} · {money(a.income)}/yr · {a.rent}% rent to income</div>
               <div style={{ fontSize: 9.5, color: C.green }}>✓ Documents verified · income & employer matched</div>
             </div>
             <TickMeter value={a.score} size={10} />
           </div>
         ))}
-        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: min income $75k ✓ · 12-month lease ✓ · move-in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.</div>
+        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: min income $75k ✓ · 12-month lease ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.</div>
       </div>
     </Screen>
   );

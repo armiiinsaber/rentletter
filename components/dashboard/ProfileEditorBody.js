@@ -151,7 +151,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
   const waitIdle = () => new Promise((r) => { const t = setInterval(() => { if (!savingRef.current) { clearInterval(t); r(); } }, 50); });
   const persistDetails = useCallback(async () => {
-    if (savingRef.current) { // a blur-save is mid-flight — let it finish, then write the latest values
+    if (savingRef.current) { // a blur-save is mid-flight, let it finish, then write the latest values
       await waitIdle();
       const f0 = formRef.current;
       if (!DETAIL_KEYS.some((k) => f0[k] !== savedFormRef.current[k])) return true;
@@ -177,7 +177,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         .from('profiles').update(patch).eq('id', user.id).select().single();
       if (upErr) { setError(upErr.message); setSaveState('error'); return false; }
       onSaved?.(data);
-      setSavedForm({ ...f }); // detail fields are now saved — clears the dirty state
+      setSavedForm({ ...f }); // detail fields are now saved, clears the dirty state
       setSaveState('saved');
       return true;
     } catch (e) {
@@ -259,9 +259,9 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
             const { data: d2 } = await supabase.from('profiles')
               .update({ brand_palette: buildPalette(p, s) }).eq('id', user.id).select().single();
             if (d2) onSaved?.(d2);
-          } catch (e) { /* brand_palette column not added yet — non-fatal */ }
+          } catch (e) { /* brand_palette column not added yet, non-fatal */ }
         }
-      } catch (e) { /* non-fatal — colours still feed generation from live state */ }
+      } catch (e) { /* non-fatal, colours still feed generation from live state */ }
     }, 600);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -293,7 +293,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href={GOOGLE_FONTS_HREF} />
       </Head>
-      {/* Sticky save-state strip — the ONE place that says whether this form is persisted. Sticks to
+      {/* Sticky save-state strip, the ONE place that says whether this form is persisted. Sticks to
           the top of the scroll container (the modal body, or the page) so it's visible from the name
           field down to the font cards. Colours: ink while saving, green when saved, red when unsaved. */}
       {!logoOnly && <div role="status" aria-live="polite"
@@ -305,10 +305,10 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         ) : dirty ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: C.red, fontWeight: 700 }}>
             <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: C.red, display: 'inline-block', flexShrink: 0 }} />
-            Unsaved — saves when you leave the field
+            Unsaved, saves when you leave the field
           </span>
         ) : saveState === 'error' ? (
-          <span style={{ color: C.red, fontWeight: 700 }}>Not saved — see the message below</span>
+          <span style={{ color: C.red, fontWeight: 700 }}>Not saved, see the message below</span>
         ) : (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: C.green, fontWeight: 700 }}>
             <span aria-hidden="true">✓</span> All changes saved
@@ -323,7 +323,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       </div>}
       {error && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>}
 
-      {/* One continuous flow, ordered most-fundamental first — your details, then logo, then the
+      {/* One continuous flow, ordered most-fundamental first, your details, then logo, then the
           final aesthetic touches (colours + fonts). No section headers: it reads as one form. */}
       {!logoOnly && <>
       {fields.map((f) => (
@@ -332,7 +332,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
           <input id={`profile-field-${f.k}`} type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} onBlur={autosave} placeholder={f.ph} style={inputStyle} />
         </div>
       ))}
-      {/* Province — drives province-specific behaviour (e.g. the tenant age-of-majority gate). */}
+      {/* Province · drives province-specific behaviour (e.g. the tenant age-of-majority gate). */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Province</label>
         <select value={form.province} onChange={(e) => { set('province', e.target.value); autosave(); }} onBlur={autosave} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
@@ -345,7 +345,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       </p>
       </>}
 
-      {/* Logo — upload or generate with the AI studio (which carries the brand colours). Flows
+      {/* Logo, upload or generate with the AI studio (which carries the brand colours). Flows
           straight on from the details above; no divider or section header. */}
       <div style={{ position: 'relative', border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 16, paddingLeft: 20, background: C.paperDeep, marginBottom: 10, overflow: 'hidden' }}>
         {/* the accent edge re-enters on every colour change instead of snapping */}
@@ -365,7 +365,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         </div>
       </div>
       <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 10 }}>
-        This is your brand — it appears top-left on the landlord reports you send.
+        This is your brand, it appears top-left on the landlord reports you send.
       </p>
 
       <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}
@@ -408,12 +408,12 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       )}
 
       {!logoOnly && <>
-      {/* ── BRAND PALETTE — auto-generated from the two brand colours ── */}
+      {/* ── BRAND PALETTE, auto-generated from the two brand colours ── */}
       {palette && (
         <div style={{ marginBottom: 24 }}>
           <label style={{ ...sectionLabel, marginBottom: 4 }}>Brand palette</label>
           <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 10 }}>
-            Auto-generated from your two colours — feeds your report accents and brand kit.
+            Auto-generated from your two colours, feeds your report accents and brand kit.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 8 }}>
             {PALETTE_ORDER.map(([key, label]) => {
@@ -435,7 +435,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       <div style={{ marginBottom: 24 }}>
         <label style={{ ...sectionLabel, marginBottom: 4 }}>Font pairing</label>
         <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
-          Pick a heading + body pairing. Every pairing here is embedded in your landlord reports — the heading sets your name, the body sets everything else. Script headings style your name only; report text stays in the clean body face.
+          Pick a heading + body pairing. Every pairing here is embedded in your landlord reports, the heading sets your name, the body sets everything else. Script headings style your name only; report text stays in the clean body face.
           {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> · Saving…</span>}
           {fontState === 'saved' && <span style={{ color: C.green, fontWeight: 700 }}> · ✓ Saved</span>}
         </p>
@@ -463,7 +463,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         </div>
       </div>
 
-      {/* Explicit Save — same write path as the blur autosave (persistDetails). Kept as a visible
+      {/* Explicit Save, same write path as the blur autosave (persistDetails). Kept as a visible
           flush + "close the modal" action; the sticky strip above is the primary save indicator. */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <button onClick={save} disabled={saving}

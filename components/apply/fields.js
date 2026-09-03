@@ -25,7 +25,7 @@ export function Field({ label, value, onChange, onBlur, placeholder, type = 'tex
       </label>
       <input type={type} inputMode={inputMode} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         aria-required={required || undefined} aria-invalid={error ? true : undefined}
-        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${error ? C.red : C.rule}`, background: 'transparent', color: C.ink, outline: 'none', transition: 'border-color 0.2s' }}
+        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${error ? C.red : C.rule}`, background: 'transparent', color: C.ink, outline: 'none', transition: 'border color 0.2s' }}
         onFocus={(e) => (e.target.style.borderBottomColor = C.ink)}
         onBlur={(e) => { e.target.style.borderBottomColor = error ? C.red : C.rule; onBlur && onBlur(); }} />
       {error
@@ -40,7 +40,7 @@ export function Textarea({ label, value, onChange, placeholder }) {
     <div>
       <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
       <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${C.rule}`, background: 'transparent', color: C.ink, outline: 'none', resize: 'vertical', fontFamily: "'Inter', sans-serif", lineHeight: 1.5, transition: 'border-color 0.2s' }}
+        style={{ width: '100%', padding: '14px 0', fontSize: 16, border: 'none', borderBottom: `1px solid ${C.rule}`, background: 'transparent', color: C.ink, outline: 'none', resize: 'vertical', fontFamily: "'Inter', sans-serif", lineHeight: 1.5, transition: 'border color 0.2s' }}
         onFocus={(e) => (e.target.style.borderBottomColor = C.ink)}
         onBlur={(e) => (e.target.style.borderBottomColor = C.rule)} />
     </div>

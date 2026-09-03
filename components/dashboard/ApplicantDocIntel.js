@@ -69,11 +69,11 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
         ))}
       </div>
       {!confirm ? (
-        <button type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', border: 'none', color: C.danger, textDecoration: 'underline' }}>Delete all documents</button>
+        <button type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', border: 'none', color: C.ink, textDecoration: 'underline' }}>Delete all documents</button>
       ) : (
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
           <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
-          <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.danger, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}>{busy === 'delete' ? 'Deleting' : 'Delete'}</button>
+          <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.ink, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}>{busy === 'delete' ? 'Deleting' : 'Delete'}</button>
           <button type="button" onClick={() => setConfirm(false)} disabled={busy === 'delete'} style={{ ...btn44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}` }}>Cancel</button>
         </div>
       )}
@@ -142,7 +142,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       setFiles([]);
       onSaved?.({ docVerifications: j.verifications, ...(j.held !== undefined ? { storedDocuments: j.held } : {}) });
       onAnalyzed?.(); // the card refetches this applicant: Fit, state, label and meter follow the new report
-      if (j.saved === false) setError('Analysis ran but could not be saved — it may not persist on refresh.');
+      if (j.saved === false) setError('Analysis ran but could not be saved, it may not persist on refresh.');
     } catch (e) {
       setError('Could not analyze those documents.');
     }
@@ -257,8 +257,8 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
 
   const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
   const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
-  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.red}`, color: C.red, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
-  const destSolidBtn = { background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
+  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+  const destSolidBtn = { background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
 
   return (
     <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
@@ -274,15 +274,15 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
           not the panel is open so it can't be missed on a quick scan. */}
       {edited.edited && (
         <div role="note" style={{ marginTop: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', background: C.amberTint, borderLeft: `3px solid ${C.amber}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.55 , textWrap: 'pretty' }}>
-          <strong>Edited after verification.</strong> {applicantName ? applicantName.split(' ')[0] : 'The applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were verified on {fmtShort(edited.verifiedAt)}. The verified facts may no longer match what’s on the application — if income or employer changed and it matters here, re-request documents below.
+          <strong>Edited after verification.</strong> {applicantName ? applicantName.split(' ')[0] : 'The applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were verified on {fmtShort(edited.verifiedAt)}. The verified facts may no longer match what’s on the application, if income or employer changed and it matters here, re-request documents below.
         </div>
       )}
 
-      {/* Archived report — read-only view. */}
+      {/* Archived report, read-only view. */}
       {open && viewing && (
         <div style={{ marginTop: 'var(--s-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginBottom: 'var(--s-3)' }}>
-            <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.inkMute, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived — {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ' · tenant' : ''}</span>
+            <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.inkMute, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived · {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ' · tenant' : ''}</span>
             <button onClick={() => setViewing(null)} style={{ ...ghostBtn, color: C.ink }}>← Back</button>
           </div>
           <DocIntelReport result={viewing.report} insight={viewing.ai_insight || ''} />
@@ -301,7 +301,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx" style={{ display: 'none' }}
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>Drop documents here or click to choose</div>
-            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>Pay stubs, employment letters, bank statements, ID — up to {MAX} files (JPG/PNG/PDF, 25MB total)</div>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>Pay stubs, employment letters, bank statements, ID, up to {MAX} files (JPG/PNG/PDF, 25MB total)</div>
           </div>
 
           {files.length > 0 && (
@@ -321,7 +321,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             <button onClick={analyze} disabled={!files.length || analyzing}
               style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
               {analyzing && <span className="rl-dispin" aria-hidden="true" />}
-              {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Re-analyze' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
+              {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Analyze again' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
             </button>
             <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>Held for your review · deleted in {RETENTION_DAYS} days or when you delete them</span>
           </div>
@@ -330,7 +330,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             <HeldDocuments docs={heldDocuments} realtorName={realtorName} onView={onViewDocument} onDeleteAll={onDeleteDocuments} />
           )}
 
-          {error && <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.red }}>{error}</div>}
+          {error && <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
 
           {/* Report */}
           {hasReport && (
@@ -338,16 +338,16 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
               <DocIntelReport result={result} insight={insight} />
               {!insight && (
                 <button onClick={genInsight} disabled={insightLoading}
-                  style={{ marginTop: 'var(--s-3)', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: insightLoading ? 'wait' : 'pointer', opacity: insightLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+                  style={{ marginTop: 'var(--s-3)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: insightLoading ? 'wait' : 'pointer', opacity: insightLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   {insightLoading && <span className="rl-dispin" aria-hidden="true" />}
                   {insightLoading ? 'Writing insight…' : 'Generate AI insight'}
                 </button>
               )}
 
-              {/* Stage 2 — SEPARATE landlord confirmation for THIS applicant only (PDF + text). */}
+              {/* Stage 2 · SEPARATE landlord confirmation for THIS applicant only (PDF + text). */}
               <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 800, color: C.ink, marginBottom: 'var(--s-1)' }}>Verify &amp; confirm to landlord</div>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only — separate from the ranked shortlist.</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only, separate from the ranked shortlist.</div>
                 <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={downloadConfirmPdf} disabled={pdfBusy}
                     style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
@@ -387,7 +387,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             </div>
           )}
 
-          {/* Archived analyses (collapsed) — view-only history, each with a permanent delete. */}
+          {/* Archived analyses (collapsed), view-only history, each with a permanent delete. */}
           {archived.length > 0 && (
             <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
               <button onClick={() => setArchiveOpen((o) => !o)}
@@ -400,7 +400,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                   {archived.map((entry) => (
                     <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)' }}>
                       <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        Archived — {fmtDate(entry.archived_at)}{entry.source === 'tenant' ? ' · tenant upload' : ''}
+                        Archived · {fmtDate(entry.archived_at)}{entry.source === 'tenant' ? ' · tenant upload' : ''}
                       </span>
                       <button onClick={() => setViewing(entry)} style={{ ...ghostBtn, padding: 'var(--s-1) var(--s-3)', color: C.ink }}>View</button>
                       {confirmArchId === entry.id ? (

@@ -24,13 +24,13 @@ export default async function handler(req, res) {
   const recent = rateLimits.get(normalizedEmail) || [];
   const fresh = recent.filter(ts => now - ts < 10 * 60 * 1000);
   if (fresh.length >= 3) {
-    return res.status(429).json({ error: 'Too many sign-in attempts. Please wait a few minutes.' });
+    return res.status(429).json({ error: 'Too many sign in attempts. Please wait a few minutes.' });
   }
   fresh.push(now);
   rateLimits.set(normalizedEmail, fresh);
 
   if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    return res.status(503).json({ error: 'Sign-in temporarily unavailable.' });
+    return res.status(503).json({ error: 'Sign in temporarily unavailable.' });
   }
 
   // Generate a short-lived magic link token
@@ -51,7 +51,7 @@ export default async function handler(req, res) {
     });
   } catch (e) {
     console.error('Magic link store error:', e);
-    return res.status(500).json({ error: 'Could not create sign-in link.' });
+    return res.status(500).json({ error: 'Could not create sign in link.' });
   }
 
   const linkUrl = `https://rentletter.ca/landlord?signin=${linkToken}`;
@@ -66,7 +66,7 @@ export default async function handler(req, res) {
     }
   } catch (emailErr) {
     console.error('Magic link email failed:', emailErr);
-    return res.status(500).json({ error: 'Could not send sign-in email.' });
+    return res.status(500).json({ error: 'Could not send sign in email.' });
   }
 
   return res.status(200).json({ ok: true });

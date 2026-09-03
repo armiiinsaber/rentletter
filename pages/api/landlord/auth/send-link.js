@@ -30,7 +30,7 @@ export default async function handler(req, res) {
   const recent = rateLimits.get(normalizedEmail) || [];
   const fresh = recent.filter(ts => now - ts < 10 * 60 * 1000);
   if (fresh.length >= 3) {
-    return res.status(429).json({ error: 'Too many sign-in attempts. Please wait a few minutes.' });
+    return res.status(429).json({ error: 'Too many sign in attempts. Please wait a few minutes.' });
   }
   fresh.push(now);
   rateLimits.set(normalizedEmail, fresh);
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   const base = kvBase();
   if (!base || !process.env.KV_REST_API_TOKEN) {
     console.error('[send-link] KV not configured:', { hasUrl: !!base, hasToken: !!process.env.KV_REST_API_TOKEN });
-    return res.status(503).json({ error: 'Sign-in is temporarily unavailable. Please try again in a moment.' });
+    return res.status(503).json({ error: 'Sign in is temporarily unavailable. Please try again in a moment.' });
   }
 
   // Generate a short-lived magic link token (for OTHER devices)
@@ -60,7 +60,7 @@ export default async function handler(req, res) {
     if (!setRes.ok) {
       const errText = await setRes.text().catch(() => '');
       console.error('[send-link] KV set failed:', setRes.status, errText);
-      return res.status(500).json({ error: 'Could not create sign-in link. Please try again.' });
+      return res.status(500).json({ error: 'Could not create sign in link. Please try again.' });
     }
     // Magic link valid for 15 minutes
     await fetch(`${base}/expire/llink:${linkToken}/900`, {
@@ -91,7 +91,7 @@ export default async function handler(req, res) {
     }
   } catch (e) {
     console.error('[send-link] KV store error:', e?.message || e);
-    return res.status(500).json({ error: 'Could not create sign-in link. Please try again.' });
+    return res.status(500).json({ error: 'Could not create sign in link. Please try again.' });
   }
 
   const linkUrl = `https://rentletter.ca/landlord?signin=${linkToken}`;
@@ -157,7 +157,7 @@ function buildLinkEmail(url) {
           <h1 style="font-family:'Inter',sans-serif;font-size:30px;font-weight:800;color:#0f0f10;letter-spacing:-0.03em;line-height:1.15;margin:0;">Sign in on your phone<br>or other device.</h1>
         </td></tr>
         <tr><td style="padding-bottom:28px;">
-          <p style="font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#3a3a3c;margin:0;">You're already signed in on the device where you requested this link. Use the button below to also sign in on your phone or another computer — your shortlist, notes, and unit details will be there waiting.</p>
+          <p style="font-family:'Inter',sans-serif;font-size:14px;line-height:1.6;color:#3a3a3c;margin:0;">You're already signed in on the device where you requested this link. Use the button below to also sign in on your phone or another computer, your shortlist, notes, and unit details will be there waiting.</p>
         </td></tr>
         <tr><td style="padding-bottom:32px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0">

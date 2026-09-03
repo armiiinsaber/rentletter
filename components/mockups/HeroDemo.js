@@ -181,13 +181,13 @@ export default function HeroDemo({ step: controlledStep = null }) {
             </div>
           );
         })}
-        {/* Send-to-landlord bar — sits directly under the 5 ranked rows (no dead gap above). */}
+        {/* Send-to-landlord bar, sits directly under the 5 ranked rows (no dead gap above). */}
         <div style={{
           background: C.ink, color: C.paper, borderRadius: R.ctrl,
           padding: 'clamp(7px, 2%, 10px) clamp(10px, 2.6%, 14px)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         }}>
-          <span style={{ fontSize: 'clamp(9px, 2.4vw, 11px)', color: C.inkInverse, fontWeight: 500 }}>Co-branded report</span>
+          <span style={{ fontSize: 'clamp(9px, 2.4vw, 11px)', color: C.inkInverse, fontWeight: 500 }}>Co branded report</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'clamp(10px, 2.6vw, 12px)', fontWeight: 700, color: C.paper }}>
             Send to landlord <Icon name="arrow" size={14} color={C.paper} />
           </span>

@@ -56,7 +56,7 @@ export default function ReferralConsent() {
 
   return (
     <>
-      <Head><title>Share your application? — Rentletter</title><meta name="robots" content="noindex, nofollow" /></Head>
+      <Head><title>Share your application? · Rentletter</title><meta name="robots" content="noindex, nofollow" /></Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
         <header style={{ borderBottom: `1px solid ${C.rule}`, padding: 'clamp(16px, 4vw, 22px) clamp(16px, 4vw, 32px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
@@ -73,7 +73,7 @@ export default function ReferralConsent() {
                 {data?.status === 'approved' ? 'You already approved this referral.' : data?.status === 'declined' ? 'You already declined this referral.' : 'This link has expired or was already used.'}
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6 }}>
-                {data?.status === 'approved' ? 'If you change your mind, you can revoke it from your profile at any time.' : data?.status === 'declined' ? 'Nothing was shared. Your current application is unaffected.' : 'Referral links work once and expire after 7 days. If a realtor still wants to refer you, they can send a new request — and you can still decline it.'}
+                {data?.status === 'approved' ? 'If you change your mind, you can revoke it from your profile at any time.' : data?.status === 'declined' ? 'Nothing was shared. Your current application is unaffected.' : 'Referral links work once and expire after 7 days. If a realtor still wants to refer you, they can send a new request, and you can still decline it.'}
               </p>
               <a href="/my-application" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18, color: C.red, fontWeight: 700, textDecoration: 'none' }}>My profile <Icon name="arrow" size={14} /></a>
             </div>
@@ -87,8 +87,8 @@ export default function ReferralConsent() {
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6 }}>
                 {decision === 'approve'
-                  ? `${data?.to?.name || 'The receiving realtor'} gets a copy of your details to match against their listings. It appears in your profile as its own application, with its own lookup history — and you can revoke it there at any time, which removes their access going forward.`
-                  : `${data?.from?.name || 'Your realtor'} will only see that you declined — no reason is collected. Your existing application with them is unchanged.`}
+                  ? `${data?.to?.name || 'The receiving realtor'} gets a copy of your details to match against their listings. It appears in your profile as its own application, with its own lookup history, and you can revoke it there at any time, which removes their access going forward.`
+                  : `${data?.from?.name || 'Your realtor'} will only see that you declined, no reason is collected. Your existing application with them is unchanged.`}
               </p>
               <a href="/my-application" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18, color: C.red, fontWeight: 700, textDecoration: 'none' }}>Open my profile <Icon name="arrow" size={14} /></a>
             </div>
@@ -103,12 +103,12 @@ export default function ReferralConsent() {
               <p style={{ fontSize: 15.5, color: C.inkSoft, lineHeight: 1.6, marginBottom: 8 }}>
                 <strong style={{ color: C.ink }}>{from}</strong> thinks <strong style={{ color: C.ink }}>{to}</strong> may have units that fit you, and would like to pass your rental application along.
               </p>
-              {data.note && <blockquote style={{ margin: '10px 0 18px', paddingLeft: 14, borderLeft: `3px solid ${C.rule}`, fontSize: 14, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic' }}>“{data.note}” — {data.from?.name || 'your realtor'}</blockquote>}
+              {data.note && <blockquote style={{ margin: '10px 0 18px', paddingLeft: 14, borderLeft: `3px solid ${C.rule}`, fontSize: 14, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic' }}>“{data.note}”, {data.from?.name || 'your realtor'}</blockquote>}
 
               <div className="rl-card" style={{ padding: 'clamp(16px, 4vw, 22px)', marginTop: 18, marginBottom: 14 }}>
                 <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Exactly what would be shared</div>
                 <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
-                  {data.factsSource === 'profile' ? 'These are your current profile details.' : 'These are the details from your application.'} Nothing else — not your other applications, not your documents, not your owner key.
+                  {data.factsSource === 'profile' ? 'These are your current profile details.' : 'These are the details from your application.'} Nothing else, not your other applications, not your documents, not your owner key.
                 </p>
                 <div style={{ display: 'grid', gap: 0 }}>
                   {data.fields.map((f) => (
@@ -134,11 +134,11 @@ export default function ReferralConsent() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                 <button type="button" onClick={() => decide('decline')} disabled={busy} className="rl-btn"
                   style={{ background: C.paper, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: R.ctrl, padding: '15px 18px', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
-                  Decline — don’t share
+                  Decline · don’t share
                 </button>
                 <button type="button" onClick={() => decide('approve')} disabled={busy} className="rl-btn"
                   style={{ background: C.ink, color: C.paper, border: `2px solid ${C.ink}`, borderRadius: R.ctrl, padding: '15px 18px', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
-                  {busy ? 'Working…' : `Approve — share with ${data.to?.name?.split(' ')[0] || 'them'}`}
+                  {busy ? 'Working…' : `Approve, share with ${data.to?.name?.split(' ')[0] || 'them'}`}
                 </button>
               </div>
               <p style={{ marginTop: 14, fontSize: 12, color: C.inkMute, lineHeight: 1.5, textAlign: 'center' }}>This link works once{data.expiresAt ? ` and expires ${dateLong(data.expiresAt)}` : ''}.</p>

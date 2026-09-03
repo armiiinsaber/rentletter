@@ -29,7 +29,7 @@ export default async function handler(req, res) {
     );
     const data = await lookupRes.json();
     if (!data?.result) {
-      return res.status(404).json({ error: 'Sign-in link is invalid or has expired. Please request a new one.' });
+      return res.status(404).json({ error: 'Sign in link is invalid or has expired. Please request a new one.' });
     }
 
     const magicData = typeof data.result === 'string' ? JSON.parse(data.result) : data.result;
@@ -86,6 +86,6 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('Magic verify error:', err);
-    return res.status(500).json({ error: 'Sign-in failed. Please try again.' });
+    return res.status(500).json({ error: 'Sign in failed. Please try again.' });
   }
 }

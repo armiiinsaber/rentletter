@@ -12,11 +12,11 @@ import { getEntitlement } from '../../lib/entitlements';
 import Paywall from './Paywall';
 import { C, R, EASE, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
+import { listingStateLine } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import NoticedCards from '../../components/dashboard/NoticedCards';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
-import ChatWidget from '../../components/ChatWidget';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
 // ── Presentation-only helpers (no data logic) ─────────────────
@@ -61,11 +61,11 @@ function useLogoAccent(logoUrl) {
           if (R > 232 && G > 228 && B > 216) continue;
           r += R; g += G; b += B; n++;
         }
-        if (n < 12) return; // logo is effectively white/empty — keep the red fallback
+        if (n < 12) return; // logo is effectively white/empty, keep the red fallback
         r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
         if (0.2126 * r + 0.7152 * g + 0.0722 * b > 200) return; // insufficient contrast on the card
         setAccent(`rgb(${r}, ${g}, ${b})`);
-      } catch (e) { /* tainted canvas / decode failure — red fallback stands */ }
+      } catch (e) { /* tainted canvas / decode failure, red fallback stands */ }
     };
     img.src = logoUrl;
     return () => { cancelled = true; };
@@ -210,7 +210,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   return (
     <>
       <Head>
-        <title>Realtor Dashboard — Rentletter</title>
+        <title>Realtor Dashboard · Rentletter</title>
         <meta name="description" content="Your listings. Add a listing, share the invite link, review applicants." />
         {/* Tint the mobile browser chrome (status bar / toolbar) to the page eggshell so there is no
             white band at the very top or bottom edge. html/body/#__next backgrounds (below) cover the
@@ -220,9 +220,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       <GlobalStyle />
       {/* overflow-x: clip contains any horizontal overflow without creating a scroll container.
           No min-height: html/body/#__next are pinned to the same canvas tone below, so a short
-          page needs no stretch — stretching only left a void of empty canvas under the footer. */}
+          page needs no stretch, stretching only left a void of empty canvas under the footer. */}
       <div className="dash-bg" style={{ overflowX: 'clip' }}>
-        {/* Static, in-flow header (see .dash-bg .rl-header below) — it scrolls away with the page; its
+        {/* Static, in-flow header (see .dash-bg .rl-header below), it scrolls away with the page; its
             solid canvas background + safe-area padding cover the notch region at the top. */}
         <DashboardHeader profile={profile} signals={signals.loaded ? { ...signals, listings: listings || [] } : null} onAssistantAction={onNoticeAction} />
 
@@ -312,14 +312,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                     <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>
                       {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
                     </div>
-                    {(l.invite_token || l.invite_url) ? (
-                      <span className="dash-lchip dash-lchip-on"><span className="dash-lchip-dot" /> Invite link active</span>
-                    ) : (
-                      <span className="dash-lchip"><span className="dash-lchip-dot dash-lchip-dot-off" /> No invite link yet</span>
-                    )}
-                    <div style={{ marginTop: 'auto', paddingTop: 'var(--s-2)', borderTop: `1px solid ${C.rule}`, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.red, fontWeight: 700 }}>
-                      Open listing <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
-                    </div>
+                    {/* One line of state: the applicants by what they need, then the report. */}
+                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{listingStateLine(l, signals.applicantsByListing[l.id] || [])}</div>
                   </a>
                 ))}
               </div>
@@ -355,8 +349,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           <ListingSetupModal mode="create" onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
         )}
       </div>
-      {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
-      <ChatWidget mode="dashboard" />
 
       <style jsx>{`
         /* ── Base canvas — ONE flat, uniform tone (C.paperDeep), no glows/gradients. The fixed header
@@ -373,8 +365,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
            tone (C.paperDeep) so it reads as a seamless top strip of the monochrome page. Scoped here; the
            shared ScrollHeader (sticky) is unchanged on every other page. */
         .dash-bg :global(.rl-header) {
-          position: static !important;            /* was fixed — now scrolls away with the page */
-          background: ${C.paperDeep} !important;  /* solid canvas tone — seamless with the page */
+          position: static !important;            /* was fixed, now scrolls away with the page */
+          background: ${C.paperDeep} !important;  /* solid canvas tone, seamless with the page */
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
           border-bottom-color: transparent !important;
@@ -411,14 +403,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-dash { display: inline-block; width: 3px; height: 1em; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 
         /* ── Type scale — four tiers, used consistently on this screen ──
-           display  (.dash-h1)  Fraunces serif — the hero title, same face as the landing hero
-           heading  (.dash-h2)  Inter 800, tight tracking — section titles
-           body     (inherited) Inter 400/500 — everything else
-           data     (.dash-data) Inter 800 + tabular-nums — every number that must line up */
+           display  (.dash-h1)  Fraunces serif, the hero title, same face as the landing hero
+           heading  (.dash-h2)  Inter 800, tight tracking · section titles
+           body     (inherited) Inter 400/500 · everything else
+           data     (.dash-data) Inter 800 + tabular-nums, every number that must line up */
         .dash-h1 { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: var(--lh-display); color: ${C.ink}; }
         /* greeting line: word + name are flex items — one line when they fit, else the name drops
            whole. The nbsp inside the word is the space between them; a name wider than the card
-           may break inside itself (last resort — no overflow at 390px). */
+           may break inside itself (last resort, no overflow at 390px). */
         .dash-h1 { min-width: 0; max-width: 100%; }
         .dash-h1-greet { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; max-width: 100%; }
         .dash-h1-greet > span { white-space: nowrap; }

@@ -22,13 +22,13 @@ import { C, R } from '../../components/theme';
 const OK_ACCEPT = '.pdf,.png,.jpg,.jpeg';
 const OK_EXT = ['pdf', 'png', 'jpg', 'jpeg'];
 const MAX_FILES = 12;
-const MAX_FILE = 3 * 1024 * 1024; // 3MB raw per file — stays under Vercel's 4.5MB request cap after base64.
+const MAX_FILE = 3 * 1024 * 1024; // 3MB raw per file, stays under Vercel's 4.5MB request cap after base64.
 
 const CHECKLIST = [
-  'Recent pay stubs — last 2–3',
+  'Recent pay stubs, last 2 to 3',
   'Employment or offer letter',
   'Credit report (Equifax, TransUnion, or Borrowell)',
-  'Government-issued photo ID',
+  'Government issued photo ID',
 ];
 
 function readAsBase64(file) {
@@ -87,7 +87,7 @@ export default function UploadPage() {
       if (next.some((x) => x.name === f.name && x.size === f.size)) continue; // de-dupe
       const ext = (f.name.split('.').pop() || '').toLowerCase();
       if (!OK_EXT.includes(ext)) { msg = 'Please upload a PDF or image (JPG or PNG).'; continue; }
-      if (f.size > MAX_FILE) { msg = `${f.name} is too large — please upload a version under 3MB.`; continue; }
+      if (f.size > MAX_FILE) { msg = `${f.name} is too large, please upload a version under 3MB.`; continue; }
       next.push(f); added++;
     }
     if (msg) setError(msg);
@@ -115,7 +115,7 @@ export default function UploadPage() {
         lastMsg = j?.error || '';
         // A bad/oversized/expired file won't succeed on retry — stop immediately.
         if (r.status === 400 || r.status === 413 || r.status === 404) return { ok: false, message: lastMsg || `We couldn't process ${f.name}.` };
-      } catch (e) { /* network blip — retry once */ }
+      } catch (e) { /* network blip, retry once */ }
     }
     return { ok: false, message: lastMsg || `We couldn't process ${f.name}. Please try again.` };
   };
@@ -189,7 +189,7 @@ export default function UploadPage() {
   return (
     <>
       <Head>
-        <title>Upload your documents — Rentletter</title>
+        <title>Upload your documents · Rentletter</title>
         <meta name="description" content="Securely upload your rental application documents." />
         <meta name="theme-color" content="#f2eee3" />
       </Head>
@@ -229,7 +229,7 @@ export default function UploadPage() {
               <div style={{ display: 'inline-flex', marginBottom: 12, color: C.green }}><Icon name="check" size={30} color={C.green} strokeWidth={2.5} /></div>
               <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10 }}>Documents already received</h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, maxWidth: 460, margin: '0 auto' }}>
-                Your documents were submitted{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ''}. There’s nothing more to do — if the listing realtor needs anything else, they’ll send a new request.
+                Your documents were submitted{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ''}. There’s nothing more to do, if the listing realtor needs anything else, they’ll send a new request.
               </p>
             </div>
           )}
@@ -259,7 +259,7 @@ export default function UploadPage() {
                 Upload your documents{firstName ? `, ${firstName}` : ''}
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22 }}>
-                {req?.realtorName ? <><strong style={{ color: C.ink }}>{req.realtorName}</strong> — the realtor representing the landlord — requested a few documents to finalize your rental application</> : 'The listing realtor requested a few documents to finalize your rental application'}
+                {req?.realtorName ? <><strong style={{ color: C.ink }}>{req.realtorName}</strong>, the realtor representing the landlord, requested a few documents to finalize your rental application</> : 'The listing realtor requested a few documents to finalize your rental application'}
                 {unitLabel ? <> for <strong style={{ color: C.ink }}>{unitLabel}</strong></> : ''}.
               </p>
 
@@ -276,7 +276,7 @@ export default function UploadPage() {
                         </li>
                       ))}
                     </ul>
-                    <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 12 }}>Upload what you have — you can add several files (PDF or image).</div>
+                    <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 12 }}>Upload what you have, you can add several files (PDF or image).</div>
                   </div>
 
                   <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 10, textWrap: 'pretty' }}>Your realtor can view these for {RETENTION_DAYS} days, then they are deleted. Do not upload anything showing your SIN.</div>
@@ -321,7 +321,7 @@ export default function UploadPage() {
                 <>
                   {/* Review & confirm */}
                   <div className="rl-card" style={{ padding: 'clamp(18px, 4vw, 24px)', marginBottom: 16 }}>
-                    <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>Double-check before you send</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>Double check before you send</div>
                     <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5, marginBottom: 14 }}>You’re about to send {files.length} document{files.length === 1 ? '' : 's'}. Make sure you’ve included everything from the checklist.</div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, marginBottom: 14 }}>
                       {files.map((f, i) => (
@@ -340,7 +340,7 @@ export default function UploadPage() {
                   <div style={{ marginBottom: 16 }}>{disclosure}</div>
                   {error && <div style={{ marginBottom: 12, fontSize: 13, color: C.red }}>{error}</div>}
 
-                  {/* Live progress — one request per file, then finalize. */}
+                  {/* Live progress, one request per file, then finalize. */}
                   {submitting && (
                     <div style={{ marginBottom: 14 }}>
                       <div role="progressbar" aria-valuenow={Math.round(barFrac * 100)} aria-valuemin={0} aria-valuemax={100}
@@ -348,7 +348,7 @@ export default function UploadPage() {
                         <div className="rl-bar-fill" style={{ '--frac': barFrac }} />
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8, fontSize: 11.5, color: C.inkMute }}>
-                        <span className="rl-spin" aria-hidden="true" /> Analyzing one at a time — please keep this page open.
+                        <span className="rl-spin" aria-hidden="true" /> Analyzing one at a time, please keep this page open.
                       </div>
                     </div>
                   )}

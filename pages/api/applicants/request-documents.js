@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return res.status(503).json({ error: 'Service temporarily unavailable.' });
   }
-  if (!kvReady()) return res.status(503).json({ error: 'Document-request service unavailable.' });
+  if (!kvReady()) return res.status(503).json({ error: 'Document request service unavailable.' });
 
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user } } = await supabase.auth.getUser();
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
   if (!ctx) return res.status(404).json({ error: 'Applicant not found.' });
   // Strict per-applicant binding (a stale linkId can never target a different applicant).
   if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
-    return res.status(409).json({ error: 'Applicant reference mismatch — please reload and try again.' });
+    return res.status(409).json({ error: 'Applicant reference mismatch, please reload and try again.' });
   }
 
   const tenantName = String(ctx.application?.full_name || '').slice(0, 120);

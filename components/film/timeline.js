@@ -26,7 +26,7 @@ export const window_ = (t, a, b, d = 0.6) => Math.min(P(t, a, a + d), 1 - P(t, b
 
 // ── WORLD: a fixed 1000 × 562 design space. The laptop sits centre, the phone enters right. ──
 export const WORLD = { w: 1000, h: 562 };
-export const LAPTOP = { x: 180, y: 52, w: 640 };                // screen ≈ x 190–810, y 100–490
+export const LAPTOP = { x: 180, y: 52, w: 640 };                // screen ≈ x 190 to 810, y 100 to 490
 export const PHONE = { x: 760, y: 118, w: 212 };                 // where the phone lands
 export const LAPTOP_DESIGN = 560;                                // scene design width (mockups use 560)
 export const PHONE_DESIGN = 330;
@@ -51,7 +51,7 @@ const NARROW_X = [[19.9, 0], [21, 44], [25, 44], [26.3, 0]];                   /
 const INTRO = { from: { x: 722, y: 211, z: 6.0 }, hold: 0.55, end: 3 };
 // 9:16 sees 1.78× more height per unit of zoom, so the tall opening starts tighter and looks a
 // little lower — the row stays cropped on the score instead of reaching up into the header.
-const INTRO_STORY_FROM = { x: 723, y: 214, z: 6.2 };   // centred on ticks + pill (world x 669–777): they span 16–84% of the width
+const INTRO_STORY_FROM = { x: 723, y: 214, z: 6.2 };   // centred on ticks + pill (world x 669 to 777): they span 16 to 84% of the width
 function introCamera(t, track, from = INTRO.from) {
   const to = { x: kf(3, track.x), y: kf(3, track.y), z: kf(3, track.z) };
   const k = easeInOut(P(t, INTRO.hold, INTRO.end));

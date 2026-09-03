@@ -88,7 +88,7 @@ export default async function handler(req, res) {
       from: 'Rentletter <hello@rentletter.ca>',
       to: landlordEmail,
       reply_to: realtorEmail,
-      subject: `Ranked applicants from ${realtorName} — ${n} for ${unitName.slice(0, 60)}`,
+      subject: `Ranked applicants from ${realtorName}, ${n} for ${unitName.slice(0, 60)}`,
       html,
       attachments: [{ filename: `ranked-applicants-${new Date().toISOString().slice(0, 10)}.pdf`, content: Buffer.from(bytes) }],
     });

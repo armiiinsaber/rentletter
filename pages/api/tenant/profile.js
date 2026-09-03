@@ -80,7 +80,7 @@ async function enrich(apps) {
       a.status = statusFor(l);
       a.statusChangedAt = l.withdrawn_at || l.decision_changed_at || null;
     }
-  } catch (e) { /* columns/tables may not exist yet — statuses stay "Submitted" */ }
+  } catch (e) { /* columns/tables may not exist yet, statuses stay "Submitted" */ }
   return out;
 }
 

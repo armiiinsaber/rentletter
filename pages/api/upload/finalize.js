@@ -79,7 +79,7 @@ function buildSummary(documents, comparisons, nameMatch) {
   const verified = comparisons.filter((c) => c.status === 'match').map((c) => c.field);
   const issues = comparisons.filter((c) => c.status === 'mismatch').map((c) => c.field);
   if (verified.length) parts.push(`${verified.join(', ')} verified against the application.`);
-  if (issues.length) parts.push(`${issues.join(', ')} did not match the application — review the details.`);
+  if (issues.length) parts.push(`${issues.join(', ')} did not match the application, review the details.`);
   if (nameMatch === 'match') parts.push('Document name matches the applicant.');
   else if (nameMatch === 'mismatch') parts.push('Document name does not match the applicant.');
   return parts.join(' ').slice(0, 1200);

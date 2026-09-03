@@ -55,7 +55,7 @@ export default function ResetPassword() {
         title="Reset password"
         eyebrow="Link required"
         heading="Open the reset link first."
-        sub="To set a new password, use the link we emailed you. It may have expired — request a new one."
+        sub="To set a new password, use the link we emailed you. It may have expired, request a new one."
         footer={<a href="/forgot-password" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Request a new link</a>}
       >
         <div style={authNoticeStyle}>For your security, password resets must start from the email link.</div>
@@ -85,7 +85,7 @@ export default function ResetPassword() {
         <input
           id="confirm" type="password" autoComplete="new-password"
           value={confirm} onChange={(e) => setConfirm(e.target.value)} onBlur={() => setTouched(true)}
-          placeholder="Re-enter password" style={authInputStyle}
+          placeholder="Re enter password" style={authInputStyle}
         />
         {touched && confirm.length > 0 && !matches && (
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don't match.</div>

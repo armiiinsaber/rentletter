@@ -13,7 +13,7 @@ const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
   allows_pets: 'no', allows_smoking: 'no', parking_included: 'no', ev_parking: 'no',
   landlord_name: '', landlord_email: '', landlord_phone: '',
-  // AFFORDABILITY: max rent-to-income is the SINGLE input. pref_min_annual_income is no
+  // AFFORDABILITY: max rent to income is the SINGLE input. pref_min_annual_income is no
   // longer independently settable — it is derived from ratio × rent on save (see
   // buildPayload) so the two columns can never contradict each other.
   pref_rent_to_income_max_pct: 30, pref_min_years_at_job: '',
@@ -72,7 +72,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
 
   const creating = mode === 'create';
 
-  // Required fields to create/save a listing. Rent is CRITICAL — ranking's rent-to-income
+  // Required fields to create/save a listing. Rent is CRITICAL — ranking's rent to income
   // math depends on it — so it must be a positive number, not just non-empty. Screening
   // preferences stay optional.
   const rentNum = parseInt(String(form.monthly_rent).replace(/[^\d]/g, ''), 10);
@@ -114,7 +114,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       landlord_name: String(form.landlord_name).trim() || null,
       landlord_email: String(form.landlord_email).trim().toLowerCase() || null,
       landlord_phone: String(form.landlord_phone).trim() || null,
-      // AFFORDABILITY — READ RULE: max rent-to-income is the single source of truth.
+      // AFFORDABILITY — READ RULE: max rent to income is the single source of truth.
       // pref_min_annual_income is DERIVED (ratio × this listing's rent), never entered,
       // so the two columns stay consistent for every downstream consumer. For rows saved
       // before this change where both were set independently: the RATIO WINS and the
@@ -233,17 +233,17 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               <input type="text" value={form.landlord_phone} onChange={(e) => set({ landlord_phone: e.target.value })} placeholder="(416) 555-0199" style={inputStyle} /></label>
           </div>
 
-          {/* OHRC notice — preserved word-for-word */}
+          {/* OHRC notice · preserved word-for-word */}
           <div style={{ margin: '18px 0', padding: '12px 14px', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `4px solid ${C.inkSoft}`, fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
-            <strong>Why some fields aren't here:</strong> Ontario's Human Rights Code prohibits screening tenants on gender, age, family status, race, religion, disability, or receipt of public assistance. The fields below are legally screenable criteria. Stating discriminatory preferences in writing can trigger HRTO complaints — for both you and your landlord client.
+            <strong>Why some fields aren't here:</strong> Ontario's Human Rights Code prohibits screening tenants on gender, age, family status, race, religion, disability, or receipt of public assistance. The fields below are legally screenable criteria. Stating discriminatory preferences in writing can trigger HRTO complaints, for both you and your landlord client.
           </div>
 
-          {/* PREFERENCES — financial. ONE affordability input: max rent-to-income. The
+          {/* PREFERENCES, financial. ONE affordability input: max rent to income. The
               income equivalent is derived live from this listing's rent (read-only), so
               the old separate "minimum annual income" field can never contradict it. */}
           <div style={{ ...sectionLabel, marginTop: 0 }}>Financial</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label><span style={fieldLabel}>Max rent-to-income (%)</span>
+            <label><span style={fieldLabel}>Max rent to income (%)</span>
               <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder="30" style={inputStyle} />
               <span style={{ display: 'block', fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
                 {impliedMinIncome
@@ -259,18 +259,18 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           {/* employment */}
           <div style={sectionLabel}>Acceptable employment types</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2 }}>
-            <Check k="pref_employment_full_time" label="Full-time" />
+            <Check k="pref_employment_full_time" label="Full time" />
             <Check k="pref_employment_contract" label="Contract" />
-            <Check k="pref_employment_self_employed" label="Self-employed" />
-            <Check k="pref_employment_part_time" label="Part-time" />
+            <Check k="pref_employment_self_employed" label="Self employed" />
+            <Check k="pref_employment_part_time" label="Part time" />
           </div>
 
           {/* timing */}
           <div style={sectionLabel}>Timing & occupancy</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label><span style={fieldLabel}>Earliest move-in</span>
+            <label><span style={fieldLabel}>Earliest move in</span>
               <input type="date" value={form.pref_earliest_move_in || ''} onChange={(e) => set({ pref_earliest_move_in: e.target.value })} style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Latest move-in</span>
+            <label><span style={fieldLabel}>Latest move in</span>
               <input type="date" value={form.pref_latest_move_in || ''} onChange={(e) => set({ pref_latest_move_in: e.target.value })} style={inputStyle} /></label>
             <label><span style={fieldLabel}>Min lease term (months)</span>
               <input type="number" min="0" inputMode="numeric" value={form.pref_min_lease_term_months} onChange={(e) => set({ pref_min_lease_term_months: e.target.value })} placeholder="12" style={inputStyle} /></label>
@@ -285,7 +285,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
 
           {/* verification */}
           <div style={sectionLabel}>Verification</div>
-          <Check k="pref_requires_landlord_reference" label="Require previous-landlord reference" />
+          <Check k="pref_requires_landlord_reference" label="Require previous landlord reference" />
           <Check k="pref_requires_employer_verification" label="Require employer verification" />
           <Check k="pref_guarantor_accepted" label="Guarantor accepted" />
 
@@ -293,7 +293,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           <div style={sectionLabel}>Additional notes (optional)</div>
           <textarea
             value={form.pref_notes} onChange={(e) => set({ pref_notes: e.target.value })} rows={3}
-            placeholder="e.g. Quiet building, no home business, long-term tenant preferred."
+            placeholder="e.g. Quiet building, no home business, long term tenant preferred."
             style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
           />
           <div style={{ fontSize: 11, color: C.red, marginTop: 6, lineHeight: 1.5 }}>
@@ -320,7 +320,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
         </div>
       </div>
 
-      {/* CREATE-TIME CONFIRMATION — extra check before the listing is created. */}
+      {/* CREATE-TIME CONFIRMATION, extra check before the listing is created. */}
       {confirming && (
         <div onClick={(e) => { e.stopPropagation(); if (!saving) setConfirming(false); }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 32px)', zIndex: 120 }}>
@@ -328,12 +328,12 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
             style={{ background: C.paper, maxWidth: 440, width: '100%', border: `1px solid ${C.rule}`, padding: 'clamp(20px, 4vw, 28px)' }}>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Confirm new listing</div>
             <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>Create this listing?</h3>
-            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>You can edit the details later — nothing here is locked in.</p>
+            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>You can edit the details later, nothing here is locked in.</p>
             <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
               {[
                 ['Address', String(form.address).trim()],
-                ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : '—'],
-                ['Unit type', formatUnit(form.bedrooms) || '—'],
+                ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : 'not set'],
+                ['Unit type', formatUnit(form.bedrooms) || 'not set'],
                 // Join name + email with a middot ONLY when both exist (filter(Boolean) drops an
                 // empty side → no leading/trailing dot). Non-breaking spaces keep the middot glued
                 // between the two so it can never wrap to a line edge as an orphan "·".

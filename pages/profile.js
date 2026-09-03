@@ -13,7 +13,6 @@ import { C, R } from '../components/theme';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import DashboardHeader from '../components/dashboard/DashboardHeader';
 import ProfileEditorBody from '../components/dashboard/ProfileEditorBody';
-import ChatWidget from '../components/ChatWidget';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -48,13 +47,13 @@ export default function ProfileHub({ initialProfile }) {
     const ok = await doSave();
     setLeaving(false);
     setLeaveOpen(false);
-    if (ok) goToDashboard(); // on failure, stay — the editor surfaces the error inline
+    if (ok) goToDashboard(); // on failure, stay, the editor surfaces the error inline
   };
 
   return (
     <>
       <Head>
-        <title>You &amp; your brand — Rentletter</title>
+        <title>You &amp; your brand · Rentletter</title>
         <meta name="description" content="Your realtor profile and branding." />
       </Head>
       <GlobalStyle />
@@ -71,7 +70,7 @@ export default function ProfileHub({ initialProfile }) {
             <div style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Your account</div>
             <h1 className="t-d1" style={{ color: C.ink, marginBottom: 'var(--s-2)' }}>You &amp; your brand</h1>
             <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 520 }}>
-              Manage who you are and how you’re branded — your details, logo, and brand colours. Manage your listings from the dashboard.
+              Manage who you are and how you’re branded, your details, logo, and brand colours. Manage your listings from the dashboard.
             </p>
           </header>
 
@@ -87,10 +86,8 @@ export default function ProfileHub({ initialProfile }) {
           </div>
         </div>
       </div>
-      {/* In-app product-help assistant (how-to only; never advises on tenant selection). */}
-      <ChatWidget mode="dashboard" />
 
-      {/* Unsaved-changes leave guard — shown when "Back to dashboard" is clicked with dirty details. */}
+      {/* Unsaved-changes leave guard, shown when "Back to dashboard" is clicked with dirty details. */}
       {leaveOpen && (
         <div role="dialog" aria-modal="true" aria-labelledby="leave-title"
           onClick={(e) => { if (e.target === e.currentTarget && !leaving) setLeaveOpen(false); }}

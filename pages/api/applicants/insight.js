@@ -41,7 +41,7 @@ export default async function handler(req, res) {
   if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
     console.error('[insight] applicant binding mismatch — linkId row application_id',
       ctx.junction.application_id, '!== expected', applicationId, '(refusing to write)');
-    return res.status(409).json({ error: 'Applicant reference mismatch — please reload the page and try again.' });
+    return res.status(409).json({ error: 'Applicant reference mismatch, please reload the page and try again.' });
   }
 
   // The ACTIVE document-verification report (structured facts only — no images were ever stored).

@@ -17,7 +17,7 @@ import { ProfileStyles, FactSections, Eyebrow, Empty } from '../../components/te
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
-const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return '—'; } };
+const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return 'not set'; } };
 function timeAgo(iso) {
   if (!iso) return '';
   const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -102,7 +102,7 @@ export default function ApplicationPage() {
       const json = await call({ action: 'update', form: draft, syncProfile: cred.via === 'profile' && syncProfile });
       setData((d) => ({ ...d, profile: json.profile, updatedAt: json.updatedAt, profileRevision: json.profileRevision }));
       const id = editing; setEditing(null); setDraft(null); setJustSaved(id);
-      setToast(json.profileSynced ? 'Saved — this application and your profile' : 'Saved — this application only');
+      setToast(json.profileSynced ? 'Saved, this application and your profile' : 'Saved, this application only');
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => { setToast(''); setJustSaved(null); }, 4500);
     } catch (e) { setSaveError(e.message); }
@@ -124,7 +124,7 @@ export default function ApplicationPage() {
   if (phase !== 'ready') {
     return (
       <>
-        <Head><title>Application — Rentletter</title><meta name="robots" content="noindex" /></Head>
+        <Head><title>Application · Rentletter</title><meta name="robots" content="noindex" /></Head>
         <GlobalStyle /><ProfileStyles />
         <div style={{ minHeight: '100vh', background: C.paper }}>
           {header}
@@ -135,7 +135,7 @@ export default function ApplicationPage() {
               <div className="rl-card" style={{ padding: 'clamp(22px, 5vw, 32px)' }}>
                 <Eyebrow>Application</Eyebrow>
                 <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 34px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>We can’t open this one without your key</h1>
-                <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 18 }}>{error || `Sign in to your profile with your email and ${rl || 'this application'} will be there — or use the link from its confirmation email.`}</p>
+                <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 18 }}>{error || `Sign in to your profile with your email and ${rl || 'this application'} will be there, or use the link from its confirmation email.`}</p>
                 <a href="/my-application" className="rl-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700 }}>Open my profile <Icon name="arrow" size={14} /></a>
               </div>
             )}
@@ -147,12 +147,12 @@ export default function ApplicationPage() {
 
   return (
     <>
-      <Head><title>{rl} — Rentletter</title><meta name="robots" content="noindex" /></Head>
+      <Head><title>{rl} · Rentletter</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle /><ProfileStyles />
       <div style={{ minHeight: '100vh', background: C.paper }}>
         {header}
         <div className="mp-wrap">
-          {/* What this page IS — the snapshot framing */}
+          {/* What this page IS, the snapshot framing */}
           <div className="rl-in" style={{ marginBottom: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 14 }}>
               <Eyebrow>What you sent</Eyebrow>
@@ -161,9 +161,9 @@ export default function ApplicationPage() {
             </div>
             <h1 className="rl-serif" style={{ fontSize: 'clamp(30px, 6vw, 46px)', color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.04, marginBottom: 10, textWrap: 'balance', overflowWrap: 'anywhere' }}>{listingLabel}</h1>
             <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.55, maxWidth: 560 }}>
-              Sent to <strong style={{ color: C.ink }}>{realtorLabel}</strong> on {data.createdAt ? dateLong(data.createdAt) : '—'}.
+              Sent to <strong style={{ color: C.ink }}>{realtorLabel}</strong> on {data.createdAt ? dateLong(data.createdAt) : 'not set'}.
               {data.updatedAt && <> <span style={{ color: C.amber, fontWeight: 600 }}>Edited {timeAgo(data.updatedAt)}</span>.</>}
-              {' '}This is the record that realtor sees — not your profile.
+              {' '}This is the record that realtor sees, not your profile.
               {meta?.referral && <> It reached them through a referral from <strong style={{ color: C.ink }}>{meta.referral.fromName || 'your realtor'}</strong> that you approved{meta.referral.approvedAt ? ` on ${dateLong(meta.referral.approvedAt)}` : ''}. Revoking below withdraws their access.</>}
             </p>
           </div>
@@ -189,7 +189,7 @@ export default function ApplicationPage() {
             ) : null}
           />
 
-          {/* Privacy — per application */}
+          {/* Privacy, per application */}
           <div className="rl-in" style={{ marginTop: 30, marginBottom: 14 }}>
             <Eyebrow>Privacy</Eyebrow>
             <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 28px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, textWrap: 'balance' }}>Who’s seen it, and the off switch</h2>
@@ -204,7 +204,7 @@ export default function ApplicationPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
               <div style={{ flex: '1 1 240px', minWidth: 0 }}>
                 <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 6 }}>{revoked ? 'Application is revoked' : 'Application is active'}</div>
-                <div style={{ fontSize: 13, color: '#c8c2b3', lineHeight: 1.55 }}>{revoked ? 'Reactivate to restore the realtor’s access — and editing.' : 'Anyone with this application number can view it. Revoking affects only this application, not your profile or other applications.'}</div>
+                <div style={{ fontSize: 13, color: '#c8c2b3', lineHeight: 1.55 }}>{revoked ? 'Reactivate to restore the realtor’s access · and editing.' : 'Anyone with this application number can view it. Revoking affects only this application, not your profile or other applications.'}</div>
               </div>
               <button onClick={() => performAction(revoked ? 'unrevoke' : 'revoke')} disabled={actionLoading || !!editing} style={{ background: revoked ? C.green : C.danger, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: actionLoading ? 'not-allowed' : 'pointer', opacity: actionLoading || editing ? 0.5 : 1, minHeight: 46, flex: '0 0 auto' }}>
                 {actionLoading ? 'Working…' : (revoked ? 'Reactivate application' : 'Revoke application')}
@@ -228,7 +228,7 @@ export default function ApplicationPage() {
                     ))}
                   </div>
                 )}
-                <p style={{ marginTop: 12, fontSize: 12, color: C.inkMute, lineHeight: 1.55 }}>Viewer identifiers are hashed — we don’t store IP addresses.</p>
+                <p style={{ marginTop: 12, fontSize: 12, color: C.inkMute, lineHeight: 1.55 }}>Viewer identifiers are hashed, we don’t store IP addresses.</p>
               </div>
             )}
           </div>

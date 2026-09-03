@@ -12,7 +12,7 @@ import { C, R, SH, EASE, FONT } from './theme';
 export const GlobalStyle = () => (
   <style jsx global>{`
     /* Font faces (Inter + Fraunces) are loaded once for every page in
-       pages/_document.js via preconnect + <link> — no @import here. */
+       pages/_document.js via preconnect + <link>, no @import here. */
     /* ── THE SCALES (realtor side). Space 4 8 12 16 24 32 48; type display 28 22 18 in Fraunces,
        body 16 14 in Inter, eyebrow 11 uppercase tracked; numerals tabular. Card padding 16 at
        390, one rule colour. Sections 32 apart, cards 16, related lines 8 inside a card. ── */
@@ -23,7 +23,14 @@ export const GlobalStyle = () => (
       --f-display: ${FONT.serif}; --f-body: ${FONT.sans};
       --card-pad: 16px; --card-radius: ${R.card}px; --rule: ${C.rule};
       --gap-section: 32px; --gap-card: 16px; --gap-line: 8px;
+      /* The red budget: --action fills exactly one button per screen, the screen's primary action.
+         Every other control is ink. The red tick and the red dot are signals, not controls. */
+      --action: ${C.red};
     }
+    /* The two webfonts, self hosted (public/fonts, the latin variable files), swapped in when they
+       arrive; the preloads live in pages/_document.js. */
+    @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/fonts/inter-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+    @font-face { font-family: 'Fraunces'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/fonts/fraunces-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
     /* Metric matched fallbacks so text set in the system face before the webfont arrives takes the
        same space (size-adjust from the real font files against Arial and Georgia). */
     @font-face { font-family: 'Inter Fallback'; src: local('Arial'); size-adjust: 107.48%; ascent-override: 90.14%; descent-override: 22.44%; line-gap-override: 0%; }

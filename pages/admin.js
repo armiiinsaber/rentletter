@@ -58,7 +58,7 @@ export default function Admin({ authed: initialAuthed }) {
     setErr('');
     const { r, j } = await adminFetch('/api/admin/overview'); // retries a 401 (session store catching up) and one 5xx/network failure
     if (r && r.status === 401) { setAuthed(false); return; }
-    if (!r || !r.ok) { setErr(j.error || (r ? `Failed to load (${r.status}).` : 'Failed to load — no response.')); return; }
+    if (!r || !r.ok) { setErr(j.error || (r ? `Failed to load (${r.status}).` : 'Failed to load · no response.')); return; }
     setData(j);
   };
   useEffect(() => { if (authed) load(); }, [authed]);
@@ -68,11 +68,11 @@ export default function Admin({ authed: initialAuthed }) {
     const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw }) });
     const j = await r.json().catch(() => ({}));
     setBusy(false); setPw('');
-    if (!r.ok) { setLoginErr(j.error || 'Sign-in failed.'); return; }
+    if (!r.ok) { setLoginErr(j.error || 'Sign in failed.'); return; }
     // Complete the round-trip: the session is written to a replicating store, so wait until it
     // reads back before rendering anything that needs it (else the first fetch is told 401).
     setBusy(true); const ready = await waitForAdminSession(); setBusy(false);
-    if (!ready) { setLoginErr('Signed in, but the session isn’t readable yet — try again in a moment.'); return; }
+    if (!ready) { setLoginErr('Signed in, but the session isn’t readable yet, try again in a moment.'); return; }
     // Sent here from another admin page (e.g. /admin/crm)? Go back there. Admin paths only.
     const next = typeof router.query.next === 'string' && /^\/admin(\/[a-z-]+)?$/.test(router.query.next) ? router.query.next : null;
     if (next && next !== '/admin') { router.replace(next); return; }

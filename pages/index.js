@@ -81,7 +81,7 @@ export default function Home() {
   const goToApply = () => {
     const parsed = parseApplyInput(applyLink);
     if (!parsed.ok) {
-      setApplyError("That doesn't look like a valid application link — paste the full link the listing realtor sent you.");
+      setApplyError("That doesn't look like a valid application link, paste the full link the listing realtor sent you.");
       return;
     }
     setApplyError('');
@@ -161,7 +161,7 @@ export default function Home() {
             setStep('form'); // jump straight to form, no landing page
           }
         })
-        .catch(() => { /* swallow — tenant can still apply normally */ });
+        .catch(() => { /* swallow, tenant can still apply normally */ });
       // Don't return — let the rest of the logic also run in case of other params
     }
 
@@ -335,7 +335,7 @@ export default function Home() {
   };
 
   const clearPass = () => {
-    if (!confirm('Sign out of your 30-day pass on this device? You can re-open the access link from your email any time.')) return;
+    if (!confirm('Sign out of your 30-day pass on this device? You can re open the access link from your email any time.')) return;
     localStorage.removeItem('rentletter_pass');
     setPassToken('');
     setPassInfo(null);
@@ -369,7 +369,7 @@ export default function Home() {
         previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
         moveInDate: '2026-06-15',
         reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute from 45 minutes to under 15. My current lease at 245 Sherbourne ends June 30.',
-        personality: 'Quiet, work from home 3 days a week, non-smoker. I keep a clean, minimal space.',
+        personality: 'Quiet, work from home 3 days a week, non smoker. I keep a clean, minimal space.',
         pets: 'None',
         redFlags: '',
       },
@@ -383,10 +383,10 @@ export default function Home() {
         previousAddress: '', yearsAtPrevious: '',
         previousLandlordName: '', previousLandlordContact: '',
         moveInDate: '2026-07-01',
-        reasonForMoving: 'First-time renter — moving out of a family home to start independent life closer to work.',
+        reasonForMoving: 'First time renter, moving out of a family home to start independent life closer to work.',
         personality: 'Quiet, mostly home in evenings, occasional weekend hosting (small groups).',
         pets: 'None',
-        redFlags: 'Limited rental history as a first-time renter. Can provide guarantor and employer reference.',
+        redFlags: 'Limited rental history as a first time renter. Can provide guarantor and employer reference.',
       },
       {
         email: 'priya.nair.test@example.com',
@@ -398,7 +398,7 @@ export default function Home() {
         previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
         previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
         moveInDate: '2026-08-01',
-        reasonForMoving: 'Partner and I are moving in together — we both want a 2BR closer to the West End where we both work.',
+        reasonForMoving: 'Partner and I are moving in together, we both want a 2BR closer to the West End where we both work.',
         personality: 'Stable, professional household. Both work hybrid, mostly weekday daytime presence.',
         pets: 'One indoor cat, 6 years old, vet records available',
         redFlags: '',
@@ -421,7 +421,7 @@ export default function Home() {
       previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
       moveInDate: '2026-06-15',
       reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute. Current lease at 245 Sherbourne ends June 30.',
-      personality: 'Quiet, work from home 3 days a week, non-smoker.',
+      personality: 'Quiet, work from home 3 days a week, non smoker.',
       pets: 'None',
       redFlags: '',
     };
@@ -604,26 +604,26 @@ export default function Home() {
     return (
       <>
         <Head>
-          <title>Rentletter — Rental screening for Canadian realtors.</title>
+          <title>Rentletter, Rental screening for Canadian realtors.</title>
           <meta name="description" content="A dashboard for Canadian rental realtors to receive standardized tenant applications, rank every candidate against the landlord's criteria, and send polished reports to landlord clients." />
         </Head>
         <GlobalStyle />
 
         <div className="lp-shell" style={{ minHeight: '100vh', background: C.paper }}>
 
-          {/* ── HEADER — balanced 3-zone: wordmark left · nav center · CTA right ── */}
+          {/* ── HEADER, balanced 3-zone: wordmark left · nav center · CTA right ── */}
           <ScrollHeader>
-            {/* LEFT — wordmark (drifts left + fades on scroll) */}
+            {/* LEFT, wordmark (drifts left + fades on scroll) */}
             <div className="lh-left">
               <Wordmark />
             </div>
-            {/* CENTER — secondary nav; collapses to the footer on small screens so the bar stays a
+            {/* CENTER, secondary nav; collapses to the footer on small screens so the bar stays a
                 single tidy row (wordmark + CTA) with no wrap/overflow at 360/390 */}
             <nav className="lh-nav" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(18px, 2.4vw, 30px)' }}>
               <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
               <a href="/signin" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</a>
             </nav>
-            {/* RIGHT — primary CTA (drifts right + fades on scroll) */}
+            {/* RIGHT, primary CTA (drifts right + fades on scroll) */}
             <div className="lh-right">
               <a href="/landlord" className="rl-btn" style={{
                 background: C.ink, color: C.paper, textDecoration: 'none',
@@ -644,7 +644,7 @@ export default function Home() {
               alignItems: 'center',
             }}>
 
-              {/* LEFT — text */}
+              {/* LEFT · text */}
               <div>
                 <div className="rl-hero-seq" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
                   <span className="rl-rule-draw" style={{ height: 2, background: C.red, borderRadius: 1, display: 'block' }} />
@@ -666,7 +666,7 @@ export default function Home() {
                 </h1>
 
                 {/* Hero sequence as a compact numbered 3-step. Deliberately small red numerals +
-                    short lines — visually distinct from the big serif 01/02/03 "How it works"
+                    short lines, visually distinct from the big serif 01/02/03 "How it works"
                     section below. text-wrap:pretty guards against orphan words at 360/390. */}
                 <ol className="rl-hero-seq" style={{
                   animationDelay: '540ms',
@@ -708,7 +708,7 @@ export default function Home() {
                       }}>
                       Book a 15-min demo
                     </a>
-                    {/* Always available — link straight to the demo dashboard (not /demo) so
+                    {/* Always available, link straight to the demo dashboard (not /demo) so
                         there's no 307 redirect hop / flash of any other route before it paints. */}
                     <a href="/demo/dashboard" className="rl-btn" style={{
                       background: 'transparent', color: C.red, border: `1px dashed ${C.red}`, textDecoration: 'none',
@@ -720,7 +720,7 @@ export default function Home() {
                   </div>
                   {(
                     <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 18 }}>
-                      The sample dashboard is preloaded with example tenants — not real data.
+                      The sample dashboard is preloaded with example tenants, not real data.
                     </div>
                   )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -733,7 +733,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* RIGHT — dashboard screenshot in browser-chrome frame */}
+              {/* RIGHT, dashboard screenshot in browser-chrome frame */}
               <div className="rl-hero-seq" style={{ animationDelay: '300ms', position: 'relative' }}>
                 <div ref={tiltRef}
                   onMouseMove={skipTilt ? undefined : handleTiltMove}
@@ -743,7 +743,7 @@ export default function Home() {
                     transition: skipTilt ? undefined : ((heroTilt.x === 0 && heroTilt.y === 0) ? `transform 600ms ${EASE}` : 'transform 80ms ease'),
                     willChange: skipTilt ? undefined : 'transform',
                   }}>
-                    {/* Device frame: laptop with browser chrome ≥720px, phone below — the SAME live
+                    {/* Device frame: laptop with browser chrome ≥720px, phone below, the SAME live
                         HeroDemo node either way (decorations swap via CSS; nothing re-mounts). */}
                     <DeviceFrame variant="responsive" url="rentletter.ca/dashboard" aspect="4 / 3" phoneAspect="9 / 10.5" bg={`linear-gradient(160deg, ${C.card}, ${C.paperDeep})`}>
                       <HeroDemo />
@@ -751,12 +751,12 @@ export default function Home() {
                   </div>
                 </div>
                 <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute }}>
-                  The Rentletter dashboard — one workspace per listing.
+                  The Rentletter dashboard, one workspace per listing.
                 </div>
               </div>
             </div>
 
-            {/* Stats row — count-up animation when scrolled into view */}
+            {/* Stats row, count-up animation when scrolled into view */}
             <div className="rl-reveal" style={{
               marginTop: 'clamp(52px, 8vw, 88px)',
               borderTop: `1px solid ${C.rule}`,
@@ -772,14 +772,14 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── DIFFERENTIATOR — its own quiet statement ── */}
+          {/* ── DIFFERENTIATOR, its own quiet statement ── */}
           <section className="rl-reveal" style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.card }}>
             <div style={{ maxWidth: 880, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px)', textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 16 }}>
                 Where we fit
               </div>
               <p className="rl-serif" style={{ fontSize: 'clamp(21px, 3vw, 30px)', lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0 }}>
-                Rentletter organizes your applicants —{' '}
+                Rentletter organizes your applicants · {' '}
                 <span style={{ color: C.inkMute }}>from the first inquiry to the ranked list you hand your landlord.</span>
               </p>
             </div>
@@ -812,7 +812,7 @@ export default function Home() {
                 { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your screening preferences. We generate a secure link tied to that listing.' },
                 { n: '02', icon: 'link', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route into your dashboard automatically.' },
                 { n: '03', icon: 'list', t: 'Review and rank', d: 'Everyone ranked against your criteria, best fit first. Set aside with a reason, and document every decision.' },
-                { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co-branded report with your name on it — free for you.' },
+                { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co branded report with your name on it, free for you.' },
               ].map(s => (
                 <div key={s.n} className="rl-step" style={{ paddingTop: 22, position: 'relative' }}>
                   <span className="rl-step-bar" style={{ background: C.red, position: 'absolute', top: 0, left: 0, right: 0 }} />
@@ -829,7 +829,7 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── TENANT ENTRY — paste the realtor's invite link → /apply/{token} ── */}
+          {/* ── TENANT ENTRY, paste the realtor's invite link → /apply/{token} ── */}
           <section className="rl-reveal" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
             <div className="rl-card" style={{ padding: 'clamp(22px, 3vw, 32px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -881,7 +881,7 @@ export default function Home() {
                   Set up your first listing.
                 </h2>
                 <p style={{ fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.6, color: C.inkInverse, marginBottom: 32 }}>
-                  Founding realtor spots are open for Ontario &amp; BC — free in exchange for your feedback. No credit card, no setup — your first applicant link is ready in minutes.
+                  Founding realtor spots are open for Ontario &amp; BC, free in exchange for your feedback. No credit card, no setup, your first applicant link is ready in minutes.
                 </p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <a href="/landlord" className="rl-btn" style={{
@@ -939,7 +939,7 @@ export default function Home() {
         .lp-shell :global(.lh-left),
         .lp-shell :global(.lh-right) { will-change: transform; }
         /* Small screens: collapse the secondary nav (still in the footer) so the top bar is a single
-           tidy row — wordmark + primary CTA — with no wrap or overflow at 360/390. */
+           tidy row, wordmark + primary CTA, with no wrap or overflow at 360/390. */
         @media (max-width: 599px) {
           .lp-shell :global(.lh-nav) { display: none !important; }
         }
@@ -956,7 +956,7 @@ export default function Home() {
   if (step === 'form') {
     return (
       <>
-        <Head><title>Your details — Rentletter</title></Head>
+        <Head><title>Your details · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
           <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -977,7 +977,7 @@ export default function Home() {
 
           <div style={{ maxWidth: 680, margin: '0 auto', padding: '64px 32px 80px' }}>
 
-            {/* INVITE BANNER — tenant arrived via a realtor's listing-scoped link */}
+            {/* INVITE BANNER, tenant arrived via a realtor's listing-scoped link */}
             {inviteContext && (
               <div style={{
                 background: C.ink, color: C.paper,
@@ -1051,7 +1051,7 @@ export default function Home() {
               <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
                 Designed to be privacy-first
               </div>
-              We collect what landlords need to make a good decision — not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with Ontario Human Rights Code best practices.
+              We collect what landlords need to make a good decision, not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with Ontario Human Rights Code best practices.
             </div>
 
             <FormSection num="01" title="Where to send it" required>
@@ -1092,7 +1092,7 @@ export default function Home() {
             </FormSection>
 
             <FormSection num="06" title="Your move" required>
-              <Field label="Desired move-in date" value={form.moveInDate} onChange={v => update('moveInDate', v)} type="date" />
+              <Field label="Desired move in date" value={form.moveInDate} onChange={v => update('moveInDate', v)} type="date" />
               <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={v => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
             </FormSection>
 
@@ -1114,7 +1114,7 @@ export default function Home() {
 
               {/* Co-applicant toggle */}
               <ToggleField
-                label="Applying with a co-tenant? (another adult who’ll be on the lease)"
+                label="Applying with a co tenant? (another adult who’ll be on the lease)"
                 value={form.hasCoApplicant}
                 onChange={v => update('hasCoApplicant', v)}
               />
@@ -1220,7 +1220,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* Generate button — free for all tenants */}
+            {/* Generate button, free for all tenants */}
             {!passInfo && (
               <div className="rl-card" style={{ marginTop: 48, padding: '28px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
@@ -1265,7 +1265,7 @@ export default function Home() {
   if (step === 'activating') {
     return (
       <>
-        <Head><title>Activating your pass — Rentletter</title></Head>
+        <Head><title>Activating your pass · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ textAlign: 'center', maxWidth: 460 }}>
@@ -1299,7 +1299,7 @@ export default function Home() {
   if (step === 'passSuccess') {
     return (
       <>
-        <Head><title>Your pass is ready — Rentletter</title></Head>
+        <Head><title>Your pass is ready · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
           <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px' }}>
@@ -1322,7 +1322,7 @@ export default function Home() {
             </h1>
 
             <p style={{ fontSize: 17, color: C.inkSoft, marginBottom: 40, lineHeight: 1.55, maxWidth: 540 }}>
-              Tailor a new application for every apartment you're considering. Update your profile any time your situation changes — new job, new income, found a co-applicant. Your access link has been emailed to you so you can use it from any device.
+              Tailor a new application for every apartment you're considering. Update your profile any time your situation changes, new job, new income, found a co-applicant. Your access link has been emailed to you so you can use it from any device.
             </p>
 
             {/* Pass detail card */}
@@ -1395,11 +1395,11 @@ export default function Home() {
                 A few things to know
               </div>
               <ul style={{ listStyle: 'none', fontSize: 13, color: C.inkSoft, lineHeight: 1.7 }}>
-                <li>— The access link works from any device. Bookmark it or save the email.</li>
-                <li>— Each application gets a fresh number — landlords can verify the latest version.</li>
-                <li>— Update your profile anytime: new job, raise, found a roommate. The Scorecard recalculates.</li>
-                <li>— Pass expires automatically in 30 days. No auto-renewal, no surprise charges.</li>
-                <li>— Need help? Reply to the activation email or write to info@rentletter.ca</li>
+                <li>, The access link works from any device. Bookmark it or save the email.</li>
+                <li>, Each application gets a fresh number, landlords can verify the latest version.</li>
+                <li>, Update your profile anytime: new job, raise, found a roommate. The Scorecard recalculates.</li>
+                <li>, Pass expires automatically in 30 days. No auto renewal, no surprise charges.</li>
+                <li>, Need help? Reply to the activation email or write to info@rentletter.ca</li>
               </ul>
             </div>
           </div>
@@ -1415,7 +1415,7 @@ export default function Home() {
   if (step === 'generating') {
     return (
       <>
-        <Head><title>Writing — Rentletter</title></Head>
+        <Head><title>Writing · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ textAlign: 'center', maxWidth: 440 }}>
@@ -1449,7 +1449,7 @@ export default function Home() {
   if (step === 'result') {
     return (
       <>
-        <Head><title>Your letter — Rentletter</title></Head>
+        <Head><title>Your letter · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
           <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
@@ -1490,11 +1490,11 @@ export default function Home() {
             </h1>
             <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
               {letter
-                ? 'Read it over. Edit anything — changes save automatically.'
+                ? 'Read it over. Edit anything, changes save automatically.'
                 : 'Below is your application number and tenant resume. Share these with the listing realtor or landlord.'}
             </p>
 
-            {/* Application Number Card — the trust signal for landlords */}
+            {/* Application Number Card, the trust signal for landlords */}
             {applicationNumber && (
               <div style={{
                 background: C.ink, color: C.paper, borderRadius: R.card,
@@ -1511,7 +1511,7 @@ export default function Home() {
                       {applicationNumber}
                     </div>
                     <p style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.55, maxWidth: 480 }}>
-                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants — for free — at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/dashboard</span>
+                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants, for free, at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/dashboard</span>
                     </p>
                     <a href="/my-application"
                       style={{
@@ -1575,7 +1575,7 @@ export default function Home() {
               )}
             </div>
 
-            {/* Cover Letter — only render if we have one (user paid or used demo) */}
+            {/* Cover Letter, only render if we have one (user paid or used demo) */}
             {letter && (
               <div className="rl-card" style={{ marginBottom: 24, overflow: 'hidden' }}>
                 <div style={{ padding: '20px 24px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: `1px solid ${C.rule}` }}>
@@ -1664,7 +1664,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
           width: '100%', padding: '14px 0', fontSize: 16,
           border: 'none', borderBottom: `1px solid ${C.rule}`,
           background: 'transparent', color: C.ink,
-          outline: 'none', transition: 'border-color 0.2s',
+          outline: 'none', transition: 'border color 0.2s',
         }}
         onFocus={e => e.target.style.borderBottomColor = C.ink}
         onBlur={e => e.target.style.borderBottomColor = C.rule} />
@@ -1682,7 +1682,7 @@ function Textarea({ label, value, onChange, placeholder }) {
           border: 'none', borderBottom: `1px solid ${C.rule}`,
           background: 'transparent', color: C.ink,
           outline: 'none', resize: 'vertical', fontFamily: "'Inter', sans-serif",
-          lineHeight: 1.5, transition: 'border-color 0.2s',
+          lineHeight: 1.5, transition: 'border color 0.2s',
         }}
         onFocus={e => e.target.style.borderBottomColor = C.ink}
         onBlur={e => e.target.style.borderBottomColor = C.rule} />

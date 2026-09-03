@@ -15,7 +15,7 @@ const cmp = {
   match: { label: 'Verified', fg: C.verified, bg: C.greenTint, mark: '✓' },
   close: { label: 'Close', fg: AMBER, bg: AMBER_BG, mark: '≈' },
   mismatch: { label: 'Mismatch', fg: C.danger, bg: C.dangerTint, mark: '!' },
-  not_found: { label: 'Not found', fg: C.inkMute, bg: C.paperDeep, mark: '–' },
+  not_found: { label: 'Not found', fg: C.inkMute, bg: C.paperDeep, mark: '·' },
 };
 
 const DOC_LABEL = {
@@ -53,12 +53,12 @@ export default function DocIntelReport({ result, insight }) {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
-      {/* Name-match safeguard — most important when it fails. */}
+      {/* Name-match safeguard, most important when it fails. */}
       {nameMatch === 'mismatch' && (
         <div style={{ background: C.dangerTint, border: `1px solid ${C.danger}`, borderLeft: `4px solid ${C.danger}`, borderRadius: R.card, padding: '11px 14px' }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: C.danger, marginBottom: 3 }}>⚠ Document name does not match this applicant</div>
           <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
-            Applicant is <strong style={{ color: C.ink }}>{result.applicantName || '—'}</strong>{docNames.length ? <> but the documents name <strong style={{ color: C.ink }}>{docNames.join(', ')}</strong></> : ''}. This applicant will show as <strong>not verified</strong> — re-check you uploaded the right person’s documents.
+            Applicant is <strong style={{ color: C.ink }}>{result.applicantName || 'not set'}</strong>{docNames.length ? <> but the documents name <strong style={{ color: C.ink }}>{docNames.join(', ')}</strong></> : ''}. This applicant will show as <strong>not verified</strong>, re-check you uploaded the right person’s documents.
           </div>
         </div>
       )}
@@ -97,9 +97,9 @@ export default function DocIntelReport({ result, insight }) {
                   <span style={{ width: 20, height: 20, flexShrink: 0, borderRadius: '50%', background: s.bg, color: s.fg, border: `1px solid ${s.fg}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{s.mark}</span>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, minWidth: 72 }}>{c.field}</span>
                   <span style={{ fontSize: 12.5, color: C.inkSoft, flex: 1, minWidth: 0 }}>
-                    stated <strong style={{ color: C.ink }}>{c.stated ?? '—'}</strong>
+                    stated <strong style={{ color: C.ink }}>{c.stated ?? 'not set'}</strong>
                     <span style={{ color: C.inkMute }}> · found </span>
-                    <strong style={{ color: C.ink }}>{c.found ?? '—'}</strong>
+                    <strong style={{ color: C.ink }}>{c.found ?? 'not set'}</strong>
                   </span>
                   <Chip fg={s.fg} bg={s.bg}>{s.label}</Chip>
                 </div>
@@ -112,7 +112,7 @@ export default function DocIntelReport({ result, insight }) {
       {/* Cross-reference across documents */}
       {crossReference.length > 0 && (
         <div>
-          <div style={{ fontSize: 10.5, fontWeight: 800, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Cross-reference across documents</div>
+          <div style={{ fontSize: 10.5, fontWeight: 800, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Cross reference across documents</div>
           <div style={{ display: 'grid', gap: 6 }}>
             {crossReference.map((x, i) => {
               const ok = x.status === 'consistent';
@@ -145,15 +145,15 @@ export default function DocIntelReport({ result, insight }) {
                     <span style={{ fontSize: 11, color: C.inkMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={d.filename}>{d.filename}</span>
                   </div>
 
-                  {/* Unrecognized / possibly-invalid upload — flag it clearly. */}
+                  {/* Unrecognized / possibly-invalid upload, flag it clearly. */}
                   {isUnrecognized && (
                     <div style={{ background: AMBER_BG, border: `1px solid ${AMBER}`, borderLeft: `3px solid ${AMBER}`, borderRadius: R.ctrl, padding: '9px 11px', marginBottom: rowKeys.length ? 10 : 0 }}>
                       <div style={{ fontSize: 11.5, fontWeight: 800, color: AMBER, marginBottom: 2 }}>⚠ May not be a valid supporting document</div>
-                      <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>{d.notes || 'This file does not appear to be a recognizable rental-screening document. Ask the applicant to resend.'}</div>
+                      <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>{d.notes || 'This file does not appear to be a recognizable rental screening document. Ask the applicant to resend.'}</div>
                     </div>
                   )}
 
-                  {/* Credit report — the SCORE is the headline fact. */}
+                  {/* Credit report, the SCORE is the headline fact. */}
                   {isCredit && ex.creditScore != null && (
                     <div style={{ background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '10px 12px', marginBottom: 10 }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>Credit score</div>

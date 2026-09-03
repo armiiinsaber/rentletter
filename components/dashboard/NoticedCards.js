@@ -17,7 +17,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
-import { computeNotices, latestSignalAt, relativeTime } from '../../lib/noticed';
+import { computeNotices, latestSignalAt } from '../../lib/noticed';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { useAssistantStore, dismissAction } from '../../lib/assistantStore';
 import { navigateToAction } from './actionNav';
@@ -61,7 +61,6 @@ export default function NoticedCards({ input, onAction, style, className = '', a
   const noticedAt = useMemo(() => input?.latestEventAt || latestSignalAt(input), [input]);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { setNow(Date.now()); }, [noticedAt]);
-  const whenLine = noticedAt && now - new Date(noticedAt).getTime() <= 48 * 3600000 ? `noticed ${relativeTime(noticedAt, now)}` : null;
   const summary = catchUpLine(cards);
 
   // Which card is showing. Clamped when the set shrinks: dismissing the last one shows the
@@ -160,7 +159,6 @@ export default function NoticedCards({ input, onAction, style, className = '', a
         <span className="rl-dot" aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: C.redBright, flexShrink: 0, marginRight: -4 }} />
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1, flexShrink: 0 }} />
         <span style={{ fontSize: 'var(--t-eyebrow)', color: C.redBright || C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentletter noticed</span>
-        {whenLine && <span className="nc-when" style={{ fontSize: 'var(--t-eyebrow)', color: '#6f6b63', whiteSpace: 'nowrap' }} title={new Date(noticedAt).toLocaleString('en-CA')}>{whenLine}</span>}
         {onOpen && <button type="button" onClick={onOpen} style={{ marginLeft: 'auto', background: 'transparent', color: '#9a958a', border: '1px solid #2a2a2e', borderRadius: R.pill, padding: 'var(--s-1) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>Open</button>}
       </div>
       {summary && <p style={{ fontSize: 'var(--t-body-2)', color: '#9a958a', lineHeight: 1.45, margin: '0 0 var(--s-2)', textWrap: 'pretty' }}>{summary}</p>}
@@ -179,7 +177,7 @@ export default function NoticedCards({ input, onAction, style, className = '', a
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-1)', width: '100%', flexShrink: 0 }}>
                 {card.action && (
-                  <button type="button" onClick={() => act(card)} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 36, whiteSpace: 'nowrap' }}>
+                  <button type="button" onClick={() => act(card)} style={{ background: 'transparent', color: '#e8e4d9', border: '1px solid #e8e4d9', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 36, whiteSpace: 'nowrap' }}>
                     {card.action.label}
                   </button>
                 )}

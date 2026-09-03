@@ -150,7 +150,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
       <td align="center" style="padding: 56px 24px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width: 560px; background: #faf8f3;">
 
-          <!-- Header — wordmark with red bar -->
+          <!-- Header, wordmark with red bar -->
           <tr>
             <td style="padding-bottom: 28px; border-bottom: 1px solid #e3ddd0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
@@ -179,7 +179,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
           <tr>
             <td style="padding-bottom: 32px;">
               <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; color: #3a3a3c; margin: 0;">
-                Your application went to the listing realtor — the agent representing the landlord for this unit. Keep this email — your application number and owner key below are how you track and control it.
+                Your application went to the listing realtor, the agent representing the landlord for this unit. Keep this email, your application number and owner key below are how you track and control it.
               </p>
             </td>
           </tr>
@@ -223,7 +223,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                       Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
-                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my-application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
+                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
                       Owner token
@@ -254,7 +254,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                 Good luck out there<span style="color: #d72027;">.</span>
               </p>
               <p style="font-family: 'Inter', sans-serif; font-size: 14px; color: #86868b; margin: 6px 0 24px;">
-                — The Rentletter desk
+, The Rentletter desk
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
@@ -352,7 +352,7 @@ export default async function handler(req, res) {
       <td align="center" style="padding: 56px 24px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width: 560px; background: #faf8f3;">
 
-          <!-- Header — wordmark with red bar -->
+          <!-- Header, wordmark with red bar -->
           <tr>
             <td style="padding-bottom: 28px; border-bottom: 1px solid #e3ddd0;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0">
@@ -381,7 +381,7 @@ export default async function handler(req, res) {
           <tr>
             <td style="padding-bottom: 32px;">
               <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; color: #3a3a3c; margin: 0 0 16px;">
-                Your cover letter and tenant resume are attached — both as PDF and Word.
+                Your cover letter and tenant resume are attached, both as PDF and Word.
               </p>
               <p style="font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.6; color: #3a3a3c; margin: 0;">
                 Send them with your standard rental application. In Ontario, that's <span style="color: #0f0f10; font-weight: 600;">Form 410</span>.
@@ -442,7 +442,7 @@ export default async function handler(req, res) {
           </tr>
 
           ${applicationNumber ? `
-          <!-- Application number — the trust signal for landlords -->
+          <!-- Application number, the trust signal for landlords -->
           <tr>
             <td style="padding-bottom: 24px;">
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background: #0f0f10;">
@@ -482,7 +482,7 @@ export default async function handler(req, res) {
                       Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
-                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my-application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
+                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
                       Owner token
@@ -532,7 +532,7 @@ export default async function handler(req, res) {
                 Good luck out there<span style="color: #d72027;">.</span>
               </p>
               <p style="font-family: 'Inter', sans-serif; font-size: 14px; color: #86868b; margin: 6px 0 24px;">
-                — The Rentletter desk
+, The Rentletter desk
               </p>
 
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">

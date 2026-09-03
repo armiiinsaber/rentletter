@@ -46,7 +46,7 @@ export default async function handler(req, res) {
     });
   } catch (err) {
     console.error('KV magic token store failed:', err);
-    return res.status(500).json({ error: 'Could not generate sign-in link. Please try again.' });
+    return res.status(500).json({ error: 'Could not generate sign in link. Please try again.' });
   }
 
   const magicUrl = `https://rentletter.ca/landlord?magic=${token}`;
@@ -65,10 +65,10 @@ export default async function handler(req, res) {
     }
   } catch (err) {
     console.error('Magic link email send failed:', err);
-    return res.status(500).json({ error: 'Could not send sign-in email. Please try again.' });
+    return res.status(500).json({ error: 'Could not send sign in email. Please try again.' });
   }
 
-  return res.status(200).json({ success: true, message: 'Check your email for a sign-in link (valid for 15 minutes).' });
+  return res.status(200).json({ success: true, message: 'Check your email for a sign in link (valid for 15 minutes).' });
 }
 
 function buildMagicLinkEmail(magicUrl) {

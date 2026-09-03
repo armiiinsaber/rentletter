@@ -55,7 +55,7 @@ function Swatch({ svg, bg, label, idKey }) {
       <div style={{ background: bg, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, height: 84, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 10, overflow: 'hidden' }}>
         {safeForRender(svg)
           ? <div style={fitInner} dangerouslySetInnerHTML={{ __html: prepSvg(svg, idKey) }} />
-          : <span style={{ fontSize: 11, color: C.inkMute }}>—</span>}
+          : <span style={{ fontSize: 11, color: C.inkMute }}>not set</span>}
       </div>
       <div style={{ fontSize: 9.5, color: C.inkMute, textAlign: 'center', marginTop: 3, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
     </div>
@@ -69,7 +69,7 @@ function BigSwatch({ svg, bg, label, idKey }) {
       <div style={{ background: bg, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, height: 'clamp(120px, 26vw, 170px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, overflow: 'hidden' }}>
         {safeForRender(svg)
           ? <div style={fitInner} dangerouslySetInnerHTML={{ __html: prepSvg(svg, idKey) }} />
-          : <span style={{ fontSize: 11, color: C.inkMute }}>—</span>}
+          : <span style={{ fontSize: 11, color: C.inkMute }}>not set</span>}
       </div>
       <div style={{ fontSize: 9.5, color: C.inkMute, textAlign: 'center', marginTop: 4, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
     </div>
@@ -170,7 +170,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         setError('Your name and brokerage aren’t saved yet. Save them at the top of the form, then generate again.'); return null;
       }
       if (r.status === 504 || (!j && !r.ok)) {
-        setError('The generator took too long to answer. Please try again — if it keeps happening, try a shorter description.'); return null;
+        setError('The generator took too long to answer. Please try again, if it keeps happening, try a shorter description.'); return null;
       }
       if (!r.ok || !Array.isArray(j?.variations) || j.variations.length === 0) {
         setError(j?.error || 'Could not generate logos. Please try again.'); return null;
@@ -186,7 +186,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
   const generate = async () => {
     if (!colorsReady) { setError('Pick your two brand colours first.'); return; }
     const vars = await postGenerate({
-      brief: brief.trim() || 'A clean, professional real-estate logo using my name and brand colours.',
+      brief: brief.trim() || 'A clean, professional real estate logo using my name and brand colours.',
       ...colorsForGen(),
       conversationContext: rounds.map((r) => r.brief).filter(Boolean),
     });
@@ -247,7 +247,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not save that logo.'); setUsingKey(null); return; }
       setSavedKey(key); // confirm on THIS card
-      setToast('Logo saved — now your branding logo.');
+      setToast('Logo saved, now your branding logo.');
       if (toastTimer.current) clearTimeout(toastTimer.current);
       toastTimer.current = setTimeout(() => setToast(''), 4500);
       onChosen?.(j.logo_url, j.profile);
@@ -260,9 +260,9 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
   return (
     <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(14px,3vw,18px)', background: C.paperDeep }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: C.ink, marginBottom: 2 }}>{refineMode ? 'Refine your logo' : 'Generate a logo with AI'}</div>
-      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>{refineMode ? 'Zeroing in on your chosen concept — make one change at a time.' : 'Three steps. We design 3 concepts from your name, brokerage, and colours.'}</div>
+      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>{refineMode ? 'Zeroing in on your chosen concept, make one change at a time.' : 'Three steps. We design 3 concepts from your name, brokerage, and colours.'}</div>
 
-      {/* Step progress — hidden while refining a chosen concept */}
+      {/* Step progress, hidden while refining a chosen concept */}
       {!refineMode && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 'clamp(8px,2vw,16px)', flexWrap: 'wrap', marginBottom: 14 }}>
           <StepChip n={1} label="Colours" state={step1State} />
@@ -271,13 +271,13 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </div>
       )}
 
-      {/* Gate notice — explicit and upfront. Names exactly what's missing and jumps to the field.
+      {/* Gate notice, explicit and upfront. Names exactly what's missing and jumps to the field.
           Unlocks live as the realtor types (props are the live form); the save is flushed
           automatically before generation, so there's no save-and-come-back trip. */}
       {!refineMode && !profileReady && (
         <div role="status" style={{ padding: '12px 14px', marginBottom: 12, background: C.amberTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
           <div style={{ fontWeight: 800, marginBottom: 2 }}>Locked until we have {missing.join(' and ')}</div>
-          <div style={{ color: C.inkSoft, marginBottom: 8 }}>The wordmark is built from your real name and brokerage — they’re the fields at the top of this form. Unlocks as soon as both are filled; no need to save first.</div>
+          <div style={{ color: C.inkSoft, marginBottom: 8 }}>The wordmark is built from your real name and brokerage, they’re the fields at the top of this form. Unlocks as soon as both are filled; no need to save first.</div>
           <button type="button" onClick={onJumpToDetails}
             style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.pill, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span aria-hidden="true">↑</span> Go to those fields
@@ -291,7 +291,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
 
       {!limitMsg && !refineMode && (
         <>
-          {/* STEP 1 — COLOURS */}
+          {/* STEP 1 · COLOURS */}
           <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'clamp(12px,3vw,16px)', marginBottom: 12, opacity: profileReady ? 1 : 0.55 }}>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 · Brand colours</div>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
@@ -308,17 +308,17 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             </div>
           </div>
 
-          {/* STEP 2 — DESCRIBE (revealed once colours are set) */}
+          {/* STEP 2 · DESCRIBE (revealed once colours are set) */}
           {colorsReady && (
             <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'clamp(12px,3vw,16px)', marginBottom: 12 }}>
               <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 2 · Describe <span style={{ color: C.inkMute, fontWeight: 600 }}>(optional)</span></div>
               <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} disabled={busy}
-                placeholder="Describe your logo — a house, a key, your initials, a mood… or leave blank and we'll design from your name."
+                placeholder="Describe your logo, a house, a key, your initials, a mood… or leave blank and we'll design from your name."
                 style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
             </div>
           )}
 
-          {/* STEP 3 — GENERATE */}
+          {/* STEP 3 · GENERATE */}
           {!busy && (
             <button onClick={generate} disabled={!colorsReady}
               title={colorsReady ? '' : 'Pick your two brand colours first'}
@@ -327,13 +327,13 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             </button>
           )}
 
-          {/* Loading state — generation takes several seconds */}
+          {/* Loading state, generation takes several seconds */}
           {busy && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
               <span className="rl-lspin" aria-hidden="true" />
               <div>
                 <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>Designing your logos…</div>
-                <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>This takes about 10–15 seconds. Please don’t refresh.</div>
+                <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>This takes about 10 to 15 seconds. Please don’t refresh.</div>
               </div>
             </div>
           )}
@@ -347,7 +347,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </div>
       )}
 
-      {/* ALL CONCEPTS — the 3-up grid (hidden while refining a single concept) */}
+      {/* ALL CONCEPTS, the 3-up grid (hidden while refining a single concept) */}
       {!refineMode && round && (
         <div style={{ marginTop: 16 }}>
           {rounds.length > 1 && (
@@ -384,7 +384,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                     Refine this →
                   </button>
                 </div>
-                {isSaved && <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 8 }}>This is now your branding — it appears on your reports.</div>}
+                {isSaved && <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 8 }}>This is now your branding, it appears on your reports.</div>}
               </div>
               );
             })}
@@ -392,7 +392,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </div>
       )}
 
-      {/* FOCUSED REFINE VIEW — only the chosen concept, large + highlighted */}
+      {/* FOCUSED REFINE VIEW, only the chosen concept, large + highlighted */}
       {refineMode && refineCurrent && (
         <div ref={refineTopRef} style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -411,7 +411,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             )}
           </div>
 
-          {/* The chosen concept — large + emphasized */}
+          {/* The chosen concept, large + emphasized */}
           <div style={{ border: `2px solid ${C.ink}`, borderRadius: R.card, padding: 'clamp(12px,3vw,18px)', background: C.paper, boxShadow: `0 6px 22px rgba(15,15,16,0.10)` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.ink, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Refining this concept</span>
@@ -444,10 +444,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             </button>
           </div>
 
-          {/* Refined options — compare with the current version above */}
+          {/* Refined options, compare with the current version above */}
           {refineResults.length > 0 && !busy && (
             <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
-              <div style={{ fontSize: 11.5, color: C.inkMute, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Refined options — same concept, your change applied</div>
+              <div style={{ fontSize: 11.5, color: C.inkMute, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 10 }}>Refined options, same concept, your change applied</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
                 {refineResults.map((v, i) => {
                   const key = `refine-res-${i}`;
@@ -478,7 +478,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </div>
       )}
 
-      {/* Toast — fixed to the viewport so it's visible no matter which card was saved or how far down the realtor scrolled */}
+      {/* Toast, fixed to the viewport so it's visible no matter which card was saved or how far down the realtor scrolled */}
       {toast && (
         <div role="status" onClick={() => setToast('')}
           style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, background: C.green, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: '0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>

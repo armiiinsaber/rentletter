@@ -9,7 +9,7 @@ export default function StatusBadge({ profile }) {
   const s = evaluateProfile(profile);
   // founding → nothing; none → nothing (no gating yet — that ships with checkout)
   if (s.status === 'founding' || s.status === 'unknown' || s.status === 'none') return null;
-  let bg = C.paperDeep, fg = C.inkSoft, border = C.rule, label = '—';
+  let bg = C.paperDeep, fg = C.inkSoft, border = C.rule, label = 'not set';
   if (s.status === 'paid') {
     bg = C.greenTint; fg = C.green; border = C.green; label = 'Subscribed';
   } else if (s.status === 'trialing') {

@@ -12,7 +12,7 @@ const COPY = {
   past_due: { title: 'Your last payment didn’t go through.', body: 'Update your card in the billing portal and everything picks up where it was.' },
   canceled: { title: 'Your subscription has ended.', body: 'Everything is still here. Start a new plan whenever you want it back.' },
   none: { title: 'Choose a plan to open your workspace.', body: 'Monthly or annual, cancel any time from the billing portal.' },
-  pending: { title: 'Payment received.', body: 'Your workspace is being unlocked — this usually takes a few seconds.' },
+  pending: { title: 'Payment received.', body: 'Your workspace is being unlocked, this usually takes a few seconds.' },
 };
 const copyFor = (e) => (e.status === 'past_due' ? COPY.past_due : e.status === 'trial_expired' ? COPY.trial_expired : e.canceled ? COPY.canceled : COPY.none);
 
