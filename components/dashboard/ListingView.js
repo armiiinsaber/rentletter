@@ -13,7 +13,7 @@ import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
-import { computeFit } from '../../lib/fitScore';
+import { computeFit, compareFit } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
@@ -440,8 +440,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
   // Pure scorecard vs criteria ranking (matches lib/listingReportData). Everyone is
   // in: active best fit first, set aside below, withdrawn excluded (withdrawn_at rule).
-  const fitScore = (a) => (a.application?.fit?.score != null ? a.application.fit.score : -1); // no Fit sorts last
-  const byScore = (x, y) => fitScore(y) - fitScore(x);
+  // One sort order everywhere (lib/fitScore.js compareFit): scoreExact descending, no Fit last,
+  // the earlier applicant first on a tie.
+  const byScore = compareFit;
   // A departing card is shown where it WAS for one beat (its state has already changed).
   const shownActive = (a) => (departing[a.linkId] ? !departing[a.linkId].wasSetAside : isActive(a));
   const shownAside = (a) => (departing[a.linkId] ? departing[a.linkId].wasSetAside : isSetAsideApplicant(a));
@@ -523,7 +524,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const st = applicantState({ application: app, junction: a, verification: a.docVerifications?.[0] || null, listing });
     // The meter renders on every active card. Its colour carries the confidence: muted grey while
     // the Fit rests on stated facts, the editorial red once documents match or the realtor verified.
-    const meterMuted = !!fit && fit.label === 'stated';
+    const meterMuted = !!fit && (fit.label === 'stated' || fit.label === 'check docs');
     const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
     const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
     const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 10, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 14, fontWeight: 700, cursor: 'pointer' };

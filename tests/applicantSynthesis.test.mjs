@@ -24,15 +24,19 @@ test('unverified: stated income, no documents, no reference', () => {
   assert.equal(synthesisLine(a), 'Stated income at 2.5x rent, unverified, no reference yet');
 });
 
-test('documents on file but income not confirmed is said as such, not as verified', () => {
+test('documents that differ on income say so, never verified, never documented', () => {
   const report = verifiedReport({ comparisons: [{ field: 'Annual income', status: 'close' }] });
   const a = applicant({ annual_income: 60000, rent_to_income_ratio: 25 }, [report]);
-  assert.equal(synthesisLine(a), 'Stated income at 4x rent, unconfirmed by documents, no reference yet');
+  assert.equal(synthesisLine(a), 'Documents differ on stated income at 4x rent, no reference yet');
+  const emp = applicant({ annual_income: 60000, rent_to_income_ratio: 25 }, [verifiedReport({ comparisons: [{ field: 'Annual income', status: 'match' }, { field: 'Employer', status: 'mismatch' }] })]);
+  assert.equal(synthesisLine(emp), 'Documents differ on employer, stated income at 4x rent, no reference yet');
+  const nothing = applicant({ annual_income: 60000, rent_to_income_ratio: 25 }, [verifiedReport({ comparisons: [] })]);
+  assert.equal(synthesisLine(nothing), 'Stated income at 4x rent, unconfirmed by documents, no reference yet');
 });
 
 test('a name mismatch on the documents never counts as verified', () => {
   const a = applicant({ annual_income: 60000, rent_to_income_ratio: 30 }, [verifiedReport({ nameMatch: 'mismatch' })]);
-  assert.match(synthesisLine(a), /^Stated income at 3\.3x rent, unconfirmed by documents/);
+  assert.match(synthesisLine(a), /^Name on documents differs, stated income at 3\.3x rent/);
 });
 
 test('reference present versus absent, with other references listed', () => {
