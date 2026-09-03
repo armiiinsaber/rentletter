@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildActions, visibleActions, actionHref, KIND_ORDER } from '../lib/actions.js';
-import { computeNotices } from '../lib/noticed.js';
 
 const NOW = '2026-09-02T12:00:00Z';
 const daysAgo = (n) => new Date(Date.parse(NOW) - n * 86400000).toISOString();
@@ -66,7 +65,7 @@ test('dismissal holds while the signature is unchanged and lifts when the state 
   const later = buildActions(f).find((i) => i.kind === 'verify');
   assert.equal(later.key, verify.key); assert.notEqual(later.signature, verify.signature);
   assert.ok(visibleActions(buildActions(f), { [verify.key]: verify.signature }).some((i) => i.key === verify.key));
-  assert.equal(computeNotices({ ...fixture(), dismissed: { [verify.key]: verify.signature } }).length, items.length - 1);
+  assert.equal(visibleActions(buildActions(fixture()), { [verify.key]: verify.signature }).length, items.length - 1);
 });
 
 test('deep links through the adapter paths', () => {
@@ -74,5 +73,5 @@ test('deep links through the adapter paths', () => {
   const verify = items.find((i) => i.kind === 'verify'), ready = items.find((i) => i.kind === 'ready');
   assert.equal(actionHref(verify, { listing: (id) => `/landlord/${id}` }), '/landlord/L1?applicant=a-verify&panel=checklist');
   assert.equal(actionHref(ready, { listing: (id) => `/demo/dashboard?listing=${id}` }), '/demo/dashboard?listing=L1&panel=report');
-  assert.equal(computeNotices(fixture())[2].action.href, '/landlord/L1?applicant=a-verify&panel=checklist');
+  assert.equal(actionHref(items[2], { listing: (id) => `/landlord/${id}` }), '/landlord/L1?applicant=a-verify&panel=checklist');
 });

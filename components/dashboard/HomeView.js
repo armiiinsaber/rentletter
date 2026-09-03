@@ -15,7 +15,7 @@ import { formatUnit } from '../../lib/unitType';
 import { listingStateLine } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
-import NoticedCards from '../../components/dashboard/NoticedCards';
+import NextList from '../../components/dashboard/NextList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
@@ -179,7 +179,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     const t = setTimeout(() => window.dispatchEvent(new CustomEvent(OPEN_EVENT)), 300);
     return () => clearTimeout(t);
   }, []);
-  const noticeInput = { scope: 'home', listings: listings || [], applicantsByListing: signals.applicantsByListing, notifications: signals.notifications, referralsSent: signals.referralsSent, referralsInbox: signals.referralsInbox, profile };
   // Greeting: time of day plus first name, nothing else. The name is its own flex item so a
   // long one drops to its own line whole (never a stray word).
   const hour = new Date().getHours();
@@ -275,7 +274,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {/* 2. THE ASSISTANT, compact: the Needs you zone as it renders here, and a way into the
               full panel (bell, or Open). The timeline lives in the panel only. Referrals to
               assign are part of the panel's Needs you zone, so the page stays three sections. */}
-          {hasListings && <div className="dash-block"><NoticedCards input={noticeInput} onAction={onNoticeAction} onOpen={openAssistant} /></div>}
+          {hasListings && <div className="dash-block"><NextList listings={listings || []} applicantsByListing={signals.applicantsByListing} onMore={openAssistant} /></div>}
 
           {/* 3. YOUR LISTINGS */}
           {error && (
