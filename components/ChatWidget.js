@@ -183,7 +183,7 @@ export default function ChatWidget({ mode = 'marketing', embedded = false }) {
           border: 'none',
           cursor: 'pointer',
           boxShadow: '0 6px 24px rgba(15, 15, 16, 0.18)',
-          fontSize: 22,
+          fontSize: 'var(--t-d3)',
           // Soften to ~0.5 when floating over a control so it's never a full-contrast blob on top of
           // another button; full opacity over neutral space (and while open / on focus). Stays tappable.
           opacity: (!open && launcherDim) ? 0.5 : 1,

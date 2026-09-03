@@ -142,7 +142,7 @@ export default function NoticedCards({ input, onAction, style, className = '', a
   };
   if (!cards.length) {
     if (!emptyLine) return null;
-    return <p className={className} style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.5, padding: '4px 2px', ...style }}>{emptyLine}</p>;
+    return <p className={className} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5, padding: 'var(--s-1) var(--s-1)', ...style }}>{emptyLine}</p>;
   }
 
   const act = (card) => {
@@ -155,15 +155,15 @@ export default function NoticedCards({ input, onAction, style, className = '', a
 
   const many = cards.length > 1;
   return (
-    <section className={className} aria-label="Rentletter noticed" style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: 'clamp(14px, 3vw, 20px)', position: 'relative', overflow: 'hidden', ...style }}>
-      <div className="nc-head" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 10px', marginBottom: summary ? 6 : 10 }}>
+    <section className={className} aria-label="Rentletter noticed" style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: 'var(--card-pad)', position: 'relative', overflow: 'hidden', ...style }}>
+      <div className="nc-head" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s-1) var(--s-2)', marginBottom: 'var(--s-2)' }}>
         <span className="rl-dot" aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: C.redBright, flexShrink: 0, marginRight: -4 }} />
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1, flexShrink: 0 }} />
-        <span style={{ fontSize: 11, color: C.redBright || C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentletter noticed</span>
-        {whenLine && <span className="nc-when" style={{ fontSize: 11, color: '#6f6b63', whiteSpace: 'nowrap' }} title={new Date(noticedAt).toLocaleString('en-CA')}>{whenLine}</span>}
-        {onOpen && <button type="button" onClick={onOpen} style={{ marginLeft: 'auto', background: 'transparent', color: '#9a958a', border: '1px solid #2a2a2e', borderRadius: R.pill, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>Open</button>}
+        <span style={{ fontSize: 'var(--t-eyebrow)', color: C.redBright || C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Rentletter noticed</span>
+        {whenLine && <span className="nc-when" style={{ fontSize: 'var(--t-eyebrow)', color: '#6f6b63', whiteSpace: 'nowrap' }} title={new Date(noticedAt).toLocaleString('en-CA')}>{whenLine}</span>}
+        {onOpen && <button type="button" onClick={onOpen} style={{ marginLeft: 'auto', background: 'transparent', color: '#9a958a', border: '1px solid #2a2a2e', borderRadius: R.pill, padding: 'var(--s-1) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 32 }}>Open</button>}
       </div>
-      {summary && <p style={{ fontSize: 12.5, color: '#9a958a', lineHeight: 1.45, margin: '0 0 10px', textWrap: 'pretty' }}>{summary}</p>}
+      {summary && <p style={{ fontSize: 'var(--t-body-2)', color: '#9a958a', lineHeight: 1.45, margin: '0 0 var(--s-2)', textWrap: 'pretty' }}>{summary}</p>}
 
       {/* THE VIEWPORT: one card tall (the tallest in the set), one card wide. The track holds
           every card side by side and moves only when the user moves it. */}
@@ -172,14 +172,14 @@ export default function NoticedCards({ input, onAction, style, className = '', a
           {cards.map((card, i) => (
             <div key={card.id} ref={(el) => { if (el) cardRefs.current[card.id] = el; else delete cardRefs.current[card.id]; }}
               className={leaving[card.id] ? 'm-card-leave' : ''} inert={i !== current} aria-hidden={i !== current}
-              style={{ position: height ? 'absolute' : 'relative', top: 0, left: `${i * 100}%`, width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap', padding: '10px 12px', background: '#161618', border: '1px solid #2a2a2e', borderRadius: R.ctrl }}>
+              style={{ position: height ? 'absolute' : 'relative', top: 0, left: `${i * 100}%`, width: '100%', boxSizing: 'border-box', display: 'flex', alignItems: 'flex-start', gap: 'var(--s-2)', flexWrap: 'wrap', padding: 'var(--s-2) var(--s-3)', background: '#161618', border: '1px solid #2a2a2e', borderRadius: R.ctrl }}>
               <div style={{ flex: '1 1 100%', minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{card.title}</div>
-                {card.detail && <div style={{ fontSize: 12.5, color: '#9a958a', lineHeight: 1.5, marginTop: 3, textWrap: 'pretty' }}>{card.detail}</div>}
+                <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: '#e8e4d9', lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{card.title}</div>
+                {card.detail && <div style={{ fontSize: 'var(--t-body-2)', color: '#9a958a', lineHeight: 1.5, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{card.detail}</div>}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, width: '100%', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-1)', width: '100%', flexShrink: 0 }}>
                 {card.action && (
-                  <button type="button" onClick={() => act(card)} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', minHeight: 36, whiteSpace: 'nowrap' }}>
+                  <button type="button" onClick={() => act(card)} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 36, whiteSpace: 'nowrap' }}>
                     {card.action.label}
                   </button>
                 )}
@@ -194,7 +194,7 @@ export default function NoticedCards({ input, onAction, style, className = '', a
 
       {/* THE DOTS: one per notice, each a 44px target around a 6px dot. Only when there is more than one. */}
       {many && (
-        <div role="group" aria-label="Notices" style={{ display: 'flex', justifyContent: 'center', gap: 2, marginTop: 4 }}>
+        <div role="group" aria-label="Notices" style={{ display: 'flex', justifyContent: 'center', gap: 'var(--s-1)', marginTop: 'var(--s-1)' }}>
           {cards.map((card, i) => (
             <button key={card.id} type="button" onClick={() => setIndex(i)} aria-label={`Show notice ${i + 1} of ${cards.length}`} aria-current={i === current ? 'true' : undefined}
               style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', padding: 0, cursor: 'pointer' }}>

@@ -39,9 +39,9 @@ import { narrateApplicants } from '../../lib/noticed';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
 const Row = ({ label, value }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '9px 0', borderBottom: `1px solid ${C.rule}` }}>
-    <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 600, minWidth: 0 }}>{label}</span>
-    <span style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{value}</span>
+  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-4)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
+    <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, fontWeight: 600, minWidth: 0 }}>{label}</span>
+    <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{value}</span>
   </div>
 );
 
@@ -551,27 +551,27 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   });
 
   const EMP_LABEL = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
-  const pill = (text, fg, bg, extra = {}) => <span style={{ fontSize: 10, color: fg, background: bg, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px', borderRadius: R.pill, whiteSpace: 'nowrap', ...extra }}>{text}</span>;
+  const pill = (text, fg, bg, extra = {}) => <span style={{ fontSize: 'var(--t-eyebrow)', color: fg, background: bg, fontWeight: 700, letterSpacing: '0.08em', padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, whiteSpace: 'nowrap', ...extra }}>{text}</span>;
   // A labelled, collapsible section inside the open card. Only the chevron moves (transform).
   const renderSection = (a, key, title, defOpen, body) => {
     const on = sectionOpen(a.linkId, key, defOpen);
     return (
-      <div key={key} style={{ borderTop: `1px solid ${C.rule}`, marginTop: 10 }}>
+      <div key={key} style={{ borderTop: `1px solid ${C.rule}`, marginTop: 'var(--s-2)' }}>
         <button type="button" aria-expanded={on} aria-controls={`applicant-${a.linkId}-${key}`} onClick={() => toggleSection(a.linkId, key, defOpen)}
-          style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: 'transparent', border: 'none', padding: '6px 0', cursor: 'pointer', font: 'inherit', color: C.inkMute, textAlign: 'left' }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{title}</span>
+          style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', background: 'transparent', border: 'none', padding: 'var(--s-1) 0', cursor: 'pointer', font: 'inherit', color: C.inkMute, textAlign: 'left' }}>
+          <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{title}</span>
           <span className={`m-chev ${on ? 'open' : ''}`} aria-hidden="true"><Icon name="chevronD" size={16} /></span>
         </button>
-        {on && <div id={`applicant-${a.linkId}-${key}`} style={{ paddingBottom: 12 }}>{body}</div>}
+        {on && <div id={`applicant-${a.linkId}-${key}`} style={{ paddingBottom: 'var(--s-3)' }}>{body}</div>}
       </div>
     );
   };
   const renderRows = (rows) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px 18px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
         <div key={label} style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-          <div style={{ fontSize: 13.5, color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 1 }}>{value}</div>
+          <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'balance' }}>{value}</div>
         </div>
       ))}
     </div>
@@ -592,9 +592,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const meterMuted = !!fit && (fit.label === 'stated' || fit.label === 'check docs');
     const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
     const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
-    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 10, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 14, fontWeight: 700, cursor: 'pointer' };
-    const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 2, background: 'transparent', color: C.ink, border: 'none', fontSize: 13, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
-    const stateLine = { fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
+    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+    const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', color: C.ink, border: 'none', fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
+    const stateLine = { fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
     const confirmedBy = (by) => (!by || by === 'You' || by === String(profile?.full_name || '').trim() ? 'you' : by);
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
@@ -636,13 +636,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div style={{
         minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${top5 ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
-        borderRadius: R.card, padding: open ? 'clamp(14px, 3vw, 18px)' : '12px clamp(14px, 3vw, 18px)', opacity: isSetAside ? 0.94 : 1,
+        borderRadius: R.card, padding: 'var(--card-pad)', opacity: isSetAside ? 0.94 : 1,
         boxShadow: top5 ? '0 0 0 1px rgba(215,32,39,0.18)' : 'none',
       }}>
         {recent?.linkId === a.linkId && (
-          <div data-no-swipe role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, padding: '6px 6px 6px 12px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, fontSize: 13, color: C.inkSoft }}>
+          <div data-no-swipe role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', marginBottom: 'var(--s-3)', padding: 'var(--s-1) var(--s-1) var(--s-1) var(--s-3)', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.inkSoft }}>
             <span><strong style={{ color: C.ink }}>{recent.kind}.</strong> Not what you meant?</span>
-            <button type="button" onClick={undoRecent} style={{ minHeight: 40, padding: '0 14px', background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Undo</button>
+            <button type="button" onClick={undoRecent} style={{ minHeight: 40, padding: '0 var(--s-3)', background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Undo</button>
           </div>
         )}
         {/* THE CARD AT REST. A div with a button role (a real button would be excluded from the drag
@@ -651,8 +651,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {st.state === 'set_aside' ? (
           <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
             onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 13.5, color: C.inkMute, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+            <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
               <span style={{ fontWeight: 700, color: C.inkSoft }}>{app.full_name || 'Applicant'}</span>
               {a.decisionReasonCode ? ` · ${reasonLabel(a.decisionReasonCode)}` : ''}
             </div>
@@ -663,32 +663,32 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
           onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
           style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 26 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 26 }}>
             {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 'var(--t-body)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</span>
               <VerifiedMark verified={st.state === 'verified'} id={a.linkId} />
             </div>
             {overall != null ? (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} refill={meterMuted ? 'muted' : 'full'} renderValue={(shown, target) => (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5, ${fit.label}`}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5, ${fit.label}`}>
                   <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} muted={meterMuted} />
-                  <span style={{ fontSize: 18, fontWeight: 800, color: C.ink, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{Number(shown).toFixed(1)}</span>
-                  <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
+                  <span className="t-d3 num" style={{ color: C.ink, lineHeight: 1 }}>{Number(shown).toFixed(1)}</span>
+                  <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
                 </span>
               )} />
             ) : (
-              <span style={{ fontSize: 10, color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>Rent share unknown</span>
+              <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>Rent share unknown</span>
             )}
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
           {st.state === 'matched' && (<>
-            <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-            {missed.length > 0 && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 3, lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+            {missed.length > 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
             {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
           </>)}
           {st.state === 'verified' && (<>
-            <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 3, lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             <div style={stateLine}>Verified by {confirmedBy(a.confirmations?.employer?.by)}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
           </>)}
           {st.state === 'sent' && (
@@ -715,31 +715,31 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
         {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
           {/* Status line: rank and marks that only matter once you are looking at this person. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-3)' }}>
             {rank != null && pill(`Rank ${rank}`, top5 ? C.paper : C.inkSoft, top5 ? C.red : C.paperDeep)}
             {top5 && pill('Top 5', C.red, C.card, { border: `1px solid ${C.red}` })}
             {isSetAside && pill('Set aside', C.inkSoft, C.rule)}
             {isFinalist(a) && !isSetAside && pill('Finalist', C.paper, C.ink)}
             {ref && (() => { const [label, fg, bg] = refMap[ref.status] || [ref.status, C.inkMute, C.paperDeep]; return pill(label, fg, bg); })()}
             {editedAfterVerification(app, a.docVerifications).edited && pill('Edited after verification', C.amber, C.amberTint, { border: `1px solid ${C.amber}` })}
-            <span style={{ fontSize: 11, color: C.inkMute, fontFamily: 'monospace', marginLeft: 'auto' }}>{app.application_number}</span>
+            <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', marginLeft: 'auto' }}>{app.application_number}</span>
           </div>
           {app.referral_meta && <ReferralCaution meta={app.referral_meta} compact />}
           {isSetAside && (
-            <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 10, padding: '6px 10px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', padding: 'var(--s-1) var(--s-2)', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
               <strong style={{ color: C.ink }}>Set aside:</strong> {reasonLabel(a.decisionReasonCode)}
               {a.decisionNotes ? `. ${a.decisionNotes}` : ''}
             </div>
           )}
 
           {/* THE FACTS, grouped. Money and tenancy open by default; the rest on request. */}
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 'var(--s-3)' }}>
             {incomeRows.length > 0 && renderSection(a, 'income', 'Income and employment', true, renderRows(incomeRows))}
             {tenancyRows.length > 0 && renderSection(a, 'tenancy', 'Tenancy and landlord reference', true, renderRows(tenancyRows))}
             {livingRows.length > 0 && renderSection(a, 'living', 'Living situation', false, renderRows(livingRows))}
             {app.personality && renderSection(a, 'words', 'In their own words', false, (
-              <div style={{ padding: '10px 14px', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ruleDark}` }}>
-                <div style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{app.personality}”</div>
+              <div style={{ padding: 'var(--s-2) var(--s-3)', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ruleDark}` }}>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{app.personality}”</div>
               </div>
             ))}
           </div>
@@ -768,26 +768,26 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} focus={focusDocFor?.linkId === a.linkId ? focusDocFor : null} />
 
           {/* ACTIONS, after the facts. The drag is the fast path; these are the deliberate one. */}
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+          <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
             {isSetAside ? (
               <button onClick={() => restoreApplicant(a)}
-                style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
+                style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
                 Restore
               </button>
             ) : (
               <button onClick={() => openSetAside(a)} title="Record a screenable reason to de-prioritize"
-                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
                 Set aside
               </button>
             )}
             {!app.referral_meta && !['pending', 'approved'].includes(ref?.status) && (
               <button onClick={() => setReferFor(a)} title="Refer this applicant to another realtor. They must approve first"
-                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
                 Refer
               </button>
             )}
             <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
-              style={{ background: 'transparent', color: C.inkMute, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', minHeight: 40, marginLeft: 'auto' }}>
+              style={{ background: 'transparent', color: C.inkMute, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer', minHeight: 40, marginLeft: 'auto' }}>
               Withdrew
             </button>
           </div>
@@ -809,40 +809,40 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
         {locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
         {!locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
-          <a href={adapter.paths.home} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkSoft, textDecoration: 'none', marginBottom: 18 }}>
+          <a href={adapter.paths.home} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
 
           {/* Title + actions */}
-          <div className="rl-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, flexWrap: 'wrap', marginBottom: 24 }}>
+          <div className="rl-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-4)', flexWrap: 'wrap', marginBottom: 'var(--s-5)' }}>
             <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-              <h1 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.1, overflowWrap: 'anywhere' }}>
+              <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere' }}>
                 {l.name || l.address || 'Untitled listing'}
               </h1>
-              <div style={{ fontSize: 14, color: C.inkSoft, marginTop: 6, overflowWrap: 'anywhere' }}>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', overflowWrap: 'anywhere' }}>
                 {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
               <button onClick={() => setEditOpen(true)} className="rl-btn"
-                style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
                 Edit
               </button>
               <button onClick={remove}
-                style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: '10px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
                 Delete
               </button>
             </div>
           </div>
 
           {error && (
-            <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>
+            <div style={{ marginBottom: 'var(--s-4)', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
           )}
 
-          <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 16, alignItems: 'start', marginBottom: 16, '--rl-d': '90ms' }}>
+          <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 'var(--s-4)', alignItems: 'start', marginBottom: 'var(--s-4)', '--rl-d': '90ms' }}>
             {/* Unit + preferences */}
-            <section className="rl-card" style={{ minWidth: 0, padding: 'clamp(18px, 3vw, 26px)' }}>
-              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 12 }}>Unit & preferences</div>
+            <section className="rl-card" style={{ minWidth: 0, padding: 'var(--s-4)' }}>
+              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
               <Row label="Address" value={l.address || '—'} />
               <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : '—'} />
               <Row label="Unit type" value={formatUnit(l.bedrooms) || '—'} />
@@ -860,57 +860,57 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
               <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted)} />
               {l.pref_notes && (
-                <div style={{ marginTop: 12, fontSize: 13, color: C.inkSoft, lineHeight: 1.55 }}>
+                <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55 }}>
                   <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
                 </div>
               )}
               {(l.landlord_name || l.landlord_email || l.landlord_phone) && (
-                <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
-                  <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Landlord client</div>
-                  {l.landlord_name && <div style={{ fontSize: 13.5, color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
-                  {l.landlord_email && <div style={{ fontSize: 13, color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
-                  {l.landlord_phone && <div style={{ fontSize: 13, color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
+                <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                  <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Landlord client</div>
+                  {l.landlord_name && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
+                  {l.landlord_email && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
+                  {l.landlord_phone && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
                 </div>
               )}
             </section>
 
             {/* Invite link */}
-            <section className="rl-card" style={{ minWidth: 0, padding: 'clamp(18px, 3vw, 26px)' }}>
-              <div style={{ fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Invite link</div>
-              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
+            <section className="rl-card" style={{ minWidth: 0, padding: 'var(--s-4)' }}>
+              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Invite link</div>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'pretty' }}>
                 Share this link with prospective tenants. They fill the application and it appears below automatically.
               </p>
               {inviteShareUrl ? (
                 <>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                     <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()}
-                      style={{ flex: 1, minWidth: 200, padding: '11px 13px', fontSize: 13, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
+                      style={{ flex: 1, minWidth: 200, padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
                     <button onClick={copy} className="rl-btn"
-                      style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                      style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                       <Icon name="copy" size={14} /> {copied ? 'Copied' : 'Copy'}
                     </button>
                   </div>
                   <button onClick={() => getInvite(true)} disabled={inviteLoading}
-                    style={{ marginTop: 10, background: 'transparent', border: 'none', color: C.inkMute, fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>
+                    style={{ marginTop: 'var(--s-2)', background: 'transparent', border: 'none', color: C.inkMute, fontSize: 'var(--t-body-2)', textDecoration: 'underline', cursor: 'pointer' }}>
                     {inviteLoading ? 'Working…' : 'Regenerate link'}
                   </button>
                 </>
               ) : (
                 <button onClick={() => getInvite(false)} disabled={inviteLoading} className="rl-btn"
-                  style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   {inviteLoading ? 'Creating…' : <><Icon name="link" size={16} /> Get invite link</>}
                 </button>
               )}
 
               {/* Add an existing applicant by RL number */}
-              <div style={{ marginTop: 18, paddingTop: 16, borderTop: `1px solid ${C.rule}` }}>
-                <div style={{ fontSize: 12, color: C.inkSoft, fontWeight: 600, marginBottom: 8 }}>Already have an application number?</div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-4)', borderTop: `1px solid ${C.rule}` }}>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, fontWeight: 600, marginBottom: 'var(--s-2)' }}>Already have an application number?</div>
+                <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                   <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX"
                     onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
-                    style={{ flex: 1, minWidth: 180, padding: '11px 13px', fontSize: 13, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
+                    style={{ flex: 1, minWidth: 180, padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
                   <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} className="rl-btn"
-                    style={{ background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'not-allowed' : 'pointer' }}>
+                    style={{ background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'not-allowed' : 'pointer' }}>
                     {addLoading ? 'Adding…' : 'Add'}
                   </button>
                 </div>
@@ -919,34 +919,34 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </div>
 
           {/* ── RENTLETTER NOTICED — deterministic process nudges (lib/noticed.js), max 3 ── */}
-          <NoticedCards style={{ marginBottom: 16 }} onAction={onNoticeAction}
+          <NoticedCards style={{ marginBottom: 'var(--s-4)' }} onAction={onNoticeAction}
             input={{ scope: 'listing', listings: [listing], applicantsByListing: { [listing.id]: applicants }, profile,
               referralsSent: Object.values(referrals).map((r) => ({ ...r, from: { listingId: listing.id }, applicantName: applicants.find((x) => referrals[x.linkId] === r)?.application?.full_name })) }} />
 
           {/* ── APPLICANTS — single ranked list (everyone, best fit first) ── */}
-          <section className="rl-card rl-in" style={{ padding: 'clamp(18px, 3vw, 28px)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Ranked applicants</h2>
-              <span style={{ fontSize: 12.5, color: C.inkMute }}>{totalApplicants} total{setAsideList.length ? ` · ${setAsideList.length} set aside` : ''}</span>
+          <section className="rl-card rl-in" style={{ padding: 'var(--s-4)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', flexWrap: 'wrap', marginBottom: 'var(--s-1)' }}>
+              <h2 className="t-d3" style={{ color: C.ink }}>Ranked applicants</h2>
+              <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute }}>{totalApplicants} total{setAsideList.length ? ` · ${setAsideList.length} set aside` : ''}</span>
             </div>
             {/* Plain-language line (deterministic — lib/noticed.narrateApplicants) */}
             {narrateApplicants(listing, applicants) && (
-              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: unreviewed.length ? 6 : 12, maxWidth: 620 }}>{narrateApplicants(listing, applicants)}</p>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: unreviewed.length ? 6 : 12, maxWidth: 620 }}>{narrateApplicants(listing, applicants)}</p>
             )}
             {/* WHICH applicants are new to you — a line, not a banner; gone when there are none. */}
             {unreviewed.length > 0 && (
-              <p style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13, color: C.ink, marginBottom: 12 }}>
+              <p style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', fontSize: 'var(--t-body-2)', color: C.ink, marginBottom: 'var(--s-3)' }}>
                 <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: C.red, flexShrink: 0 }} />
                 <span><strong>{unreviewed.length} not yet reviewed</strong> — marked with a dot; open a card to review it.</span>
-                <button type="button" onClick={jumpToFirstUnreviewed} style={{ background: 'transparent', border: 'none', padding: 0, color: C.red, fontWeight: 700, fontSize: 13, cursor: 'pointer', textDecoration: 'underline', minHeight: 24 }}>Jump to first ↓</button>
+                <button type="button" onClick={jumpToFirstUnreviewed} style={{ background: 'transparent', border: 'none', padding: 0, color: C.red, fontWeight: 700, fontSize: 'var(--t-body-2)', cursor: 'pointer', textDecoration: 'underline', minHeight: 24 }}>Jump to first ↓</button>
               </p>
             )}
 
             {totalApplicants === 0 ? (
-              <div style={{ padding: 'clamp(24px, 5vw, 40px)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 12 }}>
-                <div style={{ display: 'inline-flex', marginBottom: 12, color: C.inkMute }}><Icon name="users" size={28} /></div>
-                <div style={{ fontSize: 16, fontWeight: 700, color: C.ink, marginBottom: 6 }}>No applicants yet</div>
-                <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
+              <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
+                <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>
+                <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, marginBottom: 'var(--s-1)' }}>No applicants yet</div>
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
                   Share your invite link above. As tenants apply, they appear here ranked against your stated criteria — best fit first.
                 </p>
               </div>
@@ -954,25 +954,25 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <CompareTenants pool={comparePool} onClose={() => setCompareOpen(false)} />
             ) : (
               <>
-                <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)' , textWrap: 'pretty' }}>
                   Everyone who applied, ranked against your stated criteria. Your <strong>top 5</strong> are highlighted. To de-prioritize someone, <strong>Set aside</strong> with a screenable reason — they stay in the list, sorted to the bottom.
                 </p>
                 {hintText && (
-                  <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
+                  <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)' }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
                 )}
                 {active.length >= 2 && (
                   <button onClick={() => setCompareOpen(true)} className="rl-btn"
-                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer', marginBottom: 16, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', marginBottom: 'var(--s-4)', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                     ⇄ Compare top tenants
                   </button>
                 )}
-                <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
+                <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
                   {active.map((a, idx) => (
                     <React.Fragment key={a.linkId}>
                       {idx === 5 && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '4px 0' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', margin: '4px 0' }}>
                           <div style={{ flex: 1, height: 1, background: C.rule }} />
-                          <span style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Below your top 5</span>
+                          <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Below your top 5</span>
                           <div style={{ flex: 1, height: 1, background: C.rule }} />
                         </div>
                       )}
@@ -982,12 +982,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </div>
 
                 {setAsideList.length > 0 && (
-                  <div style={{ marginTop: 22 }}>
-                    <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 4 }}>Set aside ({setAsideList.length})</div>
-                    <p style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
+                  <div style={{ marginTop: 'var(--gap-section)' }}>
+                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Set aside ({setAsideList.length})</div>
+                    <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)' }}>
                       De-prioritized for the screenable reasons noted. Still shown to your landlord, at the bottom.
                     </p>
-                    <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10 }}>
+                    <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
                       {setAsideList.map((a) => renderApplicantCard(a, { rank: null, top5: false, isSetAside: true }))}
                     </div>
                   </div>
@@ -998,59 +998,59 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
           {/* ── PRESENT TO LANDLORD (appears once anyone has applied) ── */}
           {totalApplicants > 0 && (
-            <section id="report" className="rl-card rl-in" style={{ padding: 'clamp(18px, 3vw, 28px)', marginTop: 16, scrollMarginTop: 16 }}>
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>Present to landlord</div>
-              <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, maxWidth: 560 }}>
+            <section id="report" className="rl-card rl-in" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
+              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Present to landlord</div>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)', maxWidth: 560 }}>
                 Present the full ranked list of {totalApplicants} applicant{totalApplicants === 1 ? '' : 's'} (top 5 highlighted{setAsideList.length ? `, ${setAsideList.length} set aside` : ''}) as a branded PDF report or a paste-ready message.
               </p>
 
               {/* Who signs this report */}
-              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '12px 14px', marginBottom: 10, fontSize: 13 }}>
+              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-3)', marginBottom: 'var(--s-2)', fontSize: 'var(--t-body-2)' }}>
                 <span style={{ color: C.inkMute, fontWeight: 600 }}>Signed by: </span>
                 {sigEditing ? (
-                  <span style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
+                  <span style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
                     <input value={sigDraft} onChange={(e) => setSigDraft(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Signing name on reports" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveSignature(); } if (e.key === 'Escape') setSigEditing(false); }}
-                      style={{ flex: '1 1 200px', minWidth: 0, padding: '10px 12px', fontSize: 16, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 44 }} />
-                    <button type="button" onClick={saveSignature} disabled={sigBusy} className="rl-btn" style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '0 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>{sigBusy ? 'Saving…' : 'Save'}</button>
-                    <button type="button" onClick={() => setSigEditing(false)} disabled={sigBusy} style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '0 12px', fontSize: 13, fontWeight: 600, color: C.inkSoft, cursor: 'pointer', minHeight: 44 }}>Cancel</button>
+                      style={{ flex: '1 1 200px', minWidth: 0, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 44 }} />
+                    <button type="button" onClick={saveSignature} disabled={sigBusy} className="rl-btn" style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>{sigBusy ? 'Saving…' : 'Save'}</button>
+                    <button type="button" onClick={() => setSigEditing(false)} disabled={sigBusy} style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, color: C.inkSoft, cursor: 'pointer', minHeight: 44 }}>Cancel</button>
                   </span>
                 ) : (
                   <>
                     <span style={{ color: C.ink, fontWeight: 600 }}>{signingName(profile)}</span>
-                    <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ marginLeft: 10, background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 13, padding: 0, minHeight: 28 }}>Change</button>
-                    <span style={{ display: 'block', fontSize: 12, color: C.inkMute, marginTop: 4, textWrap: 'pretty' }}>The name that signs this report and every report after it.</span>
+                    <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ marginLeft: 'var(--s-2)', background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 'var(--t-body-2)', padding: 0, minHeight: 28 }}>Change</button>
+                    <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>The name that signs this report and every report after it.</span>
                   </>
                 )}
               </div>
               {/* Landlord contact captured on the listing */}
-              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '12px 14px', marginBottom: 16, fontSize: 13 }}>
+              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-3)', marginBottom: 'var(--s-4)', fontSize: 'var(--t-body-2)' }}>
                 <span style={{ color: C.inkMute, fontWeight: 600 }}>Landlord client: </span>
                 {(l.landlord_name || l.landlord_email || l.landlord_phone) ? (
-                  <span style={{ color: C.ink }}>
-                    {[l.landlord_name, l.landlord_email, l.landlord_phone].filter(Boolean).join(' · ')}
+                  <span style={{ color: C.ink, display: 'inline-grid', gap: 'var(--s-1)' }}>
+                    {[l.landlord_name, l.landlord_email, l.landlord_phone].filter(Boolean).map((part) => <span key={part} style={{ display: 'block', overflowWrap: 'anywhere' }}>{part}</span>)}
                   </span>
                 ) : (
-                  <span style={{ color: C.inkMute }}>Not set — add it via <button onClick={() => setEditOpen(true)} style={{ background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 13 }}>Edit listing</button> to email them.</span>
+                  <span style={{ color: C.inkMute }}>Not set — add it via <button onClick={() => setEditOpen(true)} style={{ background: 'transparent', border: 'none', color: C.red, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'var(--t-body-2)' }}>Edit listing</button> to email them.</span>
                 )}
               </div>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={downloadPdf} disabled={pdfBusy} className="rl-btn"
-                  style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   <Icon name="doc" size={16} color={C.paper} /> {pdfBusy ? 'Generating…' : 'Generate PDF'}
                 </button>
                 <button onClick={copyText} disabled={textBusy} className="rl-btn"
-                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   <Icon name="copy" size={16} /> {textBusy ? 'Composing…' : textCopied ? 'Copied!' : 'Copy text for landlord'}
                 </button>
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
-                  style={{ background: (sending || !l.landlord_email) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 20px', fontSize: 14, fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  style={{ background: (sending || !l.landlord_email) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   <Icon name="mail" size={16} color={C.paper} /> {sending ? 'Sending…' : 'Email report'}
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
               {sendMsg && (
-                <div style={{ marginTop: 12, fontSize: 13, color: C.inkSoft }}>{sendMsg}</div>
+                <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft }}>{sendMsg}</div>
               )}
             </section>
           )}
@@ -1067,39 +1067,39 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       )}
       {setAsideFor && (
           <div onClick={() => setSetAsideFor(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px,4vw,32px)', zIndex: 100 }}>
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--s-4)', zIndex: 100 }}>
             <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-              style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.modal, padding: 'clamp(20px,4vw,28px)' }}>
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Set aside</div>
-              <h3 style={{ fontSize: 20, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 8 }}>
+              style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.modal, padding: 'var(--s-4)' }}>
+              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Set aside</div>
+              <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 'var(--s-2)' }}>
                 {setAsideFor.application?.full_name || 'Applicant'}
               </h3>
-              <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-4)' }}>
                 Choose a screenable reason. They stay in the list (sorted to the bottom) with this reason recorded — your defensible paper trail. This is not a rejection.
               </p>
-              <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Reason (required)</label>
+              <label style={{ display: 'block', fontSize: 'var(--t-eyebrow)', color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Reason (required)</label>
               <select value={setAsideCode} onChange={(e) => setSetAsideCode(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', marginBottom: 14 }}>
+                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', marginBottom: 'var(--s-3)' }}>
                 <option value="">Select a reason…</option>
                 {SET_ASIDE_REASONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
               </select>
-              <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: 'var(--t-eyebrow)', color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>
                 Note {setAsideCode === 'other_screenable' ? '(required)' : '(optional)'}
               </label>
               <textarea value={setAsideNote} onChange={(e) => setSetAsideNote(e.target.value)} rows={3}
                 placeholder="e.g. stated income $42k vs $60k minimum"
-                style={{ width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit', marginBottom: 8 }} />
-              <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 16 }}>
+                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit', marginBottom: 'var(--s-2)' }} />
+              <p style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-4)' }}>
                 Use only screenable facts (income, references, tenure, occupancy). Never protected grounds.
               </p>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={confirmSetAside}
                   disabled={!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())}
-                  style={{ flex: 1, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px', fontSize: 14, fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
+                  style={{ flex: 1, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
                   Set aside
                 </button>
                 <button onClick={() => setSetAsideFor(null)}
-                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '13px 18px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>

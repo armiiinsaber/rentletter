@@ -93,10 +93,10 @@ export function MotionStyles() {
   return (
     <style jsx global>{`
       :root { ${MOTION_VARS} }
-      .m-verified { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.green}; background: ${C.greenTint}; border: 1px solid ${C.green}; padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
+      .m-verified { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.green}; background: ${C.greenTint}; border: 1px solid ${C.green}; padding: var(--s-1) var(--s-2); border-radius: 999px; white-space: nowrap; }
       .m-verified-tick { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; display: inline-block; }
       .m-depart { position: relative; display: inline-block; width: 0; height: 0; overflow: visible; }
-      .m-depart-card { position: absolute; left: 0; bottom: 0; width: 44px; height: 56px; border-radius: 6px; background: ${C.card}; border: 1px solid ${C.ruleDark}; box-shadow: 0 8px 20px rgba(15,15,16,0.14); display: flex; flex-direction: column; gap: 5px; padding: 10px 8px; pointer-events: none; opacity: 0; }
+      .m-depart-card { position: absolute; left: 0; bottom: 0; width: 44px; height: 56px; border-radius: 6px; background: ${C.card}; border: 1px solid ${C.ruleDark}; box-shadow: 0 8px 20px rgba(15,15,16,0.14); display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-2) var(--s-2); pointer-events: none; opacity: 0; }
       .m-depart-line { display: block; height: 3px; border-radius: 2px; background: ${C.rule}; }
       .m-depart-line.short { width: 60%; }
       .m-xfade { display: contents; }
@@ -104,11 +104,11 @@ export function MotionStyles() {
          revealed as the card moves; only the card's transform and the underlay's opacity change. */
       .m-swipe { position: relative; min-width: 0; }
       .m-swipe-card { position: relative; touch-action: pan-y; will-change: transform; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-      .m-swipe-under { position: absolute; inset: 0; display: flex; align-items: center; padding: 0 16px; border-radius: 16px; opacity: 0; pointer-events: none; background: ${C.paperDeep}; color: ${C.ink}; }
+      .m-swipe-under { position: absolute; inset: 0; display: flex; align-items: center; padding: var(--card-pad); border-radius: var(--card-radius); opacity: 0; pointer-events: none; background: ${C.paperDeep}; color: ${C.ink}; }
       .m-swipe-under.left { justify-content: flex-start; }
       .m-swipe-under.right { justify-content: flex-end; }
       .m-swipe-under.good { background: ${C.greenTint}; color: ${C.green}; }
-      .m-swipe-label { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 12px; border: 1px solid currentColor; border-radius: 999px; transform: scale(0.92); }
+      .m-swipe-label { font-size: var(--t-body-2); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: var(--s-2) var(--s-3); border: 1px solid currentColor; border-radius: 999px; transform: scale(0.92); }
       .m-swipe-under.armed .m-swipe-label { transform: scale(1.06); }
       /* g. the open applicant card: the body enters on the enter curve; section chevrons turn. */
       .m-chev { display: inline-flex; color: ${C.inkMute}; }

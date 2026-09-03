@@ -47,12 +47,12 @@ function ActionRow({ item, phase, onGo, onDismiss }) {
   }, [onDismiss]);
   const key = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onGo(); } };
   return (
-    <li ref={ref} className={`al-row ${phase === 'enter' ? 'al-enter' : ''} ${phase === 'leave' ? 'al-leave' : ''}`} data-key={item.key} data-kind={item.kind} style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
-      <div role="button" tabIndex={0} onClick={onGo} onKeyDown={key} style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '8px 0', cursor: 'pointer' }}>
-        <span style={{ display: 'block', fontSize: 15, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{item.title}</span>
-        <span style={{ display: 'block', fontSize: 12.5, color: C.inkMute, lineHeight: 1.4, marginTop: 2, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{item.detail}</span>
+    <li ref={ref} className={`al-row ${phase === 'enter' ? 'al-enter' : ''} ${phase === 'leave' ? 'al-leave' : ''}`} data-key={item.key} data-kind={item.kind} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-1)', borderBottom: `1px solid ${C.rule}`, background: C.paper }}>
+      <div role="button" tabIndex={0} onClick={onGo} onKeyDown={key} style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 'var(--s-2) 0', cursor: 'pointer' }}>
+        <span style={{ display: 'block', fontSize: 'var(--t-body)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3, overflowWrap: 'anywhere' }}>{item.title}</span>
+        <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{item.detail}</span>
       </div>
-      <button type="button" onClick={onGo} style={{ minHeight: 44, padding: '0 10px', background: 'transparent', border: 'none', color: C.red, fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>{item.verb}</button>
+      <button type="button" onClick={onGo} style={{ minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: C.red, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>{item.verb}</button>
       <button type="button" className="al-x" onClick={onDismiss} aria-label={`Dismiss: ${item.title}`} title="Dismiss until something changes" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', flexShrink: 0 }}><Icon name="x" size={14} /></button>
     </li>
   );
@@ -82,7 +82,7 @@ function ActionList({ items, onGo, onDismiss }) {
   }, [items]);
   if (!rows.length) {
     return (
-      <p style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15, color: C.ink, fontWeight: 700, lineHeight: 1.5, padding: '10px 2px', margin: 0 }}>
+      <p style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, lineHeight: 1.5, padding: 'var(--s-2) var(--s-1)', margin: 0 }}>
         <Icon name="check" size={16} color={C.red} strokeWidth={2.5} /> Nothing waiting on you.
       </p>
     );
@@ -167,15 +167,15 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
 
   return createPortal(
     <div role="dialog" aria-modal="true" aria-label="Assistant" className="al-panel" style={{ position: 'fixed', inset: 0, zIndex: 10000, background: C.paper, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px clamp(14px, 4vw, 24px) 0', flexShrink: 0 }}>
-        <span style={{ fontSize: 15, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Assistant</span>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', padding: '12px clamp(14px, 4vw, 24px) 0', flexShrink: 0 }}>
+        <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Assistant</span>
         <button type="button" onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.pill, color: C.ink, cursor: 'pointer' }}><Icon name="x" size={16} /></button>
       </div>
       <div role="tablist" aria-label="Assistant sections" style={{ display: 'flex', gap: 0, padding: '0 clamp(14px, 4vw, 24px)', borderBottom: `1px solid ${C.rule}`, flexShrink: 0 }}>
         {TABS.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-            style={{ minHeight: 44, padding: '0 14px', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.red : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkMute, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-            {label}{id === 'next' && items.length ? <span aria-hidden="true" style={{ marginLeft: 6, fontSize: 11, fontWeight: 800, color: C.paper, background: C.red, borderRadius: 9, padding: '1px 6px' }}>{items.length}</span> : null}
+            style={{ minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.red : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkMute, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            {label}{id === 'next' && items.length ? <span aria-hidden="true" style={{ marginLeft: 'var(--s-1)', fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.red, borderRadius: 9, padding: 'var(--s-1) var(--s-1)' }}>{items.length}</span> : null}
           </button>
         ))}
       </div>
@@ -183,24 +183,24 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
       {tab === 'next' && (
         <section role="tabpanel" aria-label="Next" style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '6px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
           <ActionList items={items} onGo={go} onDismiss={dismiss} />
-          {note ? <div role="alert" style={{ fontSize: 12.5, color: C.danger, marginTop: 8 }}>{note}</div> : null}
-          <div style={{ marginTop: 16 }}><ReferralInbox listings={listings} initialItems={s.referralsInbox || []} onChanged={refresh} embedded /></div>
+          {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginTop: 'var(--s-2)' }}>{note}</div> : null}
+          <div style={{ marginTop: 'var(--s-4)' }}><ReferralInbox listings={listings} initialItems={s.referralsInbox || []} onChanged={refresh} embedded /></div>
         </section>
       )}
       {tab === 'history' && (
         <section role="tabpanel" aria-label="History" style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
-          {!events.length && !loading && <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.5 }}>Nothing yet. From here on, what happens on your listings is recorded here.</p>}
+          {!events.length && !loading && <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5 }}>Nothing yet. From here on, what happens on your listings is recorded here.</p>}
           {groups.map((g) => (
-            <div key={g.key} style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: 12, color: C.inkMute, fontWeight: 700, padding: '6px 0' }}>{g.label}</div>
+            <div key={g.key} style={{ marginBottom: 'var(--s-3)' }}>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, fontWeight: 700, padding: 'var(--s-1) 0' }}>{g.label}</div>
               <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                 {g.items.map((e) => { const u = unread(e); return (
                   <li key={e.id} className={entering[e.id] ? 'm-tl-enter' : ''}>
-                    <button type="button" onClick={() => goEvent(e)} style={{ width: '100%', textAlign: 'left', display: 'flex', gap: 10, alignItems: 'flex-start', padding: '10px 4px', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.rule}`, cursor: 'pointer', minHeight: 44 }}>
-                      <span aria-hidden="true" style={{ marginTop: 7, width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: u ? C.red : C.rule }} />
+                    <button type="button" onClick={() => goEvent(e)} style={{ width: '100%', textAlign: 'left', display: 'flex', gap: 'var(--s-2)', alignItems: 'flex-start', padding: 'var(--s-2) var(--s-1)', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.rule}`, cursor: 'pointer', minHeight: 44 }}>
+                      <span aria-hidden="true" style={{ marginTop: 'var(--s-2)', width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: u ? C.red : C.rule }} />
                       <span style={{ minWidth: 0, flex: 1 }}>
-                        <span style={{ display: 'block', fontSize: 14, color: C.ink, fontWeight: u ? 700 : 500, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{eventTitle(e)}</span>
-                        <span style={{ display: 'block', fontSize: 12, color: C.inkMute, marginTop: 2 }}>{timeOf(e.created_at)}</span>
+                        <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: u ? 700 : 500, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{eventTitle(e)}</span>
+                        <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>{timeOf(e.created_at)}</span>
                       </span>
                     </button>
                   </li>
@@ -208,7 +208,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
               </ul>
             </div>
           ))}
-          {nextBefore && <button type="button" onClick={more} disabled={loading} style={{ width: '100%', minHeight: 44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>{loading ? 'Loading' : 'Show earlier'}</button>}
+          {nextBefore && <button type="button" onClick={more} disabled={loading} style={{ width: '100%', minHeight: 44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' }}>{loading ? 'Loading' : 'Show earlier'}</button>}
         </section>
       )}
       {tab === 'ask' && (

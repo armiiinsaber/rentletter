@@ -66,6 +66,7 @@ export const SH = {
 export const EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
 
 export const FONT = {
-  sans: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-  serif: "'Fraunces', Georgia, 'Times New Roman', serif",
+  // The metric matched fallbacks (components/ui.js GlobalStyle) sit right behind each webfont.
+  sans: "'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, sans-serif",
+  serif: "'Fraunces', 'Fraunces Fallback', Georgia, 'Times New Roman', serif",
 };

@@ -92,46 +92,46 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch (e) { /* ignore */ }
   };
 
-  const box = { marginTop: 12, border: `1px solid ${highlight ? C.red : C.rule}`, boxShadow: highlight ? `0 0 0 2px ${C.redTint}` : 'none', borderRadius: R.card, padding: 'clamp(14px, 3vw, 18px)', background: C.card };
+  const box = { marginTop: 'var(--s-3)', border: `1px solid ${highlight ? C.red : C.rule}`, boxShadow: highlight ? `0 0 0 2px ${C.redTint}` : 'none', borderRadius: R.card, padding: 'var(--card-pad)', background: C.card };
 
   if (!loaded) {
-    return <div ref={boxRef} style={{ ...box, color: C.inkMute, fontSize: 12.5 }}>Loading document request…</div>;
+    return <div ref={boxRef} style={{ ...box, color: C.inkMute, fontSize: 'var(--t-body-2)' }}>Loading document request…</div>;
   }
 
   return (
     <div ref={boxRef} style={box}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginBottom: 'var(--s-1)' }}>
         <Icon name="doc" size={15} color={C.ink} />
-        <span style={{ fontSize: 13.5, fontWeight: 800, color: C.ink }}>Request documents from tenant</span>
-        {status === 'requested' && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, padding: '2px 8px', borderRadius: R.pill }}>Pending</span>}
-        {status === 'received' && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.green, background: C.greenTint, border: `1px solid ${C.green}`, padding: '2px 8px', borderRadius: R.pill }}>✓ Received</span>}
+        <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 800, color: C.ink }}>Request documents from tenant</span>
+        {status === 'requested' && <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill }}>Pending</span>}
+        {status === 'received' && <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.green, background: C.greenTint, border: `1px solid ${C.green}`, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill }}>✓ Received</span>}
       </div>
 
       {status === 'received' ? (
         <div>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55 }}>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55 }}>
             The tenant uploaded their documents{receivedAt ? ` on ${shortDate(receivedAt)}` : ''}. They’re analyzed automatically — see the verification in the document panel above.
           </div>
           {!confirmRenew ? (
-            <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ marginTop: 'var(--s-3)', display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
               <button onClick={requestAgain} disabled={busy}
-                style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+                style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
                 {busy ? 'Creating link…' : 'Request again'}
               </button>
-              <span style={{ fontSize: 11.5, color: C.inkMute, minWidth: 0 }}>Need different documents? Send a fresh upload link.</span>
+              <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, minWidth: 0 }}>Need different documents? Send a fresh upload link.</span>
             </div>
           ) : (
-            <div style={{ marginTop: 12, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '11px 13px' }}>
-              <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 10 }}>
+            <div style={{ marginTop: 'var(--s-3)', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-3)' }}>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-2)' }}>
                 A verified analysis already exists. Request new documents anyway? A new submission will overwrite the active analysis. <strong style={{ color: C.ink }}>Tip:</strong> archive the current analysis first if you want to keep it.
               </div>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button onClick={() => request(false, true)} disabled={busy}
-                  style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+                  style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
                   {busy ? 'Creating link…' : 'Request new documents'}
                 </button>
                 <button onClick={() => setConfirmRenew(false)} disabled={busy}
-                  style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' }}>
+                  style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.inkSoft, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>
@@ -140,34 +140,34 @@ export default function ApplicantDocRequest({ listingId, linkId, applicationId, 
         </div>
       ) : status === 'requested' ? (
         <>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 10 }}>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-2)' }}>
             Secure link sent{requestedAt ? ` (${shortDate(requestedAt)})` : ''} — waiting for the tenant to upload. Copy the link or email it to them.
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '8px 10px', marginBottom: 10 }}>
-            <span style={{ fontSize: 12, color: C.inkSoft, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{url}</span>
-            <button onClick={copy} style={{ flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '7px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>{copied ? '✓ Copied' : 'Copy'}</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-2)', marginBottom: 'var(--s-2)' }}>
+            <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{url}</span>
+            <button onClick={copy} style={{ flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' }}>{copied ? '✓ Copied' : 'Copy'}</button>
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
             <button onClick={() => request(true)} disabled={emailBusy || !tenantEmail}
-              style={{ background: 'transparent', color: tenantEmail ? C.ink : C.inkMute, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: (emailBusy || !tenantEmail) ? 'default' : 'pointer', opacity: (emailBusy || !tenantEmail) ? 0.6 : 1 }}>
+              style={{ background: 'transparent', color: tenantEmail ? C.ink : C.inkMute, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (emailBusy || !tenantEmail) ? 'default' : 'pointer', opacity: (emailBusy || !tenantEmail) ? 0.6 : 1 }}>
               {emailBusy ? 'Sending…' : tenantEmail ? 'Email to tenant' : 'No email on file'}
             </button>
-            {emailedNote && <span style={{ fontSize: 12, color: C.inkSoft }}>{emailedNote}</span>}
+            {emailedNote && <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft }}>{emailedNote}</span>}
           </div>
         </>
       ) : (
         <>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}>
             Instead of collecting the finalist’s documents yourself, send them a secure link to upload their own, no email back and forth. Their files are analyzed, then held for your review for 14 days or until you delete them.
           </div>
           <button onClick={() => request(false)} disabled={busy}
-            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
+            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1 }}>
             {busy ? 'Creating link…' : 'Request documents from tenant'}
           </button>
         </>
       )}
 
-      {error && <div style={{ marginTop: 10, fontSize: 12.5, color: C.red }}>{error}</div>}
+      {error && <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.red }}>{error}</div>}
     </div>
   );
 }

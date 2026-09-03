@@ -13,6 +13,28 @@ export const GlobalStyle = () => (
   <style jsx global>{`
     /* Font faces (Inter + Fraunces) are loaded once for every page in
        pages/_document.js via preconnect + <link> — no @import here. */
+    /* ── THE SCALES (realtor side). Space 4 8 12 16 24 32 48; type display 28 22 18 in Fraunces,
+       body 16 14 in Inter, eyebrow 11 uppercase tracked; numerals tabular. Card padding 16 at
+       390, one rule colour. Sections 32 apart, cards 16, related lines 8 inside a card. ── */
+    :root {
+      --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px;
+      --t-d1: 28px; --t-d2: 22px; --t-d3: 18px; --t-body: 16px; --t-body-2: 14px; --t-eyebrow: 11px;
+      --lh-display: 1.15; --lh-body: 1.5; --lh-eyebrow: 1;
+      --f-display: ${FONT.serif}; --f-body: ${FONT.sans};
+      --card-pad: 16px; --card-radius: ${R.card}px; --rule: ${C.rule};
+      --gap-section: 32px; --gap-card: 16px; --gap-line: 8px;
+    }
+    /* Metric matched fallbacks so text set in the system face before the webfont arrives takes the
+       same space (size-adjust from the real font files against Arial and Georgia). */
+    @font-face { font-family: 'Inter Fallback'; src: local('Arial'); size-adjust: 107.48%; ascent-override: 90.14%; descent-override: 22.44%; line-gap-override: 0%; }
+    @font-face { font-family: 'Fraunces Fallback'; src: local('Georgia'); size-adjust: 109.40%; ascent-override: 89.39%; descent-override: 23.31%; line-gap-override: 0%; }
+    .t-d1 { font-family: var(--f-display); font-size: var(--t-d1); line-height: var(--lh-display); font-weight: 600; letter-spacing: -0.02em; }
+    .t-d2 { font-family: var(--f-display); font-size: var(--t-d2); line-height: var(--lh-display); font-weight: 600; letter-spacing: -0.015em; }
+    .t-d3 { font-family: var(--f-display); font-size: var(--t-d3); line-height: var(--lh-display); font-weight: 600; letter-spacing: -0.01em; }
+    .t-body { font-size: var(--t-body); line-height: var(--lh-body); }
+    .t-body-2 { font-size: var(--t-body-2); line-height: var(--lh-body); }
+    .t-eyebrow { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .num { font-variant-numeric: tabular-nums; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html {
       scroll-behavior: smooth;

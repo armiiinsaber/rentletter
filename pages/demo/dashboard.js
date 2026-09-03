@@ -45,7 +45,7 @@ export default function DemoSandbox() {
       </Head>
       <div className="rl-sandbox-bar" role="note">
         <span className="rl-sandbox-dot" aria-hidden="true" />
-        <span><strong>Sample workspace.</strong> Everything here is fake data for {adapter?.getState().profile.full_name || 'a sample realtor'} — click anything; nothing is saved or sent.</span>
+        <span style={{ textWrap: 'pretty' }}><strong>Sample workspace.</strong> Everything here is fake data for {adapter?.getState().profile.full_name || 'a sample realtor'} — click anything; nothing is saved or sent.</span>
         <span className="rl-sandbox-actions">
           {adapter && <button type="button" onClick={reset}>Reset sample</button>}
           <a href="/signin">Use it for real →</a>
@@ -57,11 +57,11 @@ export default function DemoSandbox() {
         </DashboardAdapterContext.Provider>
       )}
       <style jsx global>{`
-        .rl-sandbox-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 16px; background: ${C.ink}; color: #e8e4d9; font-size: 13px; line-height: 1.4; border-bottom: 3px solid ${C.red}; }
+        .rl-sandbox-bar { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; padding: var(--s-2) var(--s-4); background: ${C.ink}; color: #e8e4d9; font-size: var(--t-body-2); line-height: 1.4; border-bottom: 3px solid ${C.red}; }
         .rl-sandbox-bar strong { color: #fff; }
         .rl-sandbox-dot { width: 8px; height: 8px; border-radius: 50%; background: ${C.red}; flex-shrink: 0; }
-        .rl-sandbox-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
-        .rl-sandbox-actions button, .rl-sandbox-actions a { font: inherit; font-weight: 600; color: #e8e4d9; background: transparent; border: 1px solid #3a3a3e; border-radius: 8px; padding: 6px 10px; min-height: 34px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+        .rl-sandbox-actions { margin-left: auto; display: flex; gap: var(--s-2); align-items: center; }
+        .rl-sandbox-actions button, .rl-sandbox-actions a { font: inherit; font-weight: 600; color: #e8e4d9; background: transparent; border: 1px solid #3a3a3e; border-radius: 8px; padding: var(--s-1) var(--s-2); min-height: 34px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
         .rl-sandbox-actions a { background: ${C.red}; border-color: ${C.red}; color: ${C.paper}; }
         @media (max-width: 480px) { .rl-sandbox-actions { margin-left: 0; } }
       `}</style>

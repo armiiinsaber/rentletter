@@ -42,42 +42,42 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
   const goes = (d) => { const n = daysUntil(d.expiresAt); return n === 0 ? 'Deleted today' : n === 1 ? 'Deleted tomorrow' : `Deleted in ${n} days`; };
   const view = async (d) => { if (busy) return; setBusy(d.id); setErr(''); const e = await onView?.(d); if (e) setErr(e); setBusy(''); };
   const del = async () => { if (busy) return; setBusy('delete'); setErr(''); const e = await onDeleteAll?.(); if (e) setErr(e); else setConfirm(false); setBusy(''); };
-  const heading = <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute, marginBottom: 6 }}>Documents held</div>;
-  const btn44 = { minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: R.ctrl, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 14px' };
+  const heading = <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute, marginBottom: 'var(--s-1)' }}>Documents held</div>;
+  const btn44 = { minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', padding: '0 var(--s-3)' };
   if (!live.length) {
     const last = gone[0];
     return (
-      <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.rule}` }}>
+      <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
         {heading}
-        <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4 }}>{last ? `Deleted ${fmt(last.deletedAt)} · ${byLabel(last.deletedBy)}` : 'None held'}</div>
+        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4 }}>{last ? `Deleted ${fmt(last.deletedAt)} · ${byLabel(last.deletedBy)}` : 'None held'}</div>
       </div>
     );
   }
   return (
-    <div style={{ marginTop: 14, paddingTop: 12, borderTop: `1px solid ${C.rule}` }}>
+    <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
       {heading}
-      <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 8, lineHeight: 1.4 }}>Only you can view these. Each view is logged. Gone after {RETENTION_DAYS} days or when you delete them.</div>
+      <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginBottom: 'var(--s-2)', lineHeight: 1.4 }}>Only you can view these. Each view is logged. Gone after {RETENTION_DAYS} days or when you delete them.</div>
       <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, overflow: 'hidden' }}>
         {live.map((d, i) => (
-          <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
+          <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{cap(d.kind)}</div>
-              <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.4, marginTop: 1 }}>{d.uploadedBy === 'tenant' ? 'from tenant' : 'you'} · {fmt(d.uploadedAt)} · {goes(d)}</div>
+              <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{cap(d.kind)}</div>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>{d.uploadedBy === 'tenant' ? 'from tenant' : 'you'} · {fmt(d.uploadedAt)} · {goes(d)}</div>
             </div>
             <button type="button" onClick={() => view(d)} disabled={!!busy} aria-label={`View ${d.kind}`} style={{ ...btn44, minWidth: 64, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, opacity: busy === d.id ? 0.6 : 1 }}>{busy === d.id ? 'Opening' : 'View'}</button>
           </div>
         ))}
       </div>
       {!confirm ? (
-        <button type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 4, background: 'transparent', border: 'none', color: C.danger, textDecoration: 'underline' }}>Delete all documents</button>
+        <button type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', border: 'none', color: C.danger, textDecoration: 'underline' }}>Delete all documents</button>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-          <span style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
+          <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
           <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.danger, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}>{busy === 'delete' ? 'Deleting' : 'Delete'}</button>
           <button type="button" onClick={() => setConfirm(false)} disabled={busy === 'delete'} style={{ ...btn44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}` }}>Cancel</button>
         </div>
       )}
-      {err ? <div role="alert" style={{ marginTop: 6, fontSize: 12.5, color: C.danger }}>{err}</div> : null}
+      {err ? <div role="alert" style={{ marginTop: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.danger }}>{err}</div> : null}
     </div>
   );
 }
@@ -255,35 +255,34 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setTextBusy(false);
   };
 
-  const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
-  const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 };
-  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.red}`, color: C.red, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer' };
-  const destSolidBtn = { background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 };
+  const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
+  const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
+  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.red}`, color: C.red, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+  const destSolidBtn = { background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
 
   return (
-    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+    <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
       <button onClick={() => setOpen((o) => !o)}
-        style={{ ...ghostBtn, color: C.ink, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', textAlign: 'left' }}>
+        style={{ ...ghostBtn, color: C.ink, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', textAlign: 'left' }}>
         <Icon name="doc" size={14} color={C.ink} />
-        {hasReport ? 'Document verification' : 'Analyze documents'}
-        {hasReport && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.green, padding: '2px 8px', borderRadius: R.pill }}>✓ done</span>}
-        {edited.edited && <span style={{ fontSize: 10.5, fontWeight: 800, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, padding: '2px 8px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>Edited after verification</span>}
-        <span aria-hidden="true" style={{ color: C.inkMute, marginLeft: 2 }}>{open ? '▲' : '▼'}</span>
+        <span style={{ whiteSpace: 'nowrap' }}>{hasReport ? 'Document verification' : 'Analyze documents'} <span aria-hidden="true" style={{ color: C.inkMute }}>{open ? '▲' : '▼'}</span></span>
+        {hasReport && <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.green, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill }}>✓ done</span>}
+        {edited.edited && <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, whiteSpace: 'nowrap' }}>Edited after verification</span>}
       </button>
 
       {/* Caution (not an error): profile edited after the active verification. Shown whether or
           not the panel is open so it can't be missed on a quick scan. */}
       {edited.edited && (
-        <div role="note" style={{ marginTop: 10, padding: '10px 14px', background: C.amberTint, borderLeft: `3px solid ${C.amber}`, borderRadius: R.ctrl, fontSize: 12.5, color: C.ink, lineHeight: 1.55 }}>
+        <div role="note" style={{ marginTop: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', background: C.amberTint, borderLeft: `3px solid ${C.amber}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.55 , textWrap: 'pretty' }}>
           <strong>Edited after verification.</strong> {applicantName ? applicantName.split(' ')[0] : 'The applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were verified on {fmtShort(edited.verifiedAt)}. The verified facts may no longer match what’s on the application — if income or employer changed and it matters here, re-request documents below.
         </div>
       )}
 
       {/* Archived report — read-only view. */}
       {open && viewing && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.inkMute, padding: '3px 10px', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived — {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ' · tenant' : ''}</span>
+        <div style={{ marginTop: 'var(--s-3)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginBottom: 'var(--s-3)' }}>
+            <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.inkMute, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived — {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ' · tenant' : ''}</span>
             <button onClick={() => setViewing(null)} style={{ ...ghostBtn, color: C.ink }}>← Back</button>
           </div>
           <DocIntelReport result={viewing.report} insight={viewing.ai_insight || ''} />
@@ -291,91 +290,91 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       )}
 
       {open && !viewing && (
-        <div style={{ marginTop: 12 }}>
+        <div style={{ marginTop: 'var(--s-3)' }}>
           {/* Uploader */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
             onClick={() => inputRef.current?.click()}
-            style={{ border: `1.5px dashed ${dragOver ? C.red : C.ruleDark}`, background: dragOver ? '#fef2f0' : C.paper, borderRadius: R.card, padding: '18px 16px', textAlign: 'center', cursor: 'pointer' }}>
+            style={{ border: `1.5px dashed ${dragOver ? C.red : C.ruleDark}`, background: dragOver ? '#fef2f0' : C.paper, borderRadius: R.card, padding: 'var(--s-4) var(--s-4)', textAlign: 'center', cursor: 'pointer' }}>
             <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx" style={{ display: 'none' }}
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
-            <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>Drop documents here or click to choose</div>
-            <div style={{ fontSize: 12, color: C.inkMute, marginTop: 3 }}>Pay stubs, employment letters, bank statements, ID — up to {MAX} files (JPG/PNG/PDF, 25MB total)</div>
+            <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>Drop documents here or click to choose</div>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>Pay stubs, employment letters, bank statements, ID — up to {MAX} files (JPG/PNG/PDF, 25MB total)</div>
           </div>
 
           {files.length > 0 && (
-            <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6 }}>
+            <div style={{ marginTop: 'var(--s-2)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-1)' }}>
               {files.map((f, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '7px 11px' }}>
-                  <span style={{ fontSize: 12.5, color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{f.name}</span>
-                  <span style={{ fontSize: 11, color: C.inkMute }}>{(f.size / 1024 / 1024).toFixed(1)}MB</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)' }}>
+                  <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{f.name}</span>
+                  <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>{(f.size / 1024 / 1024).toFixed(1)}MB</span>
                   <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} aria-label="Remove"
-                    style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+                    style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 'var(--t-body)', lineHeight: 1, padding: 0 }}>×</button>
                 </div>
               ))}
             </div>
           )}
 
-          <div style={{ marginTop: 12, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ marginTop: 'var(--s-3)', display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
             <button onClick={analyze} disabled={!files.length || analyzing}
-              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13.5, fontWeight: 700, cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
               {analyzing && <span className="rl-dispin" aria-hidden="true" />}
               {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Re-analyze' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
             </button>
-            <span style={{ fontSize: 11.5, color: C.inkMute }}>Held for your review · deleted in {RETENTION_DAYS} days or when you delete them</span>
+            <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>Held for your review · deleted in {RETENTION_DAYS} days or when you delete them</span>
           </div>
 
           {Array.isArray(heldDocuments) && heldDocuments.length > 0 && (
             <HeldDocuments docs={heldDocuments} realtorName={realtorName} onView={onViewDocument} onDeleteAll={onDeleteDocuments} />
           )}
 
-          {error && <div style={{ marginTop: 10, fontSize: 13, color: C.red }}>{error}</div>}
+          {error && <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.red }}>{error}</div>}
 
           {/* Report */}
           {hasReport && (
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginTop: 'var(--s-4)' }}>
               <DocIntelReport result={result} insight={insight} />
               {!insight && (
                 <button onClick={genInsight} disabled={insightLoading}
-                  style={{ marginTop: 14, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13.5, fontWeight: 700, cursor: insightLoading ? 'wait' : 'pointer', opacity: insightLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  style={{ marginTop: 'var(--s-3)', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: insightLoading ? 'wait' : 'pointer', opacity: insightLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                   {insightLoading && <span className="rl-dispin" aria-hidden="true" />}
                   {insightLoading ? 'Writing insight…' : 'Generate AI insight'}
                 </button>
               )}
 
               {/* Stage 2 — SEPARATE landlord confirmation for THIS applicant only (PDF + text). */}
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
-                <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, marginBottom: 3 }}>Verify &amp; confirm to landlord</div>
-                <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 10 }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only — separate from the ranked shortlist.</div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 800, color: C.ink, marginBottom: 'var(--s-1)' }}>Verify &amp; confirm to landlord</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only — separate from the ranked shortlist.</div>
+                <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={downloadConfirmPdf} disabled={pdfBusy}
-                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                     {pdfBusy && <span className="rl-dispin" aria-hidden="true" />}{pdfBusy ? 'Preparing…' : 'Download PDF'}
                   </button>
                   <button onClick={copyConfirmText} disabled={textBusy}
-                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                     {copied ? '✓ Copied' : textBusy ? 'Preparing…' : 'Copy text'}
                   </button>
                 </div>
               </div>
 
               {/* Archive / delete this applicant's active analysis (Feature 4). */}
-              <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+              <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                 {!confirmDelete ? (
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                     <button onClick={archiveActive} disabled={!!managing} style={{ ...secondaryBtn, opacity: managing ? 0.6 : 1 }}>
                       {managing === 'archive' && <span className="rl-dispin rl-dispin--dark" aria-hidden="true" />}{managing === 'archive' ? 'Archiving…' : 'Archive'}
                     </button>
                     <button onClick={() => { setConfirmDelete(true); setError(''); }} disabled={!!managing} style={{ ...destOutlineBtn, opacity: managing ? 0.6 : 1 }}>
                       Delete
                     </button>
-                    <span style={{ fontSize: 11.5, color: C.inkMute, minWidth: 0 }}>Archive keeps a copy in history · Delete removes it permanently.</span>
+                    <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, minWidth: 0 }}>Archive keeps a copy in history · Delete removes it permanently.</span>
                   </div>
                 ) : (
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>Delete this analysis? This can’t be undone.</span>
+                  <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5 }}>Delete this analysis? This can’t be undone.</span>
                     <button onClick={deleteActive} disabled={managing === 'delete'} style={destSolidBtn}>
                       {managing === 'delete' && <span className="rl-dispin" aria-hidden="true" />}{managing === 'delete' ? 'Deleting…' : 'Delete'}
                     </button>
@@ -390,29 +389,29 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
 
           {/* Archived analyses (collapsed) — view-only history, each with a permanent delete. */}
           {archived.length > 0 && (
-            <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${C.rule}` }}>
+            <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
               <button onClick={() => setArchiveOpen((o) => !o)}
-                style={{ ...ghostBtn, color: C.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                style={{ ...ghostBtn, color: C.inkSoft, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                 <Icon name="list" size={13} color={C.inkSoft} /> Archived analyses ({archived.length})
                 <span aria-hidden="true" style={{ color: C.inkMute }}>{archiveOpen ? '▲' : '▼'}</span>
               </button>
               {archiveOpen && (
-                <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
+                <div style={{ marginTop: 'var(--s-2)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
                   {archived.map((entry) => (
-                    <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px' }}>
-                      <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)' }}>
+                      <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         Archived — {fmtDate(entry.archived_at)}{entry.source === 'tenant' ? ' · tenant upload' : ''}
                       </span>
-                      <button onClick={() => setViewing(entry)} style={{ ...ghostBtn, padding: '6px 11px', color: C.ink }}>View</button>
+                      <button onClick={() => setViewing(entry)} style={{ ...ghostBtn, padding: 'var(--s-1) var(--s-3)', color: C.ink }}>View</button>
                       {confirmArchId === entry.id ? (
-                        <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                          <button onClick={() => deleteArchivedEntry(entry.id)} disabled={managing === 'delete-archived'} style={{ ...destSolidBtn, padding: '6px 11px' }}>
+                        <span style={{ display: 'inline-flex', gap: 'var(--s-1)', alignItems: 'center' }}>
+                          <button onClick={() => deleteArchivedEntry(entry.id)} disabled={managing === 'delete-archived'} style={{ ...destSolidBtn, padding: 'var(--s-1) var(--s-3)' }}>
                             {managing === 'delete-archived' && <span className="rl-dispin" aria-hidden="true" />}Delete
                           </button>
-                          <button onClick={() => setConfirmArchId('')} style={{ ...ghostBtn, padding: '6px 11px' }}>Cancel</button>
+                          <button onClick={() => setConfirmArchId('')} style={{ ...ghostBtn, padding: 'var(--s-1) var(--s-3)' }}>Cancel</button>
                         </span>
                       ) : (
-                        <button onClick={() => { setConfirmArchId(entry.id); setError(''); }} style={{ ...destOutlineBtn, padding: '6px 11px' }}>Delete</button>
+                        <button onClick={() => { setConfirmArchId(entry.id); setError(''); }} style={{ ...destOutlineBtn, padding: 'var(--s-1) var(--s-3)' }}>Delete</button>
                       )}
                     </div>
                   ))}

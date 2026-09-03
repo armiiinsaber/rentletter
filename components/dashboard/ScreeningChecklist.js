@@ -73,16 +73,16 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   ];
 
   const btn = (on) => ({
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 44, minWidth: 156, padding: '0 14px',
-    borderRadius: R.ctrl, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--s-1)', minHeight: 44, minWidth: 156, padding: '0 var(--s-3)',
+    borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
     background: on ? C.red : 'transparent', color: on ? C.paper : C.ink, border: on ? `1.5px solid ${C.red}` : `1.5px solid ${C.ink}`,
   });
 
   return (
-    <div id={`checklist-${applicant.linkId}`} style={{ marginTop: 18, scrollMarginTop: 72 }}>
-      <div style={{ marginBottom: 8 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute }}>Screening checklist</div>
-        <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 2 }}>You verify. Documents only match.</div>
+    <div id={`checklist-${applicant.linkId}`} style={{ marginTop: 'var(--s-4)', scrollMarginTop: 72 }}>
+      <div style={{ marginBottom: 'var(--s-2)' }}>
+        <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute }}>Screening checklist</div>
+        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)' }}>You verify. Documents only match.</div>
       </div>
       <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, background: C.paper, overflow: 'hidden' }}>
         {rows.map((row, i) => {
@@ -90,33 +90,33 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
           const on = !!c;
           const shared = row.sameAsAbove;
           return (
-            <div key={row.title} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 12px', padding: '12px 14px', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
+            <div key={row.title} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-1) var(--s-3)', padding: 'var(--s-3) var(--s-3)', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
-                <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4, marginTop: 2, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+                <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
                   Said: {row.said}{row.docs != null ? <> · Docs: {row.docs}</> : null}
                 </div>
-                {row.second ? <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{row.second}</div> : null}
+                {row.second ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere' }}>{row.second}</div> : null}
               </div>
               {row.key && !shared ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-3)', flexShrink: 0 }}>
                   <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                     aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)} by ${c.by}. Tap to undo.` : row.verb}
                     style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
                     {on ? <><Icon name="check" size={14} /><span>{shortDate(c.at)} · {c.by}</span></> : row.verb}
                   </button>
                   {row.key === 'id' && idDoc ? (
-                    <button type="button" onClick={viewId} disabled={viewBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 13, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: viewBusy ? 0.6 : 1 }}>{viewBusy ? 'Opening' : 'View ID'}</button>
+                    <button type="button" onClick={viewId} disabled={viewBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: viewBusy ? 0.6 : 1 }}>{viewBusy ? 'Opening' : 'View ID'}</button>
                   ) : null}
                 </div>
               ) : row.key && shared ? (
-                <div style={{ fontSize: 12, color: C.inkMute, flexShrink: 0, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{on ? `Confirmed · ${shortDate(c.at)}` : 'One call, with the income row'}</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, flexShrink: 0, minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>{on ? `Confirmed · ${shortDate(c.at)}` : 'One call, with the income row'}</div>
               ) : null}
             </div>
           );
         })}
       </div>
-      {error ? <div role="alert" style={{ fontSize: 12.5, color: C.danger, marginTop: 6 }}>{error}</div> : null}
+      {error ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginTop: 'var(--s-1)' }}>{error}</div> : null}
     </div>
   );
 }

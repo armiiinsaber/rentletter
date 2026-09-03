@@ -235,19 +235,18 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           maxWidth: 1100, margin: '0 auto',
           // The header is now in normal flow directly above, so it takes its own space — content just
           // follows below it. No measured offset needed; a small top gap is all that's required.
-          paddingTop: 'clamp(8px, 2vw, 16px)',
+          paddingTop: 'var(--s-2)',
           paddingRight: 'clamp(16px, 4vw, 32px)',
           paddingLeft: 'clamp(16px, 4vw, 32px)',
           // Ordinary bottom breathing room plus the home indicator inset. The "?" launcher is
           // position: fixed and overlaps the bottom right corner; it never pushes the page taller.
-          // The "Signed in as" line keeps a max-width so its text stops short of that corner.
           paddingBottom: 'calc(clamp(16px, 3vw, 24px) + env(safe-area-inset-bottom, 0px))',
         }}>
 
           {!ready && !listingsError && (
             <div aria-busy="true" aria-label="Loading your workspace">
               <div className="dash-card dash-hero dash-skel" style={{ minHeight: 168 }}><span className="dash-skel-line" style={{ width: '32%', height: 10 }} /><span className="dash-skel-line" style={{ width: '58%', height: 30 }} /><span className="dash-skel-line" style={{ width: 128, height: 44, borderRadius: 12 }} /></div>
-              <div className="dash-block dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>
+              <div className="dash-block dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>
               <div className="dash-grid">{[0, 1].map((i) => <div key={i} className="dash-card dash-skel"><span className="dash-skel-line" style={{ width: '70%', height: 18 }} /><span className="dash-skel-line" style={{ width: '45%' }} /><span className="dash-skel-line" style={{ width: '38%' }} /><span className="dash-skel-line" style={{ width: '30%', marginTop: 'auto' }} /></div>)}</div>
             </div>
           )}
@@ -263,9 +262,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </span>
             </h1>
             {listingsLoaded && !hasListings && (
-              <p style={{ fontSize: 'clamp(15px, 3.6vw, 17px)', color: C.inkSoft, lineHeight: 1.5, marginTop: 12, maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5, marginTop: 'var(--s-3)', maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
             )}
-            <div style={{ marginTop: 18 }}>
+            <div style={{ marginTop: 'var(--s-4)' }}>
               <button onClick={() => setModalOpen(true)} className="dash-cta">
                 <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
               </button>
@@ -280,22 +279,22 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
           {/* 3. YOUR LISTINGS */}
           {error && (
-            <div className="dash-block" style={{ padding: '12px 16px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>
+            <div className="dash-block" style={{ padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>
               {error}
             </div>
           )}
           {listingsError && !listingsLoaded && (
-            <section className="dash-card dash-block" style={{ padding: 'clamp(20px, 4vw, 28px)' }} role="alert">
+            <section className="dash-card dash-block" style={{ padding: 'var(--s-4)' }} role="alert">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your listings</div>
-              <h2 className="dash-h2" style={{ marginBottom: 6 }}>We couldn’t load your listings.</h2>
-              <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
+              <h2 className="dash-h2" style={{ marginBottom: 'var(--s-1)' }}>We couldn’t load your listings.</h2>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
               <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
             </section>
           )}
           {hasListings && (
             <div className="dash-block">
               <div className="rl-in dash-section-head" style={{ '--rl-d': '60ms' }}>
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s-2)', minWidth: 0 }}>
                   <span className="dash-dash" style={{ height: 15, alignSelf: 'center' }} />
                   <h2 className="dash-h2">Your listings</h2>
                   <span className="dash-count">{listings.length}</span>
@@ -304,20 +303,21 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               <div className="rl-in dash-grid" style={{ '--rl-d': '90ms' }}>
                 {listings.map((l) => (
                   <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
-                    style={{ textDecoration: 'none', color: C.ink, padding: 'clamp(20px, 3vw, 24px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ fontSize: 17.5, fontWeight: 800, letterSpacing: '-0.015em', lineHeight: 1.25, overflowWrap: 'anywhere', textWrap: 'balance' }}>
-                      {l.name || l.address || 'Untitled listing'}
+                    style={{ textDecoration: 'none', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
+                    {/* Name left, the rent right in tabular numerals, so the rents line up down the column. */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
+                      <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</div>
+                      <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
-                    <div style={{ fontSize: 13.5, color: C.inkSoft, fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>
-                      {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}
-                      {formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>
+                      {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
                     </div>
                     {(l.invite_token || l.invite_url) ? (
                       <span className="dash-lchip dash-lchip-on"><span className="dash-lchip-dot" /> Invite link active</span>
                     ) : (
                       <span className="dash-lchip"><span className="dash-lchip-dot dash-lchip-dot-off" /> No invite link yet</span>
                     )}
-                    <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${C.rule}`, display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: C.red, fontWeight: 700 }}>
+                    <div style={{ marginTop: 'auto', paddingTop: 'var(--s-2)', borderTop: `1px solid ${C.rule}`, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.red, fontWeight: 700 }}>
                       Open listing <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={14} /></span>
                     </div>
                   </a>
@@ -348,8 +348,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </a>
           )}
 
-          {/* Session privacy note (kept reassuring; sessions are real accounts now) */}
-          <p className="dash-signed">Signed in as {userEmail}. Your listings are private to your account.</p>
           </>}
         </div>}
 
@@ -405,8 +403,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
         .dash-card {
           background: ${C.card};
-          border: 1px solid #ece5d6;
-          border-radius: 18px;
+          border: 1px solid var(--rule);
+          border-radius: var(--card-radius);
           box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05);
         }
         /* Red-dash brand motif for section eyebrows/heads. */
@@ -417,7 +415,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
            heading  (.dash-h2)  Inter 800, tight tracking — section titles
            body     (inherited) Inter 400/500 — everything else
            data     (.dash-data) Inter 800 + tabular-nums — every number that must line up */
-        .dash-h1 { font-family: ${FONT.serif}; font-size: clamp(28px, 7.2vw, 40px); font-weight: 600; letter-spacing: -0.02em; line-height: 1.08; color: ${C.ink}; }
+        .dash-h1 { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: var(--lh-display); color: ${C.ink}; }
         /* greeting line: word + name are flex items — one line when they fit, else the name drops
            whole. The nbsp inside the word is the space between them; a name wider than the card
            may break inside itself (last resort — no overflow at 390px). */
@@ -425,55 +423,54 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-h1-greet { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; max-width: 100%; }
         .dash-h1-greet > span { white-space: nowrap; }
         .dash-h1-greet > .dash-h1-name { white-space: normal; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-        .dash-h2 { font-size: clamp(18px, 2.6vw, 22px); font-weight: 800; letter-spacing: -0.02em; color: ${C.ink}; }
+        .dash-h2 { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; }
         .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-        .dash-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.11em; text-transform: uppercase; color: ${C.inkMute}; margin-bottom: 10px; }
+        .dash-eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; line-height: var(--lh-eyebrow); text-transform: uppercase; color: ${C.inkMute}; margin-bottom: var(--s-2); }
 
         /* ── Hero overview card — subtle warm gradient + faint brand glow ── */
-        .dash-hero { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column; padding: clamp(22px, 3.2vw, 32px);
+        .dash-hero { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column; padding: var(--card-pad);
           background: linear-gradient(152deg, ${C.card} 0%, #fbf6ec 100%); }
         .dash-hero::before { content: ''; position: absolute; top: -45%; right: -14%; width: 62%; height: 130%; pointer-events: none;
           background: radial-gradient(circle at center, rgba(215, 32, 39, 0.07), transparent 62%); }
         .dash-hero > * { position: relative; }
-        .dash-cta { background: ${C.red}; color: ${C.paper}; border: none; border-radius: 12px; padding: 13px 20px; font-size: 14.5px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+        .dash-cta { background: ${C.red}; color: ${C.paper}; border: none; border-radius: 12px; padding: var(--s-3) var(--s-4); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-2); }
 
         /* ── Branding tile — identity moment, whole card → /profile. The card's 3px left edge
            (inline style) carries the colour sampled from the uploaded logo, red otherwise. ── */
-        .dash-brand { display: flex; flex-direction: column; gap: 14px; padding: clamp(18px, 3vw, 24px); text-decoration: none; color: ${C.ink}; }
-        .dash-brand-identity { display: flex; align-items: center; gap: clamp(14px, 4vw, 22px); min-width: 0; }
+        .dash-brand { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); text-decoration: none; color: ${C.ink}; }
+        .dash-brand-identity { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
         /* Transparent logo art sits straight on the card surface — no tile, no frame. */
         .dash-brand-logo { width: clamp(72px, 20vw, 96px); height: clamp(72px, 20vw, 96px); object-fit: contain; flex-shrink: 0; }
         /* Neutral backing exists ONLY as the no-logo fallback (initials as a placeholder mark). */
-        .dash-brand-initials { width: clamp(64px, 18vw, 84px); height: clamp(64px, 18vw, 84px); border-radius: 14px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: 21px; color: ${C.inkSoft}; flex-shrink: 0; }
-        .dash-brand-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+        .dash-brand-initials { width: clamp(64px, 18vw, 84px); height: clamp(64px, 18vw, 84px); border-radius: 14px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: var(--t-d3); color: ${C.inkSoft}; flex-shrink: 0; }
+        .dash-brand-id { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; flex: 1; }
         /* Masthead byline: name in the display serif, brokerage muted below. */
-        .dash-brand-name { font-family: ${FONT.serif}; font-size: clamp(20px, 5.4vw, 24px); font-weight: 600; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
-        .dash-brand-brok { font-size: 13.5px; color: ${C.inkMute}; overflow-wrap: anywhere; }
-        .dash-brand-desc { font-size: 13px; color: ${C.inkSoft}; line-height: 1.5; margin-top: 4px; text-wrap: pretty; white-space: normal; }
-        .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: ${C.red}; }
+        .dash-brand-name { font-family: ${FONT.serif}; font-size: var(--t-d3); font-weight: 600; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
+        .dash-brand-brok { font-size: var(--t-body-2); color: ${C.inkMute}; overflow-wrap: anywhere; }
+        .dash-brand-desc { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.5; margin-top: var(--s-1); text-wrap: pretty; white-space: normal; }
+        .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); font-weight: 700; color: ${C.red}; }
 
         /* ── Section rhythm: one gap between blocks, and a short note under the greeting ── */
-        .dash-block { margin-top: clamp(14px, 2.6vw, 18px); }
-        .dash-note { font-size: 12.5px; color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: 10px 4px 0; }
-        .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-        .dash-signed { margin-top: clamp(20px, 3vw, 28px); font-size: 12px; color: ${C.inkMute}; text-align: left; text-wrap: pretty; max-width: calc(100% - 84px); }
+        .dash-block { margin-top: var(--gap-card); }
+        .dash-note { font-size: var(--t-body-2); color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: var(--s-2) var(--s-1) 0; }
+        .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s-4); }
         /* Skeleton: the listing card's shape (title, rent line, chip, footer), no spinner. */
-        .dash-skel { padding: clamp(20px, 3vw, 24px); display: flex; flex-direction: column; gap: 14px; min-height: 172px; }
+        .dash-skel { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); min-height: 172px; }
         .dash-skel-line { display: block; height: 12px; border-radius: 6px; background: ${C.paperDeep}; }
         @media (prefers-reduced-motion: no-preference) {
           .dash-skel-line { background: linear-gradient(90deg, ${C.paperDeep} 0%, #ebe5d8 50%, ${C.paperDeep} 100%); background-size: 200% 100%; animation: dash-shimmer 1.4s ease-in-out infinite; }
           @keyframes dash-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
         }
         /* ── Listing invite-link status chip (real data) ── */
-        .dash-lchip { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: ${C.inkMute}; }
+        .dash-lchip { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 600; color: ${C.inkMute}; }
         .dash-lchip-on { color: ${C.green}; }
         .dash-lchip-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; flex-shrink: 0; }
         .dash-lchip-dot-off { background: #cabfa8; }
 
         /* ── Section head + ghost button ── */
-        .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: clamp(18px, 2.6vw, 26px) 0 16px; }
-        .dash-count { font-size: 12px; font-weight: 700; color: ${C.inkMute}; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 999px; padding: 2px 10px; font-variant-numeric: tabular-nums; }
-        .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: 11px; padding: 9px 15px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+        .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin: var(--gap-section) 0 var(--s-4); }
+        .dash-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 999px; padding: var(--s-1) var(--s-2); font-variant-numeric: tabular-nums; }
+        .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: 11px; padding: var(--s-2) var(--s-4); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-1); }
 
         /* Instant (motion-independent) hover colour states — safe for reduced-motion */
         .dash-ghost:hover { background: ${C.paperDeep}; border-color: ${C.ink}; }
