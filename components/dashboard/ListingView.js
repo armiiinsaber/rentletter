@@ -34,6 +34,7 @@ import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import NoticedCards from '../../components/dashboard/NoticedCards';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
+import { patchSignalsListing } from '../../lib/assistantStore';
 import { narrateApplicants } from '../../lib/noticed';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
@@ -326,6 +327,21 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setTimeout(() => setCopied(false), 1800);
   };
 
+  // One applicant changed on the server (a document analysis landed): refetch the listing's
+  // applicants through the adapter (production: /api/listings/applicants, the same read the page
+  // loaded with; sandbox: the demo adapter's live derivation) and replace that one row, so fit,
+  // state, label, meter colour and the synthesis line follow. The assistant's signals for this
+  // listing are patched too, so the badge moves without a reload.
+  const refreshApplicant = async (linkId) => {
+    try {
+      const r = await adapter.fetch(`/api/listings/applicants?listingId=${encodeURIComponent(listing.id)}`);
+      const j = await r.json();
+      if (!r.ok || !Array.isArray(j.applicants)) return;
+      const fresh = j.applicants.find((x) => x.linkId === linkId);
+      if (fresh) setApplicants((prev) => prev.map((x) => (x.linkId === linkId ? fresh : x)));
+      patchSignalsListing(listing.id, j.applicants);
+    } catch (e) { /* the row keeps what it has until the next load */ }
+  };
   // Refresh applicants from Supabase (after adding by RL).
   const refreshApplicants = async () => {
     try {
@@ -722,6 +738,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             initialInsight={a.aiInsight}
             profileUpdatedAt={app.profile_updated_at}
             onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
+            onAnalyzed={() => refreshApplicant(a.linkId)}
             heldDocuments={a.storedDocuments}
             realtorName={profile?.full_name}
             onViewDocument={viewDocument}

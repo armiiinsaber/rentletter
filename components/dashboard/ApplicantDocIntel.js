@@ -82,7 +82,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
   );
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments, focus = null }) {
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments, focus = null, onAnalyzed }) {
   const adapter = useAdapter();
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
@@ -141,6 +141,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       setResult(j.result);
       setFiles([]);
       onSaved?.({ docVerifications: j.verifications, ...(j.held !== undefined ? { storedDocuments: j.held } : {}) });
+      onAnalyzed?.(); // the card refetches this applicant: Fit, state, label and meter follow the new report
       if (j.saved === false) setError('Analysis ran but could not be saved — it may not persist on refresh.');
     } catch (e) {
       setError('Could not analyze those documents.');
@@ -192,6 +193,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setArchived(j.docArchived || []);
     setResult(null); setInsight(''); setFiles([]);
     onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || [], aiInsight: null });
+    onAnalyzed?.();
   };
 
   const deleteActive = async () => {
@@ -200,6 +202,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setResult(null); setInsight(''); setFiles([]); setConfirmDelete(false);
     setArchived(j.docArchived || archived);
     onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || archived, aiInsight: null });
+    onAnalyzed?.();
   };
 
   const deleteArchivedEntry = async (id) => {
