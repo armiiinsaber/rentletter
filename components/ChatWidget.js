@@ -28,11 +28,13 @@ const MODES = {
   },
 };
 
-export default function ChatWidget({ mode = 'marketing' }) {
+// embedded: rendered inside the assistant panel's Ask tab, filling its section, with no floating
+// launcher and no fixed positioning. Everything else is the same chat.
+export default function ChatWidget({ mode = 'marketing', embedded = false }) {
   const cfg = MODES[mode] || MODES.marketing;
   const isDashboard = mode === 'dashboard';
   const adapter = useAdapter(); // actions execute through the dashboard adapter; /api/chat stays a real call
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(embedded);
   const [messages, setMessages] = useState([
     { role: 'assistant', content: cfg.greeting },
   ]);
@@ -165,7 +167,7 @@ export default function ChatWidget({ mode = 'marketing' }) {
   return (
     <>
       {/* Floating bubble button */}
-      <button
+      {!embedded && <button
         ref={launcherRef}
         onClick={() => setOpen(!open)}
         onFocus={() => setLauncherDim(false)}
@@ -194,7 +196,7 @@ export default function ChatWidget({ mode = 'marketing' }) {
         onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
         onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}>
         {open ? '×' : '?'}
-      </button>
+      </button>}
 
       {/* Chat window */}
       {open && (
@@ -217,6 +219,7 @@ export default function ChatWidget({ mode = 'marketing' }) {
             overflow: 'hidden',
             fontFamily: "-apple-system, 'Inter', sans-serif",
             animation: 'chatSlide 0.25s ease-out',
+            ...(embedded ? { position: 'relative', bottom: 'auto', right: 'auto', width: '100%', height: '100%', flex: 1, minHeight: 0, boxShadow: 'none', border: 'none', borderRadius: 0, animation: 'none' } : {}),
           }}>
           {/* Header */}
           <div style={{
@@ -233,11 +236,11 @@ export default function ChatWidget({ mode = 'marketing' }) {
                 {cfg.title}
               </div>
             </div>
-            <button onClick={() => setOpen(false)}
+            {!embedded && <button onClick={() => setOpen(false)}
               aria-label="Close chat"
               style={{ background: 'transparent', border: 'none', color: COLORS.paper, fontSize: 20, cursor: 'pointer', padding: 4, lineHeight: 1, opacity: 0.7 }}>
               ×
-            </button>
+            </button>}
           </div>
 
           {/* Messages */}

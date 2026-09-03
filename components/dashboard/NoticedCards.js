@@ -1,6 +1,7 @@
 // components/dashboard/NoticedCards.js
-// "Rentletter noticed" — up to three actionable cards (lib/noticed.js rules; no AI). Ink
-// instrument surface: this is the product speaking. One line of what, one action, dismissible.
+// "Rentletter noticed": the assistant's action items (lib/actions.js through lib/noticed.js), the
+// same items and copy as the panel's Next tab, on the ink instrument surface. One line of what,
+// one action, dismissible (the dismissal is the panel's: lib/assistantStore.js).
 // Renders NOTHING when there's nothing to say (unless `emptyLine` is given: the panel's calm
 // line). No reveal class: it simply appears.
 //
@@ -16,8 +17,10 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
-import { computeNotices, readDismissed, dismissNotice, latestSignalAt, relativeTime } from '../../lib/noticed';
+import { computeNotices, latestSignalAt, relativeTime } from '../../lib/noticed';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { useAssistantStore, dismissAction } from '../../lib/assistantStore';
+import { navigateToAction } from './actionNav';
 import { CURVE, DURATION, prefersReducedMotion } from '../../lib/motion';
 
 const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
@@ -25,12 +28,12 @@ const useIsoLayoutEffect = typeof window === 'undefined' ? useEffect : useLayout
 // The catch up line: what is waiting, grouped by what it is, counted, comma separated. Built
 // only from the cards computeNotices returned. Sentence case; singular and plural handled.
 const GROUPS = [
-  ['docs', (c) => c.kind === 'verify' || c.kind === 'reverify', (n) => `${n} need${n === 1 ? 's' : ''} documents`],
-  ['new', (c) => c.kind === 'new', (n) => `${n} new application${n === 1 ? '' : 's'}`],
-  ['stalled', (c) => c.kind === 'stalled', (n) => `${n} waiting on a decision`],
-  ['present', (c) => c.kind === 'present', (n) => `${n} report${n === 1 ? '' : 's'} ready to send`],
-  ['referral', (c) => c.kind === 'referral', (n) => `${n} referral${n === 1 ? '' : 's'}`],
-  ['brand', (c) => c.kind === 'brand', () => 'branding incomplete'],
+  ['docs', (c) => c.kind === 'check_docs' || c.kind === 'mismatch', (n) => `${n} document check${n === 1 ? '' : 's'}`],
+  ['verify', (c) => c.kind === 'verify', (n) => `${n} to verify`],
+  ['waiting', (c) => c.kind === 'waiting', (n) => `${n} waiting on documents`],
+  ['request', (c) => c.kind === 'request', (n) => `${n} to request`],
+  ['ready', (c) => c.kind === 'ready', (n) => `${n} report${n === 1 ? '' : 's'} ready to send`],
+  ['sent', (c) => c.kind === 'sent_waiting', (n) => `${n} sent, no reply`],
 ];
 export function catchUpLine(cards) {
   if (!cards || cards.length < 2) return null;
@@ -46,10 +49,11 @@ const SWIPE = { axisLock: 8, commit: 40 };
 
 export default function NoticedCards({ input, onAction, style, className = '', animateOut = false, onChanged, onOpen, emptyLine = null }) {
   const adapter = useAdapter();
-  const [dismissed, setDismissed] = useState([]);
+  const store = useAssistantStore();
+  const dismissed = store.dismissed;
   const [leaving, setLeaving] = useState({}); // id -> true while a card animates out
   const timers = useRef([]);
-  useEffect(() => { setDismissed(readDismissed()); return () => timers.current.forEach(clearTimeout); }, []);
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
   const cards = useMemo(() => computeNotices({ ...input, dismissed }), [input, dismissed]);
   const ids = cards.map((c) => c.id).join('|');
   // When the observation was made: the newest event on the timeline when the server had one,
@@ -144,21 +148,10 @@ export default function NoticedCards({ input, onAction, style, className = '', a
   const act = (card) => {
     const a = card.action; if (!a) return;
     if (a.type === 'panel') { onAction?.(a, card); return; }
-    if (a.type === 'navigate') {
-      // lib/noticed emits product paths; translate through the adapter so a demo stays in-route.
-      const m = String(a.href).match(/^\/landlord\/([^#?]+)(.*)$/);
-      const href = m ? adapter.paths.listing(m[1]) + (m[2] || '') : a.href === '/profile' ? adapter.paths.profile : a.href.startsWith('/landlord') ? adapter.paths.home + a.href.slice('/landlord'.length) : a.href;
-      // Same page + an anchor: scroll there ourselves (assigning an identical hash does nothing).
-      const url = new URL(href, window.location.href);
-      if (url.pathname === window.location.pathname && url.hash) {
-        const el = document.getElementById(url.hash.slice(1));
-        if (el) { window.history.replaceState(null, '', url.hash); el.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); return; }
-      }
-      window.location.href = href; return;
-    }
+    if (a.type === 'navigate') { navigateToAction(card, adapter.paths); return; } // the deep link, or in place on this listing page
     leaveThen(card, () => onAction?.(a, card));
   };
-  const dismiss = (card) => leaveThen(card, () => { dismissNotice(card.id); setDismissed(readDismissed()); });
+  const dismiss = (card) => leaveThen(card, () => { dismissAction(adapter, card); });
 
   const many = cards.length > 1;
   return (
@@ -190,7 +183,7 @@ export default function NoticedCards({ input, onAction, style, className = '', a
                     {card.action.label}
                   </button>
                 )}
-                <button type="button" onClick={() => dismiss(card)} aria-label="Dismiss" title="Dismiss for a few days" style={{ background: 'transparent', color: '#9a958a', border: '1px solid #2a2a2e', borderRadius: R.ctrl, width: 36, height: 36, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                <button type="button" onClick={() => dismiss(card)} aria-label="Dismiss" title="Dismiss until something changes" style={{ background: 'transparent', color: '#9a958a', border: '1px solid #2a2a2e', borderRadius: R.ctrl, width: 36, height: 36, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="x" size={14} />
                 </button>
               </div>

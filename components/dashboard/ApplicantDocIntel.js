@@ -5,7 +5,7 @@
 // base64 in the browser and POSTed once; after the analysis succeeds the server holds the
 // originals for the realtor's review (14 days or until deleted, lib/documentRetention.js), listed
 // here under "Documents held" with View (the in app viewer) and Delete all.
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import DocIntelReport from './DocIntelReport';
@@ -82,10 +82,12 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
   );
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments }) {
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments, focus = null }) {
   const adapter = useAdapter();
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
+  // A deep link (?panel=documents) or an action item opens the panel.
+  useEffect(() => { if (focus) setOpen(true); }, [focus]);
   const [files, setFiles] = useState([]); // File[]
   const [result, setResult] = useState(runs.length ? runs[runs.length - 1] : null);
   const [insight, setInsight] = useState(initialInsight || '');

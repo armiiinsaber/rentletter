@@ -33,6 +33,7 @@ import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import NoticedCards from '../../components/dashboard/NoticedCards';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
+import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { narrateApplicants } from '../../lib/noticed';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
@@ -160,11 +161,41 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       sendEmail();
     }
   };
-  // Deep links from the home page's Noticed cards: #docs=<linkId>[&renew] opens that applicant's
-  // document request; #report scrolls to "Present to landlord". The browser's own hash jump
-  // fires before the async panels (doc-request status, notices) have loaded and pushed the page
-  // around, so #report is re-aimed as the content settles.
+  // Where an action item lands: ?applicant={linkId}&panel=checklist|documents|report (lib/actions.js),
+  // or the same through the go event when this listing page is already open. Expands the applicant,
+  // scrolls the card (or the named section) under the static header, opens the named panel. The
+  // page settles asynchronously, so the aim is repeated once.
+  const [focusDocIntel, setFocusDocIntel] = useState(null);
+  const goTo = (linkId, panel) => {
+    const behavior = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+    if (panel === 'report' || !linkId) { const aim = () => document.getElementById('report')?.scrollIntoView({ block: 'start', behavior }); [0, 700].forEach((ms) => setTimeout(aim, ms)); return; }
+    const a = applicants.find((x) => x.linkId === linkId); if (!a) return;
+    if (panel === 'documents') { focusApplicantDocs(linkId); setFocusDocIntel({ linkId, at: Date.now() }); return; }
+    openApplicant(a);
+    const id = panel === 'checklist' ? `checklist-${linkId}` : `applicant-${linkId}`;
+    const aim = () => (document.getElementById(id) || document.getElementById(`applicant-${linkId}`))?.scrollIntoView({ block: 'start', behavior });
+    [60, 700].forEach((ms) => setTimeout(aim, ms));
+  };
   useEffect(() => {
+    window.__rlListingId = listing?.id || null;
+    const onGo = (e) => { const d = e.detail || {}; goTo(d.linkId || null, d.panel || 'documents'); };
+    window.addEventListener(GO_EVENT, onGo);
+    return () => { window.removeEventListener(GO_EVENT, onGo); if (window.__rlListingId === listing?.id) window.__rlListingId = null; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.id, applicants]);
+  // Deep links: ?applicant=&panel= (above), then the older #docs=<linkId>[&renew] and #report. The
+  // query params are removed once handled so a reload does not re expand.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const panel = params.get('panel');
+    if (panel === 'checklist' || panel === 'documents' || panel === 'report') {
+      const linkId = params.get('applicant');
+      params.delete('applicant'); params.delete('panel');
+      const q = params.toString();
+      window.history.replaceState(null, '', `${window.location.pathname}${q ? `?${q}` : ''}${window.location.hash || ''}`);
+      goTo(linkId, panel);
+      return undefined;
+    }
     const hash = String(window.location.hash || '');
     const m = hash.match(/^#docs=([^&]+)(&renew)?$/);
     if (m) { focusApplicantDocs(decodeURIComponent(m[1]), !!m[2]); return undefined; }
@@ -695,6 +726,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             realtorName={profile?.full_name}
             onViewDocument={viewDocument}
             onDeleteDocuments={() => deleteDocuments(a.linkId)}
+            focus={focusDocIntel?.linkId === a.linkId ? focusDocIntel : null}
           />
           {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
               uploads via a secure link. Coexists with ApplicantDocIntel above. */}
