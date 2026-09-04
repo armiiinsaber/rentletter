@@ -1,7 +1,7 @@
 // components/listings/ListingSetupModal.js
 // Create/edit a listing. Unit basics + landlord-client contact + OHRC-compliant
 // landlord preferences. Used in create mode (from "New listing") and edit mode.
-// Save is gated on address + monthly rent + bedrooms; the listing is named from
+// Save is gated on address, monthly rent and bedrooms; the listing is named from
 // its address. Maps 1:1 to the Supabase `listings` columns. Presentation matches
 // the design system; fully rounded; fits mobile.
 import { useState } from 'react';
@@ -9,20 +9,18 @@ import { C, R } from '../theme';
 import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
 
+// The form: six unit facts, the five criteria Fit reads, notes, the landlord client. The
+// employment type, move in window, lease term, occupants, guarantor, parking spots, pets policy,
+// smoking allowed and EV parking columns are no longer written or read; they stay in the table.
 const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
-  allows_pets: 'no', allows_smoking: 'no', parking_included: 'no', ev_parking: 'no',
+  allows_pets: 'no', allows_smoking: 'no', parking_included: 'no',
   landlord_name: '', landlord_email: '', landlord_phone: '',
   // AFFORDABILITY: max rent to income is the SINGLE input. pref_min_annual_income is no
-  // longer independently settable — it is derived from ratio × rent on save (see
+  // longer independently settable, it is derived from ratio times rent on save (see
   // buildPayload) so the two columns can never contradict each other.
   pref_rent_to_income_max_pct: 30, pref_min_years_at_job: '',
-  pref_employment_full_time: true, pref_employment_contract: true,
-  pref_employment_self_employed: false, pref_employment_part_time: false,
-  pref_earliest_move_in: '', pref_latest_move_in: '', pref_min_lease_term_months: 12,
-  pref_max_occupants: '', pref_smoking_allowed: false,
-  pref_parking_spots: '', pref_requires_landlord_reference: true,
-  pref_requires_employer_verification: true, pref_guarantor_accepted: true,
+  pref_requires_landlord_reference: true, pref_requires_employer_verification: true,
   pref_notes: '',
 };
 
@@ -42,9 +40,6 @@ function numOrNull(v) {
   if (v === '' || v === null || v === undefined) return null;
   const n = parseFloat(v);
   return Number.isNaN(n) ? null : n;
-}
-function dateOrNull(v) {
-  return v && String(v).trim() ? v : null;
 }
 
 // inline: render the same form in the page flow (no scrim, no fixed positioning). Used by first
@@ -90,7 +85,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
     ? (!String(form.landlord_email).trim() ? 'Landlord email is required.' : (!emailValid ? 'Enter a valid email (name@example.com).' : ''))
     : '';
 
-  const REQ_LABELS = { address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Unit type', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
+  const REQ_LABELS = { address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Bedrooms', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
   const missing = Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]);
 
   // Income floor implied by the ratio at this listing's rent: annual income where rent is
@@ -110,7 +105,6 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       allows_pets: form.allows_pets === 'yes' ? 'yes' : 'no',
       allows_smoking: form.allows_smoking,
       parking_included: form.parking_included,
-      ev_parking: form.ev_parking === 'yes' ? 'yes' : 'no',
       landlord_name: String(form.landlord_name).trim() || null,
       landlord_email: String(form.landlord_email).trim().toLowerCase() || null,
       landlord_phone: String(form.landlord_phone).trim() || null,
@@ -123,19 +117,8 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
       pref_min_annual_income: impliedMinIncome,
       pref_rent_to_income_max_pct: ratioPct,
       pref_min_years_at_job: numOrNull(form.pref_min_years_at_job),
-      pref_employment_full_time: !!form.pref_employment_full_time,
-      pref_employment_contract: !!form.pref_employment_contract,
-      pref_employment_self_employed: !!form.pref_employment_self_employed,
-      pref_employment_part_time: !!form.pref_employment_part_time,
-      pref_earliest_move_in: dateOrNull(form.pref_earliest_move_in),
-      pref_latest_move_in: dateOrNull(form.pref_latest_move_in),
-      pref_min_lease_term_months: intOrNull(form.pref_min_lease_term_months),
-      pref_max_occupants: intOrNull(form.pref_max_occupants),
-      pref_smoking_allowed: !!form.pref_smoking_allowed,
-      pref_parking_spots: intOrNull(form.pref_parking_spots),
       pref_requires_landlord_reference: !!form.pref_requires_landlord_reference,
       pref_requires_employer_verification: !!form.pref_requires_employer_verification,
-      pref_guarantor_accepted: !!form.pref_guarantor_accepted,
       pref_notes: String(form.pref_notes).trim() || null,
     };
   };
@@ -183,7 +166,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           </h3>
           {creating && (
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
-              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: address, monthly rent, unit type, and your landlord client's name and email. Everything else can be set now or edited later.
+              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited later.
             </p>
           )}
         </div>
@@ -196,7 +179,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               <input type="text" value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="88 Bay Street" style={inputStyle} /></label>
             <label><span style={fieldLabel}>Monthly rent (CAD)<Req /></span>
               <input type="text" inputMode="numeric" value={form.monthly_rent} onChange={(e) => set({ monthly_rent: e.target.value.replace(/[^\d]/g, '') })} placeholder="2400" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Unit type<Req /></span>
+            <label><span style={fieldLabel}>Bedrooms<Req /></span>
               <select value={UNIT_TYPE_OPTIONS.some((o) => o.value === form.bedrooms) ? form.bedrooms : ''} onChange={(e) => set({ bedrooms: e.target.value })} style={inputStyle}>
                 {UNIT_TYPE_OPTIONS.map((o) => <option key={o.value || 'none'} value={o.value}>{o.label}</option>)}
               </select></label>
@@ -214,23 +197,6 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               <select value={form.parking_included} onChange={(e) => set({ parking_included: e.target.value })} style={inputStyle}>
                 <option value="no">Not included</option><option value="yes">Included</option>
               </select></label>
-            <label><span style={fieldLabel}>EV parking</span>
-              <select value={form.ev_parking === 'yes' ? 'yes' : 'no'} onChange={(e) => set({ ev_parking: e.target.value })} style={inputStyle}>
-                <option value="no">No</option><option value="yes">Yes</option>
-              </select></label>
-          </div>
-
-          {/* LANDLORD CLIENT */}
-          <div style={sectionLabel}>Landlord client</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label><span style={fieldLabel}>Name<Req /></span>
-              <input type="text" value={form.landlord_name} onChange={(e) => set({ landlord_name: e.target.value })} placeholder="Pat Owner" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Email<Req /></span>
-              <input type="email" value={form.landlord_email} onChange={(e) => set({ landlord_email: e.target.value })} placeholder="owner@email.com"
-                style={{ ...inputStyle, borderColor: emailError ? C.red : C.rule }} />
-              {emailError && <span style={{ display: 'block', fontSize: 12, color: C.red, marginTop: 4 }}>{emailError}</span>}</label>
-            <label><span style={fieldLabel}>Phone <span style={{ color: C.inkMute, fontWeight: 400 }}>(optional)</span></span>
-              <input type="text" value={form.landlord_phone} onChange={(e) => set({ landlord_phone: e.target.value })} placeholder="(416) 555-0199" style={inputStyle} /></label>
           </div>
 
           {/* OHRC notice · preserved word-for-word */}
@@ -241,7 +207,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           {/* PREFERENCES, financial. ONE affordability input: max rent to income. The
               income equivalent is derived live from this listing's rent (read-only), so
               the old separate "minimum annual income" field can never contradict it. */}
-          <div style={{ ...sectionLabel, marginTop: 0 }}>Financial</div>
+          <div style={{ ...sectionLabel, marginTop: 0 }}>Screening criteria</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
             <label><span style={fieldLabel}>Max rent to income (%)</span>
               <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder="30" style={inputStyle} />
@@ -256,38 +222,10 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               <input type="number" min="0" step="0.5" inputMode="decimal" value={form.pref_min_years_at_job} onChange={(e) => set({ pref_min_years_at_job: e.target.value })} placeholder="e.g. 1" style={inputStyle} /></label>
           </div>
 
-          {/* employment */}
-          <div style={sectionLabel}>Acceptable employment types</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 2 }}>
-            <Check k="pref_employment_full_time" label="Full time" />
-            <Check k="pref_employment_contract" label="Contract" />
-            <Check k="pref_employment_self_employed" label="Self employed" />
-            <Check k="pref_employment_part_time" label="Part time" />
+          <div style={{ marginTop: 10 }}>
+            <Check k="pref_requires_landlord_reference" label="Require previous landlord reference" />
+            <Check k="pref_requires_employer_verification" label="Require employer verification" />
           </div>
-
-          {/* timing */}
-          <div style={sectionLabel}>Timing & occupancy</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-            <label><span style={fieldLabel}>Earliest move in</span>
-              <input type="date" value={form.pref_earliest_move_in || ''} onChange={(e) => set({ pref_earliest_move_in: e.target.value })} style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Latest move in</span>
-              <input type="date" value={form.pref_latest_move_in || ''} onChange={(e) => set({ pref_latest_move_in: e.target.value })} style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Min lease term (months)</span>
-              <input type="number" min="0" inputMode="numeric" value={form.pref_min_lease_term_months} onChange={(e) => set({ pref_min_lease_term_months: e.target.value })} placeholder="12" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Max occupants</span>
-              <input type="number" min="0" inputMode="numeric" value={form.pref_max_occupants} onChange={(e) => set({ pref_max_occupants: e.target.value })} placeholder="e.g. 2" style={inputStyle} /></label>
-            <label><span style={fieldLabel}>Parking spots</span>
-              <input type="number" min="0" inputMode="numeric" value={form.pref_parking_spots} onChange={(e) => set({ pref_parking_spots: e.target.value })} placeholder="e.g. 1" style={inputStyle} /></label>
-          </div>
-          <div style={{ marginTop: 8 }}>
-            <Check k="pref_smoking_allowed" label="Smoking allowed" />
-          </div>
-
-          {/* verification */}
-          <div style={sectionLabel}>Verification</div>
-          <Check k="pref_requires_landlord_reference" label="Require previous landlord reference" />
-          <Check k="pref_requires_employer_verification" label="Require employer verification" />
-          <Check k="pref_guarantor_accepted" label="Guarantor accepted" />
 
           {/* notes */}
           <div style={sectionLabel}>Additional notes (optional)</div>
@@ -299,6 +237,20 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           <div style={{ fontSize: 11, color: C.red, marginTop: 6, lineHeight: 1.5 }}>
             Reminder: do NOT include preferences about gender, age, family status, race, religion, disability, or income source. These can trigger HRTO complaints.
           </div>
+
+          {/* LANDLORD CLIENT, last: who the shortlist goes to. */}
+          <div style={sectionLabel}>Landlord client</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+            <label><span style={fieldLabel}>Name<Req /></span>
+              <input type="text" value={form.landlord_name} onChange={(e) => set({ landlord_name: e.target.value })} placeholder="Pat Owner" style={inputStyle} /></label>
+            <label><span style={fieldLabel}>Email<Req /></span>
+              <input type="email" value={form.landlord_email} onChange={(e) => set({ landlord_email: e.target.value })} placeholder="owner@email.com"
+                style={{ ...inputStyle, borderColor: emailError ? C.red : C.rule }} />
+              {emailError && <span style={{ display: 'block', fontSize: 12, color: C.red, marginTop: 4 }}>{emailError}</span>}</label>
+            <label><span style={fieldLabel}>Phone <span style={{ color: C.inkMute, fontWeight: 400 }}>(optional)</span></span>
+              <input type="text" value={form.landlord_phone} onChange={(e) => set({ landlord_phone: e.target.value })} placeholder="(416) 555-0199" style={inputStyle} /></label>
+          </div>
+
         </div>
 
         {/* Footer */}
@@ -333,7 +285,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               {[
                 ['Address', String(form.address).trim()],
                 ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : 'not set'],
-                ['Unit type', formatUnit(form.bedrooms) || 'not set'],
+                ['Bedrooms', formatUnit(form.bedrooms) || 'not set'],
                 // Join name + email with a middot ONLY when both exist (filter(Boolean) drops an
                 // empty side → no leading/trailing dot). Non-breaking spaces keep the middot glued
                 // between the two so it can never wrap to a line edge as an orphan "·".

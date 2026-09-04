@@ -14,7 +14,7 @@ import { realtorName } from '../../../lib/ownApplicant';
 import { recordEvent } from '../../../lib/events';
 import { logServerError } from '../../../lib/serverLog';
 import { invalidateSignals } from '../../../lib/signalsCache';
-import { LISTING_STATUSES, statusPatch, ownedListing, notSelectedRecipients, notSelectedEmail, newConsentToken, consentExpiry, statusTableAbsent } from '../../../lib/listingStatus';
+import { LISTING_STATUSES, statusPatch, ownedListing, notSelectedRecipients, notSelectedEmail, notSelectedFrom, newConsentToken, consentExpiry, statusTableAbsent } from '../../../lib/listingStatus';
 
 const siteBase = () => (process.env.NEXT_PUBLIC_SITE_URL || 'https://rentletter.ca').replace(/\/+$/, '');
 
@@ -69,10 +69,10 @@ export default async function handler(req, res) {
           if (cErr) { if (statusTableAbsent(cErr)) { consentsAbsent = true; console.warn('[listings/status] pipeline_consents is not set up (run db/listing-status.sql); messages go out without a keep me in mind row'); } else { logServerError('[listings/status] consent row', cErr, { listingId: listing.id }); continue; } }
         }
         const keepUrl = `${siteBase()}/keep/${token}`;
-        const mail = notSelectedEmail({ listingName: unit, realtorName: name, keepUrl });
+        const mail = notSelectedEmail({ listingName: unit, realtorName: name, applicantName: r.name, keepUrl });
         if (resend) {
           try {
-            await resend.emails.send({ from: 'Rentletter <hello@rentletter.ca>', to: r.email, reply_to: user.email, subject: mail.subject, html: mail.html, text: mail.text });
+            await resend.emails.send({ from: notSelectedFrom(name), to: r.email, reply_to: user.email, subject: mail.subject, html: mail.html, text: mail.text });
             notified++;
             await recordEvent(admin, { profileId: user.id, listingId: listing.id, applicationId: r.applicationId, type: 'applicant_not_selected', payload: { applicantName: r.name, listingName: unit, linkId: r.linkId } });
           } catch (e) { logServerError('[listings/status] not selected email', e, { listingId: listing.id, linkId: r.linkId }); }

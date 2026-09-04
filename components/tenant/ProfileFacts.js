@@ -186,21 +186,16 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
       </Section>
 
       <Section {...sec('move')} title="Your move" blurb="Update this before you apply somewhere new if your timing has changed."
-        rows={<><Row label="Move in date" value={dateNice(f.moveInDate)} /><Row label="Reason" value={f.reasonForMoving} multiline /></>}>
-        {draft && <>
-          <Field label="Desired move in date" value={d.moveInDate} onChange={(v) => set('moveInDate', v)} type="date" />
-          <Textarea label="Why are you moving?" value={d.reasonForMoving} onChange={(v) => set('reasonForMoving', v)} />
-        </>}
+        rows={<Row label="Move in date" value={dateNice(f.moveInDate)} />}>
+        {draft && <Field label="Desired move in date" value={d.moveInDate} onChange={(v) => set('moveInDate', v)} type="date" />}
       </Section>
 
-      <Section {...sec('household')} title="Household, pets & parking"
+      <Section {...sec('household')} title="Household & pets"
         rows={<>
           <Row label="Occupants" value={f.numberOfOccupants ? `${f.numberOfOccupants}${f.occupantsDetails ? ` · ${f.occupantsDetails}` : ''}` : null} />
           <Row label="Smoking / vaping" value={{ no: 'No', yes: 'Yes', outdoor: 'Outdoor only' }[f.smoker] || 'No'} />
           <Row label="Pets" value={f.pets || 'None'} />
           <Row label="Co-tenant" value={f.hasCoApplicant ? [f.coApplicantName, [f.coApplicantJobTitle, f.coApplicantEmployer].filter(Boolean).join(' at '), money(f.coApplicantIncome) ? `${money(f.coApplicantIncome)}/yr` : null].filter(Boolean).join(' · ') || 'Yes' : 'Applying on my own'} />
-          <Row label="Vehicle" value={f.hasVehicle ? [f.vehicleMakeModel, f.vehicleYear].filter(Boolean).join(' · ') || 'Yes' : 'None'} />
-          <Row label="EV parking" value={f.evParkingNeeded === 'yes' ? 'Needed' : 'Not needed'} />
         </>}>
         {draft && <>
           <div className="mp-grid2">
@@ -230,24 +225,9 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
               <Field label="Annual income before tax (CAD)" value={d.coApplicantIncome} onChange={(v) => set('coApplicantIncome', v)} type="number" inputMode="numeric" />
             </div>
           )}
-          <ToggleField label="Do you have a vehicle?" value={d.hasVehicle} onChange={(v) => set('hasVehicle', v)} />
-          {d.hasVehicle && (
-            <div className="mp-grid2">
-              <Field label="Make and model" value={d.vehicleMakeModel} onChange={(v) => set('vehicleMakeModel', v)} />
-              <Field label="Year" value={d.vehicleYear} onChange={(v) => set('vehicleYear', v)} type="number" inputMode="numeric" />
-            </div>
-          )}
-          <SelectField label="Do you need EV parking?" value={d.evParkingNeeded} onChange={(v) => set('evParkingNeeded', v)} options={[{ value: 'no', label: 'No' }, { value: 'yes', label: 'Yes' }]} />
         </>}
       </Section>
 
-      <Section {...sec('words')} title="Anything to address"
-        rows={<Row label="Anything addressed" value={f.redFlags} multiline />}>
-        {draft && <>
-          <p className="mp-note" style={{ margin: 0 }}>One thing you can skip: your background, beliefs, or family. Landlords aren’t allowed to consider those, so leaving them out will never affect your application.</p>
-          <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={d.redFlags} onChange={(v) => set('redFlags', v)} />
-        </>}
-      </Section>
 
       <Section {...sec('references')} title="References"
         rows={refs.length ? refs.map((n) => <Row key={n} label={`Reference ${n}`} value={[f[`reference${n}Name`], f[`reference${n}Relationship`], f[`reference${n}Contact`]].filter(Boolean).join(' · ')} />)

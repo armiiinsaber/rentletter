@@ -17,6 +17,8 @@ import { isIdKind } from '../../lib/documentRetention';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
+// The one line of guidance under the rows a realtor phones: the number must be the realtor's own.
+const GUIDANCE = 'Use a number you find yourself, not one the applicant gave.';
 const kShort = (n) => (Number(n) >= 1000 ? `$${Math.round(Number(n) / 1000)}k` : `$${Number(n)}`);
 
 export default function ScreeningChecklist({ applicant, listing, profile, onChange, heldDocuments, onViewDocument }) {
@@ -69,8 +71,8 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const rows = [
     { key: 'id', title: 'Identity', said: app.full_name || 'no name given', docs: nameFact, verb: 'Saw ID' },
     { key: 'employer', title: 'Income', said: app.annual_income ? `${money(app.annual_income)} a year` : 'no income given', docs: incomeFact + incomeMiss, verb: 'Called employer' },
-    { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true },
-    { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' },
+    { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true, note: GUIDANCE },
+    { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' , note: GUIDANCE },
     { key: 'reference', title: 'References', said: refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
   ];
@@ -99,6 +101,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
                   Said: {row.said}{row.docs != null ? <> · Docs: {row.docs}</> : null}
                 </div>
+                {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}
                 {Array.isArray(row.second) && row.second.length ? row.second.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line}</div>) : null}
               </div>
               {row.key && !shared ? (

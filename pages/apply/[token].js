@@ -664,7 +664,6 @@ export default function ApplyPage() {
 
               <FormSection num="05" title="Your move" required>
                 <Field label="Desired move in date" required value={form.moveInDate} onChange={(v) => update('moveInDate', v)} onBlur={() => markTouched('moveInDate')} error={showErr('moveInDate') && !vital.moveInDate ? 'Move in date is required.' : ''} type="date" />
-                <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={(v) => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
               </FormSection>
 
               <FormSection num="06" title="Household & pets">
@@ -726,7 +725,6 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
-
               <FormSection num="07" title="References (optional but recommended)">
                 <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
                   Two people who can vouch for you. Mentioning these by name is more persuasive than saying "references available."
@@ -749,19 +747,6 @@ export default function ApplyPage() {
                 </div>
               </FormSection>
 
-              <FormSection num="08" title="Vehicle (if parking matters)">
-                <ToggleField label="Do you have a vehicle?" value={form.hasVehicle} onChange={(v) => update('hasVehicle', v)} />
-                {form.hasVehicle && (
-                  <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    <Field label="Make and model" value={form.vehicleMakeModel} onChange={(v) => update('vehicleMakeModel', v)} placeholder="Honda Civic" />
-                    <Field label="Year" value={form.vehicleYear} onChange={(v) => update('vehicleYear', v)} placeholder="2020" type="number" />
-                  </div>
-                )}
-                <SelectField label="Do you need EV parking?" value={form.evParkingNeeded} onChange={(v) => update('evParkingNeeded', v)} options={[
-                  { value: 'no', label: 'No' },
-                  { value: 'yes', label: 'Yes' },
-                ]} />
-              </FormSection>
 
               <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 14, lineHeight: 1.55 }}>
                 Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required. The listing realtor screens on these, so please double-check they’re accurate before you submit.

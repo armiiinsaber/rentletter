@@ -64,9 +64,13 @@ test('not selected recipients: active rows with an email, never the winner, set 
   assert.equal(notSelectedRecipients(rows, null).length, 2, 'outside winner: every active applicant with an email');
 });
 
-test('the message: four neutral lines, no winner, no score, no reason', () => {
-  const m = notSelectedEmail({ listingName: 'Carlaw', realtorName: 'Sarah Chen', keepUrl: 'https://rentletter.ca/keep/t' });
+test('the message speaks as a person: greeting, four neutral lines, the realtor signs; no winner, no score, no reason', () => {
+  const m = notSelectedEmail({ listingName: 'Carlaw', realtorName: 'Sarah Chen', applicantName: 'Priya Nair', keepUrl: 'https://rentletter.ca/keep/t' });
   assert.equal(m.subject, 'Carlaw: an update from Sarah Chen');
+  assert.equal(m.greeting, 'Hi Priya,'); assert.equal(m.signoff, 'Sarah Chen');
+  assert.ok(m.text.startsWith('Hi Priya,\n\nCarlaw went to another applicant.'));
+  assert.match(m.text, /within 14 days\.\n\nSarah Chen\n/);
+  assert.equal(notSelectedEmail({ listingName: 'Carlaw', realtorName: 'Sarah Chen', keepUrl: 'x' }).greeting, 'Hi,');
   assert.equal(m.lines.length, 4);
   assert.doesNotMatch(m.text, /score|Fit|because|chosen|selected applicant/i);
   assert.match(m.html, /Keep me in mind/);

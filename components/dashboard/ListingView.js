@@ -528,12 +528,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     l.pref_requires_landlord_reference ? 'landlord reference' : null,
     l.pref_requires_employer_verification ? 'employer verification' : null,
   ].filter(Boolean);
-  const employment = [
-    l.pref_employment_full_time && 'Full time',
-    l.pref_employment_contract && 'Contract',
-    l.pref_employment_self_employed && 'Self employed',
-    l.pref_employment_part_time && 'Part time',
-  ].filter(Boolean).join(', ') || 'not set';
 
   // Pure scorecard vs criteria ranking (matches lib/listingReportData). Everyone is
   // in: active best fit first, set aside below, withdrawn excluded (withdrawn_at rule).
@@ -904,20 +898,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
                   <Row label="Address" value={l.address || 'not set'} />
                   <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'not set'} />
-                  <Row label="Unit type" value={formatUnit(l.bedrooms) || 'not set'} />
+                  <Row label="Bedrooms" value={formatUnit(l.bedrooms) || 'not set'} />
                   <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />
                   <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
                   <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
-                  <Row label="EV parking" value={l.ev_parking === 'yes' ? 'Yes' : 'No'} />
                   <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
                   <Row label="Max rent to income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : 'not set'} />
                   <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
-                  <Row label="Employment" value={employment} />
-                  <Row label="Min lease term" value={l.pref_min_lease_term_months != null ? `${l.pref_min_lease_term_months} mo` : 'not set'} />
-                  <Row label="Max occupants" value={l.pref_max_occupants != null ? l.pref_max_occupants : 'not set'} />
                   <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
-                  <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted)} />
                   {l.pref_notes && (
                     <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
                       <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}

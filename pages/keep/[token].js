@@ -34,13 +34,14 @@ export async function getServerSideProps(ctx) {
 }
 
 const LINES = {
-  consented: 'Done. Your realtor will keep your application in mind for similar units for the next 60 days.',
-  declined: 'Understood. Nothing else happens, and your documents are deleted within 14 days if they are not already.',
-  expired: 'This link has expired. Nothing was saved.',
-  answered: 'Already answered. Nothing changed.',
-  missing: 'This link is not valid.',
-  unavailable: 'We could not load that right now. Please try the link again in a moment.',
+  consented: (who) => `Done. ${who} will keep your application in mind for similar units for the next 60 days.`,
+  declined: () => 'Understood. Nothing else happens.',
+  expired: () => 'This link has expired. Nothing was saved.',
+  answered: () => 'Already answered. Nothing changed.',
+  missing: () => 'This link is not valid.',
+  unavailable: () => 'We could not load that right now. Please try the link again in a moment.',
 };
+export const keepLine = (view, who) => (LINES[view] || LINES.unavailable)(who || 'Your realtor');
 
 export default function KeepPage({ token, state, realtorName }) {
   const [view, setView] = useState(state); // ask | consented | declined | expired | answered | missing | unavailable
@@ -83,7 +84,7 @@ export default function KeepPage({ token, state, realtorName }) {
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{LINES[view] || LINES.unavailable}</p>
+            <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{keepLine(view, who)}</p>
           )}
         </div>
       </main>

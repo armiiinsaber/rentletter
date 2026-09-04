@@ -98,7 +98,7 @@ export default function Home() {
     // Tier 1 — current rental (expanded)
     previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
     currentRent: '',
-    moveInDate: '', reasonForMoving: '',
+    moveInDate: '',
     // Tier 1 — household details
     numberOfOccupants: '1', occupantsDetails: '',
     smoker: 'no',
@@ -107,10 +107,9 @@ export default function Home() {
     coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
     coApplicantIncome: '', coApplicantRelationship: '',
     // Tier 1 — existing lifestyle/disclosures
-    pets: '', redFlags: '',
+    pets: '',
     // Tier 2 — optional but landlord-helpful
-    hasVehicle: false,
-    vehicleMakeModel: '', vehicleYear: '',
+
     reference1Name: '', reference1Relationship: '', reference1Contact: '',
     reference2Name: '', reference2Relationship: '', reference2Contact: '',
   });
@@ -346,7 +345,7 @@ export default function Home() {
   const isFormValid = () => {
     return form.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
       && form.fullName && form.jobTitle && form.employer
-      && form.annualIncome && form.moveInDate && form.reasonForMoving;
+      && form.annualIncome && form.moveInDate;
   };
 
   const handlePay = () => {
@@ -368,9 +367,7 @@ export default function Home() {
         previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
         previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
         moveInDate: '2026-06-15',
-        reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute from 45 minutes to under 15. My current lease at 245 Sherbourne ends June 30.',
         pets: 'None',
-        redFlags: '',
       },
       {
         email: 'james.okafor.test@example.com',
@@ -382,9 +379,7 @@ export default function Home() {
         previousAddress: '', yearsAtPrevious: '',
         previousLandlordName: '', previousLandlordContact: '',
         moveInDate: '2026-07-01',
-        reasonForMoving: 'First time renter, moving out of a family home to start independent life closer to work.',
         pets: 'None',
-        redFlags: 'Limited rental history as a first time renter. Can provide guarantor and employer reference.',
       },
       {
         email: 'priya.nair.test@example.com',
@@ -396,9 +391,7 @@ export default function Home() {
         previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
         previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
         moveInDate: '2026-08-01',
-        reasonForMoving: 'Partner and I are moving in together, we both want a 2BR closer to the West End where we both work.',
         pets: 'One indoor cat, 6 years old, vet records available',
-        redFlags: '',
       },
     ];
     const random = sampleProfiles[Math.floor(Math.random() * sampleProfiles.length)];
@@ -417,9 +410,7 @@ export default function Home() {
       previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
       previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
       moveInDate: '2026-06-15',
-      reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute. Current lease at 245 Sherbourne ends June 30.',
       pets: 'None',
-      redFlags: '',
     };
     setForm(demo);
     setStep('generating');
@@ -532,15 +523,14 @@ export default function Home() {
     jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
     previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
     currentRent: '',
-    moveInDate: '', reasonForMoving: '',
+    moveInDate: '',
     numberOfOccupants: '1', occupantsDetails: '',
     smoker: 'no',
     hasCoApplicant: false,
     coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
     coApplicantIncome: '', coApplicantRelationship: '',
-    pets: '', redFlags: '',
-    hasVehicle: false,
-    vehicleMakeModel: '', vehicleYear: '',
+    pets: '',
+
     reference1Name: '', reference1Relationship: '', reference1Contact: '',
     reference2Name: '', reference2Relationship: '', reference2Contact: '',
   };
@@ -1089,7 +1079,6 @@ export default function Home() {
 
             <FormSection num="06" title="Your move" required>
               <Field label="Desired move in date" value={form.moveInDate} onChange={v => update('moveInDate', v)} type="date" />
-              <Textarea label="Why are you moving?" value={form.reasonForMoving} onChange={v => update('reasonForMoving', v)} placeholder="New job, shorter commute, lease ending..." />
             </FormSection>
 
             <FormSection num="07" title="Household">
@@ -1130,7 +1119,6 @@ export default function Home() {
 
             <FormSection num="08" title="Lifestyle">
               <Field label="Pets" value={form.pets} onChange={v => update('pets', v)} placeholder="One small cat, indoor only, vet records available" />
-              <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={form.redFlags} onChange={v => update('redFlags', v)} placeholder="Limited Canadian credit history due to recent move..." />
             </FormSection>
 
             <FormSection num="09" title="References (optional but recommended)">
@@ -1157,20 +1145,6 @@ export default function Home() {
                   <Field label="Phone or email" value={form.reference2Contact} onChange={v => update('reference2Contact', v)} placeholder="dchen@email.com" />
                 </div>
               </div>
-            </FormSection>
-
-            <FormSection num="10" title="Vehicle (if parking matters)">
-              <ToggleField
-                label="Do you have a vehicle?"
-                value={form.hasVehicle}
-                onChange={v => update('hasVehicle', v)}
-              />
-              {form.hasVehicle && (
-                <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4 }}>
-                  <Field label="Make and model" value={form.vehicleMakeModel} onChange={v => update('vehicleMakeModel', v)} placeholder="Honda Civic" />
-                  <Field label="Year" value={form.vehicleYear} onChange={v => update('vehicleYear', v)} placeholder="2020" type="number" />
-                </div>
-              )}
             </FormSection>
 
             {/* Pass status banner (only when active pass) */}
