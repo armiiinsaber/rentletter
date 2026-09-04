@@ -35,6 +35,8 @@ import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
 import { stateLine } from '../../lib/listingStateLine.js';
 import { listingOpen } from '../../lib/listingState.js';
+import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
+import qrcode from 'qrcode-generator';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
 const Row = ({ label, value }) => (
@@ -231,6 +233,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   };
   const [inviteLoading, setInviteLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  // THE POST KIT: the short link's code (from the invite route, minted lazily on first load for
+  // a live invite that has none), the fold, and which Copy reads Copied for two seconds.
+  const [shortCode, setShortCode] = useState(null);
+  const [kitOpen, setKitOpen] = useState(false);
+  const [kitCopied, setKitCopied] = useState('');
   const [addRL, setAddRL] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(false); // the fold: closed on every visit, no persistence
   const [addOpen, setAddOpen] = useState(false); // "Add by application number" reveals the field
@@ -328,11 +335,49 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not create invite link.'); setInviteLoading(false); return; }
       setInviteUrl(j.url);
+      if (j.shortCode) setShortCode(String(j.shortCode));
       setListing((l) => ({ ...l, invite_token: j.token, invite_url: j.url }));
       setInviteLoading(false);
     } catch (e) {
       setError('Could not create invite link.'); setInviteLoading(false);
     }
+  };
+
+  // LAZY SHORT CODE: a live invite minted before short links gets its code the first time the
+  // listing page loads (the invite route reuses the token and mints the code beside the record).
+  useEffect(() => {
+    if (!listing?.invite_token || shortCode || !listingOpen(listing)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await adapter.fetch('/api/listings/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id, regenerate: false }) });
+        const j = await r.json().catch(() => ({}));
+        if (!cancelled && r.ok && j?.shortCode) setShortCode(String(j.shortCode));
+      } catch (e) { /* the kit shows the long link until the code exists */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.invite_token, listing?.status]);
+  const kitShort = shortCode ? shortUrlFor(shortCode) : '';
+  const kitTexts = postKitTexts(listing.address || listing.name, kitShort);
+  const kitCopy = (key, text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setKitCopied(key);
+    setTimeout(() => setKitCopied((k) => (k === key ? '' : k)), 2000);
+  };
+  const kitQrSvg = () => {
+    if (!kitShort) return '';
+    const q = qrcode(0, 'M'); q.addData(kitShort); q.make();
+    return q.createSvgTag({ cellSize: 4, margin: 0, scalable: true });
+  };
+  const saveQr = () => {
+    const svg = kitQrSvg(); if (!svg) return;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `${addressSlug(listing.address || listing.name)}-rentletter.svg`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   // Always copy the COMPLETE canonical invite URL. The token is the source of truth,
@@ -883,6 +928,53 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             </div>
             {error && (
               <div style={{ marginTop: 'var(--s-3)', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
+            )}
+            {/* THE POST KIT: a 44px toggle row under the invite row, hidden with it when the listing
+                is rented or closed. Open: the short link, three texts and the QR, each with an ink
+                outlined Copy at the right that reads Copied for two seconds. */}
+            {listingOpen(l) && inviteShareUrl && (
+              <>
+                <button type="button" onClick={() => setKitOpen((o) => !o)} aria-expanded={kitOpen} aria-controls="listing-post-kit"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, marginTop: 'var(--s-3)', padding: 0, background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, borderRadius: 0, color: C.ink, fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  <span>{kitOpen ? 'Hide post kit' : 'Post kit'}</span>
+                  <span className={`m-chev ${kitOpen ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
+                </button>
+                <div id="listing-post-kit" className={`lv-fold ${kitOpen ? 'lv-fold-open' : ''}`} aria-hidden={!kitOpen}>
+                  <div>
+                    <div style={{ paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }} inert={!kitOpen}>
+                      {[
+                        ['Short link', kitShort || 'Short link on its way', 'short'],
+                        ['Description', kitTexts.description, 'description'],
+                        ['Instagram bio', kitTexts.instagram, 'instagram'],
+                        ['Saved reply', kitTexts.reply, 'reply'],
+                      ].map(([label, text, key]) => (
+                        <div key={key} data-kit-item={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-3)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>{label}</div>
+                            {/* Display only: the last space is non breaking so no last word stands alone; the copy stays plain. */}
+                            <div data-kit-text style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{String(text).replace(/ (\S+)$/, '\u00a0$1')}</div>
+                          </div>
+                          <button type="button" onClick={() => kitCopy(key, kitShort ? text : '')} disabled={!kitShort} aria-label={`Copy ${label.toLowerCase()}`}
+                            style={{ minHeight: 44, minWidth: 84, padding: '0 var(--s-4)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit', flexShrink: 0, alignSelf: 'center' }}>
+                            {kitCopied === key ? 'Copied' : 'Copy'}
+                          </button>
+                        </div>
+                      ))}
+                      <div data-kit-item="QR" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', padding: 'var(--s-3) 0 0', flexWrap: 'wrap' }}>
+                        <div data-kit-qr aria-label={kitShort ? `QR code for ${kitShort}` : 'QR code'} role="img"
+                          style={{ width: 160, height: 160, padding: 12, background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, boxSizing: 'border-box', flexShrink: 0 }}
+                          dangerouslySetInnerHTML={{ __html: kitShort ? kitQrSvg().replace('<svg ', '<svg style="display:block;width:100%;height:100%" ') : '' }} />
+                        <div style={{ flex: 1, minWidth: 140 }}>
+                          <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>QR</div>
+                          <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'pretty' }}>Opens the short link. Print it on the sign or the sheet.</div>
+                          <button type="button" onClick={saveQr} disabled={!kitShort}
+                            style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit' }}>Save QR</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
             {/* The toggle row: full width, 44px, hairline above, the applicant cards' chevron. */}
             <button type="button" onClick={() => setDetailsOpen((o) => !o)} aria-expanded={detailsOpen} aria-controls="listing-details"

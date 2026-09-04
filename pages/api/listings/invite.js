@@ -10,6 +10,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { normalizeProvince } from '../../../lib/provinces';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
+import { newShortCode, isShortCode, shortKey, shortUrl, INVITE_TTL } from '../../../lib/shortLink';
 
 function kvBase() {
   return (process.env.KV_REST_API_URL || '').replace(/\/+$/, '');
@@ -76,18 +77,27 @@ export default async function handler(req, res) {
   };
 
   try {
-    // Preserve submission count / createdAt if reusing the token.
-    if (reuse) {
-      const r = await fetch(`${base}/get/linvite:${token}`, {
-        headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
-      });
+    const H = { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` };
+    // The previous record: submission count and createdAt survive a reuse; its short code is
+    // kept on reuse and deleted on regenerate.
+    let prev = null;
+    if (listing.invite_token && /^[a-f0-9]{20}$/.test(String(listing.invite_token))) {
+      const r = await fetch(`${base}/get/linvite:${listing.invite_token}`, { headers: H });
       const d = await r.json();
-      if (d?.result) {
-        const prev = typeof d.result === 'string' ? JSON.parse(d.result) : d.result;
-        payload.submissionCount = prev.submissionCount || 0;
-        payload.createdAt = prev.createdAt || payload.createdAt;
-      }
+      if (d?.result) prev = typeof d.result === 'string' ? JSON.parse(d.result) : d.result;
     }
+    if (reuse && prev) {
+      payload.submissionCount = prev.submissionCount || 0;
+      payload.createdAt = prev.createdAt || payload.createdAt;
+    }
+    // SHORT LINK: short:{code} holds the token, same TTL as the record; the record carries the
+    // code. Reuse keeps the code (and mints one lazily for a record that has none); regenerate
+    // mints a new code and deletes the old key so the old short link dies with the old token.
+    if (!reuse && prev?.shortCode) await fetch(`${base}/del/${shortKey(prev.shortCode)}`, { method: 'POST', headers: H });
+    const shortCode = reuse && isShortCode(prev?.shortCode) ? prev.shortCode : newShortCode();
+    payload.shortCode = shortCode;
+    await fetch(`${base}/set/${shortKey(shortCode)}`, { method: 'POST', headers: { ...H, 'Content-Type': 'application/json' }, body: JSON.stringify(token) });
+    await fetch(`${base}/expire/${shortKey(shortCode)}/${INVITE_TTL}`, { method: 'POST', headers: H });
 
     const setRes = await fetch(`${base}/set/linvite:${token}`, {
       method: 'POST',
@@ -96,7 +106,7 @@ export default async function handler(req, res) {
     });
     if (!setRes.ok) return res.status(500).json({ error: 'Could not create invite link.' });
     // 90-day TTL (matches the existing invite flow).
-    await fetch(`${base}/expire/linvite:${token}/7776000`, {
+    await fetch(`${base}/expire/linvite:${token}/${INVITE_TTL}`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
     });
@@ -107,7 +117,7 @@ export default async function handler(req, res) {
     await supabase.from('listings').update({ invite_token: token, invite_url: url }).eq('id', listing.id);
     if (process.env.SUPABASE_SERVICE_ROLE_KEY) await recordEvent(getSupabaseAdminClient(), { profileId: user.id, listingId: listing.id, type: 'invite_link_created', payload: { listingName: listing.name || listing.address || null, regenerated: !!(regenerate && listing.invite_token) } });
 
-    return res.status(200).json({ ok: true, token, url });
+    return res.status(200).json({ ok: true, token, url, shortCode, shortUrl: shortUrl(shortCode) });
   } catch (e) {
     console.error('[listings/invite] error:', e);
     return res.status(500).json({ error: 'Could not create invite link.' });
