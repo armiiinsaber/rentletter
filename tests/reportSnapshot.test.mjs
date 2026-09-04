@@ -110,7 +110,7 @@ test('the text template: greeting, one line per applicant, the link, the sign of
 test('send-report: the absent table falls back to the live report with one log line', async () => {
   const src = readFileSync(new URL('../pages/api/listings/send-report.js', import.meta.url), 'utf8');
   assert.match(src, /const pageUrl = snap\.absent \? null : reportPageUrl\(snap\.token\)/);
-  assert.match(src, /buildLandlordReportPdf\(\{ payload, fonts/);
+  assert.match(src, /buildLandlordReportPdf\(\{ payload \}\)/);
   const admin = fakeSupabase({});
   const warned = []; const orig = console.warn; console.warn = (...a) => warned.push(a.join(' '));
   try {

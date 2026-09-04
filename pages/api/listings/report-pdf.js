@@ -8,7 +8,6 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
 import { buildSnapshot } from '../../../lib/reportSnapshot';
-import { loadPairingFonts } from '../../../lib/pdfFonts';
 import { logServerError } from '../../../lib/serverLog';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 
@@ -27,7 +26,6 @@ export default async function handler(req, res) {
   const listingId = String(req.query.listingId || '');
   if (!listingId) return res.status(400).json({ error: 'listingId required.' });
 
-  let fontPairingForLog = null;
   try {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
@@ -35,11 +33,9 @@ export default async function handler(req, res) {
     if (ctx.active.length === 0) {
       return res.status(400).json({ error: 'No applicants to present yet.' });
     }
-    fontPairingForLog = ctx.profile?.brand_fonts?.id || null;
-    const fonts = loadPairingFonts(ctx.profile?.brand_fonts);
     // The same payload a send would freeze, rendered without storing it.
     const payload = buildSnapshot({ listing: ctx.listing, applicants: ctx.active, profile: { ...ctx.profile, email: ctx.profile?.email || user.email } });
-    const bytes = await buildLandlordReportPdf({ payload, fonts });
+    const bytes = await buildLandlordReportPdf({ payload });
     const slug = String(ctx.listing.name || ctx.listing.address || 'listing').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
     const filename = `shortlist-${slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
@@ -48,7 +44,7 @@ export default async function handler(req, res) {
     await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_generated', payload: { listingName: ctx.listing.name || ctx.listing.address || null, format: 'pdf' } });
     return res.status(200).send(Buffer.from(bytes));
   } catch (e) {
-    logServerError('[listings/report-pdf]', e, { listingId, fontPairing: fontPairingForLog });
+    logServerError('[listings/report-pdf]', e, { listingId });
     return res.status(500).json({ error: 'Failed to generate PDF.', code: 'report_failed' });
   }
 }

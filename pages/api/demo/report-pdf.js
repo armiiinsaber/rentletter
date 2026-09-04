@@ -11,7 +11,7 @@ export default async function handler(req, res) {
   if (!payload) return res.status(404).json({ error: 'Listing not found.' });
   if (!payload.applicants.length) return res.status(400).json({ error: 'No applicants to present yet.' });
   try {
-    const bytes = await buildLandlordReportPdf({ payload, fonts: null });
+    const bytes = await buildLandlordReportPdf({ payload });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="demo-shortlist-${new Date().toISOString().slice(0, 10)}.pdf"`);
     res.setHeader('Cache-Control', 'no-store');

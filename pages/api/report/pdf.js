@@ -5,7 +5,6 @@ import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { isReportToken } from '../../../lib/applicationIds';
 import { snapshotByToken } from '../../../lib/reportSnapshotStore';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
-import { loadPairingFonts } from '../../../lib/pdfFonts';
 import { demoSnapshot } from '../../../lib/demoReport';
 import { logServerError } from '../../../lib/serverLog';
 
@@ -22,7 +21,7 @@ export default async function handler(req, res) {
       if (row && !(row.expires_at && new Date(row.expires_at).getTime() < Date.now())) payload = row.payload;
     }
     if (!payload) return res.status(404).json({ error: 'This report is not available.' });
-    const bytes = await buildLandlordReportPdf({ payload, fonts: t.startsWith('DEMO-') ? null : loadPairingFonts(payload.realtor?.brandFonts) });
+    const bytes = await buildLandlordReportPdf({ payload });
     const slug = String(payload.listing?.address || 'report').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="applicants-${slug}.pdf"`);

@@ -11,7 +11,6 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
-import { loadPairingFonts } from '../../../lib/pdfFonts';
 import { logServerError } from '../../../lib/serverLog';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { buildSnapshot } from '../../../lib/reportSnapshot';
@@ -65,7 +64,6 @@ export default async function handler(req, res) {
   const { listingId } = req.body || {};
   if (!listingId) return res.status(400).json({ error: 'listingId required.' });
 
-  let fontPairingForLog = null;
   try {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
@@ -80,8 +78,7 @@ export default async function handler(req, res) {
     const snap = await insertSnapshot(admin, { listingId: ctx.listing.id, profileId: user.id, payload, sentToName: landlordName, sentToEmail: landlordEmail });
     const pageUrl = snap.absent ? null : reportPageUrl(snap.token);
 
-    fontPairingForLog = ctx.profile?.brand_fonts?.id || null;
-    const bytes = await buildLandlordReportPdf({ payload, fonts: loadPairingFonts(ctx.profile?.brand_fonts) });
+    const bytes = await buildLandlordReportPdf({ payload });
     const mail = reportEmail({ payload, pageUrl, landlordName });
     const resend = new Resend(process.env.RESEND_API_KEY);
     const result = await resend.emails.send({
@@ -101,7 +98,7 @@ export default async function handler(req, res) {
     const meta = snap.absent ? null : snapshotMeta({ id: snap.id, token: snap.token, created_at: snap.createdAt, sent_to_name: landlordName, opened_count: 0, answers: {}, expires_at: snap.expiresAt });
     return res.status(200).json({ ok: true, sentTo: landlordEmail, snapshot: meta, pageUrl });
   } catch (e) {
-    logServerError('[listings/send-report]', e, { listingId, fontPairing: fontPairingForLog });
+    logServerError('[listings/send-report]', e, { listingId });
     return res.status(500).json({ error: 'Email send failed. Try again.', code: 'report_failed' });
   }
 }
