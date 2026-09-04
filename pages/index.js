@@ -130,7 +130,7 @@ export default function Home() {
     if (inviteParam && (/^[a-f0-9]{20}$/.test(inviteParam) || /^demo\d{16}$/.test(inviteParam))) {
       setInviteToken(inviteParam);
       // Fetch the invite context to display "applying for X" banner
-      fetch(`/api/landlord/resolve-invite?token=${encodeURIComponent(inviteParam)}`)
+      fetch(`/api/invite/resolve?token=${encodeURIComponent(inviteParam)}`)
         .then(r => r.json())
         .then(json => {
           if (json && !json.error) {
@@ -262,7 +262,7 @@ export default function Home() {
         localStorage.setItem('rentletter_app_number', json.applicationNumber);
         // If this submission came from a realtor's invite link, tag it
         if (inviteToken && /^[a-f0-9]{20}$/.test(inviteToken)) {
-          fetch('/api/landlord/tag-invite-submission', {
+          fetch('/api/invite/tag', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: inviteToken, applicationNumber: json.applicationNumber }),

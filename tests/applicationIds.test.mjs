@@ -36,7 +36,7 @@ test('owner token: 32 characters of the alphabet, new and old generators alike; 
 });
 
 test('every validator reads the shared helper; no hex only regex remains', () => {
-  const files = ['pages/my-application.js', 'pages/api/application/manage.js', 'pages/api/tenant/profile.js', 'pages/api/tenant/sync-application.js', 'pages/api/landlord/lookup.js', 'pages/api/listings/add-applicant.js', 'pages/api/applications/mirror.js', 'pages/api/generate.js'];
+  const files = ['pages/my-application.js', 'pages/api/application/manage.js', 'pages/api/tenant/profile.js', 'pages/api/tenant/sync-application.js', 'pages/api/listings/add-applicant.js', 'pages/api/applications/mirror.js', 'pages/api/generate.js'];
   for (const f of files) {
     const src = readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
     assert.doesNotMatch(src, /\[A-F0-9\]\{4\}/, `${f} still carries the hex regex`);

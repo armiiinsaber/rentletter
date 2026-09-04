@@ -60,12 +60,12 @@ export default function CompliancePage() {
               Every applicant submits the same structured fields. The application form does not request information about protected characteristics such as religion, ethnic origin, citizenship status, family planning, disability, or receipt of public assistance. By collecting only objective, non-protected information, Rentletter helps reduce the risk that screening decisions are influenced by protected grounds, whether intentionally or implicitly.
             </SubSection>
 
-            <SubSection title="2. AI drafted rationale focuses on legitimate factors">
-              When a landlord uses the optional AI rationale feature, the system is instructed to base reasoning only on legitimate, non-discriminatory factors: income-to-rent ratio, employment stability, rental history, references, and stated move-in alignment. The system is prompted to avoid any reference to protected characteristics. Output is editable by the user before being saved.
+            <SubSection title="2. Set aside reasons come from a fixed, screenable list">
+              Setting an applicant aside requires one reason from a fixed list of screenable facts: income below the stated minimum, rent share above the stated maximum, employment tenure below the stated minimum, no references, or another screenable fact the realtor names. No free text reaches the landlord, and Rentletter drafts no rationale.
             </SubSection>
 
             <SubSection title="3. Documented decision trail">
-              Every accept, reject, or shortlist action is timestamped and saved with the user account that took the action. Optional written reasons can be attached to each decision. This produces a contemporaneous record that demonstrates the basis for screening decisions, useful in the event of a Human Rights Tribunal of Ontario (HRTO) complaint or equivalent provincial proceeding.
+              Every set aside, restore, finalist mark, report send and landlord answer is timestamped and saved on the listing's timeline under the realtor's account. The set aside reason is attached to each decision. This produces a contemporaneous record that demonstrates the basis for screening decisions, useful in the event of a Human Rights Tribunal of Ontario (HRTO) complaint or equivalent provincial proceeding.
             </SubSection>
 
             <SubSection title="4. Consistent treatment across applicants">
@@ -79,7 +79,7 @@ export default function CompliancePage() {
 
           <Section title="What Rentletter does NOT do">
             <ul style={ul}>
-              <li style={li}>It does not make screening decisions on the user's behalf. All accept/reject/shortlist actions are taken by the user.</li>
+              <li style={li}>It does not make screening decisions on the user's behalf. Every set aside, restore and landlord answer is taken by a person.</li>
               <li style={li}>It does not provide legal advice. The platform supports the user's decision making but does not warrant compliance with any specific human rights legislation.</li>
               <li style={li}>It does not run credit checks, criminal record checks, or third party verification services.</li>
               <li style={li}>It does not assess or score applicants based on protected characteristics.</li>

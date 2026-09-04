@@ -3,11 +3,11 @@
 // listing-scoped invite link (https://rentletter.ca/apply/{token}).
 //
 // Flow (KV only — no Supabase, no realtor login):
-//   1. Resolve the invite token via GET /api/landlord/resolve-invite (reads linvite:{token}).
+//   1. Resolve the invite token via GET /api/invite/resolve (reads linvite:{token}).
 //      Missing/expired -> friendly "link no longer active" message (NOT a 404).
 //   2. Render the standard tenant application form (same fields generate.js expects).
 //   3. On submit -> POST /api/generate (mode 'application' => app:{RL} in KV, free, no AI)
-//      -> POST /api/landlord/tag-invite-submission to link the RL to this invite
+//      -> POST /api/invite/tag to link the RL to this invite
 //      -> best-effort POST /api/send to email the tenant their number.
 //   4. Show the tenant their RL number with a clear confirmation.
 import { useState, useEffect } from 'react';
@@ -232,7 +232,7 @@ export default function ApplyPage() {
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`/api/landlord/resolve-invite?token=${encodeURIComponent(token)}`);
+        const r = await fetch(`/api/invite/resolve?token=${encodeURIComponent(token)}`);
         const json = await r.json().catch(() => ({}));
         if (cancelled) return;
         if (!r.ok || json?.error) {
@@ -316,7 +316,7 @@ export default function ApplyPage() {
         let minted = null;
         try {
           // 2. Tag this submission to the realtor's invite (KV).
-          await fetch('/api/landlord/tag-invite-submission', {
+          await fetch('/api/invite/tag', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, applicationNumber }),

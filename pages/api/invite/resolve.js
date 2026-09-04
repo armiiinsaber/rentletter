@@ -1,4 +1,4 @@
-// /api/landlord/resolve-invite
+// /api/invite/resolve
 // PUBLIC endpoint. Tenants land on /apply/[token]; the page calls this
 // to look up listing info to show the tenant.
 import { normalizeProvince } from '../../../lib/provinces';

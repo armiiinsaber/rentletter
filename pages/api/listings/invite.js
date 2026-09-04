@@ -1,7 +1,7 @@
 // /api/listings/invite
 // Mint (or reuse) a listing-scoped tenant invite link for a SUPABASE-authed
 // realtor. Writes the SAME Upstash KV `linvite:{token}` record shape the tenant
-// /apply flow already consumes (resolve-invite, tag-invite-submission) — those
+// /apply flow already consumes (pages/api/invite/resolve.js and tag.js), those
 // routes are left untouched. Also persists invite_token/invite_url back onto the
 // Supabase listing row (RLS, realtor owns it).
 import crypto from 'crypto';

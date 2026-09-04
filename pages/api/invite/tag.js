@@ -1,4 +1,4 @@
-// /api/landlord/tag-invite-submission
+// /api/invite/tag
 // PUBLIC endpoint called by the tenant client after a successful submission
 // via /apply/[token]. Records that this application was submitted through
 // this invite, so when the realtor reloads their dashboard, the application

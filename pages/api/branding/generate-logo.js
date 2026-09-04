@@ -1,7 +1,7 @@
 // /api/branding/generate-logo
 // Realtor-authenticated. Turns a realtor's rough brief into 3 professional,
 // real-estate-aware logo concepts as sandbox-safe SVGs, using Claude (same
-// @anthropic-ai/sdk pattern as reasoning.js / report-text.js). The system prompt
+// @anthropic-ai/sdk pattern as lib/applicantAnalysis.js). The system prompt
 // does the art direction the realtor can't. Soft per-realtor daily cap via KV.
 import Anthropic from '@anthropic-ai/sdk';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';

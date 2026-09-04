@@ -1,6 +1,6 @@
 // /api/applications/mirror
 // PUBLIC bridge endpoint, called by /apply/[token] AFTER the tenant's submission
-// was written to KV (generate.js) and linked to the invite (tag-invite-submission.js).
+// was written to KV (generate.js) and linked to the invite (pages/api/invite/tag.js).
 // It mirrors the KV app:{RL} into Supabase `applications` (service-role) and links
 // it to the invite's listing via `listing_applicants` (added_via ADDED_VIA.INVITE).
 //

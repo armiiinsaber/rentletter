@@ -46,12 +46,12 @@ const FAQS = [
   {
     category: 'For realtors',
     q: 'What does my landlord client see?',
-    a: 'A clean, co branded shortlist page: your branding, the unit, your landlord’s stated preferences, and each candidate scored against those preferences. They can add their own notes and remove anyone they are not interested in, all of which syncs back to you.',
+    a: 'A private report page with your branding: the unit, the applicants ranked against your landlord’s stated criteria with a Fit number and one fact sentence each, and two answers per applicant, meet them or not for me. Their answers show on your dashboard the moment they tap. No login, no account.',
   },
   {
     category: 'For realtors',
     q: 'Does it work on my phone?',
-    a: 'Yes. Sign in once with your email and your listings, shortlists, notes, and unit details sync between laptop and phone automatically.',
+    a: 'Yes. Sign in once with your email and your listings, applicants, confirmations and unit details are the same on laptop and phone.',
   },
 
   // ─── FOR LANDLORDS WITHOUT A REALTOR ─────────────
@@ -75,7 +75,7 @@ const FAQS = [
   {
     category: 'For property managers',
     q: 'Can I run more than one listing?',
-    a: 'Yes. Each unit gets its own listing, its own application link, and its own shortlist, so you can keep multiple vacancies organized in one workspace.',
+    a: 'Yes. Each unit gets its own listing, its own application link and its own ranked list, so you can keep multiple vacancies organized in one workspace.',
   },
   {
     category: 'For property managers',
@@ -91,8 +91,8 @@ const FAQS = [
   },
   {
     category: 'Compliance and data',
-    q: 'What is the AI rationale feature?',
-    a: 'After you decide on an applicant, you can ask the AI to draft a short written rationale focused on legitimate factors. It gives you a clear, documented record of your reasoning, useful if a decision is ever questioned. It is not legal advice.',
+    q: 'How are decisions recorded?',
+    a: 'Setting an applicant aside requires one screenable reason from a fixed list, and every set aside, restore and landlord answer lands on the listing’s timeline with a time. That is the record if a decision is ever questioned. Rentletter drafts no rationale and gives no legal advice.',
   },
   {
     category: 'Compliance and data',
