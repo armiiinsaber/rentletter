@@ -495,13 +495,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // Criteria Fit reads, set ones only, in Fit's order: income floor, rent share cap, tenure,
   // landlord reference, employer verification.
   const moneyK = (n) => `$${Math.round(Number(n) / 1000)}k`;
-  const criteriaLine = [
+  const criteria = [
     Number(l.pref_min_annual_income) > 0 ? `min ${moneyK(l.pref_min_annual_income)}` : null,
     Number(l.pref_rent_to_income_max_pct) > 0 ? `max ${Number(l.pref_rent_to_income_max_pct)}% rent share` : null,
     Number(l.pref_min_years_at_job) > 0 ? `${Number(l.pref_min_years_at_job)} yr${Number(l.pref_min_years_at_job) === 1 ? '' : 's'} at job` : null,
     l.pref_requires_landlord_reference ? 'landlord reference' : null,
     l.pref_requires_employer_verification ? 'employer verification' : null,
-  ].filter(Boolean).join(' · ');
+  ].filter(Boolean);
   const employment = [
     l.pref_employment_full_time && 'Full time',
     l.pref_employment_contract && 'Contract',
@@ -821,103 +821,115 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
 
-          {/* Title row: the address, Edit at the right. Delete lives in Details. */}
-          <div className="rl-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
-            <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</h1>
-            <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
-          </div>
-          <div className="rl-in num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>
-            {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()} per month` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
-          </div>
-          {/* Criteria: the preferences Fit reads, set ones only, then the fold's toggle. */}
-          <p className="rl-in num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>
-            {criteriaLine || 'No criteria set'} ·{' '}
-            <button type="button" onClick={() => setDetailsOpen((o) => !o)} aria-expanded={detailsOpen} aria-controls="listing-details" style={{ display: 'inline', minHeight: 44, lineHeight: '44px', padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{detailsOpen ? 'Hide details' : 'Details'}</button>
-          </p>
-          {/* The invite link, one tap away: label, the URL truncated, Copy. */}
-          <div className="rl-in" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', marginTop: 'var(--s-2)', minHeight: 44 }}>
-            <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, flexShrink: 0 }}>Invite link</span>
-            {inviteShareUrl ? (
-              <>
-                <span className="num" style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={inviteShareUrl}>{inviteShareUrl}</span>
-                <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
-              </>
-            ) : (
-              <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
-            )}
-          </div>
-
-          {error && (
-            <div style={{ margin: 'var(--s-3) 0', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
-          )}
-
-          {/* THE DETAILS FOLD: the reference, one panel, closed on every visit. Height animates on
-              the settle curve (grid rows 0fr to 1fr); reduced motion snaps. */}
-          <div id="listing-details" className={`lv-fold ${detailsOpen ? 'lv-fold-open' : ''}`} aria-hidden={!detailsOpen}>
-            <div>
-              <section className="rl-card" style={{ minWidth: 0, padding: 'var(--card-pad)', marginTop: 'var(--s-3)' }} inert={!detailsOpen}>
-                <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
-                <Row label="Address" value={l.address || 'not set'} />
-                <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'not set'} />
-                <Row label="Unit type" value={formatUnit(l.bedrooms) || 'not set'} />
-                <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />
-                <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
-                <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
-                <Row label="EV parking" value={l.ev_parking === 'yes' ? 'Yes' : 'No'} />
-                <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
-                <Row label="Max rent to income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : 'not set'} />
-                <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
-                <Row label="Employment" value={employment} />
-                <Row label="Min lease term" value={l.pref_min_lease_term_months != null ? `${l.pref_min_lease_term_months} mo` : 'not set'} />
-                <Row label="Max occupants" value={l.pref_max_occupants != null ? l.pref_max_occupants : 'not set'} />
-                <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
-                <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
-                <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted)} />
-                {l.pref_notes && (
-                  <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
-                    <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
-                  </div>
-                )}
-                {(l.landlord_name || l.landlord_email || l.landlord_phone) && (
-                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Landlord client</div>
-                    {l.landlord_name && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
-                    {l.landlord_email && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
-                    {l.landlord_phone && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
-                  </div>
-                )}
-                {/* The invite link row: URL, Copy, Regenerate as text, Add by application number as text. */}
-                <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                  <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Invite link</div>
-                  {inviteShareUrl ? (
-                    <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
-                        style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
-                      <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
-                    </div>
-                  ) : (
-                    <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
-                  )}
-                  <div style={{ display: 'flex', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-1)' }}>
-                    {inviteShareUrl && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
-                    <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
-                  </div>
-                  {addOpen && (
-                    <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
-                      <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
-                        onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
-                        style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
-                      <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--s-4)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}>{addLoading ? 'Adding' : 'Add'}</button>
-                    </div>
-                  )}
-                </div>
-                {/* Delete, last and alone, in the danger colour, with the existing confirm. */}
-                <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                  <button onClick={remove} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
-                </div>
-              </section>
+          {/* THE HEADER CARD: the listing as one paper card above the applicants. Address with
+              Edit, rent and unit, the criteria as chips, the invite link row, then the Details
+              toggle row; the Details panel opens inside this card. */}
+          <section className="rl-card rl-in" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
+              <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</h1>
+              {/* Centred on the first line of the address: the line box is 28 * 1.15, the button 44. */}
+              <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--s-4)', marginTop: -6, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
             </div>
-          </div>
+            <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', overflowWrap: 'anywhere' }}>
+              {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()} per month` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
+            </div>
+            {/* Criteria as chips (the pill radius, ink outline, 28px), wrapping whole so nothing dangles. */}
+            {criteria.length ? (
+              <div className="num" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
+                {criteria.map((c) => <span key={c} style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 var(--s-3)', borderRadius: R.pill, border: `1px solid ${C.ink}`, color: C.ink, fontSize: 'var(--t-eyebrow)', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>{c}</span>)}
+              </div>
+            ) : (
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-3)' }}>No criteria set</div>
+            )}
+            {/* The invite link, one tap away: the URL in the field, Copy inside the row at the right. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
+              {inviteShareUrl ? (
+                <>
+                  <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link" title={inviteShareUrl}
+                    style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none', textOverflow: 'ellipsis' }} />
+                  <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
+                </>
+              ) : (
+                <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+              )}
+            </div>
+            {error && (
+              <div style={{ marginTop: 'var(--s-3)', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
+            )}
+            {/* The toggle row: full width, 44px, hairline above, the applicant cards' chevron. */}
+            <button type="button" onClick={() => setDetailsOpen((o) => !o)} aria-expanded={detailsOpen} aria-controls="listing-details"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, marginTop: 'var(--s-3)', padding: 0, background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, borderRadius: 0, color: C.ink, fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+              <span>{detailsOpen ? 'Hide details' : 'Details'}</span>
+              <span className={`m-chev ${detailsOpen ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
+            </button>
+            {/* THE DETAILS FOLD, inside the card: the reference, closed on every visit. Height animates
+                on the settle curve (grid rows 0fr to 1fr); reduced motion snaps. */}
+            <div id="listing-details" className={`lv-fold ${detailsOpen ? 'lv-fold-open' : ''}`} aria-hidden={!detailsOpen}>
+              <div>
+                <div style={{ paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }} inert={!detailsOpen}>
+                  <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
+                  <Row label="Address" value={l.address || 'not set'} />
+                  <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'not set'} />
+                  <Row label="Unit type" value={formatUnit(l.bedrooms) || 'not set'} />
+                  <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />
+                  <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
+                  <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
+                  <Row label="EV parking" value={l.ev_parking === 'yes' ? 'Yes' : 'No'} />
+                  <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
+                  <Row label="Max rent to income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : 'not set'} />
+                  <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
+                  <Row label="Employment" value={employment} />
+                  <Row label="Min lease term" value={l.pref_min_lease_term_months != null ? `${l.pref_min_lease_term_months} mo` : 'not set'} />
+                  <Row label="Max occupants" value={l.pref_max_occupants != null ? l.pref_max_occupants : 'not set'} />
+                  <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
+                  <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
+                  <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted)} />
+                  {l.pref_notes && (
+                    <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
+                      <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
+                    </div>
+                  )}
+                  {(l.landlord_name || l.landlord_email || l.landlord_phone) && (
+                    <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                      <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Landlord client</div>
+                      {l.landlord_name && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
+                      {l.landlord_email && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
+                      {l.landlord_phone && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
+                    </div>
+                  )}
+                  {/* The invite link row: URL, Copy, Regenerate as text, Add by application number as text. */}
+                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Invite link</div>
+                    {inviteShareUrl ? (
+                      <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
+                          style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
+                        <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+                    )}
+                    <div style={{ display: 'flex', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-1)' }}>
+                      {inviteShareUrl && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
+                      <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
+                    </div>
+                    {addOpen && (
+                      <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
+                        <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
+                          onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
+                          style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
+                        <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--s-4)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}>{addLoading ? 'Adding' : 'Add'}</button>
+                      </div>
+                    )}
+                  </div>
+                  {/* Delete, last and alone, in the danger colour, with the existing confirm. */}
+                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                    <button onClick={remove} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
 
           <div style={{ height: 'var(--gap-section)' }} aria-hidden="true" />
 
