@@ -162,7 +162,7 @@ function preFilterMessage(text, mode = 'marketing') {
 // ─── LAYER 2: TOPIC CLASSIFIER ────────────────────────────────
 // Cheap second-pass check using Claude Haiku. Returns true if the question is on-topic.
 
-const MARKETING_CLASSIFIER_PROMPT = `You are a topic classifier. Your only job: decide if the user's question is about Rentletter — a Canadian rental application platform with tenant cover letters and a landlord screening dashboard.
+const MARKETING_CLASSIFIER_PROMPT = `You are a topic classifier. Your only job: decide if the user's question is about Rentletter — a Canadian rental application platform with a free tenant application, an application number, and a realtor screening dashboard.
 
 ON-TOPIC examples:
 - "How much does it cost?"

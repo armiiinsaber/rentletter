@@ -6,17 +6,6 @@ import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
 import DeviceFrame from '../components/DeviceFrame';
 import HeroDemo from '../components/mockups/HeroDemo';
 
-// Stripe payment links — both must redirect to:
-// https://rentletter.ca/?paid=true&session_id={CHECKOUT_SESSION_ID}
-// SINGLE is on LAUNCH PROMO at $0.99 until July 1, 2026 (regular price $9.99)
-const STRIPE_SINGLE = 'https://buy.stripe.com/bJe28k9mr6Jtbh10Gm6Ri03';
-const STRIPE_UNLIMITED = 'https://buy.stripe.com/bJedR256b5Fpcl5cp46Ri02';
-
-// ── PROMO CONFIG ──
-const PROMO_END_DATE = new Date('2026-07-01T05:00:00Z'); // July 1, 2026 00:00 ET
-const PROMO_PRICE = '0.99';
-const REGULAR_PRICE = '9.99';
-const isPromoActive = () => new Date() < PROMO_END_DATE;
 
 // ─── COUNT-UP STAT — DOM-mutated to avoid hydration mismatch ───────────────
 const StatCounter = ({ numStr, label }) => {
@@ -87,7 +76,6 @@ export default function Home() {
     setApplyError('');
     window.location.assign(`/apply/${encodeURIComponent(parsed.token)}`);
   };
-  const [tier, setTier] = useState('single');
   const [form, setForm] = useState({
     email: '',
     apartmentAddress: '', apartmentDescription: '',
@@ -113,13 +101,11 @@ export default function Home() {
     reference1Name: '', reference1Relationship: '', reference1Contact: '',
     reference2Name: '', reference2Relationship: '', reference2Contact: '',
   });
-  const [letter, setLetter] = useState('');
   const [resume, setResume] = useState('');
   const [applicationNumber, setApplicationNumber] = useState('');
   const [error, setError] = useState('');
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const [copiedLetter, setCopiedLetter] = useState(false);
   const [copiedResume, setCopiedResume] = useState(false);
   const [copiedAppNum, setCopiedAppNum] = useState(false);
 
@@ -127,11 +113,6 @@ export default function Home() {
   const [inviteToken, setInviteToken] = useState('');
   const [inviteContext, setInviteContext] = useState(null); // { realtorName, realtorBrokerage, listingName, unit }
 
-  // ── Pass state (30-day unlimited access) ──
-  const [passToken, setPassToken] = useState('');
-  const [passInfo, setPassInfo] = useState(null); // { email, daysRemaining, lettersGenerated, expiresAt }
-  const [passVerifying, setPassVerifying] = useState(false);
-  const [passActivating, setPassActivating] = useState(false);
 
   // The "See a sample dashboard" demo entry is ALWAYS available on the landing page —
   // it must never depend on session/seen-demo state. (Previously it was gated to
@@ -142,14 +123,11 @@ export default function Home() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    const isPaid = params.get('paid') === 'true';
-    const sessionId = params.get('session_id');
-    const urlPass = params.get('pass');
-    const paidTier = params.get('tier'); // 'unlimited' set by us before Stripe redirect
     const inviteParam = params.get('invite');
 
     // ─── ENTRY 0: Tenant arrived via realtor's invite link ───
-    if (inviteParam && /^[a-f0-9]{20}$/.test(inviteParam)) {
+    // Sandbox tokens (demo…) are answered by the resolver without an invite record.
+    if (inviteParam && (/^[a-f0-9]{20}$/.test(inviteParam) || /^demo\d{16}$/.test(inviteParam))) {
       setInviteToken(inviteParam);
       // Fetch the invite context to display "applying for X" banner
       fetch(`/api/landlord/resolve-invite?token=${encodeURIComponent(inviteParam)}`)
@@ -164,67 +142,14 @@ export default function Home() {
       // Don't return — let the rest of the logic also run in case of other params
     }
 
-    // ─── ENTRY 1: User has a pass token in the URL ───
-    if (urlPass) {
-      verifyAndLoadPass(urlPass);
-      return;
-    }
-
-    // ─── ENTRY 2: User just paid for the 30-day pass — activate it ───
-    if (isPaid && sessionId && (paidTier === 'unlimited' || localStorage.getItem('rentletter_pending_tier') === 'unlimited')) {
-      activatePass(sessionId);
-      return;
-    }
-
-    // ─── ENTRY 2.5: User just paid for the $4.99 cover letter upsell ───
-    const isLetterPurchase = params.get('product') === 'letter';
-    if (isPaid && sessionId && isLetterPurchase) {
-      const savedForm = localStorage.getItem('rentletter_form');
-      const savedAppNumber = localStorage.getItem('rentletter_app_number');
-      if (savedForm && savedAppNumber) {
-        const data = JSON.parse(savedForm);
-        setForm(data);
-        setApplicationNumber(savedAppNumber);
-        setStep('generating');
-        // Generate the letter for the existing application
-        generateLetter(data, {
-          mode: 'letter',
-          stripeSessionId: sessionId,
-          applicationNumber: savedAppNumber,
-        });
-      }
-      return;
-    }
-
-    // ─── ENTRY 3: Legacy single-letter Stripe flow (rare now) ───
-    if (isPaid && sessionId) {
-      const savedForm = localStorage.getItem('rentletter_form');
-      if (savedForm) {
-        const data = JSON.parse(savedForm);
-        setForm(data);
-        setStep('generating');
-        generateLetter(data, { mode: 'letter', stripeSessionId: sessionId });
-      }
-      return;
-    }
-
-    // ─── ENTRY 4: Returning user — restore previous state ───
-    // First, check if they have a pass stored locally
-    const savedPass = localStorage.getItem('rentletter_pass');
-    if (savedPass) {
-      // Verify it's still valid
-      verifyAndLoadPass(savedPass, /* silent */ true);
-    }
-
-    const savedLetter = localStorage.getItem('rentletter_letter');
+    // ─── ENTRY 4: Returning user, restore the submitted application ───
     const savedResume = localStorage.getItem('rentletter_resume');
     const savedForm = localStorage.getItem('rentletter_form');
     const savedAppNum = localStorage.getItem('rentletter_app_number');
-    if (savedLetter && savedForm) {
-      setLetter(savedLetter);
+    if (savedAppNum && savedForm) {
       setResume(savedResume || '');
       setForm(JSON.parse(savedForm));
-      if (savedAppNum) setApplicationNumber(savedAppNum);
+      setApplicationNumber(savedAppNum);
       setStep('result');
     }
   }, []);
@@ -263,83 +188,6 @@ export default function Home() {
     return () => obs.disconnect();
   }, [step]);
 
-  // ─── PASS VERIFICATION ───
-  const verifyAndLoadPass = async (token, silent = false) => {
-    if (!silent) setPassVerifying(true);
-    try {
-      const res = await fetch('/api/pass/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ passToken: token }),
-      });
-      const json = await res.json();
-      if (json.valid) {
-        setPassToken(token);
-        setPassInfo({
-          email: json.email,
-          daysRemaining: json.daysRemaining,
-          lettersGenerated: json.lettersGenerated,
-          expiresAt: json.expiresAt,
-        });
-        localStorage.setItem('rentletter_pass', token);
-        // If we came from URL, clean the URL and go to form
-        if (!silent) {
-          window.history.replaceState({}, '', window.location.pathname);
-          setStep('form');
-        }
-      } else {
-        if (!silent) {
-          setError(json.error || 'Pass is invalid or expired.');
-          setStep('landing');
-        }
-        // Clear bad saved pass
-        if (silent) localStorage.removeItem('rentletter_pass');
-      }
-    } catch (e) {
-      if (!silent) {
-        setError('Could not verify pass. Please try again.');
-        setStep('landing');
-      }
-    }
-    setPassVerifying(false);
-  };
-
-  // ─── PASS ACTIVATION (after successful Stripe pass payment) ───
-  const activatePass = async (sessionId) => {
-    setPassActivating(true);
-    setStep('activating');
-    try {
-      const res = await fetch('/api/pass/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stripeSessionId: sessionId }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-
-      // Pass created — save and load it
-      setPassToken(json.passToken);
-      localStorage.setItem('rentletter_pass', json.passToken);
-      localStorage.removeItem('rentletter_pending_tier');
-
-      // Load pass info for the success screen
-      await verifyAndLoadPass(json.passToken, true);
-      window.history.replaceState({}, '', window.location.pathname);
-      setStep('passSuccess');
-    } catch (e) {
-      setError(`Pass activation failed: ${e.message}. Please contact us at info@rentletter.ca with your payment confirmation.`);
-      setStep('landing');
-    }
-    setPassActivating(false);
-  };
-
-  const clearPass = () => {
-    if (!confirm('Sign out of your 30-day pass on this device? You can re open the access link from your email any time.')) return;
-    localStorage.removeItem('rentletter_pass');
-    setPassToken('');
-    setPassInfo(null);
-  };
-
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
   const isFormValid = () => {
@@ -349,12 +197,12 @@ export default function Home() {
   };
 
   const handlePay = () => {
-    // Application mode: free, no AI used. Letter is offered as upsell after.
+    // Free. The application is stored under a fresh number; nothing is sold after it.
     localStorage.setItem('rentletter_form', JSON.stringify(form));
-    generateLetter(form, { mode: 'application' });
+    submitApplication(form);
   };
 
-  // ─── DEV: Autofill test data + skip Stripe ─────────────────
+  // ─── DEV: Autofill test data ─────────────────
   const fillTestData = () => {
     const sampleProfiles = [
       {
@@ -398,36 +246,16 @@ export default function Home() {
     setForm(random);
   };
 
-  const generateDemoLetter = async () => {
-    // Auto-fill, then generate WITHOUT Stripe (uses demo bypass)
-    const demo = {
-      email: 'demo@rentletter.ca',
-      apartmentAddress: '144 Roxborough Drive, Toronto',
-      apartmentDescription: '1BR, Rosedale, $2,200/mo',
-      fullName: 'Sarah Chen', age: '29',
-      jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
-      yearsAtJob: '4', annualIncome: '87000',
-      previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
-      previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
-      moveInDate: '2026-06-15',
-      pets: 'None',
-    };
-    setForm(demo);
-    setStep('generating');
-    await generateLetter(demo, { mode: 'letter', stripeSessionId: 'DEMO_MODE_BYPASS' });
-  };
-
-  const generateLetter = async (data, auth = {}) => {
+  const submitApplication = async (data) => {
     setError('');
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, ...auth }),
+        body: JSON.stringify({ ...data, mode: 'application' }),
       });
       const json = await res.json();
       if (json.error) throw new Error(json.error);
-      setLetter(json.letter);
       setResume(json.resume);
       if (json.applicationNumber) {
         setApplicationNumber(json.applicationNumber);
@@ -444,19 +272,12 @@ export default function Home() {
       if (json.ownerToken) {
         localStorage.setItem('rentletter_owner_token', json.ownerToken);
       }
-      localStorage.setItem('rentletter_letter', json.letter);
       localStorage.setItem('rentletter_resume', json.resume);
       window.history.replaceState({}, '', window.location.pathname);
       setStep('result');
-      // Only send the email when we actually have a letter (after purchase).
-      // For free application mode, the email is delayed until they buy the letter.
-      // Email always goes if they have at least the resume.
-      if (data.email && json.resume) {
-        sendEmail(data.email, data.fullName, json.letter || '', json.resume, json.applicationNumber, json.ownerToken);
-      }
-      // Refresh pass info if generated via pass
-      if (auth.passToken) {
-        verifyAndLoadPass(auth.passToken, true);
+      // The confirmation email: the application number and the owner token.
+      if (data.email && json.applicationNumber) {
+        sendEmail(data.email, data.fullName, json.applicationNumber, json.ownerToken);
       }
     } catch (e) {
       setError(e.message);
@@ -464,7 +285,7 @@ export default function Home() {
     }
   };
 
-  const sendEmail = async (email, fullName, letterText, resumeText, appNum, ownerTok) => {
+  const sendEmail = async (email, fullName, appNum, ownerTok) => {
     setEmailSending(true);
     try {
       const res = await fetch('/api/send', {
@@ -473,8 +294,6 @@ export default function Home() {
         body: JSON.stringify({
           email,
           fullName,
-          letter: letterText,
-          resume: resumeText,
           applicationNumber: appNum || applicationNumber,
           ownerToken: ownerTok || (typeof window !== 'undefined' ? localStorage.getItem('rentletter_owner_token') : null),
         }),
@@ -485,28 +304,6 @@ export default function Home() {
       console.error('Email send failed:', e);
     }
     setEmailSending(false);
-  };
-
-  const downloadFile = async (format) => {
-    try {
-      const res = await fetch('/api/download', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ format, letter, resume, fullName: form.fullName }),
-      });
-      if (!res.ok) throw new Error('Download failed');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${(form.fullName || 'rental').replace(/[^a-zA-Z0-9]/g, '_')}_rental_letter.${format}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (e) {
-      alert('Download failed. Try again.');
-    }
   };
 
   const copyText = (text, setter) => {
@@ -536,17 +333,15 @@ export default function Home() {
   };
 
   const startOver = () => {
-    if (!confirm('Clear this letter and start fresh?')) return;
-    localStorage.removeItem('rentletter_letter');
+    if (!confirm('Clear this application and start fresh?')) return;
     localStorage.removeItem('rentletter_resume');
     localStorage.removeItem('rentletter_form');
     localStorage.removeItem('rentletter_app_number');
-    setLetter(''); setResume(''); setApplicationNumber('');
+    setResume(''); setApplicationNumber('');
     setForm(EMPTY_FORM);
     setStep('landing');
   };
 
-  const updateLetter = (text) => { setLetter(text); localStorage.setItem('rentletter_letter', text); };
   const updateResume = (text) => { setResume(text); localStorage.setItem('rentletter_resume', text); };
 
   // ── Landing header scroll-parallax + fade ────────────────────────────────────────────────
@@ -948,13 +743,6 @@ export default function Home() {
           <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Wordmark />
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {passInfo && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: C.inkSoft }}>
-                  <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: C.red }} />
-                  <span style={{ fontWeight: 600, color: C.ink }}>Pass active</span>
-                  <span style={{ color: C.inkMute }}>· {passInfo.daysRemaining}d left</span>
-                </div>
-              )}
               <button onClick={() => setStep('landing')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
                 ← Back
               </button>
@@ -1006,12 +794,8 @@ export default function Home() {
                 style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
                 Fill random sample
               </button>
-              <button onClick={generateDemoLetter} className="rl-btn"
-                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
-                Generate Sarah Chen (skip Stripe)
-              </button>
               <span style={{ fontSize: 11, color: '#7a5d12', opacity: 0.75 }}>
-                Use these to test without paying. Remove this block before launch.
+                Fills the form with sample data. Remove this block before launch.
               </span>
             </div>
 
@@ -1147,50 +931,8 @@ export default function Home() {
               </div>
             </FormSection>
 
-            {/* Pass status banner (only when active pass) */}
-            {passInfo && (
-              <div style={{ marginTop: 48, background: C.ink, color: C.paper, borderRadius: R.card, padding: '24px 28px', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 240 }}>
-                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
-                      ◯ 30-day search pass active
-                    </div>
-                    <div style={{ fontSize: 22, fontWeight: 800, marginBottom: 6, letterSpacing: '-0.01em' }}>
-                      Generate a tailored application
-                    </div>
-                    <div style={{ fontSize: 13, color: '#a4adbb', lineHeight: 1.55 }}>
-                      {passInfo.daysRemaining} day{passInfo.daysRemaining === 1 ? '' : 's'} remaining · {passInfo.lettersGenerated} application{passInfo.lettersGenerated === 1 ? '' : 's'} generated · {passInfo.email}
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (!isFormValid()) {
-                        setError('Please complete required fields first.');
-                        return;
-                      }
-                      localStorage.setItem('rentletter_form', JSON.stringify(form));
-                      setStep('generating');
-                      generateLetter(form, { passToken });
-                    }}
-                    disabled={!isFormValid()}
-                    className="rl-btn"
-                    style={{
-                      background: isFormValid() ? C.red : '#5a3a3c',
-                      color: C.paper, border: 'none', borderRadius: R.ctrl,
-                      padding: '16px 28px', fontSize: 15, fontWeight: 700,
-                      cursor: isFormValid() ? 'pointer' : 'not-allowed',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {isFormValid() ? 'Generate letter →' : 'Fill required fields'}
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Generate button, free for all tenants */}
-            {!passInfo && (
+            {(
               <div className="rl-card" style={{ marginTop: 48, padding: '28px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
                   <span style={{ fontSize: 15, color: C.inkSoft }}>Your professional rental application</span>
@@ -1229,162 +971,12 @@ export default function Home() {
 
 
   // ════════════════════════════════════════════════════════════
-  // PASS ACTIVATING — after Stripe redirect for 30-day pass
-  // ════════════════════════════════════════════════════════════
-  if (step === 'activating') {
-    return (
-      <>
-        <Head><title>Activating your pass · Rentletter</title></Head>
-        <GlobalStyle />
-        <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ textAlign: 'center', maxWidth: 460 }}>
-            <div style={{ display: 'inline-flex', gap: 6, marginBottom: 36 }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out infinite' }} />
-              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.2s infinite' }} />
-              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.4s infinite' }} />
-            </div>
-            <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 40px)', lineHeight: 1.05, color: C.ink, letterSpacing: '-0.025em', marginBottom: 16 }}>
-              Activating your pass
-            </h2>
-            <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
-              Payment confirmed. Setting up your 30-day search pass. Don't close this tab.
-            </p>
-          </div>
-          <style jsx>{`
-            @keyframes pulse {
-              0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-              40% { opacity: 1; transform: scale(1); }
-            }
-          `}</style>
-        </div>
-      <ChatWidget />
-      </>
-    );
-  }
-
-  // ════════════════════════════════════════════════════════════
-  // PASS SUCCESS — confirmation after pass activated
-  // ════════════════════════════════════════════════════════════
-  if (step === 'passSuccess') {
-    return (
-      <>
-        <Head><title>Your pass is ready · Rentletter</title></Head>
-        <GlobalStyle />
-        <div style={{ minHeight: '100vh', background: C.paper }}>
-          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px' }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-              <Wordmark />
-            </div>
-          </header>
-          <div style={{ maxWidth: 720, margin: '0 auto', padding: '64px 32px 80px' }}>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-              <div style={{ width: 24, height: 1, background: C.red }} />
-              <span style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                Payment confirmed · 30-day search pass active
-              </span>
-            </div>
-
-            <h1 style={{ fontSize: 'clamp(40px, 7vw, 72px)', fontWeight: 800, color: C.ink, marginBottom: 24, letterSpacing: '-0.03em', lineHeight: 1.0 }}>
-              Your search pass<br />
-              <span style={{ color: C.red }}>is ready.</span>
-            </h1>
-
-            <p style={{ fontSize: 17, color: C.inkSoft, marginBottom: 40, lineHeight: 1.55, maxWidth: 540 }}>
-              Tailor a new application for every apartment you're considering. Update your profile any time your situation changes, new job, new income, found a co-applicant. Your access link has been emailed to you so you can use it from any device.
-            </p>
-
-            {/* Pass detail card */}
-            <div style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: '28px 32px', marginBottom: 32, position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>
-                Your pass details
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 24, marginBottom: 20 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 4 }}>Token</div>
-                  <div style={{ fontSize: 16, fontFamily: 'monospace', letterSpacing: '0.04em', fontWeight: 700 }}>{passToken}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 4 }}>Days remaining</div>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{passInfo?.daysRemaining || 30}</div>
-                </div>
-                {passInfo?.email && (
-                  <div>
-                    <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 4 }}>Emailed to</div>
-                    <div style={{ fontSize: 13, fontWeight: 600, wordBreak: 'break-all' }}>{passInfo.email}</div>
-                  </div>
-                )}
-              </div>
-              <div style={{ height: 1, background: '#3a3a3c', marginBottom: 20 }} />
-              <div style={{ fontSize: 11, color: '#a4adbb', marginBottom: 8, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>
-                Your access link
-              </div>
-              <div style={{
-                fontSize: 12, fontFamily: 'monospace', wordBreak: 'break-all',
-                background: '#0a0a0b', borderRadius: R.ctrl, padding: '12px 14px',
-                color: '#a4adbb', marginBottom: 16,
-              }}>
-                https://rentletter.ca/?pass={passToken}
-              </div>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`https://rentletter.ca/?pass=${passToken}`);
-                  alert('Access link copied');
-                }}
-                className="rl-btn"
-                style={{
-                  background: C.paper, color: C.ink, border: 'none', borderRadius: R.ctrl,
-                  padding: '11px 18px', fontSize: 13, fontWeight: 600,
-                }}>
-                Copy access link
-              </button>
-            </div>
-
-            {/* CTA to start first letter */}
-            <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => setStep('form')}
-                style={{
-                  background: C.red, color: C.paper, border: 'none',
-                  padding: '18px 32px', fontSize: 15, fontWeight: 700,
-                  display: 'flex', alignItems: 'center', gap: 10,
-                }}
-                onMouseOver={e => e.currentTarget.style.background = C.redDark}
-                onMouseOut={e => e.currentTarget.style.background = C.red}>
-                Write your first letter <span style={{ fontSize: 18 }}>→</span>
-              </button>
-              <span style={{ fontSize: 12, color: C.inkMute }}>
-                Or save this page and come back later
-              </span>
-            </div>
-
-            <div style={{ marginTop: 56, padding: '20px 22px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl }}>
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-                A few things to know
-              </div>
-              <ul style={{ listStyle: 'none', fontSize: 13, color: C.inkSoft, lineHeight: 1.7 }}>
-                <li>, The access link works from any device. Bookmark it or save the email.</li>
-                <li>, Each application gets a fresh number, landlords can verify the latest version.</li>
-                <li>, Update your profile anytime: new job, raise, found a roommate. The Scorecard recalculates.</li>
-                <li>, Pass expires automatically in 30 days. No auto renewal, no surprise charges.</li>
-                <li>, Need help? Reply to the activation email or write to info@rentletter.ca</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      <ChatWidget />
-      </>
-    );
-  }
-
-  // ════════════════════════════════════════════════════════════
   // GENERATING
   // ════════════════════════════════════════════════════════════
   if (step === 'generating') {
     return (
       <>
-        <Head><title>Writing · Rentletter</title></Head>
+        <Head><title>Submitting · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
           <div style={{ textAlign: 'center', maxWidth: 440 }}>
@@ -1394,10 +986,10 @@ export default function Home() {
               <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.4s infinite' }} />
             </div>
             <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 40px)', lineHeight: 1.05, color: C.ink, letterSpacing: '-0.025em', marginBottom: 16 }}>
-              Writing your letter
+              Submitting your application
             </h2>
             <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
-              About 20 seconds. Don't refresh.
+              A few seconds. Don't refresh.
             </p>
           </div>
           <style jsx>{`
@@ -1418,49 +1010,24 @@ export default function Home() {
   if (step === 'result') {
     return (
       <>
-        <Head><title>Your letter · Rentletter</title></Head>
+        <Head><title>Your application · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
           <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Wordmark />
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              {passInfo && (
-                <button
-                  onClick={() => {
-                    // Keep pass, but clear the current letter and go to a fresh form
-                    localStorage.removeItem('rentletter_letter');
-                    localStorage.removeItem('rentletter_resume');
-                    localStorage.removeItem('rentletter_form');
-                    localStorage.removeItem('rentletter_app_number');
-                    setLetter(''); setResume(''); setApplicationNumber('');
-                    setForm(EMPTY_FORM);
-                    setStep('form');
-                  }}
-                  className="rl-btn"
-                  style={{
-                    background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl,
-                    padding: '9px 16px', fontSize: 13, fontWeight: 600,
-                    display: 'flex', alignItems: 'center', gap: 6,
-                  }}>
-                  <Icon name="plus" size={14} /> New letter
-                </button>
-              )}
               <button onClick={startOver} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
-                {passInfo ? 'Clear this letter' : 'Start fresh'}
+                Start fresh
               </button>
             </div>
           </header>
 
           <div style={{ maxWidth: 820, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px) 64px' }}>
             <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.04, textWrap: 'balance' }}>
-              {letter
-                ? <>Your letter is <span style={{ color: C.red }}>ready.</span></>
-                : <>Your application is <span style={{ color: C.red, whiteSpace: 'nowrap' }}>submitted.</span></>}
+              Your application is <span style={{ color: C.red, whiteSpace: 'nowrap' }}>submitted.</span>
             </h1>
             <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
-              {letter
-                ? 'Read it over. Edit anything, changes save automatically.'
-                : 'Below is your application number and tenant resume. Share these with the listing realtor or landlord.'}
+              Below is your application number and tenant resume. Share these with the listing realtor or landlord.
             </p>
 
             {/* Application Number Card, the trust signal for landlords */}
@@ -1520,47 +1087,12 @@ export default function Home() {
                 color: emailSent ? '#2d5a3f' : '#665a1f',
               }}>
                 {emailSending ? `Delivering to ${form.email}...` : emailSent ? `Sent to ${form.email}` : `Will email to ${form.email}`}
-              </div>
-            )}
-
-            {/* Download bar */}
-            <div style={{ background: C.ink, color: C.paper, borderRadius: R.card, padding: '18px 24px', marginBottom: 24, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span style={{ fontSize: 14, fontWeight: 500, color: C.inkInverse, flex: 1, minWidth: 140 }}>
-                Download
-              </span>
-              <button onClick={() => downloadFile('pdf')} className="rl-btn"
-                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 22px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                <Icon name="doc" size={15} /> PDF
-              </button>
-              <button onClick={() => downloadFile('docx')} className="rl-btn"
-                style={{ background: C.paper, color: C.ink, border: 'none', borderRadius: R.ctrl, padding: '11px 22px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                <Icon name="doc" size={15} /> Word
-              </button>
-              {form.email && !emailSent && (
-                <button onClick={() => sendEmail(form.email, form.fullName, letter, resume, applicationNumber)} disabled={emailSending} className="rl-btn"
-                  style={{ background: 'transparent', color: C.paper, border: `1px solid #3a3a3c`, borderRadius: R.ctrl, padding: '11px 22px', fontSize: 14, fontWeight: 500 }}>
-                  {emailSending ? 'Sending...' : 'Resend email'}
-                </button>
-              )}
-            </div>
-
-            {/* Cover Letter, only render if we have one (user paid or used demo) */}
-            {letter && (
-              <div className="rl-card" style={{ marginBottom: 24, overflow: 'hidden' }}>
-                <div style={{ padding: '20px 24px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: `1px solid ${C.rule}` }}>
-                  <h2 className="rl-serif" style={{ fontSize: 22, color: C.ink, letterSpacing: '-0.01em' }}>Cover letter</h2>
-                  <button onClick={() => copyText(letter, setCopiedLetter)} className="rl-btn"
-                    style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    <Icon name={copiedLetter ? 'check' : 'copy'} size={14} strokeWidth={copiedLetter ? 2.5 : 1.5} /> {copiedLetter ? 'Copied' : 'Copy'}
+                {!emailSent && !emailSending && (
+                  <button onClick={() => sendEmail(form.email, form.fullName, applicationNumber)} className="rl-btn"
+                    style={{ marginLeft: 12, background: 'transparent', color: 'inherit', border: '1px solid currentColor', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    Resend email
                   </button>
-                </div>
-                <textarea value={letter} onChange={e => updateLetter(e.target.value)}
-                  style={{
-                    width: '100%', minHeight: 460, padding: 24,
-                    fontFamily: "'Inter', sans-serif", fontSize: 14, lineHeight: 1.7,
-                    color: C.ink, background: C.card,
-                    border: 'none', outline: 'none', resize: 'vertical',
-                  }} />
+                )}
               </div>
             )}
 
@@ -1584,7 +1116,7 @@ export default function Home() {
 
             <button onClick={startOver} className="rl-btn"
               style={{ marginTop: 8, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, padding: '14px 28px', fontSize: 14, fontWeight: 500 }}>
-              Start a new letter
+              Start a new application
             </button>
           </div>
         </div>
