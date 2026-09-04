@@ -7,6 +7,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function fakeSupabase(tables, { absentColumns = [] } = {}) {
   const db = tables; const deletions = [];
+  const updates = [];
   const from = (table) => {
     const q = { table, select: '*', filters: [], order: null, limit: null, single: false, op: 'select', payload: null };
     const run = async () => {
@@ -16,7 +17,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
       const wanted = String(q.select).split(',').map((s) => s.trim()).filter(Boolean);
       const missing = wanted.find((c) => absentColumns.includes(c));
       if (missing) return { data: null, error: { code: '42703', message: `column ${table}.${missing} does not exist` } };
-      if (q.op === 'update') { const hit = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); hit.forEach((r) => Object.assign(r, q.payload)); return { data: q.single ? {} : [], error: null }; }
+      if (q.op === 'update') { const hit = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); hit.forEach((r) => Object.assign(r, q.payload)); updates.push({ table, payload: q.payload, count: hit.length }); return { data: q.single ? {} : [], error: null }; }
       if (q.op === 'insert') { const added = (Array.isArray(q.payload) ? q.payload : [q.payload]).map((r) => ({ id: `${table}-${rows.length + 1}`, ...r })); rows.push(...added); return { data: q.single ? added[0] : added, error: null }; }
       if (q.op === 'upsert') return { data: q.single ? {} : [], error: null };
       if (q.op === 'delete') { const keep = rows.filter((r) => !q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); const n = rows.length - keep.length; db[table] = keep; deletions.push({ table, n }); return { data: null, error: null, count: n }; }
@@ -47,7 +48,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
     };
     return b;
   };
-  return { from, deletions, auth: { getUser: async () => ({ data: { user: null } }) } };
+  return { from, deletions, updates, auth: { getUser: async () => ({ data: { user: null } }) } };
 }
 
 // KV: a map of key -> JSON value. Installs a fake global fetch for the KV base URL and returns

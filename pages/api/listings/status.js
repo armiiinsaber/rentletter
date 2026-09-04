@@ -69,7 +69,7 @@ export default async function handler(req, res) {
           if (cErr) { if (statusTableAbsent(cErr)) { consentsAbsent = true; console.warn('[listings/status] pipeline_consents is not set up (run db/listing-status.sql); messages go out without a keep me in mind row'); } else { logServerError('[listings/status] consent row', cErr, { listingId: listing.id }); continue; } }
         }
         const keepUrl = `${siteBase()}/keep/${token}`;
-        const mail = notSelectedEmail({ listingName: unit, realtorName: name, keepUrl, declineUrl: `${keepUrl}?no=1` });
+        const mail = notSelectedEmail({ listingName: unit, realtorName: name, keepUrl });
         if (resend) {
           try {
             await resend.emails.send({ from: 'Rentletter <hello@rentletter.ca>', to: r.email, reply_to: user.email, subject: mail.subject, html: mail.html, text: mail.text });

@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { statusPatch, inviteAnswer, notSelectedRecipients, notSelectedEmail, listingOpen, consentExpiry } from '../lib/listingState.js';
-import { ownedListing, flipConsent, newConsentToken } from '../lib/listingStatus.js';
+import { ownedListing, flipConsent, readConsent, newConsentToken } from '../lib/listingStatus.js';
 import { listingStateLine } from '../lib/listingStateLine.js';
 import { buildActions } from '../lib/actions.js';
 import { selectClosedListingApplications } from '../lib/retention.js';
@@ -65,7 +65,7 @@ test('not selected recipients: active rows with an email, never the winner, set 
 });
 
 test('the message: four neutral lines, no winner, no score, no reason', () => {
-  const m = notSelectedEmail({ listingName: 'Carlaw', realtorName: 'Sarah Chen', keepUrl: 'https://rentletter.ca/keep/t', declineUrl: 'https://rentletter.ca/keep/t?no=1' });
+  const m = notSelectedEmail({ listingName: 'Carlaw', realtorName: 'Sarah Chen', keepUrl: 'https://rentletter.ca/keep/t' });
   assert.equal(m.subject, 'Carlaw: an update from Sarah Chen');
   assert.equal(m.lines.length, 4);
   assert.doesNotMatch(m.text, /score|Fit|because|chosen|selected applicant/i);
@@ -74,11 +74,26 @@ test('the message: four neutral lines, no winner, no score, no reason', () => {
   assert.doesNotMatch(m.text, /[—–]/);
 });
 
-test('consent flip: consented, declined, expired, unknown; the token is crypto random', async () => {
+test('GET /keep: readConsent reads the row and the realtor name and writes nothing', async () => {
+  const rows = [{ id: 'C1', token: 'tok1', status: 'pending', profile_id: 'P1', expires_at: '2026-11-03T00:00:00Z' }];
+  const admin = fakeSupabase({ pipeline_consents: rows, profiles: [{ id: 'P1', full_name: 'Sarah Chen' }] });
+  const r = await readConsent(admin, 'tok1', { now: NOW });
+  assert.deepEqual(r, { found: true, expired: false, answered: false, status: 'pending', realtorName: 'Sarah Chen' });
+  assert.equal(rows[0].status, 'pending');
+  assert.deepEqual(admin.updates, [], 'no update ran');
+  assert.equal((await readConsent(admin, 'tok1', { now: new Date('2026-12-01T00:00:00Z') })).expired, true);
+  assert.equal((await readConsent(admin, 'nope')).found, false);
+  const page = readFileSync(new URL('../pages/keep/[token].js', import.meta.url), 'utf8');
+  assert.doesNotMatch(page, /flipConsent|\.update\(/, 'the page never imports the flip');
+  assert.match(page, /readConsent\(/);
+});
+
+test('POST /api/pipeline/answer: yes and no flip once; expired and already answered are refused', async () => {
   const rows = [
     { id: 'C1', token: 'tok1', status: 'pending', expires_at: '2026-11-03T00:00:00Z' },
     { id: 'C2', token: 'tok2', status: 'pending', expires_at: '2026-11-03T00:00:00Z' },
     { id: 'C3', token: 'tok3', status: 'pending', expires_at: '2026-09-01T00:00:00Z' },
+    { id: 'C4', token: 'tok4', status: 'declined', expires_at: '2026-11-03T00:00:00Z' },
   ];
   const admin = fakeSupabase({ pipeline_consents: rows });
   const a = await flipConsent(admin, 'tok1', 'consented', { now: NOW });
@@ -87,10 +102,24 @@ test('consent flip: consented, declined, expired, unknown; the token is crypto r
   assert.equal(b.ok, true); assert.equal(rows[1].status, 'declined'); assert.equal(rows[1].consented_at, null);
   const c = await flipConsent(admin, 'tok3', 'consented', { now: NOW });
   assert.equal(c.expired, true); assert.equal(rows[2].status, 'pending', 'expired rows do not flip');
+  const d = await flipConsent(admin, 'tok4', 'consented', { now: NOW });
+  assert.equal(d.answered, true); assert.equal(rows[3].status, 'declined', 'answered rows do not flip');
+  const again = await flipConsent(admin, 'tok1', 'declined', { now: NOW });
+  assert.equal(again.answered, true); assert.equal(rows[0].status, 'consented', 'a second tap changes nothing');
+  assert.equal(admin.updates.length, 2, 'exactly two updates ran');
   assert.equal((await flipConsent(admin, 'nope', 'consented')).found, false);
   assert.equal(new Date(consentExpiry(NOW)).getTime() - NOW.getTime(), 60 * 86400000);
   const t1 = newConsentToken(), t2 = newConsentToken();
   assert.notEqual(t1, t2); assert.ok(t1.length >= 32);
+  const src = readFileSync(new URL('../pages/api/pipeline/answer.js', import.meta.url), 'utf8');
+  assert.match(src, /checkSubmitLimits\(/); assert.match(src, /req\.method !== 'POST'/);
+});
+
+test('the message: both links open /keep/{token}, no ?no=1', () => {
+  const m = notSelectedEmail({ listingName: 'Carlaw', realtorName: 'Sarah Chen', keepUrl: 'https://rentletter.ca/keep/t' });
+  assert.equal((m.html.match(/https:\/\/rentletter\.ca\/keep\/t"/g) || []).length, 2);
+  assert.doesNotMatch(m.text, /no=1/); assert.doesNotMatch(m.html, /no=1/);
+  assert.match(m.text, /No thanks: https:\/\/rentletter\.ca\/keep\/t/);
 });
 
 test('state line: rented with the winner, rented outside, closed, and active unchanged', () => {
