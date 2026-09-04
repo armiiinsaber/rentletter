@@ -2,6 +2,7 @@
 // Landlord enters email → we generate a one-time magic-link token (15 min TTL)
 // → email them the link → click it → /api/landlord/auth-verify creates 30-day session
 
+import crypto from 'crypto';
 import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -10,7 +11,7 @@ function generateMagicToken() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz';
   let token = '';
   for (let i = 0; i < 32; i++) {
-    token += chars[Math.floor(Math.random() * chars.length)];
+    token += chars[crypto.randomInt(chars.length)];
   }
   return token;
 }

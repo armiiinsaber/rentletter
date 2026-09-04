@@ -642,14 +642,6 @@ function ApplicantDetail({ applicant, decision, landlordNote, onBack, onRemove, 
         <div style={{ fontSize: 12, color: C.inkMute }}>{a.applicationNumber}</div>
       </div>
 
-      {decision?.notes && (
-        <div style={{ background: C.paperDeep, padding: 16, marginBottom: 20, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ink}` }}>
-          <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: C.inkSoft, marginBottom: 6 }}>
-            Note from your realtor
-          </div>
-          <div style={{ fontSize: 14, color: C.ink, lineHeight: 1.55 }}>{decision.notes}</div>
-        </div>
-      )}
 
       {landlordNote && (
         <div style={{ background: '#f7f4eb', padding: 16, marginBottom: 20, borderRadius: R.ctrl, borderLeft: `3px solid ${C.green}` }}>

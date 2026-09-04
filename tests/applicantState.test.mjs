@@ -11,6 +11,13 @@ test('requested: a request record and no report', () => { assert.deepEqual(appli
 test('checked: a report, name matched, nothing matched', () => { assert.deepEqual(applicantState({ junction: junction(), verification: report({ income: false }) }), { state: 'checked', since: '2026-08-12T15:00:00Z' }); });
 test('matched: a report with income matched', () => { assert.deepEqual(applicantState({ junction: junction(), verification: [report()] }), { state: 'matched', since: '2026-08-12T15:00:00Z' }); });
 test('verified: the realtor confirmed the employer, with its date', () => { assert.deepEqual(applicantState({ junction: junction({ confirmations: EMP }) }), { state: 'verified', since: '2026-09-02T14:00:00Z' }); });
+test('edited: a profile edit after the report, cleared only by a confirmation dated after it', () => {
+  const app = { profile_updated_at: '2026-08-20T10:00:00Z' };
+  assert.deepEqual(applicantState({ junction: junction({ application: app }), verification: report() }), { state: 'edited', since: '2026-08-20T10:00:00Z' });
+  assert.equal(applicantState({ junction: junction({ application: app, confirmations: { employer: { at: '2026-08-25T10:00:00Z', by: 'A' } } }), verification: report() }).state, 'verified');
+  assert.equal(applicantState({ junction: junction({ application: app, confirmations: { employer: { at: '2026-08-15T10:00:00Z', by: 'A' } } }), verification: report() }).state, 'edited');
+  assert.equal(applicantState({ junction: junction({ application: { profile_updated_at: '2026-08-01T10:00:00Z' } }), verification: report() }).state, 'matched', 'an edit before the report is not an edit after it');
+});
 test('sent: included in a sent report', () => { assert.deepEqual(applicantState({ junction: junction({ lastSentAt: '2026-09-01T09:00:00Z', confirmations: EMP }), verification: report() }), { state: 'sent', since: '2026-09-01T09:00:00Z' }); });
 test('mismatch: a report whose name did not match, or was unclear', () => {
   assert.equal(applicantState({ junction: junction(), verification: report({ nameMatch: 'mismatch' }) }).state, 'mismatch');

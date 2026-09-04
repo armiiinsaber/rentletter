@@ -6,8 +6,8 @@ import { computeFit, readVerification, parseYears, compareFit, fitReason } from 
 // four years at the previous address, one reference, three years at the job. R = 1.5 + 1.1 + 1.5 + 0.4 = 4.5.
 const record = { prev_landlord_name: 'A. Patel', years_at_previous: '4', references: [{ name: 'R' }], years_at_job: '3', reason_for_moving: 'moving for work', disclosures: null };
 const app = (income, extra = {}) => ({ ...record, annual_income: income, co_applicant: null, ...extra });
-const report = ({ income = true, employer = true, nameMatch = 'match' } = {}) => ({
-  analyzedAt: '2026-08-01T00:00:00Z', nameMatch, documents: [{ documentType: 'pay stub' }],
+const report = ({ income = true, employer = true, nameMatch = 'match', analyzedAt = '2026-08-01T00:00:00Z' } = {}) => ({
+  analyzedAt, nameMatch, documents: [{ documentType: 'pay stub' }],
   comparisons: [{ field: 'Income', stated: '$90,000', found: '$90,000', status: income ? 'match' : 'close' }, { field: 'Employer', stated: 'X', found: 'X', status: employer ? 'match' : 'mismatch' }],
 });
 const CALLED = { landlord: { at: '2026-09-02T14:00:00Z', by: 'Armin' } };
@@ -206,4 +206,18 @@ test('fitReason covers evidence and affordability: no documents, documents did n
   assert.equal(recordOnly, 'Fewer references · shorter tenancy');
   const weiLike = fitReason(rec('1.5', '2', 2), rec('5', '4', 2)); console.log(`  record only, tenure and tenancy: "${weiLike}"`);
   assert.equal(weiLike, 'Shorter tenure · shorter tenancy');
+});
+
+test('edited after documents: E scores as no report and the label reads check docs; a confirmation after the edit restores', () => {
+  const rep = report({ analyzedAt: '2026-08-10T00:00:00Z' });
+  const matched = fit(90000, 2500, {}, rep, {}, {});
+  const edited = fit(90000, 2500, {}, rep, { profile_updated_at: '2026-08-20T00:00:00Z' }, {});
+  const confirmedAfter = fit(90000, 2500, {}, rep, { profile_updated_at: '2026-08-20T00:00:00Z' }, { employer: { at: '2026-08-25T00:00:00Z', by: 'A' } });
+  const confirmedBefore = fit(90000, 2500, {}, rep, { profile_updated_at: '2026-08-20T00:00:00Z' }, { employer: { at: '2026-08-15T00:00:00Z', by: 'A' } });
+  say('docs matched, no edit', matched); say('edited after the report', edited); say('employer confirmed after the edit', confirmedAfter); say('employer confirmed before the edit', confirmedBefore);
+  assert.equal(matched.E, 5.0); assert.equal(matched.label, 'docs match');
+  assert.equal(edited.E, 2.0); assert.equal(edited.label, 'check docs'); assert.equal(edited.evidence.edited, true);
+  assert.equal(confirmedAfter.E, 5.0); assert.equal(confirmedAfter.label, 'verified');
+  assert.equal(confirmedBefore.E, 2.0); assert.equal(confirmedBefore.label, 'check docs');
+  assert.equal(fitReason(edited, matched), 'Profile edited after documents');
 });

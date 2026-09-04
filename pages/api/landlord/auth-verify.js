@@ -2,11 +2,12 @@
 // Click magic link → verify token → create 30-day session token → return session
 // Also loads existing landlord workspace (applications + decisions) if any
 
+import crypto from 'crypto';
 function generateSessionToken() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789abcdefghjkmnpqrstuvwxyz';
   let token = '';
   for (let i = 0; i < 40; i++) {
-    token += chars[Math.floor(Math.random() * chars.length)];
+    token += chars[crypto.randomInt(chars.length)];
   }
   return token;
 }

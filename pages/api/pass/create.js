@@ -4,6 +4,7 @@
 // sends an email to the customer with their access link.
 
 import { Resend } from 'resend';
+import crypto from 'crypto';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -30,7 +31,7 @@ function generatePassToken() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // No confusing chars (0/O, 1/I/L)
   let token = '';
   for (let i = 0; i < 16; i++) {
-    token += chars[Math.floor(Math.random() * chars.length)];
+    token += chars[crypto.randomInt(chars.length)];
   }
   return token;
 }

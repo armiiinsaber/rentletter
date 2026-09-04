@@ -584,7 +584,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   );
 
   // The red budget: the first active card with a primary action owns the page's one red button.
-  const actionStates = ['new', 'matched', 'checked', 'mismatch'];
+  const actionStates = ['new', 'matched', 'checked', 'mismatch', 'edited'];
   const primaryLinkId = (active.find((x) => actionStates.includes(applicantState({ junction: x, verification: x.docVerifications?.[0] || null }).state)) || {}).linkId || null;
   const renderApplicantCard = (a, { rank, isSetAside }) => {
     const fresh = isUnreviewed(a);
@@ -719,6 +719,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <div style={stateLine}>Name on documents did not match</div>
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
+          {st.state === 'edited' && (<>
+            <div style={stateLine}>Profile edited{st.since ? ` ${shortDate(st.since)}` : ''} · analyse again</div>
+            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
+          </>)}
         </div>
         )}
 
@@ -745,11 +749,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {incomeRows.length > 0 && renderSection(a, 'income', 'Income and employment', true, renderRows(incomeRows))}
             {tenancyRows.length > 0 && renderSection(a, 'tenancy', 'Tenancy and landlord reference', true, renderRows(tenancyRows))}
             {livingRows.length > 0 && renderSection(a, 'living', 'Living situation', false, renderRows(livingRows))}
-            {app.personality && renderSection(a, 'words', 'In their own words', false, (
-              <div style={{ padding: 'var(--s-2) var(--s-3)', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ruleDark}` }}>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic', overflowWrap: 'anywhere' }}>“{app.personality}”</div>
-              </div>
-            ))}
           </div>
 
           <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} heldDocuments={a.storedDocuments} onViewDocument={viewDocument} />

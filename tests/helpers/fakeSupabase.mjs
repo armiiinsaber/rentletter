@@ -6,7 +6,7 @@ export const LATENCY = 3;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export function fakeSupabase(tables, { absentColumns = [] } = {}) {
-  const db = tables;
+  const db = tables; const deletions = [];
   const from = (table) => {
     const q = { table, select: '*', filters: [], order: null, limit: null, single: false, op: 'select', payload: null };
     const run = async () => {
@@ -17,7 +17,8 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
       const missing = wanted.find((c) => absentColumns.includes(c));
       if (missing) return { data: null, error: { code: '42703', message: `column ${table}.${missing} does not exist` } };
       if (q.op === 'update' || q.op === 'upsert') return { data: q.single ? {} : [], error: null };
-      let out = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : op === 'notnull' ? r[k] != null : true)));
+      if (q.op === 'delete') { const keep = rows.filter((r) => !q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); const n = rows.length - keep.length; db[table] = keep; deletions.push({ table, n }); return { data: null, error: null, count: n }; }
+      let out = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : op === 'notnull' ? r[k] != null : op === 'isnull' ? r[k] == null : op === 'lt' ? String(r[k]) < String(v) : true)));
       if (q.order) out = [...out].sort((a, b) => (String(a[q.order.col] || '') < String(b[q.order.col] || '') ? -1 : 1) * (q.order.asc ? 1 : -1));
       if (q.limit) out = out.slice(0, q.limit);
       out = out.map((r) => ({ ...r }));
@@ -29,9 +30,12 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
       select(cols = '*') { if (q.op === 'select') q.select = cols; return b; },
       update(p) { q.op = 'update'; q.payload = p; return b; },
       upsert(p) { q.op = 'upsert'; q.payload = p; return b; },
+      delete() { q.op = 'delete'; return b; },
       eq(k, v) { q.filters.push(['eq', k, v]); return b; },
       in(k, v) { q.filters.push(['in', k, v]); return b; },
       not(k, op, v) { if (op === 'is' && v === null) q.filters.push(['notnull', k]); return b; },
+      is(k, v) { if (v === null) q.filters.push(['isnull', k]); return b; },
+      lt(k, v) { q.filters.push(['lt', k, v]); return b; },
       order(col, o = {}) { q.order = { col, asc: o.ascending !== false }; return b; },
       limit(n) { q.limit = n; return b; },
       maybeSingle() { q.single = true; return b; },
@@ -40,7 +44,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
     };
     return b;
   };
-  return { from, auth: { getUser: async () => ({ data: { user: null } }) } };
+  return { from, deletions, auth: { getUser: async () => ({ data: { user: null } }) } };
 }
 
 // KV: a map of key -> JSON value. Installs a fake global fetch for the KV base URL and returns

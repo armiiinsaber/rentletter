@@ -15,6 +15,7 @@ const fixture = () => ({
       app('a-check', 'David Kowalski', { docVerifications: [report({ comparisons: [{ field: 'Income', status: 'close' }] })] }),
       app('a-mismatch', 'Lucia Fernandez', { docVerifications: [report({ nameMatch: 'mismatch' })] }),
       app('a-verify', 'Wei Chen', { docVerifications: [report()] }),
+      app('a-edited', 'Noor Haddad', { docVerifications: [report()], application: { full_name: 'Noor Haddad', profile_updated_at: daysAgo(1), fit: { score: 3.9, label: 'check docs' } } }),
       app('a-waiting', 'Marc Tremblay', { docRequest: { status: 'requested', requestedAt: daysAgo(4) } }),
       app('a-fresh', 'Ana Ruiz', { docRequest: { status: 'requested', requestedAt: daysAgo(2) } }),
       app('a-request', 'Sofia Russo'),
@@ -34,6 +35,8 @@ test('one item per kind, with the copy', () => {
   assert.deepEqual([by.check_docs.title, by.check_docs.detail, by.check_docs.verb, by.check_docs.panel], ['Documents differ', 'David Kowalski · 210 Carlaw Ave, Unit 4', 'Review', 'documents']);
   assert.deepEqual([by.mismatch.title, by.mismatch.detail, by.mismatch.verb, by.mismatch.panel], ['Name did not match', 'Lucia Fernandez · 210 Carlaw Ave, Unit 4', 'Review', 'documents']);
   assert.deepEqual([by.verify.title, by.verify.detail, by.verify.verb, by.verify.panel], ['Verify Wei', '4.7 docs match · 210 Carlaw Ave, Unit 4', 'Verify', 'checklist']);
+  assert.deepEqual([by.edited.title, by.edited.detail, by.edited.verb, by.edited.panel, by.edited.name], ['Edited after documents', 'Noor Haddad · 210 Carlaw Ave, Unit 4', 'Review', 'documents', 'Noor Haddad']);
+  assert.match(by.edited.reason, /^Profile edited [A-Z][a-z]{2} \d{1,2}$/);
   assert.deepEqual([by.waiting.title, by.waiting.detail, by.waiting.verb, by.waiting.panel], ['Waiting 4 days', 'Marc Tremblay · documents requested', 'Nudge', 'documents']);
   assert.deepEqual([by.request.title, by.request.detail, by.request.verb, by.request.panel], ['Request documents', 'Sofia Russo · 210 Carlaw Ave, Unit 4', 'Request', 'documents']);
   assert.deepEqual([by.ready.title, by.ready.detail, by.ready.verb, by.ready.panel, by.ready.linkId], ['Ready to send', '1 verified · 210 Carlaw Ave, Unit 4', 'Send', 'report', null]);
@@ -77,5 +80,5 @@ test('deep links through the adapter paths', () => {
   const verify = items.find((i) => i.kind === 'verify'), ready = items.find((i) => i.kind === 'ready');
   assert.equal(actionHref(verify, { listing: (id) => `/landlord/${id}` }), '/landlord/L1?applicant=a-verify&panel=checklist');
   assert.equal(actionHref(ready, { listing: (id) => `/demo/dashboard?listing=${id}` }), '/demo/dashboard?listing=L1&panel=report');
-  assert.equal(actionHref(items[2], { listing: (id) => `/landlord/${id}` }), '/landlord/L1?applicant=a-verify&panel=checklist');
+  assert.equal(actionHref(items.find((i) => i.kind === 'verify'), { listing: (id) => `/landlord/${id}` }), '/landlord/L1?applicant=a-verify&panel=checklist');
 });

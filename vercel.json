@@ -1,5 +1,12 @@
 {
   "crons": [
-    { "path": "/api/cron/expire-documents", "schedule": "0 3 * * *" }
+    {
+      "path": "/api/cron/expire-documents",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/retention",
+      "schedule": "30 3 * * *"
+    }
   ]
 }

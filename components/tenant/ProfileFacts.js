@@ -241,18 +241,9 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
         </>}
       </Section>
 
-      <Section {...sec('words')} title="In your own words" blurb="Goes to the landlord exactly as you write it."
-        rows={<>
-          {f.personality
-            ? <blockquote className="mp-quote" style={{ margin: '2px 0 14px', paddingLeft: 16, borderLeft: `3px solid ${C.red}` }}>“{f.personality}”</blockquote>
-            : <div style={{ marginBottom: 10 }}><Empty>You haven’t added an intro yet. A few lines about how you live, work from home, quiet evenings, long term plans, is what makes an application feel like a person.</Empty></div>}
-          <Row label="Anything addressed" value={f.redFlags} multiline />
-        </>}>
+      <Section {...sec('words')} title="Anything to address"
+        rows={<Row label="Anything addressed" value={f.redFlags} multiline />}>
         {draft && <>
-          <div>
-            <Textarea label="Tell the landlord a bit about yourself and how you live" value={d.personality} onChange={(v) => set('personality', v.slice(0, 500))} />
-            <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: 12, color: C.inkMute, marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{String(d.personality || '').length}/500</div>
-          </div>
           <p className="mp-note" style={{ margin: 0 }}>One thing you can skip: your background, beliefs, or family. Landlords aren’t allowed to consider those, so leaving them out will never affect your application.</p>
           <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={d.redFlags} onChange={(v) => set('redFlags', v)} />
         </>}

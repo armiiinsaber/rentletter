@@ -107,7 +107,7 @@ export default function Home() {
     coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
     coApplicantIncome: '', coApplicantRelationship: '',
     // Tier 1 — existing lifestyle/disclosures
-    personality: '', pets: '', redFlags: '',
+    pets: '', redFlags: '',
     // Tier 2 — optional but landlord-helpful
     hasVehicle: false,
     vehicleMakeModel: '', vehicleYear: '',
@@ -369,7 +369,6 @@ export default function Home() {
         previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
         moveInDate: '2026-06-15',
         reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute from 45 minutes to under 15. My current lease at 245 Sherbourne ends June 30.',
-        personality: 'Quiet, work from home 3 days a week, non smoker. I keep a clean, minimal space.',
         pets: 'None',
         redFlags: '',
       },
@@ -384,7 +383,6 @@ export default function Home() {
         previousLandlordName: '', previousLandlordContact: '',
         moveInDate: '2026-07-01',
         reasonForMoving: 'First time renter, moving out of a family home to start independent life closer to work.',
-        personality: 'Quiet, mostly home in evenings, occasional weekend hosting (small groups).',
         pets: 'None',
         redFlags: 'Limited rental history as a first time renter. Can provide guarantor and employer reference.',
       },
@@ -399,7 +397,6 @@ export default function Home() {
         previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
         moveInDate: '2026-08-01',
         reasonForMoving: 'Partner and I are moving in together, we both want a 2BR closer to the West End where we both work.',
-        personality: 'Stable, professional household. Both work hybrid, mostly weekday daytime presence.',
         pets: 'One indoor cat, 6 years old, vet records available',
         redFlags: '',
       },
@@ -421,7 +418,6 @@ export default function Home() {
       previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
       moveInDate: '2026-06-15',
       reasonForMoving: 'Moving closer to my office on Bloor Street to cut my commute. Current lease at 245 Sherbourne ends June 30.',
-      personality: 'Quiet, work from home 3 days a week, non smoker.',
       pets: 'None',
       redFlags: '',
     };
@@ -542,7 +538,7 @@ export default function Home() {
     hasCoApplicant: false,
     coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
     coApplicantIncome: '', coApplicantRelationship: '',
-    personality: '', pets: '', redFlags: '',
+    pets: '', redFlags: '',
     hasVehicle: false,
     vehicleMakeModel: '', vehicleYear: '',
     reference1Name: '', reference1Relationship: '', reference1Contact: '',
@@ -1133,7 +1129,6 @@ export default function Home() {
             </FormSection>
 
             <FormSection num="08" title="Lifestyle">
-              <Textarea label="Lifestyle and habits" value={form.personality} onChange={v => update('personality', v)} placeholder="Quiet, work from home most days, like to cook and read." />
               <Field label="Pets" value={form.pets} onChange={v => update('pets', v)} placeholder="One small cat, indoor only, vet records available" />
               <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={form.redFlags} onChange={v => update('redFlags', v)} placeholder="Limited Canadian credit history due to recent move..." />
             </FormSection>

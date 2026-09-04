@@ -42,7 +42,7 @@
 --   type  text  CHECK (type IN (
 --     'applicant_applied', 'documents_requested', 'documents_uploaded', 'verification_completed',
 --     'verification_failed', 'report_generated', 'report_sent', 'applicant_set_aside',
---     'document_stored', 'document_opened', 'document_deleted', 'documents_expired',
+--     'document_stored', 'document_opened', 'document_deleted', 'documents_expired', 'retention_run',
 --     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed',
 --     'referral_received',
 --     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',

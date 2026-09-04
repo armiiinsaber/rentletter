@@ -278,7 +278,7 @@ export default function ApplyPage() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, mode: 'application' }),
+        body: JSON.stringify({ ...form, mode: 'application', inviteToken: token }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.error || !json?.applicationNumber) {
@@ -684,24 +684,8 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
-              <FormSection num="07" title="In your own words">
-                <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
-                  Optional, but landlords are more confident with a fuller picture, in your voice.
-                </p>
-                <div>
-                  <Textarea label="Tell the landlord a bit about yourself and how you live" value={form.personality} onChange={(v) => update('personality', v.slice(0, 500))} placeholder="e.g. I work from home most days, keep a quiet routine, and take good care of my space." />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5, flexWrap: 'wrap' }}>
-                    <span>Goes to the landlord exactly as you write it.</span>
-                    <span style={{ fontVariantNumeric: 'tabular-nums' }}>{form.personality.length}/500</span>
-                  </div>
-                </div>
-                <p style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, margin: 0, padding: '10px 14px', background: C.paperDeep, borderRadius: R.ctrl }}>
-                  One thing you can skip: your background, beliefs, or family. Landlords aren’t allowed to consider those, so leaving them out will never affect your application.
-                </p>
-                <Textarea label="Anything to address? (gaps in history, credit, etc.)" value={form.redFlags} onChange={(v) => update('redFlags', v)} placeholder="Limited Canadian credit history due to recent move..." />
-              </FormSection>
 
-              <FormSection num="08" title="References (optional but recommended)">
+              <FormSection num="07" title="References (optional but recommended)">
                 <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
                   Two people who can vouch for you. Mentioning these by name is more persuasive than saying "references available."
                 </p>
@@ -723,7 +707,7 @@ export default function ApplyPage() {
                 </div>
               </FormSection>
 
-              <FormSection num="09" title="Vehicle (if parking matters)">
+              <FormSection num="08" title="Vehicle (if parking matters)">
                 <ToggleField label="Do you have a vehicle?" value={form.hasVehicle} onChange={(v) => update('hasVehicle', v)} />
                 {form.hasVehicle && (
                   <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 18 }}>
@@ -785,7 +769,6 @@ export default function ApplyPage() {
                     ? 'No previous rental listed'
                     : [form.yearsAtPrevious ? `${form.yearsAtPrevious} yrs` : null, form.previousLandlordName.trim() ? `reference: ${form.previousLandlordName.trim()}` : null].filter(Boolean).join(' · ') || 'not set'],
                   ['Pets', form.pets || 'None'],
-                  ['In your own words', form.personality.trim() ? `Included (${form.personality.trim().length} chars)` : 'not set'],
                 ];
                 const submitting = status === 'submitting';
                 return (

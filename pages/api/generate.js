@@ -1,15 +1,19 @@
 import Anthropic from '@anthropic-ai/sdk';
+import crypto from 'crypto';
 import { bump, logEvent, COUNTERS } from '../../lib/stats';
+import { kvIncr, kvExpire } from '../../lib/kv';
+import { checkSubmitLimits } from '../../lib/rateLimit';
 import { calculateScorecard } from '../../lib/scorecard';
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 // ─── APPLICATION NUMBER GENERATION ──────────────────────────
 // Format: RL-2026-XXXX-XXXX (8 hex chars, easy to read, hard to collide)
+// RL-YYYY-XXXX-XXXX from crypto, over an alphabet without 0, O, 1, I or L.
+const RL_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function generateApplicationNumber() {
   const year = new Date().getFullYear();
-  const hex = () => Math.floor(Math.random() * 16).toString(16).toUpperCase();
-  const seg = () => Array.from({ length: 4 }, hex).join('');
+  const seg = () => Array.from({ length: 4 }, () => RL_ALPHABET[crypto.randomInt(RL_ALPHABET.length)]).join('');
   return `RL-${year}-${seg()}-${seg()}`;
 }
 
@@ -186,7 +190,7 @@ function buildTemplatedResume(data) {
     apartmentAddress, apartmentDescription,
     numberOfOccupants, occupantsDetails, smoker,
     hasCoApplicant, coApplicantName, coApplicantRelationship, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
-    personality, pets,
+    pets,
     hasVehicle, vehicleMakeModel, vehicleYear,
     references,
     estimatedRent, rentToIncomeRatio,
@@ -268,11 +272,6 @@ function buildTemplatedResume(data) {
     lines.push(``);
   }
 
-  if (personality) {
-    lines.push(` · ABOUT THE APPLICANT · `);
-    lines.push(personality);
-    lines.push(``);
-  }
 
   if (redFlags) {
     lines.push(` · DISCLOSURES · `);
@@ -286,7 +285,11 @@ function buildTemplatedResume(data) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { stripeSessionId, passToken, mode, applicationNumber: existingAppNumber, ...formData } = req.body;
+  const { stripeSessionId, passToken, mode, applicationNumber: existingAppNumber, inviteToken, ...formData } = req.body;
+  // The public invite link: 10 submissions an hour per invite token, 30 per IP (lib/rateLimit.js).
+  const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+  const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: inviteToken, ip: clientIp });
+  if (!limited.ok) return res.status(429).json({ error: limited.message });
   // mode: 'application' (free, default) | 'letter' (premium, requires payment)
   const requestMode = mode === 'letter' ? 'letter' : 'application';
 
@@ -305,11 +308,14 @@ export default async function handler(req, res) {
     numberOfOccupants, occupantsDetails, smoker, evParkingNeeded,
     hasCoApplicant, coApplicantName, coApplicantAge, coApplicantEmployer,
     coApplicantJobTitle, coApplicantIncome, coApplicantRelationship,
-    personality, pets, redFlags,
+    pets, redFlags,
     hasVehicle, vehicleMakeModel, vehicleYear,
     reference1Name, reference1Relationship, reference1Contact,
     reference2Name, reference2Relationship, reference2Contact,
   } = formData;
+  // The free text "about yourself" field was removed from every form; the stored shape keeps the
+  // key and writes null.
+  const personality = null;
 
   if (!fullName || !jobTitle || !annualIncome) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -402,7 +408,6 @@ THEIR MOVE:
 - Reason for moving: ${reasonForMoving}
 
 PERSONAL:
-${personality ? `- Personality/lifestyle: ${personality}` : ''}
 ${pets ? `- Pets: ${pets}` : ''}
 ${redFlags ? `- Things to address: ${redFlags}` : ''}
 
@@ -694,7 +699,7 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
         apartmentAddress, apartmentDescription,
         numberOfOccupants, occupantsDetails, smoker,
         hasCoApplicant, coApplicantName, coApplicantRelationship, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
-        personality, pets,
+        pets,
         hasVehicle, vehicleMakeModel, vehicleYear,
         references: [
           ...(reference1Name ? [{ name: reference1Name, relationship: reference1Relationship, contact: reference1Contact }] : []),
@@ -712,7 +717,7 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
         apartmentAddress, apartmentDescription,
         numberOfOccupants, occupantsDetails, smoker,
         hasCoApplicant, coApplicantName, coApplicantRelationship, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
-        personality, pets,
+        pets,
         hasVehicle, vehicleMakeModel, vehicleYear,
         references: [
           ...(reference1Name ? [{ name: reference1Name, relationship: reference1Relationship, contact: reference1Contact }] : []),
@@ -855,6 +860,6 @@ Remember: ONE page each. Specific to this person. Warm but professional. No AI-s
 function generateOwnerToken() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let out = '';
-  for (let i = 0; i < 32; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 32; i++) out += chars[crypto.randomInt(chars.length)];
   return out;
 }

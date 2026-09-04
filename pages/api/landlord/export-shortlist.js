@@ -178,16 +178,7 @@ export default async function handler(req, res) {
         py -= 10;
       }
 
-      // Notes
-      if (decision.notes && py > 100) {
-        page.drawText('YOUR NOTES', { x: 48, y: py, size: 8, font: helvBold, color: RED });
-        py -= 14;
-        const wrapped = wrapText(safe(decision.notes), 90);
-        wrapped.slice(0, 4).forEach(line => {
-          page.drawText(line, { x: 48, y: py, size: 10, font: helv, color: INK_SOFT });
-          py -= 14;
-        });
-      }
+      // The realtor's notes are private and never print.
 
       // Footer
       page.drawLine({ start: { x: 48, y: 60 }, end: { x: 564, y: 60 }, thickness: 0.5, color: RULE });
