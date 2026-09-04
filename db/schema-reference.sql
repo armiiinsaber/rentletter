@@ -43,7 +43,7 @@
 --     'applicant_applied', 'documents_requested', 'documents_uploaded', 'verification_completed',
 --     'verification_failed', 'report_generated', 'report_sent', 'applicant_set_aside',
 --     'document_stored', 'document_opened', 'document_deleted', 'documents_expired', 'retention_run',
---     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed',
+--     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed', 'applicant_not_selected',
 --     'referral_received',
 --     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',
 --     'listing_created', 'listing_updated', 'branding_updated'))
@@ -54,3 +54,92 @@
 -- ── public.event_reads ───────────────────────────────────────────────────────────────────────
 --   profile_id uuid PRIMARY KEY, last_read_at timestamptz. One watermark per realtor, set by
 --   POST /api/events/read when the assistant panel opens. Service role writes only.
+
+-- ══════════════════════════════════════════════════════════════════════════════════════════
+-- LIVE DDL, exported 2026 09 04, from production. Reference only, do not run. Columns, types,
+-- nullability, defaults, foreign keys with their ON DELETE, and the four RLS policies. The two
+-- columns marked INFERRED were not in the export and are written from the code's own reads
+-- (created_at is ordered on in pages/landlord.js:43 and lib/dashboardSignals.js:27;
+-- updated_at is read nowhere and is assumed from the Supabase default table shape).
+--
+-- public.listings
+--   id                                  uuid        not null  default gen_random_uuid()  primary key
+--   profile_id                          uuid        not null  references profiles(id) on delete cascade
+--   name                                text        not null  default 'New listing'
+--   address                             text
+--   monthly_rent                        integer
+--   bedrooms                            text
+--   allows_pets                         text                  default 'any'
+--   allows_smoking                      text                  default 'no'
+--   parking_included                    text                  default 'no'
+--   landlord_name                       text
+--   landlord_email                      text
+--   landlord_phone                      text
+--   pref_min_annual_income              integer
+--   pref_rent_to_income_max_pct         integer               default 30
+--   pref_min_years_at_job               numeric
+--   pref_employment_full_time           boolean               default true
+--   pref_employment_contract            boolean               default true
+--   pref_employment_self_employed       boolean               default false
+--   pref_employment_part_time           boolean               default false
+--   pref_earliest_move_in               date
+--   pref_latest_move_in                 date
+--   pref_min_lease_term_months          integer               default 12
+--   pref_max_occupants                  integer
+--   pref_smoking_allowed                boolean               default false
+--   pref_pets_policy                    text                  default 'case-by-case'
+--   pref_parking_spots                  integer
+--   pref_requires_landlord_reference    boolean               default true
+--   pref_requires_employer_verification boolean               default true
+--   pref_guarantor_accepted             boolean               default true
+--   pref_notes                          text
+--   invite_token                        text
+--   invite_url                          text
+--   share_token                         text
+--   created_at                          timestamptz           default now()      INFERRED
+--   updated_at                          timestamptz           default now()      INFERRED
+--   status, closed_at, rented_link_id   added by db/listing-status.sql (not in the export)
+--
+-- public.listing_applicants
+--   id                    uuid        not null  default gen_random_uuid()  primary key
+--   listing_id            uuid        not null  references listings(id) on delete cascade
+--   application_id        uuid        not null  references applications(id) on delete cascade
+--   decision_status       text        not null  default 'none'   check (see above)
+--   decision_priority     text        not null  default 'normal' check (see above)
+--   decision_reason_code  text
+--   decision_notes        text
+--   decision_changed_at   timestamptz
+--   added_via             text                  default 'invite' check (see above)
+--   created_at            timestamptz           default now()
+--   reviewed_at           timestamptz                        (db/reviewed-at.sql)
+--   withdrawn_at          timestamptz                        (db/listing-applicants-vocabulary.sql)
+--   doc_verifications     jsonb
+--   ai_insight            text
+--   docs_submitted_at     timestamptz
+--   docs_verified         boolean
+--   confirmations         jsonb       not null  default '{}'   (db/screening.sql)
+--   last_sent_at          timestamptz                        (db/screening.sql)
+--   unique (listing_id, application_id)
+--
+-- public.applications
+--   id                    uuid        not null  default gen_random_uuid()  primary key
+--   application_number    text        not null  unique
+--   the mirrored application body (lib/applicationMap.js kvAppToRow): full_name, email, phone,
+--   employer, job_title, years_at_job, annual_income, net_income, net_income_source,
+--   employment_type, business_name, prev_address, years_at_previous, prev_landlord_name,
+--   prev_landlord_contact, current_rent, move_in_date, reason_for_moving, number_of_occupants,
+--   occupants_details, smoker, ev_parking_needed, co_applicant jsonb, personality (always null),
+--   pets, disclosures, vehicle_make_model, vehicle_year, references jsonb, scorecard jsonb,
+--   rent_to_income_ratio, apartment_address, apartment_description, estimated_rent,
+--   cover_letter, owner_token, profile_updated_at, profile_revision
+--   created_at            timestamptz           default now()
+--
+-- public.applicant_documents (db/documents.sql)
+--   listing_applicant_id  uuid        not null  references listing_applicants(id) on delete cascade
+--
+-- Row level security
+--   listings_all_own            on listings            for all    using (profile_id = auth.uid())
+--   listing_applicants_all_own  on listing_applicants  for all    using (exists (select 1 from listings l where l.id = listing_id and l.profile_id = auth.uid()))
+--   profiles_select_own         on profiles            for select using (id = auth.uid())
+--   profiles_update_own         on profiles            for update using (id = auth.uid())
+--   applications                no policy: reads and writes go through the service role only

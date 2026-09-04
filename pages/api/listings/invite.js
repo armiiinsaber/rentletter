@@ -54,6 +54,7 @@ export default async function handler(req, res) {
 
   const payload = {
     realtorEmail: user.email,
+    profileId: user.id,
     realtorName: String(profile?.full_name || '').slice(0, 120),
     realtorBrokerage: String(profile?.brokerage || '').slice(0, 200),
     realtorPhone: String(profile?.phone || '').slice(0, 40),

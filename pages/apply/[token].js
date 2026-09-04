@@ -45,6 +45,9 @@ export default function ApplyPage() {
   // status: 'loading' | 'invalid' | 'ready' | 'submitting' | 'done'
   const [status, setStatus] = useState('loading');
   const [invalidMsg, setInvalidMsg] = useState('');
+  const [rented, setRented] = useState(null);       // { realtorName, listingName } when the unit is gone
+  const [keepEmail, setKeepEmail] = useState('');
+  const [keep, setKeep] = useState({ state: 'idle', message: '' }); // idle | busy | done | error
   const [invite, setInvite] = useState(null); // { realtorName, realtorBrokerage, listingName, unit }
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
@@ -214,7 +217,8 @@ export default function ApplyPage() {
   useEffect(() => {
     if (!router.isReady) return;
     const token = String(router.query.token || '');
-    if (!/^[a-f0-9]{20}$/.test(token)) {
+    // Sandbox tokens (demo…) are answered by the resolver without an invite record.
+    if (!/^[a-f0-9]{20}$/.test(token) && !/^demo\d{16}$/.test(token)) {
       setInvalidMsg('This application link doesn’t look right. Please use the exact link the listing realtor sent you.');
       setStatus('invalid');
       return;
@@ -230,6 +234,8 @@ export default function ApplyPage() {
           setStatus('invalid');
           return;
         }
+        // The unit has been rented (or the listing closed): the link answers, and offers to be kept in mind.
+        if (json?.rented) { setRented({ realtorName: json.realtorName || '', listingName: json.listingName || '' }); setStatus('rented'); return; }
         setInvite(json);
         // Apartment/listing details come from the LISTING the realtor created — NEVER from
         // tenant input. Pre-fill the (now hidden) apartment fields from the invite's unit so
@@ -373,6 +379,42 @@ export default function ApplyPage() {
           {status === 'loading' && (
             <div style={{ textAlign: 'center', padding: '60px 0', color: C.inkSoft, fontSize: 15 }}>
               Loading your application…
+            </div>
+          )}
+
+          {status === 'rented' && (
+            <div className="rl-card" style={{ padding: 'clamp(28px, 6vw, 44px)' }}>
+              <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10, textWrap: 'balance' }}>
+                This unit has been rented.
+              </h1>
+              {keep.state === 'done' ? (
+                <p style={{ fontSize: 16, color: C.ink, lineHeight: 1.6, margin: 0, textWrap: 'pretty' }}>{keep.message}</p>
+              ) : (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!isValidEmail(keepEmail)) { setKeep({ state: 'error', message: 'Please enter a valid email.' }); return; }
+                  setKeep({ state: 'busy', message: '' });
+                  try {
+                    const r = await fetch('/api/pipeline/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteToken: String(router.query.token || ''), email: keepEmail.trim() }) });
+                    const j = await r.json().catch(() => ({}));
+                    if (!r.ok || j?.error) { setKeep({ state: 'error', message: j?.error || 'Could not save that. Please try again.' }); return; }
+                    setKeep({ state: 'done', message: j.message || 'Done.' });
+                  } catch { setKeep({ state: 'error', message: 'Could not save that. Please try again.' }); }
+                }}>
+                  <p style={{ fontSize: 16, color: C.inkSoft, lineHeight: 1.6, margin: '0 0 16px', textWrap: 'pretty' }}>
+                    Want {rented?.realtorName || 'the realtor'} to keep you in mind for similar units?
+                  </p>
+                  <label htmlFor="keep-email" style={{ display: 'block', fontSize: 13, fontWeight: 700, color: C.ink, marginBottom: 6 }}>Your email</label>
+                  <input id="keep-email" type="email" inputMode="email" autoComplete="email" value={keepEmail} onChange={(e) => setKeepEmail(e.target.value)} placeholder="you@example.com"
+                    style={{ width: '100%', minHeight: 44, padding: '0 14px', fontSize: 16, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
+                  {keep.state === 'error' && <div role="alert" style={{ marginTop: 10, fontSize: 14, color: C.danger }}>{keep.message}</div>}
+                  <button type="submit" disabled={keep.state === 'busy'} className="rl-btn"
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, marginTop: 14, padding: '0 22px', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 15, fontWeight: 700, cursor: keep.state === 'busy' ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                    {keep.state === 'busy' ? 'Saving' : 'Yes, keep me in mind'}
+                  </button>
+                  <p style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5, margin: '14px 0 0', textWrap: 'pretty' }}>No account is created. Your email is kept for 60 days for this purpose only.</p>
+                </form>
+              )}
             </div>
           )}
 

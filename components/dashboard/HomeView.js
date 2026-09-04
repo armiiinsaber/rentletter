@@ -18,6 +18,7 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import NextList from '../../components/dashboard/NextList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { listingOpen } from '../../lib/listingState';
 
 // ── Presentation-only helpers (no data logic) ─────────────────
 
@@ -109,6 +110,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
   const listingsLoaded = Array.isArray(listings);
   const hasListings = listingsLoaded && listings.length > 0;
+  const openListings = listings.filter((l) => listingOpen(l));
+  const closedListings = listings.filter((l) => !listingOpen(l));
   // Client retry when the server-side listings query failed (an expired access token being
   // refreshed under RLS is the usual reason). Until it resolves the page shows a skeleton,
   // never the empty state.
@@ -296,11 +299,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                 <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s-2)', minWidth: 0 }}>
                   <span className="dash-dash" style={{ height: 15, alignSelf: 'center' }} />
                   <h2 className="dash-h2">Your listings</h2>
-                  <span className="dash-count">{listings.length}</span>
+                  <span className="dash-count">{openListings.length}</span>
                 </span>
               </div>
               <div className="rl-in dash-grid" style={{ '--rl-d': '90ms' }}>
-                {listings.map((l) => (
+                {openListings.map((l) => (
                   <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
                     style={{ textDecoration: 'none', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
                     {/* Name left, the rent right in tabular numerals, so the rents line up down the column. */}
@@ -313,6 +316,22 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                     </div>
                     {/* One line of state: the applicants by what they need, then the report. */}
                     <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{listingStateLine(l, signals.applicantsByListing[l.id] || [])}</div>
+                  </a>
+                ))}
+                {/* Rented and closed listings, below the active ones under one muted word. */}
+                {closedListings.length > 0 && (
+                  <div className="dash-eyebrow" role="separator" aria-label="Rented listings" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', color: C.inkMute, gridColumn: '1 / -1' }}>
+                    <span>Rented</span><span aria-hidden="true" style={{ flex: 1, height: 1, background: C.rule }} />
+                  </div>
+                )}
+                {closedListings.map((l) => (
+                  <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
+                    style={{ textDecoration: 'none', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
+                      <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</div>
+                      <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
+                    </div>
+                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{listingStateLine(l, signals.applicantsByListing[l.id] || [])}</div>
                   </a>
                 ))}
               </div>

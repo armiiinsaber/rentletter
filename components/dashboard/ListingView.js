@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, TickMeter, useReveal } from '../../components/ui';
+import { GlobalStyle, Icon, TickMeter, useReveal, ConfirmSheet } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -32,8 +32,9 @@ import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
-import { patchSignalsListing } from '../../lib/assistantStore';
+import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
 import { stateLine } from '../../lib/listingStateLine.js';
+import { listingOpen } from '../../lib/listingState.js';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
 const Row = ({ label, value }) => (
@@ -279,9 +280,34 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     }
   };
 
+  // Mark as rented, close, reopen: POST /api/listings/status (session, entitlement, ownership on
+  // the server). The sheet asks who got it; the chosen applicant becomes rented_link_id.
+  const [rentedOpen, setRentedOpen] = useState(false);
+  const [rentedPick, setRentedPick] = useState('outside');
+  const [rentedNotify, setRentedNotify] = useState(true);
+  const [statusBusy, setStatusBusy] = useState(false);
+  const setStatus = async (status, extra = {}) => {
+    setStatusBusy(true); setError('');
+    try {
+      const r = await adapter.fetch('/api/listings/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id, status, ...extra }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) { setError(j?.error || 'Could not update the listing.'); return false; }
+      setListing((l) => ({ ...l, status: j.status, closed_at: j.closedAt ?? null, rented_link_id: j.rentedLinkId ?? null }));
+      patchSignalsListingRow(listing.id, { status: j.status, closed_at: j.closedAt ?? null, rented_link_id: j.rentedLinkId ?? null });
+      return true;
+    } catch { setError('Could not update the listing.'); return false; }
+    finally { setStatusBusy(false); }
+  };
+  const confirmRented = async () => {
+    const ok = await setStatus('rented', { rentedLinkId: rentedPick === 'outside' ? null : rentedPick, notify: rentedNotify });
+    if (ok) setRentedOpen(false);
+  };
+
   const remove = async () => {
     if (!confirm('Delete this listing? This cannot be undone.')) return;
     try {
+      // The invite link answers rented from now on, even after the row is gone: close first.
+      if (listingOpen(listing)) await setStatus('closed');
       const supabase = adapter.supabase();
       const { error: delErr } = await supabase.from('listings').delete().eq('id', listing.id);
       if (delErr) { setError(delErr.message); return; }
@@ -825,7 +851,14 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               toggle row; the Details panel opens inside this card. */}
           <section className="rl-card rl-in" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
-              <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</h1>
+              <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>
+                {l.name || l.address || 'Untitled listing'}
+                {!listingOpen(l) && (
+                  <span className="num" style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 var(--s-3)', marginLeft: 'var(--s-2)', borderRadius: R.pill, background: C.ink, color: C.paper, fontFamily: 'var(--f-body)', fontSize: 'var(--t-eyebrow)', fontWeight: 700, lineHeight: 1, letterSpacing: '0.04em', whiteSpace: 'nowrap', verticalAlign: 'middle', position: 'relative', top: -3 }}>
+                    {l.status === 'closed' ? 'Closed' : 'Rented'}{l.closed_at ? ` · ${new Date(l.closed_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}
+                  </span>
+                )}
+              </h1>
               {/* Centred on the first line of the address: the line box is 28 * 1.15, the button 44. */}
               <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--s-4)', marginTop: -6, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
             </div>
@@ -842,7 +875,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
             {/* The invite link, one tap away: the URL in the field, Copy inside the row at the right. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
-              {inviteShareUrl ? (
+              {!listingOpen(l) ? (
+                <div style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: '0 var(--s-3)', flex: 1, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 600 }}>Invite link closed</div>
+              ) : inviteShareUrl ? (
                 <>
                   <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link" title={inviteShareUrl}
                     style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none', textOverflow: 'ellipsis' }} />
@@ -899,7 +934,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   {/* The invite link row: URL, Copy, Regenerate as text, Add by application number as text. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                     <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Invite link</div>
-                    {inviteShareUrl ? (
+                    {!listingOpen(l) ? (
+                      <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>Invite link closed. Reopen the listing to take applications again.</div>
+                    ) : inviteShareUrl ? (
                       <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
                         <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
                           style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
@@ -909,7 +946,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
                     )}
                     <div style={{ display: 'flex', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-1)' }}>
-                      {inviteShareUrl && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
+                      {inviteShareUrl && listingOpen(l) && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
                       <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
                     </div>
                     {addOpen && (
@@ -921,6 +958,16 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       </div>
                     )}
                   </div>
+                  {/* Mark as rented (or Reopen): ink outlined, 44px, above Delete. */}
+                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                    {listingOpen(l) ? (
+                      <button type="button" onClick={() => { setRentedPick(active.length ? active[0].linkId : 'outside'); setRentedNotify(true); setRentedOpen(true); }} disabled={statusBusy}
+                        style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Mark as rented</button>
+                    ) : (
+                      <button type="button" onClick={() => setStatus('active')} disabled={statusBusy}
+                        style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{statusBusy ? 'Working' : 'Reopen listing'}</button>
+                    )}
+                  </div>
                   {/* Delete, last and alone, in the danger colour, with the existing confirm. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                     <button onClick={remove} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
@@ -929,6 +976,33 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </div>
             </div>
           </section>
+
+          {/* WHO GOT IT: the existing bottom sheet; the radio list is its body. Confirm is the one red button on it. */}
+          <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} onConfirm={confirmRented} onCancel={() => setRentedOpen(false)}
+            body={(
+              <span style={{ display: 'block' }}>
+                <span role="radiogroup" aria-label="Who got the unit" style={{ display: 'block' }}>
+                  {active.map((a) => {
+                    const fit = a.application?.fit;
+                    return (
+                      <label key={a.linkId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
+                        <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => setRentedPick(a.linkId)} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                        <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{a.application?.full_name || 'Applicant'}</span>
+                        {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap', flexShrink: 0 }}>Fit {Number(fit.score).toFixed(1)} · {fit.label}</span>}
+                      </label>
+                    );
+                  })}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
+                    <input type="radio" name="rented-pick" checked={rentedPick === 'outside'} onChange={() => setRentedPick('outside')} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                    <span>Someone outside Rentletter</span>
+                  </label>
+                </span>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-3)', minHeight: 44, marginTop: 'var(--s-2)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}`, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)' }}>
+                  <input type="checkbox" checked={rentedNotify} onChange={(e) => setRentedNotify(e.target.checked)} style={{ width: 20, height: 20, margin: '1px 0 0', accentColor: C.ink, flexShrink: 0 }} />
+                  <span style={{ textWrap: 'pretty' }}>Let the others know and ask if they want to be kept for similar units</span>
+                </label>
+              </span>
+            )} />
 
           <div style={{ height: 'var(--gap-section)' }} aria-hidden="true" />
 

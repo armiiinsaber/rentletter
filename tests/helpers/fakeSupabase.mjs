@@ -1,5 +1,5 @@
 // An in memory stand in for the two Supabase clients and Upstash KV, enough for the dashboard
-// load: from(table).select/eq/in/not/order/limit/maybeSingle/single/update/upsert, embedded
+// load: from(table).select/eq/in/not/order/limit/maybeSingle/single/update(applies the payload)/insert/upsert, embedded
 // `application:applications(*)`, a fake fetch for the KV REST calls. Every call takes LATENCY
 // ms so sequential chains show up in the trace as depth and wall time.
 export const LATENCY = 3;
@@ -16,7 +16,9 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
       const wanted = String(q.select).split(',').map((s) => s.trim()).filter(Boolean);
       const missing = wanted.find((c) => absentColumns.includes(c));
       if (missing) return { data: null, error: { code: '42703', message: `column ${table}.${missing} does not exist` } };
-      if (q.op === 'update' || q.op === 'upsert') return { data: q.single ? {} : [], error: null };
+      if (q.op === 'update') { const hit = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); hit.forEach((r) => Object.assign(r, q.payload)); return { data: q.single ? {} : [], error: null }; }
+      if (q.op === 'insert') { const added = (Array.isArray(q.payload) ? q.payload : [q.payload]).map((r) => ({ id: `${table}-${rows.length + 1}`, ...r })); rows.push(...added); return { data: q.single ? added[0] : added, error: null }; }
+      if (q.op === 'upsert') return { data: q.single ? {} : [], error: null };
       if (q.op === 'delete') { const keep = rows.filter((r) => !q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); const n = rows.length - keep.length; db[table] = keep; deletions.push({ table, n }); return { data: null, error: null, count: n }; }
       let out = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : op === 'notnull' ? r[k] != null : op === 'isnull' ? r[k] == null : op === 'lt' ? String(r[k]) < String(v) : true)));
       if (q.order) out = [...out].sort((a, b) => (String(a[q.order.col] || '') < String(b[q.order.col] || '') ? -1 : 1) * (q.order.asc ? 1 : -1));
@@ -29,6 +31,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
     const b = {
       select(cols = '*') { if (q.op === 'select') q.select = cols; return b; },
       update(p) { q.op = 'update'; q.payload = p; return b; },
+      insert(p) { q.op = 'insert'; q.payload = p; return b; },
       upsert(p) { q.op = 'upsert'; q.payload = p; return b; },
       delete() { q.op = 'delete'; return b; },
       eq(k, v) { q.filters.push(['eq', k, v]); return b; },
