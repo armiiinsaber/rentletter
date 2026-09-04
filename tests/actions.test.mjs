@@ -38,6 +38,10 @@ test('one item per kind, with the copy', () => {
   assert.deepEqual([by.request.title, by.request.detail, by.request.verb, by.request.panel], ['Request documents', 'Sofia Russo · 210 Carlaw Ave, Unit 4', 'Request', 'documents']);
   assert.deepEqual([by.ready.title, by.ready.detail, by.ready.verb, by.ready.panel, by.ready.linkId], ['Ready to send', '1 verified · 210 Carlaw Ave, Unit 4', 'Send', 'report', null]);
   assert.deepEqual([by.sent_waiting.title, by.sent_waiting.detail, by.sent_waiting.verb, by.sent_waiting.panel], ['Sent 6 days ago', '88 Harbour St · no reply yet', 'Open', 'report']);
+  // the dashboard's fields: the person, the listing once, the short reason
+  assert.deepEqual([by.check_docs.name, by.check_docs.listingName, by.check_docs.reason], ['David Kowalski', '210 Carlaw Ave, Unit 4', 'Documents differ']);
+  assert.equal(by.mismatch.reason, 'Name did not match'); assert.equal(by.verify.reason, '4.7 docs match'); assert.equal(by.waiting.reason, 'Waiting 4 days'); assert.equal(by.request.reason, 'No documents yet');
+  assert.deepEqual([by.ready.name, by.ready.reason], [null, '1 verified']); assert.deepEqual([by.sent_waiting.name, by.sent_waiting.listingName, by.sent_waiting.reason], [null, '88 Harbour St', 'Sent 6 days ago']);
   // a request two days old, a verified applicant, a set aside one: no item of their own
   assert.ok(!items.some((i) => i.linkId === 'a-fresh' || i.linkId === 'a-verified' || i.linkId === 'a-aside'));
   for (const i of items) { assert.ok(i.title.split(/\s+/).length <= 5, i.title); assert.ok(!/—|–/.test(i.title + i.detail)); }

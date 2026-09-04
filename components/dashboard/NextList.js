@@ -1,8 +1,9 @@
 // components/dashboard/NextList.js
 // "Next" on the dashboard: the assistant's action list (lib/actions.js buildActions, the same
 // items the bell shows, minus the realtor's dismissals from the shared store), three rows at
-// most, on the ink surface. Each row is the item's title and detail with the verb on the right;
-// the whole row is the deep link. More than three: one "{n} more" line that opens the bell
+// most, on the ink surface, grouped by listing with the address said once above each group.
+// Each row leads with the person (the item title for a listing level item), the short reason
+// under it, the verb on the right; the whole row is the deep link. More than three: one "{n} more" line that opens the bell
 // panel on Next. None: one row, the red tick, "Nothing waiting on you." Nothing else.
 //
 // Motion: rows fade in with the page (opacity only, DURATION.short); a row whose item goes after
@@ -49,6 +50,8 @@ export default function NextList({ listings, applicantsByListing, onMore, style,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shown.map((i) => i.key).join('|')]);
 
+  // Grouped by listing, in the order each listing's first row appears. The address is said once.
+  const groups = useMemo(() => { const out = []; for (const r of rows) { let g = out.find((x) => x.listingId === r.item.listingId); if (!g) { g = { listingId: r.item.listingId, listingName: r.item.listingName || '', rows: [] }; out.push(g); } g.rows.push(r); } return out; }, [rows]);
   const go = (item) => navigateToAction(item, adapter.paths);
   const key = (item) => (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(item); } };
 
@@ -60,20 +63,23 @@ export default function NextList({ listings, applicantsByListing, onMore, style,
           <Icon name="check" size={16} color={C.red} strokeWidth={2.5} />
           <span style={{ fontSize: 'var(--t-body)', color: C.paper }}>Nothing waiting on you.</span>
         </div>
-      ) : (
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {rows.map((r, i) => (
-            <li key={r.item.key} className={`nl-row ${r.phase === 'leave' ? 'nl-leave' : ''}`} data-key={r.item.key}
-              style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, borderTop: i ? `1px solid ${C.instRule}` : 'none' }}>
-              <div role="button" tabIndex={0} onClick={() => go(r.item)} onKeyDown={key(r.item)} style={{ flex: 1, minWidth: 0, padding: 'var(--s-2) 0', cursor: 'pointer' }}>
-                <div style={{ fontSize: 'var(--t-body)', color: C.paper, fontWeight: 700, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{r.item.title}</div>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{r.item.detail}</div>
-              </div>
-              <button type="button" onClick={() => go(r.item)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.paper, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{r.item.verb}</button>
-            </li>
-          ))}
-        </ul>
-      )}
+      ) : groups.map((g) => (
+        <div key={g.listingId} className="nl-group">
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', paddingTop: 'var(--s-2)', overflowWrap: 'anywhere' }}>{g.listingName}</div>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {g.rows.map((r, i) => (
+              <li key={r.item.key} className={`nl-row ${r.phase === 'leave' ? 'nl-leave' : ''}`} data-key={r.item.key}
+                style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, borderTop: i ? `1px solid ${C.instRule}` : 'none' }}>
+                <div role="button" tabIndex={0} onClick={() => go(r.item)} onKeyDown={key(r.item)} style={{ flex: 1, minWidth: 0, padding: 'var(--s-1) 0', cursor: 'pointer' }}>
+                  <div style={{ fontSize: 'var(--t-body)', color: C.paper, fontWeight: 700, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{r.item.name || r.item.title}</div>
+                  <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{r.item.reason || r.item.detail}</div>
+                </div>
+                <button type="button" onClick={() => go(r.item)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.paper, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{r.item.verb}</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
       {more > 0 && (
         <button type="button" onClick={onMore} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.paper, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{more} more</button>
       )}
