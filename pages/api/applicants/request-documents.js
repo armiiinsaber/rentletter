@@ -13,12 +13,10 @@ import { recordForListing } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { authorizeApplicant } from '../../../lib/applicantAnalysis';
-import { kvReady, kvGetJson, kvSetJson, reqKey, appKey, newDocReqToken, isDocReqToken, DOCREQ_TTL } from '../../../lib/docRequest';
+import { kvReady, mintRequest, uploadUrl } from '../../../lib/docRequest';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-
-function uploadUrl(token) { return `https://rentletter.ca/upload/${token}`; }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -62,33 +60,11 @@ export default async function handler(req, res) {
   const brokerage = String(profile?.brokerage || '').slice(0, 160);
 
   try {
-    // Reuse an existing pending/received request for this applicant so the link stays stable —
-    // UNLESS the realtor explicitly renews ("Request again") after a prior submission, in which
-    // case we mint a BRAND-NEW token below (the old token's record stays as-is until it TTLs out,
-    // and its /upload page shows "already received", so the old link is effectively dead).
-    const existingPtr = renew ? null : await kvGetJson(appKey(linkId));
-    let token = existingPtr && isDocReqToken(existingPtr.token) ? existingPtr.token : null;
-    let status = existingPtr?.status || 'requested';
-    let requestedAt = existingPtr?.requestedAt || new Date().toISOString();
-
-    if (!token) {
-      token = newDocReqToken();
-      status = 'requested';
-      requestedAt = new Date().toISOString();
-      const record = {
-        listingId: String(listingId).slice(0, 64),
-        linkId: String(linkId).slice(0, 64),
-        applicationId: ctx.junction.application_id ? String(ctx.junction.application_id) : null,
-        tenantName, listingName, address,
-        realtorName, brokerage,
-        status: 'requested',
-        requestedAt,
-        receivedAt: null,
-        fileCount: 0,
-      };
-      await kvSetJson(reqKey(token), record, DOCREQ_TTL);
-      await kvSetJson(appKey(linkId), { token, status: 'requested', requestedAt, receivedAt: null }, DOCREQ_TTL);
-    }
+    // One mint for both paths (lib/docRequest.js mintRequest): reuses a live request so the link
+    // stays stable, unless the realtor renews ("Request again") after a prior submission, in which
+    // case a brand new token is minted and the old link answers "already received".
+    const minted = await mintRequest({ listingId, linkId, applicationId: ctx.junction.application_id, tenantName, listingName, address, realtorName, brokerage }, { renew: !!renew });
+    const { token, status, requestedAt } = minted;
 
     const url = uploadUrl(token);
 

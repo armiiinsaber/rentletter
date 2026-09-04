@@ -15,6 +15,7 @@ import { recordEvent } from '../../../lib/events';
 import { logServerError } from '../../../lib/serverLog';
 import { invalidateSignals } from '../../../lib/signalsCache';
 import { LISTING_STATUSES, statusPatch, ownedListing, notSelectedRecipients, notSelectedEmail, notSelectedFrom, newConsentToken, consentExpiry, statusTableAbsent } from '../../../lib/listingStatus';
+import { kvSrem } from '../../../lib/docRequest';
 
 const siteBase = () => (process.env.NEXT_PUBLIC_SITE_URL || 'https://rentletter.ca').replace(/\/+$/, '');
 
@@ -51,6 +52,11 @@ export default async function handler(req, res) {
       throw upErr;
     }
     invalidateSignals(user.id);
+    if (status !== 'active') {
+      // Rented or closed: no applicant on this listing gets a document reminder (lib/nudges.js pending set).
+      const { data: links } = await admin.from('listing_applicants').select('id').eq('listing_id', listing.id);
+      for (const l of links || []) await kvSrem(l.id);
+    }
     await recordEvent(admin, { profileId: user.id, listingId: listing.id, type: 'listing_updated', payload: { status, listingName: listing.name || listing.address || null } });
 
     let notified = 0, recipients = 0;

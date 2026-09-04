@@ -27,6 +27,7 @@ DO $$ BEGIN
       'applicant_applied',
       'documents_requested',
       'documents_uploaded',
+      'documents_nudged',
       'verification_completed',
       'verification_failed',
       'document_stored',

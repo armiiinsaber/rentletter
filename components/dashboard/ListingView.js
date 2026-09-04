@@ -728,7 +728,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
           </>)}
           {st.state === 'requested' && (<>
-            <div style={stateLine}>Documents requested{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+            <div style={stateLine}>Documents requested{st.since ? ` · ${shortDate(st.since)}` : ''}{(() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? ` · nudged ${shortDate(last)}` : ''; })()}</div>
             {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
           {st.state === 'checked' && (<>

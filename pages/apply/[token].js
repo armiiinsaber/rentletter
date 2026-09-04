@@ -21,6 +21,8 @@ import { formatUnit } from '../../lib/unitType';
 import { EMPTY_FORM, serializePets, ageFromDob } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { FormSection, Field, Textarea, SelectField, ToggleField } from '../../components/apply/fields';
+import DocumentUploader from '../../components/tenant/DocumentUploader';
+import { RETENTION_DAYS } from '../../lib/documentRetention';
 
 // Phone helpers — validate on exactly 10 digits, display as (XXX) XXX-XXXX.
 const phoneDigits = (v) => String(v || '').replace(/\D/g, '');
@@ -52,6 +54,10 @@ export default function ApplyPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [error, setError] = useState('');
   const [result, setResult] = useState(null); // { applicationNumber, ownerToken }
+  // The document request minted at submission (pages/api/applications/mirror.js): the upload token
+  // only, never owner_token. docs: idle | skipped | done { received }.
+  const [docRequest, setDocRequest] = useState(null); // { token, url }
+  const [docs, setDocs] = useState({ state: 'idle', received: 0 });
   const [copied, setCopied] = useState(false);
   const [touched, setTouched] = useState({});
   const [triedSubmit, setTriedSubmit] = useState(false);
@@ -307,6 +313,7 @@ export default function ApplyPage() {
       // mirror runs AFTER tag so the RL is present in invite_submissions:{token}),
       // then email the tenant. All non-blocking.
       (async () => {
+        let minted = null;
         try {
           // 2. Tag this submission to the realtor's invite (KV).
           await fetch('/api/landlord/tag-invite-submission', {
@@ -314,12 +321,15 @@ export default function ApplyPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, applicationNumber }),
           });
-          // 3. Mirror into Supabase so it appears under the listing in the dashboard.
-          await fetch('/api/applications/mirror', {
+          // 3. Mirror into Supabase so it appears under the listing in the dashboard. The mirror
+          //    also mints the document request; its token drives the upload card and the email line.
+          const mr = await fetch('/api/applications/mirror', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token, applicationNumber }),
           });
+          const mj = await mr.json().catch(() => ({}));
+          if (mj?.docRequest?.token) { minted = { token: mj.docRequest.token, url: mj.docRequest.url }; setDocRequest(minted); }
         } catch (e) {
           console.error('[apply] tag/mirror failed (non-fatal)', e);
         }
@@ -342,6 +352,7 @@ export default function ApplyPage() {
               fullName: form.fullName,
               applicationNumber,
               ownerToken,
+              uploadUrl: minted?.url || null,
             }),
           }).catch((e) => console.error('[apply] email send failed', e));
         }
@@ -467,6 +478,34 @@ export default function ApplyPage() {
                   <div className="rl-serif" style={{ marginTop: 8, color: C.ink, wordBreak: 'break-all', fontSize: 13 }}>{result.ownerToken}</div>
                   {form.email && <div style={{ marginTop: 8 }}>We also emailed a copy to {form.email}.</div>}
                 </div>
+              )}
+            </div>
+          )}
+
+          {/* THE LAST STEP: documents now, on the tenant's own per file path (components/tenant/
+              DocumentUploader.js, the same control as /upload/[token]). The request was minted at
+              submission; the token here is the document request token, never owner_token. */}
+          {status === 'done' && result && (
+            <div className="rl-card" style={{ padding: 'clamp(24px, 5vw, 36px)', marginTop: 20 }}>
+              {docs.state === 'done' ? (
+                <p style={{ fontSize: 16, color: C.ink, lineHeight: 1.6, margin: 0, textWrap: 'pretty' }}>Done. {docs.received} document{docs.received === 1 ? '' : 's'} added.</p>
+              ) : docs.state === 'skipped' ? (
+                <p style={{ fontSize: 16, color: C.inkSoft, lineHeight: 1.6, margin: 0, textWrap: 'pretty' }}>You can add documents any time from your confirmation email.</p>
+              ) : (
+                <>
+                  <h2 style={{ fontSize: 'clamp(20px, 4.5vw, 26px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 8, textWrap: 'balance' }}>Add a pay stub now</h2>
+                  <p style={{ fontSize: 16, color: C.ink, lineHeight: 1.6, margin: '0 0 6px', textWrap: 'pretty' }}>Two minutes. Your realtor sees a matched application instead of a waiting one.</p>
+                  <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.6, margin: '0 0 18px', textWrap: 'pretty' }}>Held for {invite?.realtorName || 'the realtor'}'s review for {RETENTION_DAYS} days, then deleted. Do not upload anything showing your SIN.</p>
+                  {docRequest?.token ? (
+                    <DocumentUploader token={docRequest.token} onDone={({ received }) => setDocs({ state: 'done', received })} />
+                  ) : (
+                    <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.6, margin: '0 0 12px' }}>Preparing your upload link. If it does not appear, the link is in your confirmation email.</p>
+                  )}
+                  <button type="button" onClick={() => setDocs({ state: 'skipped', received: 0 })}
+                    style={{ minHeight: 44, marginTop: 8, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    Skip for now
+                  </button>
+                </>
               )}
             </div>
           )}

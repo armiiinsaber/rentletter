@@ -11,7 +11,7 @@
 // received, sets the realtor's notification marker, and clears the staging keys. A transient save
 // failure returns an error WITHOUT marking received or clearing staging, so the client can retry
 // finalize only (no re-analysis).
-import { kvReady, kvGetJson, kvSetJson, kvDel, reqKey, appKey, stagingKey, isDocReqToken, DOCREQ_TTL } from '../../../lib/docRequest';
+import { kvReady, kvGetJson, kvSetJson, kvDel, kvSrem, reqKey, appKey, stagingKey, isDocReqToken, DOCREQ_TTL } from '../../../lib/docRequest';
 import { invalidateSignals } from '../../../lib/signalsCache';
 import { recordForListing } from '../../../lib/events';
 import { verificationFacts } from '../../../lib/applicantSynthesis';
@@ -213,6 +213,7 @@ export default async function handler(req, res) {
     if (rec.linkId) {
       const ptr = await kvGetJson(appKey(rec.linkId));
       await kvSetJson(appKey(rec.linkId), { ...(ptr || {}), token, status: 'received', requestedAt: (ptr && ptr.requestedAt) || rec.requestedAt || null, receivedAt, fileCount }, DOCREQ_TTL);
+      await kvSrem(rec.linkId); // the report exists: no more reminders (lib/nudges.js)
     }
     await kvDel(stagingKey(token));
   } catch (e) {

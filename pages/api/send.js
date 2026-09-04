@@ -7,7 +7,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 // number + owner token. The legacy rent-letter PDF / tenant-résumé attachments were
 // removed from the product — this email exists because /my-application recovery
 // depends on the emailed owner token, not to deliver documents.
-function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
+function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploadUrl }) {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -92,6 +92,9 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                     <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #0f0f10; font-weight: 600; margin: 0 0 14px;">
                       Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
                     </p>
+                    ${uploadUrl ? `<p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #0f0f10; margin: 0 0 14px;">
+                      Add documents: <a href="${uploadUrl}" style="color: #d72027; font-weight: 600; word-break: break-all;">${uploadUrl}</a>
+                    </p>` : ''}
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
                       Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
                     </p>
@@ -162,7 +165,9 @@ export default async function handler(req, res) {
 
   // The application confirmation: number and owner token, no attachments. The cover letter is no
   // longer generated (pages/api/generate.js), so `letter` and `resume` from a stale client are ignored.
-  const { email, fullName, applicationNumber, ownerToken } = req.body;
+  const { email, fullName, applicationNumber, ownerToken, uploadUrl: rawUploadUrl } = req.body;
+  // The document upload link carries the document request token only (never owner_token).
+  const uploadUrl = /^https:\/\/rentletter\.ca\/upload\/[a-f0-9]{32}$/.test(String(rawUploadUrl || '')) ? String(rawUploadUrl) : null;
   if (!email || !applicationNumber) {
     return res.status(400).json({ error: 'Missing email and application number' });
   }
@@ -180,7 +185,7 @@ export default async function handler(req, res) {
       from: 'Rentletter <hello@rentletter.ca>',
       to: email,
       subject: 'Your Rentletter application',
-      html: buildConfirmationHtml({ firstName, applicationNumber, ownerToken }),
+      html: buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploadUrl }),
     });
     if (result.error) {
       console.error('Resend error:', result.error);

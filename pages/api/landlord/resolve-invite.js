@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   // Sandbox tokens: the demo listing's link answers active, its closed twin answers rented, no KV.
   if (/^demo\d{16}$/.test(String(token || ''))) {
     const rented = String(token).endsWith('9');
-    return res.status(200).json(rented ? { rented: true, realtorName: 'Sarah Chen', listingName: '210 Carlaw Ave, Unit 4' } : { realtorName: 'Sarah Chen', realtorBrokerage: 'Demo Realty', listingName: '210 Carlaw Ave, Unit 4', unit: { address: '210 Carlaw Ave, Unit 4, Toronto' }, province: 'ON' });
+    return res.status(200).json(rented ? { rented: true, realtorName: 'Sarah Chen', listingName: '210 Carlaw Ave, Unit 4' } : { realtorName: 'Sarah Chen', realtorBrokerage: 'Demo Realty', listingName: '210 Carlaw Ave, Unit 4', unit: { address: '210 Carlaw Ave, Unit 4, Toronto', monthlyRent: '2600', bedrooms: '2', allowsPets: 'no', allowsSmoking: 'no', parkingIncluded: 'no' }, province: 'ON' });
   }
   if (!token || !/^[a-f0-9]{20}$/.test(String(token))) {
     return res.status(400).json({ error: 'Invalid invite link.' });
