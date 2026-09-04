@@ -1,3 +1,4 @@
+import { isApplicationNumber } from '../../../lib/applicationIds';
 // /api/landlord/lookup — fetch tenant application by app number
 // Free endpoint, used by the landlord dashboard
 //
@@ -19,7 +20,7 @@ export default async function handler(req, res) {
   const normalized = String(applicationNumber).trim().toUpperCase();
 
   // Validate format: RL-YYYY-XXXX-XXXX
-  if (!/^RL-\d{4}-[A-F0-9]{4}-[A-F0-9]{4}$/.test(normalized)) {
+  if (!isApplicationNumber(normalized)) {
     return res.status(400).json({
       error: 'Invalid application number format. Expected: RL-YYYY-XXXX-XXXX',
     });

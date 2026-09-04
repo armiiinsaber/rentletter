@@ -104,7 +104,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken }) {
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
                         <td style="background: #0f0f10;">
-                          <a href="https://rentletter.ca/my-application?app=${applicationNumber}&token=${ownerToken}" style="display: inline-block; padding: 12px 22px; color: #faf8f3; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; letter-spacing: 0.02em;">
+                          <a href="https://rentletter.ca/my-application?app=${encodeURIComponent(applicationNumber)}&token=${encodeURIComponent(ownerToken)}" style="display: inline-block; padding: 12px 22px; color: #faf8f3; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 700; text-decoration: none; letter-spacing: 0.02em;">
                             Open my profile &rarr;
                           </a>
                         </td>

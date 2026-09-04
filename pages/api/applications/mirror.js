@@ -12,6 +12,7 @@ import { ADDED_VIA } from '../../../lib/listingApplicantsVocabulary';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvGet, kvLrange } from '../../../lib/kv';
 import { upsertApplication, linkApplicantToListing } from '../../../lib/supabaseBridge';
+import { isApplicationNumber } from '../../../lib/applicationIds';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -21,7 +22,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Invalid invite token.' });
   }
   const appNum = String(applicationNumber || '').trim().toUpperCase();
-  if (!/^RL-\d{4}-[A-F0-9]{4}-[A-F0-9]{4}$/.test(appNum)) {
+  if (!isApplicationNumber(appNum)) {
     return res.status(400).json({ error: 'Invalid application number.' });
   }
 

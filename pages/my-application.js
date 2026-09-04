@@ -16,6 +16,7 @@ import { useRouter } from 'next/router';
 import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, useReveal } from '../components/ui';
 import { ProfileStyles, FactSections, Eyebrow, Empty } from '../components/tenant/ProfileFacts';
+import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -105,7 +106,7 @@ export default function MyProfile() {
   const openLegacy = (e) => {
     e.preventDefault();
     const rl = legacyApp.trim().toUpperCase();
-    if (!/^RL-\d{4}-[A-F0-9]{4}-[A-F0-9]{4}$/.test(rl) || !legacyKey.trim()) { setEntryErr('Check the application number (RL-YYYY-XXXX-XXXX) and the 32-character key.'); return; }
+    if (!isApplicationNumber(rl) || !isOwnerToken(legacyKey)) { setEntryErr('Check the application number (RL-YYYY-XXXX-XXXX) and the 32 character key.'); return; }
     try { localStorage.setItem(LS_APP, rl); localStorage.setItem(LS_TOKEN, legacyKey.trim().toUpperCase()); } catch (err) { /* ignore */ }
     router.push(`/my-application/${rl}`);
   };

@@ -21,6 +21,7 @@ import { emailChangeEmail } from '../../../lib/tenantEmails';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { logServerError } from '../../../lib/serverLog';
+import { isApplicationNumber } from '../../../lib/applicationIds';
 
 function safeEqual(a, b) { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || '')); return x.length > 0 && x.length === y.length && timingSafeEqual(x, y); }
 
@@ -111,7 +112,7 @@ export default async function handler(req, res) {
 
     if (action === 'link-application') {
       const appNum = String(req.body?.applicationNumber || '').trim().toUpperCase();
-      if (!/^RL-\d{4}-[A-F0-9]{4}-[A-F0-9]{4}$/.test(appNum)) return res.status(400).json({ error: 'That doesn’t look like an application number.' });
+      if (!isApplicationNumber(appNum)) return res.status(400).json({ error: 'That doesn’t look like an application number.' });
       const app = await kvGet(`app:${appNum}`);
       if (!app || !safeEqual(app.ownerToken, String(req.body?.ownerToken || '').trim())) return res.status(401).json({ error: 'Application number and owner key don’t match.' });
       if (normalizeEmail(app.email) !== p.email) return res.status(403).json({ error: `That application was submitted under a different email (${String(app.email || '').replace(/^(.).+(@.+)$/, '$1…$2')}). Sign in with that email to see it.` });

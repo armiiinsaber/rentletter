@@ -28,6 +28,7 @@ import { upsertApplication } from '../../../lib/supabaseBridge';
 import { logServerError } from '../../../lib/serverLog';
 import { attachApplication } from '../../../lib/tenantProfileStore';
 import { revokeReferralByApplication } from '../../../lib/referrals';
+import { isApplicationNumber } from '../../../lib/applicationIds';
 
 const UPDATE_LIMIT_PER_HOUR = 20;
 const ONE_YEAR = 31536000;
@@ -58,7 +59,7 @@ export default async function handler(req, res) {
   }
 
   const appNum = String(applicationNumber).trim().toUpperCase();
-  if (!/^RL-\d{4}-[A-F0-9]{4}-[A-F0-9]{4}$/.test(appNum)) {
+  if (!isApplicationNumber(appNum)) {
     return res.status(400).json({ error: 'Invalid application number format.' });
   }
 

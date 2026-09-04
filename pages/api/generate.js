@@ -1,20 +1,12 @@
-import crypto from 'crypto';
+import { newApplicationNumber, newOwnerToken } from '../../lib/applicationIds';
 import { bump, logEvent, COUNTERS } from '../../lib/stats';
 import { kvIncr, kvExpire } from '../../lib/kv';
 import { checkSubmitLimits } from '../../lib/rateLimit';
 import { calculateScorecard } from '../../lib/scorecard';
 
 
-// ─── APPLICATION NUMBER GENERATION ──────────────────────────
-// Format: RL-2026-XXXX-XXXX (8 hex chars, easy to read, hard to collide)
-// RL-YYYY-XXXX-XXXX from crypto, over an alphabet without 0, O, 1, I or L.
-const RL_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-function generateApplicationNumber() {
-  const year = new Date().getFullYear();
-  const seg = () => Array.from({ length: 4 }, () => RL_ALPHABET[crypto.randomInt(RL_ALPHABET.length)]).join('');
-  return `RL-${year}-${seg()}-${seg()}`;
-}
-
+// The application number and the owner token come from lib/applicationIds.js, the same module
+// every validator reads, so the two can never drift apart again.
 // ─── DATA STORAGE (Vercel KV with graceful fallback) ────────
 async function storeApplication(appNumber, payload) {
   if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
@@ -224,7 +216,7 @@ export default async function handler(req, res) {
     });
 
     // ─── Generate application number + scorecard + store for landlord dashboard ───
-    applicationNumber = generateApplicationNumber();
+    applicationNumber = newApplicationNumber();
     // Score on HOUSEHOLD income (primary + co-applicant) — the honest affordability signal for a
     // dual-income household. The display `rentToIncomeRatio` above is left untouched.
     const coApplicantIncomeNum = hasCoApplicant ? (parseInt(coApplicantIncome) || 0) : 0;
@@ -313,7 +305,7 @@ export default async function handler(req, res) {
       disclosures: null, // removed from every form; the key stays, always null
       scorecard,
       // ── Owner token: a secret only the tenant knows; lets them view audit log & revoke ──
-      ownerToken: generateOwnerToken(),
+      ownerToken: newOwnerToken(),
       revoked: false,
       coverLetter: null, // the cover letter is no longer generated; the key stays, always null
     };
@@ -337,10 +329,3 @@ export default async function handler(req, res) {
   }
 }
 
-// Generate a 32-char owner token the tenant uses to manage their application
-function generateOwnerToken() {
-  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
-  let out = '';
-  for (let i = 0; i < 32; i++) out += chars[crypto.randomInt(chars.length)];
-  return out;
-}
