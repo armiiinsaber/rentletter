@@ -72,6 +72,8 @@ BEGIN
     'retention_run',
     'report_generated',
     'report_sent',
+    'report_opened',
+    'landlord_answered',
     'applicant_set_aside',
     'applicant_restored',
     'applicant_withdrew',

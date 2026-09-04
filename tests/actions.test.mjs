@@ -19,7 +19,7 @@ const fixture = () => ({
       app('a-waiting', 'Marc Tremblay', { docRequest: { status: 'requested', requestedAt: daysAgo(4) } }),
       app('a-fresh', 'Ana Ruiz', { docRequest: { status: 'requested', requestedAt: daysAgo(2) } }),
       app('a-request', 'Sofia Russo'),
-      app('a-verified', 'Priya Sharma', { confirmations: { employer: { at: daysAgo(1), by: 'You' } } }),
+      app('a-verified', 'Priya Sharma', { confirmations: { employer: { at: daysAgo(1), by: 'You' } }, landlordAnswer: { answer: 'meet', at: daysAgo(0.5), rank: 1 } }),
       app('a-aside', 'Tasha Okafor', { decisionStatus: 'reject' }),
     ],
     L2: [app('b-sent', 'Omar Haddad', { lastSentAt: daysAgo(6) })],
@@ -32,6 +32,7 @@ test('one item per kind, with the copy', () => {
   const by = Object.fromEntries(items.map((i) => [i.kind, i]));
   items.forEach((i) => console.log(`  ${i.kind.padEnd(13)} ${i.title.padEnd(20)} ${i.detail.padEnd(40)} ${i.verb.padEnd(8)} ${i.panel.padEnd(10)} ${i.key}`));
   assert.deepEqual(Object.keys(by).sort(), [...KIND_ORDER].sort());
+  assert.deepEqual([by.landlord_answered.title, by.landlord_answered.detail, by.landlord_answered.verb, by.landlord_answered.panel, by.landlord_answered.reason, by.landlord_answered.linkId], ['Landlord answered', '1 wants to meet · 210 Carlaw Ave, Unit 4', 'Open', 'report', '1 wants to meet', null]);
   assert.deepEqual([by.check_docs.title, by.check_docs.detail, by.check_docs.verb, by.check_docs.panel], ['Documents differ', 'David Kowalski · 210 Carlaw Ave, Unit 4', 'Review', 'documents']);
   assert.deepEqual([by.mismatch.title, by.mismatch.detail, by.mismatch.verb, by.mismatch.panel], ['Name did not match', 'Lucia Fernandez · 210 Carlaw Ave, Unit 4', 'Review', 'documents']);
   assert.deepEqual([by.verify.title, by.verify.detail, by.verify.verb, by.verify.panel], ['Verify Wei', '4.7 docs match · 210 Carlaw Ave, Unit 4', 'Verify', 'checklist']);

@@ -35,7 +35,7 @@ from listing_applicants
 group by listing_id, application_id
 having count(*) > 1
 order by row_count desc, listing_id;
-
+1
 -- 1c. Where document analysis actually landed (which junction rows hold doc_verifications).
 --     Cross-check against 1b: if a duplicated application has doc_verifications on one row,
 --     that is the row to KEEP.

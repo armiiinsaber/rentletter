@@ -9,6 +9,7 @@ import { getSupabaseAdminClient } from '../../lib/supabase/admin';
 import { fetchListingApplicants, attachDocVerifications } from '../../lib/supabaseBridge';
 import ListingView from '../../components/dashboard/ListingView';
 import { logServerError } from '../../lib/serverLog';
+import { latestSnapshots } from '../../lib/reportSnapshotStore';
 
 // The profile read, with failure and absence kept apart. A FAILED read (RLS with an access token
 // mid refresh is the usual cause) is retried once; if it fails again the request goes back to
@@ -55,10 +56,13 @@ export async function getServerSideProps(ctx) {
     // Attach doc_verifications/ai_insight via the shared STRICT two-key helper (same as the
     // applicants-refresh and landlord-report paths), so attribution is identical everywhere.
     await attachDocVerifications(admin, listing.id, initialApplicants, 'dashboard');
+    // The latest report snapshot for the Present to landlord line (absent table: no line).
+    const latest = (await latestSnapshots(admin, [listing.id])).get(String(listing.id));
+    if (latest) listing.snapshot = latest.meta;
   } catch (e) {
     console.error('[listing gSSP] applicants read failed:', e?.message || e);
   }
-  return { props: { initialProfile: profile || { id: user.id, email: user.email }, initialListing: listing, initialApplicants } };
+  return { props: { initialProfile: profile || { id: user.id, email: user.email }, initialListing: JSON.parse(JSON.stringify(listing)), initialApplicants } };
 }
 
 export default function ListingPage(props) { return <ListingView {...props} />; }

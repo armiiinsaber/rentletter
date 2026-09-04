@@ -34,6 +34,7 @@ import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
 import { stateLine } from '../../lib/listingStateLine.js';
 import { listingOpen } from '../../lib/listingState.js';
+import { snapshotLine, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -493,6 +494,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       });
       const j = await r.json();
       if (r.ok) setDepartToken((n) => n + 1);
+      if (r.ok && j.snapshot) setListing((cur) => ({ ...cur, snapshot: j.snapshot }));
       setSendMsg(r.ok ? (j.preview ? `Demo: nothing sent. In the product this goes to ${j.sentTo || listing.landlord_email}.` : `Sent to ${j.sentTo || listing.landlord_email}.`) : (j?.error || 'Email send failed.'));
     } catch (e) { setSendMsg('Email send failed.'); }
     setSending(false);
@@ -768,6 +770,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </>)}
           {st.state === 'sent' && (
             <div style={stateLine}>Sent to landlord{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+          )}
+          {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
+          {!open && a.landlordAnswer && a.landlordAnswer.answer && (
+            <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}>Landlord: {answerLine(a.landlordAnswer.answer)}{a.landlordAnswer.at ? ` · ${shortDate(a.landlordAnswer.at)}` : ''}</div>
           )}
           {st.state === 'new' && (<>
             <div style={stateLine}>No documents yet</div>
@@ -1184,10 +1190,17 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </button>
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
                   style={{ background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                  <Icon name="mail" size={16} color={C.paper} /> {sending ? 'Sending…' : 'Email report'}
+                  <Icon name="mail" size={16} color={C.paper} /> {sending ? 'Sending…' : l.snapshot ? 'Send again' : 'Email report'}
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
+              {/* The latest frozen report: when it went, how often it was opened, how many answers. */}
+              {l.snapshot && snapshotLine(l.snapshot) && (
+                <div className="num" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
+                  <span style={{ textWrap: 'pretty' }}>{snapshotLine(l.snapshot)}</span>
+                  <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
+                </div>
+              )}
               {sendMsg && (
                 <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft }}>{sendMsg}</div>
               )}

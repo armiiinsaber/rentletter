@@ -41,7 +41,7 @@
 -- ── public.events (db/events.sql) ────────────────────────────────────────────────────────────
 --   type  text  CHECK (type IN (
 --     'applicant_applied', 'documents_requested', 'documents_uploaded', 'verification_completed',
---     'verification_failed', 'report_generated', 'report_sent', 'applicant_set_aside',
+--     'verification_failed', 'report_generated', 'report_sent', 'report_opened', 'landlord_answered', 'applicant_set_aside',
 --     'document_stored', 'document_opened', 'document_deleted', 'documents_nudged', 'documents_expired', 'retention_run',
 --     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed', 'applicant_not_selected',
 --     'referral_received',

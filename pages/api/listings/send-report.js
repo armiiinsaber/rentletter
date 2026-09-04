@@ -1,7 +1,9 @@
-// /api/listings/send-report
-// Realtor-authenticated. Emails the white-label landlord report (PDF attached) to the
-// landlord_email captured on the listing, with the realtor as reply-to. Supabase auth
-// + RLS ownership; service-role read of the shortlist. Reuses the PDF builder.
+// /api/listings/send-report  POST { listingId }
+// Realtor authenticated, entitlement gated, RLS ownership through loadReportContext. Every send
+// freezes a snapshot (lib/reportSnapshot.js) into report_snapshots with a 90 day expiry, emails
+// the landlord one button to the private page https://rentletter.ca/r/{token} with the PDF
+// built from the same payload attached, sets last_sent_at, records report_sent. When the table
+// is not set up yet, the send falls back to today's behaviour (PDF only, no page) with one log line.
 import { Resend } from 'resend';
 import { invalidateSignals } from '../../../lib/signalsCache';
 import { recordEvent } from '../../../lib/events';
@@ -11,33 +13,56 @@ import { loadReportContext } from '../../../lib/listingReportData';
 import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
 import { loadPairingFonts } from '../../../lib/pdfFonts';
 import { logServerError } from '../../../lib/serverLog';
-import { humanRightsCodeName } from '../../../lib/provinces';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
-import { signingName } from '../../../lib/reportSignature';
+import { buildSnapshot } from '../../../lib/reportSnapshot';
+import { insertSnapshot, snapshotMeta } from '../../../lib/reportSnapshotStore';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-let lastSentWarned = false; // the last_sent_at column (db/screening.sql) missing is logged once, never fails a send
+let lastSentWarned = false;
+const esc = (s) => String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+export const reportPageUrl = (token) => `https://rentletter.ca/r/${token}`;
+export const reportFrom = (realtorName) => `${realtorName || 'Your realtor'} via Rentletter <hello@rentletter.ca>`;
 
-function esc(s) {
-  return String(s || '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// The four line body. pageUrl null: the fallback without a page (table not set up).
+export function reportEmail({ payload, pageUrl, landlordName }) {
+  const r = payload.realtor || {};
+  const n = payload.counts?.applicants || 0;
+  const v = payload.counts?.verified || 0;
+  const address = payload.listing?.address || payload.listing?.name || 'your unit';
+  const subject = `${address}: applicants from ${r.name}`;
+  const lines = [
+    `${r.name}${r.brokerage ? ` of ${r.brokerage}` : ''} is sending you the applicants for ${address}.`,
+    `${n} applicant${n === 1 ? '' : 's'}, ranked best fit first${v ? `, ${v} verified` : ''}.`,
+    pageUrl ? 'Open the report to see them and tell me who you would like to meet.' : 'The ranked list is attached as a PDF. Reply to this email to tell me who you would like to meet.',
+  ];
+  const text = `Hi ${landlordName || 'there'},\n\n${lines.join('\n')}\n${pageUrl ? `\nOpen the report: ${pageUrl}\n` : ''}\n${r.name}\n`;
+  const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#faf8f3;font-family:Inter,-apple-system,Helvetica,Arial,sans-serif;color:#0f0f10;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
+    <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;background:#fffdf8;border:1px solid #e3ddd0;border-radius:12px;">
+      <tr><td style="padding:24px;font-size:16px;line-height:1.5;">
+        <p style="margin:0 0 12px;">Hi ${esc(landlordName || 'there')},</p>
+        ${lines.map((l) => `<p style="margin:0 0 12px;">${esc(l)}</p>`).join('')}
+        ${pageUrl ? `<p style="margin:20px 0 0;"><a href="${pageUrl}" style="display:inline-block;min-height:44px;line-height:44px;padding:0 20px;background:#d72027;color:#faf8f3;text-decoration:none;border-radius:8px;font-weight:700;">Open the report</a></p>` : ''}
+        <p style="margin:20px 0 0;">${esc(r.name)}</p>
+        <p style="margin:20px 0 0;font-size:12px;color:#86868b;">Sent through Rentletter on behalf of ${esc(r.name)}. Applicant data is self reported; verify references independently.</p>
+      </td></tr>
+    </table>
+  </td></tr></table></body></html>`;
+  return { subject, text, html, lines };
 }
 
 export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return res.status(503).json({ error: 'Service temporarily unavailable.' });
-  }
-  if (!process.env.RESEND_API_KEY) {
-    return res.status(503).json({ error: 'Email service not configured.' });
-  }
+  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ error: 'Service temporarily unavailable.' });
+  if (!process.env.RESEND_API_KEY) return res.status(503).json({ error: 'Email service not configured.' });
 
   const supabase = getSupabaseServerClient(req, res);
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) { logServerError('[listings/send-report] 401', new Error('no session on send'), { listingId: req.body?.listingId || null, hasCookies: !!(req.cookies && Object.keys(req.cookies).length) }); return res.status(401).json({ error: 'Not signed in.' }); }
-  // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
+  if (!user) return res.status(401).json({ error: 'Not signed in.' });
+  // Write path: needs an unlocked plan (lib/entitlements.js), 402 otherwise.
   if (!(await requireEntitlement(req, res, supabase, user))) return;
 
-  const { listingId, note } = req.body || {};
+  const { listingId } = req.body || {};
   if (!listingId) return res.status(400).json({ error: 'listingId required.' });
 
   let fontPairingForLog = null;
@@ -45,65 +70,36 @@ export default async function handler(req, res) {
     const admin = getSupabaseAdminClient();
     const ctx = await loadReportContext(supabase, admin, listingId, user.id);
     if (!ctx) return res.status(404).json({ error: 'Listing not found.' });
-    if (ctx.active.length + ctx.setAside.length === 0) return res.status(400).json({ error: 'No applicants to present yet.' });
-
+    if (ctx.active.length === 0) return res.status(400).json({ error: 'No applicants to present yet.' });
     const landlordEmail = String(ctx.listing.landlord_email || '').trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(landlordEmail)) {
-      return res.status(400).json({ error: "Add the landlord's email to this listing first (Edit listing)." });
-    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(landlordEmail)) return res.status(400).json({ error: "Add the landlord's email to this listing first (Edit listing)." });
 
-    const realtorName = signingName(ctx.profile);
-    const brokerage = String(ctx.profile?.brokerage || '').slice(0, 120);
-    const phone = String(ctx.profile?.phone || '').slice(0, 40);
-    const realtorEmail = user.email;
-    const unitName = String(ctx.listing.name || ctx.listing.address || 'your unit');
-    const personalNote = String(note || '').slice(0, 1000);
-    const n = ctx.active.length + ctx.setAside.length;
+    // FREEZE: the payload every surface reads from now on.
+    const payload = buildSnapshot({ listing: ctx.listing, applicants: ctx.active, profile: { ...ctx.profile, email: ctx.profile?.email || user.email } });
+    const landlordName = ctx.listing.landlord_name || null;
+    const snap = await insertSnapshot(admin, { listingId: ctx.listing.id, profileId: user.id, payload, sentToName: landlordName, sentToEmail: landlordEmail });
+    const pageUrl = snap.absent ? null : reportPageUrl(snap.token);
 
     fontPairingForLog = ctx.profile?.brand_fonts?.id || null;
-    const fonts = loadPairingFonts(ctx.profile?.brand_fonts);
-    const bytes = await buildLandlordReportPdf({ ...ctx, fonts });
-
-    const html = `<!DOCTYPE html><html><body style="margin:0;padding:0;background:#faf8f3;font-family:-apple-system,'Inter',sans-serif;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf8f3;padding:40px 16px;"><tr><td align="center">
-    <table role="presentation" width="560" cellpadding="0" cellspacing="0" style="max-width:560px;">
-      <tr><td style="background:#0f0f10;padding:22px 26px;">
-        <p style="font-size:10px;color:#c8c2b3;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin:0 0 6px;">From your realtor</p>
-        <p style="font-size:20px;font-weight:800;color:#faf8f3;margin:0 0 4px;letter-spacing:-0.02em;">${esc(realtorName)}</p>
-        ${brokerage ? `<p style="font-size:13px;color:#c8c2b3;margin:0 0 2px;">${esc(brokerage)}</p>` : ''}
-        ${phone ? `<p style="font-size:13px;color:#c8c2b3;margin:0;">${esc(phone)}</p>` : ''}
-      </td></tr>
-      <tr><td style="padding:24px 4px 0;">
-        <h1 style="font-size:24px;font-weight:800;color:#0f0f10;letter-spacing:-0.02em;margin:0 0 10px;">${n} applicant${n === 1 ? '' : 's'} for ${esc(unitName).slice(0, 60)}</h1>
-        <p style="font-size:14px;color:#3a3a3c;line-height:1.6;margin:0 0 14px;">The full ranked list (best fit first, top matches highlighted) is attached as a PDF. Reply to this email to discuss next steps.</p>
-        ${personalNote ? `<div style="background:#f2eee3;padding:16px;border-left:3px solid #d72027;margin:0 0 14px;"><p style="font-size:14px;color:#0f0f10;line-height:1.6;margin:0;white-space:pre-wrap;">${esc(personalNote)}</p></div>` : ''}
-      </td></tr>
-      <tr><td style="padding:20px 4px 0;border-top:1px solid #e3ddd0;margin-top:20px;">
-        <p style="font-size:11px;color:#86868b;line-height:1.6;margin:14px 0 0;">Prepared by ${esc(realtorName)}. Tenant data is self-reported; verify references independently. Screening must comply with the ${humanRightsCodeName(ctx.profile?.province)}. Powered by Rentletter.</p>
-      </td></tr>
-    </table>
-  </td></tr></table></body></html>`;
-
+    const bytes = await buildLandlordReportPdf({ payload, fonts: loadPairingFonts(ctx.profile?.brand_fonts) });
+    const mail = reportEmail({ payload, pageUrl, landlordName });
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const result = await resend.emails.send({
-      from: 'Rentletter <hello@rentletter.ca>',
-      to: landlordEmail,
-      reply_to: realtorEmail,
-      subject: `Ranked applicants from ${realtorName}, ${n} for ${unitName.slice(0, 60)}`,
-      html,
-      attachments: [{ filename: `ranked-applicants-${new Date().toISOString().slice(0, 10)}.pdf`, content: Buffer.from(bytes) }],
+      from: reportFrom(payload.realtor.name), to: landlordEmail, reply_to: user.email,
+      subject: mail.subject, html: mail.html, text: mail.text,
+      attachments: [{ filename: `applicants-${new Date().toISOString().slice(0, 10)}.pdf`, content: Buffer.from(bytes) }],
     });
-    if (result?.error) {
-      console.error('[send-report] Resend error:', result.error);
-      return res.status(500).json({ error: 'Email send failed. Try again.' });
-    }
+    if (result?.error) { console.error('[send-report] Resend error:', result.error); return res.status(500).json({ error: 'Email send failed. Try again.' }); }
+
     // Every applicant on this report: last_sent_at = now (db/screening.sql). Tolerated when absent.
     try {
-      const ids = [...ctx.active, ...ctx.setAside].map((r) => r.linkId).filter(Boolean);
-      if (ids.length) { const { error: sentErr } = await admin.from('listing_applicants').update({ last_sent_at: new Date().toISOString() }).in('id', ids); if (sentErr && !lastSentWarned) { lastSentWarned = true; console.warn('[send-report] last_sent_at not recorded (run db/screening.sql):', sentErr.message); } }
+      const ids = ctx.active.map((r) => r.linkId).filter(Boolean);
+      if (ids.length) { const { error: sentErr } = await admin.from('listing_applicants').update({ last_sent_at: new Date().toISOString() }).in('id', ids); if (sentErr && !lastSentWarned) { lastSentWarned = true; console.warn('[send-report] last_sent_at not recorded:', sentErr.message); } }
     } catch (e) { if (!lastSentWarned) { lastSentWarned = true; console.warn('[send-report] last_sent_at not recorded:', e?.message || e); } }
-    await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_sent', payload: { listingName: ctx.listing.name || ctx.listing.address || null, landlordEmail, landlordName: ctx.listing.landlord_name || null, applicants: n } });
+    await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_sent', payload: { listingName: ctx.listing.name || ctx.listing.address || null, landlordEmail, landlordName, snapshotId: snap.absent ? null : snap.id, applicants: payload.counts.applicants } });
     invalidateSignals(user.id);
-    return res.status(200).json({ ok: true, sentTo: landlordEmail });
+    const meta = snap.absent ? null : snapshotMeta({ id: snap.id, token: snap.token, created_at: snap.createdAt, sent_to_name: landlordName, opened_count: 0, answers: {}, expires_at: snap.expiresAt });
+    return res.status(200).json({ ok: true, sentTo: landlordEmail, snapshot: meta, pageUrl });
   } catch (e) {
     logServerError('[listings/send-report]', e, { listingId, fontPairing: fontPairingForLog });
     return res.status(500).json({ error: 'Email send failed. Try again.', code: 'report_failed' });
