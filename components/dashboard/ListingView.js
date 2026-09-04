@@ -19,7 +19,7 @@ import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
 import { AnimatedScore, useFlip, ReportDeparture, MotionStyles } from '../motion';
 import SwipeCard from '../motion/swipe';
-import { DURATION, prefersReducedMotion } from '../../lib/motion';
+import { CURVE, DURATION, prefersReducedMotion } from '../../lib/motion';
 import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
@@ -231,6 +231,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [inviteLoading, setInviteLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [addRL, setAddRL] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState(false); // the fold: closed on every visit, no persistence
+  const [addOpen, setAddOpen] = useState(false); // "Add by application number" reveals the field
   const [addLoading, setAddLoading] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [textBusy, setTextBusy] = useState(false);
@@ -318,7 +320,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     if (!full) return;
     navigator.clipboard.writeText(full);
     setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // One applicant changed on the server (a document analysis landed): refetch the listing's
@@ -490,6 +492,16 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
   const l = listing;
   const inviteShareUrl = fullInviteUrl(); // complete URL shown + copied
+  // Criteria Fit reads, set ones only, in Fit's order: income floor, rent share cap, tenure,
+  // landlord reference, employer verification.
+  const moneyK = (n) => `$${Math.round(Number(n) / 1000)}k`;
+  const criteriaLine = [
+    Number(l.pref_min_annual_income) > 0 ? `min ${moneyK(l.pref_min_annual_income)}` : null,
+    Number(l.pref_rent_to_income_max_pct) > 0 ? `max ${Number(l.pref_rent_to_income_max_pct)}% rent share` : null,
+    Number(l.pref_min_years_at_job) > 0 ? `${Number(l.pref_min_years_at_job)} yr${Number(l.pref_min_years_at_job) === 1 ? '' : 's'} at job` : null,
+    l.pref_requires_landlord_reference ? 'landlord reference' : null,
+    l.pref_requires_employer_verification ? 'employer verification' : null,
+  ].filter(Boolean).join(' · ');
   const employment = [
     l.pref_employment_full_time && 'Full time',
     l.pref_employment_contract && 'Contract',
@@ -803,117 +815,111 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} onAssistantAction={onNoticeAction} />
 
-        {locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
-        {!locked && <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 48px' }}>
+        {locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
+        {!locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) clamp(16px, 4vw, 32px) var(--s-7)' }}>
           <a href={adapter.paths.home} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
 
-          {/* Title + actions */}
-          <div className="rl-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-4)', flexWrap: 'wrap', marginBottom: 'var(--s-5)' }}>
-            <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-              <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere' }}>
-                {l.name || l.address || 'Untitled listing'}
-              </h1>
-              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', overflowWrap: 'anywhere' }}>
-                {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}/mo` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
-              <button onClick={() => setEditOpen(true)} className="rl-btn"
-                style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
-                Edit
-              </button>
-              <button onClick={remove}
-                style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
-                Delete
-              </button>
-            </div>
+          {/* Title row: the address, Edit at the right. Delete lives in Details. */}
+          <div className="rl-in" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
+            <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</h1>
+            <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
+          </div>
+          <div className="rl-in num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>
+            {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()} per month` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
+          </div>
+          {/* Criteria: the preferences Fit reads, set ones only, then the fold's toggle. */}
+          <p className="rl-in num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>
+            {criteriaLine || 'No criteria set'} ·{' '}
+            <button type="button" onClick={() => setDetailsOpen((o) => !o)} aria-expanded={detailsOpen} aria-controls="listing-details" style={{ display: 'inline', minHeight: 44, lineHeight: '44px', padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap' }}>{detailsOpen ? 'Hide details' : 'Details'}</button>
+          </p>
+          {/* The invite link, one tap away: label, the URL truncated, Copy. */}
+          <div className="rl-in" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', marginTop: 'var(--s-2)', minHeight: 44 }}>
+            <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, flexShrink: 0 }}>Invite link</span>
+            {inviteShareUrl ? (
+              <>
+                <span className="num" style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={inviteShareUrl}>{inviteShareUrl}</span>
+                <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
+              </>
+            ) : (
+              <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+            )}
           </div>
 
           {error && (
-            <div style={{ marginBottom: 'var(--s-4)', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
+            <div style={{ margin: 'var(--s-3) 0', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
           )}
 
-          <div className="rl-in" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: 'var(--s-4)', alignItems: 'start', marginBottom: 'var(--s-4)', '--rl-d': '90ms' }}>
-            {/* Unit + preferences */}
-            <section className="rl-card" style={{ minWidth: 0, padding: 'var(--s-4)' }}>
-              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
-              <Row label="Address" value={l.address || 'not set'} />
-              <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'not set'} />
-              <Row label="Unit type" value={formatUnit(l.bedrooms) || 'not set'} />
-              <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />
-              <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
-              <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
-              <Row label="EV parking" value={l.ev_parking === 'yes' ? 'Yes' : 'No'} />
-              <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
-              <Row label="Max rent to income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : 'not set'} />
-              <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
-              <Row label="Employment" value={employment} />
-              <Row label="Min lease term" value={l.pref_min_lease_term_months != null ? `${l.pref_min_lease_term_months} mo` : 'not set'} />
-              <Row label="Max occupants" value={l.pref_max_occupants != null ? l.pref_max_occupants : 'not set'} />
-              <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
-              <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
-              <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted)} />
-              {l.pref_notes && (
-                <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55 }}>
-                  <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
-                </div>
-              )}
-              {(l.landlord_name || l.landlord_email || l.landlord_phone) && (
-                <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                  <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Landlord client</div>
-                  {l.landlord_name && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
-                  {l.landlord_email && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
-                  {l.landlord_phone && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
-                </div>
-              )}
-            </section>
-
-            {/* Invite link */}
-            <section className="rl-card" style={{ minWidth: 0, padding: 'var(--s-4)' }}>
-              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Invite link</div>
-              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'pretty' }}>
-                Share this link with prospective tenants. They fill the application and it appears below automatically.
-              </p>
-              {inviteShareUrl ? (
-                <>
-                  <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
-                    <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()}
-                      style={{ flex: 1, minWidth: 200, padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
-                    <button onClick={copy} className="rl-btn"
-                      style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                      <Icon name="copy" size={14} /> {copied ? 'Copied' : 'Copy'}
-                    </button>
+          {/* THE DETAILS FOLD: the reference, one panel, closed on every visit. Height animates on
+              the settle curve (grid rows 0fr to 1fr); reduced motion snaps. */}
+          <div id="listing-details" className={`lv-fold ${detailsOpen ? 'lv-fold-open' : ''}`} aria-hidden={!detailsOpen}>
+            <div>
+              <section className="rl-card" style={{ minWidth: 0, padding: 'var(--card-pad)', marginTop: 'var(--s-3)' }} inert={!detailsOpen}>
+                <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
+                <Row label="Address" value={l.address || 'not set'} />
+                <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'not set'} />
+                <Row label="Unit type" value={formatUnit(l.bedrooms) || 'not set'} />
+                <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />
+                <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
+                <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
+                <Row label="EV parking" value={l.ev_parking === 'yes' ? 'Yes' : 'No'} />
+                <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
+                <Row label="Max rent to income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : 'not set'} />
+                <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
+                <Row label="Employment" value={employment} />
+                <Row label="Min lease term" value={l.pref_min_lease_term_months != null ? `${l.pref_min_lease_term_months} mo` : 'not set'} />
+                <Row label="Max occupants" value={l.pref_max_occupants != null ? l.pref_max_occupants : 'not set'} />
+                <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
+                <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
+                <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted)} />
+                {l.pref_notes && (
+                  <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
+                    <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
                   </div>
-                  <button onClick={() => getInvite(true)} disabled={inviteLoading}
-                    style={{ marginTop: 'var(--s-2)', background: 'transparent', border: 'none', color: C.inkMute, fontSize: 'var(--t-body-2)', textDecoration: 'underline', cursor: 'pointer' }}>
-                    {inviteLoading ? 'Working…' : 'Regenerate link'}
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => getInvite(false)} disabled={inviteLoading} className="rl-btn"
-                  style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                  {inviteLoading ? 'Creating…' : <><Icon name="link" size={16} /> Get invite link</>}
-                </button>
-              )}
-
-              {/* Add an existing applicant by RL number */}
-              <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-4)', borderTop: `1px solid ${C.rule}` }}>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, fontWeight: 600, marginBottom: 'var(--s-2)' }}>Already have an application number?</div>
-                <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
-                  <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX"
-                    onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
-                    style={{ flex: 1, minWidth: 180, padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
-                  <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} className="rl-btn"
-                    style={{ background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'not-allowed' : 'pointer' }}>
-                    {addLoading ? 'Adding…' : 'Add'}
-                  </button>
+                )}
+                {(l.landlord_name || l.landlord_email || l.landlord_phone) && (
+                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Landlord client</div>
+                    {l.landlord_name && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
+                    {l.landlord_email && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
+                    {l.landlord_phone && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
+                  </div>
+                )}
+                {/* The invite link row: URL, Copy, Regenerate as text, Add by application number as text. */}
+                <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                  <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Invite link</div>
+                  {inviteShareUrl ? (
+                    <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
+                        style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
+                      <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
+                    </div>
+                  ) : (
+                    <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+                  )}
+                  <div style={{ display: 'flex', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-1)' }}>
+                    {inviteShareUrl && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
+                    <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
+                  </div>
+                  {addOpen && (
+                    <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
+                      <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
+                        onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
+                        style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
+                      <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--s-4)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}>{addLoading ? 'Adding' : 'Add'}</button>
+                    </div>
+                  )}
                 </div>
-              </div>
-            </section>
+                {/* Delete, last and alone, in the danger colour, with the existing confirm. */}
+                <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                  <button onClick={remove} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
+                </div>
+              </section>
+            </div>
           </div>
 
+          <div style={{ height: 'var(--gap-section)' }} aria-hidden="true" />
 
           {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
           <section className="rl-card rl-in" style={{ padding: 'var(--s-4)' }}>
@@ -1074,6 +1080,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         )}
       </div>
       <DocumentViewer doc={viewer} onClose={() => setViewer(null)} />
+      <style jsx>{`
+        .lv-fold { display: grid; grid-template-rows: 0fr; }
+        .lv-fold.lv-fold-open { grid-template-rows: 1fr; }
+        .lv-fold > div { overflow: hidden; min-height: 0; }
+        @media (prefers-reduced-motion: no-preference) { .lv-fold { transition: grid-template-rows ${DURATION.base}ms ${CURVE.settle}; } }
+      `}</style>
     </>
   );
 }
