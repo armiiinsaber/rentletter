@@ -17,6 +17,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
       const wanted = String(q.select).split(',').map((s) => s.trim()).filter(Boolean);
       const missing = wanted.find((c) => absentColumns.includes(c));
       if (missing) return { data: null, error: { code: '42703', message: `column ${table}.${missing} does not exist` } };
+      if ((q.op === 'update' || q.op === 'insert') && q.payload) { const bad = Object.keys(Array.isArray(q.payload) ? q.payload[0] || {} : q.payload).find((c) => absentColumns.includes(c)); if (bad) return { data: null, error: { code: '42703', message: `column ${table}.${bad} does not exist` } }; }
       if (q.op === 'update') { const hit = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); hit.forEach((r) => Object.assign(r, q.payload)); updates.push({ table, payload: q.payload, count: hit.length }); return { data: q.single ? {} : [], error: null }; }
       if (q.op === 'insert') { const added = (Array.isArray(q.payload) ? q.payload : [q.payload]).map((r) => ({ id: `${table}-${rows.length + 1}`, ...r })); rows.push(...added); return { data: q.single ? added[0] : added, error: null }; }
       if (q.op === 'upsert') return { data: q.single ? {} : [], error: null };

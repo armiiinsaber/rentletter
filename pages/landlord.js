@@ -4,13 +4,13 @@
 // Listing Setup modal and inserts a row; edit/delete via Supabase. Tapping a
 // listing opens its detail view (/landlord/[id]). Stage 1: no KV workspace.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
-import { normalizeProvince } from '../lib/provinces';
 import HomeView from '../components/dashboard/HomeView';
 import { getEntitlement } from '../lib/entitlements';
 import { readPromoCookie, redeemPromoFromCookie } from '../lib/promoCookie';
 import { needsOnboarding } from '../lib/onboarding';
 import { loadSignals } from '../lib/dashboardSignals';
 import { logServerError } from '../lib/serverLog';
+import { backfillProvince } from '../lib/profileBackfill';
 
 // The profile read, with failure and absence kept apart. A FAILED read (RLS with an access token
 // mid refresh is the usual cause) is retried once; if it fails again the request goes back to
@@ -54,13 +54,7 @@ export async function getServerSideProps(ctx) {
   // province default to Ontario. Only writes when profiles.province is unset, so a realtor's
   // later manual change in settings is never overwritten. Gracefully no-ops if the column
   // isn't migrated yet.
-  if (profile && (profile.province === null || profile.province === undefined)) {
-    const chosen = normalizeProvince(user.user_metadata?.province);
-    const { data: updated } = await supabase
-      .from('profiles').update({ province: chosen }).eq('id', user.id).select().single();
-    if (updated) profile = updated;
-    else profile = { ...profile, province: chosen };
-  }
+  profile = await backfillProvince(supabase, user, profile);
   // A pending invitation (rl_promo) that didn't get redeemed in the auth callback — e.g. the
   // realtor signed in with a password instead of the email link — is redeemed here, once.
   if (profile && readPromoCookie(ctx.req) && process.env.SUPABASE_SERVICE_ROLE_KEY) {

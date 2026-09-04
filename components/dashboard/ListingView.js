@@ -26,7 +26,6 @@ import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import { synthesisLine } from '../../lib/applicantSynthesis';
 import { applicantState } from '../../lib/applicantState';
-import { reportEvent } from '../../lib/clientEvents';
 import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
@@ -86,8 +85,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     if (!isUnreviewed(a)) return;
     const at = new Date().toISOString();
     setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, reviewedAt: at } : x)));
-    try { const supabase = adapter.supabase(); await supabase.from('listing_applicants').update({ reviewed_at: at }).eq('id', a.linkId); }
-    catch (e) { /* optimistic; the column is RLS-scoped to this realtor's own rows */ }
+    try { await adapter.fetch('/api/applicants/reviewed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ linkId: a.linkId }) }); }
+    catch (e) { /* optimistic; the route owns the write */ }
   };
   const toggleApplicant = (a) => { if (openId === a.linkId) setOpenId(null); else openApplicant(a); };
   // ── Assistant (Layer 2): publish THIS realtor's own listing/applicants as the chat context
@@ -225,9 +224,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const saveSignature = async () => {
     const v = cleanSignature(sigDraft); setSigBusy(true);
     try {
-      const supabase = adapter.supabase();
-      const { data, error: sErr } = await supabase.from('profiles').update({ report_signature: v || null }).eq('id', profile.id).select().single();
-      if (sErr) setError(sErr.message); else { setProfile((p) => ({ ...(data || p), report_signature: v || null })); setSigEditing(false); }
+      const r = await adapter.fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ report_signature: v || null }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) setError(j?.error || 'Could not save the signing name.'); else { setProfile((p) => ({ ...(j.profile || p), report_signature: v || null })); setSigEditing(false); }
     } catch (e) { setError('Could not save the signing name.'); }
     setSigBusy(false);
   };
@@ -273,12 +272,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setSaving(true);
     setError('');
     try {
-      const supabase = adapter.supabase();
-      const { data, error: upErr } = await supabase
-        .from('listings').update(values).eq('id', listing.id).select().single();
-      if (upErr) { setError(upErr.message); setSaving(false); return; }
-      setListing(data);
-      reportEvent(adapter, { type: 'listing_updated', listingId: listing.id });
+      const r = await adapter.fetch('/api/listings/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id, ...values }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) { setError(j?.error || 'Could not save changes.'); setSaving(false); return; }
+      setListing((l) => ({ ...l, ...(j.listing || values) }));
       setSaving(false);
       setEditOpen(false);
       refreshApplicants(); // scores and rent shares are derived from the listing's current rent at read time
@@ -313,11 +310,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const remove = async () => {
     if (!confirm('Delete this listing? This cannot be undone.')) return;
     try {
-      // The invite link answers rented from now on, even after the row is gone: close first.
-      if (listingOpen(listing)) await setStatus('closed');
-      const supabase = adapter.supabase();
-      const { error: delErr } = await supabase.from('listings').delete().eq('id', listing.id);
-      if (delErr) { setError(delErr.message); return; }
+      // The route closes the listing first (the invite link answers rented from then on), then deletes.
+      const r = await adapter.fetch('/api/listings/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) { setError(j?.error || 'Could not delete the listing.'); return; }
       router.push(adapter.paths.home);
     } catch (e) {
       setError('Could not delete the listing.');
@@ -502,22 +498,30 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setSending(false);
   };
 
-  // Persist a decision to listing_applicants (realtor RLS). Optimistic local update. Values come
-  // from lib/listingApplicantsVocabulary.js; a withdrawal is its own column (withdrawn_at).
+  // Persist a decision through its route (session, entitlement, ownership, the event, the
+  // signals cache and the pending nudge set on the server). Optimistic local update, reverted on
+  // error with the route's text, as the checklist does. A withdrawal has its own route.
   const setDecision = async (linkId, patch) => {
     const changedAt = new Date().toISOString();
+    const before = applicants.find((a) => a.linkId === linkId) || null;
     setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? { ...a, ...patch, decisionChangedAt: changedAt } : a)));
+    const revert = (msg) => { if (before) setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? before : a))); setError(msg); };
     try {
-      const supabase = adapter.supabase();
-      const dbPatch = { decision_changed_at: changedAt };
-      if ('decisionStatus' in patch) dbPatch.decision_status = patch.decisionStatus;
-      if ('withdrawnAt' in patch) dbPatch.withdrawn_at = patch.withdrawnAt;
-      if ('decisionReasonCode' in patch) dbPatch.decision_reason_code = patch.decisionReasonCode;
-      if ('decisionNotes' in patch) dbPatch.decision_notes = patch.decisionNotes;
-      const { error: upErr } = await supabase.from('listing_applicants').update(dbPatch).eq('id', linkId);
-      if (upErr) setError('Could not save your decision: ' + upErr.message);
+      let r;
+      if ('withdrawnAt' in patch) {
+        r = await adapter.fetch('/api/applicants/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ linkId, withdrawn: !!patch.withdrawnAt }) });
+      } else {
+        const body = { linkId };
+        if ('decisionStatus' in patch) body.status = patch.decisionStatus;
+        if ('decisionReasonCode' in patch) body.reasonCode = patch.decisionReasonCode;
+        if ('decisionNotes' in patch) body.notes = patch.decisionNotes;
+        if ('decisionPriority' in patch) body.priority = patch.decisionPriority;
+        r = await adapter.fetch('/api/applicants/decision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      }
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) revert(j?.error ? `Could not save your decision: ${j.error}` : 'Could not save your decision.');
     } catch (e) {
-      setError('Could not save your decision.');
+      revert('Could not save your decision.');
     }
   };
 
@@ -528,7 +532,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     if (!setAsideFor || !setAsideCode) return;
     const linkId = setAsideFor.linkId;
     setDecision(linkId, { decisionStatus: DECISION_STATUS.REJECT, decisionReasonCode: setAsideCode, decisionNotes: setAsideNote.trim() || null });
-    reportEvent(adapter, { type: 'applicant_set_aside', linkId, payload: { reason: reasonLabel(setAsideCode) } });
     if (dragSetAsideRef.current === linkId) { // reached by a drag: the card leaves, and Undo is offered
       dragSetAsideRef.current = null;
       depart(linkId, 'left', false);
@@ -538,7 +541,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   };
   const restoreApplicant = (a) => {
     setDecision(a.linkId, { decisionStatus: DECISION_STATUS.NONE, decisionReasonCode: null });
-    reportEvent(adapter, { type: 'applicant_restored', linkId: a.linkId });
   };
   // The two drag commits. Set aside still REQUIRES a screenable reason, so pushing a card left
   // opens the same reason sheet the button opens (the card springs back under it); confirming
@@ -558,7 +560,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const withdrawApplicant = (a) => {
     if (!confirm(`Mark ${a.application?.full_name || 'this applicant'} as withdrawn? Use this only if the tenant withdrew. It removes them from your ranked list.`)) return;
     setDecision(a.linkId, { withdrawnAt: new Date().toISOString(), decisionReasonCode: null });
-    reportEvent(adapter, { type: 'applicant_withdrew', linkId: a.linkId });
   };
 
   const l = listing;

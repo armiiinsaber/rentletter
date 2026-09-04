@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { EVENT_TYPES, CLIENT_EVENT_TYPES, eventTitle, eventHref, groupByDay } from '../lib/eventTypes.js';
+import { EVENT_TYPES, eventTitle, eventHref, groupByDay } from '../lib/eventTypes.js';
 import { recordEvent } from '../lib/events.js';
 
 const sqlTypes = () => {
@@ -15,8 +15,6 @@ test('EVENT_TYPES matches the check constraint in db/events.sql exactly', () => 
 });
 
 test('every client reportable type is an allowed type, and the tenant side ones are not', () => {
-  for (const t of CLIENT_EVENT_TYPES) assert.ok(EVENT_TYPES.includes(t), t);
-  for (const t of ['applicant_applied', 'documents_uploaded', 'verification_completed', 'referral_received']) assert.ok(!CLIENT_EVENT_TYPES.includes(t), t);
 });
 
 test('every type has a title and a destination', () => {

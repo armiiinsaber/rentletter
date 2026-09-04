@@ -4,13 +4,11 @@
 // leaving and returning never restarts. 'done' profiles are sent to the dashboard. The screens
 // themselves live in components/onboarding/OnboardingFlow. No access decisions here.
 import { useState } from 'react';
-import { reportEvent } from '../lib/clientEvents';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../components/theme';
 import { GlobalStyle, Wordmark } from '../components/ui';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
-import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { nextStep } from '../lib/onboarding';
 import { IdentityStep, ProvinceStep, BrandingStep, ListingStep, DoneStep, OnboardingStyles } from '../components/onboarding/OnboardingFlow';
 
@@ -37,12 +35,12 @@ export default function Onboarding({ userId, initialProfile }) {
   // One write path: the profile patch plus the NEXT step, so a return resumes correctly.
   const save = async (patch, next) => {
     try {
-      const supabase = getSupabaseBrowserClient();
       const values = { ...patch, onboarding_step: next };
       if (next === 'done') values.onboarding_completed_at = new Date().toISOString();
-      const { data, error } = await supabase.from('profiles').update(values).eq('id', userId).select().single();
-      if (error) return { error: error.message || 'Could not save. Please try again.' };
-      setProfile(data);
+      const r = await fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) return { error: j?.error || 'Could not save. Please try again.' };
+      setProfile((p) => ({ ...p, ...(j.profile || values) }));
       if (next !== 'done') setStep(next);
       return { ok: true };
     } catch (e) { return { error: 'Could not save. Please try again.' }; }
@@ -54,13 +52,13 @@ export default function Onboarding({ userId, initialProfile }) {
   const createListing = async (values) => {
     setListingBusy(true); setListingErr('');
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { data, error } = await supabase.from('listings').insert({ ...values, profile_id: userId }).select().single();
-      if (error) { setListingErr(error.message); setListingBusy(false); return; }
+      const cr = await fetch('/api/listings/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
+      const cj = await cr.json().catch(() => ({}));
+      if (!cr.ok || cj?.error || !cj?.listing?.id) { setListingErr(cj?.error || 'Could not create the listing. Please try again.'); setListingBusy(false); return; }
+      const data = cj.listing;
       let inviteUrl = null;
       try { const r = await fetch('/api/listings/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: data.id }) }); const j = await r.json().catch(() => ({})); if (r.ok && j.url) inviteUrl = j.url; } catch (e) { /* the listing page can mint it */ }
       setListingBusy(false);
-      reportEvent(null, { type: 'listing_created', listingId: data.id });
       await finish({ inviteUrl, listingId: data.id });
     } catch (e) { setListingErr('Could not create the listing. Please try again.'); setListingBusy(false); }
   };

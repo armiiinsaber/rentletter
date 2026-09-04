@@ -16,10 +16,10 @@
 // Save button remains as an explicit flush (and closes the modal) but is no longer the only
 // way to persist anything.
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { reportEvent } from '../../lib/clientEvents';
 import Head from 'next/head';
 import { C, R } from '../theme';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
+import { useAdapter } from '../../lib/dashboardAdapter';
 import { buildPalette, PALETTE_ORDER, readableText } from '../../lib/brandPalette';
 import { FONT_PAIRINGS, GOOGLE_FONTS_HREF, suggestPairingId } from '../../lib/brandFonts';
 import { PROVINCE_OPTIONS, normalizeProvince } from '../../lib/provinces';
@@ -41,6 +41,9 @@ const sectionLabel = { display: 'block', fontSize: 11, color: C.inkSoft, fontWei
 // logoOnly: render just the logo block (upload + AI studio). Used by first run onboarding, which
 // collects the identity fields on its own screen; the editor's data flow is unchanged.
 export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyChange, saveRef, logoOnly = false }) {
+  const adapter = useAdapter();
+  // Every profile write goes through its route (session, entitlement, the event on the server).
+  const postJson = async (url, body) => { const r = await adapter.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await r.json().catch(() => ({})); return { ok: r.ok && !j?.error, data: j?.profile || null, error: j?.error || (r.ok ? null : 'Could not save.') }; };
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
     brokerage: profile?.brokerage || '',
@@ -72,13 +75,10 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
     const prev = fontId;
     setFontId(fp.id); setSavedOk(false); setFontState('saving'); setError('');
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setFontId(prev); setFontState('error'); setError('Your session expired. Please sign in again.'); return; }
-      const { data, error: upErr } = await supabase.from('profiles').update({ brand_fonts: fp }).eq('id', user.id).select().single();
-      if (upErr || !data) {
+      const { ok, data, error: upErr } = await postJson('/api/profile/branding', { brand_fonts: fp });
+      if (!ok || !data) {
         setFontId(prev); setFontState('error');
-        setError(`Could not save the font pairing${upErr?.message ? ': ' + upErr.message : ''}. Your reports keep using the previous pairing.`);
+        setError(`Could not save the font pairing${upErr ? ': ' + upErr : ''}. Your reports keep using the previous pairing.`);
         return;
       }
       onSaved?.(data); setFontState('saved');
@@ -110,9 +110,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       if (upErr) { setError('Upload failed: ' + upErr.message); setLogoBusy(false); return; }
       const { data: pub } = supabase.storage.from('logos').getPublicUrl(path);
       const url = `${pub.publicUrl}?v=${Date.now()}`; // cache-bust
-      const { data, error: dbErr } = await supabase
-        .from('profiles').update({ logo_url: url }).eq('id', user.id).select().single();
-      if (dbErr) { setError('Could not save logo: ' + dbErr.message); setLogoBusy(false); return; }
+      const { ok, data, error: dbErr } = await postJson('/api/profile/branding', { logo_url: url });
+      if (!ok) { setError('Could not save logo: ' + dbErr); setLogoBusy(false); return; }
       setLogoUrl(url);
       onSaved?.(data);
     } catch (e) {
@@ -130,9 +129,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       if (!user) { setError('Your session expired. Please sign in again.'); setLogoBusy(false); return; }
       const paths = Object.values(ALLOWED).map((ext) => `${user.id}/logo.${ext}`);
       await supabase.storage.from('logos').remove(paths).catch(() => {});
-      const { data, error: dbErr } = await supabase
-        .from('profiles').update({ logo_url: null }).eq('id', user.id).select().single();
-      if (dbErr) { setError('Could not remove logo: ' + dbErr.message); setLogoBusy(false); return; }
+      const { ok, data, error: dbErr } = await postJson('/api/profile/branding', { logo_url: null });
+      if (!ok) { setError('Could not remove logo: ' + dbErr); setLogoBusy(false); return; }
       setLogoUrl('');
       onSaved?.(data);
     } catch (e) {
@@ -161,22 +159,20 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
     const f = formRef.current;
     const { brandColor: bc, brandColorSecondary: bcs } = colorRef.current;
     try {
-      const supabase = getSupabaseBrowserClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setError('Your session expired. Please sign in again.'); setSaveState('error'); return false; }
-      const patch = {
+      // The detail fields through the profile route, the colours through the branding route.
+      const details = await postJson('/api/profile/update', {
         full_name: f.full_name.trim() || null,
         brokerage: f.brokerage.trim() || null,
         phone: f.phone.trim() || null,
         license_number: f.license_number.trim() || null,
         province: normalizeProvince(f.province),
+      });
+      if (!details.ok) { setError(details.error || 'Could not save.'); setSaveState('error'); return false; }
+      const colours = await postJson('/api/profile/branding', {
         brand_color: /^#[0-9a-fA-F]{6}$/.test(bc) ? bc.toLowerCase() : null,
         brand_color_secondary: /^#[0-9a-fA-F]{6}$/.test(bcs) ? bcs.toLowerCase() : null,
-      };
-      const { data, error: upErr } = await supabase
-        .from('profiles').update(patch).eq('id', user.id).select().single();
-      if (upErr) { setError(upErr.message); setSaveState('error'); return false; }
-      onSaved?.(data);
+      });
+      onSaved?.(colours.data || details.data);
       setSavedForm({ ...f }); // detail fields are now saved, clears the dirty state
       setSaveState('saved');
       return true;
@@ -248,19 +244,10 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
     if (p === (profile?.brand_color || null) && s === (profile?.brand_color_secondary || null)) return;
     const t = setTimeout(async () => {
       try {
-        const supabase = getSupabaseBrowserClient();
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
-        const { data } = await supabase.from('profiles')
-          .update({ brand_color: p, brand_color_secondary: s }).eq('id', user.id).select().single();
-        if (data) { onSaved?.(data); reportEvent(null, { type: 'branding_updated', payload: { what: 'colours' } }); }
-        if (p && s) {
-          try {
-            const { data: d2 } = await supabase.from('profiles')
-              .update({ brand_palette: buildPalette(p, s) }).eq('id', user.id).select().single();
-            if (d2) onSaved?.(d2);
-          } catch (e) { /* brand_palette column not added yet, non-fatal */ }
-        }
+        // One write: the colours and the derived palette. The route drops brand_palette on its
+        // own when the column is not there yet, so colour persistence never depends on it.
+        const { data } = await postJson('/api/profile/branding', { brand_color: p, brand_color_secondary: s, ...(p && s ? { brand_palette: buildPalette(p, s) } : {}) });
+        if (data) onSaved?.(data);
       } catch (e) { /* non-fatal, colours still feed generation from live state */ }
     }, 600);
     return () => clearTimeout(t);

@@ -3,7 +3,6 @@
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
 import { useEffect, useState } from 'react';
-import { reportEvent } from '../../lib/clientEvents';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -91,16 +90,15 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     setSaving(true);
     setError('');
     try {
-      const supabase = adapter.supabase();
-      const { data, error: insErr } = await supabase
-        .from('listings')
-        .insert({ ...values, profile_id: userId })
-        .select()
-        .single();
-      if (insErr) { setError(insErr.message); setSaving(false); return; }
+      // The route inserts with profile_id from the session and records listing_created; the
+      // invite is then minted through the existing invite path.
+      const r = await adapter.fetch('/api/listings/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error || !j?.listing?.id) { setError(j?.error || 'Could not create the listing. Please try again.'); setSaving(false); return; }
+      const data = j.listing;
+      try { await adapter.fetch('/api/listings/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: data.id }) }); } catch (e) { /* the listing page offers the link */ }
       setSaving(false);
       setModalOpen(false);
-      reportEvent(adapter, { type: 'listing_created', listingId: data.id });
       router.push(adapter.paths.listing(data.id));
     } catch (e) {
       setError('Could not create the listing. Please try again.');
