@@ -740,7 +740,7 @@ export default function Home() {
         <Head><title>Your details · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
-          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Wordmark />
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <button onClick={() => setStep('landing')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
@@ -1013,7 +1013,7 @@ export default function Home() {
         <Head><title>Your application · Rentletter</title></Head>
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
-          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
             <Wordmark />
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <button onClick={startOver} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>

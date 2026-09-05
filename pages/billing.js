@@ -31,7 +31,7 @@ export default function Billing({ profile, entitlement: e }) {
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
         <DashboardHeader profile={profile} />
-        <main style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 56px' }}>
+        <main style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 56px', paddingTop: 'calc(clamp(20px, 4vw, 40px) + env(safe-area-inset-top, 0px))' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}><span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Plans</span></div>
           {e.status === 'founding' ? (
             <>

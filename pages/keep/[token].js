@@ -64,7 +64,7 @@ export default function KeepPage({ token, state, realtorName }) {
     <>
       <Head><title>Rentletter</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle />
-      <main style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-6) var(--s-4)' }}>
+      <main style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-6) var(--s-4)', paddingTop: 'calc(var(--s-6) + env(safe-area-inset-top, 0px))' }}>
         <div style={{ maxWidth: 520, margin: '0 auto var(--s-5)' }}><Wordmark /></div>
         <div className="rl-card" style={{ maxWidth: 520, margin: '0 auto', padding: 'var(--card-pad)' }}>
           {view === 'ask' ? (

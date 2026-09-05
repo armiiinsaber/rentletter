@@ -78,7 +78,7 @@ export const GlobalStyle = () => (
     .rl-modal { border-radius: ${R.modal}px; background: ${C.paper}; box-shadow: ${SH.modal}; overflow: hidden; }
 
     /* ── Sticky scroll-shrink header — site-wide ── */
-    .rl-header { position: sticky; top: 0; z-index: 60; background: rgba(250,248,243,0.72);
+    .rl-header { position: sticky; top: 0; z-index: 60; background: rgba(250,248,243,0.72); padding-top: env(safe-area-inset-top, 0px);
       -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px);
       border-bottom: 1px solid transparent;
       transition: box-shadow 280ms ease, border-color 280ms ease, background 280ms ease; }

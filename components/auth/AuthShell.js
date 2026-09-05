@@ -16,7 +16,7 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
       <div style={{
         minHeight: '100vh', background: C.paper, color: C.ink,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: 'clamp(20px, 5vw, 48px) clamp(16px, 4vw, 32px)',
+        justifyContent: 'center', padding: 'clamp(20px, 5vw, 48px) clamp(16px, 4vw, 32px)', paddingTop: 'calc(clamp(20px, 5vw, 48px) + env(safe-area-inset-top, 0px))',
       }}>
         <div style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'center' }}>

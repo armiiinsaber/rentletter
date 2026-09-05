@@ -73,7 +73,7 @@ export default function UploadPage() {
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
-        <header style={{ borderBottom: `1px solid ${C.rule}`, padding: 'clamp(16px, 4vw, 22px) clamp(16px, 4vw, 32px)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+        <header style={{ borderBottom: `1px solid ${C.rule}`, padding: 'clamp(16px, 4vw, 22px) clamp(16px, 4vw, 32px)', paddingTop: 'calc(clamp(16px, 4vw, 22px) + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
           <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
           <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>Document request</span>
         </header>

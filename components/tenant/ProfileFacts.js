@@ -90,7 +90,7 @@ export const ProfileStyles = () => (
     .mp-stat-l { font-size: 10.5px; color: ${C.inkMute}; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
     .mp-stat-v { font-size: 15px; color: ${C.ink}; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
     .mp-quote { font-family: Fraunces, Georgia, serif; font-weight: 500; font-size: clamp(17px, 2.6vw, 20px); line-height: 1.45; color: ${C.ink}; letter-spacing: -0.01em; }
-    .mp-header { border-bottom: 1px solid ${C.rule}; padding: clamp(16px, 4vw, 22px) clamp(16px, 4vw, 32px); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+    .mp-header { border-bottom: 1px solid ${C.rule}; padding: calc(clamp(16px, 4vw, 22px) + env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 32px) clamp(16px, 4vw, 22px); display: flex; justify-content: space-between; align-items: center; gap: 16px; }
     .mp-ghost { background: transparent; color: ${C.inkSoft}; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid ${C.rule}; border-radius: ${R.pill}px; padding: 8px 14px; min-height: 36px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
     .mp-ink { position: relative; overflow: hidden; background: ${C.ink}; color: ${C.paper}; border-radius: ${R.card}px; padding: clamp(20px, 4vw, 28px); }
     .mp-ink-tick { position: absolute; top: 0; left: 0; width: 44px; height: 3px; background: ${C.red}; }

@@ -1097,7 +1097,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
           <section className="rl-card rl-in" style={{ padding: 'var(--s-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
-              <h1 className="t-d3" style={{ color: C.ink }}>Applicants</h1>
+              <h2 className="t-d3" style={{ color: C.ink }}>Applicants</h2>
               <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
             </div>
             {stateLine(active) && <p className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}>{stateLine(active)}</p>}

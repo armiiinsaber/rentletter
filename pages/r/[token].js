@@ -81,7 +81,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
     <>
       <Head><title>Applicants · Rentletter</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle />
-      <main style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-5) var(--s-4) var(--s-7)' }}>
+      <main style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-5) var(--s-4) var(--s-7)', paddingTop: 'calc(var(--s-5) + env(safe-area-inset-top, 0px))' }}>
         <div style={{ maxWidth: 640, margin: '0 auto' }}>{children}</div>
       </main>
     </>

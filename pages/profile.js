@@ -60,7 +60,7 @@ export default function ProfileHub({ initialProfile }) {
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} />
 
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px) 64px' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px) 64px', paddingTop: 'calc(clamp(24px, 5vw, 48px) + env(safe-area-inset-top, 0px))' }}>
           <header className="rl-in" style={{ marginBottom: 'var(--s-5)' }}>
             <a href="/landlord" className="rl-btn"
               onClick={(e) => { if (dirty) { e.preventDefault(); setLeaveOpen(true); } }}
