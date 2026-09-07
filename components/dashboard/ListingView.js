@@ -33,6 +33,7 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
 import { stateLine } from '../../lib/listingStateLine.js';
+import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
 import { snapshotLine, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
@@ -619,7 +620,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       currentRent: toNum(app.current_rent),
       references: Array.isArray(app.references) ? app.references.length : null,
       moveInDate: app.move_in_date || null,
-      occupants: app.number_of_occupants != null ? toNum(app.number_of_occupants) : null,
       smoker: smokerLabel(app.smoker),
       pets: app.pets || null,
     };
@@ -678,6 +678,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
+    // Two applications from one person (lib/duplicates.js): one muted line under the state line, nothing merged.
+    const dup = duplicateLine(a) ? <div style={{ ...stateLine, color: C.inkMute }}>{duplicateLine(a)}</div> : null;
     const present = (rows) => rows.filter(([, v]) => v != null && v !== '');
     // The facts, grouped. A group with nothing in it does not render.
     const incomeRows = present([
@@ -698,7 +700,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     ]);
     const livingRows = present([
       ['Move in', app.move_in_date || null],
-      ['Occupants', app.number_of_occupants != null ? String(app.number_of_occupants) : null],
       ['Smoker', smokerLabel],
       ['Pets', app.pets || 'None'],
     ]);
@@ -763,37 +764,45 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {st.state === 'matched' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             {missed.length > 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
+            {dup}
             {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
           </>)}
           {st.state === 'verified' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             <div style={stateLine}>Verified by {confirmedBy(a.confirmations?.employer?.by)}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+            {dup}
           </>)}
-          {st.state === 'sent' && (
+          {st.state === 'sent' && (<>
             <div style={stateLine}>Sent to landlord{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
-          )}
+            {dup}
+          </>)}
           {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
           {!open && a.landlordAnswer && a.landlordAnswer.answer && (
             <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}>Landlord: {answerLine(a.landlordAnswer.answer)}{a.landlordAnswer.at ? ` · ${shortDate(a.landlordAnswer.at)}` : ''}</div>
           )}
           {st.state === 'new' && (<>
             <div style={stateLine}>No documents yet</div>
+            {dup}
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
           </>)}
           {st.state === 'requested' && (<>
             <div style={stateLine}>Documents requested{st.since ? ` · ${shortDate(st.since)}` : ''}{(() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? ` · nudged ${shortDate(last)}` : ''; })()}</div>
+            {dup}
             {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
           {st.state === 'checked' && (<>
             <div style={stateLine}>Documents on file · nothing matched</div>
+            {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
           {st.state === 'mismatch' && (<>
             <div style={stateLine}>Name on documents did not match</div>
+            {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
           {st.state === 'edited' && (<>
             <div style={stateLine}>Profile edited{st.since ? ` ${shortDate(st.since)}` : ''} · analyse again</div>
+            {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
         </div>
@@ -1210,7 +1219,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         </div>}
 
         {editOpen && (
-          <ListingSetupModal mode="edit" initial={listing} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
+          <ListingSetupModal mode="edit" initial={listing} activeApplicants={active.length} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
         )}
 
         {/* Set-aside reason modal, an OHRC-safe, screenable reason is REQUIRED. */}

@@ -41,7 +41,6 @@ const CATEGORIES = [
   { key: 'currentRent', label: 'Current rent', kind: 'num', fmt: (v) => `${money(v)}/mo` },
   { key: 'references', label: 'References', kind: 'num', better: 'high', fmt: (v) => `${v} provided` },
   { key: 'moveInDate', label: 'Move in date', kind: 'date', better: 'early', fmt: fmtDate },
-  { key: 'occupants', label: 'Occupants', kind: 'num', fmt: (v) => String(v) },
   { key: 'smoker', label: 'Smoker', kind: 'text' },
   { key: 'pets', label: 'Pets', kind: 'text' },
 ];

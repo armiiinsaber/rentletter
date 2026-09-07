@@ -1,6 +1,6 @@
 // components/dashboard/ApplicantDocIntel.js
 // Realtor-side "Analyze documents" area for one applicant (real dashboard only — it calls
-// the API). Drag/drop or pick UP TO 6 files → one Analyze action → ONE organized report
+// the API). Drag/drop or pick UP TO 6 files → one Analyze action, one request per file → ONE organized report
 // (rendered by DocIntelReport) → optional "Generate AI insight". The raw files are read to
 // base64 in the browser and POSTed once; after the analysis succeeds the server holds the
 // originals for the realtor's review (14 days or until deleted, lib/documentRetention.js), listed
@@ -15,7 +15,7 @@ import { RETENTION_DAYS, daysUntil } from '../../lib/documentRetention';
 
 const MAX = 6;
 const OK_MIME = ['image/jpeg', 'image/png', 'application/pdf'];
-const MAX_TOTAL = 25 * 1024 * 1024;
+const MAX_FILE = 3 * 1024 * 1024; // on disk; about 4MB encoded, one request each, under Vercel's body cap
 
 function readAsBase64(file) {
   return new Promise((resolve, reject) => {
@@ -120,8 +120,8 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       next.push(f);
     }
     if (next.length > MAX) next.length = MAX;
-    const total = next.reduce((a, f) => a + f.size, 0);
-    if (total > MAX_TOTAL) { setError('Those files are too large together (max 25MB).'); return; }
+    const big = next.find((f) => f.size > MAX_FILE);
+    if (big) { setError(`${big.name} is over 3MB. Each file goes up on its own, 3MB at most.`); return; }
     setFiles(next);
   };
 
@@ -131,10 +131,20 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     if (!files.length || analyzing) return;
     setAnalyzing(true); setError('');
     try {
-      const payload = await Promise.all(files.map(async (f) => ({ name: f.name, type: f.type, data: await readAsBase64(f) })));
-      const r = await adapter.fetch('/api/applicants/analyze-documents', {
+      // One request per file (pages/api/applicants/analyze-file.js), then one finalize that
+      // combines them and writes the row. No request carries more than one file.
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        const one = await adapter.fetch('/api/applicants/analyze-file', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ listingId, linkId, applicationId, index: i, total: files.length, file: { name: f.name, type: f.type, data: await readAsBase64(f) } }),
+        });
+        const oj = await one.json().catch(() => ({}));
+        if (!one.ok) { setError(oj?.error || `Could not read ${f.name}.`); setAnalyzing(false); return; }
+      }
+      const r = await adapter.fetch('/api/applicants/finalize-analysis', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, linkId, applicationId, files: payload }),
+        body: JSON.stringify({ listingId, linkId, applicationId }),
       });
       const j = await r.json();
       if (!r.ok) { setError(j?.error || 'Could not analyze those documents.'); setAnalyzing(false); return; }
@@ -301,7 +311,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx" style={{ display: 'none' }}
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>Drop documents here or click to choose</div>
-            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>Pay stubs, employment letters, bank statements, ID, up to {MAX} files (JPG/PNG/PDF, 25MB total)</div>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>Pay stubs, employment letters, bank statements, ID. Up to {MAX} files, JPG, PNG or PDF, 3MB each</div>
           </div>
 
           {files.length > 0 && (

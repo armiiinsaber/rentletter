@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { C, R } from '../theme';
 import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
+import { needsRentConfirm, RENT_WARNING } from '../../lib/listingEditWarning';
 
 // The form: six unit facts, the five criteria Fit reads, notes, the landlord client. The
 // employment type, move in window, lease term, occupants, guarantor, parking spots, pets policy,
@@ -44,7 +45,7 @@ function numOrNull(v) {
 
 // inline: render the same form in the page flow (no scrim, no fixed positioning). Used by first
 // run onboarding, so there is exactly one create listing form in the product.
-export default function ListingSetupModal({ mode = 'create', initial = null, onCancel, onSave, saving = false, inline = false }) {
+export default function ListingSetupModal({ mode = 'create', initial = null, activeApplicants = 0, onCancel, onSave, saving = false, inline = false }) {
   const seed = { ...EMPTY };
   if (initial) {
     for (const k of Object.keys(EMPTY)) {
@@ -128,6 +129,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
   const handleSaveClick = () => {
     if (!allValid) { setTriedSave(true); return; }
     if (creating) setConfirming(true);
+    else if (needsRentConfirm(initial, buildPayload(), activeApplicants)) setConfirming(true); // lib/listingEditWarning.js
     else onSave(buildPayload());
   };
   // The actual create — only reachable from the confirmation step, and re-guarded.
@@ -278,9 +280,9 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
           style={{ position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 32px)', zIndex: 120 }}>
           <div onClick={(e) => e.stopPropagation()} className="rl-modal"
             style={{ background: C.paper, maxWidth: 440, width: '100%', border: `1px solid ${C.rule}`, padding: 'clamp(20px, 4vw, 28px)' }}>
-            <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Confirm new listing</div>
-            <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>Create this listing?</h3>
-            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16 }}>You can edit the details later, nothing here is locked in.</p>
+            <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>{creating ? 'Confirm new listing' : 'Confirm changes'}</div>
+            <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>{creating ? 'Create this listing?' : 'Save these changes?'}</h3>
+            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16, textWrap: 'pretty' }}>{creating ? 'You can edit the details later, nothing here is locked in.' : RENT_WARNING}</p>
             <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
               {[
                 ['Address', String(form.address).trim()],
@@ -304,7 +306,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, onC
               </button>
               <button onClick={confirmCreate} disabled={saving}
                 style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Creating…' : 'Confirm & create'}
+                {saving ? (creating ? 'Creating…' : 'Saving…') : creating ? 'Confirm & create' : 'Save changes'}
               </button>
             </div>
           </div>

@@ -225,7 +225,7 @@ export default function ApplyPage({ invited = null }) {
   // Per-field validity for the VITAL fields the screening depends on.
   const vital = {
     fullName: !!form.fullName.trim(),
-    dateOfBirth: !!form.dateOfBirth && derivedAge != null && derivedAge >= minAge,
+    dateOfBirth: form.ageConfirmed === true || (!!form.dateOfBirth && derivedAge != null && derivedAge >= minAge), // an invited applicant's stored answer counts
     email: isValidEmail(form.email),
     phone: isValidPhone(form.phone),
     annualIncome: !!String(form.annualIncome).trim(),
@@ -296,7 +296,7 @@ export default function ApplyPage({ invited = null }) {
     const incomeNum = Number(String(form.annualIncome).replace(/[^\d.]/g, '')) || 0;
     const rows = [
       ['Full name', form.fullName.trim()],
-      ['Date of birth', form.dateOfBirth ? `${fmtDate(form.dateOfBirth)}${derivedAge != null ? ` (age ${derivedAge})` : ''}` : 'not set'],
+      ['Age of majority', form.dateOfBirth ? (derivedAge != null && derivedAge >= minAge ? `Confirmed ${minAge} or over` : 'Under the age of majority') : form.ageConfirmed ? `Confirmed ${minAge} or over` : 'not set'],
       ['Email', form.email.trim()],
       ['Phone', form.phone.trim()],
       ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : 'not set'],
@@ -336,7 +336,8 @@ export default function ApplyPage({ invited = null }) {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, mode: 'application', inviteToken: token }),
+        // The date of birth stays on this device: only the age of majority answer travels.
+        body: JSON.stringify({ ...form, dateOfBirth: undefined, age: undefined, ageConfirmed: form.ageConfirmed === true || (derivedAge != null && derivedAge >= minAge), mode: 'application', inviteToken: token }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.error || !json?.applicationNumber) {
@@ -594,7 +595,7 @@ export default function ApplyPage({ invited = null }) {
               {collapsed && (() => {
                 const rows = reviewRows();
                 const steps = [
-                  ['01', 'Where to send it', ['Email']], ['02', 'About you', ['Full name', 'Date of birth', 'Phone']],
+                  ['01', 'Where to send it', ['Email']], ['02', 'About you', ['Full name', 'Age of majority', 'Phone']],
                   ['03', 'Employment', ['Income before tax', 'After tax', 'Employer', 'Business', 'Job title']], ['04', 'Rental history', ['Rental history']],
                   ['05', 'Your move', ['Move in date']], ['06', 'Household & pets', ['Pets']],
                 ];

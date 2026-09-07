@@ -1,8 +1,9 @@
 import { newApplicationNumber, newOwnerToken } from '../../lib/applicationIds';
 import { bump, logEvent, COUNTERS } from '../../lib/stats';
-import { kvIncr, kvExpire } from '../../lib/kv';
+import { kvIncr, kvExpire, kvGet } from '../../lib/kv';
 import { checkSubmitLimits } from '../../lib/rateLimit';
 import { calculateScorecard } from '../../lib/scorecard';
+import { rentFromInvite } from '../../lib/inviteRent';
 
 
 // The application number and the owner token come from lib/applicationIds.js, the same module
@@ -44,7 +45,7 @@ async function storeApplication(appNumber, payload) {
 // Zero API tokens used. This is the FREE tier.
 function buildTemplatedResume(data) {
   const {
-    fullName, age, dateOfBirth, phone, email,
+    fullName, phone, email,
     jobTitle, employer, yearsAtJob, annualIncome, monthlyIncome,
     previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
     currentRent,
@@ -71,7 +72,6 @@ function buildTemplatedResume(data) {
   lines.push(`TENANT APPLICATION SUMMARY`);
   lines.push(``);
   lines.push(`Applicant: ${fullName}`);
-  if (age) lines.push(`Age: ${age}`);
   if (phone) lines.push(`Phone: ${phone}`);
   if (email) lines.push(`Email: ${email}`);
   lines.push(``);
@@ -150,7 +150,7 @@ export default async function handler(req, res) {
   const {
     email,
     apartmentAddress, apartmentDescription,
-    fullName, age, dateOfBirth, phone,
+    fullName, phone, ageConfirmed,
     jobTitle, employer, yearsAtJob, annualIncome,
     // Employment type + registered business name (self-employed), and the tenant's after-tax
     // figure (estimated by lib/taxEstimate or stated by the tenant). annualIncome stays GROSS —
@@ -183,24 +183,20 @@ export default async function handler(req, res) {
   const monthlyIncome = Math.round(annualIncomeNum / 12);
   const monthlyIncomeFormatted = `$${monthlyIncome.toLocaleString()}/month`;
 
-  // Try to parse rent from the apartment description (e.g. "$2,400/mo" or "$2400")
+  // The rent the application arrived under: the invite record's listing rent when it came
+  // through an invite link (lib/inviteRent.js), null otherwise. Nothing is parsed out of text.
   let estimatedRent = null;
   let rentToIncomeRatio = null;
-  if (apartmentDescription) {
-    const rentMatch = apartmentDescription.match(/\$\s*([\d,]+)/);
-    if (rentMatch) {
-      estimatedRent = parseInt(rentMatch[1].replace(/,/g, ''));
-      if (estimatedRent && monthlyIncome) {
-        rentToIncomeRatio = Math.round((estimatedRent / monthlyIncome) * 100);
-      }
-    }
+  if (/^[a-f0-9]{20}$/.test(String(inviteToken || ''))) {
+    estimatedRent = rentFromInvite(await kvGet(`linvite:${inviteToken}`));
+    if (estimatedRent && monthlyIncome) rentToIncomeRatio = Math.round((estimatedRent / monthlyIncome) * 100);
   }
 
   try {
     let applicationNumber = null;
     // The templated resume, from the form alone. No model call anywhere in this route.
     const resume = buildTemplatedResume({
-      fullName, age, dateOfBirth, phone, email,
+      fullName, phone, email,
       jobTitle, employer, yearsAtJob, annualIncome, monthlyIncome,
       previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
       currentRent, moveDate,
@@ -237,10 +233,11 @@ export default async function handler(req, res) {
       applicationNumber,
       createdAt: new Date().toISOString(),
       email: email || null,
+      // The date of birth is asked on the form only to check the age of majority in the
+      // listing's province; the check's answer is stored, the date and the age never are.
       tenant: {
         fullName,
-        age: age || null,
-        dateOfBirth: dateOfBirth || null,
+        ageConfirmed: ageConfirmed === true,
         phone: phone || null,
       },
       employment: {
