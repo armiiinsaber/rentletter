@@ -23,6 +23,29 @@ import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { FormSection, Field, Textarea, SelectField, ToggleField } from '../../components/apply/fields';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
+import { rowToForm } from '../../lib/pipelinePrefill';
+
+// ?from={prefillToken}: the invite from People (pages/api/pipeline/invite.js). Resolved on the
+// server through the service role (lib/pipeline.js readPrefill): the token maps to an application
+// whose surviving fields fill every step, collapsed to one review card with one Submit. A wrong
+// or expired token renders the ordinary empty form. The token is deleted after the submission
+// (/api/pipeline/prefill). The sandbox token demoprefill fills from the fixture.
+export async function getServerSideProps(ctx) {
+  const from = String(ctx.query?.from || '');
+  if (!from) return { props: { invited: null } };
+  try {
+    if (from === 'demoprefill') { const { demoPrefillRow } = await import('../../lib/demoFixture'); return { props: { invited: { token: from, form: rowToForm(demoPrefillRow()) } } }; }
+    const { isSupabaseConfigured } = await import('../../lib/supabase/server');
+    if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { props: { invited: null } };
+    const { readPrefill } = await import('../../lib/pipeline');
+    const { getSupabaseAdminClient } = await import('../../lib/supabase/admin');
+    const r = await readPrefill(getSupabaseAdminClient(), from);
+    return { props: { invited: r ? { token: from, form: rowToForm(r.application) } : null } };
+  } catch (e) {
+    console.error('[apply] prefill failed:', e?.message || e);
+    return { props: { invited: null } };
+  }
+}
 
 // Phone helpers — validate on exactly 10 digits, display as (XXX) XXX-XXXX.
 const phoneDigits = (v) => String(v || '').replace(/\D/g, '');
@@ -42,7 +65,7 @@ function underAgeMsg(province) {
   return `You must be at least ${min} (the age of majority in ${provinceName(province)}) to submit a rental application on your own. Applicants under ${min} need a guarantor, support for that is coming soon.`;
 }
 
-export default function ApplyPage() {
+export default function ApplyPage({ invited = null }) {
   const router = useRouter();
   // status: 'loading' | 'invalid' | 'ready' | 'submitting' | 'done'
   const [status, setStatus] = useState('loading');
@@ -62,6 +85,8 @@ export default function ApplyPage() {
   const [touched, setTouched] = useState({});
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [reviewing, setReviewing] = useState(false); // deliberate review-and-confirm step
+  // Invited from People: the form arrives filled and collapsed to one review card. Edit opens a step.
+  const [collapsed, setCollapsed] = useState(!!(invited && invited.form));
   // ── Saved-profile reuse ─────────────────────────────────────────────────────────────────
   // /my-application stores the tenant's RL + owner token in localStorage on THIS device (the
   // token never travels in a URL we create). If present, offer to fill this form from that
@@ -254,7 +279,7 @@ export default function ApplyPage() {
         const descBits = [];
         if (bedsLabel) descBits.push(bedsLabel);
         if (rent) descBits.push(`$${rent}/mo`);
-        setForm((f) => ({ ...f, apartmentAddress: u.address || '', apartmentDescription: descBits.join(' · ') }));
+        setForm((f) => ({ ...(invited && invited.form ? { ...EMPTY_FORM, ...invited.form } : f), apartmentAddress: u.address || '', apartmentDescription: descBits.join(' · ') }));
         setStatus('ready');
       } catch (e) {
         if (cancelled) return;
@@ -265,6 +290,27 @@ export default function ApplyPage() {
     return () => { cancelled = true; };
   }, [router.isReady, router.query.token]);
 
+  // The facts as the review shows them, by step (the number is the FormSection's).
+  const reviewRows = () => {
+    const fmtDate = (v) => { try { return new Date(`${v}T00:00:00`).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return v; } };
+    const incomeNum = Number(String(form.annualIncome).replace(/[^\d.]/g, '')) || 0;
+    const rows = [
+      ['Full name', form.fullName.trim()],
+      ['Date of birth', form.dateOfBirth ? `${fmtDate(form.dateOfBirth)}${derivedAge != null ? ` (age ${derivedAge})` : ''}` : 'not set'],
+      ['Email', form.email.trim()],
+      ['Phone', form.phone.trim()],
+      ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : 'not set'],
+      ['After tax', Number(form.netIncome) ? `$${Number(form.netIncome).toLocaleString()}/yr ${form.netIncomeSource === 'stated' ? '(you entered)' : '(estimate)'}` : 'not set'],
+      [form.employmentType === 'self-employed' ? 'Business' : 'Employer', `${form.employer.trim()}${form.employmentType ? ` · ${({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[form.employmentType]}` : ''}`],
+      ['Job title', form.jobTitle.trim()],
+      ['Move in date', form.moveInDate ? fmtDate(form.moveInDate) : 'not set'],
+      ['Rental history', form.rentalStatus === 'none'
+        ? 'No previous rental listed'
+        : [form.yearsAtPrevious ? `${form.yearsAtPrevious} yrs` : null, form.previousLandlordName.trim() ? `reference: ${form.previousLandlordName.trim()}` : null].filter(Boolean).join(' · ') || 'not set'],
+      ['Pets', form.pets || 'None'],
+    ];
+    return rows;
+  };
   // Tapping "Submit" opens the deliberate review step. Gating is unchanged — this is only
   // reachable when all required/vital fields are valid; otherwise surface the missing fields.
   const openReview = () => {
@@ -303,6 +349,7 @@ export default function ApplyPage() {
       // must never block or break the tenant's confirmation.
       setResult({ applicationNumber, ownerToken });
       setStatus('done');
+      if (invited?.token) fetch('/api/pipeline/prefill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: invited.token }) }).catch(() => {});
       // Keep the profile on this device so the next invite link offers "use my saved profile".
       try {
         if (ownerToken) { localStorage.setItem('rentletter_app_number', applicationNumber); localStorage.setItem('rentletter_owner_token', ownerToken); }
@@ -544,9 +591,51 @@ export default function ApplyPage() {
                 </div>
               )}
 
+              {collapsed && (() => {
+                const rows = reviewRows();
+                const steps = [
+                  ['01', 'Where to send it', ['Email']], ['02', 'About you', ['Full name', 'Date of birth', 'Phone']],
+                  ['03', 'Employment', ['Income before tax', 'After tax', 'Employer', 'Business', 'Job title']], ['04', 'Rental history', ['Rental history']],
+                  ['05', 'Your move', ['Move in date']], ['06', 'Household & pets', ['Pets']],
+                ];
+                const edit = (num) => { setCollapsed(false); setTimeout(() => document.getElementById(`step-${num}`)?.scrollIntoView({ block: 'start' }), 60); };
+                const submitting = status === 'submitting';
+                return (
+                  <div className="rl-in" data-invited-review style={{ background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'var(--card-pad)', marginBottom: 28 }}>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Your application</div>
+                    <h1 className="rl-serif" style={{ fontSize: 'clamp(28px, 5.5vw, 40px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.05, marginBottom: 8, textWrap: 'balance' }}>Check it, then submit.</h1>
+                    <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18, textWrap: 'pretty' }}>Filled from your application from before. Edit anything that changed.</p>
+                    {steps.map(([num, title, keys]) => {
+                      const mine = rows.filter(([k]) => keys.includes(k));
+                      if (!mine.length) return null;
+                      return (
+                        <div key={num} style={{ borderTop: `1px solid ${C.rule}`, padding: '10px 0' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>{title}</div>
+                            <button type="button" onClick={() => edit(num)} disabled={submitting} style={{ minHeight: 44, padding: '0 4px', background: 'transparent', border: 'none', color: C.ink, fontSize: 14, fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Edit</button>
+                          </div>
+                          {mine.map(([k, v]) => (
+                            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '4px 0', fontSize: 13 }}>
+                              <span style={{ color: C.inkMute, fontWeight: 600, flexShrink: 0 }}>{k}</span>
+                              <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{v || 'not set'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    })}
+                    {error && <div role="alert" style={{ marginTop: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{error}</div>}
+                    <button type="button" onClick={() => { if (!allVitalValid) { setTriedSubmit(true); setCollapsed(false); setError('Please complete the required fields marked with *, some are missing or need fixing.'); return; } submitApplication(); }} disabled={submitting} className="rl-btn"
+                      style={{ width: '100%', marginTop: 18, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '17px', fontSize: 16, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', minHeight: 56, opacity: submitting ? 0.7 : 1 }}>
+                      {submitting ? 'Submitting' : 'Submit'}
+                    </button>
+                    <p style={{ fontSize: 12, color: C.inkMute, textAlign: 'center', marginTop: 12, lineHeight: 1.5, textWrap: 'pretty' }}>This creates a new application for this unit. Your earlier one is unchanged.</p>
+                  </div>
+                );
+              })()}
+              {!collapsed && (<>
               {/* Saved-profile offer, the "apply in seconds" entry point. Shown only when this
                   device holds a saved profile (from /my-application) and it hasn't been applied. */}
-              {saved && prefill.state !== 'applied' && !prefill.dismissed && (
+              {saved && !invited && prefill.state !== 'applied' && !prefill.dismissed && (
                 <div className="rl-in" style={{ position: 'relative', overflow: 'hidden', background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(16px, 4vw, 22px) clamp(18px, 4vw, 24px)', marginBottom: 24 }}>
                   <span aria-hidden="true" style={{ position: 'absolute', top: 0, left: 0, width: 44, height: 3, background: C.red }} />
                   <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Apply in seconds</div>
@@ -610,20 +699,20 @@ export default function ApplyPage() {
                 We collect what landlords need to make a good decision, not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with {humanRightsCodeName(listingProvince)} best practices.
               </div>
 
-              <FormSection num="01" title="Where to send it" required>
+              <FormSection id="step-01" num="01" title="Where to send it" required>
                 <Field label="Email" required value={form.email} onChange={(v) => update('email', v)} onBlur={() => markTouched('email')} error={emailError} placeholder="you@example.com" type="email" inputMode="email" />
               </FormSection>
 
               {/* No "apartment" section, those details belong to the listing the realtor
                   created (shown read-only in the banner above), not to tenant input. */}
 
-              <FormSection num="02" title="About you" required>
+              <FormSection id="step-02" num="02" title="About you" required>
                 <Field label="Full name" required value={form.fullName} onChange={(v) => update('fullName', v)} onBlur={() => markTouched('fullName')} error={showErr('fullName') && !vital.fullName ? 'Full name is required.' : ''} placeholder="Jane Doe" />
                 <Field label="Date of birth" required value={form.dateOfBirth} onChange={updateDob} onBlur={() => markTouched('dateOfBirth')} error={dobError} type="date" hint={`You must be ${minAge}+ (${provinceName(listingProvince)} age of majority) to apply on your own.`} />
                 <Field label="Phone" required value={form.phone} onChange={(v) => update('phone', formatPhone(v))} onBlur={() => markTouched('phone')} error={phoneError} placeholder="(416) 555-1234" type="tel" inputMode="tel" />
               </FormSection>
 
-              <FormSection num="03" title="Employment" required>
+              <FormSection id="step-03" num="03" title="Employment" required>
                 <SelectField label="Employment type" value={form.employmentType} onChange={(v) => updateEmployment({ employmentType: v })} options={[
                   { value: '', label: 'Select…' },
                   { value: 'full-time', label: 'Full-time' },
@@ -658,7 +747,7 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
-              <FormSection num="04" title="Rental history">
+              <FormSection id="step-04" num="04" title="Rental history">
                 <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
                   A landlord who can vouch for your tenancy is the strongest signal you can give, it carries more weight than anything else on this form.
                 </p>
@@ -701,11 +790,11 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
-              <FormSection num="05" title="Your move" required>
+              <FormSection id="step-05" num="05" title="Your move" required>
                 <Field label="Desired move in date" required value={form.moveInDate} onChange={(v) => update('moveInDate', v)} onBlur={() => markTouched('moveInDate')} error={showErr('moveInDate') && !vital.moveInDate ? 'Move in date is required.' : ''} type="date" />
               </FormSection>
 
-              <FormSection num="06" title="Household & pets">
+              <FormSection id="step-06" num="06" title="Household & pets">
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
                   <Field label="Total occupants" value={form.numberOfOccupants} onChange={(v) => update('numberOfOccupants', v)} placeholder="2" type="number" hint="Just the number of people who'll live in the unit." />
                   <SelectField label="Smoking or vaping?" value={form.smoker} onChange={(v) => update('smoker', v)} options={[
@@ -764,7 +853,7 @@ export default function ApplyPage() {
                 )}
               </FormSection>
 
-              <FormSection num="07" title="References (optional but recommended)">
+              <FormSection id="step-07" num="07" title="References (optional but recommended)">
                 <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 4, lineHeight: 1.55 }}>
                   Two people who can vouch for you. Mentioning these by name is more persuasive than saying "references available."
                 </p>
@@ -819,23 +908,7 @@ export default function ApplyPage() {
 
               {/* REVIEW-AND-CONFIRM, the deliberate final checkpoint before submitting. */}
               {reviewing && (() => {
-                const fmtDate = (v) => { try { return new Date(`${v}T00:00:00`).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return v; } };
-                const incomeNum = Number(String(form.annualIncome).replace(/[^\d.]/g, '')) || 0;
-                const rows = [
-                  ['Full name', form.fullName.trim()],
-                  ['Date of birth', form.dateOfBirth ? `${fmtDate(form.dateOfBirth)}${derivedAge != null ? ` (age ${derivedAge})` : ''}` : 'not set'],
-                  ['Email', form.email.trim()],
-                  ['Phone', form.phone.trim()],
-                  ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : 'not set'],
-                  ['After tax', Number(form.netIncome) ? `$${Number(form.netIncome).toLocaleString()}/yr ${form.netIncomeSource === 'stated' ? '(you entered)' : '(estimate)'}` : 'not set'],
-                  [form.employmentType === 'self-employed' ? 'Business' : 'Employer', `${form.employer.trim()}${form.employmentType ? ` · ${({ 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' })[form.employmentType]}` : ''}`],
-                  ['Job title', form.jobTitle.trim()],
-                  ['Move in date', form.moveInDate ? fmtDate(form.moveInDate) : 'not set'],
-                  ['Rental history', form.rentalStatus === 'none'
-                    ? 'No previous rental listed'
-                    : [form.yearsAtPrevious ? `${form.yearsAtPrevious} yrs` : null, form.previousLandlordName.trim() ? `reference: ${form.previousLandlordName.trim()}` : null].filter(Boolean).join(' · ') || 'not set'],
-                  ['Pets', form.pets || 'None'],
-                ];
+                const rows = reviewRows();
                 const submitting = status === 'submitting';
                 return (
                   <div
@@ -878,6 +951,7 @@ export default function ApplyPage() {
                   </div>
                 );
               })()}
+              </>)}
             </>
           )}
         </div>

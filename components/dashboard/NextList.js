@@ -20,10 +20,10 @@ import { CURVE, DURATION, prefersReducedMotion } from '../../lib/motion';
 
 const SHOW = 3;
 
-export default function NextList({ listings, applicantsByListing, onMore, style, className = '' }) {
+export default function NextList({ listings, applicantsByListing, people, onMore, style, className = '' }) {
   const adapter = useAdapter();
   const store = useAssistantStore();
-  const items = useMemo(() => visibleActions(buildActions({ listings: listings || [], applicantsByListing: applicantsByListing || {} }), store.dismissed), [listings, applicantsByListing, store.dismissed]);
+  const items = useMemo(() => visibleActions(buildActions({ listings: listings || [], applicantsByListing: applicantsByListing || {}, people: people || [] }), store.dismissed), [listings, applicantsByListing, people, store.dismissed]);
   const shown = items.slice(0, SHOW);
   const more = items.length - shown.length;
 

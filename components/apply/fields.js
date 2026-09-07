@@ -4,9 +4,9 @@
 // inputs on paper, 16px text (no iOS zoom), generous 14px vertical padding for tap targets.
 import { C, R } from '../theme';
 
-export function FormSection({ num, title, required, children }) {
+export function FormSection({ num, title, required, children, id }) {
   return (
-    <div className="rl-in" style={{ marginBottom: 40, paddingBottom: 40, borderBottom: `1px solid ${C.rule}` }}>
+    <div id={id} className="rl-in" style={{ marginBottom: 40, paddingBottom: 40, borderBottom: `1px solid ${C.rule}`, scrollMarginTop: 24 }}>
       <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 14 }}>
         <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500 }}>{num}</span>
         <h3 style={{ fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>{title}</h3>

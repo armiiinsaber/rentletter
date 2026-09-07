@@ -15,6 +15,7 @@ import { listingStateLine } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import NextList from '../../components/dashboard/NextList';
+import PeopleList from '../../components/dashboard/PeopleList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
@@ -134,23 +135,24 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // them server side as initialSignals) so the dashboard commits in one paint. Without them
   // (demo workspace, or a server side failure) they are fetched here and the page holds its
   // skeleton until they land, so nothing ever appears after the rest. No AI involved.
-  const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : { applicantsByListing: {}, notifications: [], referralsInbox: [], referralsSent: [], loaded: false }));
+  const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : { applicantsByListing: {}, people: [], notifications: [], referralsInbox: [], referralsSent: [], loaded: false }));
   useEffect(() => {
     if (signals.loaded && initialSignals) return undefined; // came with the page
     let cancelled = false;
     (async () => {
       const get = (u) => adapter.fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const ls = (listings || []).slice(0, 12);
-      const [notif, inbox, sent, ...apps] = await Promise.all([
+      const [notif, inbox, sent, ppl, ...apps] = await Promise.all([
         get('/api/notifications'),
         referralsEnabled() ? get('/api/referrals/inbox') : Promise.resolve(null), // lib/features.js
         referralsEnabled() ? get('/api/referrals/list') : Promise.resolve(null),
+        get('/api/pipeline/people'),
         ...ls.map((l) => get(`/api/listings/applicants?listingId=${encodeURIComponent(l.id)}`)),
       ]);
       if (cancelled) return;
       const applicantsByListing = {};
       ls.forEach((l, i) => { applicantsByListing[l.id] = apps[i]?.applicants || []; });
-      setSignals({ applicantsByListing, notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), latestEventAt: null, loaded: true });
+      setSignals({ applicantsByListing, people: ppl?.people || [], notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), latestEventAt: null, loaded: true });
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -278,7 +280,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {/* 2. THE ASSISTANT, compact: the Needs you zone as it renders here, and a way into the
               full panel (bell, or Open). The timeline lives in the panel only. Referrals to
               assign are part of the panel's Needs you zone, so the page stays three sections. */}
-          {hasListings && <div className="dash-block"><NextList listings={listings || []} applicantsByListing={signals.applicantsByListing} onMore={openAssistant} /></div>}
+          {hasListings && <div className="dash-block"><NextList listings={listings || []} applicantsByListing={signals.applicantsByListing} people={signals.people || []} onMore={openAssistant} /></div>}
 
           {/* 3. YOUR LISTINGS */}
           {error && (
@@ -338,6 +340,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </div>
             </div>
           )}
+
+          {/* 3b. PEOPLE: the pipeline, under the listings (components/dashboard/PeopleList.js). */}
+          {hasListings && <PeopleList className="dash-block" people={signals.people || []} />}
 
           {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
               listing state is one card, nothing else). Whole card opens the profile. */}

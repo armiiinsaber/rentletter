@@ -6,7 +6,7 @@ const NOW = '2026-09-02T12:00:00Z';
 const daysAgo = (n) => new Date(Date.parse(NOW) - n * 86400000).toISOString();
 const report = (over = {}) => ({ analyzedAt: daysAgo(2), nameMatch: 'match', documents: [{ documentType: 'pay stub' }], comparisons: [{ field: 'Income', status: 'match', found: '$90,000' }, { field: 'Employer', status: 'match' }], ...over });
 const app = (linkId, name, extra = {}) => ({ linkId, decisionStatus: 'none', withdrawnAt: null, confirmations: {}, lastSentAt: null, docRequest: null, docVerifications: [], application: { full_name: name, fit: { score: 4.65, label: 'docs match' } }, ...extra });
-const L1 = { id: 'L1', name: '210 Carlaw Ave, Unit 4' }, L2 = { id: 'L2', name: '88 Harbour St' };
+const L1 = { id: 'L1', name: '210 Carlaw Ave, Unit 4', created_at: daysAgo(1) }, L2 = { id: 'L2', name: '88 Harbour St' };
 
 const fixture = () => ({
   listings: [L1, L2],
@@ -24,6 +24,8 @@ const fixture = () => ({
     ],
     L2: [app('b-sent', 'Omar Haddad', { lastSentAt: daysAgo(6) })],
   },
+  // People who fit (lib/pipelineState.js): one person at 4.0 or above against the new listing L1.
+  people: [{ id: 'C1', consentedAt: daysAgo(5), applied: false, fits: [{ listingId: 'L1', score: 4.4, label: 'stated', applied: false }] }],
   now: NOW,
 });
 

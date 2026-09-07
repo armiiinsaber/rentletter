@@ -34,6 +34,9 @@ BEGIN
     'profile_edited_after_verification',
     'listing_created',
     'listing_updated',
-    'branding_updated'
+    'branding_updated',
+    'pipeline_invited',
+    'pipeline_renewal_sent',
+    'pipeline_removed'
   ));
 END $$;

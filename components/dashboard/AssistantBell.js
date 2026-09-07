@@ -27,7 +27,7 @@ export default function AssistantBell({ profile, signals: given = null, onAction
   const signals = given || store.signals;
   const items = useMemo(() => {
     if (!signals) return [];
-    try { return visibleActions(buildActions({ listings: signals.listings || [], applicantsByListing: signals.applicantsByListing || {} }), store.dismissed); } catch (e) { return []; }
+    try { return visibleActions(buildActions({ listings: signals.listings || [], applicantsByListing: signals.applicantsByListing || {}, people: signals.people || [] }), store.dismissed); } catch (e) { return []; }
   }, [signals, store.dismissed]);
   const count = items.length;
   // Something arrived since the panel was last opened: the badge pulses (the rl-dot keyframes,
