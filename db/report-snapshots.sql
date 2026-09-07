@@ -72,6 +72,8 @@ BEGIN
     'branding_updated',
     'pipeline_invited',
     'pipeline_renewal_sent',
-    'pipeline_removed'
+    'pipeline_removed',
+    'reference_requested',
+    'reference_answered'
   ));
 END $$;

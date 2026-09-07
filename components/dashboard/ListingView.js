@@ -833,7 +833,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {livingRows.length > 0 && renderSection(a, 'living', 'Living situation', false, renderRows(livingRows))}
           </div>
 
-          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} heldDocuments={a.storedDocuments} onViewDocument={viewDocument} />
+          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} onReference={(resp) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, referenceResponse: resp } : x)))} heldDocuments={a.storedDocuments} onViewDocument={viewDocument} />
 
           <ApplicantDocIntel
             listingId={listing.id}

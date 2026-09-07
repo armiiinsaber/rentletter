@@ -8,12 +8,15 @@
 //
 // OHRC and BC Code: every row is a screenable fact (identity, income, employer, previous
 // landlord, references, rent share). No occupants, no household, no reason for moving, no free text.
+// The previous landlord can also answer six closed questions by email (Ask by email, /ref/{token});
+// the answers show under the row and count as a confirmation, never as a number.
 import React, { useState, useEffect } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { readVerification } from '../../lib/fitScore';
 import { isIdKind } from '../../lib/documentRetention';
+import { answerSummary, emailIn, RESEND_AFTER_DAYS } from '../../lib/referenceQuestions';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
@@ -21,7 +24,7 @@ const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${
 const GUIDANCE = 'Use a number you find yourself, not one the applicant gave.';
 const kShort = (n) => (Number(n) >= 1000 ? `$${Math.round(Number(n) / 1000)}k` : `$${Number(n)}`);
 
-export default function ScreeningChecklist({ applicant, listing, profile, onChange, heldDocuments, onViewDocument }) {
+export default function ScreeningChecklist({ applicant, listing, profile, onChange, onReference, heldDocuments, onViewDocument }) {
   const adapter = useAdapter();
   const app = applicant.application || {};
   const fit = app.fit || null;
@@ -34,6 +37,27 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const [viewBusy, setViewBusy] = useState(false);
   const viewId = async () => { if (viewBusy || !idDoc) return; setViewBusy(true); setError(''); const e = await onViewDocument?.(idDoc); if (e) setError(e); setViewBusy(false); };
   const myName = String(profile?.full_name || '').trim() || 'You';
+  // The previous landlord's six questions by email (lib/referenceQuestions.js): the request row
+  // rides on the applicant as referenceResponse (pending or answered), written by the routes.
+  const [refResp, setRefResp] = useState(applicant.referenceResponse || null);
+  useEffect(() => { setRefResp(applicant.referenceResponse || null); }, [applicant.referenceResponse]);
+  const [asking, setAsking] = useState(false);
+  const [sending, setSending] = useState(false);
+  const landlordEmail = emailIn(app.prev_landlord_contact);
+  const pendingAge = refResp && refResp.status === 'pending' && refResp.sentAt ? (Date.now() - new Date(refResp.sentAt).getTime()) / 86400000 : null;
+  const canAsk = !!landlordEmail && (!refResp || refResp.status !== 'pending' || (pendingAge != null && pendingAge >= RESEND_AFTER_DAYS));
+  const sendAsk = async () => {
+    if (sending) return;
+    setSending(true); setError('');
+    try {
+      const r = await adapter.fetch('/api/references/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ linkId: applicant.linkId }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Could not send that.');
+      const next = j.response || { status: 'pending', sentTo: landlordEmail, sentAt: new Date().toISOString() };
+      setRefResp(next); onReference?.(next); setAsking(false);
+    } catch (e) { setError(e?.message || 'Could not send that.'); }
+    finally { setSending(false); }
+  };
 
   const report = applicant.docVerifications?.[0] || null;
   const v = readVerification(report);
@@ -102,15 +126,37 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                   Said: {row.said}{row.docs != null ? <> · Docs: {row.docs}</> : null}
                 </div>
                 {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}
+                {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>Asked {shortDate(refResp.sentAt)} · no answer yet</div> : null}
+                {row.key === 'landlord' && refResp && refResp.status === 'answered' ? (
+                  <div style={{ marginTop: 'var(--s-1)' }}>
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{answerSummary(refResp.answers)}</div>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 2 }}><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Answered {shortDate(refResp.answeredAt)}</span></div>
+                  </div>
+                ) : null}
+                {row.key === 'landlord' && asking ? (
+                  <div style={{ marginTop: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', background: C.paperDeep, borderRadius: R.ctrl }}>
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}>Six closed questions go to <span style={{ fontWeight: 700 }}>{landlordEmail}</span>. Nothing goes to {String(app.full_name || 'the applicant').split(/\s+/)[0]}.</div>
+                    <div style={{ display: 'flex', gap: 'var(--s-3)', alignItems: 'center', marginTop: 'var(--s-2)', flexWrap: 'wrap' }}>
+                      <button type="button" onClick={sendAsk} disabled={sending} style={{ ...btn(false), minWidth: 0, opacity: sending ? 0.7 : 1 }}>{sending ? 'Sending' : 'Send'}</button>
+                      <button type="button" onClick={() => setAsking(false)} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : null}
                 {Array.isArray(row.second) && row.second.length ? row.second.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line}</div>) : null}
               </div>
               {row.key && !shared ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-3)', flexShrink: 0 }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2) var(--s-3)', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
                   <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                     aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                     style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
                     {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed · {shortDate(c.at)}</span></> : row.verb}
                   </button>
+                  {row.key === 'landlord' && landlordEmail && !asking && (!refResp || refResp.status !== 'pending') ? (
+                    <button type="button" onClick={() => setAsking(true)} style={{ ...btn(false), minWidth: 0 }}>Ask by email</button>
+                  ) : null}
+                  {row.key === 'landlord' && refResp && refResp.status === 'pending' && canAsk && !asking ? (
+                    <button type="button" onClick={() => setAsking(true)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Send again</button>
+                  ) : null}
                   {row.key === 'id' && idDoc ? (
                     <button type="button" onClick={viewId} disabled={viewBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: viewBusy ? 0.6 : 1 }}>{viewBusy ? 'Opening' : 'View ID'}</button>
                   ) : null}

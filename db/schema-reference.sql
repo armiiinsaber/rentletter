@@ -47,7 +47,8 @@
 --     'referral_received',
 --     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',
 --     'listing_created', 'listing_updated', 'branding_updated',
---     'pipeline_invited', 'pipeline_renewal_sent', 'pipeline_removed'))
+--     'pipeline_invited', 'pipeline_renewal_sent', 'pipeline_removed',
+--     'reference_requested', 'reference_answered'))
 --   The single source of truth in code is lib/eventTypes.js (EVENT_TYPES). tests/events.test.mjs
 --   reads db/events.sql and fails when the two lists differ.
 --   Append only: service role inserts (lib/events.js recordEvent); realtors SELECT their own rows
