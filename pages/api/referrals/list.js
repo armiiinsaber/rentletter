@@ -2,8 +2,10 @@
 // Status only (pending / declined / approved / expired / revoked) + who it went to.
 import { requireRealtor } from '../../../lib/realtorAuth';
 import { listFromRealtor, effectiveStatus } from '../../../lib/referrals';
+import { referralsEnabled } from '../../../lib/features';
 
 export default async function handler(req, res) {
+  if (!referralsEnabled()) return res.status(200).json({ byLink: {}, paused: true }); // lib/features.js
   const ctx = await requireRealtor(req, res); if (!ctx) return;
   const listingId = String(req.query.listingId || '');
   const refs = (await listFromRealtor(ctx.user.id)).filter((r) => !listingId || r.from.listingId === listingId);

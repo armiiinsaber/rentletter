@@ -8,6 +8,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C, R } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
+import { referralsEnabled } from '../../lib/features';
 
 const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return ''; } };
 
@@ -15,12 +16,13 @@ export default function ReferralConsent() {
   const router = useRouter();
   const token = String(router.query.token || '');
   const [data, setData] = useState(null);
-  const [phase, setPhase] = useState('loading'); // loading | ready | gone | done
+  const [phase, setPhase] = useState('loading'); // loading | ready | gone | done | paused
   const [decision, setDecision] = useState(null); // 'approve' | 'decline'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!referralsEnabled()) { setPhase('paused'); return; } // lib/features.js: the consent route is not called while paused
     if (!router.isReady) return;
     (async () => {
       try {
@@ -66,6 +68,13 @@ export default function ReferralConsent() {
         <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(28px, 5vw, 48px) clamp(16px, 4vw, 32px) 72px' }}>
           {phase === 'loading' && <p style={{ color: C.inkSoft }}>Loading…</p>}
 
+          {phase === 'paused' && (
+            <div className="rl-card" style={{ padding: 'clamp(22px, 5vw, 32px)' }}>
+              <Eyebrow color={C.inkMute}>Referral</Eyebrow>
+              <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 34px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>This link is no longer active.</h1>
+              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, margin: 0, textWrap: 'pretty' }}>Referrals between realtors are paused. Nothing changes for your application.</p>
+            </div>
+          )}
           {phase === 'gone' && (
             <div className="rl-card" style={{ padding: 'clamp(22px, 5vw, 32px)' }}>
               <Eyebrow color={C.inkMute}>Referral</Eyebrow>

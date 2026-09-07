@@ -11,6 +11,7 @@ import { isValidEmail } from '../lib/validation';
 import { PROVINCE_OPTIONS, DEFAULT_PROVINCE, normalizeProvince } from '../lib/provinces';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
+import { referralsEnabled } from '../lib/features';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -29,7 +30,7 @@ export default function SignUp() {
   const [referral, setReferral] = useState(null);
   useEffect(() => {
     if (!router.isReady) return;
-    if (router.query.ref === '1') {
+    if (referralsEnabled() && router.query.ref === '1') { // lib/features.js: no referral copy while paused
       setReferral({ from: String(router.query.from || '').slice(0, 80) });
       if (router.query.email && !email) setEmail(String(router.query.email).slice(0, 200));
     }

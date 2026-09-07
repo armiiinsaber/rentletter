@@ -18,6 +18,7 @@ import NextList from '../../components/dashboard/NextList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
+import { referralsEnabled } from '../../lib/features';
 
 // ── Presentation-only helpers (no data logic) ─────────────────
 
@@ -141,7 +142,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       const get = (u) => adapter.fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const ls = (listings || []).slice(0, 12);
       const [notif, inbox, sent, ...apps] = await Promise.all([
-        get('/api/notifications'), get('/api/referrals/inbox'), get('/api/referrals/list'),
+        get('/api/notifications'),
+        referralsEnabled() ? get('/api/referrals/inbox') : Promise.resolve(null), // lib/features.js
+        referralsEnabled() ? get('/api/referrals/list') : Promise.resolve(null),
         ...ls.map((l) => get(`/api/listings/applicants?listingId=${encodeURIComponent(l.id)}`)),
       ]);
       if (cancelled) return;
@@ -176,7 +179,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // "#referrals" deep link (the Assign action): the inbox mounts only after its own fetch, so a
   // plain hash jump on page load finds nothing — wait for the section, then scroll to it.
   useEffect(() => {
-    if (window.location.hash !== '#referrals') return undefined;
+    if (!referralsEnabled() || window.location.hash !== '#referrals') return undefined; // lib/features.js
     const t = setTimeout(() => window.dispatchEvent(new CustomEvent(OPEN_EVENT)), 300);
     return () => clearTimeout(t);
   }, []);

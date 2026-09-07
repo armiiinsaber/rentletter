@@ -20,6 +20,7 @@ import { eventTitle, eventHref, groupByDay } from '../../lib/eventTypes';
 import { useAssistantStore, dismissAction, markOpened } from '../../lib/assistantStore';
 import { DURATION, CURVE, prefersReducedMotion } from '../../lib/motion';
 import { navigateToAction } from './actionNav';
+import { referralsEnabled } from '../../lib/features';
 
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' });
 const TABS = [['next', 'Next'], ['history', 'History'], ['ask', 'Ask']];
@@ -184,7 +185,9 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
         <section role="tabpanel" aria-label="Next" style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '6px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
           <ActionList items={items} onGo={go} onDismiss={dismiss} />
           {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginTop: 'var(--s-2)' }}>{note}</div> : null}
-          <div style={{ marginTop: 'var(--s-4)' }}><ReferralInbox listings={listings} initialItems={s.referralsInbox || []} onChanged={refresh} embedded /></div>
+          {referralsEnabled() && ( // lib/features.js: no inbox block while referrals are paused
+            <div style={{ marginTop: 'var(--s-4)' }}><ReferralInbox listings={listings} initialItems={s.referralsInbox || []} onChanged={refresh} embedded /></div>
+          )}
         </section>
       )}
       {tab === 'history' && (

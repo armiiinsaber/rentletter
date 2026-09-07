@@ -38,6 +38,7 @@ import { snapshotLine, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { referralsEnabled } from '../../lib/features';
 
 const Row = ({ label, value }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-4)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
@@ -205,7 +206,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
-    if (!listing?.id) return;
+    if (!listing?.id || !referralsEnabled()) return; // lib/features.js: no referral read while paused
     adapter.fetch(`/api/referrals/list?listingId=${encodeURIComponent(listing.id)}`).then((r) => (r.ok ? r.json() : { byLink: {} })).then((j) => setReferrals(j.byLink || {})).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.id]);
@@ -859,7 +860,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Set aside
               </button>
             )}
-            {!app.referral_meta && !['pending', 'approved'].includes(ref?.status) && (
+            {referralsEnabled() && !app.referral_meta && !['pending', 'approved'].includes(ref?.status) && ( // lib/features.js
               <button onClick={() => setReferFor(a)} title="Refer this applicant to another realtor. They must approve first"
                 style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
                 Refer
@@ -1213,7 +1214,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         )}
 
         {/* Set-aside reason modal, an OHRC-safe, screenable reason is REQUIRED. */}
-        {referFor && (
+        {referralsEnabled() && referFor && (
         <ReferModal listingId={listing.id} applicant={referFor} onClose={() => setReferFor(null)}
           onCreated={(ref) => { setReferrals((m) => ({ ...m, [referFor.linkId]: ref })); setReferFor(null); }} />
       )}

@@ -8,6 +8,7 @@ import { receivedEmail, inviteEmail, outcomeEmail } from '../../../lib/referralE
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { logServerError } from '../../../lib/serverLog';
+import { referralsEnabled, REFERRALS_PAUSED } from '../../../lib/features';
 
 async function realtorEmail(profileId) {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return null;
@@ -21,6 +22,7 @@ async function send(to, subject, html) {
 
 export default async function handler(req, res) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  if (!referralsEnabled()) return res.status(410).json(REFERRALS_PAUSED); // lib/features.js
   if (!kvReady()) return res.status(503).json({ error: 'Service temporarily unavailable.' });
   const t = String((req.method === 'GET' ? req.query.t : req.body?.t) || '');
   const ref = await referralForToken(t);

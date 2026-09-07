@@ -4,9 +4,11 @@
 // unclaimed referrals, and the assign route runs the same claim. Returns { claimed }.
 import { requireRealtor } from '../../../lib/realtorAuth';
 import { claimReferrals } from '../../../lib/referrals';
+import { referralsEnabled, REFERRALS_PAUSED } from '../../../lib/features';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!referralsEnabled()) return res.status(410).json(REFERRALS_PAUSED); // lib/features.js
   const ctx = await requireRealtor(req, res); if (!ctx) return;
   try { return res.status(200).json({ ok: true, claimed: await claimReferrals(ctx.user) }); }
   catch (e) { console.warn('[referrals/claim] failed:', e?.message || e); return res.status(200).json({ ok: false, claimed: 0 }); }
