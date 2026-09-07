@@ -9,6 +9,7 @@ import { C, R } from '../theme';
 import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
 import { needsRentConfirm, RENT_WARNING } from '../../lib/listingEditWarning';
+import { PROVINCE_OPTIONS } from '../../lib/provinces';
 
 // The form: six unit facts, the five criteria Fit reads, notes, the landlord client. The
 // employment type, move in window, lease term, occupants, guarantor, parking spots, pets policy,
@@ -45,7 +46,9 @@ function numOrNull(v) {
 
 // inline: render the same form in the page flow (no scrim, no fixed positioning). Used by first
 // run onboarding, so there is exactly one create listing form in the product.
-export default function ListingSetupModal({ mode = 'create', initial = null, activeApplicants = 0, onCancel, onSave, saving = false, inline = false }) {
+export default function ListingSetupModal({ mode = 'create', initial = null, activeApplicants = 0, askProvince = false, onCancel, onSave, saving = false, inline = false }) {
+  // The realtor's province, asked once, at the first listing (lib/justInTime.js), written to the profile.
+  const [province, setProvince] = useState('');
   const seed = { ...EMPTY };
   if (initial) {
     for (const k of Object.keys(EMPTY)) {
@@ -80,13 +83,14 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
     landlord_name: !!String(form.landlord_name).trim(),
     landlord_email: emailValid,
   };
-  const allValid = Object.values(req).every(Boolean);
+  const provinceOk = !askProvince || !!province;
+  const allValid = Object.values(req).every(Boolean) && provinceOk;
   const canSave = allValid && !saving;
   const emailError = (triedSave || String(form.landlord_email).trim())
     ? (!String(form.landlord_email).trim() ? 'Landlord email is required.' : (!emailValid ? 'Enter a valid email (name@example.com).' : ''))
     : '';
 
-  const REQ_LABELS = { address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Bedrooms', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
+  const REQ_LABELS = { province: 'Province', address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Bedrooms', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
   const missing = Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]);
 
   // Income floor implied by the ratio at this listing's rent: annual income where rent is
@@ -99,6 +103,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
   const buildPayload = () => {
     const name = String(form.address).trim().slice(0, 80) || 'New listing';
     return {
+      ...(askProvince && province ? { province } : {}),
       name,
       address: String(form.address).trim(),
       monthly_rent: intOrNull(form.monthly_rent),
@@ -177,6 +182,13 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
           {/* UNIT */}
           <div style={{ ...sectionLabel, marginTop: 0 }}>Unit</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+            {askProvince && (
+              <label><span style={fieldLabel}>Province<Req /></span>
+                <select aria-label="Province" value={province} onChange={(e) => setProvince(e.target.value)} style={inputStyle}>
+                  <option value="">Select…</option>
+                  {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+                </select></label>
+            )}
             <label><span style={fieldLabel}>Address<Req /></span>
               <input type="text" value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="88 Bay Street" style={inputStyle} /></label>
             <label><span style={fieldLabel}>Monthly rent (CAD)<Req /></span>

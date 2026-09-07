@@ -20,6 +20,7 @@ import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
 import { referralsEnabled } from '../../lib/features';
+import { needsProvince } from '../../lib/justInTime';
 
 // ── Presentation-only helpers (no data logic) ─────────────────
 
@@ -88,10 +89,19 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const createListing = async (values) => {
+  const createListing = async (input) => {
     setSaving(true);
     setError('');
+    // The province rides with the first listing (lib/justInTime.js): it goes to the profile
+    // first, through its own route, and never into the listing row.
+    const { province, ...values } = input || {};
     try {
+      if (province) {
+        const pr = await adapter.fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ province }) });
+        const pj = await pr.json().catch(() => ({}));
+        if (!pr.ok || pj?.error) { setError(pj?.error || 'Could not save your province. Please try again.'); setSaving(false); return; }
+        setProfile((p) => ({ ...(pj.profile || p), province }));
+      }
       // The route inserts with profile_id from the session and records listing_created; the
       // invite is then minted through the existing invite path.
       const r = await adapter.fetch('/api/listings/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
@@ -162,14 +172,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // Derived, presentation-only summaries from data that already exists (no fabrication,
   // no new API calls — everything below comes from the listings/profile already loaded).
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
-  useEffect(() => {
-    window.__rlAssistantContext = {
-      page: 'home', currentListingId: null,
-      listings: (listings || []).map((l) => ({ id: l.id, name: l.name, address: l.address, landlord_email: l.landlord_email, landlord_name: l.landlord_name })),
-      applicants: (listings || []).flatMap((l) => (signals.applicantsByListing[l.id] || []).filter((a) => !isWithdrawn(a)).map((a) => ({ linkId: a.linkId, listingId: l.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email }))),
-    };
-    return () => { delete window.__rlAssistantContext; };
-  }, [listings, signals]);
   // Event-type Noticed actions on the home page go to the listing page, which owns the applicant
   // cards: #docs=<linkId>[&renew] makes ListingView open that applicant (marking them reviewed),
   // scroll to them and light up the document-request panel.
@@ -370,7 +372,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         </div>}
 
         {modalOpen && (
-          <ListingSetupModal mode="create" onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
+          <ListingSetupModal mode="create" askProvince={needsProvince(profile)} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
         )}
       </div>
 

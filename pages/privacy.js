@@ -49,7 +49,7 @@ We do not sell personal information. We share it only as needed to operate the S
 ## 6. Service providers and cross-border processing
 We use trusted third-party providers to deliver the Service. Some of these providers process data outside Canada (including in the United States). Where information is processed outside Canada, it may be subject to the laws of that jurisdiction, including lawful access by courts and government authorities. Our current key providers are:
 - **Supabase** · database, authentication, and storage hosting. Our primary application data is hosted in a **Canadian region**.
-- **Anthropic** · artificial-intelligence processing used to read uploaded documents, generate applicant insights, and produce report text. This processing occurs in the **United States**. Documents are processed transiently and are not retained by us (see Section 2.3).
+- **Anthropic** · artificial-intelligence processing used to read uploaded documents and produce report text. This processing occurs in the **United States**. Documents are processed transiently and are not retained by us (see Section 2.3).
 - **Resend**, transactional email delivery (for example, account confirmation and report emails). This provider operates in the **United States**.
 - **Vercel**, application hosting and delivery.
 

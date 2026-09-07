@@ -3,7 +3,6 @@
 // components /landlord uses) through lib/demoAdapter.js: an in-memory fixture of FAKE people
 // (lib/demoFixture.js). No auth, no database, no email, no KV. Every write the dashboard makes
 // lands in sessionStorage and nowhere else; "Reset" wipes it. The assistant is live (real
-// /api/chat, rate-limited there) — its actions execute into this sandbox, never against real routes.
 // ?listing=<fixture id> opens a listing exactly like /landlord/<id> does.
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';

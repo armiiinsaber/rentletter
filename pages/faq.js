@@ -5,7 +5,6 @@
 import Head from 'next/head';
 import Link from 'next/link';
 import { useState } from 'react';
-import ChatWidget from '../components/ChatWidget';
 import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, ScrollHeader, Icon } from '../components/ui';
 
@@ -29,7 +28,7 @@ const FAQS = [
   {
     category: 'General',
     q: 'Who is behind Rentletter?',
-    a: 'Rentletter is an independent product built in Toronto. For anything this page does not cover, email info@rentletter.ca or use the chat in the corner, the Rentletter team responds within 24 hours.',
+    a: 'Rentletter is an independent product built in Toronto. For anything this page does not cover, email info@rentletter.ca, the Rentletter team responds within 24 hours.',
   },
 
   // ─── FOR REALTORS ────────────────────────────────
@@ -138,7 +137,7 @@ export default function FAQ() {
           <p style={{ fontSize: 'clamp(15px, 3vw, 17px)', color: C.inkSoft, marginBottom: 40, lineHeight: 1.6, maxWidth: 600 }}>
             Can&apos;t find what you need? Email{' '}
             <a href="mailto:info@rentletter.ca" style={{ color: C.red, textDecoration: 'underline' }}>info@rentletter.ca</a>{' '}
-            or use the chat in the corner, the Rentletter team replies within 24 hours.
+            and the Rentletter team replies within 24 hours.
           </p>
 
           {categories.map(cat => (
@@ -193,7 +192,7 @@ export default function FAQ() {
               Talk to the Rentletter team.
             </h3>
             <p style={{ fontSize: 14.5, color: C.inkInverse, lineHeight: 1.6, marginBottom: 20, maxWidth: 520 }}>
-              Real human responses within 24 hours, or open the chat assistant in the corner for instant answers about how the product works.
+              Real human responses within 24 hours.
             </p>
             <a href="mailto:info@rentletter.ca" className="rl-btn" style={{
               display: 'inline-flex', alignItems: 'center', gap: 9,
@@ -211,7 +210,6 @@ export default function FAQ() {
           </div>
         </main>
 
-        <ChatWidget />
       </div>
     </>
   );

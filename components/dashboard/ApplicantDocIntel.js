@@ -1,7 +1,7 @@
 // components/dashboard/ApplicantDocIntel.js
 // Realtor-side "Analyze documents" area for one applicant (real dashboard only — it calls
 // the API). Drag/drop or pick UP TO 6 files → one Analyze action, one request per file → ONE organized report
-// (rendered by DocIntelReport) → optional "Generate AI insight". The raw files are read to
+// (rendered by DocIntelReport). The raw files are read to
 // base64 in the browser and POSTed once; after the analysis succeeds the server holds the
 // originals for the realtor's review (14 days or until deleted, lib/documentRetention.js), listed
 // here under "Documents held" with View (the in app viewer) and Delete all.
@@ -82,7 +82,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
   );
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, initialInsight, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments, focus = null, onAnalyzed }) {
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments, focus = null, onAnalyzed }) {
   const adapter = useAdapter();
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
@@ -90,9 +90,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   useEffect(() => { if (focus) setOpen(true); }, [focus]);
   const [files, setFiles] = useState([]); // File[]
   const [result, setResult] = useState(runs.length ? runs[runs.length - 1] : null);
-  const [insight, setInsight] = useState(initialInsight || '');
   const [analyzing, setAnalyzing] = useState(false);
-  const [insightLoading, setInsightLoading] = useState(false);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
@@ -159,23 +157,6 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setAnalyzing(false);
   };
 
-  const genInsight = async () => {
-    if (insightLoading) return;
-    setInsightLoading(true); setError('');
-    try {
-      const r = await adapter.fetch('/api/applicants/insight', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId, linkId, applicationId }),
-      });
-      const j = await r.json();
-      if (!r.ok) { setError(j?.error || 'Could not generate the insight.'); setInsightLoading(false); return; }
-      setInsight(j.insight);
-      onSaved?.({ aiInsight: j.insight });
-    } catch (e) {
-      setError('Could not generate the insight.');
-    }
-    setInsightLoading(false);
-  };
 
   // Feature 4 — archive / delete the analysis (owner-auth, two-key bound). Archive moves the
   // active report into history; delete removes it permanently. Either way the applicant returns
@@ -201,17 +182,17 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     const j = await manage('archive');
     if (!j) return;
     setArchived(j.docArchived || []);
-    setResult(null); setInsight(''); setFiles([]);
-    onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || [], aiInsight: null });
+    setResult(null); setFiles([]);
+    onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || [] });
     onAnalyzed?.();
   };
 
   const deleteActive = async () => {
     const j = await manage('delete');
     if (!j) return;
-    setResult(null); setInsight(''); setFiles([]); setConfirmDelete(false);
+    setResult(null); setFiles([]); setConfirmDelete(false);
     setArchived(j.docArchived || archived);
-    onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || archived, aiInsight: null });
+    onSaved?.({ docVerifications: j.docVerifications || [], docArchived: j.docArchived || archived });
     onAnalyzed?.();
   };
 
@@ -295,7 +276,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.inkMute, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived · {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ' · tenant' : ''}</span>
             <button onClick={() => setViewing(null)} style={{ ...ghostBtn, color: C.ink }}>← Back</button>
           </div>
-          <DocIntelReport result={viewing.report} insight={viewing.ai_insight || ''} />
+          <DocIntelReport result={viewing.report} />
         </div>
       )}
 
@@ -345,14 +326,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
           {/* Report */}
           {hasReport && (
             <div style={{ marginTop: 'var(--s-4)' }}>
-              <DocIntelReport result={result} insight={insight} />
-              {!insight && (
-                <button onClick={genInsight} disabled={insightLoading}
-                  style={{ marginTop: 'var(--s-3)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: insightLoading ? 'wait' : 'pointer', opacity: insightLoading ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                  {insightLoading && <span className="rl-dispin" aria-hidden="true" />}
-                  {insightLoading ? 'Writing insight…' : 'Generate AI insight'}
-                </button>
-              )}
+              <DocIntelReport result={result} />
 
               {/* Stage 2 · SEPARATE landlord confirmation for THIS applicant only (PDF + text). */}
               <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>

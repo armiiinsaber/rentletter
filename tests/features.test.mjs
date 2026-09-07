@@ -56,17 +56,15 @@ test('the dashboard load skips both KV lrange reads when off and runs them when 
   try { const on = await run(); assert.equal(on.lrange, 2, 'both referral lists read when on'); } finally { F.overrideFeature('referrals'); }
 });
 
-test('no referral action kinds, no referral assistant action, while off', async () => {
+test('no referral action kinds while off', async () => {
   const { buildActions, KIND_ORDER } = await import('../lib/actions.js');
   assert.equal(KIND_ORDER.some((k) => /referr/i.test(k)), false);
   const { tables, listings } = bigFixture(); void tables;
   const items = buildActions({ listings, applicantsByListing: {}, now: '2026-09-07T12:00:00Z' });
   assert.equal(items.some((i) => /referr/i.test(i.kind + i.title + i.detail)), false);
-  const src = readFileSync(new URL('../lib/assistantActions.js', import.meta.url), 'utf8');
-  assert.match(src, /\.\.\.\(referralsEnabled\(\) \? \{ refer_applicant: \{/);
 });
 
 test('every referral surface reads the flag', () => {
-  const files = ['components/dashboard/AssistantPanel.js', 'components/dashboard/HomeView.js', 'components/dashboard/ListingView.js', 'pages/refer/[token].js', 'pages/signup.js', 'lib/demoAdapter.js', 'lib/dashboardSignals.js', 'lib/assistantActions.js', 'pages/api/referrals/assign.js', 'pages/api/referrals/claim.js', 'pages/api/referrals/create.js', 'pages/api/referrals/consent.js', 'pages/api/referrals/inbox.js', 'pages/api/referrals/list.js'];
+  const files = ['components/dashboard/AssistantPanel.js', 'components/dashboard/HomeView.js', 'components/dashboard/ListingView.js', 'pages/refer/[token].js', 'pages/signup.js', 'lib/demoAdapter.js', 'lib/dashboardSignals.js', 'pages/api/referrals/assign.js', 'pages/api/referrals/claim.js', 'pages/api/referrals/create.js', 'pages/api/referrals/consent.js', 'pages/api/referrals/inbox.js', 'pages/api/referrals/list.js'];
   for (const f of files) assert.match(readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'), /referralsEnabled\(\)/, f);
 });

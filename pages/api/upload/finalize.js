@@ -2,12 +2,11 @@
 // PUBLIC. Phase 2 of the tenant document upload: called ONCE after every file has been analyzed
 // by /api/upload/analyze-file. It reads the staged per-document facts, assembles the SAME run
 // shape the realtor batch produces (so the realtor-facing DocIntelReport renders identically),
-// runs the shared insight engine over the combined result, and writes doc_verifications /
-// ai_insight / docs_submitted_at / docs_verified onto the exact applicant this token maps to —
+// and writes doc_verifications / docs_submitted_at / docs_verified onto the exact applicant this token maps to —
 // under the same two-key (linkId + application_id) write guard as the realtor path.
 //
-// No document analysis happens here (no image bytes are present) — only structured facts and one
-// short text insight call, so there is no 4.5MB / 60s exposure. On success it marks the docreq
+// No document analysis happens here (no image bytes are present), only structured facts, so there
+// is no 4.5MB / 60s exposure. On success it marks the docreq
 // received, sets the realtor's notification marker, and clears the staging keys. A transient save
 // failure returns an error WITHOUT marking received or clearing staging, so the client can retry
 // finalize only (no re-analysis).
@@ -17,11 +16,10 @@ import { recordForListing } from '../../../lib/events';
 import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
-import { generateApplicantInsight } from '../../../lib/applicantAnalysis';
 import { buildCombinedRun } from '../../../lib/uploadCombine';
 import { withActiveReport } from '../../../lib/docVerifications';
 
-// Only a token in the body; one text insight call. Modest duration, no large body.
+// Only a token in the body. Modest duration, no large body.
 export const config = { maxDuration: 30 };
 
 export default async function handler(req, res) {
@@ -91,12 +89,6 @@ export default async function handler(req, res) {
           }
           if (listing?.profile_id) invalidateSignals(listing.profile_id); // the realtor's bell picks the upload up within the minute
 
-          // Auto-generate + persist the OHRC-safe insight (best-effort) so the realtor sees the
-          // complete read on next load — the tenant uploads async and isn't there to click it.
-          try {
-            const insight = await generateApplicantInsight({ application, listing, verificationRun: run });
-            if (insight) await admin.from('listing_applicants').update({ ai_insight: insight }).eq('id', rec.linkId);
-          } catch (e) { console.error('[upload/finalize] insight error:', e?.code || e?.message || e); }
 
           // Notification marker (best-effort, isolated so a not-yet-migrated column can't fail it).
           try {

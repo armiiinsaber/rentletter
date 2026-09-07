@@ -1,7 +1,7 @@
 // components/dashboard/AssistantPanel.js
-// The assistant as an action list. Three static tabs: Next (what to do, one line per applicant
-// state, lib/actions.js), History (the append only timeline, newest first, by day, paged) and
-// Ask (the chat). Closing the panel only hides it; the list, the badge and the dismissals live
+// The assistant as an action list. Two static tabs: Next (what to do, one line per applicant
+// state, lib/actions.js) and History (the append only timeline, newest first, by day, paged).
+// Closing the panel only hides it; the list, the badge and the dismissals live
 // in the shared store and in KV, so reopening shows the same list.
 //
 // Next: tapping a row lands on that applicant with the right panel open (deep link, or in place
@@ -14,7 +14,6 @@ import { createPortal } from 'react-dom';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import ReferralInbox from './ReferralInbox';
-import ChatWidget from '../ChatWidget';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { eventTitle, eventHref, groupByDay } from '../../lib/eventTypes';
 import { useAssistantStore, dismissAction, markOpened } from '../../lib/assistantStore';
@@ -23,7 +22,7 @@ import { navigateToAction } from './actionNav';
 import { referralsEnabled } from '../../lib/features';
 
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' });
-const TABS = [['next', 'Next'], ['history', 'History'], ['ask', 'Ask']];
+const TABS = [['next', 'Next'], ['history', 'History']];
 const SWIPE = { axisLock: 8, commit: 64 };
 
 // One row. Swipe left to dismiss on touch (native listeners so the horizontal move is cancelled
@@ -212,11 +211,6 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
             </div>
           ))}
           {nextBefore && <button type="button" onClick={more} disabled={loading} style={{ width: '100%', minHeight: 44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' }}>{loading ? 'Loading' : 'Show earlier'}</button>}
-        </section>
-      )}
-      {tab === 'ask' && (
-        <section role="tabpanel" aria-label="Ask" style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-          <ChatWidget mode="dashboard" embedded />
         </section>
       )}
       <style jsx global>{`

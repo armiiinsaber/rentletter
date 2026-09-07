@@ -1,7 +1,7 @@
 // components/dashboard/DocIntelReport.js
 // PURE PRESENTATIONAL — renders ONE document-intelligence result: documents grouped by type,
 // a cross-reference section, a comparison-to-application section (match/close/mismatch/not-
-// found badges), an overall verification summary, and (optionally) the OHRC-safe insight
+// found badges) and an overall verification summary.
 // paragraph. No API calls, no data fetching — safe to use in the demo with a hardcoded sample.
 import { C, R } from '../theme';
 
@@ -42,7 +42,7 @@ function Chip({ children, fg, bg }) {
   );
 }
 
-export default function DocIntelReport({ result, insight }) {
+export default function DocIntelReport({ result }) {
   if (!result) return null;
   const documents = Array.isArray(result.documents) ? result.documents : [];
   const crossReference = Array.isArray(result.crossReference) ? result.crossReference : [];
@@ -189,16 +189,6 @@ export default function DocIntelReport({ result, insight }) {
         </div>
       )}
 
-      {/* OHRC-safe insight */}
-      {insight && (
-        <div style={{ background: C.card, border: `1px solid ${C.ruleDark}`, borderLeft: `4px solid ${C.red}`, borderRadius: R.card, padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 800, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase' }}>AI insight</span>
-            <span style={{ fontSize: 10.5, color: C.inkMute }}>screenable facts only</span>
-          </div>
-          <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.6 }}>{insight}</div>
-        </div>
-      )}
     </div>
   );
 }

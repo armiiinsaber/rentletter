@@ -17,6 +17,7 @@ import { computeFit, compareFit } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
+import { needsSignature, defaultSignature, needsBrandingHint, BRANDING_HINT, BRANDING_HINT_LINK } from '../../lib/justInTime';
 import { AnimatedScore, useFlip, ReportDeparture, MotionStyles } from '../motion';
 import SwipeCard from '../motion/swipe';
 import { CURVE, DURATION, prefersReducedMotion } from '../../lib/motion';
@@ -92,22 +93,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     catch (e) { /* optimistic; the route owns the write */ }
   };
   const toggleApplicant = (a) => { if (openId === a.linkId) setOpenId(null); else openApplicant(a); };
-  // ── Assistant (Layer 2): publish THIS realtor's own listing/applicants as the chat context
-  // (ids + names + emails already in the page), and apply results the assistant executed. ──
-  useEffect(() => {
-    window.__rlAssistantContext = {
-      page: 'listing', currentListingId: listing?.id,
-      listings: [{ id: listing.id, name: listing.name, address: listing.address, landlord_email: listing.landlord_email, landlord_name: listing.landlord_name }],
-      applicants: applicants.filter((a) => !isWithdrawn(a)).map((a) => ({ linkId: a.linkId, listingId: listing.id, applicationId: a.application?.id, name: a.application?.full_name, email: a.application?.email })),
-    };
-    const onApplied = (e) => {
-      const d = e.detail || {};
-      if (d.action === 'mark_finalist' && d.linkId) setApplicants((prev) => prev.map((x) => (x.linkId === d.linkId ? { ...x, decisionPriority: d.decisionPriority } : x)));
-      if (d.action === 'update_preferences' && d.listingId === listing.id) { const { action, listingId, ...patch } = d; setListing((l) => ({ ...l, ...patch })); }
-    };
-    window.addEventListener('rl:assistant-applied', onApplied);
-    return () => { window.removeEventListener('rl:assistant-applied', onApplied); delete window.__rlAssistantContext; };
-  }, [listing, applicants]);
   // "Request documents" — from a Noticed card here or from the home page (deep link
   // #docs=<linkId>[&renew]). Unreviewed cards render COLLAPSED, and the document-request panel
   // only exists inside an expanded card, so this must open the card first (which also marks it
@@ -487,7 +472,30 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setTextBusy(false);
   };
 
+  // The first send with no signing name stored: the sheet asks "Sign the report as" (prefilled
+  // with the display name and brokerage), writes it to the profile, then sends. Every later send
+  // uses the stored name and the Change link above (lib/justInTime.js).
+  const [sigSheet, setSigSheet] = useState(false);
+  const [sigValue, setSigValue] = useState('');
+  const [brandHint, setBrandHint] = useState(false);
   const sendEmail = async () => {
+    setBrandHint(true);
+    if (needsSignature(profile)) { setSigValue(defaultSignature(profile)); setSigSheet(true); return; }
+    await doSend();
+  };
+  const signAndSend = async () => {
+    const v = cleanSignature(sigValue); if (!v) return;
+    setSigBusy(true);
+    try {
+      const r = await adapter.fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ report_signature: v }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) { setError(j?.error || 'Could not save the signing name.'); setSigBusy(false); return; }
+      setProfile((p) => ({ ...(j.profile || p), report_signature: v }));
+    } catch (e) { setError('Could not save the signing name.'); setSigBusy(false); return; }
+    setSigBusy(false); setSigSheet(false);
+    await doSend();
+  };
+  const doSend = async () => {
     setSending(true); setSendMsg('');
     try {
       const r = await adapter.fetch('/api/listings/send-report', {
@@ -842,7 +850,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             applicantName={app.full_name}
             initialVerifications={a.docVerifications}
             initialArchived={a.docArchived}
-            initialInsight={a.aiInsight}
             profileUpdatedAt={app.profile_updated_at}
             onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
             onAnalyzed={() => refreshApplicant(a.linkId)}
@@ -1076,6 +1083,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </section>
 
           {/* WHO GOT IT: the existing bottom sheet; the radio list is its body. Confirm is the one red button on it. */}
+          <ConfirmSheet open={sigSheet} title="Sign the report as" confirmLabel="Send" cancelLabel="Cancel" busy={sigBusy || sending} onConfirm={signAndSend} onCancel={() => setSigSheet(false)}
+            body={<input value={sigValue} onChange={(e) => setSigValue(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Sign the report as" style={{ width: '100%', minHeight: 44, padding: '0 var(--s-3)', fontSize: 16, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, fontFamily: 'inherit' }} />} />
           <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} onConfirm={confirmRented} onCancel={() => setRentedOpen(false)}
             body={(
               <span style={{ display: 'block' }}>
@@ -1189,6 +1198,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 )}
               </div>
 
+              {brandHint && needsBrandingHint(profile) && (
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-3)', textWrap: 'pretty' }}>{BRANDING_HINT} <a href={adapter.paths.profile} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
+              )}
               <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={downloadPdf} disabled={pdfBusy} className="rl-btn"
                   style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
@@ -1208,7 +1220,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               {l.snapshot && snapshotLine(l.snapshot) && (
                 <div className="num" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
                   <span style={{ textWrap: 'pretty' }}>{snapshotLine(l.snapshot)}</span>
-                  <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
+                  <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" onClick={() => setBrandHint(true)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
                 </div>
               )}
               {sendMsg && (

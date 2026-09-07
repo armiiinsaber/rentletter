@@ -1,5 +1,5 @@
 // /api/applicants/clear-analysis
-// Realtor-authenticated. Clears (nulls) doc_verifications + ai_insight on ONE applicant's own
+// Realtor-authenticated. Clears (nulls) doc_verifications on ONE applicant's own
 // listing_applicants row. Uses the SAME authorization + strict two-key binding (linkId +
 // applicationId) as analyze-documents, so a realtor can only clear an applicant on a listing
 // they own, and only the exact intended row is ever cleared. Used to remove stale/incorrect
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     const admin = getSupabaseAdminClient();
     const { error: upErr } = await admin
       .from('listing_applicants')
-      .update({ doc_verifications: null, ai_insight: null })
+      .update({ doc_verifications: null })
       .eq('id', linkId);
     if (upErr) {
       console.error('[clear-analysis] clear error:', upErr.message);

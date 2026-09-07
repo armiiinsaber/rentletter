@@ -6,7 +6,6 @@
 // the very top of every page.
 import Head from 'next/head';
 import Link from 'next/link';
-import ChatWidget from './ChatWidget';
 import { C, R } from './theme';
 import { GlobalStyle, Wordmark, ScrollHeader, Icon } from './ui';
 
@@ -88,7 +87,6 @@ export default function LegalPage({ content, metaTitle, metaDescription }) {
           </div>
         </footer>
       </div>
-      <ChatWidget />
     </>
   );
 }

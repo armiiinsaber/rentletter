@@ -53,7 +53,7 @@ export async function getServerSideProps(ctx) {
   try {
     const admin = getSupabaseAdminClient();
     initialApplicants = await fetchListingApplicants(admin, listing.id);
-    // Attach doc_verifications/ai_insight via the shared STRICT two-key helper (same as the
+    // Attach doc_verifications via the shared STRICT two-key helper (same as the
     // applicants-refresh and landlord-report paths), so attribution is identical everywhere.
     await attachDocVerifications(admin, listing.id, initialApplicants, 'dashboard');
     // The latest report snapshot for the Present to landlord line (absent table: no line).

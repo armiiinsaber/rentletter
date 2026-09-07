@@ -15,7 +15,7 @@
 // `update` rewrites the SAME app:{RL} document (no new RL is minted, no new junction row)
 // and re-mirrors it into Supabase `applications` via the same upsert the first submission
 // used (onConflict application_number → the existing row is updated; listing_applicants
-// rows — and the realtor's doc_verifications / ai_insight / decisions on them — are not
+// rows — and the realtor's doc_verifications / decisions on them — are not
 // touched). KV TTL is refreshed so an edit never resurrects an already-expired record.
 import { timingSafeEqual } from 'crypto';
 import { recordProfileEditEvents } from '../../../lib/events';

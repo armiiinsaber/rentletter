@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import ChatWidget from '../components/ChatWidget';
 import { C, R, SH, EASE, FONT } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
 import DeviceFrame from '../components/DeviceFrame';
@@ -703,7 +702,6 @@ export default function Home() {
             </div>
           </footer>
         </div>
-      <ChatWidget />
       <style jsx>{`
         /* Landing header — seamless like the dashboard: drop the translucent tint + backdrop-filter
            and the divider/shadow so it blends into the flat paper page (no colour/saturation seam),
@@ -964,7 +962,6 @@ export default function Home() {
             )}
           </div>
         </div>
-      <ChatWidget />
       </>
     );
   }
@@ -999,7 +996,6 @@ export default function Home() {
             }
           `}</style>
         </div>
-      <ChatWidget />
       </>
     );
   }
@@ -1120,7 +1116,6 @@ export default function Home() {
             </button>
           </div>
         </div>
-      <ChatWidget />
       </>
     );
   }

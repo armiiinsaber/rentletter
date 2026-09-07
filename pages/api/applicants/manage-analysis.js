@@ -5,9 +5,8 @@
 // they own, and only the exact intended row is ever written.
 //
 // Actions (validated server-side):
-//   archive         → move the ACTIVE report (+ its ai_insight) into archived[]; clear active +
-//                     ai_insight; docs_verified = false.
-//   delete          → permanently drop the ACTIVE report; clear active + ai_insight;
+//   archive         → move the ACTIVE report into archived[]; clear active; docs_verified = false.
+//   delete          → permanently drop the ACTIVE report; clear active;
 //                     docs_verified = false. Archived history is NOT touched.
 //   delete-archived → remove ONE archived entry by id. Active is NOT touched.
 // The jsonb is stored in the {active,archived} shape (see lib/docVerifications); old rows upgrade
@@ -59,17 +58,15 @@ export default async function handler(req, res) {
 
   const raw = ctx.junction.doc_verifications;
   let newDocV;
-  let clearInsight = false;
-  if (action === 'archive') { newDocV = withArchivedActive(raw, ctx.junction.ai_insight || null); clearInsight = true; }
-  else if (action === 'delete') { newDocV = withoutActive(raw); clearInsight = true; }
+  let clearActive = false;
+  if (action === 'archive') { newDocV = withArchivedActive(raw, null); clearActive = true; }
+  else if (action === 'delete') { newDocV = withoutActive(raw); clearActive = true; }
   else { newDocV = withoutArchived(raw, archivedId); } // delete-archived · active untouched
 
   try {
     const admin = getSupabaseAdminClient();
-    // Primary write: doc_verifications (+ clear the active ai_insight for archive/delete). Both
-    // columns exist, so this is the durable part of the change.
+    // Primary write: doc_verifications, the durable part of the change.
     const update = { doc_verifications: newDocV };
-    if (clearInsight) update.ai_insight = null;
     const { error: upErr } = await admin.from('listing_applicants').update(update).eq('id', linkId);
     if (upErr) {
       console.error('[manage-analysis] write error:', upErr.message);
@@ -78,7 +75,7 @@ export default async function handler(req, res) {
 
     // Best-effort, ISOLATED: drop the tenant-notification "verified" flag when the active report
     // goes away. Separate update so a not-yet-migrated docs_verified column can't fail the change.
-    if (clearInsight) {
+    if (clearActive) {
       try { await admin.from('listing_applicants').update({ docs_verified: false }).eq('id', linkId); }
       catch (e) { console.warn('[manage-analysis] docs_verified reset skipped:', e?.message || e); }
     }
@@ -93,6 +90,5 @@ export default async function handler(req, res) {
     ok: true,
     docVerifications: n.active ? [n.active] : [],
     docArchived: n.archived,
-    aiInsight: clearInsight ? null : (ctx.junction.ai_insight || null),
   });
 }
