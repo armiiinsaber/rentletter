@@ -69,7 +69,7 @@ export default async function handler(req, res) {
         delete application.cover_letter;
         const { data: listing } = await admin.from('listings').select('*').eq('id', rec.listingId).maybeSingle();
 
-        const run = buildCombinedRun(items, application.full_name || '');
+        const run = buildCombinedRun(items, application.full_name || '', application.annual_income);
 
         // Persist the combined result — tagged as a tenant self-upload — as the ACTIVE report,
         // preserving any archived history. Same column, row, and shape as the realtor path.

@@ -63,7 +63,8 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const v = readVerification(report);
   const hasDocs = v.state !== 'none';
   const nameFact = !hasDocs ? 'none' : v.state === 'ok' ? 'name matches' : 'did not match';
-  const incomeFact = !hasDocs ? 'none' : v.incomeMatched ? `${v.incomeFound != null ? money(v.incomeFound) : 'income'} matches` : 'did not match';
+  // The found string is the arithmetic, not a bare number: "$3,541.67 semi monthly × 24 from 2 of 3 stubs".
+  const incomeFact = !hasDocs ? 'none' : v.incomeMatched ? `${v.incomeExplanation || (v.incomeFound != null ? money(v.incomeFound) : 'income')} matches` : v.incomeExplanation ? `${v.incomeExplanation}, did not match` : 'did not match';
   const employerFact = !hasDocs ? 'none' : v.employerMatched ? 'matched' : 'not matched';
   const minIncome = Number(listing?.pref_min_annual_income) > 0 ? Number(listing.pref_min_annual_income) : null;
   const incomeMiss = fit && minIncome && fit.incomeUsed != null && fit.incomeUsed < minIncome ? ` · your min ${kShort(minIncome)}` : '';
