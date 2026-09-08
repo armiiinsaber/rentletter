@@ -13,7 +13,7 @@ import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
-import { computeFit, compareFit } from '../../lib/fitScore';
+import { computeFit, compareFit, capOf } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
@@ -581,7 +581,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const moneyK = (n) => `$${Math.round(Number(n) / 1000)}k`;
   const criteria = [
     Number(l.pref_min_annual_income) > 0 ? `min ${moneyK(l.pref_min_annual_income)}` : null,
-    Number(l.pref_rent_to_income_max_pct) > 0 ? `max ${Number(l.pref_rent_to_income_max_pct)}% rent share` : null,
+    `max ${capOf(l)}% rent share`, // a null cap reads 40 (lib/fitScore.js capOf)
     Number(l.pref_min_years_at_job) > 0 ? `${Number(l.pref_min_years_at_job)} yr${Number(l.pref_min_years_at_job) === 1 ? '' : 's'} at job` : null,
     l.pref_requires_landlord_reference ? 'landlord reference' : null,
     l.pref_requires_employer_verification ? 'employer verification' : null,
@@ -1019,7 +1019,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
                   <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
                   <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
-                  <Row label="Max rent to income" value={l.pref_rent_to_income_max_pct != null ? `${l.pref_rent_to_income_max_pct}%` : 'not set'} />
+                  <Row label="Max rent to income" value={`${capOf(l)}%`} />
                   <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
                   <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />

@@ -5,6 +5,7 @@
 // its address. Maps 1:1 to the Supabase `listings` columns. Presentation matches
 // the design system; fully rounded; fits mobile.
 import { useState } from 'react';
+import { DEFAULT_RENT_SHARE_CAP, CAP_HELPER, SAME_AS_CAP_NOTE, derivedMinIncome, sameAsCap, derivedLine, affordabilityPayload } from '../../lib/listingForm';
 import { C, R } from '../theme';
 import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
@@ -18,10 +19,10 @@ const EMPTY = {
   address: '', monthly_rent: '', bedrooms: '',
   allows_pets: 'no', allows_smoking: 'no', parking_included: 'no',
   landlord_name: '', landlord_email: '', landlord_phone: '',
-  // AFFORDABILITY: max rent to income is the SINGLE input. pref_min_annual_income is no
-  // longer independently settable, it is derived from ratio times rent on save (see
-  // buildPayload) so the two columns can never contradict each other.
-  pref_rent_to_income_max_pct: 30, pref_min_years_at_job: '',
+  // AFFORDABILITY (lib/listingForm.js): the rent share cap defaults to 40 on a new listing (the
+  // database column default stays 30; a null cap reads as 40 everywhere). The minimum annual
+  // income is a separate criterion, empty by default, stored only when the realtor types it.
+  pref_rent_to_income_max_pct: DEFAULT_RENT_SHARE_CAP, pref_min_annual_income: '', pref_min_years_at_job: '',
   pref_requires_landlord_reference: true, pref_requires_employer_verification: true,
   pref_notes: '',
 };
@@ -54,15 +55,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
     for (const k of Object.keys(EMPTY)) {
       if (initial[k] !== null && initial[k] !== undefined) seed[k] = initial[k] === null ? EMPTY[k] : initial[k];
     }
-    // Legacy rows saved before the affordability inputs were unified could hold a min
-    // income with no ratio. Convert that intent into the ratio input (the single source)
-    // so it isn't silently dropped: ratio = rent×12 ÷ income. Rows with BOTH fields keep
-    // their saved ratio — the ratio wins and the stored min income is ignored.
-    if ((initial.pref_rent_to_income_max_pct === null || initial.pref_rent_to_income_max_pct === undefined)
-      && initial.pref_min_annual_income > 0 && initial.monthly_rent > 0) {
-      const derived = Math.round((initial.monthly_rent * 12 * 100) / initial.pref_min_annual_income);
-      if (derived >= 1 && derived <= 100) seed.pref_rent_to_income_max_pct = derived;
-    }
+    // Existing listings keep whatever they stored; a null cap shows the 40 it reads as.
   }
   const [form, setForm] = useState(seed);
   const [confirming, setConfirming] = useState(false); // create-time "are you sure" step
@@ -93,12 +86,12 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
   const REQ_LABELS = { province: 'Province', address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Bedrooms', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
   const missing = Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]);
 
-  // Income floor implied by the ratio at this listing's rent: annual income where rent is
-  // exactly `ratio`% of monthly income. Live helper under the ratio input + the saved value.
+  // The income at which this rent is exactly cap% of monthly income: shown beside the minimum
+  // income field as information only, never stored (lib/listingForm.js).
   const ratioPct = intOrNull(form.pref_rent_to_income_max_pct);
-  const impliedMinIncome = ratioPct > 0 && Number.isFinite(rentNum) && rentNum > 0
-    ? Math.round((rentNum * 12 * 100) / ratioPct)
-    : null;
+  const impliedMinIncome = Number.isFinite(rentNum) ? derivedMinIncome(rentNum, ratioPct) : null;
+  const typedMin = numOrNull(form.pref_min_annual_income);
+  const minSameAsCap = sameAsCap(typedMin, impliedMinIncome);
 
   const buildPayload = () => {
     const name = String(form.address).trim().slice(0, 80) || 'New listing';
@@ -114,14 +107,9 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
       landlord_name: String(form.landlord_name).trim() || null,
       landlord_email: String(form.landlord_email).trim().toLowerCase() || null,
       landlord_phone: String(form.landlord_phone).trim() || null,
-      // AFFORDABILITY — READ RULE: max rent to income is the single source of truth.
-      // pref_min_annual_income is DERIVED (ratio × this listing's rent), never entered,
-      // so the two columns stay consistent for every downstream consumer. For rows saved
-      // before this change where both were set independently: the RATIO WINS and the
-      // stored min income is ignored — no data migration; legacy rows normalize the next
-      // time they're edited and saved here.
-      pref_min_annual_income: impliedMinIncome,
-      pref_rent_to_income_max_pct: ratioPct,
+      // AFFORDABILITY: the cap as typed; the minimum income only when the realtor typed one.
+      // Nothing is derived (lib/listingForm.js affordabilityPayload).
+      ...affordabilityPayload(form),
       pref_min_years_at_job: numOrNull(form.pref_min_years_at_job),
       pref_requires_landlord_reference: !!form.pref_requires_landlord_reference,
       pref_requires_employer_verification: !!form.pref_requires_employer_verification,
@@ -218,19 +206,17 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             <strong>Why some fields aren't here:</strong> Ontario's Human Rights Code prohibits screening tenants on gender, age, family status, race, religion, disability, or receipt of public assistance. The fields below are legally screenable criteria. Stating discriminatory preferences in writing can trigger HRTO complaints, for both you and your landlord client.
           </div>
 
-          {/* PREFERENCES, financial. ONE affordability input: max rent to income. The
-              income equivalent is derived live from this listing's rent (read-only), so
-              the old separate "minimum annual income" field can never contradict it. */}
+          {/* PREFERENCES, financial. The rent share cap is the affordability rule; the minimum income
+              is a separate, optional criterion with the cap's equivalent shown beside it as information. */}
           <div style={{ ...sectionLabel, marginTop: 0 }}>Screening criteria</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
             <label><span style={fieldLabel}>Max rent to income (%)</span>
-              <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder="30" style={inputStyle} />
-              <span style={{ display: 'block', fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
-                {impliedMinIncome
-                  ? <>≈ ${impliedMinIncome.toLocaleString()}/yr minimum income at ${rentNum.toLocaleString()}/mo</>
-                  : ratioPct > 0
-                    ? 'Add the monthly rent above to see the income equivalent.'
-                    : 'Set a ratio to see the income equivalent at this rent.'}
+              <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder={String(DEFAULT_RENT_SHARE_CAP)} style={inputStyle} />
+              <span style={{ display: 'block', fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 4, textWrap: 'pretty' }}>{CAP_HELPER}</span></label>
+            <label><span style={fieldLabel}>Minimum annual income (optional)</span>
+              <input type="number" min="0" step="1000" inputMode="numeric" value={form.pref_min_annual_income} onChange={(e) => set({ pref_min_annual_income: e.target.value })} placeholder="" style={inputStyle} />
+              <span style={{ display: 'block', fontSize: 12, color: minSameAsCap ? C.ink : C.inkMute, lineHeight: 1.5, marginTop: 4, fontVariantNumeric: 'tabular-nums', textWrap: 'pretty' }}>
+                {minSameAsCap ? SAME_AS_CAP_NOTE : (derivedLine(ratioPct, rentNum) || 'Add the rent and a cap above to see what the cap works out to.')}
               </span></label>
             <label><span style={fieldLabel}>Min years at job</span>
               <input type="number" min="0" step="0.5" inputMode="decimal" value={form.pref_min_years_at_job} onChange={(e) => set({ pref_min_years_at_job: e.target.value })} placeholder="e.g. 1" style={inputStyle} /></label>

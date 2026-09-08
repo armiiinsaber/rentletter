@@ -9,7 +9,7 @@ import Head from 'next/head';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isReportToken } from '../../lib/applicationIds';
-import { forLandlordPage, answerLine } from '../../lib/reportSnapshot';
+import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot';
 
 const DEMO_RE = /^DEMO-[a-z0-9-]{1,40}$/;
 
@@ -141,6 +141,19 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
                 </div>
               ))}
             </div>
+            {/* The math: one row per rule the realtor set. Met carries the red tick, missed a small ink dot, unverified nothing. */}
+            {Array.isArray(a.criteria) && a.criteria.length ? (
+              <ul aria-label="Against the criteria" style={{ listStyle: 'none', margin: 'var(--s-3) 0 0', padding: 0, display: 'grid', gap: 'var(--s-1)' }}>
+                {a.criteria.map((c) => (
+                  <li key={c.key} aria-label={`${c.status === 'met' ? 'Met: ' : c.status === 'missed' ? 'Missed: ' : ''}${c.text}`} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', minWidth: 0 }}>
+                    <span aria-hidden="true" style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {c.status === 'met' ? <Icon name="check" size={13} color={C.red} strokeWidth={2.5} /> : c.status === 'missed' ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.ink, display: 'inline-block' }} /> : null}
+                    </span>
+                    <span className="num" style={{ minWidth: 0, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{c.text}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             {/* The answer: two controls, or the given answer as an ink pill with the red tick, tap to change. */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-4)' }}>
               {given && !isEditing ? (
@@ -167,6 +180,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
         {listing.criteriaLine ? <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Ranked against {realtor.name}'s criteria: {listing.criteriaLine}.</p> : null}
         {realtor.signature ? <p style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', overflowWrap: 'anywhere' }}>{realtor.signature}</p> : null}
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>Sent through Rentletter on behalf of {realtor.name}. This link is private to you.</p>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{listing.fitLine || FIT_LINE}</p>
         <a href={`/api/report/pdf?token=${encodeURIComponent(token)}`} download style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 'var(--s-3)', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline' }}>Download PDF</a>
       </section>
     </>,

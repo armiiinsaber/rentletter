@@ -14,11 +14,14 @@ const payload = demoSnapshot('demo-carlaw');
 const withN = (n) => ({ ...payload, applicants: payload.applicants.slice(0, n), counts: { applicants: n, verified: payload.applicants.slice(0, n).filter((a) => a.fit?.label === 'verified').length } });
 const flat = (lines) => [lines.header.name, lines.header.brokerage, lines.header.address, lines.header.unitLine, lines.header.prepared, ...lines.blocks.flatMap((b) => [b.rank, b.name, b.fit, b.word, b.sentence, b.confirmed, b.reason, ...b.numbers.flat()]), lines.footer.criteria, lines.footer.signature, lines.footer.sent].filter(Boolean).join('\n');
 
-test('page count: one page for four applicants, two from five', async () => {
+// With the criteria rows under the numbers (two columns per applicant) three applicants fit a page.
+test('page count: one page for three applicants, two from four', async () => {
   assert.ok(payload.applicants.length >= 5, 'the sandbox listing has five applicants');
+  const three = await PDFDocument.load(await buildLandlordReportPdf({ payload: withN(3) }));
   const four = await PDFDocument.load(await buildLandlordReportPdf({ payload: withN(4) }));
   const five = await PDFDocument.load(await buildLandlordReportPdf({ payload: withN(5) }));
-  assert.equal(four.getPageCount(), 1);
+  assert.equal(three.getPageCount(), 1);
+  assert.equal(four.getPageCount(), 2);
   assert.equal(five.getPageCount(), 2);
   const { width, height } = four.getPage(0).getSize(); assert.deepEqual([width, height], [612, 792], 'Letter');
 });
