@@ -9,8 +9,9 @@
 // letter, a credit report if they have one) and ticks each row as the analysis recognises a file
 // of that type. Recognition is the analysed document type, so a tick appears when that file's
 // analysis returns, never on selection. An analysed file is already held for the realtor's review
-// (the route stores it after analysis), so it can no longer be removed here; a file that is still
-// queued, or failed, can.
+// (the route stores it after analysis), so removing one before Submit asks POST /api/upload/remove-file
+// to drop its staged facts and the held copy; the row unticks if the set no longer meets it. After
+// Submit nothing can be removed here.
 //
 //   <DocumentUploader token={t} before={node} disclosure={node} onDone={({ received }) => …} laterLine="…" />
 // before: rendered between the set rows and the drop zone (the retention line).
@@ -69,6 +70,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
   const [finalizePending, setFinalizePending] = useState(false);
   const [turn, setTurn] = useState(0);
   const busy = useRef(false);
+  const nextIndex = useRef(0); // the staged index the routes know each file by, never reused within a session
   const inputRef = useRef(null);
 
   const addFiles = (incoming) => {
@@ -84,13 +86,29 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
       const ext = (f.name.split('.').pop() || '').toLowerCase();
       if (!OK_EXT.includes(ext)) { msg = 'Please upload a PDF or image (JPG or PNG).'; continue; }
       if (f.size > MAX_FILE) { msg = `${f.name} is too large, please upload a version under 3MB.`; continue; }
-      next.push({ file: f, key, status: 'queued', documentType: null, message: '' }); added++;
+      next.push({ file: f, key, status: 'queued', documentType: null, message: '', stagedIndex: nextIndex.current++ }); added++;
     }
     if (msg) setError(msg);
     if (added) setFinalizePending(false);
     setFiles(next);
   };
-  const removeFile = (key) => setFiles((p) => p.filter((x) => x.key !== key || x.status === 'done' || x.status === 'analyzing'));
+  // A queued or failed file is dropped here; an analysed one is removed through the route first.
+  const removeFile = async (key) => {
+    const f = files.find((x) => x.key === key);
+    if (!f || f.status === 'analyzing' || f.status === 'removing') return;
+    if (f.status !== 'done') { setFiles((p) => p.filter((x) => x.key !== key)); return; }
+    setError('');
+    setFiles((p) => p.map((x) => (x.key === key ? { ...x, status: 'removing' } : x)));
+    try {
+      const r = await fetch('/api/upload/remove-file', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, index: f.stagedIndex }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j?.error || `We could not remove ${f.file.name}. Please try again.`);
+      setFiles((p) => p.filter((x) => x.key !== key));
+    } catch (e) {
+      setFiles((p) => p.map((x) => (x.key === key ? { ...x, status: 'done' } : x)));
+      setError(e?.message || `We could not remove ${f.file.name}. Please try again.`);
+    }
+  };
 
   // One analysis at a time, in the order the files were added, as soon as each is added.
   useEffect(() => {
@@ -100,17 +118,17 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
     busy.current = true;
     const patch = (key, p) => setFiles((prev) => prev.map((x) => (x.key === key ? { ...x, ...p } : x)));
     patch(next.key, { status: 'analyzing' });
-    const index = files.findIndex((f) => f.key === next.key);
-    analyzeFile(token, next.file, index, files.length)
+    analyzeFile(token, next.file, next.stagedIndex, files.length)
       .then((res) => patch(next.key, res.ok ? { status: 'done', documentType: res.documentType } : { status: 'failed', message: res.message }))
       .finally(() => { busy.current = false; setTurn((t) => t + 1); });
   }, [files, turn, token]);
 
   const done = files.filter((f) => f.status === 'done');
   const analyzing = files.find((f) => f.status === 'analyzing' || f.status === 'queued');
+  const removing = files.some((f) => f.status === 'removing');
   const failed = files.filter((f) => f.status === 'failed');
   const set = setStatus(done.map((f) => ({ documentType: f.documentType })));
-  const ready = done.length > 0 && !analyzing && failed.length === 0;
+  const ready = done.length > 0 && !analyzing && !removing && failed.length === 0;
   const analyzingLabel = analyzing ? `Analyzing document ${files.indexOf(analyzing) + 1} of ${files.length}…` : null;
 
   const runSubmit = async () => {
@@ -153,7 +171,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
   const fileRow = (f, bg, removable) => (
     <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, background: bg, border: `1px solid ${f.status === 'failed' ? C.danger : C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', minHeight: 44 }}>
       <span style={{ display: 'inline-flex', flexShrink: 0, width: 15, justifyContent: 'center' }}>
-        {f.status === 'analyzing' ? <span className="rl-spin" aria-hidden="true" />
+        {f.status === 'analyzing' || f.status === 'removing' ? <span className="rl-spin" aria-hidden="true" />
           : f.status === 'done' ? <Icon name="check" size={15} color={C.red} strokeWidth={2.5} />
             : f.status === 'failed' ? <span aria-hidden="true" style={{ color: C.danger, fontWeight: 800 }}>!</span>
               : <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', border: `1.5px solid ${C.ruleDark}` }} />}
@@ -161,11 +179,11 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 13, color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.file.name}</span>
         <span style={{ display: 'block', fontSize: 11.5, color: f.status === 'failed' ? C.danger : C.inkMute, lineHeight: 1.4 }}>
-          {f.status === 'done' ? typeLabel(f.documentType) : f.status === 'analyzing' ? 'Reading…' : f.status === 'failed' ? (f.message || 'Could not read this file.') : 'Waiting'}
+          {f.status === 'done' ? typeLabel(f.documentType) : f.status === 'analyzing' ? 'Reading…' : f.status === 'removing' ? 'Removing…' : f.status === 'failed' ? (f.message || 'Could not read this file.') : 'Waiting'}
         </span>
       </span>
       <span style={{ fontSize: 11, color: C.inkMute, flexShrink: 0 }}>{(f.file.size / 1024 / 1024).toFixed(1)}MB</span>
-      {removable && f.status !== 'done' && f.status !== 'analyzing' && <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(f.key); }} aria-label={`Remove ${f.file.name}`}
+      {removable && f.status !== 'analyzing' && f.status !== 'removing' && <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(f.key); }} aria-label={`Remove ${f.file.name}`}
         style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, minWidth: 44, minHeight: 44, flexShrink: 0 }}>×</button>}
     </div>
   );

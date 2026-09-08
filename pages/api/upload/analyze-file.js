@@ -109,9 +109,11 @@ export default async function handler(req, res) {
   // to the private bucket ONLY here, after the analysis of this file succeeded. The first file of
   // a submission replaces the applicant's previously held files. A storage failure is logged and
   // the analysis result still returns. Skipped when the token could not be bound to an applicant.
+  let documentId = null; // the held row, so the tenant can remove this file before they submit (remove-file.js)
   if (admin && application && listing && listing.profile_id) {
     const firstOfSubmission = Object.keys(staging.items).length === 0;
-    await storeAnalyzedDocuments(admin, { profileId: listing.profile_id, listingId: rec.listingId, linkId: rec.linkId, applicationId: application.id || rec.applicationId || null, applicantName: application.full_name || null, uploadedBy: 'tenant', replace: firstOfSubmission, files: [{ mime, bytes: Buffer.from(data, 'base64'), kind: kindOf(run.documents[0]) }] });
+    const stored = await storeAnalyzedDocuments(admin, { profileId: listing.profile_id, listingId: rec.listingId, linkId: rec.linkId, applicationId: application.id || rec.applicationId || null, applicantName: application.full_name || null, uploadedBy: 'tenant', replace: firstOfSubmission, files: [{ mime, bytes: Buffer.from(data, 'base64'), kind: kindOf(run.documents[0]) }] });
+    documentId = stored && Array.isArray(stored.ids) ? stored.ids[0] || null : null;
   }
 
   // Stage ONLY the extracted facts for this file (no images, no raw bytes).
@@ -123,6 +125,7 @@ export default async function handler(req, res) {
     comparisons: Array.isArray(run.comparisons) ? run.comparisons : [],
     documentName: (run.documentNames && run.documentNames[0]) || null,
     confidence: run.confidence || 'medium',
+    documentId,
   };
   staging.items[fkey] = perFile;
   staging.total = Number.isFinite(total) ? total : Math.max(Object.keys(staging.items).length, staging.total || 0);

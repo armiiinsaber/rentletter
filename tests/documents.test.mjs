@@ -112,7 +112,7 @@ test('purge and expire mark rows with the right deleted_by, and an absent table 
   assert.equal(exp.calls.find((c) => c.op === 'update').payload.deleted_by, 'expired');
   const absent = mockAdmin(() => ({ data: null, error: { code: '42P01', message: 'relation "public.applicant_documents" does not exist' } }));
   assert.deepEqual(await purgeStoredDocuments(absent.admin, { linkId: 'j1', deletedBy: 'x' }), { count: 0, absent: true });
-  assert.deepEqual(await storeAnalyzedDocuments(absent.admin, { profileId: 'p1', linkId: 'j1', uploadedBy: 'tenant', files: [{ mime: 'image/png', bytes: Buffer.from('x'), kind: 'unknown' }] }), { stored: 0, absent: true });
+  assert.deepEqual(await storeAnalyzedDocuments(absent.admin, { profileId: 'p1', linkId: 'j1', uploadedBy: 'tenant', files: [{ mime: 'image/png', bytes: Buffer.from('x'), kind: 'unknown' }] }), { stored: 0, ids: [], absent: true });
 });
 
 test('the cron gate returns 503 without CRON_SECRET and 401 with a wrong bearer', () => {
