@@ -8,6 +8,7 @@
 // realtor may optionally email the link to the tenant via Resend (uses the tenant's application
 // email; never exposes owner_token or internal ids to the tenant). PRIVACY: no raw files here.
 import { Resend } from 'resend';
+import { SET_SENTENCE_LOWER } from '../../../lib/documentSet';
 import { invalidateSignals } from '../../../lib/signalsCache';
 import { recordForListing } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
@@ -83,7 +84,7 @@ export default async function handler(req, res) {
       <tr><td style="background:#fffdf8;padding:28px 26px;border:1px solid #ece5d6;border-top:none;">
         <p style="margin:0 0 12px;font-size:15px;color:#0f0f10;line-height:1.55;">Hi ${escapeHtml(tenantName || 'there')},</p>
         <p style="margin:0 0 18px;font-size:15px;color:#3a3a3c;line-height:1.6;">
-          ${escapeHtml(realtorName)} has requested a few documents to finalize your rental application${address ? ` for <strong style="color:#0f0f10;">${escapeHtml(address)}</strong>` : ''}. You can upload them securely here:
+          ${escapeHtml(realtorName)} has requested a few documents to finalize your rental application${address ? ` for <strong style="color:#0f0f10;">${escapeHtml(address)}</strong>` : ''}: ${SET_SENTENCE_LOWER}. You can upload them securely here:
         </p>
         <p style="margin:0 0 20px;"><a href="${url}" style="display:inline-block;background:#d72027;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 22px;border-radius:12px;">Upload your documents</a></p>
         <p style="margin:0 0 6px;font-size:13px;color:#86868b;line-height:1.6;">Your documents are analyzed to verify income, employment, and credit. Your realtor can view them for 14 days, then they are deleted. Only the listing realtor sees them. Do not send anything showing your SIN.</p>

@@ -548,13 +548,17 @@ export default function ApplyPage({ invited = null }) {
                 <p style={{ fontSize: 16, color: C.inkSoft, lineHeight: 1.6, margin: 0, textWrap: 'pretty' }}>You can add documents any time from your confirmation email.</p>
               ) : (
                 <>
-                  <h2 style={{ fontSize: 'clamp(20px, 4.5vw, 26px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 8, textWrap: 'balance' }}>Add a pay stub now</h2>
-                  <p style={{ fontSize: 16, color: C.ink, lineHeight: 1.6, margin: '0 0 6px', textWrap: 'pretty' }}>Two minutes. Your realtor sees a matched application instead of a waiting one.</p>
-                  <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.6, margin: '0 0 18px', textWrap: 'pretty' }}>Held for {invite?.realtorName || 'the realtor'}'s review for {RETENTION_DAYS} days, then deleted. Do not upload anything showing your SIN.</p>
+                  <h2 style={{ fontSize: 'clamp(20px, 4.5vw, 26px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 8, textWrap: 'balance' }}>Add your documents</h2>
+                  <p style={{ fontSize: 16, color: C.ink, lineHeight: 1.6, margin: '0 0 14px', textWrap: 'pretty' }}>Two minutes. Your realtor sees a matched application instead of a waiting one.</p>
+                  {/* The set rows render inside the uploader (lib/documentSet.js); the retention line sits between them and the drop zone. */}
                   {docRequest?.token ? (
-                    <DocumentUploader token={docRequest.token} onDone={({ received }) => setDocs({ state: 'done', received })} />
+                    <DocumentUploader token={docRequest.token} onDone={({ received }) => setDocs({ state: 'done', received })}
+                      before={<p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.6, margin: '0 0 14px', textWrap: 'pretty' }}>Held for {invite?.realtorName || 'the realtor'}'s review for {RETENTION_DAYS} days, then deleted. Do not upload anything showing your SIN.</p>} />
                   ) : (
-                    <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.6, margin: '0 0 12px' }}>Preparing your upload link. If it does not appear, the link is in your confirmation email.</p>
+                    <>
+                      <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.6, margin: '0 0 14px', textWrap: 'pretty' }}>Held for {invite?.realtorName || 'the realtor'}'s review for {RETENTION_DAYS} days, then deleted. Do not upload anything showing your SIN.</p>
+                      <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.6, margin: '0 0 12px' }}>Preparing your upload link. If it does not appear, the link is in your confirmation email.</p>
+                    </>
                   )}
                   <button type="button" onClick={() => setDocs({ state: 'skipped', received: 0 })}
                     style={{ minHeight: 44, marginTop: 8, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>

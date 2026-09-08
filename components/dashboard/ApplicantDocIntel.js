@@ -6,6 +6,7 @@
 // originals for the realtor's review (14 days or until deleted, lib/documentRetention.js), listed
 // here under "Documents held" with View (the in app viewer) and Delete all.
 import { useState, useRef, useEffect } from 'react';
+import { SET_SENTENCE_REALTOR } from '../../lib/documentSet';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import DocIntelReport from './DocIntelReport';
@@ -292,7 +293,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx" style={{ display: 'none' }}
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>Drop documents here or click to choose</div>
-            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>Pay stubs, employment letters, bank statements, ID. Up to {MAX} files, JPG, PNG or PDF, 3MB each</div>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>{SET_SENTENCE_REALTOR} Up to {MAX} files, JPG, PNG or PDF, 3MB each</div>
           </div>
 
           {files.length > 0 && (

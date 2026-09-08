@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { SET_SENTENCE_LOWER } from '../../lib/documentSet';
 import { isApplicationNumber, isOwnerToken, normalizeApplicationNumber, normalizeOwnerToken } from '../../lib/applicationIds';
 import { verifyConfirmation } from '../../lib/sendSignature';
 import { checkSubmitLimits } from '../../lib/rateLimit';
@@ -99,7 +100,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
                       Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
                     </p>
                     ${uploadUrl ? `<p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #0f0f10; margin: 0 0 14px;">
-                      Add documents: <a href="${uploadUrl}" style="color: #d72027; font-weight: 600; word-break: break-all;">${uploadUrl}</a>
+                      Add documents (${SET_SENTENCE_LOWER}): <a href="${uploadUrl}" style="color: #d72027; font-weight: 600; word-break: break-all;">${uploadUrl}</a>
                     </p>` : ''}
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
                       Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.

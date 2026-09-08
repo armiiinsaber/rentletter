@@ -4,7 +4,7 @@
 //
 // Flow (KV only — no Supabase, no tenant login):
 //   1. Resolve the token via GET /api/upload/resolve → show WHOSE application it's for.
-//   2. Guided checklist of what to upload + a multi-file picker (document types; no forced camera).
+//   2. The document set (lib/documentSet.js) with a tick per row as files are recognised, and a multi-file picker.
 //   3. Review-and-confirm step (double-check the files) with a transparent analyze-then-discard note.
 //   4. Submit → analyze ONE file per request (POST /api/upload/analyze-file, with live progress),
 //      then POST /api/upload/finalize once → success. Each file is analyzed, then the original is held
@@ -19,14 +19,10 @@ import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
 
-// Analysis only reads PDF/JPG/PNG (same as the realtor path), so restrict the picker to those.
-
-const CHECKLIST = [
-  'Recent pay stubs, last 2 to 3',
-  'Employment or offer letter',
-  'Credit report (Equifax, TransUnion, or Borrowell)',
-  'Government issued photo ID',
-];
+// The set the card asks for is lib/documentSet.js, rendered by the uploader itself.
+// The line above the button while the set is incomplete: this link closes once documents are
+// sent, so the tenant cannot add the rest from it later.
+const UPLOAD_LATER_LINE = 'You can send what you have. Your realtor may ask for the rest.';
 
 export default function UploadPage() {
   const router = useRouter();
@@ -134,25 +130,10 @@ export default function UploadPage() {
 
               <DocumentUploader
                 token={String(router.query.token || '')}
-                checklist={CHECKLIST}
+                laterLine={UPLOAD_LATER_LINE}
                 onDone={({ received }) => { setSentCount(received); setStatus('done'); window.scrollTo(0, 0); }}
                 before={(
-                  <>
-                    {/* Guided checklist */}
-                    <div className="rl-card" style={{ padding: 'clamp(16px, 4vw, 22px)', marginBottom: 16 }}>
-                      <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, letterSpacing: '0.02em', marginBottom: 12 }}>Please upload:</div>
-                      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 10 }}>
-                        {CHECKLIST.map((item) => (
-                          <li key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, color: C.inkSoft, lineHeight: 1.45 }}>
-                            <span aria-hidden="true" style={{ flexShrink: 0, marginTop: 2, color: C.red, display: 'inline-flex' }}><Icon name="check" size={15} color={C.red} strokeWidth={2.5} /></span>
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 12 }}>Upload what you have, you can add several files (PDF or image).</div>
-                    </div>
-                    <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 10, textWrap: 'pretty' }}>Your realtor can view these for {RETENTION_DAYS} days, then they are deleted. Do not upload anything showing your SIN.</div>
-                  </>
+                  <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 12, textWrap: 'pretty' }}>Your realtor can view these for {RETENTION_DAYS} days, then they are deleted. Do not upload anything showing your SIN.</div>
                 )}
                 disclosure={disclosure}
               />

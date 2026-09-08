@@ -44,7 +44,7 @@ test('exclusions: report present, set aside, withdrawn, listing not active, no e
 test('the two emails as sent', () => {
   const one = nudgeEmail({ nudge: 1, listingName: 'Carlaw', realtorName: 'Sarah Chen', applicantName: 'Priya Nair', uploadUrl: 'https://rentletter.ca/upload/t' });
   assert.equal(one.subject, 'Carlaw: documents for your application');
-  assert.equal(one.text, 'Hi Priya,\n\nYour application for Carlaw is in. It is waiting on one thing: a pay stub or employment letter.\n\nTwo minutes, held for 14 days for Sarah Chen\'s review, then deleted.\n\nAdd documents: https://rentletter.ca/upload/t\n\nSarah Chen\n');
+  assert.equal(one.text, 'Hi Priya,\n\nYour application for Carlaw is in. It is waiting on your documents: one to three recent pay stubs, an employment letter, and a credit report if you have one.\n\nTwo minutes, held for 14 days for Sarah Chen\'s review, then deleted.\n\nAdd documents: https://rentletter.ca/upload/t\n\nSarah Chen\n');
   const two = nudgeEmail({ nudge: 2, listingName: 'Carlaw', realtorName: 'Sarah Chen', applicantName: 'Priya Nair', uploadUrl: 'https://rentletter.ca/upload/t' });
   assert.equal(two.paras[1], 'This is the last reminder.');
   assert.match(two.html, /Add documents/);
