@@ -8,7 +8,8 @@ import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { cronGate } from '../../../lib/documentStore';
 import { runNudges } from '../../../lib/nudges';
 import { recordEvent } from '../../../lib/events';
-import { kvReady, kvSmembers, kvMgetJson, kvSetJson, kvSrem, appKey, uploadUrl, DOCREQ_TTL } from '../../../lib/docRequest';
+import { kvReady, kvSmembers, kvMgetJson, kvSetJson, kvSrem, appKey, reqKey, uploadUrl, DOCREQ_TTL } from '../../../lib/docRequest';
+import { kvExpire } from '../../../lib/kv';
 import { logServerError } from '../../../lib/serverLog';
 
 export const config = { maxDuration: 60 };
@@ -24,7 +25,7 @@ export default async function handler(req, res) {
   try {
     const result = await runNudges({
       admin: getSupabaseAdminClient(),
-      kv: { smembers: kvSmembers, mget: kvMgetJson, set: kvSetJson, srem: kvSrem, appKey, uploadUrl, ttl: DOCREQ_TTL },
+      kv: { smembers: kvSmembers, mget: kvMgetJson, set: kvSetJson, srem: kvSrem, expire: kvExpire, appKey, reqKey, uploadUrl, ttl: DOCREQ_TTL },
       send: async (mail) => { const r = await resend.emails.send(mail); if (r?.error) throw new Error(r.error.message || 'send failed'); },
       recordEvent,
     });

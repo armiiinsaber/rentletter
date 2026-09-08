@@ -135,7 +135,7 @@ test('prefill: the token resolves to the application as a form, surviving fields
     assert.ok(calls.some((c) => /del/.test(c)), 'deleted');
   } finally { restore(); }
   const src = readFileSync(new URL('../pages/apply/[token].js', import.meta.url), 'utf8');
-  assert.match(src, /export async function getServerSideProps/); assert.match(src, /ctx\.query\?\.from/); assert.match(src, /readPrefill\(getSupabaseAdminClient\(\), from\)/);
+  assert.match(src, /export async function getServerSideProps/); assert.match(src, /ctx\.query\?\.from/); assert.match(src, /readPrefill\(getSupabaseAdminClient\(\), from, \{ nonce/);
   assert.match(src, /data-invited-review/); assert.match(src, /\/api\/pipeline\/prefill/);
 });
 

@@ -1,6 +1,12 @@
 import { Resend } from 'resend';
+import { isApplicationNumber, isOwnerToken, normalizeApplicationNumber, normalizeOwnerToken } from '../../lib/applicationIds';
+import { verifyConfirmation } from '../../lib/sendSignature';
+import { checkSubmitLimits } from '../../lib/rateLimit';
+import { kvIncr, kvExpire } from '../../lib/kv';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Every interpolated field is escaped; the number and the token are also validated against
+// lib/applicationIds.js before they get here, so the escape is a second wall.
+const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // ─── Lean application-confirmation email (no attachments) ──────
 // The current apply flow (/apply/[token]) sends the tenant ONLY their application
@@ -40,7 +46,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
           <tr>
             <td style="padding: 48px 0 20px;">
               <h1 style="font-family: 'Inter', sans-serif; font-weight: 800; font-size: 40px; line-height: 1.02; letter-spacing: -0.03em; color: #0f0f10; margin: 0;">
-                Application <span style="color: #d72027;">submitted,</span><br>${firstName}.
+                Application <span style="color: #d72027;">submitted,</span><br>${esc(firstName)}.
               </h1>
             </td>
           </tr>
@@ -65,7 +71,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
                       Your Application Number
                     </p>
                     <p style="font-family: 'Courier New', monospace; font-size: 22px; font-weight: 800; color: #faf8f3; letter-spacing: 0.04em; margin: 0 0 14px;">
-                      ${applicationNumber}
+                      ${esc(applicationNumber)}
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.55; color: #a4adbb; margin: 0;">
                       The listing realtor uses this number to pull up your application in their dashboard.
@@ -102,7 +108,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
                       Owner token
                     </p>
                     <p style="font-family: 'Courier New', monospace; font-size: 14px; color: #0f0f10; letter-spacing: 0.04em; word-break: break-all; background: #ffffff; border: 1px solid #e3ddd0; padding: 10px 12px; margin: 0 0 16px;">
-                      ${ownerToken}
+                      ${esc(ownerToken)}
                     </p>
                     <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                       <tr>
@@ -160,45 +166,43 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
 }
 
 // ─── Handler ───────────────────────────────────────────────────
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+// PUBLIC route, so it accepts only what the generate route signed (lib/sendSignature.js): the
+// application number, the email and a 15 minute expiry. Anything else answers 401. The number
+// and the owner token are validated, every field is escaped, and the IP is rate limited.
+export function createHandler({ send = null, limiter = { incr: kvIncr, expire: kvExpire }, now = () => Date.now() } = {}) {
+  return async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const clientIp = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+    const limited = await checkSubmitLimits(limiter, { ip: clientIp, now: now() });
+    if (!limited.ok) return res.status(429).json({ error: limited.message });
 
-  // The application confirmation: number and owner token, no attachments. The cover letter is no
-  // longer generated (pages/api/generate.js), so `letter` and `resume` from a stale client are ignored.
-  const { email, fullName, applicationNumber, ownerToken, uploadUrl: rawUploadUrl } = req.body;
-  // The document upload link carries the document request token only (never owner_token).
-  const uploadUrl = /^https:\/\/rentletter\.ca\/upload\/[a-f0-9]{32}$/.test(String(rawUploadUrl || '')) ? String(rawUploadUrl) : null;
-  if (!email || !applicationNumber) {
-    return res.status(400).json({ error: 'Missing email and application number' });
-  }
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return res.status(400).json({ error: 'Invalid email address' });
-  }
+    const { email, fullName, applicationNumber: rawNumber, ownerToken: rawToken, uploadUrl: rawUploadUrl, signature } = req.body || {};
+    const applicationNumber = normalizeApplicationNumber(rawNumber);
+    if (!email || !applicationNumber) return res.status(400).json({ error: 'Missing email and application number' });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) return res.status(400).json({ error: 'Invalid email address' });
+    if (!isApplicationNumber(applicationNumber)) return res.status(400).json({ error: 'Invalid application number' });
+    const ownerToken = rawToken ? normalizeOwnerToken(rawToken) : null;
+    if (ownerToken && !isOwnerToken(ownerToken)) return res.status(400).json({ error: 'Invalid owner token' });
+    if (!verifyConfirmation({ applicationNumber, email, exp: signature?.exp, sig: signature?.sig }, { now: now() })) return res.status(401).json({ error: 'Not authorized.' });
+    // The document upload link carries the document request token only (never owner_token).
+    const uploadUrl = /^https:\/\/rentletter\.ca\/upload\/[a-f0-9]{32}$/.test(String(rawUploadUrl || '')) ? String(rawUploadUrl) : null;
 
-  if (!process.env.RESEND_API_KEY) {
-    return res.status(500).json({ error: 'Email service not configured' });
-  }
-
-  try {
-    const firstName = (fullName || '').split(' ')[0] || 'there';
-    const result = await resend.emails.send({
-      from: 'Rentletter <hello@rentletter.ca>',
-      to: email,
-      subject: 'Your Rentletter application',
-      html: buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploadUrl }),
-    });
-    if (result.error) {
-      console.error('Resend error:', result.error);
+    const deliver = send || (async (mail) => { if (!process.env.RESEND_API_KEY) { const e = new Error('Email service not configured'); e.code = 'config'; throw e; } const r = await new Resend(process.env.RESEND_API_KEY).emails.send(mail); if (r?.error) throw new Error(r.error.message || 'send failed'); });
+    try {
+      const firstName = String(fullName || '').split(' ')[0] || 'there';
+      await deliver({
+        from: 'Rentletter <hello@rentletter.ca>',
+        to: String(email).trim(),
+        subject: 'Your Rentletter application',
+        html: buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploadUrl }),
+      });
+      return res.status(200).json({ success: true });
+    } catch (err) {
+      if (err?.code === 'config') return res.status(500).json({ error: 'Email service not configured' });
+      console.error('Email error:', err?.message || err);
       return res.status(500).json({ error: 'Failed to send email' });
     }
-    return res.status(200).json({ success: true });
-  } catch (err) {
-    console.error('Email error:', err);
-    return res.status(500).json({ error: 'Failed to send email' });
-  }
+  };
 }
 
-// Increase body size limit for large letters
-export const config = {
-  api: { bodyParser: { sizeLimit: '1mb' } },
-};
+export default createHandler();

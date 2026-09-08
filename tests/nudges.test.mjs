@@ -93,7 +93,7 @@ test('the pending set writes and the mint sites', () => {
   assert.match(read('pages/api/upload/finalize.js'), /kvSrem\(rec\.linkId\)/, 'srem on finalize');
   assert.match(read('pages/api/listings/status.js'), /kvSrem\(l\.id\)/, 'srem on rented or closed');
   assert.match(read('lib/nudges.js'), /kv\.srem\(linkId\)/, 'srem when the cron drops one');
-  assert.match(read('pages/api/applications/mirror.js'), /mintRequest\(/, 'the invite mirror mints');
+  assert.match(read('pages/api/applications/mirror.js'), /\bmint(?:Request)?\(/, 'the invite mirror mints');
   assert.match(read('pages/api/applicants/request-documents.js'), /mintRequest\(/, 'the button mints through the same helper');
   assert.doesNotMatch(read('pages/api/listings/add-applicant.js'), /mintRequest|request-documents/, 'add by number does not mint');
   assert.doesNotMatch(read('lib/referrals.js'), /mintRequest/, 'referral acceptance does not mint');

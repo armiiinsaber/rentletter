@@ -41,7 +41,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ ok: true, status, renewed: !!r.renewed });
   } catch (e) {
     if (statusTableAbsent(e)) return res.status(503).json({ error: 'Not available yet.' });
-    logServerError('[pipeline/answer]', e, { token: t });
+    logServerError('[pipeline/answer]', e, { token: t.slice(0, 6) });
     return res.status(500).json({ error: 'Could not save that. Please try again.' });
   }
 }

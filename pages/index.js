@@ -276,7 +276,7 @@ export default function Home() {
       setStep('result');
       // The confirmation email: the application number and the owner token.
       if (data.email && json.applicationNumber) {
-        sendEmail(data.email, data.fullName, json.applicationNumber, json.ownerToken);
+        sendEmail(data.email, data.fullName, json.applicationNumber, json.ownerToken, json.emailSig || null);
       }
     } catch (e) {
       setError(e.message);
@@ -284,7 +284,7 @@ export default function Home() {
     }
   };
 
-  const sendEmail = async (email, fullName, appNum, ownerTok) => {
+  const sendEmail = async (email, fullName, appNum, ownerTok, signature = null) => {
     setEmailSending(true);
     try {
       const res = await fetch('/api/send', {
@@ -295,6 +295,7 @@ export default function Home() {
           fullName,
           applicationNumber: appNum || applicationNumber,
           ownerToken: ownerTok || (typeof window !== 'undefined' ? localStorage.getItem('rentletter_owner_token') : null),
+          signature, // lib/sendSignature.js
         }),
       });
       const json = await res.json();
@@ -891,7 +892,6 @@ export default function Home() {
                     Co-applicant
                   </div>
                   <Field label="Full name" value={form.coApplicantName} onChange={v => update('coApplicantName', v)} placeholder="Alex Smith" />
-                  <Field label="Age" value={form.coApplicantAge} onChange={v => update('coApplicantAge', v)} placeholder="30" type="number" />
                   <Field label="Job title" value={form.coApplicantJobTitle} onChange={v => update('coApplicantJobTitle', v)} placeholder="Designer" />
                   <Field label="Employer" value={form.coApplicantEmployer} onChange={v => update('coApplicantEmployer', v)} placeholder="Figma" />
                   <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={v => update('coApplicantIncome', v)} placeholder="75,000" type="number" />

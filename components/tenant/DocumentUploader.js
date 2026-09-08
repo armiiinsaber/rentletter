@@ -12,7 +12,7 @@ import { useState, useRef } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 
-export const MAX_FILES = 12;
+export const MAX_FILES = 6; // the same cap the routes enforce (lib/applicantAnalysis.js MAX_DOCS)
 export const MAX_FILE = 3 * 1024 * 1024;
 export const OK_EXT = ['pdf', 'png', 'jpg', 'jpeg'];
 export const OK_ACCEPT = '.pdf,.png,.jpg,.jpeg';

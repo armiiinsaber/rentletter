@@ -28,8 +28,9 @@ import { rowToForm } from '../../lib/pipelinePrefill';
 // ?from={prefillToken}: the invite from People (pages/api/pipeline/invite.js). Resolved on the
 // server through the service role (lib/pipeline.js readPrefill): the token maps to an application
 // whose surviving fields fill every step, collapsed to one review card with one Submit. A wrong
-// or expired token renders the ordinary empty form. The token is deleted after the submission
-// (/api/pipeline/prefill). The sandbox token demoprefill fills from the fixture.
+// or expired token renders the ordinary empty form. The first open claims the token into a cookie
+// scoped to this path (48 hours); it is deleted after the submission (/api/pipeline/prefill). The
+// sandbox token demoprefill fills from the fixture.
 export async function getServerSideProps(ctx) {
   const from = String(ctx.query?.from || '');
   if (!from) return { props: { invited: null } };
@@ -37,9 +38,14 @@ export async function getServerSideProps(ctx) {
     if (from === 'demoprefill') { const { demoPrefillRow } = await import('../../lib/demoFixture'); return { props: { invited: { token: from, form: rowToForm(demoPrefillRow()) } } }; }
     const { isSupabaseConfigured } = await import('../../lib/supabase/server');
     if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { props: { invited: null } };
-    const { readPrefill } = await import('../../lib/pipeline');
+    const { readPrefill, PREFILL_COOKIE } = await import('../../lib/pipeline');
     const { getSupabaseAdminClient } = await import('../../lib/supabase/admin');
-    const r = await readPrefill(getSupabaseAdminClient(), from);
+    // The first open claims the token; the claim rides in a cookie scoped to this apply path for
+    // 48 hours, so the same browser can come back and anyone else sees the empty form.
+    const cookieHeader = String(ctx.req?.headers?.cookie || '');
+    const nonce = (cookieHeader.match(new RegExp(`(?:^|;\\s*)${PREFILL_COOKIE}=([^;]+)`)) || [])[1] || null;
+    const r = await readPrefill(getSupabaseAdminClient(), from, { nonce: nonce ? decodeURIComponent(nonce) : null });
+    if (r && r.nonce) ctx.res.setHeader('Set-Cookie', `${PREFILL_COOKIE}=${encodeURIComponent(r.nonce)}; Path=/apply/${encodeURIComponent(String(ctx.params?.token || ''))}; Max-Age=172800; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
     return { props: { invited: r ? { token: from, form: rowToForm(r.application) } : null } };
   } catch (e) {
     console.error('[apply] prefill failed:', e?.message || e);
@@ -401,6 +407,7 @@ export default function ApplyPage({ invited = null }) {
               applicationNumber,
               ownerToken,
               uploadUrl: minted?.url || null,
+              signature: json.emailSig || null, // lib/sendSignature.js: the generate route signed this send
             }),
           }).catch((e) => console.error('[apply] email send failed', e));
         }
@@ -846,7 +853,6 @@ export default function ApplyPage({ invited = null }) {
                   <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 18 }}>
                     <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Co tenant</div>
                     <Field label="Full name" value={form.coApplicantName} onChange={(v) => update('coApplicantName', v)} placeholder="Alex Smith" />
-                    <Field label="Age" value={form.coApplicantAge} onChange={(v) => update('coApplicantAge', v)} placeholder="30" type="number" />
                     <Field label="Job title" value={form.coApplicantJobTitle} onChange={(v) => update('coApplicantJobTitle', v)} placeholder="Designer" />
                     <Field label="Employer" value={form.coApplicantEmployer} onChange={(v) => update('coApplicantEmployer', v)} placeholder="Figma" />
                     <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={(v) => update('coApplicantIncome', v)} placeholder="75,000" type="number" />

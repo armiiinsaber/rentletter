@@ -20,7 +20,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
       if ((q.op === 'update' || q.op === 'insert') && q.payload) { const bad = Object.keys(Array.isArray(q.payload) ? q.payload[0] || {} : q.payload).find((c) => absentColumns.includes(c)); if (bad) return { data: null, error: { code: '42703', message: `column ${table}.${bad} does not exist` } }; }
       if (q.op === 'update') { const hit = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); hit.forEach((r) => Object.assign(r, q.payload)); updates.push({ table, payload: q.payload, count: hit.length }); return { data: q.single ? {} : [], error: null }; }
       if (q.op === 'insert') { const added = (Array.isArray(q.payload) ? q.payload : [q.payload]).map((r) => ({ id: `${table}-${rows.length + 1}`, ...r })); rows.push(...added); return { data: q.single ? added[0] : added, error: null }; }
-      if (q.op === 'upsert') return { data: q.single ? {} : [], error: null };
+      if (q.op === 'upsert') { const cols = q.onConflict.split(',').map((c) => c.trim()).filter(Boolean); const list = Array.isArray(q.payload) ? q.payload : [q.payload]; const out = list.map((p) => { const hit = cols.length ? rows.find((r) => cols.every((c) => String(r[c]) === String(p[c]))) : null; if (hit) { Object.assign(hit, p); return hit; } const row = { id: `${table}-${rows.length + 1}`, ...p }; rows.push(row); return row; }); return { data: q.single ? out[0] : out, error: null }; }
       if (q.op === 'delete') { const keep = rows.filter((r) => !q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : true))); const n = rows.length - keep.length; db[table] = keep; deletions.push({ table, n }); return { data: null, error: null, count: n }; }
       let out = rows.filter((r) => q.filters.every(([op, k, v]) => (op === 'eq' ? String(r[k]) === String(v) : op === 'in' ? (v || []).map(String).includes(String(r[k])) : op === 'notnull' ? r[k] != null : op === 'isnull' ? r[k] == null : op === 'lt' ? String(r[k]) < String(v) : true)));
       if (q.order) out = [...out].sort((a, b) => (String(a[q.order.col] || '') < String(b[q.order.col] || '') ? -1 : 1) * (q.order.asc ? 1 : -1));
@@ -34,7 +34,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
       select(cols = '*') { if (q.op === 'select') q.select = cols; return b; },
       update(p) { q.op = 'update'; q.payload = p; return b; },
       insert(p) { q.op = 'insert'; q.payload = p; return b; },
-      upsert(p) { q.op = 'upsert'; q.payload = p; return b; },
+      upsert(p, opts) { q.op = 'upsert'; q.payload = p; q.onConflict = String(opts?.onConflict || ''); return b; },
       delete() { q.op = 'delete'; return b; },
       eq(k, v) { q.filters.push(['eq', k, v]); return b; },
       in(k, v) { q.filters.push(['in', k, v]); return b; },
@@ -57,7 +57,7 @@ export function fakeSupabase(tables, { absentColumns = [] } = {}) {
 export function fakeKv(values = {}) {
   const base = 'http://kv.fake';
   process.env.KV_REST_API_URL = base; process.env.KV_REST_API_TOKEN = 'fake';
-  const calls = [];
+  const calls = []; const counters = {}; const expires = {}; const lists = {};
   const realFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
     const u = String(url);
@@ -66,12 +66,19 @@ export function fakeKv(values = {}) {
     const path = u.slice(base.length);
     calls.push(path.split('/')[1]);
     const json = (result) => ({ ok: true, json: async () => ({ result }) });
-    if (path.startsWith('/get/')) { const v = values[decodeURIComponent(path.slice(5))]; return json(v == null ? null : JSON.stringify(v)); }
-    if (path.startsWith('/mget/')) { const keys = path.slice(6).split('/').map(decodeURIComponent); return json(keys.map((k) => (values[k] == null ? null : JSON.stringify(values[k])))); }
-    if (path.startsWith('/lrange/')) return json([]);
+    const seg = path.split('/').map(decodeURIComponent);
+    if (path.startsWith('/get/')) { const v = values[seg[2]]; return json(v == null ? null : JSON.stringify(v)); }
+    if (path.startsWith('/mget/')) { const keys = seg.slice(2); return json(keys.map((k) => (values[k] == null ? null : JSON.stringify(values[k])))); }
+    if (path.startsWith('/set/')) { let body = null; try { body = init && init.body != null ? JSON.parse(init.body) : null; } catch (e) { body = init && init.body; } values[seg[2]] = body; return json('OK'); }
+    if (path.startsWith('/del/')) { delete values[seg[2]]; return json(1); }
+    if (path.startsWith('/incr/')) { counters[seg[2]] = (counters[seg[2]] || 0) + 1; return json(counters[seg[2]]); }
+    if (path.startsWith('/expire/')) { expires[seg[2]] = Number(seg[3]); return json(1); }
+    if (path.startsWith('/ttl/')) { return json(expires[seg[2]] != null ? expires[seg[2]] : (values[seg[2]] != null ? 3600 : -2)); }
+    if (path.startsWith('/lpush/')) { (lists[seg[2]] = lists[seg[2]] || []).unshift(seg[3]); return json(lists[seg[2]].length); }
+    if (path.startsWith('/lrange/')) return json(lists[seg[2]] || []);
     return json('OK');
   };
-  return { calls, restore: () => { globalThis.fetch = realFetch; delete process.env.KV_REST_API_URL; delete process.env.KV_REST_API_TOKEN; } };
+  return { calls, values, counters, expires, lists, restore: () => { globalThis.fetch = realFetch; delete process.env.KV_REST_API_URL; delete process.env.KV_REST_API_TOKEN; } };
 }
 
 // The measurement fixture: N listings for one realtor, K applicants each. Every third applicant

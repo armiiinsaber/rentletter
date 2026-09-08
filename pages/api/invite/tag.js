@@ -1,65 +1,42 @@
-// /api/invite/tag
-// PUBLIC endpoint called by the tenant client after a successful submission
-// via /apply/[token]. Records that this application was submitted through
-// this invite, so when the realtor reloads their dashboard, the application
-// appears in the right listing automatically.
+// /api/invite/tag  POST { token, applicationNumber }. PUBLIC, called by the tenant client after a
+// successful submission through /apply/[token]. Records that this application was submitted
+// through this invite (invite_submissions:{token}), so the mirror route can trust the pair.
+// Rate limited per token and per IP (lib/rateLimit.js). The number must be a real one
+// (lib/applicationIds.js) with an app:{RL} record; the invite record is rewritten with its
+// remaining TTL intact.
+import { kvGet, kvIncr, kvExpire, kvTtl, kvCommand } from '../../../lib/kv';
+import { checkSubmitLimits } from '../../../lib/rateLimit';
+import { isApplicationNumber, normalizeApplicationNumber } from '../../../lib/applicationIds';
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
-
-  const { token, applicationNumber } = req.body || {};
-
-  if (!token || !/^[a-f0-9]{20}$/.test(String(token))) {
-    return res.status(400).json({ error: 'Invalid invite token.' });
-  }
-  if (!applicationNumber || !/^RL-[A-Z0-9-]+$/i.test(String(applicationNumber))) {
-    return res.status(400).json({ error: 'Invalid application number.' });
-  }
-
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) {
-    return res.status(503).json({ error: 'Service unavailable.' });
-  }
-
-  const base = (process.env.KV_REST_API_URL || '').replace(/\/+$/, '');
-
-  try {
-    // 1. Fetch the invite to confirm it's valid and learn whose listing this is for
-    const inviteRes = await fetch(`${base}/get/linvite:${token}`, {
-      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
-    });
-    const inviteData = await inviteRes.json();
-    if (!inviteData?.result) {
-      return res.status(404).json({ error: 'Invite not found.' });
+export function createHandler({ kv = { get: kvGet, incr: kvIncr, expire: kvExpire, ttl: kvTtl, command: kvCommand }, configured = () => !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), now = () => Date.now() } = {}) {
+  return async function handler(req, res) {
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+    const { token, applicationNumber } = req.body || {};
+    if (!token || !/^[a-f0-9]{20}$/.test(String(token))) return res.status(400).json({ error: 'Invalid invite token.' });
+    const appNum = normalizeApplicationNumber(applicationNumber);
+    if (!isApplicationNumber(appNum)) return res.status(400).json({ error: 'Invalid application number.' });
+    if (!configured()) return res.status(503).json({ error: 'Service unavailable.' });
+    const clientIp = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+    const limited = await checkSubmitLimits({ incr: kv.incr, expire: kv.expire }, { token: `tag:${token}`, ip: clientIp, now: now() });
+    if (!limited.ok) return res.status(429).json({ error: limited.message });
+    try {
+      const invite = await kv.get(`linvite:${token}`);
+      if (!invite) return res.status(404).json({ error: 'Invite not found.' });
+      const app = await kv.get(`app:${appNum}`);
+      if (!app) return res.status(404).json({ error: 'Application not found.' });
+      await kv.command(['lpush', `invite_submissions:${token}`, appNum]);
+      await kv.command(['ltrim', `invite_submissions:${token}`, '0', '199']);
+      // Rewrite the counters and keep the record's remaining life (a plain SET drops the TTL).
+      const remaining = await kv.ttl(`linvite:${token}`);
+      const next = { ...invite, submissionCount: (Number(invite.submissionCount) || 0) + 1, lastSubmissionAt: new Date(now()).toISOString() };
+      await kv.command(['set', `linvite:${token}`], next);
+      if (typeof remaining === 'number' && remaining > 0) await kv.expire(`linvite:${token}`, remaining);
+      return res.status(200).json({ ok: true });
+    } catch (e) {
+      console.error('[tag-invite-submission] error:', e?.message || e);
+      return res.status(500).json({ error: 'Could not tag submission.' });
     }
-    const invite = typeof inviteData.result === 'string' ? JSON.parse(inviteData.result) : inviteData.result;
-
-    // 2. Push the new application number into a per-invite submission list
-    // and increment the count
-    await fetch(`${base}/lpush/invite_submissions:${token}/${encodeURIComponent(applicationNumber)}`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
-    });
-    // Trim to last 200 to bound storage
-    await fetch(`${base}/ltrim/invite_submissions:${token}/0/199`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}` },
-    });
-
-    // Update invite with new submission count
-    invite.submissionCount = (invite.submissionCount || 0) + 1;
-    invite.lastSubmissionAt = new Date().toISOString();
-    await fetch(`${base}/set/linvite:${token}`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(invite),
-    });
-
-    return res.status(200).json({ ok: true });
-  } catch (e) {
-    console.error('[tag-invite-submission] error:', e);
-    return res.status(500).json({ error: 'Could not tag submission.' });
-  }
+  };
 }
+
+export default createHandler();

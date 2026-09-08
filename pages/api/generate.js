@@ -4,6 +4,7 @@ import { kvIncr, kvExpire, kvGet } from '../../lib/kv';
 import { checkSubmitLimits } from '../../lib/rateLimit';
 import { calculateScorecard } from '../../lib/scorecard';
 import { rentFromInvite } from '../../lib/inviteRent';
+import { confirmationSignature } from '../../lib/sendSignature';
 
 
 // The application number and the owner token come from lib/applicationIds.js, the same module
@@ -52,7 +53,7 @@ function buildTemplatedResume(data) {
     moveDate,
     apartmentAddress, apartmentDescription,
     numberOfOccupants, occupantsDetails, smoker,
-    hasCoApplicant, coApplicantName, coApplicantRelationship, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
+    hasCoApplicant, coApplicantName, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
     pets,
     references,
     estimatedRent, rentToIncomeRatio,
@@ -114,7 +115,6 @@ function buildTemplatedResume(data) {
   if (hasCoApplicant && coApplicantName) {
     lines.push(` · CO-APPLICANT · `);
     lines.push(`Name: ${coApplicantName}`);
-    if (coApplicantRelationship) lines.push(`Relationship: ${coApplicantRelationship}`);
     if (coApplicantJobTitle) lines.push(`Role: ${coApplicantJobTitle}${coApplicantEmployer ? ` at ${coApplicantEmployer}` : ''}`);
     if (coApplicantIncome) lines.push(`Annual income: ${fmtIncome(coApplicantIncome)}`);
     lines.push(``);
@@ -160,8 +160,8 @@ export default async function handler(req, res) {
     currentRent,
     moveInDate,
     numberOfOccupants, occupantsDetails, smoker,
-    hasCoApplicant, coApplicantName, coApplicantAge, coApplicantEmployer,
-    coApplicantJobTitle, coApplicantIncome, coApplicantRelationship,
+    hasCoApplicant, coApplicantName, coApplicantEmployer,
+    coApplicantJobTitle, coApplicantIncome,
     pets,
     reference1Name, reference1Relationship, reference1Contact,
     reference2Name, reference2Relationship, reference2Contact,
@@ -202,7 +202,7 @@ export default async function handler(req, res) {
       currentRent, moveDate,
       apartmentAddress, apartmentDescription,
       numberOfOccupants, occupantsDetails, smoker,
-      hasCoApplicant, coApplicantName, coApplicantRelationship, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
+      hasCoApplicant, coApplicantName, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
       pets,
       references: [
         ...(reference1Name ? [{ name: reference1Name, relationship: reference1Relationship, contact: reference1Contact }] : []),
@@ -276,8 +276,8 @@ export default async function handler(req, res) {
       },
       coApplicant: hasCoApplicant ? {
         name: coApplicantName || null,
-        age: coApplicantAge || null,
-        relationship: coApplicantRelationship || null,
+        age: null, // never written: a protected ground; the key stays for older records
+        relationship: null, // never written: a family status proxy; the key stays
         jobTitle: coApplicantJobTitle || null,
         employer: coApplicantEmployer || null,
         annualIncome: coApplicantIncome ? parseInt(coApplicantIncome) : null,
@@ -318,6 +318,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       letter: null, resume, applicationNumber,
       ownerToken: applicationData.ownerToken,
+      // The confirmation email's credential (lib/sendSignature.js): /api/send accepts nothing else.
+      emailSig: confirmationSignature({ applicationNumber, email: email || '' }),
       mode: requestMode,
     });
   } catch (err) {

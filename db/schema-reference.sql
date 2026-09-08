@@ -145,3 +145,7 @@
 --   profiles_select_own         on profiles            for select using (id = auth.uid())
 --   profiles_update_own         on profiles            for update using (id = auth.uid())
 --   applications                no policy: reads and writes go through the service role only
+--
+-- Confirmed in production on 2026 09 04: relrowsecurity is true for applications, listings,
+-- listing_applicants, profiles, tenant_profiles and applicant_documents, and pg_policies returns
+-- listings_all_own, listing_applicants_all_own, profiles_select_own and profiles_update_own.

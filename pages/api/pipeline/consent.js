@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     if (error) { if (statusTableAbsent(error)) return res.status(503).json({ error: 'Not available yet.' }); throw error; }
     return res.status(200).json({ ok: true, message: done(record.realtorName) });
   } catch (e) {
-    logServerError('[pipeline/consent]', e, { token });
+    logServerError('[pipeline/consent]', e, { token: token.slice(0, 6) });
     return res.status(500).json({ error: 'Could not save that. Please try again.' });
   }
 }

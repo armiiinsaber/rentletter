@@ -16,7 +16,9 @@
 import { kvReady, kvGetJson, kvSetJson, reqKey, stagingKey, isDocReqToken, STAGING_TTL } from '../../../lib/docRequest';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
-import { runDocumentAnalysis, ALLOWED_DOC_MIME } from '../../../lib/applicantAnalysis';
+import { runDocumentAnalysis, ALLOWED_DOC_MIME, MAX_DOCS } from '../../../lib/applicantAnalysis';
+import { checkSubmitLimits } from '../../../lib/rateLimit';
+import { kvIncr, kvExpire } from '../../../lib/kv';
 import { storeAnalyzedDocuments, kindOf } from '../../../lib/documentStore';
 
 // One document per request → a single base64 file (client-capped at ~3MB raw ≈ 4MB base64, under
@@ -33,6 +35,11 @@ export default async function handler(req, res) {
   let file = req.body && req.body.file;
   if (!isDocReqToken(token)) return res.status(400).json({ error: 'Invalid link.' });
   if (!file || typeof file !== 'object') return res.status(400).json({ error: 'No document received.' });
+  // The token is the only credential, so it is also the rate limit key (10 an hour per token, 30 per IP).
+  const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+  const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: `upload:${token}`, ip: clientIp });
+  if (!limited.ok) { file.data = null; return res.status(429).json({ error: limited.message }); }
+  if (Number.isFinite(total) && total > MAX_DOCS) { file.data = null; return res.status(400).json({ error: `Up to ${MAX_DOCS} documents at a time.` }); }
 
   const mime = String(file.type || '').toLowerCase();
   const data = String(file.data || '');
@@ -56,6 +63,8 @@ export default async function handler(req, res) {
     file.data = null;
     return res.status(200).json({ ok: true, skipped: true, filename: name, documentType: staging.items[fkey].document?.documentType || null });
   }
+  // The same cap the realtor path enforces (lib/realtorUpload.js): six files per submission.
+  if (Object.keys(staging.items).length >= MAX_DOCS) { file.data = null; return res.status(400).json({ error: `Up to ${MAX_DOCS} documents at a time.` }); }
 
   // Load THIS applicant (token is the authorization; the admin client only ever touches the single
   // applicant the token maps to). Needed so runDocumentAnalysis can compare the document to the
