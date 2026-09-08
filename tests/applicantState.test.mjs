@@ -2,13 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { applicantState } from '../lib/applicantState.js';
 
-const report = ({ income = true, nameMatch = 'match', analyzedAt = '2026-08-12T15:00:00Z' } = {}) => ({ analyzedAt, nameMatch, documents: [{ documentType: 'pay stub' }], comparisons: [{ field: 'Income', found: '$90,000', status: income ? 'match' : 'close' }, { field: 'Employer', found: 'X', status: 'match' }] });
+const report = ({ income = true, nameMatch = 'match', analyzedAt = '2026-08-12T15:00:00Z' } = {}) => ({ analyzedAt, nameMatch, documents: [{ documentType: 'pay stub' }], comparisons: [{ field: 'Income', found: '$90,000', status: income === true ? 'match' : income === 'close' ? 'close' : 'mismatch' }, { field: 'Employer', found: 'X', status: 'match' }] });
 const junction = (extra = {}) => ({ decisionStatus: 'none', withdrawnAt: null, decisionChangedAt: null, docRequest: null, confirmations: {}, lastSentAt: null, ...extra });
 const EMP = { employer: { at: '2026-09-02T14:00:00Z', by: 'Armin' } };
 
 test('new: nothing recorded', () => { assert.deepEqual(applicantState({ junction: junction() }), { state: 'new', since: null }); assert.deepEqual(applicantState({}), { state: 'new', since: null }); });
 test('requested: a request record and no report', () => { assert.deepEqual(applicantState({ junction: junction({ docRequest: { status: 'requested', requestedAt: '2026-08-30T10:00:00Z' } }) }), { state: 'requested', since: '2026-08-30T10:00:00Z' }); });
 test('checked: a report, name matched, nothing matched', () => { assert.deepEqual(applicantState({ junction: junction(), verification: report({ income: false }) }), { state: 'checked', since: '2026-08-12T15:00:00Z' }); });
+test('matched: a close income (within 15%) is not a contradiction', () => { assert.equal(applicantState({ junction: junction(), verification: report({ income: 'close' }) }).state, 'matched'); });
 test('matched: a report with income matched', () => { assert.deepEqual(applicantState({ junction: junction(), verification: [report()] }), { state: 'matched', since: '2026-08-12T15:00:00Z' }); });
 test('verified: the realtor confirmed the employer, with its date', () => { assert.deepEqual(applicantState({ junction: junction({ confirmations: EMP }) }), { state: 'verified', since: '2026-09-02T14:00:00Z' }); });
 test('edited: a profile edit after the report, cleared only by a confirmation dated after it', () => {

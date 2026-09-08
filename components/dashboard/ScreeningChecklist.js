@@ -64,7 +64,8 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const hasDocs = v.state !== 'none';
   const nameFact = !hasDocs ? 'none' : v.state === 'ok' ? 'name matches' : 'did not match';
   // The found string is the arithmetic, not a bare number: "$3,541.67 semi monthly × 24 from 2 of 3 stubs".
-  const incomeFact = !hasDocs ? 'none' : v.incomeMatched ? `${v.incomeExplanation || (v.incomeFound != null ? money(v.incomeFound) : 'income')} matches` : v.incomeExplanation ? `${v.incomeExplanation}, did not match` : 'did not match';
+  // A close figure (within 15%) is shown with both figures and the explanation; it is not a contradiction.
+  const incomeFact = !hasDocs ? 'none' : v.incomeMatched ? `${v.incomeExplanation || (v.incomeFound != null ? money(v.incomeFound) : 'income')} matches` : v.incomeClose ? `${v.incomeExplanation}, close to stated` : v.incomeExplanation ? `${v.incomeExplanation}, did not match` : 'did not match';
   // The Employer row: matched or not, the letter's start date, and what lower sources list (a credit
   // report's employer line is historical and never compared, lib/documentAuthority.js).
   const employerFact = !hasDocs ? 'none' : `${v.employerMatched ? 'matched' : 'not matched'}${v.employerSince ? ` · ${v.employerSince}` : ''}`;

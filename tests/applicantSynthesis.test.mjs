@@ -25,9 +25,11 @@ test('unverified: stated income, no documents, no reference', () => {
 });
 
 test('documents that differ on income say so, never verified, never documented', () => {
-  const report = verifiedReport({ comparisons: [{ field: 'Annual income', status: 'close' }] });
+  const report = verifiedReport({ comparisons: [{ field: 'Annual income', status: 'mismatch' }] });
   const a = applicant({ annual_income: 60000, rent_to_income_ratio: 25 }, [report]);
   assert.equal(synthesisLine(a), 'Documents differ on stated income at 4x rent, no reference yet');
+  const close = applicant({ annual_income: 60000, rent_to_income_ratio: 25 }, [verifiedReport({ comparisons: [{ field: 'Annual income', status: 'close' }] })]);
+  assert.equal(synthesisLine(close), 'Stated income at 4x rent, unconfirmed by documents, no reference yet', 'close is not a contradiction');
   const emp = applicant({ annual_income: 60000, rent_to_income_ratio: 25 }, [verifiedReport({ comparisons: [{ field: 'Annual income', status: 'match' }, { field: 'Employer', status: 'mismatch' }] })]);
   assert.equal(synthesisLine(emp), 'Documents differ on employer, stated income at 4x rent, no reference yet');
   const nothing = applicant({ annual_income: 60000, rent_to_income_ratio: 25 }, [verifiedReport({ comparisons: [] })]);

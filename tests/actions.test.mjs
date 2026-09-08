@@ -12,7 +12,7 @@ const fixture = () => ({
   listings: [L1, L2],
   applicantsByListing: {
     L1: [
-      app('a-check', 'David Kowalski', { docVerifications: [report({ comparisons: [{ field: 'Income', status: 'close' }] })] }),
+      app('a-check', 'David Kowalski', { docVerifications: [report({ comparisons: [{ field: 'Income', status: 'mismatch' }] })] }),
       app('a-mismatch', 'Lucia Fernandez', { docVerifications: [report({ nameMatch: 'mismatch' })] }),
       app('a-verify', 'Wei Chen', { docVerifications: [report()] }),
       app('a-edited', 'Noor Haddad', { docVerifications: [report()], application: { full_name: 'Noor Haddad', profile_updated_at: daysAgo(1), fit: { score: 3.9, label: 'check docs' } } }),

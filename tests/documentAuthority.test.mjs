@@ -103,7 +103,10 @@ test('letter at 90,000 and stubs at 85,000: the letter is the figure, income clo
   assert.equal(inc.explanation, '$90,000 a year on the letter; pay stubs annualize to $85,000 ($3,541.67 semi monthly × 24 from 2 of 3 stubs; 1 partial period excluded)');
   assert.deepEqual(inc.stubs, { annual: 85000, explanation: '$3,541.67 semi monthly × 24 from 2 of 3 stubs; 1 partial period excluded', basis: 'median full period' }); assert.deepEqual(inc.letter, { annual: 90000 });
   const fit = computeFit({ application: APP, listing: LISTING, verification: run, confirmations: {} });
-  assert.equal(fit.label, 'check docs'); assert.equal(fit.incomeSource, 'stated');
+  assert.equal(fit.label, 'docs match', 'close is not check docs'); assert.equal(fit.incomeSource, 'stated'); assert.equal(fit.evidence.contradicted, false);
+  const v = readVerification(run);
+  assert.equal(v.incomeClose, true); assert.equal(v.incomeMismatch, false); assert.equal(v.incomeMatched, false);
+  assert.equal(applicantState({ junction: { application: APP }, verification: run }).state, 'matched');
   const t4 = incomeComparison([doc('tax document (T4)', { employer: A, annualSalaryPrinted: 84000 })], 85000);
   assert.equal(t4.basis, 'tax slip'); assert.equal(t4.status, 'match'); assert.equal(t4.annual, 84000);
 });

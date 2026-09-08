@@ -8,7 +8,7 @@ const record = { prev_landlord_name: 'A. Patel', years_at_previous: '4', referen
 const app = (income, extra = {}) => ({ ...record, annual_income: income, co_applicant: null, ...extra });
 const report = ({ income = true, employer = true, nameMatch = 'match', analyzedAt = '2026-08-01T00:00:00Z' } = {}) => ({
   analyzedAt, nameMatch, documents: [{ documentType: 'pay stub' }],
-  comparisons: [{ field: 'Income', stated: '$90,000', found: '$90,000', status: income ? 'match' : 'close' }, { field: 'Employer', stated: 'X', found: 'X', status: employer ? 'match' : 'mismatch' }],
+  comparisons: [{ field: 'Income', stated: '$90,000', found: '$90,000', status: income ? 'match' : 'mismatch' }, { field: 'Employer', stated: 'X', found: 'X', status: employer ? 'match' : 'mismatch' }],
 });
 const CALLED = { landlord: { at: '2026-09-02T14:00:00Z', by: 'Armin' } };
 const fit = (income, rent, listing = {}, verification = null, extra = {}, confirmations = CALLED) => computeFit({ application: app(income, extra), listing: { monthly_rent: rent, ...listing }, verification, confirmations });
@@ -149,6 +149,10 @@ test('R. h: labels. income mismatch is check docs, with or without ID seen; name
   const nameOffId = rec('2', '1', 0, {}, report({ nameMatch: 'mismatch' }), {}, { id: { at: 'x', by: 'A' } });
   say('income did not match', incomeOff); say('income did not match, id seen', incomeOffId); say('name mismatch only, id seen', nameOffId);
   assert.equal(incomeOff.label, 'check docs'); assert.equal(incomeOffId.label, 'check docs'); assert.equal(nameOffId.label, 'docs match');
+  // close is not check docs: within 15% the label stays docs match, the number rests on the stated income
+  const closeReport = { ...report(), comparisons: [{ field: 'Income', stated: '$85,000', found: '$90,000 a year on the letter', annual: 90000, status: 'close' }, { field: 'Employer', stated: 'X', found: 'X', status: 'match' }] };
+  const incomeClose = rec('2', '1', 0, {}, closeReport);
+  assert.equal(incomeClose.label, 'docs match'); assert.equal(incomeClose.incomeSource, 'stated'); assert.equal(incomeClose.evidence.contradicted, false); assert.equal(incomeClose.E, 2.5);
   const nothingCompared = rec('2', '1', 0, {}, { analyzedAt: 'x', nameMatch: 'match', documents: [{ documentType: 'government ID' }], comparisons: [] });
   assert.equal(nothingCompared.label, 'stated', 'a report that compared nothing leaves the number on stated facts');
 });

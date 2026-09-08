@@ -9,7 +9,7 @@ test('the state line in order, non zero counts only', () => {
   const apps = [
     a({ confirmations: { employer: { at: '2026-09-01T00:00:00Z', by: 'You' } } }),
     a({ docVerifications: [report()] }), a({ docVerifications: [report()] }),
-    a({ docVerifications: [report({ nameMatch: 'mismatch' })] }), a({ docVerifications: [report({ comparisons: [{ field: 'Income', status: 'close' }] })] }),
+    a({ docVerifications: [report({ nameMatch: 'mismatch' })] }), a({ docVerifications: [report({ comparisons: [{ field: 'Income', status: 'mismatch' }] })] }),
     a({ docRequest: { status: 'requested', requestedAt: '2026-08-30T00:00:00Z' } }),
     a(), a({ decisionStatus: 'reject' }), a({ withdrawnAt: '2026-08-01T00:00:00Z' }),
   ];
