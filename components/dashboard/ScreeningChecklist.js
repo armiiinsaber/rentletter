@@ -65,7 +65,10 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const nameFact = !hasDocs ? 'none' : v.state === 'ok' ? 'name matches' : 'did not match';
   // The found string is the arithmetic, not a bare number: "$3,541.67 semi monthly × 24 from 2 of 3 stubs".
   const incomeFact = !hasDocs ? 'none' : v.incomeMatched ? `${v.incomeExplanation || (v.incomeFound != null ? money(v.incomeFound) : 'income')} matches` : v.incomeExplanation ? `${v.incomeExplanation}, did not match` : 'did not match';
-  const employerFact = !hasDocs ? 'none' : v.employerMatched ? 'matched' : 'not matched';
+  // The Employer row: matched or not, the letter's start date, and what lower sources list (a credit
+  // report's employer line is historical and never compared, lib/documentAuthority.js).
+  const employerFact = !hasDocs ? 'none' : `${v.employerMatched ? 'matched' : 'not matched'}${v.employerSince ? ` · ${v.employerSince}` : ''}`;
+  const alsoSeen = hasDocs && Array.isArray(v.employerAlsoSeen) ? v.employerAlsoSeen : [];
   const minIncome = Number(listing?.pref_min_annual_income) > 0 ? Number(listing.pref_min_annual_income) : null;
   const incomeMiss = fit && minIncome && fit.incomeUsed != null && fit.incomeUsed < minIncome ? ` · your min ${kShort(minIncome)}` : '';
   const maxPct = Number(listing?.pref_rent_to_income_max_pct) > 0 ? Number(listing.pref_rent_to_income_max_pct) : 40;
@@ -96,7 +99,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const rows = [
     { key: 'id', title: 'Identity', said: app.full_name || 'no name given', docs: nameFact, verb: 'Saw ID' },
     { key: 'employer', title: 'Income', said: app.annual_income ? `${money(app.annual_income)} a year` : 'no income given', docs: incomeFact + incomeMiss, verb: 'Called employer' },
-    { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true, note: GUIDANCE },
+    { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true, also: alsoSeen, note: GUIDANCE },
     { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' , note: GUIDANCE },
     { key: 'reference', title: 'References', said: refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
@@ -126,6 +129,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
                   Said: {row.said}{row.docs != null ? <> · Docs: {row.docs}</> : null}
                 </div>
+                {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Also seen: {line}</div>) : null}
                 {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>Asked {shortDate(refResp.sentAt)} · no answer yet</div> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'answered' ? (

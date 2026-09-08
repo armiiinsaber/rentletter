@@ -2,7 +2,8 @@
 // a made up name and employer; no real pay stub data.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { annualizeFromStubs, frequencyOf, incomeComparison, MATCH_PCT, CLOSE_PCT } from '../lib/incomeAnnualize.js';
+import { annualizeFromStubs, frequencyOf, MATCH_PCT, CLOSE_PCT } from '../lib/incomeAnnualize.js';
+import { incomeComparison } from '../lib/documentAuthority.js';
 import { buildCombinedRun } from '../lib/uploadCombine.js';
 import { readVerification, computeFit } from '../lib/fitScore.js';
 
@@ -63,13 +64,16 @@ test('the comparison: within 5% match, within 15% close, else mismatch, never mi
   assert.equal(incomeComparison([], 85000).status, 'not_found');
   const letter = incomeComparison([{ documentType: 'employment letter', unrecognized: false, extracted: { annualSalaryPrinted: 85000 } }], 85000);
   assert.equal(letter.status, 'match'); assert.equal(letter.basis, 'employment letter');
-  const stubsWinOverLetter = incomeComparison([...docs(THREE), { documentType: 'employment letter', unrecognized: false, extracted: { annualSalaryPrinted: 60000 } }], 85000);
-  assert.equal(stubsWinOverLetter.annual, 85000, 'stubs are the basis when they exist');
+  // letter and stubs are both authority 3 (lib/documentAuthority.js): when they disagree the letter is the figure and both are shown
+  const letterWins = incomeComparison([...docs(THREE), { documentType: 'employment letter', unrecognized: false, extracted: { annualSalaryPrinted: 60000 } }], 85000);
+  assert.equal(letterWins.annual, 60000); assert.equal(letterWins.basis, 'employment letter'); assert.equal(letterWins.status, 'mismatch');
+  assert.match(letterWins.explanation, /^\$60,000 a year on the letter; pay stubs annualize to \$85,000 \(\$3,541\.67 semi monthly × 24 from 2 of 3 stubs; 1 partial period excluded\)$/);
+  assert.equal(letterWins.stubs.annual, 85000); assert.equal(letterWins.letter.annual, 60000);
 });
 
 test('finalize: the comparison runs once over every staged pay document, not per file', () => {
   const items = THREE.map((s, i) => ({ index: i, filename: `s${i}.pdf`, document: { filename: `s${i}.pdf`, documentType: 'pay stub', unrecognized: false, extracted: { ...s, applicantName: 'Test Person', employer: 'Test Employer Ltd.' } }, comparisons: [{ field: 'Income', stated: '$85,000', found: i === 2 ? '$42,505' : '$85,000', status: i === 2 ? 'mismatch' : 'match' }, { field: 'Employer', stated: 'Test Employer Ltd.', found: 'Test Employer Ltd.', status: 'match' }], confidence: 'high' }));
-  const run = buildCombinedRun(items, 'Test Person', 85000);
+  const run = buildCombinedRun(items, 'Test Person', { statedAnnualIncome: 85000, statedEmployer: 'Test Employer Ltd.' });
   const income = run.comparisons.filter((c) => /income/i.test(c.field));
   assert.equal(income.length, 1, 'one income row');
   assert.equal(income[0].status, 'match', 'the per file mismatch from the partial stub does not survive'); assert.equal(income[0].annual, 85000);

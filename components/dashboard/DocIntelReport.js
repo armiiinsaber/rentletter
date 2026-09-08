@@ -27,14 +27,13 @@ const DOC_LABEL = {
 const prettyType = (t) => DOC_LABEL[t] || (t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Document');
 
 const FIELD_LABEL = {
-  applicantName: 'Name', income: 'Income', payFrequency: 'Pay frequency', employer: 'Employer',
-  employmentType: 'Employment', jobTitle: 'Job title', documentDate: 'Date',
-  accountsCount: 'Accounts / tradelines', delinquencies: 'Delinquencies', collections: 'Collections',
-  bureau: 'Bureau', scoreBand: 'Score band', reportDate: 'Report date',
+  applicantName: 'Name', employer: 'Employer', employmentType: 'Employment', jobTitle: 'Job title', startDate: 'Start date',
+  annualSalaryPrinted: 'Annual figure printed', periodStart: 'Period start', periodEnd: 'Period end', payDate: 'Pay date',
+  grossForPeriod: 'Gross for period', regularRate: 'Hourly rate', hours: 'Hours', payFrequency: 'Pay frequency', income: 'Income', documentDate: 'Date',
 };
-// Which fact rows to show (credit score/band/bureau/date render in the headline block instead).
-const STD_FIELDS = ['applicantName', 'income', 'payFrequency', 'employer', 'employmentType', 'jobTitle', 'documentDate'];
-const CREDIT_ROW_FIELDS = ['accountsCount', 'delinquencies', 'collections', 'employer', 'applicantName', 'documentDate'];
+// Which fact rows to show. A credit report shows one line only (below); nothing else on it is read.
+const STD_FIELDS = ['applicantName', 'employer', 'employmentType', 'jobTitle', 'startDate', 'annualSalaryPrinted', 'periodStart', 'periodEnd', 'payDate', 'grossForPeriod', 'regularRate', 'hours', 'payFrequency', 'income', 'documentDate'];
+const CREDIT_ROW_FIELDS = [];
 
 function Chip({ children, fg, bg }) {
   return (
@@ -96,12 +95,14 @@ export default function DocIntelReport({ result }) {
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px' }}>
                   <span style={{ width: 20, height: 20, flexShrink: 0, borderRadius: '50%', background: s.bg, color: s.fg, border: `1px solid ${s.fg}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{s.mark}</span>
                   <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, minWidth: 72 }}>{c.field}</span>
-                  <span style={{ fontSize: 12.5, color: C.inkSoft, flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 12.5, color: C.inkSoft, flex: '1 1 180px', minWidth: 0, overflowWrap: 'anywhere' }}>
                     stated <strong style={{ color: C.ink }}>{c.stated ?? 'not set'}</strong>
                     <span style={{ color: C.inkMute }}> · found </span>
                     <strong style={{ color: C.ink }}>{c.found ?? 'not set'}</strong>
                   </span>
                   <Chip fg={s.fg} bg={s.bg}>{s.label}</Chip>
+                  {c.since ? <span style={{ flexBasis: '100%', fontSize: 12, color: C.inkSoft }}>{c.since}</span> : null}
+                  {Array.isArray(c.alsoSeen) && c.alsoSeen.length ? c.alsoSeen.map((line) => <span key={line} style={{ flexBasis: '100%', fontSize: 12, color: C.inkMute }}>Also seen: {line}</span>) : null}
                 </div>
               );
             })}
@@ -153,19 +154,10 @@ export default function DocIntelReport({ result }) {
                     </div>
                   )}
 
-                  {/* Credit report, the SCORE is the headline fact. */}
-                  {isCredit && ex.creditScore != null && (
-                    <div style={{ background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '10px 12px', marginBottom: 10 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 3 }}>Credit score</div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 34, fontWeight: 800, color: C.ink, lineHeight: 1 }}>{ex.creditScore}</span>
-                        {ex.scoreBand && <Chip fg={C.ink} bg={C.card}>{ex.scoreBand}</Chip>}
-                      </div>
-                      {(ex.bureau || ex.reportDate) && (
-                        <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 5 }}>
-                          {[ex.bureau, ex.reportDate && `as of ${ex.reportDate}`].filter(Boolean).join('  ·  ')}
-                        </div>
-                      )}
+                  {/* Credit report: one line. The score is shown; nothing else on it is read or used. */}
+                  {isCredit && (
+                    <div style={{ background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '10px 12px', fontSize: 13, color: C.ink, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                      Credit report on file · score {ex.creditScore != null ? ex.creditScore : 'not legible'} · not used in Fit
                     </div>
                   )}
 
@@ -181,7 +173,7 @@ export default function DocIntelReport({ result }) {
                   ) : (!isCredit && !isUnrecognized) ? <div style={{ fontSize: 12, color: C.inkMute }}>No screenable fields read.</div> : null}
 
                   {/* Notes (for unrecognized docs the note is already shown in the flag box). */}
-                  {d.notes && !isUnrecognized && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 8, lineHeight: 1.45 }}>{d.notes}</div>}
+                  {d.notes && !isUnrecognized && !isCredit && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 8, lineHeight: 1.45 }}>{d.notes}</div>}
                 </div>
               );
             })}

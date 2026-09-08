@@ -17,6 +17,7 @@ import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { buildCombinedRun } from '../../../lib/uploadCombine';
+import { screenableFacts } from '../../../lib/applicantAnalysis';
 import { withActiveReport } from '../../../lib/docVerifications';
 
 // Only a token in the body. Modest duration, no large body.
@@ -69,7 +70,7 @@ export default async function handler(req, res) {
         delete application.cover_letter;
         const { data: listing } = await admin.from('listings').select('*').eq('id', rec.listingId).maybeSingle();
 
-        const run = buildCombinedRun(items, application.full_name || '', application.annual_income);
+        const run = buildCombinedRun(items, application.full_name || '', screenableFacts(application, listing));
 
         // Persist the combined result — tagged as a tenant self-upload — as the ACTIVE report,
         // preserving any archived history. Same column, row, and shape as the realtor path.
