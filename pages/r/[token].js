@@ -5,17 +5,17 @@
 // forLandlordPage strips the realtor side mapping). Answers post to /api/report/answer.
 // Sandbox tokens DEMO-{listingId} build from the fixture and keep answers in this browser.
 import { useState, useEffect } from 'react';
+import { isSandboxToken } from '../../lib/features';
 import Head from 'next/head';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isReportToken } from '../../lib/applicationIds';
 import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot';
 
-const DEMO_RE = /^DEMO-[a-z0-9-]{1,40}$/;
 
 export async function getServerSideProps(ctx) {
   const token = String(ctx.params?.token || '');
-  if (DEMO_RE.test(token)) {
+  if (isSandboxToken(token)) { // sandbox first, no database
     const { demoSnapshot } = await import('../../lib/demoReport');
     const payload = demoSnapshot(token.slice(5));
     if (!payload) return { notFound: true };

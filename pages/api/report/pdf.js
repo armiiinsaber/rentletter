@@ -1,6 +1,7 @@
 // /api/report/pdf?token=…  GET. The landlord's PDF, built from the frozen payload with the page
 // token as the credential (the same PDF the email carried). Sandbox tokens build from the fixture.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { isSandboxToken } from '../../../lib/features';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { isReportToken } from '../../../lib/applicationIds';
 import { snapshotByToken } from '../../../lib/reportSnapshotStore';
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
   const t = String(req.query.token || '');
   let payload = null;
   try {
-    if (/^DEMO-[a-z0-9-]{1,40}$/.test(t)) payload = demoSnapshot(t.slice(5));
+    if (isSandboxToken(t)) payload = demoSnapshot(t.slice(5)); // sandbox first, no client
     else if (isReportToken(t)) {
       if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ error: 'Service unavailable.' });
       const row = await snapshotByToken(getSupabaseAdminClient(), t);

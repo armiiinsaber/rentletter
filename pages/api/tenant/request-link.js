@@ -1,4 +1,4 @@
-// /api/tenant/request-link — POST { email }
+// /api/tenant/request-link: POST { email }
 // Magic-link recovery for the tenant profile. ENUMERATION-RESISTANT: the response is identical
 // whether or not we know the email, and the timing is kept similar (we always do the lookup
 // work). Rate-limited per email (3 / 15 min) and per IP (10 / 15 min). The token is never
@@ -15,7 +15,7 @@ export default async function handler(req, res) {
   if (!isEmail(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
   if (!kvReady()) return res.status(503).json({ error: 'Service temporarily unavailable.' });
 
-  // Rate limits — the generic response is returned even when limited (no signal either way).
+  // Rate limits: the generic response is returned even when limited (no signal either way).
   const [byEmail, byIp] = await Promise.all([rateLimited('link:email', email, 3, 900), rateLimited('link:ip', clientIp(req), 10, 900)]);
   if (byEmail || byIp) return res.status(200).json(GENERIC);
 
@@ -30,7 +30,7 @@ export default async function handler(req, res) {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({ from: 'Rentletter <hello@rentletter.ca>', to: email, subject: 'Your Rentletter profile link', html: magicLinkEmail(url) });
       } else if (process.env.NODE_ENV !== 'production') {
-        console.warn('[tenant/request-link] RESEND_API_KEY not set — dev-only link:', url);
+        console.warn('[tenant/request-link] RESEND_API_KEY not set: dev-only link:', url);
       }
     }
   } catch (e) {

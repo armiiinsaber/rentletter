@@ -12,7 +12,7 @@ const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 // ─── Lean application-confirmation email (no attachments) ──────
 // The current apply flow (/apply/[token]) sends the tenant ONLY their application
 // number + owner token. The legacy rent-letter PDF / tenant-résumé attachments were
-// removed from the product — this email exists because /my-application recovery
+// removed from the product; this email exists because /my-application recovery
 // depends on the emailed owner token, not to deliver documents.
 function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploadUrl }) {
   return `<!DOCTYPE html>
@@ -97,13 +97,13 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
                       This application is now your saved profile. From it you can see who's looked you up, update your details, and revoke access any time.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #0f0f10; font-weight: 600; margin: 0 0 14px;">
-                      Next listing? Apply in seconds &mdash; open your profile, paste the new invite link, and everything is filled in for you to review.
+                      Next listing? Apply in seconds: open your profile, paste the new invite link, and everything is filled in for you to review.
                     </p>
                     ${uploadUrl ? `<p style="font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.6; color: #0f0f10; margin: 0 0 14px;">
                       Add documents (${SET_SENTENCE_LOWER}): <a href="${uploadUrl}" style="color: #d72027; font-weight: 600; word-break: break-all;">${uploadUrl}</a>
                     </p>` : ''}
                     <p style="font-family: 'Inter', sans-serif; font-size: 13px; line-height: 1.6; color: #3a3a3c; margin: 0 0 14px;">
-                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my application</a>, enter this email address, and we&rsquo;ll send you a fresh link &mdash; no password needed. The owner key below also opens this application directly; keep it private.
+                      Lost this email? Go to <a href="https://rentletter.ca/my-application" style="color: #d72027; font-weight: 600;">rentletter.ca/my application</a>, enter this email address, and we&rsquo;ll send you a fresh link, no password needed. The owner key below also opens this application directly; keep it private.
                     </p>
                     <p style="font-family: 'Inter', sans-serif; font-size: 11px; color: #86868b; margin: 0 0 4px; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600;">
                       Owner token
@@ -134,7 +134,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
                 Good luck out there<span style="color: #d72027;">.</span>
               </p>
               <p style="font-family: 'Inter', sans-serif; font-size: 14px; color: #86868b; margin: 6px 0 24px;">
-, The Rentletter desk
+The Rentletter desk
               </p>
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
@@ -151,7 +151,7 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
                     </table>
                   </td>
                   <td align="right" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #86868b;">
-                    Ontario · Not legal advice
+                    Ontario and BC · Not legal advice
                   </td>
                 </tr>
               </table>

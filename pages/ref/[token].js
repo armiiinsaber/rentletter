@@ -5,6 +5,7 @@
 // option, every question has Prefer not to say, no free text anywhere. Sandbox tokens
 // (demo-ref-open, demo-ref-expired, demo-ref-answered) render without a database.
 import { useState } from 'react';
+import { isSandboxToken } from '../../lib/features';
 import Head from 'next/head';
 import { GlobalStyle, Wordmark } from '../../components/ui';
 import { C, R } from '../../components/theme';
@@ -16,7 +17,7 @@ import { QUESTIONS, MONTHS, PNS, visibleQuestions } from '../../lib/referenceQue
 export async function getServerSideProps(ctx) {
   const token = String(ctx.params?.token || '');
   const base = { token, realtorName: 'Sarah Chen', applicantName: 'Priya Sharma' };
-  if (/^demo-ref/.test(token)) {
+  if (isSandboxToken(token)) { // sandbox first, no database
     if (token === 'demo-ref-expired') return { props: { ...base, state: 'expired' } };
     if (token === 'demo-ref-answered') return { props: { ...base, state: 'answered' } };
     return { props: { ...base, state: 'open' } };

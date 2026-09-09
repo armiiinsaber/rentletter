@@ -5,13 +5,14 @@
 // and redirects. An expired or used token renders one line and no button. Same shape as /keep.
 // Sandbox tokens: demo-ok, demo-email, demo-expired.
 import Head from 'next/head';
+import { isSandboxToken } from '../../lib/features';
 import { GlobalStyle, Wordmark } from '../../components/ui';
 import { C, R } from '../../components/theme';
 
 export async function getServerSideProps(ctx) {
   const t = String(ctx.query?.t || '');
   const kind = ctx.query?.k === 'email' ? 'email' : 'magic';
-  if (/^demo/.test(t)) return { props: { t, kind: t === 'demo-email' ? 'email' : kind, state: t === 'demo-expired' ? 'expired' : 'ready' } };
+  if (isSandboxToken(t)) return { props: { t, kind: t === 'demo-email' ? 'email' : kind, state: t === 'demo-expired' ? 'expired' : 'ready' } };
   try {
     const { kvReady, peekMagicLink, peekEmailChange } = await import('../../lib/tenantProfileStore');
     if (!kvReady()) return { props: { t, kind, state: 'unavailable' } };
@@ -32,7 +33,7 @@ export const CONFIRM_COPY = {
 
 export default function ConfirmPage({ t, kind, state }) {
   const copy = CONFIRM_COPY[kind] || CONFIRM_COPY.magic;
-  const isDemo = /^demo/.test(String(t || ''));
+  const isDemo = isSandboxToken(t);
   return (
     <>
       <Head><title>Confirm · Rentletter</title><meta name="robots" content="noindex" /></Head>

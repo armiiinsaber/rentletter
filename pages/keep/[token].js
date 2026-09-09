@@ -5,6 +5,7 @@
 // Sandbox tokens (demo…) render without a database; demo-expired and demo-answered show the
 // refusals.
 import { useState } from 'react';
+import { isSandboxToken } from '../../lib/features';
 import Head from 'next/head';
 import { GlobalStyle, Wordmark } from '../../components/ui';
 import { C, R } from '../../components/theme';
@@ -15,7 +16,7 @@ import { readRenewal } from '../../lib/pipeline';
 
 export async function getServerSideProps(ctx) {
   const token = String(ctx.params?.token || '');
-  if (/^demo/.test(token)) {
+  if (isSandboxToken(token)) { // sandbox first, no database
     if (token === 'demo-expired') return { props: { token, state: 'expired', realtorName: 'Sarah Chen' } };
     if (token === 'demo-answered') return { props: { token, state: 'answered', realtorName: 'Sarah Chen' } };
     if (token === 'demo-renew') return { props: { token, state: 'renew', realtorName: 'Sarah Chen' } };

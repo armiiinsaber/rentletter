@@ -4,6 +4,7 @@
 // the realtor's profile, and the realtor's signals cache is cleared. Rate limited like the
 // application form. Sandbox tokens (DEMO…) answer without writing.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { isSandboxToken } from '../../../lib/features';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { checkSubmitLimits } from '../../../lib/rateLimit';
@@ -19,12 +20,12 @@ export default async function handler(req, res) {
   const { token, rank, answer } = req.body || {};
   const t = String(token || '');
   const r = Number(rank);
-  if (!isReportToken(t) && !/^DEMO-[a-z0-9-]{1,40}$/.test(t)) return res.status(400).json({ error: 'This link is not valid.' });
+  // Sandbox first: nothing is written and nothing is counted (lib/features.js isSandboxToken).
+  if (isSandboxToken(t)) { if (!Number.isInteger(r) || r < 1 || r > 50 || !['meet', 'pass'].includes(answer)) return res.status(400).json({ error: 'rank and answer are required.' }); return res.status(200).json({ ok: true, rank: r, answer, at: new Date().toISOString(), sandbox: true }); }
+  if (!isReportToken(t)) return res.status(400).json({ error: 'This link is not valid.' });
   if (!Number.isInteger(r) || r < 1 || r > 50) return res.status(400).json({ error: 'rank is required.' });
   if (!['meet', 'pass'].includes(answer)) return res.status(400).json({ error: 'answer must be meet or pass.' });
   const at = new Date().toISOString();
-  // Sandbox: nothing is written and nothing is counted.
-  if (t.startsWith('DEMO-')) return res.status(200).json({ ok: true, rank: r, answer, at, sandbox: true });
   const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
   const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: `answer:${t}`, ip: clientIp });
   if (!limited.ok) return res.status(429).json({ error: limited.message });

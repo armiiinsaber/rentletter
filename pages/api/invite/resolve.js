@@ -4,6 +4,7 @@
 // record's 90 days still resolves. KV is read only as the fallback answer for a deleted listing,
 // and as the whole answer when the service role is not configured.
 import { normalizeProvince } from '../../../lib/provinces';
+import { isSandboxToken } from '../../../lib/features';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { resolveInvite } from '../../../lib/inviteResolve';
@@ -23,8 +24,8 @@ export function createHandler({ getAdmin = () => (isSupabaseConfigured() && proc
   return async function handler(req, res) {
     if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
     const { token } = req.query;
-    // Sandbox tokens: the demo listing's link answers active, its closed twin answers rented, no KV.
-    if (/^demo\d{16}$/.test(String(token || ''))) {
+    // Sandbox first (lib/features.js isSandboxToken): the demo listing's link answers active, its closed twin answers rented, no KV, no client.
+    if (isSandboxToken(token)) {
       const rented = String(token).endsWith('9');
       return res.status(200).json(rented ? { rented: true, realtorName: 'Sarah Chen', listingName: '210 Carlaw Ave, Unit 4' } : { realtorName: 'Sarah Chen', realtorBrokerage: 'Demo Realty', listingName: '210 Carlaw Ave, Unit 4', unit: { address: '210 Carlaw Ave, Unit 4, Toronto', monthlyRent: '2600', bedrooms: '2', allowsPets: 'no', allowsSmoking: 'no', parkingIncluded: 'no' }, province: 'ON' });
     }

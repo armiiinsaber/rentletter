@@ -1,23 +1,21 @@
-// /a/[code]  The short invite link. Resolves short:{code} in KV to the invite token and answers
-// a 302 to /apply/{token}; the apply page then answers as it does for the long link (rented and
-// closed listings included). An unknown or expired code renders the apply page's invalid link
-// state here. Sandbox codes (DEMO1) open the sandbox invite.
+// /a/[code]  The short invite link. An IP limiter (60 an hour, lib/rateLimit.js) runs before the
+// KV read; then short:{code} resolves to the invite token and answers a 302 to /apply/{token};
+// the apply page then answers as it does for the long link (rented and closed listings included).
+// Seven character codes are minted now; five character codes keep resolving. An unknown or
+// expired code renders the invalid link state here. Sandbox codes (DEMO1, DEMO001) open the
+// sandbox invite and never touch KV. The resolve itself is lib/shortLink.js resolveShortCode.
 import Head from 'next/head';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
-import { kvGet } from '../../lib/kv';
-import { isShortCode, isDemoCode, shortKey } from '../../lib/shortLink';
+import { kvGet, kvIncr, kvExpire } from '../../lib/kv';
+import { resolveShortCode } from '../../lib/shortLink';
+import { checkSubmitLimits } from '../../lib/rateLimit';
 
 export async function getServerSideProps(ctx) {
-  const code = String(ctx.params?.code || '').toUpperCase();
-  if (isDemoCode(code)) return { redirect: { destination: '/apply/demo0000000000000001', permanent: false } };
-  if (!isShortCode(code)) return { props: { invalidMsg: 'This link does not look right. Please use the exact link the listing realtor posted.' } };
-  try {
-    const token = await kvGet(shortKey(code));
-    const t = typeof token === 'string' ? token : (token && token.token) || null;
-    if (t && /^[a-f0-9]{20}$/.test(t)) return { redirect: { destination: `/apply/${t}`, permanent: false } };
-  } catch (e) { console.error('[a/code] resolve failed:', e?.message || e); }
-  return { props: { invalidMsg: 'This invite link has expired or is no longer active. Please contact the listing realtor for a new link.' } };
+  const ip = String(ctx.req?.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || ctx.req?.socket?.remoteAddress || '';
+  const r = await resolveShortCode(ctx.params?.code, { kvGet, limiter: { incr: kvIncr, expire: kvExpire }, checkLimits: checkSubmitLimits, ip });
+  if (r.redirect) return { redirect: { destination: r.redirect, permanent: false } };
+  return { props: { invalidMsg: r.limited || r.invalid } };
 }
 
 export default function ShortLinkPage({ invalidMsg }) {

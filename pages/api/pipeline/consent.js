@@ -5,6 +5,7 @@
 // Rate limited like the application form (lib/rateLimit.js). Sandbox tokens (demo…) answer
 // without writing.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { isSandboxToken } from '../../../lib/features';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { checkSubmitLimits } from '../../../lib/rateLimit';
@@ -19,12 +20,13 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { inviteToken, email } = req.body || {};
   const token = String(inviteToken || '');
-  if (!/^[a-f0-9]{20}$/.test(token) && !/^demo\d{16}$/.test(token)) return res.status(400).json({ error: 'Invalid link.' });
+  // Sandbox first: no limiter, no client, no write (lib/features.js isSandboxToken).
+  if (isSandboxToken(token)) return res.status(200).json({ ok: true, message: done('Sarah Chen'), sandbox: true });
+  if (!/^[a-f0-9]{20}$/.test(token)) return res.status(400).json({ error: 'Invalid link.' });
   if (!isEmail(email)) return res.status(400).json({ error: 'Please enter a valid email.' });
   const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
   const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: `consent:${token}`, ip: clientIp });
   if (!limited.ok) return res.status(429).json({ error: limited.message });
-  if (/^demo\d{16}$/.test(token)) return res.status(200).json({ ok: true, message: done('Sarah Chen'), sandbox: true });
   if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN || !isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ error: 'Service unavailable.' });
   try {
     const base = process.env.KV_REST_API_URL.replace(/\/+$/, '');

@@ -161,7 +161,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
           </h3>
           {creating && (
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
-              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited later.
+              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: {askProvince ? 'your province (asked once, here), ' : ''}address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited later.
             </p>
           )}
         </div>

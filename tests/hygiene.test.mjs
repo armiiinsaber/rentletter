@@ -102,10 +102,10 @@ test('duplicates: phone, email, name and employer; a non match; set aside rows n
 test('age: the answer is written, the date and the age are not, and every read follows', () => {
   const row = kvAppToRow({ applicationNumber: 'RL-1', tenant: { fullName: 'A', ageConfirmed: true, phone: '1' }, scorecard: { overall: 4.1 } });
   assert.equal('date_of_birth' in row, false); assert.equal('age' in row, false);
-  assert.deepEqual(row.scorecard, { overall: 4.1, ageConfirmed: true });
+  assert.equal(row.scorecard, null, 'the scorecard is written null'); assert.equal(row.age_confirmed, true, 'the answer lives in its own column (db/age-confirmed.sql)');
   const row2 = kvAppToRow({ applicationNumber: 'RL-2', tenant: { fullName: 'B', age: '31', dateOfBirth: '1994-08-14' } });
-  assert.equal('date_of_birth' in row2, false); assert.equal(row2.scorecard, null, 'no answer, no scorecard object invented');
-  assert.equal(rowToForm({ full_name: 'A', date_of_birth: '1994-08-14', scorecard: { ageConfirmed: true } }).ageConfirmed, true);
+  assert.equal('date_of_birth' in row2, false); assert.equal(row2.scorecard, null, 'always null'); assert.equal(row2.age_confirmed, false);
+  assert.equal(rowToForm({ full_name: 'A', date_of_birth: '1994-08-14', age_confirmed: true }).ageConfirmed, true);
   assert.equal(rowToForm({ full_name: 'A', date_of_birth: '1994-08-14' }).dateOfBirth, '', 'the date is never read back');
   const f = formFromApplication({ tenant: { fullName: 'A', dateOfBirth: '1994-08-14', ageConfirmed: true } });
   assert.equal(f.dateOfBirth, ''); assert.equal(f.age, ''); assert.equal(f.ageConfirmed, true);

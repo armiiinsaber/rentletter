@@ -1,4 +1,4 @@
-// /api/referrals/consent — PUBLIC, token-authenticated (the applicant's single-use link).
+// /api/referrals/consent: PUBLIC, token-authenticated (the applicant's single-use link).
 //   GET  ?t=   → who/what would be shared (current facts), status
 //   POST {t, decision:'approve'|'decline'} → records the decision; on approve mints the
 //        derived application and emails Realtor 2 (+ Realtor 1 the outcome). Token is consumed.

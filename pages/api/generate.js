@@ -2,7 +2,6 @@ import { newApplicationNumber, newOwnerToken } from '../../lib/applicationIds';
 import { bump, logEvent, COUNTERS } from '../../lib/stats';
 import { kvIncr, kvExpire, kvGet } from '../../lib/kv';
 import { checkSubmitLimits } from '../../lib/rateLimit';
-import { calculateScorecard } from '../../lib/scorecard';
 import { inviteRent } from '../../lib/inviteResolve';
 import { isSupabaseConfigured as inviteSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient as inviteAdminClient } from '../../lib/supabase/admin';
@@ -156,7 +155,7 @@ export default async function handler(req, res) {
     jobTitle, employer, yearsAtJob, annualIncome,
     // Employment type + registered business name (self-employed), and the tenant's after-tax
     // figure (estimated by lib/taxEstimate or stated by the tenant). annualIncome stays GROSS —
-    // it is what lib/scoring.js is calibrated on; netIncome is display-only and never scored.
+    // it is what Fit is calibrated on; netIncome is display-only and never scored.
     employmentType, businessName, netIncome, netIncomeSource,
     previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
     currentRent,
@@ -227,11 +226,10 @@ export default async function handler(req, res) {
       : null;
     const referencesCount = (reference1Name ? 1 : 0) + (reference2Name ? 1 : 0);
 
-    const scorecard = calculateScorecard({
-      yearsAtJob, householdAnnualIncome, householdRentToIncomeRatio,
-      hasCoApplicant: !!(hasCoApplicant && coApplicantIncomeNum > 0),
-      previousAddress, yearsAtPrevious, previousLandlordName, referencesCount,
-    });
+    // The scorecard is no longer computed: Fit (lib/fitScore.js) is the number, derived at read
+    // time. The key stays on the record and is written null.
+    void householdRentToIncomeRatio; void referencesCount; void householdAnnualIncome;
+    const scorecard = null;
 
     const applicationData = {
       applicationNumber,

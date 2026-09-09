@@ -1,4 +1,4 @@
-// /api/referrals/create — POST { listingId, linkId, toName, toEmail, note } (Realtor 1)
+// /api/referrals/create: POST { listingId, linkId, toName, toEmail, note } (Realtor 1)
 // Creates a PENDING referral and emails the APPLICANT for consent. Nothing is shared yet.
 import { Resend } from 'resend';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     if (process.env.RESEND_API_KEY) {
       const resend = new Resend(process.env.RESEND_API_KEY);
       await resend.emails.send({ from: 'Rentletter <hello@rentletter.ca>', to: ref.applicantEmail, subject: `${ref.from.name || 'Your realtor'} would like to share your application`, html: consentEmail({ url, fromName: ref.from.name, fromBrokerage: ref.from.brokerage, toName: ref.to.name, toBrokerage: ref.to.brokerage, applicantFirst: String(ref.applicantName || '').split(' ')[0] }) });
-    } else if (process.env.NODE_ENV !== 'production') console.warn('[referrals/create] RESEND_API_KEY not set — dev-only consent link:', url);
+    } else if (process.env.NODE_ENV !== 'production') console.warn('[referrals/create] RESEND_API_KEY not set: dev-only consent link:', url);
     return res.status(200).json({ ok: true, referral: { id: ref.id, status: ref.status, to: { name: ref.to.name, email: ref.to.email, hasAccount: !!ref.to.profileId }, createdAt: ref.createdAt, expiresAt: ref.expiresAt } });
   } catch (e) {
     if (e.code === 'rate' || e.code === 'no_email') return res.status(e.code === 'rate' ? 429 : 400).json({ error: e.message });

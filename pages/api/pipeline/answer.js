@@ -4,6 +4,7 @@
 // page load, only here. Rate limited like the application form (lib/rateLimit.js). Sandbox
 // tokens (demo…) answer without writing.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { isSandboxToken } from '../../../lib/features';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { checkSubmitLimits } from '../../../lib/rateLimit';
@@ -16,18 +17,19 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { token, answer } = req.body || {};
   const t = String(token || '');
+  // Sandbox first: answers without a limiter, a client or a write (lib/features.js isSandboxToken).
+  if (isSandboxToken(t)) {
+    if (t === 'demo-expired') return res.status(410).json({ error: 'This link has expired. Nothing was saved.' });
+    if (t === 'demo-answered') return res.status(409).json({ error: 'Already answered. Nothing changed.' });
+    if (t === 'demo-renew') return res.status(200).json({ ok: true, status, renewed: status === 'consented', sandbox: true });
+    return res.status(200).json({ ok: true, status, sandbox: true });
+  }
   if (!/^[A-Za-z0-9_-]{8,128}$/.test(t)) return res.status(400).json({ error: 'This link is not valid.' });
   if (!['yes', 'no'].includes(answer)) return res.status(400).json({ error: 'answer must be yes or no.' });
   const status = answer === 'yes' ? 'consented' : 'declined';
   const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
   const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: `answer:${t}`, ip: clientIp });
   if (!limited.ok) return res.status(429).json({ error: limited.message });
-  if (/^demo/.test(t)) {
-    if (t === 'demo-expired') return res.status(410).json({ error: 'This link has expired. Nothing was saved.' });
-    if (t === 'demo-answered') return res.status(409).json({ error: 'Already answered. Nothing changed.' });
-    if (t === 'demo-renew') return res.status(200).json({ ok: true, status, renewed: status === 'consented', sandbox: true });
-    return res.status(200).json({ ok: true, status, sandbox: true });
-  }
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ error: 'Service unavailable.' });
   try {
     const admin = getSupabaseAdminClient();

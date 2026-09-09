@@ -6,21 +6,21 @@ import { readFileSync } from 'node:fs';
 import { newShortCode, isShortCode, isDemoCode, shortKey, shortUrl, addressSlug, postKitTexts, INVITE_TTL } from '../lib/shortLink.js';
 import { ID_ALPHABET } from '../lib/applicationIds.js';
 
-test('the code: five characters of the alphabet, unique enough, never O, 0, I, L or 1', () => {
+test('the code: seven characters of the alphabet for new codes, five still accepted, never O, 0, I, L or 1', () => {
   const seen = new Set();
-  for (let i = 0; i < 500; i++) { const c = newShortCode(); assert.equal(c.length, 5); assert.equal(isShortCode(c), true); assert.match(c, new RegExp(`^[${ID_ALPHABET}]{5}$`)); seen.add(c); }
+  for (let i = 0; i < 500; i++) { const c = newShortCode(); assert.equal(c.length, 7); assert.equal(isShortCode(c), true); assert.match(c, new RegExp(`^[${ID_ALPHABET}]{7}$`)); seen.add(c); }
   assert.ok(seen.size > 495);
-  for (const bad of ['ABCD', 'ABCDEF', 'ABCD0', 'ABCDO', 'abcde', '', null]) assert.equal(isShortCode(bad), false, String(bad));
-  assert.equal(isDemoCode('DEMO1'), true); assert.equal(isShortCode('DEMO1'), false, 'the sandbox code can never collide with a real one');
+  assert.equal(isShortCode('ABCDE'), true, 'a code minted before stays valid');
+  for (const bad of ['ABCD', 'ABCDEF', 'ABCDEFGH', 'ABCD0', 'ABCDO', 'abcde', '', null]) assert.equal(isShortCode(bad), false, String(bad));
+  assert.equal(isDemoCode('DEMO1'), true); assert.equal(isDemoCode('DEMO001'), true); assert.equal(isShortCode('DEMO1'), false, 'the sandbox code can never collide with a real one');
   assert.equal(shortKey('abcde'), 'short:ABCDE'); assert.equal(shortUrl('abcde'), 'https://rentletter.ca/a/ABCDE');
   assert.equal(INVITE_TTL, 7776000);
 });
 
 test('resolve: a live code redirects to the token, an expired or unknown code renders the invalid state', async () => {
   const src = readFileSync(new URL('../pages/a/[code].js', import.meta.url), 'utf8');
-  assert.match(src, /kvGet\(shortKey\(code\)\)/);
-  assert.match(src, /redirect: \{ destination: `\/apply\/\$\{t\}`, permanent: false \}/, 'live: 302 to the apply page');
-  assert.match(src, /This invite link has expired or is no longer active/, 'expired or unknown: the invalid link copy');
+  assert.match(src, /resolveShortCode\(ctx\.params\?\.code, \{ kvGet, limiter/, 'the page resolves through lib/shortLink.js, limiter first');
+  assert.match(src, /redirect: \{ destination: r\.redirect, permanent: false \}/, 'live: 302 to the apply page');
   assert.match(src, /This link is no longer active/, 'the invalid card heading');
   // The route reads with the same kvGet the rest of the app uses; a missing key is null.
   const { kvGet } = await import('../lib/kv.js');

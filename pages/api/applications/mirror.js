@@ -7,6 +7,7 @@
 // Non-blocking by design: if Supabase isn't configured it no-ops with 200 so the
 // tenant flow is never affected. KV remains the source of truth for the tenant path.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { isSandboxToken } from '../../../lib/features';
 import { recordForListing } from '../../../lib/events';
 import { ADDED_VIA } from '../../../lib/listingApplicantsVocabulary';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
@@ -27,7 +28,8 @@ export function createHandler(deps = {}) {
     return res.status(400).json({ error: 'Invalid application number.' });
   }
   // Sandbox invite: nothing is mirrored; the apply page still gets a document request shape to render.
-  if (/^demo\d{16}$/.test(String(token || ''))) {
+  // Sandbox first: before the limiter and the clients (lib/features.js isSandboxToken).
+  if (isSandboxToken(token)) {
     const demoToken = `demo${'0'.repeat(28)}`;
     return res.status(200).json({ ok: true, sandbox: true, mirrored: false, linked: false, docRequest: { token: demoToken, url: uploadUrl(demoToken), sandbox: true } });
   }

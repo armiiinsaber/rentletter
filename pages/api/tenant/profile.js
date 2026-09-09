@@ -1,9 +1,9 @@
-// /api/tenant/profile — session-cookie authenticated (the magic link set it).
+// /api/tenant/profile: session-cookie authenticated (the magic link set it).
 //
 //   GET                      → the profile: durable facts + applications (with listing/realtor
 //                              and a tenant-safe status, when Supabase has them) + pending email.
 //   POST { action }
-//     update-facts {form}    → edit the DURABLE facts. Applies to FUTURE applications only —
+//     update-facts {form}    → edit the DURABLE facts. Applies to FUTURE applications only ,
 //                              never rewrites a submitted snapshot.
 //     link-application       → manually attach an application ({applicationNumber, ownerToken}).
 //     request-email-change   → email a confirmation to the NEW address (old keeps access until
@@ -136,7 +136,7 @@ export default async function handler(req, res) {
       if (process.env.RESEND_API_KEY) {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({ from: 'Rentletter <hello@rentletter.ca>', to: newEmail, subject: 'Confirm your new Rentletter email', html: emailChangeEmail(url, p.email) });
-      } else if (process.env.NODE_ENV !== 'production') console.warn('[tenant/profile] RESEND_API_KEY not set — dev-only link:', url);
+      } else if (process.env.NODE_ENV !== 'production') console.warn('[tenant/profile] RESEND_API_KEY not set: dev-only link:', url);
       return res.status(200).json({ ok: true, pendingEmail: newEmail });
     }
 

@@ -5,6 +5,7 @@
 // application form. Nothing is written on a page load, only here. Sandbox tokens (demo-ref…)
 // answer without writing.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
+import { isSandboxToken } from '../../../lib/features';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { checkSubmitLimits } from '../../../lib/rateLimit';
@@ -19,16 +20,17 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { token, answers } = req.body || {};
   const t = String(token || '');
-  if (!isReferenceToken(t)) return res.status(400).json({ error: 'This link is not valid.' });
-  const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
-  const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: `ref:${t}`, ip: clientIp });
-  if (!limited.ok) return res.status(429).json({ error: limited.message });
-  if (/^demo-ref/.test(t)) {
+  // Sandbox first: no limiter, no client, no write (lib/features.js isSandboxToken).
+  if (isSandboxToken(t)) {
     if (t === 'demo-ref-expired') return res.status(410).json({ error: 'This link has expired. Nothing was saved.' });
     if (t === 'demo-ref-answered') return res.status(409).json({ error: 'Already answered. Nothing changed.' });
     if (!normalizeAnswers(answers)) return res.status(400).json({ error: 'Please use the options on the page.' });
     return res.status(200).json({ ok: true, realtorName: 'Sarah Chen', sandbox: true });
   }
+  if (!isReferenceToken(t)) return res.status(400).json({ error: 'This link is not valid.' });
+  const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
+  const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: `ref:${t}`, ip: clientIp });
+  if (!limited.ok) return res.status(429).json({ error: limited.message });
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ error: 'Service unavailable.' });
   try {
     const admin = getSupabaseAdminClient();

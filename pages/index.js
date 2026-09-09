@@ -79,7 +79,7 @@ export default function Home() {
     email: '',
     apartmentAddress: '', apartmentDescription: '',
     // Tier 1 — required (basic identity + landlord-needed)
-    fullName: '', age: '', dateOfBirth: '', phone: '',
+    fullName: '', phone: '',
     // Tier 1 — employment (existing)
     jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
     // Tier 1 — current rental (expanded)
@@ -208,7 +208,7 @@ export default function Home() {
         email: 'sarah.chen.test@example.com',
         apartmentAddress: '144 Roxborough Drive, Toronto',
         apartmentDescription: '1BR, Rosedale, $2,200/mo',
-        fullName: 'Sarah Chen', age: '29',
+        fullName: 'Sarah Chen',
         jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
         yearsAtJob: '4', annualIncome: '87000',
         previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
@@ -220,7 +220,7 @@ export default function Home() {
         email: 'james.okafor.test@example.com',
         apartmentAddress: '88 Yonge Street, Toronto',
         apartmentDescription: 'Studio, downtown, $1,850/mo',
-        fullName: 'James Okafor', age: '26',
+        fullName: 'James Okafor',
         jobTitle: 'Software Engineer', employer: 'Shopify',
         yearsAtJob: '1.5', annualIncome: '95000',
         previousAddress: '', yearsAtPrevious: '',
@@ -232,7 +232,7 @@ export default function Home() {
         email: 'priya.nair.test@example.com',
         apartmentAddress: '550 Queen Street West, Toronto',
         apartmentDescription: '2BR, Queen West, $3,100/mo',
-        fullName: 'Priya Nair', age: '34',
+        fullName: 'Priya Nair',
         jobTitle: 'Senior UX Designer', employer: 'CIBC',
         yearsAtJob: '5', annualIncome: '115000',
         previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
@@ -316,7 +316,7 @@ export default function Home() {
   const EMPTY_FORM = {
     email: '',
     apartmentAddress: '', apartmentDescription: '',
-    fullName: '', age: '', dateOfBirth: '', phone: '',
+    fullName: '', phone: '',
     jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
     previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
     currentRent: '',
@@ -834,10 +834,6 @@ export default function Home() {
 
             <FormSection num="03" title="About you" required>
               <Field label="Full name" value={form.fullName} onChange={v => update('fullName', v)} placeholder="Jane Doe" />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                <Field label="Age" value={form.age} onChange={v => update('age', v)} placeholder="28" type="number" />
-                <Field label="Date of birth" value={form.dateOfBirth} onChange={v => update('dateOfBirth', v)} type="date" />
-              </div>
               <Field label="Phone" value={form.phone} onChange={v => update('phone', v)} placeholder="(416) 555-0142" type="tel" />
             </FormSection>
 
