@@ -33,7 +33,7 @@ test('the payload: active only in score order, the applicant keys, and none of t
   assert.deepEqual(p.applicants.map((a) => [a.rank, a.name]), [[1, 'Priya Sharma'], [2, 'David Kowalski']], 'set aside and withdrawn never enter');
   const a = p.applicants[0];
   assert.deepEqual(Object.keys(a).sort(), ['confirmations', 'confirmedLine', 'criteria', 'employer', 'firstName', 'fit', 'jobTitle', 'landlordReference', 'lastName', 'linkId', 'name', 'numbers', 'rank', 'reason', 'sentence'].sort());
-  assert.deepEqual(a.numbers, { annualIncome: 92000, rentSharePct: 34, yearsAtJob: 5, references: 2 });
+  assert.deepEqual(a.numbers, { annualIncome: 92000, incomeJoint: false, rentSharePct: 34, yearsAtJob: 5, references: 2 });
   assert.equal(a.sentence, 'Registered Nurse at Sunnybrook, 5 years at the job. Income covers the rent at 34%. Landlord reference on file.');
   assert.equal(a.confirmedLine, 'Confirmed by Sarah Chen: employer · Sep 1');
   assert.ok(p.applicants[1].reason, 'the second applicant carries a reason line');

@@ -14,7 +14,8 @@ import React, { useState, useEffect } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
-import { readVerification } from '../../lib/fitScore';
+import { readVerification, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
+import { applicantState, stateLabel } from '../../lib/applicantState';
 import { isIdKind } from '../../lib/documentRetention';
 import { answerSummary, emailIn, RESEND_AFTER_DAYS } from '../../lib/referenceQuestions';
 
@@ -62,7 +63,9 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   const report = applicant.docVerifications?.[0] || null;
   const v = readVerification(report);
   const hasDocs = v.state !== 'none';
-  const nameFact = !hasDocs ? 'none' : v.state === 'ok' ? 'name matches' : 'did not match';
+  // The Identity Docs fact comes from the one label map (lib/applicantState.js STATE_LABELS.*.docs).
+  const docsState = applicantState({ junction: applicant, verification: report }).state;
+  const nameFact = !hasDocs ? stateLabel('new', 'docs') : (v.state === 'ok' ? (stateLabel(docsState, 'docs') || stateLabel('checked', 'docs')) : stateLabel('mismatch', 'docs'));
   // The found string is the arithmetic, not a bare number: "$3,541.67 semi monthly × 24 from 2 of 3 stubs".
   // A close figure (within 15%) is shown with both figures and the explanation; it is not a contradiction.
   const incomeFact = !hasDocs ? 'none' : v.incomeMatched ? `${v.incomeExplanation || (v.incomeFound != null ? money(v.incomeFound) : 'income')} matches` : v.incomeClose ? `${v.incomeExplanation}, close to stated` : v.incomeExplanation ? `${v.incomeExplanation}, did not match` : 'did not match';
@@ -99,7 +102,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
 
   const rows = [
     { key: 'id', title: 'Identity', said: app.full_name || 'no name given', docs: nameFact, verb: 'Saw ID' },
-    { key: 'employer', title: 'Income', said: app.annual_income ? `${money(app.annual_income)} a year` : 'no income given', docs: incomeFact + incomeMiss, verb: 'Called employer' },
+    { key: 'employer', title: 'Income', said: app.annual_income ? `${money(householdIncomeOf(app))} a year${incomeIsJoint(app) ? ' (joint)' : ''}` : 'no income given', docs: incomeFact + incomeMiss, verb: 'Called employer' },
     { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true, also: alsoSeen, note: GUIDANCE },
     { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' , note: GUIDANCE },
     { key: 'reference', title: 'References', said: refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },

@@ -5,7 +5,7 @@
 // applicant.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
-import { cronGate, expireDocuments } from '../../../lib/documentStore';
+import { cronGate, expireDocuments, reconcileStorage } from '../../../lib/documentStore';
 import { logServerError } from '../../../lib/serverLog';
 
 export const config = { maxDuration: 60 };
@@ -17,9 +17,13 @@ export default async function handler(req, res) {
   if (refused) return res.status(refused.status).json({ error: refused.status === 503 ? 'CRON_SECRET is not set.' : 'Unauthorized.' });
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(503).json({ error: 'Service temporarily unavailable.' });
   try {
-    const result = await expireDocuments(getSupabaseAdminClient());
+    const admin = getSupabaseAdminClient();
+    const result = await expireDocuments(admin);
     console.log('[cron/expire-documents] expired=%d applicants=%d', result.expired, result.applicants);
-    return res.status(200).json({ ok: true, ...result });
+    // Sundays: the bucket against the table (lib/documentStore.js reconcileStorage).
+    let reconcile = null;
+    if (new Date().getUTCDay() === 0 || req.query?.reconcile === '1') { try { reconcile = await reconcileStorage(admin); } catch (e) { logServerError('[cron/expire-documents] reconcile', e); } }
+    return res.status(200).json({ ok: true, ...result, reconcile });
   } catch (e) {
     logServerError('[cron/expire-documents]', e);
     return res.status(500).json({ error: 'Expiry failed.' });

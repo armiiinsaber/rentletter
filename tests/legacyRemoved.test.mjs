@@ -30,6 +30,6 @@ test('the two live invite routes moved and are what the tenant pages call', () =
   const home = readFileSync(`${root}pages/index.js`, 'utf8');
   for (const src of [apply, home]) { assert.match(src, /\/api\/invite\/resolve\?token=/); assert.match(src, /'\/api\/invite\/tag'/); }
   const resolve = readFileSync(`${root}pages/api/invite/resolve.js`, 'utf8');
-  assert.match(resolve, /inviteAnswer\(invite, listing\)/, 'the rented answer from 833ceef is intact');
+    assert.match(resolve, /resolveInvite\(admin, String\(token\), rec\)/, 'the rented answer from 833ceef now comes from the row (lib/inviteResolve.js)');
   assert.match(resolve, /rented: true/);
 });

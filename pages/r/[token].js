@@ -134,7 +134,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.green, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{String(a.confirmedLine).replace(/ · (\S+ \S+)$/, '\u00a0·\u00a0$1')}</div> : null}
             {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>Below the one above: {a.reason.charAt(0).toLowerCase() + a.reason.slice(1)}</div> : null}
             <div className="num" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--s-2)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-              {[['Income', n.annualIncome != null ? money(n.annualIncome) : 'not given'], ['Rent share', n.rentSharePct != null ? `${Math.round(n.rentSharePct)}%` : 'unknown'], ['At job', n.yearsAtJob ? `${n.yearsAtJob} yr${n.yearsAtJob === 1 ? '' : 's'}` : 'not given'], ['References', String(n.references || 0)]].map(([k, v]) => (
+              {[['Income', n.annualIncome != null ? `${money(n.annualIncome)}${n.incomeJoint ? ' (joint)' : ''}` : 'not given'], ['Rent share', n.rentSharePct != null ? `${Math.round(n.rentSharePct)}%` : 'unknown'], ['At job', n.yearsAtJob ? `${n.yearsAtJob} yr${n.yearsAtJob === 1 ? '' : 's'}` : 'not given'], ['References', String(n.references || 0)]].map(([k, v]) => (
                 <div key={k} style={{ minWidth: 0 }}>
                   <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>{k}</div>
                   <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, overflowWrap: 'anywhere' }}>{v}</div>

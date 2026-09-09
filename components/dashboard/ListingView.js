@@ -13,7 +13,7 @@ import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
-import { computeFit, compareFit, capOf } from '../../lib/fitScore';
+import { computeFit, compareFit, capOf, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
@@ -26,7 +26,7 @@ import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import { synthesisLine } from '../../lib/applicantSynthesis';
-import { applicantState } from '../../lib/applicantState';
+import { applicantState, stateLabel } from '../../lib/applicantState';
 import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
@@ -619,7 +619,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       id: a.linkId, rank: idx + 1, name: app.full_name || 'Applicant',
       overall: app.fit?.score ?? null,
       annualIncome: toNum(app.annual_income),
-      householdIncome: coIncome != null ? (toNum(app.annual_income) || 0) + (toNum(coIncome) || 0) : null,
+      householdIncome: incomeIsJoint(app) ? householdIncomeOf(app) : null, // labelled joint in Compare
       rentToIncome: toNum(app.rent_to_income_ratio),
       jobTenureYears: toNum(app.years_at_job),
       employer: app.employer || null,
@@ -691,9 +691,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const present = (rows) => rows.filter(([, v]) => v != null && v !== '');
     // The facts, grouped. A group with nothing in it does not render.
     const incomeRows = present([
-      ['Income (before tax)', app.annual_income ? `${money(app.annual_income)}/yr` : null],
+      ['Income (before tax)', app.annual_income ? `${money(householdIncomeOf(app))}/yr${incomeIsJoint(app) ? ' (joint)' : ''}` : null],
+      ['Applicant alone', incomeIsJoint(app) ? `${money(app.annual_income)}/yr` : null],
       ['After tax', app.net_income ? `${money(app.net_income)}/yr${app.net_income_source === 'stated' ? ' (stated)' : ' (estimate)'}` : null],
-      ['Household income', coIncome ? `${money((Number(app.annual_income) || 0) + Number(coIncome))}/yr (joint, before tax)` : null],
       [app.employment_type === 'self-employed' ? 'Business' : 'Employer', app.employer ? `${app.employer}${app.employment_type ? ` · ${EMP_LABEL[app.employment_type] || app.employment_type}` : ''}` : null],
       ['Role', app.job_title || null],
       ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
@@ -742,7 +742,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
             <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
               <span style={{ fontWeight: 700, color: C.inkSoft }}>{app.full_name || 'Applicant'}</span>
-              {a.decisionReasonCode ? ` · ${reasonLabel(a.decisionReasonCode)}` : ''}
+              {a.decisionReasonCode ? ` · ${stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) })}` : ''}
             </div>
             <button type="button" onClick={stop(() => restoreApplicant(a))} style={{ ...textBtn, marginTop: 0, color: C.green, flexShrink: 0 }}>Restore</button>
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
@@ -777,11 +777,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </>)}
           {st.state === 'verified' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-            <div style={stateLine}>Verified by {confirmedBy(a.confirmations?.employer?.by)}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+            <div style={stateLine}>{stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) })}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
             {dup}
           </>)}
           {st.state === 'sent' && (<>
-            <div style={stateLine}>Sent to landlord{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+            <div style={stateLine}>{stateLabel('sent', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
             {dup}
           </>)}
           {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
@@ -789,27 +789,27 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}>Landlord: {answerLine(a.landlordAnswer.answer)}{a.landlordAnswer.at ? ` · ${shortDate(a.landlordAnswer.at)}` : ''}</div>
           )}
           {st.state === 'new' && (<>
-            <div style={stateLine}>No documents yet</div>
+            <div style={stateLine}>{stateLabel('new', 'line')}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
           </>)}
           {st.state === 'requested' && (<>
-            <div style={stateLine}>Documents requested{st.since ? ` · ${shortDate(st.since)}` : ''}{(() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? ` · nudged ${shortDate(last)}` : ''; })()}</div>
+            <div style={stateLine}>{stateLabel('requested', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}{(() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? ` · nudged ${shortDate(last)}` : ''; })()}</div>
             {dup}
             {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
           {st.state === 'checked' && (<>
-            <div style={stateLine}>Documents on file · nothing matched</div>
+            <div style={stateLine}>{stateLabel('checked', 'line')}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
           {st.state === 'mismatch' && (<>
-            <div style={stateLine}>Name on documents did not match</div>
+            <div style={stateLine}>{stateLabel('mismatch', 'line')}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
           {st.state === 'edited' && (<>
-            <div style={stateLine}>Profile edited{st.since ? ` ${shortDate(st.since)}` : ''} · analyse again</div>
+            <div style={stateLine}>{stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
@@ -819,7 +819,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
           {/* Status line: rank and marks that only matter once you are looking at this person. */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-3)' }}>
-            {rank != null && pill(`Rank ${rank}`, C.inkSoft, C.paperDeep)}
+            {rank != null && !isSetAside && pill(`Rank ${rank}`, C.inkSoft, C.paperDeep)}
             {isSetAside && pill('Set aside', C.inkSoft, C.rule)}
             {isFinalist(a) && !isSetAside && pill('Finalist', C.paper, C.ink)}
             {ref && (() => { const [label, fg, bg] = refMap[ref.status] || [ref.status, C.inkMute, C.paperDeep]; return pill(label, fg, bg); })()}
@@ -1130,7 +1130,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </p>
               </div>
             ) : compareOpen ? (
-              <CompareTenants pool={comparePool} onClose={() => setCompareOpen(false)} />
+              <CompareTenants pool={comparePool} unitRules={{ pets: listing?.allows_pets, smoking: listing?.allows_smoking }} onClose={() => setCompareOpen(false)} />
             ) : (
               <>
                 {hintText && (

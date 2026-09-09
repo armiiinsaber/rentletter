@@ -3,7 +3,9 @@ import { bump, logEvent, COUNTERS } from '../../lib/stats';
 import { kvIncr, kvExpire, kvGet } from '../../lib/kv';
 import { checkSubmitLimits } from '../../lib/rateLimit';
 import { calculateScorecard } from '../../lib/scorecard';
-import { rentFromInvite } from '../../lib/inviteRent';
+import { inviteRent } from '../../lib/inviteResolve';
+import { isSupabaseConfigured as inviteSupabaseConfigured } from '../../lib/supabase/server';
+import { getSupabaseAdminClient as inviteAdminClient } from '../../lib/supabase/admin';
 import { confirmationSignature } from '../../lib/sendSignature';
 
 
@@ -183,12 +185,14 @@ export default async function handler(req, res) {
   const monthlyIncome = Math.round(annualIncomeNum / 12);
   const monthlyIncomeFormatted = `$${monthlyIncome.toLocaleString()}/month`;
 
-  // The rent the application arrived under: the invite record's listing rent when it came
-  // through an invite link (lib/inviteRent.js), null otherwise. Nothing is parsed out of text.
+  // The rent the application arrived under: the listings row by invite_token first, the KV record
+  // only when there is no row (lib/inviteResolve.js), null when it did not come through a link.
+  // So estimated_rent is never null for a live listing, however old the KV record.
   let estimatedRent = null;
   let rentToIncomeRatio = null;
   if (/^[a-f0-9]{20}$/.test(String(inviteToken || ''))) {
-    estimatedRent = rentFromInvite(await kvGet(`linvite:${inviteToken}`));
+    const inviteAdmin = inviteSupabaseConfigured() && process.env.SUPABASE_SERVICE_ROLE_KEY ? inviteAdminClient() : null;
+    estimatedRent = await inviteRent(inviteAdmin, inviteToken, await kvGet(`linvite:${inviteToken}`));
     if (estimatedRent && monthlyIncome) rentToIncomeRatio = Math.round((estimatedRent / monthlyIncome) * 100);
   }
 

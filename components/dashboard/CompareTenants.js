@@ -8,6 +8,7 @@
 // labelled, no horizontal overflow.
 import { useState } from 'react';
 import { C, R } from '../theme';
+import { unitRulesApply, ruleLine } from '../../lib/unitRules';
 
 // ── Normalization helpers (used by each page to build the `pool` items) ──
 export const toNum = (v) => { if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
@@ -32,7 +33,7 @@ const CATEGORIES = [
   { key: 'rank', label: 'Rank', kind: 'rank' },
   { key: 'overall', label: 'Overall grade', kind: 'grade' },
   { key: 'annualIncome', label: 'Income (before tax)', kind: 'num', better: 'high', fmt: money },
-  { key: 'householdIncome', label: 'Household income', kind: 'num', better: 'high', fmt: money },
+  { key: 'householdIncome', label: 'Household income (joint)', kind: 'num', better: 'high', fmt: money },
   { key: 'rentToIncome', label: 'Rent to income', kind: 'num', better: 'low', fmt: (v) => `${v}%` },
   { key: 'jobTenureYears', label: 'Job tenure', kind: 'num', better: 'high', fmt: yrs },
   { key: 'employer', label: 'Employer', kind: 'text' },
@@ -40,10 +41,10 @@ const CATEGORIES = [
   { key: 'yearsAtAddress', label: 'Years at address', kind: 'num', better: 'high', fmt: yrs },
   { key: 'currentRent', label: 'Current rent', kind: 'num', fmt: (v) => `${money(v)}/mo` },
   { key: 'references', label: 'References', kind: 'num', better: 'high', fmt: (v) => `${v} provided` },
-  { key: 'moveInDate', label: 'Move in date', kind: 'date', better: 'early', fmt: fmtDate },
-  { key: 'smoker', label: 'Smoker', kind: 'text' },
-  { key: 'pets', label: 'Pets', kind: 'text' },
+  { key: 'moveInDate', label: 'Move in date', kind: 'date', fmt: fmtDate }, // no leader tick: an earlier date is not better
 ];
+// Smoker and pets are unit rules, not a ranking (lib/unitRules.js): once under a "Unit rules" line at
+// the bottom of the panel with no rank beside them, and not at all when the listing allows both.
 
 function valueOf(cat, t) {
   if (cat.kind === 'rank') return `#${t.rank}`;
@@ -75,7 +76,7 @@ function computeLeaders(selected) {
 
 const selectStyle = { appearance: 'none', background: C.paper, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, color: C.ink, fontSize: 12.5, fontWeight: 600, padding: '6px 26px 6px 10px', cursor: 'pointer', maxWidth: '100%' };
 
-export default function CompareTenants({ pool, onClose }) {
+export default function CompareTenants({ pool, onClose, unitRules = null }) {
   const [selectedIds, setSelectedIds] = useState(() => pool.slice(0, 3).map((t) => t.id));
   const byId = (id) => pool.find((t) => t.id === id);
   const selected = selectedIds.map(byId).filter(Boolean);
@@ -179,6 +180,18 @@ export default function CompareTenants({ pool, onClose }) {
         </div>
       </div>
 
+      {unitRulesApply(unitRules) && (
+        <div style={{ marginTop: 14, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 12, background: C.card }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Unit rules · {ruleLine(unitRules)}</div>
+          <div style={{ display: 'grid', gap: 4 }}>
+            {selected.map((t) => (
+              <div key={t.id} style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                <span style={{ fontWeight: 700, color: C.ink }}>{firstName(t.name)}</span>: {[t.smoker ? t.smoker.toLowerCase() : 'smoking not stated', t.pets ? `pets: ${t.pets}` : 'no pets stated'].join(' · ')}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
         <span style={{ color: C.green, fontWeight: 800 }}>✓</span> marks the category leader on objective screenable facts only. Comparison never uses protected grounds.
       </div>

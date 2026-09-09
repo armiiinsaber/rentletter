@@ -1,6 +1,8 @@
 // /api/cron/retention  GET, daily at 03:30 (vercel.json). Bearer gated with CRON_SECRET like
 // the documents cron (lib/documentStore.js cronGate). Dry run unless RETENTION_ENFORCE=true:
-// logs the counts and the oldest ten application numbers, deletes nothing. See lib/retention.js.
+// logs the counts and the oldest ten application numbers, deletes nothing. Every run is recorded
+// in retention_runs (db/retention-runs.sql). The rule: twelve months after last activity, never
+// while a junction row belongs to an active listing. See lib/retention.js.
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { cronGate } from '../../../lib/documentStore';

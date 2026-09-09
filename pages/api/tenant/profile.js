@@ -132,7 +132,7 @@ export default async function handler(req, res) {
       const token = await createEmailChange(p.id, newEmail);
       p.pendingEmail = newEmail; await saveProfile(p);
       const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://rentletter.ca';
-      const url = `${site}/api/tenant/verify-email-change?t=${encodeURIComponent(token)}`;
+      const url = `${site}/my-application/confirm?t=${encodeURIComponent(token)}&k=email`; // the confirm page; the route consumes only on POST
       if (process.env.RESEND_API_KEY) {
         const resend = new Resend(process.env.RESEND_API_KEY);
         await resend.emails.send({ from: 'Rentletter <hello@rentletter.ca>', to: newEmail, subject: 'Confirm your new Rentletter email', html: emailChangeEmail(url, p.email) });

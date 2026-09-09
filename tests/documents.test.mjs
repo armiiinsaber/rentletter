@@ -99,7 +99,7 @@ test('reanalyze: the previous stored rows are removed and marked before the new 
 
 test('purge and expire mark rows with the right deleted_by, and an absent table is skipped', async () => {
   const purge = mockAdmin((q) => (q.op === 'select' ? { data: [{ id: 'd1', storage_path: 'p1/j1/d1.png' }], error: null } : { data: null, error: null }));
-  assert.deepEqual(await purgeStoredDocuments(purge.admin, { linkId: 'j1', deletedBy: 'Armin' }), { count: 1, absent: false });
+  assert.deepEqual(await purgeStoredDocuments(purge.admin, { linkId: 'j1', deletedBy: 'Armin' }), { count: 1, absent: false, objectRemains: false });
   assert.equal(purge.calls.find((c) => c.op === 'update').payload.deleted_by, 'Armin');
   let selects = 0;
   const exp = mockAdmin((q) => {

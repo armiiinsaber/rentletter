@@ -8,7 +8,6 @@ import { statusPatch, inviteAnswer, notSelectedRecipients, notSelectedEmail, lis
 import { ownedListing, flipConsent, readConsent, newConsentToken } from '../lib/listingStatus.js';
 import { listingStateLine } from '../lib/listingStateLine.js';
 import { buildActions } from '../lib/actions.js';
-import { selectClosedListingApplications } from '../lib/retention.js';
 import { fakeSupabase } from './helpers/fakeSupabase.mjs';
 
 const NOW = new Date('2026-09-04T15:00:00Z');
@@ -142,24 +141,4 @@ test('next list: items on rented or closed listings are ignored', () => {
   assert.equal(rented.length, 0);
 });
 
-test('retention second selection: every junction on a closed listing older than 90 days, minus consented rows', async () => {
-  const old = '2026-05-01T00:00:00Z', recent = '2026-08-20T00:00:00Z';
-  const admin = fakeSupabase({
-    listings: [{ id: 'L1', status: 'rented', closed_at: old }, { id: 'L2', status: 'active', closed_at: null }, { id: 'L3', status: 'closed', closed_at: recent }],
-    listing_applicants: [
-      { id: 'J1', listing_id: 'L1', application_id: 'A1' },              // only on the old rented listing: selected
-      { id: 'J2', listing_id: 'L1', application_id: 'A2' }, { id: 'J3', listing_id: 'L2', application_id: 'A2' }, // also on a live listing: kept
-      { id: 'J4', listing_id: 'L1', application_id: 'A3' },              // consented, not expired: kept
-      { id: 'J5', listing_id: 'L1', application_id: 'A4' },              // consented but expired: selected
-      { id: 'J6', listing_id: 'L3', application_id: 'A5' },              // closed recently: not yet
-    ],
-    pipeline_consents: [
-      { id: 'C1', application_id: 'A3', status: 'consented', expires_at: '2026-10-01T00:00:00Z' },
-      { id: 'C2', application_id: 'A4', status: 'consented', expires_at: '2026-08-01T00:00:00Z' },
-      { id: 'C3', application_id: 'A1', status: 'declined', expires_at: '2026-10-01T00:00:00Z' },
-    ],
-  });
-  const r = await selectClosedListingApplications(admin, NOW);
-  assert.deepEqual(r.applications.sort(), ['A1', 'A4']);
-  assert.equal(r.listings, 1);
-});
+// The 90 day closed listing selection was dropped from lib/retention.js: the rule is twelve months after last activity, never on an active listing (tests/retention.test.mjs).

@@ -123,7 +123,7 @@ test('rent at submit: from the invite record, null otherwise, no regex over the 
   assert.equal(rentFromInvite({ unit: { monthlyRent: '' } }), null);
   assert.equal(rentFromInvite(null), null);
   const gen = readFileSync(new URL('../pages/api/generate.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(gen, /apartmentDescription\.match/); assert.match(gen, /rentFromInvite\(await kvGet\(`linvite:\$\{inviteToken\}`\)\)/);
+  assert.doesNotMatch(gen, /apartmentDescription\.match/); assert.match(gen, /inviteRent\(inviteAdmin, inviteToken, await kvGet\(`linvite:\$\{inviteToken\}`\)\)/, 'the row first, the record only without a row (lib/inviteResolve.js)');
   const tp = readFileSync(new URL('../lib/tenantProfile.js', import.meta.url), 'utf8');
   assert.doesNotMatch(tp, /description\)\.match/);
 });
