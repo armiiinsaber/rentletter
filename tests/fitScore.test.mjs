@@ -8,7 +8,7 @@ const record = { prev_landlord_name: 'A. Patel', years_at_previous: '4', referen
 const app = (income, extra = {}) => ({ ...record, annual_income: income, co_applicant: null, ...extra });
 const report = ({ income = true, employer = true, nameMatch = 'match', analyzedAt = '2026-08-01T00:00:00Z' } = {}) => ({
   analyzedAt, nameMatch, documents: [{ documentType: 'pay stub' }],
-  comparisons: [{ field: 'Income', stated: '$90,000', found: '$90,000', status: income ? 'match' : 'mismatch' }, { field: 'Employer', stated: 'X', found: 'X', status: employer ? 'match' : 'mismatch' }],
+  comparisons: [{ field: 'Income', stated: '$90,000', found: '$90,000', status: income ? 'match' : 'mismatch' }, { field: 'Employer', stated: 'Acme Ltd', found: employer ? 'Acme' : 'Other Corp', status: employer ? 'match' : 'mismatch' }], // the employer status is recomputed at read time from stated and found (lib/employerName.js)
 });
 const CALLED = { landlord: { at: '2026-09-02T14:00:00Z', by: 'Armin' } };
 const fit = (income, rent, listing = {}, verification = null, extra = {}, confirmations = CALLED) => computeFit({ application: app(income, extra), listing: { monthly_rent: rent, ...listing }, verification, confirmations });

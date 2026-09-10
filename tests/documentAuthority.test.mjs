@@ -2,7 +2,7 @@
 // Invented names and employers; the number shapes are the brief's. No real document data.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { AUTHORITY, kindOf, resolveFact, resolveNameMatch, authorityComparisons, incomeComparison, crossReference, textStatus } from '../lib/documentAuthority.js';
+import { AUTHORITY, kindOf, resolveFact, resolveNameMatch, authorityComparisons, incomeComparison, crossReference, textStatus, employerTextStatus } from '../lib/documentAuthority.js';
 import { buildCombinedRun } from '../lib/uploadCombine.js';
 import { readVerification, computeFit } from '../lib/fitScore.js';
 import { applicantState } from '../lib/applicantState.js';
@@ -44,7 +44,8 @@ test('resolveFact: the strongest source wins, lower sources that disagree are al
   const none = resolveFact('employer', [creditDoc(B)]);
   assert.equal(none.status, 'not on documents'); assert.equal(none.value, null); assert.equal(none.alsoSeen.length, 0);
   assert.equal(resolveFact('annual salary', stubDocs()).status, 'not on documents', 'a stub has no authority on an annual figure');
-  assert.equal(textStatus('Northbridge Analytics', 'Northbridge Analytics Inc.'), 'match'); assert.equal(textStatus('Northbridge Analytics', 'Northbridge Health'), 'close'); assert.equal(textStatus(A, B), 'mismatch'); assert.equal(textStatus(A, null), 'not_found');
+  assert.equal(employerTextStatus('Northbridge Analytics', 'Northbridge Analytics Inc.'), 'match'); assert.equal(employerTextStatus('Northbridge Analytics', 'Northbridge Health'), 'mismatch', 'a shared word is not a match for employers (lib/employerName.js)'); assert.equal(employerTextStatus(A, B), 'mismatch'); assert.equal(employerTextStatus(A, null), 'not_found');
+  assert.equal(textStatus('Registered Nurse', 'Registered Nurse.'), 'match'); assert.equal(textStatus('Data Analyst', 'Senior Data Analyst'), 'close', 'titles keep the shared word rule');
 });
 
 test('letter at A and 85,000, stubs annualize to 85,000 at A, credit report lists B: employer matched, income matched, B also seen as historical, label docs match', () => {
