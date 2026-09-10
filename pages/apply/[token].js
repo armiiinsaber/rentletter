@@ -25,7 +25,7 @@ import DocumentUploader from '../../components/tenant/DocumentUploader';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
 
-// ?from={prefillToken}: the invite from People (pages/api/pipeline/invite.js). Resolved on the
+// ?from={prefillToken}: the invite from Pipeline (pages/api/pipeline/invite.js). Resolved on the
 // server through the service role (lib/pipeline.js readPrefill): the token maps to an application
 // whose surviving fields fill every step, collapsed to one review card with one Submit. A wrong
 // or expired token renders the ordinary empty form. The first open claims the token into a cookie
@@ -91,7 +91,7 @@ export default function ApplyPage({ invited = null }) {
   const [touched, setTouched] = useState({});
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [reviewing, setReviewing] = useState(false); // deliberate review-and-confirm step
-  // Invited from People: the form arrives filled and collapsed to one review card. Edit opens a step.
+  // Invited from Pipeline: the form arrives filled and collapsed to one review card. Edit opens a step.
   const [collapsed, setCollapsed] = useState(!!(invited && invited.form));
   // ── Saved-profile reuse ─────────────────────────────────────────────────────────────────
   // /my-application stores the tenant's RL + owner token in localStorage on THIS device (the

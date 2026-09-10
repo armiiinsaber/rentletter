@@ -38,7 +38,7 @@ export default function ProfileHub({ initialProfile }) {
   const signOut = async () => { try { await adapter.supabase().auth.signOut(); } catch (e) { /* the redirect still lands on sign in */ } router.replace(adapter.paths.signin); };
 
   // "Back to dashboard" leave guard — only prompts when there are unsaved DETAIL changes.
-  const goToDashboard = () => router.push('/landlord');
+  const goToDashboard = () => router.push('/dashboard');
   const leaveWithoutSaving = () => { setLeaveOpen(false); goToDashboard(); };
   const saveAndLeave = async () => {
     const doSave = saveRef.current;
@@ -62,7 +62,7 @@ export default function ProfileHub({ initialProfile }) {
 
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'clamp(24px, 5vw, 48px) clamp(16px, 4vw, 32px) 64px', paddingTop: 'calc(clamp(24px, 5vw, 48px) + env(safe-area-inset-top, 0px))' }}>
           <header className="rl-in" style={{ marginBottom: 'var(--s-5)' }}>
-            <a href="/landlord" className="rl-btn"
+            <a href="/dashboard" className="rl-btn"
               onClick={(e) => { if (dirty) { e.preventDefault(); setLeaveOpen(true); } }}
               style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', marginBottom: 'var(--s-4)', padding: 'var(--s-2) var(--s-3)', borderRadius: R.pill, border: `1px solid ${C.ruleDark}`, background: C.card, color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 600, textDecoration: 'none' }}>
               <span aria-hidden="true" style={{ fontSize: 'var(--t-body-2)', lineHeight: 1 }}>←</span> Back to dashboard

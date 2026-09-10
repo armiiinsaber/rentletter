@@ -10,7 +10,7 @@ export async function getServerSideProps(ctx) {
   const code = typeof ctx.query.code === 'string' ? ctx.query.code : null;
   const rawNext = typeof ctx.query.next === 'string' ? ctx.query.next : '';
   // Only allow internal redirect targets.
-  const next = rawNext.startsWith('/') ? rawNext : '/landlord';
+  const next = rawNext.startsWith('/') ? rawNext : '/dashboard';
 
   if (!isSupabaseConfigured()) {
     return { redirect: { destination: '/signin?error=Sign-in%20is%20temporarily%20unavailable.', permanent: false } };

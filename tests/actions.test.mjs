@@ -81,7 +81,7 @@ test('dismissal holds while the signature is unchanged and lifts when the state 
 test('deep links through the adapter paths', () => {
   const items = buildActions(fixture());
   const verify = items.find((i) => i.kind === 'verify'), ready = items.find((i) => i.kind === 'ready');
-  assert.equal(actionHref(verify, { listing: (id) => `/landlord/${id}` }), '/landlord/L1?applicant=a-verify&panel=checklist');
+  assert.equal(actionHref(verify, { listing: (id) => `/listing/${id}` }), '/listing/L1?applicant=a-verify&panel=checklist');
   assert.equal(actionHref(ready, { listing: (id) => `/demo/dashboard?listing=${id}` }), '/demo/dashboard?listing=L1&panel=report');
-  assert.equal(actionHref(items.find((i) => i.kind === 'verify'), { listing: (id) => `/landlord/${id}` }), '/landlord/L1?applicant=a-verify&panel=checklist');
+  assert.equal(actionHref(items.find((i) => i.kind === 'verify'), { listing: (id) => `/listing/${id}` }), '/listing/L1?applicant=a-verify&panel=checklist');
 });

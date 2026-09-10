@@ -1,4 +1,4 @@
-// The listing page load: pages/landlord/[id].js getServerSideProps and the refresh route
+// The listing page load: pages/listing/[id].js getServerSideProps and the refresh route
 // pages/api/listings/applicants.js over the fake stack.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,7 +7,7 @@ register('../helpers/fakeStackHook.mjs', import.meta.url);
 import { installFakeStack, fakeCtx, fakeReq, fakeRes, findKeys } from '../helpers/fakeStack.mjs';
 import { tables, USER, ago, NOW, DAY } from './fixture.mjs';
 
-const page = await import('../../pages/landlord/[id].js');
+const page = await import('../../pages/listing/[id].js');
 const route = (await import('../../pages/api/listings/applicants.js')).default;
 const { compareFit } = await import('../../lib/fitScore.js');
 
@@ -15,7 +15,7 @@ const withSnapshot = () => { const t = tables(); t.report_snapshots.push({ id: '
 
 test('another realtor\'s listing id redirects to the index', async () => {
   const s = installFakeStack({ tables: withSnapshot(), user: USER });
-  try { assert.deepEqual(await page.getServerSideProps(fakeCtx({ params: { id: 'L9' } })), { redirect: { destination: '/landlord', permanent: false } }); } finally { s.restore(); }
+  try { assert.deepEqual(await page.getServerSideProps(fakeCtx({ params: { id: 'L9' } })), { redirect: { destination: '/dashboard', permanent: false } }); } finally { s.restore(); }
 });
 
 test('the owner\'s listing: the applicants with Fit, the snapshot meta, the reference answers, the document requests, the duplicate marks, no owner_token', async () => {

@@ -406,7 +406,7 @@ export default function Home() {
             </nav>
             {/* RIGHT, primary CTA (drifts right + fades on scroll) */}
             <div className="lh-right">
-              <a href="/landlord" className="rl-btn" style={{
+              <a href="/dashboard" className="rl-btn" style={{
                 background: C.ink, color: C.paper, textDecoration: 'none',
                 padding: '11px 18px', fontSize: 13, fontWeight: 600, borderRadius: R.ctrl,
                 display: 'inline-flex', alignItems: 'center', gap: 7,
@@ -474,7 +474,7 @@ export default function Home() {
 
                 <div className="rl-hero-seq" style={{ animationDelay: '660ms' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
-                    <a href="/landlord" className="rl-btn" style={{
+                    <a href="/dashboard" className="rl-btn" style={{
                       background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
                       padding: '16px 28px', fontSize: 15, fontWeight: 600,
                       display: 'inline-flex', alignItems: 'center', gap: 9,
@@ -665,7 +665,7 @@ export default function Home() {
                   Founding realtor spots are open for Ontario &amp; BC, free in exchange for your feedback. No credit card, no setup, your first applicant link is ready in minutes.
                 </p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <a href="/landlord" className="rl-btn" style={{
+                  <a href="/dashboard" className="rl-btn" style={{
                     background: C.red, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
                     padding: '16px 32px', fontSize: 15, fontWeight: 600,
                     display: 'inline-flex', alignItems: 'center', gap: 9,
@@ -693,7 +693,7 @@ export default function Home() {
                     Rental application screening for Canadian realtors. Built in Toronto.
                   </p>
                 </div>
-                <FooterCol title="Product" links={[['Dashboard', '/landlord'], ['Book a demo', 'mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter'], ['FAQ', '/faq']]} />
+                <FooterCol title="Product" links={[['Dashboard', '/dashboard'], ['Book a demo', 'mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter'], ['FAQ', '/faq']]} />
                 <FooterCol title="Company" links={[['Compliance', '/compliance'], ['Privacy', '/privacy'], ['Terms', '/terms'], ['Tenant profile', '/my-application']]} />
                 <FooterCol title="Contact" links={[['info@rentletter.ca', 'mailto:info@rentletter.ca']]} />
               </div>

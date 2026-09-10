@@ -9,7 +9,7 @@ export const GO_EVENT = 'rl:assistant-go';
 
 export function navigateToAction(item, paths) {
   if (typeof window === 'undefined' || !item) return;
-  if (item.panel === 'people') { window.location.href = actionHref(item, paths); return; } // lib/actions.js: the People card on the dashboard
+  if (item.panel === 'people') { window.location.href = actionHref(item, paths); return; } // lib/actions.js: the Pipeline card on the dashboard
   if (item.listingId && window.__rlListingId === item.listingId) {
     window.dispatchEvent(new CustomEvent(GO_EVENT, { detail: { linkId: item.linkId || null, panel: item.panel } }));
     return;

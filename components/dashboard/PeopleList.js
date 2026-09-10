@@ -1,6 +1,6 @@
 // components/dashboard/PeopleList.js
-// People: the pipeline card on the dashboard. Everyone who asked to be kept in mind (consented,
-// not ended), scored against every active listing (lib/pipelineState.js peopleRows, the same
+// Pipeline: the card on the dashboard. Everyone who was asked when a unit went rented (pending,
+// muted, no invite yet) and everyone who said yes (consented, not ended), scored against every active listing (lib/pipelineState.js peopleRows, the same
 // Fit the listing page shows, documents excluded, confirmations carried). Each row: the name or
 // the email, then the best Fit and the provenance. Tapping a row expands it: one line per active
 // listing with Invite (the route sends the email and prefills the application), and Remove with
@@ -52,7 +52,9 @@ export default function PeopleList({ people, onChanged, className = '', style })
     finally { setBusy(''); }
   };
 
+  const pending = (p) => p.status === 'pending';
   const line2 = (p) => {
+    if (pending(p)) return `asked ${shortDate(p.askedAt)} · no answer yet`;
     const bits = [p.best ? `${Number(p.best.score).toFixed(1)} ${p.best.label} for ${p.best.listingName}` : 'Asked to hear about similar units'];
     if (p.fromListingName) bits.push(`from ${p.fromListingName}`);
     if (p.expiresAt) bits.push(`until ${shortDate(p.expiresAt)}`);
@@ -62,14 +64,14 @@ export default function PeopleList({ people, onChanged, className = '', style })
   const ctrl = { minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };
 
   return (
-    <section id="people" className={`rl-card ${className}`} aria-label="People" style={{ padding: 'var(--card-pad)', scrollMarginTop: 'var(--s-4)', ...style }}>
+    <section id="people" className={`rl-card ${className}`} aria-label="Pipeline" style={{ padding: 'var(--card-pad)', scrollMarginTop: 'var(--s-4)', ...style }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginBottom: rows.length ? 'var(--s-2)' : 'var(--s-1)' }}>
-        <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 'var(--t-d3)', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 'var(--lh-display)', color: C.ink }}>People</h2>
+        <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 'var(--t-d3)', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 'var(--lh-display)', color: C.ink }}>Pipeline</h2>
         <span style={{ fontSize: 'var(--t-d3)', color: C.ink, lineHeight: 1, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{rows.length}</span>
       </div>
       {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginBottom: 'var(--s-2)' }}>{note}</div> : null}
       {rows.length === 0 ? (
-        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Nobody yet. People who ask to be kept in mind after a unit is rented appear here.</p>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Nobody yet. Applicants who lose out on a rented unit appear here once asked.</p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {rows.map((p, i) => {
@@ -79,7 +81,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
                 <div role="button" tabIndex={0} aria-expanded={open} onClick={() => setOpenId(open ? null : p.id)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(open ? null : p.id); } }}
                   style={{ minHeight: 44, padding: 'var(--s-2) 0', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 'var(--t-body)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{p.display}</div>
+                  <div style={{ fontSize: 'var(--t-body)', color: pending(p) ? C.inkMute : C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{p.display}</div>
                   <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{line2(p)}</div>
                 </div>
                 {open && (
@@ -89,6 +91,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
                       <div key={f.listingId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44 }}>
                         <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}><span className="num">{fitText(f)}</span> · {f.listingName}</div>
                         {f.applied ? <span style={{ ...ctrl, border: `1px solid var(--rule)`, color: C.inkMute, display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>Applied</span>
+                          : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, border: `1px solid var(--rule)`, color: C.inkMute, cursor: 'default' }}>Invite</button>
                           : f.invitedAt ? <button type="button" disabled style={{ ...ctrl, border: `1px solid var(--rule)`, color: C.inkMute, cursor: 'default' }}>Invited {shortDate(f.invitedAt)}</button>
                           : <button type="button" onClick={() => invite(p, f)} disabled={busy === `${p.id}:${f.listingId}`} style={{ ...ctrl, opacity: busy === `${p.id}:${f.listingId}` ? 0.6 : 1 }}>{busy === `${p.id}:${f.listingId}` ? 'Sending' : 'Invite'}</button>}
                       </div>
@@ -101,7 +104,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
           })}
         </ul>
       )}
-      <ConfirmSheet open={!!confirm} title={`Remove ${confirm?.display || ''}?`} body="They leave People. Their application, if any, stays where it was." confirmLabel="Remove" danger busy={busy === `remove:${confirm?.id}`} onConfirm={() => confirm && remove(confirm)} onCancel={() => setConfirm(null)} />
+      <ConfirmSheet open={!!confirm} title={`Remove ${confirm?.display || ''}?`} body="They leave Pipeline. Their application, if any, stays where it was." confirmLabel="Remove" danger busy={busy === `remove:${confirm?.id}`} onConfirm={() => confirm && remove(confirm)} onCancel={() => setConfirm(null)} />
     </section>
   );
 }

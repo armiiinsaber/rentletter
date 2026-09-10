@@ -93,7 +93,7 @@ export default function SignUp() {
     setError('');
     try {
       const supabase = getSupabaseBrowserClient();
-      const emailRedirectTo = `${window.location.origin}/auth/callback?next=/landlord`;
+      const emailRedirectTo = `${window.location.origin}/auth/callback?next=/dashboard`;
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,

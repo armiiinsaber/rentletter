@@ -47,10 +47,10 @@ export default async function handler(req, res) {
     const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://rentletter.ca';
     const r = out.ref;
     // Realtor 1 learns the outcome (a decline says only that). Realtor 2 is told only on approval.
-    send(await realtorEmail(r.from.profileId), approve ? 'Referral approved' : 'Referral declined', outcomeEmail({ approved: approve, applicantName: r.applicantName, toName: r.to.name, dashboardUrl: `${site}/landlord` })).catch(() => {});
+    send(await realtorEmail(r.from.profileId), approve ? 'Referral approved' : 'Referral declined', outcomeEmail({ approved: approve, applicantName: r.applicantName, toName: r.to.name, dashboardUrl: `${site}/dashboard` })).catch(() => {});
     if (approve) {
       const html = r.to.profileId
-        ? receivedEmail({ fromName: r.from.name, fromBrokerage: r.from.brokerage, applicantName: r.applicantName, note: r.note, dashboardUrl: `${site}/landlord#referrals` })
+        ? receivedEmail({ fromName: r.from.name, fromBrokerage: r.from.brokerage, applicantName: r.applicantName, note: r.note, dashboardUrl: `${site}/dashboard#referrals` })
         : inviteEmail({ fromName: r.from.name, fromBrokerage: r.from.brokerage, applicantName: r.applicantName, note: r.note, signupUrl: `${site}/signup?ref=1&from=${encodeURIComponent(r.from.name || '')}&email=${encodeURIComponent(r.to.email)}` });
       send(r.to.email, r.to.profileId ? `${r.from.name || 'A realtor'} referred an applicant to you` : `${r.from.name || 'A realtor'} referred an applicant to you on Rentletter`, html).catch(() => {});
     }

@@ -1,4 +1,4 @@
-// People: the pipeline. listPeople sort and fields, the invite's refusals and prefill token, the
+// Pipeline. listPeople sort and fields (pending rows shown, muted, after the consented), the invite's refusals and prefill token, the
 // prefill render, the renewal selection and expiry, the answer route on a renew token, remove,
 // the pipeline_fit item, and the exclusions (expired, declined, another realtor).
 import { test } from 'node:test';
@@ -31,6 +31,7 @@ const fixture = () => {
     { id: 'C3', profile_id: 'me', listing_id: 'L-rented', application_id: null, email: 'Jordan.Lee@example.com', token: 't3', status: 'consented', consented_at: days(-3), expires_at: days(5), invites: [], renew_token: null, renew_sent_at: null },
     { id: 'C4', profile_id: 'me', listing_id: 'L-rented', application_id: 'A3', email: 'a3@example.com', token: 't4', status: 'consented', consented_at: days(-70), expires_at: days(-10), invites: [], renew_token: null, renew_sent_at: null }, // expired
     { id: 'C5', profile_id: 'me', listing_id: 'L-rented', application_id: 'A4', email: 'a4@example.com', token: 't5', status: 'declined', consented_at: null, expires_at: days(50), invites: [], renew_token: null, renew_sent_at: null },
+    { id: 'C7', profile_id: 'me', listing_id: 'L-rented', application_id: 'A3', email: 'a3@example.com', token: 't7', status: 'pending', consented_at: null, created_at: days(-1), expires_at: days(59), invites: [], renew_token: null, renew_sent_at: null }, // asked, no answer yet
     { id: 'C6', profile_id: 'them', listing_id: 'L-other', application_id: 'A5', email: 'a5@example.com', token: 't6', status: 'consented', consented_at: days(-1), expires_at: days(59), invites: [], renew_token: null, renew_sent_at: null },
   ];
   const listing_applicants = [
@@ -48,7 +49,9 @@ test('listPeople: fields, Fit against active listings only, applied by email, so
   const { tables, listings, applicantsByListing } = fixture();
   const admin = fakeSupabase(tables);
   const people = await P.listPeople({ profileId: 'me', listings, admin, applicantsByListing, now: NOW });
-  assert.deepEqual(people.map((p) => p.id), ['C1', 'C2', 'C3'], 'expired, declined and the other realtor are out; email only last');
+  assert.deepEqual(people.map((p) => p.id), ['C1', 'C2', 'C3', 'C7'], 'expired, declined and the other realtor are out; email only last, then the pending');
+  assert.equal(people[3].status, 'pending'); assert.equal(people[3].askedAt, days(-1)); assert.equal(people[3].name, 'Person A3');
+  assert.equal(people[0].status, 'consented');
   const a1 = people[0];
   assert.equal(a1.display, 'Person A1'); assert.equal(a1.fromListingName, '15 Logan Ave'); assert.equal(a1.expiresAt, days(51));
   assert.deepEqual(a1.fits.map((f) => f.listingId), ['L-active', 'L-two'], 'rented and other realtor listings never appear');
@@ -95,6 +98,7 @@ test('invite: refusals, the prefill token in KV, the invites entry, the email', 
     assert.equal((await P.prepareInvite(deps, { consentId: 'C2', listingId: 'L-two' })).status, 409, 'already invited');
     assert.equal((await P.prepareInvite(deps, { consentId: 'C4', listingId: 'L-active' })).status, 410, 'expired');
     assert.equal((await P.prepareInvite(deps, { consentId: 'C5', listingId: 'L-active' })).status, 410, 'declined');
+    assert.equal((await P.prepareInvite(deps, { consentId: 'C7', listingId: 'L-active' })).status, 410, 'pending: no invite until they say yes');
     const r = await P.prepareInvite(deps, { consentId: 'C1', listingId: 'L-active' });
     assert.equal(r.status, 200);
     assert.ok(P.isPrefillToken(r.prefillToken), `prefill token ${r.prefillToken}`);
@@ -192,11 +196,13 @@ test('pipeline_fit: one item per new active listing with people at 4.0 or above,
   const { tables, listings, applicantsByListing } = fixture();
   const people = await P.listPeople({ profileId: 'me', listings, admin: fakeSupabase(tables), applicantsByListing, now: NOW });
   const items = pipelineFitItems({ listings, people });
-  assert.deepEqual(items.map((i) => [i.kind, i.listingId, i.title, i.reason, i.verb, i.panel, i.signature]), [['pipeline_fit', 'L-active', 'People who fit', '1 person at 4.0 or above', 'Open', 'people', 'pipeline_fit:L-active:1']]);
+  assert.deepEqual(items.map((i) => [i.kind, i.listingId, i.title, i.reason, i.verb, i.panel, i.signature]), [['pipeline_fit', 'L-active', 'Pipeline fits', '1 person at 4.0 or above', 'Open', 'people', 'pipeline_fit:L-active:1']]);
   const all = buildActions({ listings, applicantsByListing, people, now: NOW.toISOString() });
   assert.ok(all.some((i) => i.kind === 'pipeline_fit')); assert.ok(KIND_ORDER.includes('pipeline_fit'));
-  assert.equal(actionHref(items[0], { home: '/landlord', listing: (id) => `/landlord/${id}` }), '/landlord#people');
+  assert.equal(actionHref(items[0], { home: '/dashboard', listing: (id) => `/listing/${id}` }), '/dashboard#people');
   assert.deepEqual(pipelineFitItems({ listings, people: [] }), []);
+  assert.ok(people.find((p) => p.id === 'C7').fits.some((f) => f.listingId === 'L-active' && f.score >= 4), 'the pending A3 would fit');
+  assert.match(items[0].reason, /^1 person/, 'a pending row never counts toward Pipeline fits');
 });
 
 test('routes: session, entitlement and ownership; the sandbox covers the three routes; the cron is scheduled', () => {

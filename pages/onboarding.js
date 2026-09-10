@@ -20,7 +20,7 @@ export async function getServerSideProps(ctx) {
   if (!user) return { redirect: { destination: '/signin?next=/onboarding', permanent: false } };
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   const p = profile || { id: user.id, email: user.email };
-  if (isOnboarded(p)) return { redirect: { destination: '/landlord', permanent: false } };
+  if (isOnboarded(p)) return { redirect: { destination: '/dashboard', permanent: false } };
   return { props: { userId: user.id, initialProfile: p } };
 }
 
@@ -34,7 +34,7 @@ export default function Onboarding({ initialProfile }) {
       const r = await fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j?.error) return { error: j?.error || 'Could not save. Please try again.' };
-      router.push('/landlord');
+      router.push('/dashboard');
       return { ok: true };
     } catch (e) { return { error: 'Could not save. Please try again.' }; }
   };

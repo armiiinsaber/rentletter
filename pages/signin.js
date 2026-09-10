@@ -43,7 +43,7 @@ export default function SignIn() {
         return;
       }
       const next = typeof router.query.next === 'string' && router.query.next.startsWith('/')
-        ? router.query.next : '/landlord';
+        ? router.query.next : '/dashboard';
       router.replace(next);
     } catch (err) {
       setError('Something went wrong. Please try again.');

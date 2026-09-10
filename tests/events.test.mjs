@@ -18,14 +18,14 @@ test('every client reportable type is an allowed type, and the tenant side ones 
 });
 
 test('every type has a title and a destination', () => {
-  const paths = { home: '/landlord', listing: (id) => `/landlord/${id}`, profile: '/profile' };
+  const paths = { home: '/dashboard', listing: (id) => `/listing/${id}`, profile: '/profile' };
   for (const type of EVENT_TYPES) {
     const e = { type, listing_id: 'L1', payload: { applicantName: 'Ana Ruiz', listingName: '12 Main', linkId: 'k1' } };
     assert.notEqual(eventTitle(e), 'Something happened', type);
     assert.ok(eventHref(e, paths), type);
   }
   assert.equal(eventHref({ type: 'branding_updated', payload: {} }, paths), '/profile');
-  assert.equal(eventHref({ type: 'applicant_applied', listing_id: 'L1', payload: { linkId: 'k1' } }, paths), '/landlord/L1#applicant-k1');
+  assert.equal(eventHref({ type: 'applicant_applied', listing_id: 'L1', payload: { linkId: 'k1' } }, paths), '/listing/L1#applicant-k1');
 });
 
 test('groupByDay is reverse chronological with Today and Yesterday first', () => {

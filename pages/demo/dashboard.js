@@ -1,9 +1,9 @@
 // pages/demo/dashboard.js — the public product demo.
 // Renders the REAL realtor dashboard (components/dashboard/HomeView + ListingView — the exact
-// components /landlord uses) through lib/demoAdapter.js: an in-memory fixture of FAKE people
+// components /dashboard uses) through lib/demoAdapter.js: an in-memory fixture of FAKE people
 // (lib/demoFixture.js). No auth, no database, no email, no KV. Every write the dashboard makes
 // lands in sessionStorage and nowhere else; "Reset" wipes it. The assistant is live (real
-// ?listing=<fixture id> opens a listing exactly like /landlord/<id> does.
+// ?listing=<fixture id> opens a listing exactly like /listing/<id> does.
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';

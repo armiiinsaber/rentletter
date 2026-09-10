@@ -1,5 +1,5 @@
 // /api/assistant/signals  GET: the assistant's inputs for the signed in realtor (the same load
-// pages/landlord.js does server side). The bell and the panel use it on pages that did not
+// pages/dashboard.js does server side). The bell and the panel use it on pages that did not
 // receive initialSignals. Realtor authenticated; the applicants come from the realtor's own
 // listings only (fetchListingApplicants strips owner_token).
 import { requireRealtor } from '../../../lib/realtorAuth';

@@ -22,7 +22,7 @@ export default function CompliancePage() {
         <ScrollHeader maxWidth={1100}>
           <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></Link>
           <div style={{ display: 'flex', gap: 'clamp(16px, 2vw, 24px)', alignItems: 'center', fontSize: 13.5 }}>
-            <Link href="/landlord" style={{ color: C.inkSoft, textDecoration: 'none', fontWeight: 500 }}>Dashboard</Link>
+            <Link href="/dashboard" style={{ color: C.inkSoft, textDecoration: 'none', fontWeight: 500 }}>Dashboard</Link>
             <Link href="/privacy" style={{ color: C.inkSoft, textDecoration: 'none', fontWeight: 500 }}>Privacy</Link>
           </div>
         </ScrollHeader>

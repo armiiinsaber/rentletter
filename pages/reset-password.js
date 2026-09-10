@@ -42,7 +42,7 @@ export default function ResetPassword() {
         setLoading(false);
         return;
       }
-      router.replace('/landlord');
+      router.replace('/dashboard');
     } catch (err) {
       setError('Something went wrong. Please try again.');
       setLoading(false);

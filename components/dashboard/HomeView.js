@@ -1,5 +1,5 @@
 // components/dashboard/HomeView.js
-// The realtor dashboard HOME — extracted verbatim from pages/landlord.js so the real page
+// The realtor dashboard HOME: extracted verbatim from pages/dashboard.js so the real page
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
 import { useEffect, useMemo, useState } from 'react';
@@ -14,10 +14,6 @@ import { formatUnit } from '../../lib/unitType';
 import { listingStateLine } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
-import { buildActions, visibleActions } from '../../lib/actions.js';
-import { ActionRows } from './ActionRow';
-import { useAssistantStore } from '../../lib/assistantStore';
-import { navigateToAction } from './actionNav';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -145,7 +141,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingsLoaded]);
   // ── Assistant data for "Rentletter noticed": the realtor's own applicants per listing,
-  // notifications feed, referrals. Normally these arrive WITH the page (pages/landlord.js loads
+  // notifications feed, referrals. Normally these arrive WITH the page (pages/dashboard.js loads
   // them server side as initialSignals) so the dashboard commits in one paint. Without them
   // (demo workspace, or a server side failure) they are fetched here and the page holds its
   // skeleton until they land, so nothing ever appears after the rest. No AI involved.
@@ -196,12 +192,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const [clientHour, setClientHour] = useState(null);
   useEffect(() => { setClientHour(new Date().getHours()); }, []);
   const greeting = clientHour == null ? '' : greetingFor(clientHour, firstName);
-  // The action list once (lib/actions.js buildActions, the bell reads the same items in full); each
-  // listing card takes its top item as its one action line.
-  const store = useAssistantStore();
-  const actionItems = useMemo(() => (signals.loaded ? visibleActions(buildActions({ listings: listings || [], applicantsByListing: signals.applicantsByListing || {}, people: signals.people || [] }), store.dismissed) : []), [signals, listings, store.dismissed]);
-  // The bell receives one stable object per signals change: this page now subscribes to the store,
-  // and a fresh object every render would make the bell's setSignals effect re render this page forever.
+  // The bell receives one stable object per signals change: a fresh object every render would make
+  // the bell's setSignals effect re render this page forever.
   const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: listings || [] } : null), [signals, listings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
@@ -270,15 +262,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </div>
           )}
           {ready && <>
-          {/* 1. THE INK CARD: the greeting line (the hour from the client, lib/greeting.js) over the Next
-              rows (components/dashboard/ActionRow.js, the bell's rows), three at most, then "{n} more"
-              opening the bell. Then the one red action on the page: New listing. Three surfaces: ink, red, paper. */}
-          <section className="dash-ink rl-in" aria-label="Next" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
+          {/* 1. THE INK CARD: the greeting line alone (the hour from the client, lib/greeting.js). What is
+              next lives in the bell, the one list. Then the one red action on the page: New listing.
+              Three surfaces: ink, red, paper. */}
+          <section className="dash-ink rl-in" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
             <h1 className="t-d3 dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d3) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
-            {hasListings && <div style={{ marginTop: 'var(--s-2)' }}><ActionRows items={actionItems.slice(0, 3)} tone="ink" dismissable={false} onGo={(item) => navigateToAction(item, adapter.paths)} onDismiss={() => {}} /></div>}
-            {hasListings && actionItems.length > 3 && (
-              <button type="button" onClick={openAssistant} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.paper, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{actionItems.length - 3} more</button>
-            )}
           </section>
           <button type="button" onClick={() => setModalOpen(true)} className="dash-new rl-in" style={{ marginTop: 'var(--s-3)' }}>
             <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
@@ -348,7 +336,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </div>
           )}
 
-          {/* 3b. PEOPLE: the pipeline, under the listings (components/dashboard/PeopleList.js). */}
+          {/* 3. PIPELINE, under the listings (components/dashboard/PeopleList.js). */}
           {hasListings && <div style={{ marginTop: 'var(--gap-section)' }}><PeopleList people={signals.people || []} /></div>}
 
           {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero

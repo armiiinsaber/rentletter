@@ -1,5 +1,5 @@
 // components/dashboard/ListingView.js
-// ONE listing — extracted verbatim from pages/landlord/[id].js so the real page (Supabase SSR)
+// ONE listing: extracted verbatim from pages/listing/[id].js so the real page (Supabase SSR)
 // and /demo/dashboard (in-memory fixture) render the SAME component. All I/O goes through
 // useAdapter() (lib/dashboardAdapter).
 import React, { useState, useEffect, useRef } from 'react';

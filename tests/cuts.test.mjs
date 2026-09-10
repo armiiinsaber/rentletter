@@ -47,13 +47,13 @@ test('the onboarding gate: a profile with a display name and nothing else is com
   assert.equal(needsOnboarding(null), false, 'no row: never lock anyone out');
   assert.equal(isOnboarded({ full_name: 'A' }), true);
   const page = read(`${root}pages/onboarding.js`);
-  assert.match(page, /if \(isOnboarded\(p\)\) return \{ redirect: \{ destination: '\/landlord'/);
+  assert.match(page, /if \(isOnboarded\(p\)\) return \{ redirect: \{ destination: '\/dashboard'/);
   assert.match(page, /onboarding_step: 'done', onboarding_completed_at/);
   assert.doesNotMatch(page, /ProvinceStep|BrandingStep|ListingStep|DoneStep/);
   const flow = read(`${root}components/onboarding/OnboardingFlow.js`);
   assert.doesNotMatch(flow, /ob-brokerage|PROVINCE_OPTIONS|ProvinceStep|BrandingStep|ListingStep/);
   assert.match(flow, /onSave\(\{ full_name: name\.trim\(\)\.slice\(0, NAME_MAX\) \}\)/);
-  const gate = read(`${root}pages/landlord.js`);
+  const gate = read(`${root}pages/dashboard.js`);
   assert.match(gate, /if \(needsOnboarding\(finalProfile\)\) return \{ redirect: \{ destination: '\/onboarding'/);
 });
 

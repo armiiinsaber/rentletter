@@ -1,4 +1,4 @@
-// The dashboard load, end to end: pages/landlord.js getServerSideProps over the fake stack
+// The dashboard load, end to end: pages/dashboard.js getServerSideProps over the fake stack
 // (tests/helpers/fakeStack.mjs), a realtor with two listings and five applicants.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -7,14 +7,14 @@ register('../helpers/fakeStackHook.mjs', import.meta.url);
 import { installFakeStack, fakeCtx, findKeys } from '../helpers/fakeStack.mjs';
 import { tables, USER, ago, NOW, DAY } from './fixture.mjs';
 
-const page = await import('../../pages/landlord.js');
+const page = await import('../../pages/dashboard.js');
 const gssp = (stack) => page.getServerSideProps(fakeCtx());
 let stack;
 const up = (opts = {}) => { if (stack) stack.restore(); stack = installFakeStack({ tables: tables(opts.fixture || {}), user: opts.user === undefined ? USER : opts.user, kv: opts.kv }); return stack; };
 
 test('no session: redirect to sign in', async () => {
   up({ user: null });
-  assert.deepEqual(await gssp(), { redirect: { destination: '/signin?next=/landlord', permanent: false } });
+  assert.deepEqual(await gssp(), { redirect: { destination: '/signin?next=/dashboard', permanent: false } });
 });
 
 test('a failed profile read is retried once, then the request goes back to sign in', async () => {
@@ -24,7 +24,7 @@ test('a failed profile read is retried once, then the request goes back to sign 
   const r = await gssp();
   assert.equal(profileReads, 2, 'one retry');
   assert.match(r.redirect.destination, /^\/signin\?error=We%20could%20not%20confirm%20your%20session/);
-  assert.match(r.redirect.destination, /next=%2Flandlord$/);
+  assert.match(r.redirect.destination, /next=%2Fdashboard$/);
   // a read that fails once and succeeds on the retry renders the dashboard
   let n = 0; s.db.failWhen = (q) => (q.table === 'profiles' && q.op === 'select' && n++ === 0 ? { code: 'PGRST301', message: 'JWT expired' } : null);
   const ok = await gssp();
@@ -59,7 +59,7 @@ test('the entitlement each profile gets, as a value', async () => {
   }
 });
 
-test('loadSignals: the listings, the applicants with Fit, the People rows, no owner_token or cover_letter anywhere, inside the query budget', async () => {
+test('loadSignals: the listings, the applicants with Fit, the Pipeline rows, no owner_token or cover_letter anywhere, inside the query budget', async () => {
   const s = up();
   s.kv.values['docreq-app:J2'] = { token: 'f'.repeat(32), status: 'requested', requestedAt: ago(2), receivedAt: null, nudgedAt: [] };
   s.db.queries.length = 0; s.kv.calls.length = 0;
@@ -80,7 +80,7 @@ test('loadSignals: the listings, the applicants with Fit, the People rows, no ow
   const supabase = s.db.queries.length; const kv = s.kv.calls.length; const rls = s.db.queries.filter((q) => q.rls).length;
   const byTable = {}; for (const q of s.db.queries) byTable[`${q.rls ? 'rls' : 'admin'}.${q.table}`] = (byTable[`${q.rls ? 'rls' : 'admin'}.${q.table}`] || 0) + 1;
   console.log(`  dashboard load: supabase queries=${supabase} (rls=${rls}, loadSignals=${supabase - rls}) kv calls=${kv} ${JSON.stringify(byTable)}`);
-  // lib/dashboardSignals.js documents the load as four independent reads plus the People source's
+  // lib/dashboardSignals.js documents the load as four independent reads plus the Pipeline source's
   // three; tests/loadSignals.test.mjs pins loadSignals at under 10 Supabase queries and 3 KV calls on
   // a fixture without People. Here People adds its two extra reads and the landlord answers add one,
   // so loadSignals is 10 and the page (profile and listings on top) is 13.

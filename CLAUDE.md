@@ -34,7 +34,7 @@ invite links.
 - Any **fetch call's payload shape**, any **state field name**, any data
   structure. `listing.preferences.*` field names are load-bearing (share
   tokens and workspace sync depend on them) — never rename.
-- **Business model logic in `pages/landlord.js`** must stay functionally
+- **Business model logic in `pages/dashboard.js`** must stay functionally
   identical: first 50 realtor signups are founders (free forever, green
   badge); later signups get a 7-day trial (amber countdown banner); lapsed
   trials see a red banner and a soft paywall hiding dashboard content.
@@ -46,7 +46,7 @@ invite links.
 
 Never add screening fields or copy touching gender, age, family status, race,
 religion, disability, or income source. The HRTO warning copy in the landlord
-preferences modal (`pages/landlord.js`) must remain. Fit indicators on the
+preferences modal (`pages/dashboard.js`) must remain. Fit indicators on the
 shortlist page reference only legally screenable criteria.
 
 ## Brand tokens
