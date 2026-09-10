@@ -14,7 +14,8 @@ import { formatUnit } from '../../lib/unitType';
 import { listingStateLine } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
-import { buildActions, visibleActions, listingAction } from '../../lib/actions.js';
+import { buildActions, visibleActions } from '../../lib/actions.js';
+import { ActionRows } from './ActionRow';
 import { useAssistantStore } from '../../lib/assistantStore';
 import { navigateToAction } from './actionNav';
 import { greetingFor } from '../../lib/greeting.js';
@@ -269,9 +270,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </div>
           )}
           {ready && <>
-          {/* 1. ONE GREETING LINE, then the one red action on the page: New listing. */}
-          <h1 className="t-d3 dash-greet rl-in" aria-live="polite" style={{ color: C.ink, margin: '0 0 var(--s-3)', minHeight: 'calc(var(--t-d3) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
-          <button type="button" onClick={() => setModalOpen(true)} className="dash-new rl-in">
+          {/* 1. THE INK CARD: the greeting line (the hour from the client, lib/greeting.js) over the Next
+              rows (components/dashboard/ActionRow.js, the bell's rows), three at most, then "{n} more"
+              opening the bell. Then the one red action on the page: New listing. Three surfaces: ink, red, paper. */}
+          <section className="dash-ink rl-in" aria-label="Next" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
+            <h1 className="t-d3 dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d3) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
+            {hasListings && <div style={{ marginTop: 'var(--s-2)' }}><ActionRows items={actionItems.slice(0, 3)} tone="ink" dismissable={false} onGo={(item) => navigateToAction(item, adapter.paths)} onDismiss={() => {}} /></div>}
+            {hasListings && actionItems.length > 3 && (
+              <button type="button" onClick={openAssistant} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.paper, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{actionItems.length - 3} more</button>
+            )}
+          </section>
+          <button type="button" onClick={() => setModalOpen(true)} className="dash-new rl-in" style={{ marginTop: 'var(--s-3)' }}>
             <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
           </button>
           {listingsLoaded && !hasListings && (
@@ -279,7 +288,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           )}
           {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
-          {/* 2. YOUR LISTINGS: each card is its address, rent, beds, state line and one next action. */}
+          {/* 2. YOUR LISTINGS: each card is its address, rent, beds and its state line. */}
           {error && (
             <div className="dash-block" style={{ padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>
               {error}
@@ -303,7 +312,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                 </span>
               </div>
               <div className="rl-in dash-grid" style={{ '--rl-d': '90ms' }}>
-                {openListings.map((l) => { const act = listingAction(actionItems, l.id); return (
+                {openListings.map((l) => (
                   <div key={l.id} role="link" tabIndex={0} aria-label={l.name || l.address || 'Untitled listing'} className="dash-card dash-card-int"
                     onClick={() => { window.location.href = adapter.paths.listing(l.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = adapter.paths.listing(l.id); } }}
                     style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
@@ -317,13 +326,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                     </div>
                     {/* One line of state: the applicants by what they need, then the report. */}
                     <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{listingStateLine(l, signals.applicantsByListing[l.id] || [])}</div>
-                    {/* The listing's one next action (lib/actions.js listingAction): nothing when there is no item. */}
-                    {act && (
-                      <button type="button" className="dash-action" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigateToAction(act.item, adapter.paths); }}
-                        style={{ alignSelf: 'flex-start', minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{act.label}</button>
-                    )}
                   </div>
-                ); })}
+                ))}
                 {/* Rented and closed listings, below the active ones under one muted word. */}
                 {closedListings.length > 0 && (
                   <div className="dash-eyebrow" role="separator" aria-label="Rented listings" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', color: C.inkMute, gridColumn: '1 / -1' }}>

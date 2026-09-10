@@ -10,7 +10,6 @@ import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
-import ApplicantDocRequest from '../../components/dashboard/ApplicantDocRequest';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import { computeFit, compareFit, capOf, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
@@ -650,11 +649,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     );
   };
   const renderRows = (rows) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
         <div key={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'balance' }}>{value}</div>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{value}</div>
         </div>
       ))}
     </div>
@@ -859,22 +858,20 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             realtorName={profile?.full_name}
             onViewDocument={viewDocument}
             onDeleteDocuments={() => deleteDocuments(a.linkId)}
-            focus={focusDocIntel?.linkId === a.linkId ? focusDocIntel : null}
+            docRequest={a.docRequest || null}
+            focus={focusDocIntel?.linkId === a.linkId || focusDocFor?.linkId === a.linkId ? (focusDocIntel || focusDocFor) : null}
           />
-          {/* ALTERNATIVE to uploading yourself: request the documents from the finalist tenant, who
-              uploads via a secure link. Coexists with ApplicantDocIntel above. */}
-          <ApplicantDocRequest listingId={listing.id} linkId={a.linkId} applicationId={app.id} hasActiveAnalysis={(a.docVerifications || []).length > 0} focus={focusDocFor?.linkId === a.linkId ? focusDocFor : null} />
 
           {/* ACTIONS, after the facts. The drag is the fast path; these are the deliberate one. */}
           <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
             {isSetAside ? (
               <button onClick={() => restoreApplicant(a)}
-                style={{ background: 'transparent', color: C.green, border: `1px solid ${C.green}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
+                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
                 Restore
               </button>
             ) : (
               <button onClick={() => openSetAside(a)} title="Record a screenable reason to set aside"
-                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 40 }}>
+                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
                 Set aside
               </button>
             )}
@@ -885,7 +882,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </button>
             )}
             <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
-              style={{ background: 'transparent', color: C.inkMute, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer', minHeight: 40, marginLeft: 'auto' }}>
+              style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, marginLeft: 'auto', fontFamily: 'inherit' }}>
               Withdrew
             </button>
           </div>

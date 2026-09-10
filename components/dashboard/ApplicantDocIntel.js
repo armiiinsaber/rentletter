@@ -1,12 +1,13 @@
 // components/dashboard/ApplicantDocIntel.js
-// Realtor-side "Analyze documents" area for one applicant (real dashboard only — it calls
-// the API). Drag/drop or pick UP TO 6 files → one Analyze action, one request per file → ONE organized report
-// (rendered by DocIntelReport). The raw files are read to
-// base64 in the browser and POSTed once; after the analysis succeeds the server holds the
-// originals for the realtor's review (14 days or until deleted, lib/documentRetention.js), listed
-// here under "Documents held" with View (the in app viewer) and Delete all.
+// The document panel under the checklist: one line ("Documents · 4 read · income and employer on
+// the letter", with Send again while a request waits), the Documents held list, and a 44px fold
+// "What the documents say" (closed by default) holding the comparison rows in the checklist's
+// words, the documents read, the realtor's own upload (up to 6 files, one request per file, one
+// finalize), the landlord confirmation and the archive controls. Real dashboard only (it calls
+// the API). The request itself is automatic at submission; its state is on the collapsed card.
 import { useState, useRef, useEffect } from 'react';
 import { SET_SENTENCE_REALTOR } from '../../lib/documentSet';
+import { documentsLine } from '../../lib/documentsLine';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import DocIntelReport from './DocIntelReport';
@@ -83,7 +84,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
   );
 }
 
-export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments, focus = null, onAnalyzed }) {
+export default function ApplicantDocIntel({ listingId, linkId, applicationId, applicantName, initialVerifications, initialArchived, onSaved, profileUpdatedAt, heldDocuments, realtorName, onViewDocument, onDeleteDocuments, docRequest = null, focus = null, onAnalyzed }) {
   const adapter = useAdapter();
   const runs = Array.isArray(initialVerifications) ? initialVerifications : [];
   const [open, setOpen] = useState(false);
@@ -247,6 +248,20 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setTextBusy(false);
   };
 
+  // Send again: the document request email, through the same route the old request box used.
+  const [sending, setSending] = useState(false);
+  const [sentNote, setSentNote] = useState('');
+  const sendAgain = async () => {
+    if (sending) return;
+    setSending(true); setError(''); setSentNote('');
+    try {
+      const r = await adapter.fetch('/api/applicants/request-documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId, linkId, applicationId, sendEmail: true, renew: false }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) setError(j?.error || 'Could not send the request.'); else setSentNote(j.emailed ? `Sent to ${j.tenantEmail || 'the tenant'}` : (j.emailError || 'Could not email; the link is on file.'));
+    } catch (e) { setError('Could not send the request.'); }
+    setSending(false);
+  };
+  const { line: docLine, canSendAgain } = documentsLine(result ? [result] : [], docRequest);
   const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
   const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
   const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
@@ -254,21 +269,29 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
 
   return (
     <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-      <button onClick={() => setOpen((o) => !o)}
-        style={{ ...ghostBtn, color: C.ink, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', textAlign: 'left' }}>
-        <Icon name="doc" size={14} color={C.ink} />
-        <span style={{ whiteSpace: 'nowrap' }}>{hasReport ? 'Document verification' : 'Analyze documents'} <span aria-hidden="true" style={{ color: C.inkMute }}>{open ? '▲' : '▼'}</span></span>
-        {hasReport && <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.green, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill }}>✓ done</span>}
-        {edited.edited && <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.amber, background: C.amberTint, border: `1px solid ${C.amber}`, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, whiteSpace: 'nowrap' }}>Edited after verification</span>}
-      </button>
-
-      {/* Caution (not an error): profile edited after the active verification. Shown whether or
-          not the panel is open so it can't be missed on a quick scan. */}
+      {/* The one line, and Send again while a request waits with nothing arrived. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap', minHeight: 44 }}>
+        <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)', flex: '1 1 200px', minWidth: 0, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{docLine}</span>
+        {canSendAgain && <button type="button" onClick={sendAgain} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}>{sending ? 'Sending' : 'Send again'}</button>}
+      </div>
+      {sentNote ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{sentNote}</div> : null}
       {edited.edited && (
-        <div role="note" style={{ marginTop: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', background: C.amberTint, borderLeft: `3px solid ${C.amber}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.55 , textWrap: 'pretty' }}>
-          <strong>Edited after verification.</strong> {applicantName ? applicantName.split(' ')[0] : 'The applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were verified on {fmtShort(edited.verifiedAt)}. The verified facts may no longer match what’s on the application, if income or employer changed and it matters here, re-request documents below.
+        <div role="note" style={{ marginTop: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
+          Edited after verification: {applicantName ? applicantName.split(' ')[0] : 'the applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were read on {fmtShort(edited.analyzedAt)}. Read them again if the change matters.
         </div>
       )}
+
+      {/* The held list, exactly as before. */}
+      {Array.isArray(heldDocuments) && heldDocuments.length > 0 && (
+        <HeldDocuments docs={heldDocuments} realtorName={realtorName} onView={onViewDocument} onDeleteAll={onDeleteDocuments} />
+      )}
+
+      {/* The fold: closed by default. */}
+      <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)}
+        style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', marginTop: 'var(--s-2)', background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, padding: 'var(--s-1) 0', cursor: 'pointer', font: 'inherit', color: C.ink }}>
+        <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 700 }}>What the documents say</span>
+        <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ display: 'inline-flex', color: C.inkMute }}><Icon name="chevronD" size={16} /></span>
+      </button>
 
       {/* Archived report, read-only view. */}
       {open && viewing && (
@@ -283,6 +306,14 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
 
       {open && !viewing && (
         <div style={{ marginTop: 'var(--s-3)' }}>
+          {error && <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
+
+          {/* What the documents say, then the documents read. */}
+          {hasReport && <DocIntelReport result={result} />}
+          {!hasReport && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>No documents read yet. Add them below, or wait for the applicant's upload.</div>}
+
+          {/* The realtor's own upload. */}
+          <div style={{ marginTop: 'var(--s-3)' }}>
           {/* Uploader */}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -311,23 +342,18 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
 
           <div style={{ marginTop: 'var(--s-3)', display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
             <button onClick={analyze} disabled={!files.length || analyzing}
-              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+              style={{ minHeight: 44, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, fontFamily: 'inherit', cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
               {analyzing && <span className="rl-dispin" aria-hidden="true" />}
               {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Analyze again' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
             </button>
             <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>Held for your review · deleted in {RETENTION_DAYS} days or when you delete them</span>
           </div>
 
-          {Array.isArray(heldDocuments) && heldDocuments.length > 0 && (
-            <HeldDocuments docs={heldDocuments} realtorName={realtorName} onView={onViewDocument} onDeleteAll={onDeleteDocuments} />
-          )}
+          </div>
 
-          {error && <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
-
-          {/* Report */}
+          {/* The landlord confirmation and the archive controls, for a read report. */}
           {hasReport && (
-            <div style={{ marginTop: 'var(--s-4)' }}>
-              <DocIntelReport result={result} />
+            <div>
 
               {/* Stage 2 · SEPARATE landlord confirmation for THIS applicant only (PDF + text). */}
               <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
@@ -408,7 +434,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       )}
 
       <style jsx>{`
-        .rl-dispin { width: 15px; height: 15px; flex-shrink: 0; border-radius: 50%; border: 2.5px solid rgba(255,255,255,0.4); border-top-color: #fff; display: inline-block; }
+        .rl-dispin { width: 15px; height: 15px; flex-shrink: 0; border-radius: 50%; border: 2.5px solid rgba(15,15,16,0.2); border-top-color: #0f0f10; display: inline-block; }
         .rl-dispin--dark { border-color: rgba(15,15,16,0.2); border-top-color: ${C.ink}; }
         @media (prefers-reduced-motion: no-preference) {
           .rl-dispin { animation: rl-dispin 0.7s linear infinite; }

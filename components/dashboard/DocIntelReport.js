@@ -1,186 +1,92 @@
 // components/dashboard/DocIntelReport.js
-// PURE PRESENTATIONAL — renders ONE document-intelligence result: documents grouped by type,
-// a cross-reference section, a comparison-to-application section (match/close/mismatch/not-
-// found badges) and an overall verification summary.
-// paragraph. No API calls, no data fetching — safe to use in the demo with a hardcoded sample.
+// PURE PRESENTATIONAL. What the documents say, in the checklist's words: one row per fact,
+// "Said: {stated} · Docs: {found}", the red tick for a match, the ink dot for a mismatch, nothing
+// for close or not on documents, the "Also seen" lines where they exist (lib/documentsLine.js
+// comparisonRows). Then the documents read, one small card each. No summary paragraph, no
+// confidence, no status colours: state is the tick, the dot and the words.
 import { C, R } from '../theme';
-
-// Status colors come from the shared theme (this file previously hardcoded its own
-// amber/green, drifting from the tokens). Verification states use the semantic names:
-// verified green, amber for "close", danger — never brand red — for mismatches.
-const AMBER = C.amber;
-const AMBER_BG = C.amberTint;
-
-const cmp = {
-  match: { label: 'Verified', fg: C.verified, bg: C.greenTint, mark: '✓' },
-  close: { label: 'Close', fg: AMBER, bg: AMBER_BG, mark: '≈' },
-  mismatch: { label: 'Mismatch', fg: C.danger, bg: C.dangerTint, mark: '!' },
-  not_found: { label: 'Not found', fg: C.inkMute, bg: C.paperDeep, mark: '·' },
-};
+import { Icon } from '../ui';
+import { comparisonRows } from '../../lib/documentsLine';
 
 const DOC_LABEL = {
   'pay stub': 'Pay stub', 'employment letter': 'Employment letter', 'credit report': 'Credit report',
   'bank statement': 'Bank statement', 'government ID': 'Government ID', 'reference letter': 'Reference letter',
   'tax document': 'Tax document', other: 'Document',
 };
-// Pretty label for any type — known label, else the model's specific custom label as-is.
 const prettyType = (t) => DOC_LABEL[t] || (t ? t.charAt(0).toUpperCase() + t.slice(1) : 'Document');
-
 const FIELD_LABEL = {
   applicantName: 'Name', employer: 'Employer', employmentType: 'Employment', jobTitle: 'Job title', startDate: 'Start date',
   annualSalaryPrinted: 'Annual figure printed', periodStart: 'Period start', periodEnd: 'Period end', payDate: 'Pay date',
   grossForPeriod: 'Gross for period', regularRate: 'Hourly rate', hours: 'Hours', payFrequency: 'Pay frequency', income: 'Income', documentDate: 'Date',
 };
-// Which fact rows to show. A credit report shows one line only (below); nothing else on it is read.
 const STD_FIELDS = ['applicantName', 'employer', 'employmentType', 'jobTitle', 'startDate', 'annualSalaryPrinted', 'periodStart', 'periodEnd', 'payDate', 'grossForPeriod', 'regularRate', 'hours', 'payFrequency', 'income', 'documentDate'];
-const CREDIT_ROW_FIELDS = [];
 
-function Chip({ children, fg, bg }) {
+// The mark: the red tick, the ink dot, or nothing.
+export function Mark({ status }) {
   return (
-    <span style={{ fontSize: 10.5, fontWeight: 800, color: fg, background: bg, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>{children}</span>
+    <span aria-hidden="true" style={{ width: 16, height: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      {status === 'match' ? <Icon name="check" size={14} color={C.red} strokeWidth={2.5} /> : status === 'mismatch' ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.ink, display: 'inline-block' }} /> : null}
+    </span>
   );
 }
 
 export default function DocIntelReport({ result }) {
   if (!result) return null;
   const documents = Array.isArray(result.documents) ? result.documents : [];
-  const crossReference = Array.isArray(result.crossReference) ? result.crossReference : [];
-  const comparisons = Array.isArray(result.comparisons) ? result.comparisons : [];
-  const conf = result.confidence;
-  const nameMatch = result.nameMatch; // 'match' | 'mismatch' | 'unclear' | undefined
-  const docNames = Array.isArray(result.documentNames) ? result.documentNames.filter(Boolean) : [];
-
+  const rows = comparisonRows(result);
+  const nameLine = result.nameMatch === 'mismatch' ? `Name on the documents did not match${result.applicantName ? ` ${result.applicantName}` : ''}${Array.isArray(result.documentNames) && result.documentNames.length ? `: they name ${result.documentNames.filter(Boolean).join(', ')}` : ''}.` : result.nameMatch === 'unclear' ? 'The name on the documents could not be confirmed.' : null;
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 }}>
-      {/* Name-match safeguard, most important when it fails. */}
-      {nameMatch === 'mismatch' && (
-        <div style={{ background: C.dangerTint, border: `1px solid ${C.danger}`, borderLeft: `4px solid ${C.danger}`, borderRadius: R.card, padding: '11px 14px' }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: C.danger, marginBottom: 3 }}>⚠ Document name does not match this applicant</div>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>
-            Applicant is <strong style={{ color: C.ink }}>{result.applicantName || 'not set'}</strong>{docNames.length ? <> but the documents name <strong style={{ color: C.ink }}>{docNames.join(', ')}</strong></> : ''}. This applicant will show as <strong>not verified</strong>, re-check you uploaded the right person’s documents.
-          </div>
-        </div>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-3)' }}>
+      {nameLine && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}><Mark status="mismatch" />{nameLine}</div>}
+      {rows.length > 0 && (
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 'var(--s-2)' }}>
+          {rows.map((r) => (
+            <li key={r.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-2)', minWidth: 0 }}>
+              <span style={{ marginTop: 3 }}><Mark status={r.status} /></span>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 'var(--lh-body)' }}>{r.field}</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Said: {r.said} · Docs: {r.docs}</div>
+                {r.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>Also seen: {line}</div>)}
+              </div>
+            </li>
+          ))}
+        </ul>
       )}
-      {nameMatch === 'unclear' && documents.length > 0 && (
-        <div style={{ background: AMBER_BG, border: `1px solid ${AMBER}`, borderLeft: `4px solid ${AMBER}`, borderRadius: R.card, padding: '11px 14px' }}>
-          <div style={{ fontSize: 12, fontWeight: 800, color: AMBER, marginBottom: 3 }}>Name not confirmed</div>
-          <div style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5 }}>Couldn’t confirm the document name matches <strong style={{ color: C.ink }}>{result.applicantName || 'this applicant'}</strong>. Shown as not verified until confirmed.</div>
-        </div>
-      )}
-      {nameMatch === 'match' && (
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12, color: C.green, fontWeight: 700 }}>
-          <span aria-hidden="true">✓</span> Name matches the applicant{result.applicantName ? <span style={{ color: C.inkMute, fontWeight: 500 }}> ({result.applicantName})</span> : null}
-        </div>
-      )}
-
-      {/* Overall summary */}
-      {result.overallSummary && (
-        <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderLeft: `4px solid ${C.ink}`, borderRadius: R.card, padding: '12px 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 5 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 800, color: C.inkSoft, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Verification summary</span>
-            {conf && <Chip fg={conf === 'high' ? C.verified : conf === 'low' ? AMBER : C.inkSoft} bg={conf === 'high' ? C.greenTint : conf === 'low' ? AMBER_BG : C.paperDeep}>{conf} confidence</Chip>}
-          </div>
-          <div style={{ fontSize: 13.5, color: C.ink, lineHeight: 1.55 }}>{result.overallSummary}</div>
-        </div>
-      )}
-
-      {/* Comparison to the application */}
-      {comparisons.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10.5, fontWeight: 800, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Compared to the application</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }}>
-            {comparisons.map((c, i) => {
-              const s = cmp[c.status] || cmp.not_found;
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '9px 12px' }}>
-                  <span style={{ width: 20, height: 20, flexShrink: 0, borderRadius: '50%', background: s.bg, color: s.fg, border: `1px solid ${s.fg}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 800 }}>{s.mark}</span>
-                  <span style={{ fontSize: 12.5, fontWeight: 700, color: C.ink, minWidth: 72 }}>{c.field}</span>
-                  <span style={{ fontSize: 12.5, color: C.inkSoft, flex: '1 1 180px', minWidth: 0, overflowWrap: 'anywhere' }}>
-                    stated <strong style={{ color: C.ink }}>{c.stated ?? 'not set'}</strong>
-                    <span style={{ color: C.inkMute }}> · found </span>
-                    <strong style={{ color: C.ink }}>{c.found ?? 'not set'}</strong>
-                  </span>
-                  <Chip fg={s.fg} bg={s.bg}>{s.label}</Chip>
-                  {c.since ? <span style={{ flexBasis: '100%', fontSize: 12, color: C.inkSoft }}>{c.since}</span> : null}
-                  {Array.isArray(c.alsoSeen) && c.alsoSeen.length ? c.alsoSeen.map((line) => <span key={line} style={{ flexBasis: '100%', fontSize: 12, color: C.inkMute }}>Also seen: {line}</span>) : null}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Cross-reference across documents */}
-      {crossReference.length > 0 && (
-        <div>
-          <div style={{ fontSize: 10.5, fontWeight: 800, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Cross reference across documents</div>
-          <div style={{ display: 'grid', gap: 6 }}>
-            {crossReference.map((x, i) => {
-              const ok = x.status === 'consistent';
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, fontSize: 13, color: C.inkSoft, lineHeight: 1.5 }}>
-                  <span aria-hidden="true" style={{ flexShrink: 0, color: ok ? C.green : AMBER, fontWeight: 800 }}>{ok ? '✓' : '⚠'}</span>
-                  <span><strong style={{ color: C.ink }}>{x.field}:</strong> {x.detail}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Documents grouped by type */}
       {documents.length > 0 && (
         <div>
-          <div style={{ fontSize: 10.5, fontWeight: 800, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Documents read ({documents.length})</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 10 }}>
+          <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, color: C.inkMute, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Documents read ({documents.length})</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
             {documents.map((d, i) => {
               const ex = d.extracted || {};
               const type = d.documentType || '';
               const isUnrecognized = d.unrecognized === true || /unrecognized/i.test(type);
               const isCredit = !isUnrecognized && (/credit\s*report/i.test(type) || ex.creditScore != null || ex.scoreBand != null);
-              const rowKeys = (isCredit ? CREDIT_ROW_FIELDS : STD_FIELDS).filter((k) => ex[k] != null && ex[k] !== '');
+              const rowKeys = (isCredit ? [] : STD_FIELDS).filter((k) => ex[k] != null && ex[k] !== '');
               return (
-                <div key={i} style={{ background: C.paper, border: `1px solid ${isUnrecognized ? AMBER : C.rule}`, borderRadius: R.card, padding: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                    <Chip fg={isUnrecognized ? AMBER : C.paper} bg={isUnrecognized ? AMBER_BG : C.ink}>{isUnrecognized ? 'Other / Unrecognized' : prettyType(type)}</Chip>
-                    <span style={{ fontSize: 11, color: C.inkMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={d.filename}>{d.filename}</span>
+                <div key={i} style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'var(--s-3)' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', marginBottom: 'var(--s-2)', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>{isUnrecognized ? 'Not a supporting document' : prettyType(type)}</span>
+                    <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={d.filename}>{d.filename}</span>
                   </div>
-
-                  {/* Unrecognized / possibly-invalid upload, flag it clearly. */}
-                  {isUnrecognized && (
-                    <div style={{ background: AMBER_BG, border: `1px solid ${AMBER}`, borderLeft: `3px solid ${AMBER}`, borderRadius: R.ctrl, padding: '9px 11px', marginBottom: rowKeys.length ? 10 : 0 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 800, color: AMBER, marginBottom: 2 }}>⚠ May not be a valid supporting document</div>
-                      <div style={{ fontSize: 12, color: C.inkSoft, lineHeight: 1.45 }}>{d.notes || 'This file does not appear to be a recognizable rental screening document. Ask the applicant to resend.'}</div>
-                    </div>
-                  )}
-
-                  {/* Credit report: one line. The score is shown; nothing else on it is read or used. */}
-                  {isCredit && (
-                    <div style={{ background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '10px 12px', fontSize: 13, color: C.ink, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-                      Credit report on file · score {ex.creditScore != null ? ex.creditScore : 'not legible'} · not used in Fit
-                    </div>
-                  )}
-
+                  {isUnrecognized && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{d.notes || 'This file does not read as a rental screening document. Ask the applicant to resend.'}</div>}
+                  {isCredit && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>Credit report on file · score {ex.creditScore != null ? ex.creditScore : 'not legible'} · not used in Fit</div>}
                   {rowKeys.length > 0 ? (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-1)' }}>
                       {rowKeys.map((k) => (
-                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 12.5 }}>
-                          <span style={{ color: C.inkMute, fontWeight: 600, minWidth: 0 }}>{FIELD_LABEL[k] || k}</span>
+                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-3)', fontSize: 'var(--t-body-2)' }}>
+                          <span style={{ color: C.inkMute, minWidth: 0 }}>{FIELD_LABEL[k] || k}</span>
                           <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{String(ex[k])}</span>
                         </div>
                       ))}
                     </div>
-                  ) : (!isCredit && !isUnrecognized) ? <div style={{ fontSize: 12, color: C.inkMute }}>No screenable fields read.</div> : null}
-
-                  {/* Notes (for unrecognized docs the note is already shown in the flag box). */}
-                  {d.notes && !isUnrecognized && !isCredit && <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 8, lineHeight: 1.45 }}>{d.notes}</div>}
+                  ) : (!isCredit && !isUnrecognized) ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute }}>No screenable fields read.</div> : null}
+                  {d.notes && !isUnrecognized && !isCredit && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-2)', lineHeight: 'var(--lh-body)' }}>{d.notes}</div>}
                 </div>
               );
             })}
           </div>
         </div>
       )}
-
     </div>
   );
 }

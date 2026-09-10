@@ -12,7 +12,11 @@ import { DURATION, CURVE, prefersReducedMotion } from '../../lib/motion';
 
 const SWIPE = { axisLock: 8, commit: 64 };
 
-export function ActionRow({ item, phase, onGo, onDismiss, first: firstRow = false }) {
+// tone: 'paper' (the panel) or 'ink' (the dashboard's ink card): the same rows, the other palette.
+const palette = (tone) => (tone === 'ink' ? { text: C.instText, mute: C.instMute, rule: C.instRule } : { text: C.ink, mute: C.inkMute, rule: C.rule });
+
+export function ActionRow({ item, phase, onGo, onDismiss, first: firstRow = false, tone = 'paper', dismissable = true }) {
+  const p = palette(tone);
   const ref = useRef(null);
   const drag = useRef({ active: false, lock: null, startX: 0, startY: 0, dx: 0 });
   useEffect(() => {
@@ -37,20 +41,21 @@ export function ActionRow({ item, phase, onGo, onDismiss, first: firstRow = fals
   const lineTwo = item.reason && item.reason !== lineOne ? item.reason : item.detail;
   return (
     <li ref={ref} className={`al-row ${phase === 'enter' ? 'al-enter' : ''} ${phase === 'leave' ? 'al-leave' : ''}`} data-key={item.key} data-kind={item.kind}
-      style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-1)', borderTop: firstRow ? 'none' : `1px solid ${C.rule}` }}>
+      style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-1)', borderTop: firstRow ? 'none' : `1px solid ${p.rule}` }}>
       <div role="button" tabIndex={0} onClick={onGo} onKeyDown={key} style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 'var(--s-2) 0', cursor: 'pointer' }}>
-        <span style={{ display: 'block', fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{lineOne}</span>
-        <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{lineTwo}</span>
+        <span style={{ display: 'block', fontSize: 'var(--t-body)', fontWeight: 700, color: p.text, letterSpacing: '-0.01em', lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{lineOne}</span>
+        <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: p.mute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{lineTwo}</span>
       </div>
-      <button type="button" onClick={onGo} style={{ minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: C.ink, textDecoration: 'underline', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{item.verb}</button>
-      <button type="button" className="al-x" onClick={onDismiss} aria-label={`Dismiss: ${item.title}`} title="Dismiss until something changes" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', flexShrink: 0 }}><Icon name="x" size={16} /></button>
+      <button type="button" onClick={onGo} style={{ minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: p.text, textDecoration: 'underline', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{item.verb}</button>
+      {dismissable && <button type="button" className="al-x" onClick={onDismiss} aria-label={`Dismiss: ${item.title}`} title="Dismiss until something changes" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: p.mute, cursor: 'pointer', flexShrink: 0 }}><Icon name="x" size={16} /></button>}
     </li>
   );
 }
 
 // The rows, grouped by listing in the order each listing's first item appears, with enter and
 // leave phases per key.
-export function ActionRows({ items, onGo, onDismiss }) {
+export function ActionRows({ items, onGo, onDismiss, tone = 'paper', dismissable = true }) {
+  const p = palette(tone);
   const [rows, setRows] = useState(() => items.map((item) => ({ item, phase: 'in' })));
   const prevKeys = useRef(new Set(items.map((i) => i.key)));
   const first = useRef(true);
@@ -78,7 +83,7 @@ export function ActionRows({ items, onGo, onDismiss }) {
   }, [rows]);
   if (!rows.length) {
     return (
-      <p className="al-empty" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, fontSize: 'var(--t-body)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 0 }}>
+      <p className="al-empty" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, fontSize: 'var(--t-body)', color: p.text, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 0 }}>
         <Icon name="check" size={16} color={C.red} strokeWidth={2.5} /> Nothing waiting on you.
       </p>
     );
@@ -87,9 +92,9 @@ export function ActionRows({ items, onGo, onDismiss }) {
     <div>
       {groups.map((g) => (
         <div key={g.listingId} className="al-group" data-listing={g.listingId}>
-          <div className="al-address" style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', paddingTop: 'var(--s-3)', paddingBottom: 'var(--s-1)', overflowWrap: 'anywhere' }}>{g.listingName}</div>
+          <div className="al-address" style={{ fontSize: 'var(--t-body-2)', color: p.mute, lineHeight: 'var(--lh-body)', paddingTop: 'var(--s-3)', paddingBottom: 'var(--s-1)', overflowWrap: 'anywhere' }}>{g.listingName}</div>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {g.rows.map((r, i) => <ActionRow key={r.item.key} item={r.item} phase={r.phase} first={i === 0} onGo={() => onGo(r.item)} onDismiss={() => onDismiss(r.item)} />)}
+            {g.rows.map((r, i) => <ActionRow key={r.item.key} item={r.item} phase={r.phase} first={i === 0} tone={tone} dismissable={dismissable} onGo={() => onGo(r.item)} onDismiss={() => onDismiss(r.item)} />)}
           </ul>
         </div>
       ))}
