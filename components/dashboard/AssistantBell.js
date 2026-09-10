@@ -1,5 +1,5 @@
 // components/dashboard/AssistantBell.js
-// The bell IS the assistant. Its badge counts the action list (lib/actions.js) less what the
+// The bell. Its badge counts the action list (lib/actions.js) less what the
 // realtor dismissed; it pulses only when an item is on the list that was not there the last
 // time the panel was opened. Tapping it opens the panel (AssistantPanel). The page's signals
 // come in as `signals` when the page loaded them; otherwise the shared store fetches them once
@@ -36,7 +36,7 @@ export default function AssistantBell({ profile, signals: given = null, onAction
   const label = count > 9 ? '9+' : String(count);
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} aria-label={count > 0 ? `Assistant, ${count} thing${count === 1 ? '' : 's'} to do` : 'Assistant'} aria-haspopup="dialog" aria-expanded={open}
+      <button type="button" onClick={() => setOpen(true)} aria-label={count > 0 ? `Next, ${count} thing${count === 1 ? '' : 's'} to do` : 'Next, nothing waiting'} aria-haspopup="dialog" aria-expanded={open}
         style={{ height: 34, width: 34, boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: R.pill, background: open ? C.paperDeep : C.card, border: `1px solid ${C.ruleDark}`, color: C.inkSoft, cursor: 'pointer', position: 'relative', padding: 0 }}>
         <Icon name="bell" size={17} color={C.inkSoft} />
         {count > 0 && <span aria-hidden="true" className={hasNew ? 'rl-dot' : ''} data-new={hasNew ? 'true' : 'false'} style={{ position: 'absolute', top: -5, right: -5, minWidth: 17, height: 17, padding: '0 var(--s-1)', boxSizing: 'border-box', background: C.red, color: '#fff', borderRadius: 9, fontSize: 'var(--t-eyebrow)', fontWeight: 800, lineHeight: '17px', textAlign: 'center', border: `2px solid ${C.paper}` }}>{label}</span>}

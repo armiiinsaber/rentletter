@@ -2,7 +2,7 @@
 // The realtor dashboard HOME — extracted verbatim from pages/landlord.js so the real page
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -14,7 +14,10 @@ import { formatUnit } from '../../lib/unitType';
 import { listingStateLine } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
-import NextList from '../../components/dashboard/NextList';
+import { buildActions, visibleActions, listingAction } from '../../lib/actions.js';
+import { useAssistantStore } from '../../lib/assistantStore';
+import { navigateToAction } from './actionNav';
+import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -187,10 +190,18 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     const t = setTimeout(() => window.dispatchEvent(new CustomEvent(OPEN_EVENT)), 300);
     return () => clearTimeout(t);
   }, []);
-  // Greeting: time of day plus first name, nothing else. The name is its own flex item so a
-  // long one drops to its own line whole (never a stray word).
-  const hour = new Date().getHours();
-  const greetWord = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  // The greeting line: the hour comes from the CLIENT after mount (lib/greeting.js), so the server's
+  // clock never decides it; until then the line holds its height and is not shown.
+  const [clientHour, setClientHour] = useState(null);
+  useEffect(() => { setClientHour(new Date().getHours()); }, []);
+  const greeting = clientHour == null ? '' : greetingFor(clientHour, firstName);
+  // The action list once (lib/actions.js buildActions, the bell reads the same items in full); each
+  // listing card takes its top item as its one action line.
+  const store = useAssistantStore();
+  const actionItems = useMemo(() => (signals.loaded ? visibleActions(buildActions({ listings: listings || [], applicantsByListing: signals.applicantsByListing || {}, people: signals.people || [] }), store.dismissed) : []), [signals, listings, store.dismissed]);
+  // The bell receives one stable object per signals change: this page now subscribes to the store,
+  // and a fresh object every render would make the bell's setSignals effect re render this page forever.
+  const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: listings || [] } : null), [signals, listings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
   const entitlement = initialEntitlement || getEntitlement(profile);
@@ -231,7 +242,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       <div className="dash-bg" style={{ overflowX: 'clip' }}>
         {/* Static, in-flow header (see .dash-bg .rl-header below), it scrolls away with the page; its
             solid canvas background + safe-area padding cover the notch region at the top. */}
-        <DashboardHeader profile={profile} signals={signals.loaded ? { ...signals, listings: listings || [] } : null} onAssistantAction={onNoticeAction} />
+        <DashboardHeader profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} />
 
         {locked && (
           <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
@@ -252,39 +263,23 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
           {!ready && !listingsError && (
             <div aria-busy="true" aria-label="Loading your workspace">
-              <div className="dash-card dash-hero dash-skel" style={{ minHeight: 168 }}><span className="dash-skel-line" style={{ width: '32%', height: 10 }} /><span className="dash-skel-line" style={{ width: '58%', height: 30 }} /><span className="dash-skel-line" style={{ width: 128, height: 44, borderRadius: 12 }} /></div>
+              <div className="dash-skel" style={{ minHeight: 0, padding: 'var(--s-2) 0' }}><span className="dash-skel-line" style={{ width: '58%', height: 22 }} /><span className="dash-skel-line" style={{ width: '100%', height: 44, borderRadius: 12 }} /></div>
               <div className="dash-block dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>
               <div className="dash-grid">{[0, 1].map((i) => <div key={i} className="dash-card dash-skel"><span className="dash-skel-line" style={{ width: '70%', height: 18 }} /><span className="dash-skel-line" style={{ width: '45%' }} /><span className="dash-skel-line" style={{ width: '38%' }} /><span className="dash-skel-line" style={{ width: '30%', marginTop: 'auto' }} /></div>)}</div>
             </div>
           )}
           {ready && <>
-          {/* 1. GREETING + PRIMARY ACTION. With no listings yet this is THE card: the greeting, one
-              sentence on what adding a listing gets them, one button. Nothing teaches; it starts. */}
-          <section className="dash-card dash-hero rl-in">
-            <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your workspace</div>
-            <h1 className="dash-h1">
-              <span className="dash-h1-greet">
-                <span>{greetWord}{firstName ? ',\u00A0' : '.'}</span>
-                {firstName && <span className="dash-h1-name">{firstName}.</span>}
-              </span>
-            </h1>
-            {listingsLoaded && !hasListings && (
-              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5, marginTop: 'var(--s-3)', maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
-            )}
-            <div style={{ marginTop: 'var(--s-4)' }}>
-              <button onClick={() => setModalOpen(true)} className="dash-cta">
-                <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
-              </button>
-            </div>
-          </section>
+          {/* 1. ONE GREETING LINE, then the one red action on the page: New listing. */}
+          <h1 className="t-d3 dash-greet rl-in" aria-live="polite" style={{ color: C.ink, margin: '0 0 var(--s-3)', minHeight: 'calc(var(--t-d3) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
+          <button type="button" onClick={() => setModalOpen(true)} className="dash-new rl-in">
+            <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
+          </button>
+          {listingsLoaded && !hasListings && (
+            <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5, marginTop: 'var(--s-3)', maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
+          )}
           {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
-          {/* 2. THE ASSISTANT, compact: the Needs you zone as it renders here, and a way into the
-              full panel (bell, or Open). The timeline lives in the panel only. Referrals to
-              assign are part of the panel's Needs you zone, so the page stays three sections. */}
-          {hasListings && <div className="dash-block"><NextList listings={listings || []} applicantsByListing={signals.applicantsByListing} people={signals.people || []} onMore={openAssistant} /></div>}
-
-          {/* 3. YOUR LISTINGS */}
+          {/* 2. YOUR LISTINGS: each card is its address, rent, beds, state line and one next action. */}
           {error && (
             <div className="dash-block" style={{ padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>
               {error}
@@ -308,9 +303,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                 </span>
               </div>
               <div className="rl-in dash-grid" style={{ '--rl-d': '90ms' }}>
-                {openListings.map((l) => (
-                  <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
-                    style={{ textDecoration: 'none', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
+                {openListings.map((l) => { const act = listingAction(actionItems, l.id); return (
+                  <div key={l.id} role="link" tabIndex={0} aria-label={l.name || l.address || 'Untitled listing'} className="dash-card dash-card-int"
+                    onClick={() => { window.location.href = adapter.paths.listing(l.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = adapter.paths.listing(l.id); } }}
+                    style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
                     {/* Name left, the rent right in tabular numerals, so the rents line up down the column. */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
                       <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</div>
@@ -321,8 +317,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                     </div>
                     {/* One line of state: the applicants by what they need, then the report. */}
                     <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{listingStateLine(l, signals.applicantsByListing[l.id] || [])}</div>
-                  </a>
-                ))}
+                    {/* The listing's one next action (lib/actions.js listingAction): nothing when there is no item. */}
+                    {act && (
+                      <button type="button" className="dash-action" onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigateToAction(act.item, adapter.paths); }}
+                        style={{ alignSelf: 'flex-start', minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{act.label}</button>
+                    )}
+                  </div>
+                ); })}
                 {/* Rented and closed listings, below the active ones under one muted word. */}
                 {closedListings.length > 0 && (
                   <div className="dash-eyebrow" role="separator" aria-label="Rented listings" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', color: C.inkMute, gridColumn: '1 / -1' }}>
@@ -344,7 +345,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           )}
 
           {/* 3b. PEOPLE: the pipeline, under the listings (components/dashboard/PeopleList.js). */}
-          {hasListings && <PeopleList className="dash-block" people={signals.people || []} />}
+          {hasListings && <div style={{ marginTop: 'var(--gap-section)' }}><PeopleList people={signals.people || []} /></div>}
 
           {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
               listing state is one card, nothing else). Whole card opens the profile. */}
@@ -428,30 +429,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* Red-dash brand motif for section eyebrows/heads. */
         .dash-dash { display: inline-block; width: 3px; height: 1em; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 
-        /* ── Type scale — four tiers, used consistently on this screen ──
-           display  (.dash-h1)  Fraunces serif, the hero title, same face as the landing hero
-           heading  (.dash-h2)  Inter 800, tight tracking · section titles
+        /* ── Type scale: three tiers on this screen ──
+           display  (.dash-greet, .dash-h2)  Fraunces serif at --t-d3
            body     (inherited) Inter 400/500 · everything else
            data     (.dash-data) Inter 800 + tabular-nums, every number that must line up */
-        .dash-h1 { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: var(--lh-display); color: ${C.ink}; }
-        /* greeting line: word + name are flex items — one line when they fit, else the name drops
-           whole. The nbsp inside the word is the space between them; a name wider than the card
-           may break inside itself (last resort, no overflow at 390px). */
-        .dash-h1 { min-width: 0; max-width: 100%; }
-        .dash-h1-greet { display: flex; flex-wrap: wrap; align-items: baseline; min-width: 0; max-width: 100%; }
-        .dash-h1-greet > span { white-space: nowrap; }
-        .dash-h1-greet > .dash-h1-name { white-space: normal; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+        .dash-greet { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); }
         .dash-h2 { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; }
         .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .dash-eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; line-height: var(--lh-eyebrow); text-transform: uppercase; color: ${C.inkMute}; margin-bottom: var(--s-2); }
 
-        /* ── Hero overview card — subtle warm gradient + faint brand glow ── */
-        .dash-hero { position: relative; overflow: hidden; min-width: 0; display: flex; flex-direction: column; padding: var(--card-pad);
-          background: linear-gradient(152deg, ${C.card} 0%, #fbf6ec 100%); }
-        .dash-hero::before { content: ''; position: absolute; top: -45%; right: -14%; width: 62%; height: 130%; pointer-events: none;
-          background: radial-gradient(circle at center, rgba(215, 32, 39, 0.07), transparent 62%); }
-        .dash-hero > * { position: relative; }
-        .dash-cta { background: ${C.red}; color: ${C.paper}; border: none; border-radius: 12px; padding: var(--s-3) var(--s-4); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-2); }
+        /* ── The one red action on the page: New listing, a full width 44px row ── */
+        .dash-new { width: 100%; min-height: 44px; background: ${C.red}; color: ${C.paper}; border: none; border-radius: 12px; padding: 0 var(--s-4); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); font-family: inherit; }
 
         /* ── Branding tile — identity moment, whole card → /profile. The card's 3px left edge
            (inline style) carries the colour sampled from the uploaded logo, red otherwise. ── */
@@ -497,9 +485,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           /* Tighten the shared app-reveal on this screen only — same travel, ≤400ms
              (opacity, then transform, matching .rl-in's property order). */
           .dash-bg :global(.rl-in) { transition-duration: 340ms, 380ms; }
-          .dash-cta { transition: transform 200ms ${EASE}, box-shadow 220ms ease; }
-          .dash-cta:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); }
-          .dash-cta:active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
+          .dash-new { transition: transform 200ms ${EASE}, box-shadow 220ms ease; }
+          .dash-new:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); }
+          .dash-new:active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
           .dash-ghost { transition: background 160ms ease, border-color 160ms ease, transform 180ms ${EASE}; }
           .dash-ghost:hover { transform: translateY(-1px); }
           .dash-card-int { transition: transform 260ms ${EASE}, box-shadow 260ms ease, border-color 200ms ease; }
