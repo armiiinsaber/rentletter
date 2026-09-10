@@ -9,26 +9,18 @@
 //
 // Legacy entry (application number + owner key, and the ?app=&token= email deep link) still
 // works: it opens that application's own page at /my-application/[rl].
-// Static header, reveal gated by reduced-motion (useReveal), 390px-safe.
+// On the realtor tokens (components/tenant/ProfileFacts.js ProfileStyles): the card, the eyebrow,
+// the text button, the line and card gaps. Nothing here has a style of its own.
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { C, R } from '../components/theme';
-import { GlobalStyle, Wordmark, Icon, useReveal } from '../components/ui';
-import { ProfileStyles, FactSections, Eyebrow, Empty } from '../components/tenant/ProfileFacts';
+import { C } from '../components/theme';
+import { GlobalStyle, Wordmark, useReveal } from '../components/ui';
+import { ProfileStyles, FactSections, Eyebrow, Dots, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
-const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return 'not set'; } };
-function timeAgo(iso) {
-  if (!iso) return '';
-  const min = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (min < 1) return 'just now'; if (min < 60) return `${min} min ago`;
-  const hr = Math.floor(min / 60); if (hr < 24) return `${hr} hour${hr === 1 ? '' : 's'} ago`;
-  const d = Math.floor(hr / 24); return d < 30 ? `${d} day${d === 1 ? '' : 's'} ago` : dateLong(iso);
-}
-const STATUS_COLOR = { submitted: C.inkSoft, review: C.green, not_selected: C.inkMute, withdrawn: C.inkMute };
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function MyProfile() {
@@ -158,184 +150,158 @@ export default function MyProfile() {
       {right}
     </header>
   );
-  const noticeEl = notice && (
-    <div role="status" className={notice.tone === 'ok' ? 'mp-note' : 'mp-alert'} style={{ marginBottom: 18, ...(notice.tone === 'ok' ? { background: C.greenTint, color: C.ink, borderLeft: `3px solid ${C.green}` } : {}) }}>{notice.text}</div>
-  );
-
-  // ════════════════════════════════════════════════════════════════════════════════════════
-  if (phase === 'boot') {
-    return (<><Head><title>My profile · Rentletter</title></Head><GlobalStyle /><ProfileStyles /><div style={{ minHeight: '100vh', background: C.paper }}>{header(null)}<div className="mp-wrap"><p style={{ color: C.inkSoft }}>Opening your profile…</p></div></div></>);
-  }
-
-  if (phase === 'entry' || phase === 'sent') {
-    return (
-      <>
-        <Head><title>Tenant profile · Rentletter</title><meta name="robots" content="noindex" /></Head>
-        <GlobalStyle /><ProfileStyles />
-        <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', flexDirection: 'column' }}>
-          {header(<a href="/" className="mp-ghost"><span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={13} /></span> Home</a>)}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(28px, 5vw, 56px) clamp(16px, 4vw, 32px)' }}>
-            <div style={{ maxWidth: 520, width: '100%' }}>
-              <div className="rl-in"><Eyebrow>Tenant profile</Eyebrow></div>
-              {phase === 'sent' ? (
-                <div className="rl-in">
-                  <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 6vw, 48px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 16, textWrap: 'balance' }}>Check your inbox.</h1>
-                  <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22 }}>If <strong style={{ color: C.ink, overflowWrap: 'anywhere' }}>{email}</strong> has an application with us, we’ve sent a link. It works once and expires in 15 minutes, open it on whichever device you’re on.</p>
-                  <div className="mp-note" style={{ marginBottom: 18 }}>Nothing arrived? Check spam for “Rentletter”, make sure it’s the email you applied with, then <button type="button" onClick={() => setPhase('entry')} style={{ background: 'transparent', border: 'none', padding: 0, color: C.red, fontWeight: 700, cursor: 'pointer', fontSize: 13 }}>try again</button>.</div>
-                </div>
-              ) : (
-                <>
-                  <h1 className="rl-serif rl-in" style={{ fontSize: 'clamp(32px, 6vw, 48px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 16, textWrap: 'balance', '--rl-d': '60ms' }}>Your rental profile, in one place.</h1>
-                  <p className="rl-in" style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 26, '--rl-d': '110ms' }}>Every application you’ve sent, your details ready to reuse, and control over who sees what. Enter the email you applied with and we’ll send you a link · no password.</p>
-                  {noticeEl}
-                  <form className="rl-in" style={{ '--rl-d': '160ms' }} onSubmit={requestLink}>
-                    <label htmlFor="tp-email" style={{ display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>Email</label>
-                    <input id="tp-email" className="mp-input" type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={{ marginBottom: 14 }} />
-                    {entryErr && <div role="alert" className="mp-alert" style={{ marginBottom: 14 }}>{entryErr}</div>}
-                    <button type="submit" className="mp-btn rl-btn" disabled={sending || !EMAIL_RE.test(email)}>{sending ? 'Sending…' : 'Email me a link →'}</button>
-                  </form>
-                  <div className="rl-in" style={{ marginTop: 26, '--rl-d': '210ms' }}>
-                    <button type="button" onClick={() => setLegacyOpen((v) => !v)} aria-expanded={legacyOpen} style={{ background: 'transparent', border: 'none', padding: 0, color: C.inkSoft, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textAlign: 'left' }}>
-                      Have an application number and owner key instead? <span style={{ display: 'inline-flex', transform: legacyOpen ? 'rotate(180deg)' : 'none' }}><Icon name="chevronD" size={14} /></span>
-                    </button>
-                    {legacyOpen && (
-                      <form onSubmit={openLegacy} style={{ marginTop: 12, padding: 16, background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card }}>
-                        <input className="mp-input" value={legacyApp} onChange={(e) => setLegacyApp(e.target.value.toUpperCase())} placeholder="RL-2026-XXXX-XXXX" spellCheck={false} style={{ fontFamily: 'monospace', marginBottom: 10 }} aria-label="Application number" />
-                        <input className="mp-input" type="password" value={legacyKey} onChange={(e) => setLegacyKey(e.target.value)} placeholder="32-character owner key" spellCheck={false} style={{ fontFamily: 'monospace', marginBottom: 12 }} aria-label="Owner key" />
-                        <button type="submit" className="mp-btn" style={{ minHeight: 46, padding: 12, fontSize: 14 }}>Open that application →</button>
-                      </form>
-                    )}
-                    <div className="mp-note" style={{ marginTop: 14 }}><strong style={{ color: C.ink }}>Haven’t applied anywhere yet?</strong> There’s nothing here until you do. Your profile is created the first time you apply through a realtor’s invite link.</div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
-
-  // ════════════════════════════════════════════════════════════════════════════════════════
-  const f = profile.facts || null;
-  const apps = profile.applications || [];
-
-  return (
+  const noticeEl = notice && <p role="status" className={notice.tone === 'ok' ? 'mp-note' : 'mp-alert'}>{noWidow(notice.text)}</p>;
+  const shell = (title, right, body) => (
     <>
-      <Head><title>{f?.fullName ? `${f.fullName}, Profile · Rentletter` : 'My profile · Rentletter'}</title><meta name="robots" content="noindex" /></Head>
+      <Head><title>{title}</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle /><ProfileStyles />
-      <div style={{ minHeight: '100vh', background: C.paper }}>
-        {header(<button onClick={signOut} className="mp-ghost">Sign out</button>)}
-        <div className="mp-wrap">
-          <div className="rl-in" style={{ marginBottom: 24 }}>
-            <Eyebrow>My profile</Eyebrow>
-            <h1 className="rl-serif" style={{ fontSize: 'clamp(34px, 7vw, 54px)', color: C.ink, letterSpacing: '-0.03em', lineHeight: 1.02, marginBottom: 10, textWrap: 'balance', overflowWrap: 'anywhere' }}>{f?.fullName || 'Your profile'}</h1>
-            <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.55, maxWidth: 560 }}>
-              <span style={{ overflowWrap: 'anywhere' }}>{profile.email}</span>
-              {f && (f.jobTitle || f.employer) ? <> · {[f.jobTitle, f.employer].filter(Boolean).join(' at ')}</> : null}
-              {profile.factsUpdatedAt && <> · <span style={{ color: C.green, fontWeight: 600 }}>Details updated {timeAgo(profile.factsUpdatedAt)}</span></>}
-            </p>
-          </div>
-          {noticeEl}
-
-          {/* Reuse */}
-          <div className="rl-in mp-ink" style={{ marginBottom: 26, '--rl-d': '80ms' }}>
-            <span className="mp-ink-tick" aria-hidden="true" />
-            <Eyebrow>Apply in seconds</Eyebrow>
-            <h2 style={{ fontSize: 'clamp(20px, 4vw, 26px)', fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 8, textWrap: 'balance' }}>{f ? 'Your next listing, without the retyping' : 'Your first application builds your profile'}</h2>
-            <p style={{ fontSize: 14, color: '#c8c2b3', lineHeight: 1.6, marginBottom: f ? 16 : 0, maxWidth: 520 }}>
-              {f ? 'Paste the invite link a realtor sent you. Their application opens with your profile already filled in, you check it and confirm before anything is sent. Each listing gets its own application; your profile stays the source.' : 'Apply through any realtor’s invite link and what you submit becomes your saved profile, ready to reuse for the next one.'}
-            </p>
-            {f && (
-              <form onSubmit={goApplyWithProfile} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <label htmlFor="tp-invite" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)' }}>Invite link</label>
-                <input id="tp-invite" value={inviteLink} onChange={(e) => { setInviteLink(e.target.value); setInviteErr(''); }} placeholder="rentletter.ca/apply/…" inputMode="url" autoComplete="off" spellCheck={false} style={{ flex: '1 1 220px', minWidth: 0, padding: '13px 14px', fontSize: 16, border: `1px solid ${C.instRule}`, borderRadius: R.ctrl, background: '#1a1a1d', color: C.paper, outline: 'none' }} />
-                <button type="submit" className="rl-btn" style={{ flex: '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '13px 18px', fontSize: 14, fontWeight: 700, cursor: 'pointer', minHeight: 48, display: 'inline-flex', alignItems: 'center', gap: 8 }}>Apply with my profile <Icon name="arrow" size={14} /></button>
-              </form>
-            )}
-            {inviteErr && <div role="alert" style={{ marginTop: 10, fontSize: 13, color: '#f0b9bb', lineHeight: 1.5 }}>{inviteErr}</div>}
-            {f && <p style={{ fontSize: 12, color: '#9a958a', lineHeight: 1.55, marginTop: 14, marginBottom: 0 }}>Signed in on this device? Any invite link will offer <strong style={{ color: '#c8c2b3' }}>Use my saved profile</strong> automatically. On a new device, sign in here first.</p>}
-          </div>
-
-          {/* Durable facts */}
-          <div className="rl-in" style={{ marginBottom: 14 }}>
-            <Eyebrow>Your details</Eyebrow>
-            <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 28px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, textWrap: 'balance', marginBottom: 6 }}>What your next application starts from</h2>
-            <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 560 }}>Edits here apply to applications you send from now on. Anything you’ve already sent keeps exactly what you sent, open it below to change that one.</p>
-          </div>
-          {saveError && <div role="alert" className="mp-alert" style={{ marginBottom: 14 }}>{saveError}</div>}
-          {f ? (
-            <FactSections facts={f} draft={draft} editing={editing} setDraft={setDraft} canEdit={!editing} saving={saving} justSaved={justSaved} onEdit={startEdit} onCancel={cancelEdit} onSave={saveEdit} contactEditable={false} saveLabel="Save to my profile" />
-          ) : (
-            <div className="rl-card rl-in mp-section"><Empty>No details saved yet. They’ll appear here after your first application, or add an application you’ve already sent, below.</Empty></div>
-          )}
-
-          {/* Applications */}
-          <div className="rl-in" style={{ marginTop: 30, marginBottom: 14 }}>
-            <Eyebrow>Your applications</Eyebrow>
-            <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 28px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, textWrap: 'balance', marginBottom: 6 }}>What you’ve sent, listing by listing</h2>
-            <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, maxWidth: 560 }}>Each one is the exact record that realtor received, with its own lookup history and off switch.</p>
-          </div>
-          {apps.length === 0 ? (
-            <div className="rl-card rl-in mp-section"><Empty>No applications yet. When you apply through a realtor’s invite link, it shows up here.</Empty></div>
-          ) : (
-            <div className="rl-in rl-card" style={{ overflow: 'hidden', marginBottom: 14 }}>
-              {apps.map((a, i) => (
-                <a key={a.applicationNumber} href={`/my-application/${a.applicationNumber}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '14px clamp(14px, 3vw, 18px)', borderTop: i ? `1px solid ${C.rule}` : 'none', textDecoration: 'none', color: C.ink, minHeight: 64 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{a.listingName || 'Rental unit'}</div>
-                    <div style={{ fontSize: 12.5, color: C.inkSoft, marginTop: 2, overflowWrap: 'anywhere' }}>
-                      {a.realtorName ? `${a.realtorName}${a.realtorBrokerage ? ` · ${a.realtorBrokerage}` : ''} · ` : ''}{a.submittedAt ? dateLong(a.submittedAt) : ''}{a.updatedAt ? ` · edited ${timeAgo(a.updatedAt)}` : ''}
-                    </div>
-                    {a.referral && <div style={{ fontSize: 12, color: C.inkSoft, marginTop: 3 }}>Shared with {a.referral.toName || 'another realtor'} by {a.referral.fromName || 'your realtor'} with your approval{a.referral.assignedListing ? ` · now on ${a.referral.assignedListing}` : ''}. Revoke it from its page to withdraw access.</div>}
-                    <div style={{ fontSize: 11, color: C.inkMute, marginTop: 3, fontFamily: 'monospace' }}>{a.applicationNumber}</div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: a.revoked ? C.paper : (STATUS_COLOR[a.status?.key] || C.inkSoft), background: a.revoked ? C.danger : C.paperDeep, padding: '3px 8px', borderRadius: R.pill, whiteSpace: 'nowrap' }}>{a.revoked ? 'Revoked' : (a.status?.label || 'Submitted')}</span>
-                    <Icon name="chevron" size={16} color={C.inkMute} />
-                  </div>
-                </a>
-              ))}
-            </div>
-          )}
-          <div className="rl-in" style={{ marginBottom: 30 }}>
-            <button type="button" onClick={() => setLinkOpen((v) => !v)} aria-expanded={linkOpen} style={{ background: 'transparent', border: 'none', padding: 0, color: C.inkSoft, fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, textAlign: 'left' }}>Missing an application you sent with this email? <span style={{ display: 'inline-flex', transform: linkOpen ? 'rotate(180deg)' : 'none' }}><Icon name="chevronD" size={14} /></span></button>
-            {linkOpen && (
-              <form onSubmit={linkApplication} style={{ marginTop: 12, padding: 16, background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, display: 'grid', gap: 10 }}>
-                <input className="mp-input" value={linkApp} onChange={(e) => setLinkApp(e.target.value.toUpperCase())} placeholder="RL-2026-XXXX-XXXX" spellCheck={false} style={{ fontFamily: 'monospace' }} aria-label="Application number" />
-                <input className="mp-input" type="password" value={linkKey} onChange={(e) => setLinkKey(e.target.value)} placeholder="Owner key from its confirmation email" spellCheck={false} style={{ fontFamily: 'monospace' }} aria-label="Owner key" />
-                {linkMsg && <div role="alert" className="mp-alert">{linkMsg}</div>}
-                <button type="submit" className="mp-btn" style={{ minHeight: 46, padding: 12, fontSize: 14 }}>Add to my profile</button>
-              </form>
-            )}
-          </div>
-
-          {/* Email */}
-          <div className="rl-in" style={{ marginBottom: 14 }}>
-            <Eyebrow>Sign in email</Eyebrow>
-            <h2 style={{ fontSize: 'clamp(22px, 4.5vw, 28px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.15, textWrap: 'balance' }}>Where your links go</h2>
-          </div>
-          <div className="rl-in rl-card mp-section">
-            <div style={{ fontSize: 15, fontWeight: 700, color: C.ink, overflowWrap: 'anywhere', marginBottom: 4 }}>{profile.email}</div>
-            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>Changing it sends a confirmation to the new address first. This one keeps working until you confirm there.</p>
-            {profile.pendingEmail ? (
-              <div className="mp-note" style={{ borderLeft: `3px solid ${C.gold}`, background: C.amberTint, color: C.ink, display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-                <span>Waiting for you to confirm at <strong style={{ overflowWrap: 'anywhere' }}>{profile.pendingEmail}</strong>.</span>
-                <button type="button" onClick={cancelEmailChange} style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.pill, padding: '6px 12px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', color: C.ink }}>Cancel</button>
-              </div>
-            ) : (
-              <form onSubmit={requestEmailChange} style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <input className="mp-input" type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="new@example.com" style={{ flex: '1 1 220px', minWidth: 0, padding: '13px 14px' }} aria-label="New email" />
-                <button type="submit" disabled={emailBusy || !EMAIL_RE.test(newEmail)} className="mp-btn" style={{ width: 'auto', flex: '0 0 auto', minHeight: 48, padding: '13px 18px', fontSize: 14 }}>{emailBusy ? 'Sending…' : 'Change email'}</button>
-              </form>
-            )}
-            {emailMsg && <div role="status" className="mp-note" style={{ marginTop: 12 }}>{emailMsg}</div>}
-          </div>
-
-          <p style={{ marginTop: 26, fontSize: 12.5, color: C.inkMute, lineHeight: 1.6, maxWidth: 600 }}>Your profile holds the facts you typed, never documents. Anything you upload for a realtor is held for that realtor only for 14 days, then deleted. It is not stored here.</p>
-        </div>
-        {toast && <div role="status" onClick={() => setToast('')} style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 300, background: C.green, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: '0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}><Icon name="check" size={15} strokeWidth={2.5} /> {toast}</div>}
-      </div>
+      <div className="mp-page">{header(right)}<div className="mp-wrap mp-sections">{body}</div></div>
     </>
   );
+
+  if (phase === 'boot') return shell('My profile · Rentletter', null, <div className="rl-card mp-card"><p className="mp-p">Opening your profile</p></div>);
+
+  // ── the entry page: one card, the email, the link; the legacy pair on a second card ──
+  if (phase === 'entry' || phase === 'sent') {
+    return shell('Tenant profile · Rentletter', <a href="/" className="mp-link">Home</a>, (
+      <div className="mp-stack">
+        <div className="rl-card rl-in mp-card">
+          <Eyebrow>Tenant profile</Eyebrow>
+          {phase === 'sent' ? (
+            <>
+              <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>Check your inbox.</h1>
+              <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>If <strong style={{ color: C.ink, overflowWrap: 'anywhere' }}>{email}</strong> {noWidow('has an application with us, we sent a link. It works once and expires in 15 minutes. Open it on whichever device you like.')}</p>
+              <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Nothing arrived? Check spam for Rentletter and make sure it is the email you applied with.')}</p>
+              <button type="button" onClick={() => setPhase('entry')} className="mp-link">Try another email</button>
+            </>
+          ) : (
+            <>
+              <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Your rental profile, in one place.')}</h1>
+              <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Every application you sent, your details ready to reuse, and control over who sees what. Enter the email you applied with and we send you a link. No password.')}</p>
+              {noticeEl && <div style={{ marginTop: 'var(--gap-card)' }}>{noticeEl}</div>}
+              <form className="mp-form" onSubmit={requestLink}>
+                <div>
+                  <label htmlFor="tp-email" className="mp-label" style={{ display: 'block' }}>Email</label>
+                  <input id="tp-email" className="mp-input" style={{ marginTop: 'var(--gap-line)' }} type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
+                </div>
+                {entryErr && <p role="alert" className="mp-alert">{noWidow(entryErr)}</p>}
+                <button type="submit" className="mp-btn" disabled={sending || !EMAIL_RE.test(email)}>{sending ? 'Sending' : 'Email me a link'}</button>
+              </form>
+            </>
+          )}
+        </div>
+        {phase === 'entry' && (
+          <div className="rl-card rl-in mp-card">
+            <button type="button" onClick={() => setLegacyOpen((v) => !v)} aria-expanded={legacyOpen} className="mp-link" style={{ width: '100%', justifyContent: 'space-between', textDecoration: 'none', gap: 'var(--s-2)' }}>
+              <span>{noWidow('Have an application number and owner key instead?')}</span><Chevron open={legacyOpen} />
+            </button>
+            {legacyOpen && (
+              <form onSubmit={openLegacy} className="mp-form">
+                <input className="mp-input mp-mono" value={legacyApp} onChange={(e) => setLegacyApp(e.target.value.toUpperCase())} placeholder="RL-2026-XXXX-XXXX" spellCheck={false} aria-label="Application number" />
+                <input className="mp-input mp-mono" type="password" value={legacyKey} onChange={(e) => setLegacyKey(e.target.value)} placeholder="32 character owner key" spellCheck={false} aria-label="Owner key" />
+                <button type="submit" className="mp-btn">Open that application</button>
+              </form>
+            )}
+            <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Not applied anywhere yet? Your profile is created the first time you apply through a realtor’s invite link.')}</p>
+          </div>
+        )}
+      </div>
+    ));
+  }
+
+  // ── the profile: who you are, apply in seconds, your details, your applications, your email ──
+  const f = profile.facts || null;
+  const apps = profile.applications || [];
+  const inkMute = '#8f8b81', inkText = '#c8c2b3';
+  return shell(f?.fullName ? `${f.fullName}, Profile · Rentletter` : 'My profile · Rentletter', <button type="button" onClick={signOut} className="mp-link">Sign out</button>, (
+    <>
+      <div className="mp-stack">
+        <div className="rl-card rl-in mp-card">
+          <Eyebrow>My profile</Eyebrow>
+          <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{f?.fullName || 'Your profile'}</h1>
+          <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}><Dots items={[profile.email, f && (f.jobTitle || f.employer) ? [f.jobTitle, f.employer].filter(Boolean).join(' at ') : null, profile.factsUpdatedAt ? `Details updated ${dateLong(profile.factsUpdatedAt)}` : null]} /></p>
+          {noticeEl && <div style={{ marginTop: 'var(--gap-card)' }}>{noticeEl}</div>}
+        </div>
+        {/* Reuse: the one ink surface on the page. */}
+        <div className="mp-ink rl-in">
+          <Eyebrow style={{ color: inkMute }}>Apply in seconds</Eyebrow>
+          <h2 className="mp-h2" style={{ color: C.paper, marginTop: 'var(--gap-line)' }}>{noWidow(f ? 'Your next listing, without the retyping' : 'Your first application builds your profile')}</h2>
+          <p className="mp-p" style={{ color: inkText, marginTop: 'var(--gap-line)' }}>{noWidow(f ? 'Paste the invite link a realtor sent you. Their application opens with your profile filled in; you check it and confirm before anything is sent.' : 'Apply through any realtor’s invite link and what you enter becomes your profile.')}</p>
+          {f && (
+            <form onSubmit={goApplyWithProfile} className="mp-form">
+              <div>
+                <label htmlFor="tp-invite" className="mp-label" style={{ display: 'block', color: inkMute }}>Invite link</label>
+                <input id="tp-invite" className="mp-input" style={{ marginTop: 'var(--gap-line)' }} value={inviteLink} onChange={(e) => { setInviteLink(e.target.value); setInviteErr(''); }} placeholder="rentletter.ca/apply/" inputMode="url" autoComplete="off" spellCheck={false} />
+              </div>
+              {inviteErr && <p role="alert" className="mp-alert" style={{ color: '#f0b9bb' }}>{noWidow(inviteErr)}</p>}
+              <button type="submit" className="mp-btn" style={{ color: C.paper, borderColor: C.paper }}>Open it with my profile</button>
+            </form>
+          )}
+        </div>
+      </div>
+
+      <div className="mp-stack">
+        <div className="rl-card rl-in mp-card">
+          <h2 className="mp-h2">Your details</h2>
+          <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Edits here reach the applications you send from now on. Anything you already sent keeps what you sent; open it below to change that one.')}</p>
+          {saveError && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(saveError)}</p>}
+        </div>
+        {f ? (
+          <FactSections facts={f} draft={draft} editing={editing} setDraft={setDraft} canEdit={!editing} saving={saving} justSaved={justSaved} onEdit={startEdit} onCancel={cancelEdit} onSave={saveEdit} contactEditable={false} saveLabel="Save to my profile" />
+        ) : (
+          <div className="rl-card rl-in mp-card"><p className="mp-p">{noWidow('No details saved yet. They appear here after your first application, or add an application you already sent, below.')}</p></div>
+        )}
+      </div>
+
+      <div className="rl-card rl-in mp-card">
+        <h2 className="mp-h2">Your applications</h2>
+        {apps.length === 0 ? <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('No applications yet. When you apply through a realtor’s invite link, it shows up here.')}</p> : (
+          <ul className="mp-list" style={{ marginTop: 'var(--gap-card)' }}>
+            {apps.map((a) => (
+              <li key={a.applicationNumber}>
+                <a href={`/my-application/${a.applicationNumber}`} style={{ textDecoration: 'none', color: C.ink, minWidth: 0, flex: 1 }}>
+                  <span className="mp-value" style={{ marginTop: 0, display: 'block' }}>{noWidow(a.listingName || 'Rental unit')}</span>
+                  <span className="mp-note" style={{ display: 'block' }}><Dots items={[a.realtorName, a.realtorBrokerage, a.submittedAt ? dateLong(a.submittedAt) : null, a.updatedAt ? `edited ${dateLong(a.updatedAt)}` : null, a.revoked ? 'Revoked' : (a.status?.label || null)]} /></span>
+                  {a.referral && <span className="mp-note" style={{ display: 'block' }}>{noWidow(`Shared with ${a.referral.toName || 'another realtor'} by ${a.referral.fromName || 'your realtor'} with your approval.`)}</span>}
+                  <span className="mp-note mp-mono" style={{ display: 'block' }}>{a.applicationNumber}</span>
+                </a>
+                <Chevron />
+              </li>
+            ))}
+          </ul>
+        )}
+        <button type="button" onClick={() => setLinkOpen((v) => !v)} aria-expanded={linkOpen} className="mp-fold">
+          <span>{noWidow('Add an application you sent before')}</span><Chevron open={linkOpen} />
+        </button>
+        {linkOpen && (
+          <form onSubmit={linkApplication} className="mp-form" style={{ marginTop: 0 }}>
+            <input className="mp-input mp-mono" value={linkApp} onChange={(e) => setLinkApp(e.target.value.toUpperCase())} placeholder="RL-2026-XXXX-XXXX" spellCheck={false} aria-label="Application number" />
+            <input className="mp-input mp-mono" type="password" value={linkKey} onChange={(e) => setLinkKey(e.target.value)} placeholder="Owner key from its confirmation email" spellCheck={false} aria-label="Owner key" />
+            {linkMsg && <p role="alert" className="mp-alert">{noWidow(linkMsg)}</p>}
+            <button type="submit" className="mp-btn">Add to my profile</button>
+          </form>
+        )}
+      </div>
+
+      <div className="rl-card rl-in mp-card">
+        <h2 className="mp-h2">Sign in email</h2>
+        <p className="mp-value" style={{ marginTop: 'var(--gap-line)' }}>{profile.email}</p>
+        <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Changing it sends a confirmation to the new address first. This one keeps working until you confirm there.')}</p>
+        {profile.pendingEmail ? (
+          <>
+            <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>Waiting for you to confirm at <strong style={{ color: C.ink, overflowWrap: 'anywhere' }}>{profile.pendingEmail}</strong>.</p>
+            <button type="button" onClick={cancelEmailChange} className="mp-link">Cancel the change</button>
+          </>
+        ) : (
+          <form onSubmit={requestEmailChange} className="mp-form">
+            <input className="mp-input" type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="new@example.com" aria-label="New email" />
+            <button type="submit" disabled={emailBusy || !EMAIL_RE.test(newEmail)} className="mp-btn">{emailBusy ? 'Sending' : 'Change email'}</button>
+          </form>
+        )}
+        {emailMsg && <p role="status" className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(emailMsg)}</p>}
+        <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Your profile holds the facts you typed, never documents. Anything you upload for a realtor is held for that realtor only for 14 days, then deleted.')}</p>
+      </div>
+      {toast && <div role="status" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
+    </>
+  ));
 }
