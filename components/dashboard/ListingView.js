@@ -35,7 +35,7 @@ import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistant
 import { stateLine } from '../../lib/listingStateLine.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
-import { snapshotLine, answerLine } from '../../lib/reportSnapshot.js';
+import { sentLine, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -443,7 +443,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const downloadPdf = async () => {
     setPdfBusy(true); setSendMsg('');
     try {
-      const r = await adapter.fetch(`/api/listings/report-pdf?listingId=${encodeURIComponent(listing.id)}`);
+      // After a send: the frozen PDF the landlord got, by the page token. Before: the live preview.
+      const r = listing.snapshot?.token ? await fetch(`/api/report/pdf?token=${encodeURIComponent(listing.snapshot.token)}`) : await adapter.fetch(`/api/listings/report-pdf?listingId=${encodeURIComponent(listing.id)}`);
       if (!r.ok) { const j = await r.json().catch(() => ({})); setSendMsg(j?.error || 'Could not generate the PDF.'); setPdfBusy(false); return; }
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
@@ -1027,14 +1028,37 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
                     </div>
                   )}
-                  {(l.landlord_name || l.landlord_email || l.landlord_phone) && (
-                    <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                      <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Landlord client</div>
-                      {l.landlord_name && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
-                      {l.landlord_email && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
-                      {l.landlord_phone && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
-                    </div>
-                  )}
+                  {/* Signed by: the name on this report and every report after it, with its Change link. */}
+                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Signed by</div>
+                    {sigEditing ? (
+                      <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <input value={sigDraft} onChange={(e) => setSigDraft(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Signing name on reports" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveSignature(); } if (e.key === 'Escape') setSigEditing(false); }}
+                          style={{ flex: '1 1 200px', minWidth: 0, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 44 }} />
+                        <button type="button" onClick={saveSignature} disabled={sigBusy} style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>{sigBusy ? 'Saving' : 'Save'}</button>
+                        <button type="button" onClick={() => setSigEditing(false)} disabled={sigBusy} style={{ background: 'transparent', border: 'none', padding: '0 var(--s-2)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>Cancel</button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere' }}>{signingName(profile)}</span>
+                        <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ background: 'transparent', border: 'none', color: C.ink, fontWeight: 700, cursor: 'pointer', fontSize: 'var(--t-body-2)', padding: 0, minHeight: 44, textDecoration: 'underline', fontFamily: 'inherit' }}>Change</button>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>The name that signs this report and every report after it.</div>
+                  </div>
+                  {/* The landlord client: name, email, phone from the listing; Edit listing adds them. */}
+                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Landlord client</div>
+                    {(l.landlord_name || l.landlord_email || l.landlord_phone) ? (
+                      <>
+                        {l.landlord_name && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, overflowWrap: 'anywhere' }}>{l.landlord_name}</div>}
+                        {l.landlord_email && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_email}</div>}
+                        {l.landlord_phone && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{l.landlord_phone}</div>}
+                      </>
+                    ) : (
+                      <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center', gap: 'var(--s-1)', flexWrap: 'wrap' }}>Not set. <button type="button" onClick={() => setEditOpen(true)} style={{ background: 'transparent', border: 'none', color: C.ink, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'var(--t-body-2)', minHeight: 44, fontFamily: 'inherit' }}>Edit listing</button> to add them.</div>
+                    )}
+                  </div>
                   {/* The invite link row: URL, Copy, Regenerate as text, Add by application number as text. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                     <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Invite link</div>
@@ -1161,69 +1185,36 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
           </section>
 
-          {/* ── PRESENT TO LANDLORD (appears once anyone has applied) ── */}
+          {/* LANDLORD (once anyone has applied): one button, the sent line, two text links. Signed by
+              and the landlord's details live in the header card's Details fold. Red when no card owns
+              the red on this page, ink otherwise. */}
           {totalApplicants > 0 && (
             <section id="report" className="rl-card rl-in" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
-              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Present to landlord</div>
-              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}>Send the ranked list as a branded PDF or a message.</p>
-
-              {/* Who signs this report */}
-              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-3)', marginBottom: 'var(--s-2)', fontSize: 'var(--t-body-2)' }}>
-                <span style={{ color: C.inkMute, fontWeight: 600 }}>Signed by: </span>
-                {sigEditing ? (
-                  <span style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
-                    <input value={sigDraft} onChange={(e) => setSigDraft(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Signing name on reports" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveSignature(); } if (e.key === 'Escape') setSigEditing(false); }}
-                      style={{ flex: '1 1 200px', minWidth: 0, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 44 }} />
-                    <button type="button" onClick={saveSignature} disabled={sigBusy} className="rl-btn" style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>{sigBusy ? 'Saving…' : 'Save'}</button>
-                    <button type="button" onClick={() => setSigEditing(false)} disabled={sigBusy} style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, color: C.inkSoft, cursor: 'pointer', minHeight: 44 }}>Cancel</button>
-                  </span>
-                ) : (
-                  <>
-                    <span style={{ color: C.ink, fontWeight: 600 }}>{signingName(profile)}</span>
-                    <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ marginLeft: 'var(--s-2)', background: 'transparent', border: 'none', color: C.ink, fontWeight: 700, cursor: 'pointer', fontSize: 'var(--t-body-2)', padding: 0, minHeight: 28 }}>Change</button>
-                    <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>The name that signs this report and every report after it.</span>
-                  </>
-                )}
-              </div>
-              {/* Landlord contact captured on the listing */}
-              <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-3)', marginBottom: 'var(--s-4)', fontSize: 'var(--t-body-2)' }}>
-                <span style={{ color: C.inkMute, fontWeight: 600 }}>Landlord client: </span>
-                {(l.landlord_name || l.landlord_email || l.landlord_phone) ? (
-                  <span style={{ color: C.ink, display: 'inline-grid', gap: 'var(--s-1)' }}>
-                    {[l.landlord_name, l.landlord_email, l.landlord_phone].filter(Boolean).map((part) => <span key={part} style={{ display: 'block', overflowWrap: 'anywhere' }}>{part}</span>)}
-                  </span>
-                ) : (
-                  <span style={{ color: C.inkMute }}>Not set. Add it via <button onClick={() => setEditOpen(true)} style={{ background: 'transparent', border: 'none', color: C.ink, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'var(--t-body-2)' }}>Edit listing</button> to email them.</span>
-                )}
-              </div>
-
-              {brandHint && needsBrandingHint(profile) && (
-                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-3)', textWrap: 'pretty' }}>{BRANDING_HINT} <a href={adapter.paths.profile} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
-              )}
-              <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
-                <button onClick={downloadPdf} disabled={pdfBusy} className="rl-btn"
-                  style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                  <Icon name="doc" size={16} color={C.paper} /> {pdfBusy ? 'Generating…' : 'Generate PDF'}
-                </button>
-                <button onClick={copyText} disabled={textBusy} className="rl-btn"
-                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                  <Icon name="copy" size={16} /> {textBusy ? 'Composing…' : textCopied ? 'Copied!' : 'Copy text for landlord'}
-                </button>
+              <h2 className="t-d3" style={{ color: C.ink, margin: '0 0 var(--s-3)' }}>Landlord</h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
-                  style={{ background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                  <Icon name="mail" size={16} color={C.paper} /> {sending ? 'Sending…' : l.snapshot ? 'Send again' : 'Email report'}
+                  style={{ flex: '1 1 100%', minHeight: 44, background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '0 var(--s-4)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+                  {sending ? 'Sending' : l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
-              {/* The latest frozen report: when it went, how often it was opened, how many answers. */}
-              {l.snapshot && snapshotLine(l.snapshot) && (
-                <div className="num" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
-                  <span style={{ textWrap: 'pretty' }}>{snapshotLine(l.snapshot)}</span>
+              {/* The latest frozen report: when it went, how often it was opened, how many want to meet. */}
+              {l.snapshot && sentLine(l.snapshot) && (
+                <div className="num" style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
+                  <span style={{ textWrap: 'pretty' }}>{sentLine(l.snapshot)}</span>
                   <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" onClick={() => setBrandHint(true)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
                 </div>
               )}
+              {/* From the latest snapshot once one exists; the live preview before any send. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap' }}>
+                <button type="button" onClick={downloadPdf} disabled={pdfBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: pdfBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>{pdfBusy ? 'Preparing' : 'Download PDF'}</button>
+                <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>{textBusy ? 'Composing' : textCopied ? 'Copied' : 'Copy text'}</button>
+              </div>
+              {brandHint && needsBrandingHint(profile) && (
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'pretty' }}>{BRANDING_HINT} <a href={adapter.paths.profile} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
+              )}
               {sendMsg && (
-                <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft }}>{sendMsg}</div>
+                <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{sendMsg}</div>
               )}
             </section>
           )}

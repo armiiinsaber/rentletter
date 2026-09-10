@@ -11,10 +11,8 @@
 //     (blur / province change), debounced, and are flushed before any AI generation.
 //   • Brand colours + derived palette save 600ms after a change. Logo and font pairing save
 //     the moment they're chosen.
-// A sticky status strip at the top says exactly which state the form is in ("Saving…",
-// "All changes saved", "Unsaved — saving when you leave the field · Save now"). The bottom
-// Save button remains as an explicit flush (and closes the modal) but is no longer the only
-// way to persist anything.
+// Each field says a muted Saved beside its label for two seconds after its write lands; there is
+// no banner. The bottom Save button exists only for a modal host (onClose).
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { C, R } from '../theme';
@@ -81,7 +79,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         setError(`Could not save the font pairing${upErr ? ': ' + upErr : ''}. Your reports keep using the previous pairing.`);
         return;
       }
-      onSaved?.(data); setFontState('saved');
+      onSaved?.(data); setFontState('saved'); setTimeout(() => setFontState((st) => (st === 'saved' ? 'idle' : st)), 2000);
     } catch (e) { setFontId(prev); setFontState('error'); setError('Could not save the font pairing. Please try again.'); }
   };
   const [logoUrl, setLogoUrl] = useState(profile?.logo_url || '');
@@ -147,6 +145,15 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
   const colorRef = useRef({ brandColor, brandColorSecondary }); colorRef.current = { brandColor, brandColorSecondary };
   const savingRef = useRef(false);
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
+  // The per field Saved flash: the keys whose value changed in the write that just landed, two seconds each.
+  const [flash, setFlash] = useState({});
+  const flashTimers = useRef({});
+  const flashSaved = (keys) => {
+    if (!keys.length) return;
+    setFlash((cur) => { const n = { ...cur }; for (const k of keys) n[k] = true; return n; });
+    for (const k of keys) { clearTimeout(flashTimers.current[k]); flashTimers.current[k] = setTimeout(() => setFlash((cur) => { const n = { ...cur }; delete n[k]; return n; }), 2000); }
+  };
+  useEffect(() => () => { for (const t of Object.values(flashTimers.current)) clearTimeout(t); }, []);
   const waitIdle = () => new Promise((r) => { const t = setInterval(() => { if (!savingRef.current) { clearInterval(t); r(); } }, 50); });
   const persistDetails = useCallback(async () => {
     if (savingRef.current) { // a blur-save is mid-flight, let it finish, then write the latest values
@@ -173,6 +180,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         brand_color_secondary: /^#[0-9a-fA-F]{6}$/.test(bcs) ? bcs.toLowerCase() : null,
       });
       onSaved?.(colours.data || details.data);
+      flashSaved(DETAIL_KEYS.filter((k) => f[k] !== savedFormRef.current[k]));
       setSavedForm({ ...f }); // detail fields are now saved, clears the dirty state
       setSaveState('saved');
       return true;
@@ -280,34 +288,6 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href={GOOGLE_FONTS_HREF} />
       </Head>
-      {/* Sticky save-state strip, the ONE place that says whether this form is persisted. Sticks to
-          the top of the scroll container (the modal body, or the page) so it's visible from the name
-          field down to the font cards. Colours: ink while saving, green when saved, red when unsaved. */}
-      {!logoOnly && <div role="status" aria-live="polite"
-        style={{ position: 'sticky', top: 0, zIndex: 5, margin: '0 0 14px', padding: '8px 12px', background: C.paper, borderBottom: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', fontSize: 12.5, lineHeight: 1.4 }}>
-        {saving ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, color: C.inkSoft, fontWeight: 600 }}>
-            <span className="rl-savespin" aria-hidden="true" /> Saving…
-          </span>
-        ) : dirty ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: C.red, fontWeight: 700 }}>
-            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: C.red, display: 'inline-block', flexShrink: 0 }} />
-            Unsaved, saves when you leave the field
-          </span>
-        ) : saveState === 'error' ? (
-          <span style={{ color: C.red, fontWeight: 700 }}>Not saved, see the message below</span>
-        ) : (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: C.green, fontWeight: 700 }}>
-            <span aria-hidden="true">✓</span> All changes saved
-          </span>
-        )}
-        {dirty && !saving && (
-          <button type="button" onClick={() => persistDetails()}
-            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.pill, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-            Save now
-          </button>
-        )}
-      </div>}
       {error && <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 13, color: C.ink }}>{error}</div>}
 
       {/* One continuous flow, ordered most-fundamental first, your details, then logo, then the
@@ -315,13 +295,13 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {!logoOnly && <>
       {fields.map((f) => (
         <div key={f.k} style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}</label>
+          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}{flash[f.k] && <span role="status" style={{ marginLeft: 8, color: C.inkMute, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Saved</span>}</label>
           <input id={`profile-field-${f.k}`} type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} onBlur={autosave} placeholder={f.ph} style={inputStyle} />
         </div>
       ))}
       {/* Province · drives province-specific behaviour (e.g. the tenant age-of-majority gate). */}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Province</label>
+        <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Province{flash.province && <span role="status" style={{ marginLeft: 8, color: C.inkMute, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Saved</span>}</label>
         <select value={form.province} onChange={(e) => { set('province', e.target.value); autosave(); }} onBlur={autosave} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
           {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
@@ -423,19 +403,19 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         <label style={{ ...sectionLabel, marginBottom: 4 }}>Font pairing</label>
         <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
           Pick a heading + body pairing. Every pairing here is embedded in your landlord reports, the heading sets your name, the body sets everything else. Script headings style your name only; report text stays in the clean body face.
-          {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> · Saving…</span>}
-          {fontState === 'saved' && <span style={{ color: C.green, fontWeight: 700 }}> · ✓ Saved</span>}
+          {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> · Saving</span>}
+          {fontState === 'saved' && <span role="status" style={{ color: C.inkMute, fontWeight: 600 }}> · Saved</span>}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
           {FONT_PAIRINGS.map((fp) => {
             const selected = fontId === fp.id;
             return (
               <button key={fp.id} type="button" onClick={() => selectFont(fp)}
-                style={{ textAlign: 'left', cursor: 'pointer', borderRadius: R.card, padding: 12, background: selected ? '#f0f7f3' : C.paper, border: `1px solid ${selected ? C.green : C.rule}`, boxShadow: selected ? `0 0 0 1px ${C.green}` : 'none' }}>
+                style={{ textAlign: 'left', cursor: 'pointer', borderRadius: R.card, padding: 12, background: selected ? C.paperDeep : C.paper, border: `1px solid ${selected ? C.ink : C.rule}`, boxShadow: selected ? `0 0 0 1px ${C.ink}` : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{fp.name}</span>
                   {selected
-                    ? <span style={{ fontSize: 10, fontWeight: 800, color: C.paper, background: C.green, padding: '2px 8px', borderRadius: R.pill }}>✓ IN USE</span>
+                    ? <span style={{ fontSize: 10, fontWeight: 800, color: C.paper, background: C.ink, padding: '2px 8px', borderRadius: R.pill }}>IN USE</span>
                     : fp.id === suggestedFontId && <span style={{ fontSize: 10, fontWeight: 700, color: C.red, border: `1px solid ${C.red}`, padding: '1px 7px', borderRadius: R.pill }}>SUGGESTED</span>}
                 </div>
                 <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{fp.mood}</div>
@@ -450,9 +430,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         </div>
       </div>
 
-      {/* Explicit Save, same write path as the blur autosave (persistDetails). Kept as a visible
-          flush + "close the modal" action; the sticky strip above is the primary save indicator. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+      {/* Explicit Save for a modal host only, same write path as the blur autosave (persistDetails). */}
+      {onClose && <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <button onClick={save} disabled={saving}
           style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '14px 24px', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(215, 32, 39, 0.25)' : 'none' }}>
           {saving ? 'Saving…' : (dirty ? 'Save changes' : 'Save')}
@@ -463,8 +442,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
             Unsaved changes
           </span>
         )}
-        {!saving && !dirty && savedOk && <span style={{ fontSize: 13, color: C.green, fontWeight: 700 }}>✓ Saved</span>}
-      </div>
+      </div>}
       <style jsx>{`
         .rl-savespin {
           width: 12px; height: 12px; flex-shrink: 0; border-radius: 50%; display: inline-block;

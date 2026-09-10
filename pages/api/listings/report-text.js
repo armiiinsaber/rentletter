@@ -1,7 +1,8 @@
 // /api/listings/report-text  POST { listingId }
 // Realtor authenticated, entitlement gated. The paste ready message for the landlord, a template
 // over the same payload a send freezes (lib/reportText.js): no model call. When the listing has a
-// sent snapshot, the message carries that page's link; otherwise it carries no link.
+// sent snapshot, the message is built from that frozen payload and carries the page's link; before
+// any send it is built live and carries no link.
 import { recordEvent } from '../../../lib/events';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -31,7 +32,7 @@ export default async function handler(req, res) {
     const payload = buildSnapshot({ listing: ctx.listing, applicants: ctx.active, profile: { ...ctx.profile, email: ctx.profile?.email || user.email } });
     const latest = (await latestSnapshots(admin, [ctx.listing.id])).get(String(ctx.listing.id));
     const pageUrl = latest ? `https://rentletter.ca/r/${latest.meta.token}` : null;
-    const text = reportText(payload, { pageUrl });
+    const text = reportText(latest && latest.payload ? latest.payload : payload, { pageUrl });
     await recordEvent(admin, { profileId: user.id, listingId: ctx.listing.id, type: 'report_generated', payload: { listingName: ctx.listing.name || ctx.listing.address || null, format: 'text' } });
     return res.status(200).json({ text });
   } catch (e) {

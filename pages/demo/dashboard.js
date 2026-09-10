@@ -3,12 +3,13 @@
 // components /dashboard uses) through lib/demoAdapter.js: an in-memory fixture of FAKE people
 // (lib/demoFixture.js). No auth, no database, no email, no KV. Every write the dashboard makes
 // lands in sessionStorage and nowhere else; "Reset" wipes it. The assistant is live (real
-// ?listing=<fixture id> opens a listing exactly like /listing/<id> does.
+// ?listing=<fixture id> opens a listing exactly like /listing/<id> does; ?profile=1 opens the profile page.
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import HomeView from '../../components/dashboard/HomeView';
 import ListingView from '../../components/dashboard/ListingView';
+import ProfileView from '../../components/dashboard/ProfileView';
 import { DashboardAdapterContext } from '../../lib/dashboardAdapter';
 import { createDemoAdapter } from '../../lib/demoAdapter';
 import { C } from '../../components/theme';
@@ -24,6 +25,7 @@ export default function DemoSandbox() {
   const view = useMemo(() => {
     if (!adapter || listingId === undefined) return null;
     const s = adapter.getState();
+    if (router.query.profile === '1') return { key: 'profile', el: <ProfileView initialProfile={{ ...s.profile }} /> };
     if (listingId) {
       const listing = s.listings.find((l) => l.id === listingId);
       if (!listing) return { missing: true };
@@ -31,7 +33,7 @@ export default function DemoSandbox() {
     }
     return { key: 'home', el: <HomeView userId={s.profile.id} userEmail={s.profile.email} initialProfile={s.profile} initialListings={s.listings.map((l) => ({ ...l }))} /> };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adapter, listingId]);
+  }, [adapter, listingId, router.query.profile]);
 
   useEffect(() => { if (view?.missing) router.replace('/demo/dashboard'); }, [view, router]);
 

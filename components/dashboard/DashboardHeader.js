@@ -30,8 +30,8 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
   return (
     <>
       <ScrollHeader maxWidth={1100}>
-        {/* LEFT, wordmark → homepage (keeps the session). First beat of the reveal. */}
-        <a href="/" aria-label="Rentletter home" className="rl-hdr-mark rl-hdr-reveal" style={{ '--d': '40ms' }}>
+        {/* LEFT, wordmark: the dashboard. First beat of the reveal. */}
+        <a href={adapter.paths.home} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-hdr-reveal" style={{ '--d': '40ms' }}>
           <Wordmark />
         </a>
         {/* CENTER, account status (trial countdown / lapsed / subscribed). Founders get no badge

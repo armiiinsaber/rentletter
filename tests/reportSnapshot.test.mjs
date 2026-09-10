@@ -8,7 +8,7 @@ import { register } from 'node:module';
 register('./helpers/loader.mjs', import.meta.url);
 import { fakeSupabase } from './helpers/fakeSupabase.mjs';
 
-const { buildSnapshot, forLandlordPage, snapshotLine, answerLine } = await import('../lib/reportSnapshot.js');
+const { buildSnapshot, forLandlordPage, snapshotLine, sentLine, answerLine } = await import('../lib/reportSnapshot.js');
 const { reportSentence } = await import('../lib/reportSentence.js');
 const { reportText } = await import('../lib/reportText.js');
 const { isReportToken, newReportToken } = await import('../lib/applicationIds.js');
@@ -86,6 +86,9 @@ test('answers: the route writes answers[rank], records landlord_answered under t
   const latest = await latestSnapshots(admin, ['L1']);
   assert.equal(latest.get('L1').meta.id, 'S1', 'the newest snapshot wins');
   assert.equal(snapshotLine(latest.get('L1').meta), 'Sent to Marco Rossi · Sep 5 · opened 3 times · 2 answers');
+  assert.equal(sentLine(latest.get('L1').meta), 'Sent Sep 5 · opened 3 times · 1 wants to meet', 'the Landlord section line: only the meets count');
+  assert.equal(sentLine({ sentAt: '2026-09-05T12:00:00Z', openedCount: 1, answers: {} }), 'Sent Sep 5 · opened 1 time · 0 want to meet');
+  assert.equal(sentLine(null), null);
   const apps = [{ linkId: 'J1', listingId: 'L1', application: { full_name: 'Priya Sharma' } }, { linkId: 'J2', listingId: 'L1', application: { full_name: 'David Kowalski' } }, { linkId: 'J9', listingId: 'L1', application: {} }];
   await attachLandlordAnswers(admin, ['L1'], apps);
   assert.deepEqual(apps.map((a) => a.landlordAnswer && a.landlordAnswer.answer), ['meet', 'pass', null]);
