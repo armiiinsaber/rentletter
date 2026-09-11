@@ -15,7 +15,7 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../components/theme';
-import { GlobalStyle, Wordmark, useReveal } from '../components/ui';
+import { GlobalStyle, Wordmark } from '../components/ui';
 import { ProfileStyles, FactSections, Eyebrow, Dots, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 
@@ -53,7 +53,6 @@ export default function MyProfile() {
   const [linkApp, setLinkApp] = useState('');
   const [linkKey, setLinkKey] = useState('');
   const [linkMsg, setLinkMsg] = useState('');
-  useReveal(phase + (profile?.profileRevision || '') + (profile?.applications?.length || ''));
 
   const loadProfile = async () => {
     const r = await fetch('/api/tenant/profile');
@@ -165,7 +164,7 @@ export default function MyProfile() {
   if (phase === 'entry' || phase === 'sent') {
     return shell('Tenant profile · Rentletter', <a href="/" className="mp-link">Home</a>, (
       <div className="mp-stack">
-        <div className="rl-card rl-in mp-card">
+        <div className="rl-card mp-card">
           <Eyebrow>Tenant profile</Eyebrow>
           {phase === 'sent' ? (
             <>
@@ -191,7 +190,7 @@ export default function MyProfile() {
           )}
         </div>
         {phase === 'entry' && (
-          <div className="rl-card rl-in mp-card">
+          <div className="rl-card mp-card">
             <button type="button" onClick={() => setLegacyOpen((v) => !v)} aria-expanded={legacyOpen} className="mp-link" style={{ width: '100%', justifyContent: 'space-between', textDecoration: 'none', gap: 'var(--s-2)' }}>
               <span>{noWidow('Have an application number and owner key instead?')}</span><Chevron open={legacyOpen} />
             </button>
@@ -216,14 +215,14 @@ export default function MyProfile() {
   return shell(f?.fullName ? `${f.fullName}, Profile · Rentletter` : 'My profile · Rentletter', <button type="button" onClick={signOut} className="mp-link">Sign out</button>, (
     <>
       <div className="mp-stack">
-        <div className="rl-card rl-in mp-card">
+        <div className="rl-card mp-card">
           <Eyebrow>My profile</Eyebrow>
           <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{f?.fullName || 'Your profile'}</h1>
           <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}><Dots items={[profile.email, f && (f.jobTitle || f.employer) ? [f.jobTitle, f.employer].filter(Boolean).join(' at ') : null, profile.factsUpdatedAt ? `Details updated ${dateLong(profile.factsUpdatedAt)}` : null]} /></p>
           {noticeEl && <div style={{ marginTop: 'var(--gap-card)' }}>{noticeEl}</div>}
         </div>
         {/* Reuse: the one ink surface on the page. */}
-        <div className="mp-ink rl-in">
+        <div className="mp-ink">
           <Eyebrow style={{ color: inkMute }}>Apply in seconds</Eyebrow>
           <h2 className="mp-h2" style={{ color: C.paper, marginTop: 'var(--gap-line)' }}>{noWidow(f ? 'Your next listing, without the retyping' : 'Your first application builds your profile')}</h2>
           <p className="mp-p" style={{ color: inkText, marginTop: 'var(--gap-line)' }}>{noWidow(f ? 'Paste the invite link a realtor sent you. Their application opens with your profile filled in; you check it and confirm before anything is sent.' : 'Apply through any realtor’s invite link and what you enter becomes your profile.')}</p>
@@ -241,7 +240,7 @@ export default function MyProfile() {
       </div>
 
       <div className="mp-stack">
-        <div className="rl-card rl-in mp-card">
+        <div className="rl-card mp-card">
           <h2 className="mp-h2">Your details</h2>
           <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Edits here reach the applications you send from now on. Anything you already sent keeps what you sent; open it below to change that one.')}</p>
           {saveError && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(saveError)}</p>}
@@ -249,11 +248,11 @@ export default function MyProfile() {
         {f ? (
           <FactSections facts={f} draft={draft} editing={editing} setDraft={setDraft} canEdit={!editing} saving={saving} justSaved={justSaved} onEdit={startEdit} onCancel={cancelEdit} onSave={saveEdit} contactEditable={false} saveLabel="Save to my profile" />
         ) : (
-          <div className="rl-card rl-in mp-card"><p className="mp-p">{noWidow('No details saved yet. They appear here after your first application, or add an application you already sent, below.')}</p></div>
+          <div className="rl-card mp-card"><p className="mp-p">{noWidow('No details saved yet. They appear here after your first application, or add an application you already sent, below.')}</p></div>
         )}
       </div>
 
-      <div className="rl-card rl-in mp-card">
+      <div className="rl-card mp-card">
         <h2 className="mp-h2">Your applications</h2>
         {apps.length === 0 ? <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('No applications yet. When you apply through a realtor’s invite link, it shows up here.')}</p> : (
           <ul className="mp-list" style={{ marginTop: 'var(--gap-card)' }}>
@@ -283,7 +282,7 @@ export default function MyProfile() {
         )}
       </div>
 
-      <div className="rl-card rl-in mp-card">
+      <div className="rl-card mp-card">
         <h2 className="mp-h2">Sign in email</h2>
         <p className="mp-value" style={{ marginTop: 'var(--gap-line)' }}>{profile.email}</p>
         <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Changing it sends a confirmation to the new address first. This one keeps working until you confirm there.')}</p>

@@ -31,25 +31,25 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
     <>
       <ScrollHeader maxWidth={1100}>
         {/* LEFT, wordmark: the dashboard. First beat of the reveal. */}
-        <a href={adapter.paths.home} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-hdr-reveal" style={{ '--d': '40ms' }}>
+        <a href={adapter.paths.home} aria-label="Rentletter dashboard" className="rl-hdr-mark">
           <Wordmark />
         </a>
         {/* CENTER, account status (trial countdown / lapsed / subscribed). Founders get no badge
             at all: the wrapper is empty and hidden, and the bar becomes the clean two-part
             wordmark + actions row. When a badge IS shown it collapses below 560px. */}
-        <span className="rl-hdr-reveal rl-hdr-status" style={{ '--d': '160ms', display: 'inline-flex' }}>
+        <span className="rl-hdr-status" style={{ display: 'inline-flex' }}>
           <StatusBadge profile={profile} />
         </span>
         {/* RIGHT, account actions grouped with an even rhythm (matched 34px controls, 12px gaps).
             Reveals left→right after the wordmark and badge. */}
         <div className="rl-hdr-cluster">
           {/* Bell: the assistant. Badge = what needs the realtor; the panel adds what happened. */}
-          <span className="rl-hdr-reveal rl-hdr-bellwrap" style={{ '--d': '220ms', display: 'inline-flex' }}>
+          <span className="rl-hdr-bellwrap" style={{ display: 'inline-flex' }}>
             <AssistantBell profile={profile} signals={signals} onAction={onAssistantAction} />
           </span>
           {/* The realtor's identity: a 44px circle with their initials (never the uploaded logo) at the
               right edge. Tapping it opens the profile page, where sign out lives. */}
-          <a href={adapter.paths.profile} title="Your profile" aria-label="Your profile" className="rl-hdr-reveal rl-hdr-avatar" style={{ '--d': '280ms' }}>
+          <a href={adapter.paths.profile} title="Your profile" aria-label="Your profile" className="rl-hdr-avatar">
             {initialsOf(profile)}
           </a>
         </div>
@@ -108,12 +108,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
 
         /* ── Motion: staggered reveal + hover/press transforms — only when motion is welcome ── */
         @media (prefers-reduced-motion: no-preference) {
-          .rl-hdr-reveal {
-            opacity: 0;
-            animation: rlHdrIn 460ms ${EASE} both;
-            animation-delay: var(--d, 0ms);
-            will-change: transform, opacity;
-          }
+          /* No page load reveal: the header renders at full opacity, laid out first. */
           .rl-hdr-mark { transition: transform 220ms ${EASE}; }
           .rl-hdr-mark:hover { transform: translateY(-1px); }
           .rl-hdr-avatar { transition: transform 200ms ${EASE}, box-shadow 200ms ${EASE}; }
@@ -121,9 +116,6 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
           .rl-hdr-avatar:active { transform: scale(0.95); }
           .rl-hdr-bellwrap :global(button) { transition: box-shadow 200ms ease; }
         }
-        @keyframes rlHdrIn {
-          from { opacity: 0; transform: translateY(9px); }
-          to { opacity: 1; transform: none; }
         }
       `}</style>
     </>

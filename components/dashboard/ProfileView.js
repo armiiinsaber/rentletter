@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { GlobalStyle, useReveal } from '../ui';
+import { GlobalStyle } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { C, R } from '../theme';
 import DashboardHeader from './DashboardHeader';
@@ -15,7 +15,6 @@ export default function ProfileView({ initialProfile }) {
   const [profile, setProfile] = useState(initialProfile);
   const router = useRouter();
   const adapter = useAdapter();
-  useReveal('profile');
   // Sign out lives here (the header's identity circle opens this page).
   const signOut = async () => { try { await adapter.supabase().auth.signOut(); } catch (e) { /* the redirect still lands on sign in */ } router.replace(adapter.paths.signin); };
 
@@ -29,9 +28,9 @@ export default function ProfileView({ initialProfile }) {
       <div style={{ minHeight: '100vh', background: C.paperDeep, overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} />
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--gap-section) var(--s-4) 64px' }}>
-          <h1 className="t-d1 rl-in" style={{ color: C.ink, margin: '0 0 var(--gap-section)' }}>Profile</h1>
+          <h1 className="t-d1" style={{ color: C.ink, margin: '0 0 var(--gap-section)' }}>Profile</h1>
           {/* Identity, logo, brand colours and fonts: one card, one form. */}
-          <section id="branding" className="rl-card rl-in" style={{ padding: 'var(--card-pad)', '--rl-d': '90ms', scrollMarginTop: 16 }}>
+          <section id="branding" className="rl-card" style={{ padding: 'var(--card-pad)', scrollMarginTop: 16 }}>
             <ProfileEditorBody profile={profile} onSaved={setProfile} />
           </section>
           {/* Sign out: the account's exit, outlined, at the foot of the page that is about the account. */}

@@ -1,7 +1,7 @@
 // components/ui.js
 // Shared presentation primitives. Presentation-only. Inline-style idiom to
 // match the codebase. Import { GlobalStyle, Wordmark, Icon, ScrollHeader,
-// useReveal } where needed.
+// TickMeter } where needed.
 
 import { useEffect, useRef } from 'react';
 import { C, R, SH, EASE, FONT } from './theme';
@@ -100,43 +100,7 @@ export const GlobalStyle = () => (
     .rl-line-wrap { display: contents; }
 
     @media (prefers-reduced-motion: no-preference) {
-      @keyframes rl-draw     { from { width: 0 }                                 to { width: 28px } }
-      @keyframes rl-slide-up { from { opacity: 0; transform: translateY(34px) } to { opacity: 1; transform: none } }
-      @keyframes rl-fade-seq { from { opacity: 0; transform: translateY(22px) } to { opacity: 1; transform: none } }
       @keyframes rl-pulse    { 0%,80%,100% { opacity: .2; transform: scale(.8) } 40% { opacity: 1; transform: scale(1) } }
-
-      .rl-rule-draw { animation: rl-draw 560ms ${EASE} both; }
-
-      /* Hero text lines slide up out of an overflow clip */
-      .rl-line-wrap { overflow: hidden; display: block; padding-bottom: .04em; }
-      .rl-line      { display: block; animation: rl-slide-up 640ms ${EASE} both; }
-
-      /* Sequential fade-up for hero supporting elements */
-      .rl-hero-seq  { animation: rl-fade-seq 500ms ${EASE} both; }
-
-      /* Scroll reveal — fires once via IntersectionObserver adding .rl-vis */
-      .rl-reveal { opacity: 0; transform: translateY(28px); transition: opacity 620ms ease, transform 680ms ${EASE}; }
-      .rl-reveal.rl-vis { opacity: 1; transform: none; }
-
-      /* App reveal — the subtle, confident variant matching the dashboard header's language
-         (small travel, quicker). Shared by every authenticated page for BOTH the page-load
-         reveal (above-the-fold elements fire immediately as the observer runs on mount) and
-         scroll reveals (below-the-fold elements fire on enter). Optional per-item stagger via
-         a --rl-d CSS var, same idea as the header. Reused by the one useReveal() observer. */
-      .rl-in { opacity: 0; transform: translateY(12px); transition: opacity 480ms ease, transform 520ms ${EASE}; transition-delay: var(--rl-d, 0ms); }
-      .rl-in.rl-vis { opacity: 1; transform: none; }
-
-      /* Stepped reveal — parent gets .rl-vis, children stagger */
-      .rl-steps .rl-step { opacity: 0; transform: translateY(28px); transition: opacity 560ms ease, transform 620ms ${EASE}; }
-      .rl-steps.rl-vis .rl-step:nth-child(1) { opacity: 1; transform: none; }
-      .rl-steps.rl-vis .rl-step:nth-child(2) { opacity: 1; transform: none; transition-delay: 110ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(3) { opacity: 1; transform: none; transition-delay: 220ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(4) { opacity: 1; transform: none; transition-delay: 330ms; }
-      .rl-step-bar { transform: scaleX(0); transform-origin: left; transition: transform 480ms ${EASE}; }
-      .rl-steps.rl-vis .rl-step:nth-child(1) .rl-step-bar { transform: scaleX(1); }
-      .rl-steps.rl-vis .rl-step:nth-child(2) .rl-step-bar { transform: scaleX(1); transition-delay: 110ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(3) .rl-step-bar { transform: scaleX(1); transition-delay: 220ms; }
-      .rl-steps.rl-vis .rl-step:nth-child(4) .rl-step-bar { transform: scaleX(1); transition-delay: 330ms; }
 
       /* Button micro-interactions */
       .rl-btn { transition: transform 200ms ${EASE}, box-shadow 200ms ease, background 160ms ease, border-color 160ms ease; }
@@ -222,24 +186,9 @@ export const ScrollFade = ({ children, distance = 220, style }) => {
   return <div ref={ref} style={{ transition: 'opacity 120ms linear', willChange: 'opacity, transform', ...style }}>{children}</div>;
 };
 
-// ─── SCROLL REVEAL HOOK ──────────────────────────────────────
-// Adds .rl-vis to every .rl-reveal / .rl-steps / .rl-in element as it enters view, once.
-// No-ops for reduced-motion (elements are already visible via the static base). Pass a `dep`
-// that changes when new revealable content mounts so freshly-added elements get observed.
-export const useReveal = (dep) => {
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const els = document.querySelectorAll('.rl-reveal:not(.rl-vis), .rl-steps:not(.rl-vis), .rl-in:not(.rl-vis)');
-    if (!els.length) return;
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('rl-vis'); obs.unobserve(e.target); } }),
-      { threshold: 0.08, rootMargin: '0px 0px -24px 0px' }
-    );
-    els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
-  }, [dep]);
-};
+// No scroll reveal anywhere: every element renders at full opacity, laid out first. The motion
+// that remains lives in lib/motion.js and components/motion: the meter fill on mount, the card
+// state slide, and the opacity fade on a newly mounted card, all behind the motion query.
 
 // ─── TICK METER — the red tick-mark motif as the score language ──────────────
 // Renders a score (e.g. scorecard 0–5) as a row of tick marks instead of bare

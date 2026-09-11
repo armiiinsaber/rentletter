@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, TickMeter, useReveal, ConfirmSheet } from '../../components/ui';
+import { GlobalStyle, Icon, TickMeter, ConfirmSheet } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -253,7 +253,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   useEffect(() => () => clearTimeout(recentTimer.current), []);
   // Reveal sections on load + as they scroll into view. Re-run when the applicant set changes
   // so newly-rendered cards get observed.
-  useReveal(`${applicants.length}-${compareOpen}-${editOpen}`);
 
   const saveEdit = async (values) => {
     setSaving(true);
@@ -912,7 +911,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {/* THE HEADER CARD: the listing as one paper card above the applicants. Address with
               Edit, rent and unit, the criteria as chips, the invite link row, then the Details
               toggle row; the Details panel opens inside this card. */}
-          <section className="rl-card rl-in" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
+          <section className="rl-card" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
               <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>
                 {l.name || l.address || 'Untitled listing'}
@@ -1137,7 +1136,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <div style={{ height: 'var(--gap-section)' }} aria-hidden="true" />
 
           {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
-          <section className="rl-card rl-in" style={{ padding: 'var(--s-4)' }}>
+          <section className="rl-card" style={{ padding: 'var(--s-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
               <h2 className="t-d3" style={{ color: C.ink }}>Applicants</h2>
               <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
@@ -1189,7 +1188,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               and the landlord's details live in the header card's Details fold. Red when no card owns
               the red on this page, ink otherwise. */}
           {totalApplicants > 0 && (
-            <section id="report" className="rl-card rl-in" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
+            <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
               <h2 className="t-d3" style={{ color: C.ink, margin: '0 0 var(--s-3)' }}>Landlord</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"

@@ -6,36 +6,14 @@ import DeviceFrame from '../components/DeviceFrame';
 import HeroDemo from '../components/mockups/HeroDemo';
 
 
-// ─── COUNT-UP STAT — DOM-mutated to avoid hydration mismatch ───────────────
+// ─── STAT: the number as it is, no count up, no observer ───────────────
 const StatCounter = ({ numStr, label }) => {
   const match = numStr.match(/^(\d+)\s+(.+)$/);
   const target = match ? parseInt(match[1], 10) : 0;
   const suffix = match ? ' ' + match[2] : numStr;
-  const wrapRef = useRef(null);
-  const numRef  = useRef(null);
-  useEffect(() => {
-    const el = wrapRef.current;
-    const numEl = numRef.current;
-    if (!el || !numEl) return;
-    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const obs = new IntersectionObserver(([entry]) => {
-      if (!entry.isIntersecting) return;
-      obs.unobserve(el);
-      const dur = 800, t0 = performance.now();
-      numEl.textContent = '0' + suffix;
-      const tick = (now) => {
-        const t = Math.min((now - t0) / dur, 1);
-        numEl.textContent = Math.ceil((1 - Math.pow(1 - t, 3)) * target) + suffix;
-        if (t < 1) requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
-    }, { threshold: 0.5 });
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [target, suffix]);
   return (
-    <div ref={wrapRef}>
-      <div ref={numRef} className="rl-serif" style={{ fontSize: 'clamp(34px, 5vw, 44px)', color: C.ink, letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1 }}>
+    <div>
+      <div className="rl-serif" style={{ fontSize: 'clamp(34px, 5vw, 44px)', color: C.ink, letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1 }}>
         {target}{suffix}
       </div>
       <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.4 }}>{label}</div>
@@ -171,21 +149,6 @@ export default function Home() {
     setHeroTilt({ x: dy * -2.5, y: dx * 2.5 });
   };
   const handleTiltLeave = () => setHeroTilt({ x: 0, y: 0 });
-
-  // ─── SCROLL REVEAL — .rl-reveal sections + .rl-steps parent ───
-  useEffect(() => {
-    if (step !== 'landing') return;
-    if (typeof window === 'undefined') return;
-    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const els = document.querySelectorAll('.rl-reveal, .rl-steps');
-    if (!els.length) return;
-    const obs = new IntersectionObserver(
-      entries => entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('rl-vis'); obs.unobserve(e.target); } }),
-      { threshold: 0.08, rootMargin: '0px 0px -24px 0px' }
-    );
-    els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
-  }, [step]);
 
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -427,7 +390,7 @@ export default function Home() {
 
               {/* LEFT · text */}
               <div>
-                <div className="rl-hero-seq" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
                   <span className="rl-rule-draw" style={{ height: 2, background: C.red, borderRadius: 1, display: 'block' }} />
                   <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
                     For Ontario &amp; BC Realtors · 2026
@@ -441,16 +404,15 @@ export default function Home() {
                   color: C.ink,
                   marginBottom: 26,
                 }}>
-                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '180ms' }}>A simpler way to</span></span>
-                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '270ms' }}>handle <span style={{ color: C.red }}>rental</span></span></span>
-                  <span className="rl-line-wrap"><span className="rl-line" style={{ animationDelay: '360ms', color: C.red }}>applications.</span></span>
+                  <span style={{ display: 'block' }}>A simpler way to</span>
+                  <span style={{ display: 'block' }}>handle <span style={{ color: C.red }}>rental</span></span>
+                  <span style={{ display: 'block', color: C.red }}>applications.</span>
                 </h1>
 
                 {/* Hero sequence as a compact numbered 3-step. Deliberately small red numerals +
                     short lines, visually distinct from the big serif 01/02/03 "How it works"
                     section below. text-wrap:pretty guards against orphan words at 360/390. */}
-                <ol className="rl-hero-seq" style={{
-                  animationDelay: '540ms',
+                <ol style={{
                   listStyle: 'none', margin: '0 0 34px', padding: 0, maxWidth: 480,
                   display: 'grid', gap: 13,
                 }}>
@@ -472,7 +434,7 @@ export default function Home() {
                   ))}
                 </ol>
 
-                <div className="rl-hero-seq" style={{ animationDelay: '660ms' }}>
+                <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
                     <a href="/dashboard" className="rl-btn" style={{
                       background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
@@ -515,7 +477,7 @@ export default function Home() {
               </div>
 
               {/* RIGHT, dashboard screenshot in browser-chrome frame */}
-              <div className="rl-hero-seq" style={{ animationDelay: '300ms', position: 'relative' }}>
+              <div style={{ position: 'relative' }}>
                 <div ref={tiltRef}
                   onMouseMove={skipTilt ? undefined : handleTiltMove}
                   onMouseLeave={skipTilt ? undefined : handleTiltLeave}>
@@ -538,7 +500,7 @@ export default function Home() {
             </div>
 
             {/* Stats row, count-up animation when scrolled into view */}
-            <div className="rl-reveal" style={{
+            <div style={{
               marginTop: 'clamp(52px, 8vw, 88px)',
               borderTop: `1px solid ${C.rule}`,
               paddingTop: 36,
@@ -554,7 +516,7 @@ export default function Home() {
           </section>
 
           {/* ── DIFFERENTIATOR, its own quiet statement ── */}
-          <section className="rl-reveal" style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.card }}>
+          <section style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.card }}>
             <div style={{ maxWidth: 880, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px)', textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 16 }}>
                 Where we fit
@@ -567,7 +529,7 @@ export default function Home() {
           </section>
 
           {/* ── PULL-QUOTE ── */}
-          <section className="rl-reveal" style={{ background: C.ink, color: C.paper }}>
+          <section style={{ background: C.ink, color: C.paper }}>
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(52px, 8vw, 88px) clamp(20px, 4vw, 32px)' }}>
               <blockquote className="rl-serif" style={{
                 fontSize: 'clamp(26px, 4vw, 44px)', lineHeight: 1.18, letterSpacing: '-0.02em',
@@ -580,7 +542,7 @@ export default function Home() {
 
           {/* ── HOW IT WORKS ── */}
           <section style={{ padding: 'clamp(64px, 10vw, 112px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
-            <div className="rl-reveal" style={{ marginBottom: 'clamp(40px, 6vw, 64px)', maxWidth: 640 }}>
+            <div style={{ marginBottom: 'clamp(40px, 6vw, 64px)', maxWidth: 640 }}>
               <h2 style={{ fontSize: 12, fontWeight: 700, color: C.red, letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 18px' }}>
                 How it works
               </h2>
@@ -588,14 +550,14 @@ export default function Home() {
                 From listing to landlord in four steps.
               </p>
             </div>
-            <div className="rl-steps" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'clamp(20px, 3vw, 36px)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'clamp(20px, 3vw, 36px)' }}>
               {[
                 { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your screening preferences. We generate a secure link tied to that listing.' },
                 { n: '02', icon: 'link', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route into your dashboard automatically.' },
                 { n: '03', icon: 'list', t: 'Review and rank', d: 'Everyone ranked against your criteria, best fit first. Set aside with a reason, and document every decision.' },
                 { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co branded report with your name on it, free for you.' },
               ].map(s => (
-                <div key={s.n} className="rl-step" style={{ paddingTop: 22, position: 'relative' }}>
+                <div key={s.n} style={{ paddingTop: 22, position: 'relative' }}>
                   <span className="rl-step-bar" style={{ background: C.red, position: 'absolute', top: 0, left: 0, right: 0 }} />
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
                     <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.red, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: SH.rest }}>
@@ -611,7 +573,7 @@ export default function Home() {
           </section>
 
           {/* ── TENANT ENTRY, paste the realtor's invite link → /apply/{token} ── */}
-          <section className="rl-reveal" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
+          <section style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
             <div className="rl-card" style={{ padding: 'clamp(22px, 3vw, 32px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -654,7 +616,7 @@ export default function Home() {
           </section>
 
           {/* ── BOTTOM CTA ── */}
-          <section className="rl-reveal" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px) clamp(72px, 10vw, 112px)' }}>
+          <section style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px) clamp(72px, 10vw, 112px)' }}>
             <div style={{ maxWidth: 1100, margin: '0 auto', background: C.ink, borderRadius: R.modal, padding: 'clamp(40px, 7vw, 72px) clamp(24px, 5vw, 64px)', position: 'relative', overflow: 'hidden' }}>
               <span style={{ position: 'absolute', top: 0, left: 0, width: 6, height: '100%', background: C.red }} />
               <div style={{ maxWidth: 620 }}>

@@ -2,14 +2,13 @@
 // agent: the saved profile choice unmounts its card and the step card is visible at once with no
 // gap above it beyond the section gap; Continue advances synchronously and the previous step
 // leaves the DOM; all eight steps reach the review card. Skipped when playwright-core or the
-// browser binary is absent (npx playwright install webkit). The dev server on port 3123 is
-// reused when it is running and started once for the file otherwise.
+// browser binary is absent (npx playwright install webkit). The dev server (tests/helpers/devServer.mjs) is
+// shared with the other browser walk file.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { spawn } from 'node:child_process';
+import { devServer, BASE } from '../helpers/devServer.mjs';
 
-const PORT = 3123; const BASE = `http://localhost:${PORT}`;
 const URL_APPLY = `${BASE}/apply/demo0000000000000001`;
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 let pw = null; try { pw = await import('playwright-core'); } catch (e) { pw = null; }
@@ -18,18 +17,9 @@ const chromeBin = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
-const up = () => fetch(URL_APPLY).then((r) => r.ok).catch(() => false);
-// One dev server for both walks: started before the first test when nothing answers on the
-// port, stopped after the last. Starting and stopping it per test raced the port.
-const needBrowser = haveWebkit || haveChrome;
-let child = null;
-before(async () => {
-  if (!needBrowser || (await up())) return;
-  child = spawn('npx', ['next', 'dev', '-p', String(PORT)], { cwd: new URL('../..', import.meta.url).pathname, stdio: 'ignore', detached: true });
-  const t0 = Date.now();
-  while (Date.now() - t0 < 150000 && !(await up())) await new Promise((r) => setTimeout(r, 1000));
-}, { timeout: 180000 });
-after(() => { if (child) { try { process.kill(-child.pid); } catch (e) { /* already gone */ } } });
+const server = devServer(URL_APPLY);
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 180000 });
+after(() => server.stop(), { timeout: 300000 });
 
 const id = (n) => `step-${String(n).padStart(2, '0')}`;
 // The step card's box: rendered, opaque, and the space above it (to the element before it in
@@ -49,6 +39,9 @@ async function walk(browserType, launch, tag) {
   // A saved profile on this device: the offer card shows on landing.
   await ctx.addInitScript(() => { try { localStorage.setItem('rentletter_app_number', 'RL-2026-1A2B-3C4D'); localStorage.setItem('rentletter_owner_token', 'A'.repeat(32)); } catch (e) { /* private mode */ } });
   const page = await ctx.newPage();
+  // The prefill read answers late and empty: with a device token the sandbox has no application to
+  // load, and a fast error would bring the choice card back inside the 200ms window under test.
+  await page.route('**/api/application/manage', async (route) => { await new Promise((r) => setTimeout(r, 1500)); await route.fulfill({ status: 404, contentType: 'application/json', body: JSON.stringify({ error: 'Not found.' }) }); });
   const shots = [];
   const shot = async (name) => { const p = `/tmp/${tag}-${name}.png`; await page.screenshot({ path: p }); shots.push(p); };
   const expectCard = async (n, when) => {

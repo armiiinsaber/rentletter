@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../../components/theme';
-import { GlobalStyle, Wordmark, useReveal } from '../../components/ui';
+import { GlobalStyle, Wordmark } from '../../components/ui';
 import { formFromApplication, buildApplicationFromForm } from '../../lib/tenantProfile';
 import { ProfileStyles, FactSections, Eyebrow, Dots, Chevron, noWidow, dateLong } from '../../components/tenant/ProfileFacts';
 
@@ -47,7 +47,6 @@ export default function ApplicationPage() {
   const [justSaved, setJustSaved] = useState(null);
   const [toast, setToast] = useState('');
   const toastTimer = useRef(null);
-  useReveal(phase + (data?.profileRevision || ''));
 
   // Resolve credentials: profile session first, then legacy token (URL once, then device).
   useEffect(() => {
@@ -167,7 +166,7 @@ export default function ApplicationPage() {
         <div className="mp-wrap mp-sections">
           {/* Section one: what this page is, then the six fact cards. */}
           <div className="mp-stack">
-            <div className="rl-card rl-in mp-card">
+            <div className="rl-card mp-card">
               <Eyebrow>What you sent <span className="mp-mono">{rl}</span> <span>{revoked ? 'Revoked' : 'Submitted'}</span></Eyebrow>
               <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{listingLabel}</h1>
               <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(`Edits change what ${realtorFirst} sees for ${listingLabel}.`)}</p>
@@ -191,7 +190,7 @@ export default function ApplicationPage() {
           </div>
 
           {/* Section two: privacy. Three numbers, the sentence, the one red button, the fold. */}
-          <section className="rl-card rl-in mp-card" aria-labelledby="privacy-h">
+          <section className="rl-card mp-card" aria-labelledby="privacy-h">
             <h2 id="privacy-h" className="mp-h2">Privacy</h2>
             <div className="mp-stats">
               <div><div className="mp-label">Lookups</div><div className="mp-stat-v">{data.lookupCount || 0}</div></div>

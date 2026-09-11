@@ -71,7 +71,7 @@ export function Empty({ children }) {
 }
 export function Section({ id, title, rows, editing, onEdit, onCancel, onSave, saving, canEdit, children, justSaved, saveLabel = 'Save', footer, single = false }) {
   return (
-    <section id={id} className="rl-card rl-in mp-card" aria-labelledby={`${id}-h`}>
+    <section id={id} className="rl-card mp-card" aria-labelledby={`${id}-h`}>
       <div className="mp-head">
         <h2 id={`${id}-h`} className="mp-h2" style={{ minWidth: 0 }}>{title}{!editing && justSaved && <span className="mp-saved"> Saved</span>}</h2>
         {!editing && canEdit && <button type="button" onClick={onEdit} className="mp-link" aria-label={`Edit ${title}`}>Edit</button>}

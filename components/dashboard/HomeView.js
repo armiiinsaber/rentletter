@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, useReveal } from '../../components/ui';
+import { GlobalStyle, Icon } from '../../components/ui';
 import { getEntitlement } from '../../lib/entitlements';
 import Paywall from './Paywall';
 import { C, R, EASE, FONT } from '../../components/theme';
@@ -211,7 +211,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const logoAccent = useLogoAccent(profile?.logo_url || '');
   const brandAccent = logoAccent || C.red;
   // Reveal major sections on load / scroll (subtle, matches the header language).
-  useReveal(`${listingsLoaded ? listings.length : 'x'}-${hasListings}-${signals.loaded}`);
 
   // Header note: the dashboard header is a plain in-flow element (position: static, see .dash-bg
   // override) that scrolls away with the page. Because nothing is fixed/sticky, there is no floating
@@ -265,10 +264,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {/* 1. THE INK CARD: the greeting line alone (the hour from the client, lib/greeting.js). What is
               next lives in the bell, the one list. Then the one red action on the page: New listing.
               Three surfaces: ink, red, paper. */}
-          <section className="dash-ink rl-in" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
+          <section className="dash-ink" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
             <h1 className="t-d3 dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d3) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
           </section>
-          <button type="button" onClick={() => setModalOpen(true)} className="dash-new rl-in" style={{ marginTop: 'var(--s-3)' }}>
+          <button type="button" onClick={() => setModalOpen(true)} className="dash-new" style={{ marginTop: 'var(--s-3)' }}>
             <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
           </button>
           {listingsLoaded && !hasListings && (
@@ -292,14 +291,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           )}
           {hasListings && (
             <div className="dash-block">
-              <div className="rl-in dash-section-head" style={{ '--rl-d': '60ms' }}>
+              <div className="dash-section-head">
                 <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s-2)', minWidth: 0 }}>
                   <span className="dash-dash" style={{ height: 15, alignSelf: 'center' }} />
                   <h2 className="dash-h2">Your listings</h2>
                   <span className="dash-count">{openListings.length}</span>
                 </span>
               </div>
-              <div className="rl-in dash-grid" style={{ '--rl-d': '90ms' }}>
+              <div className="dash-grid">
                 {openListings.map((l) => (
                   <div key={l.id} role="link" tabIndex={0} aria-label={l.name || l.address || 'Untitled listing'} className="dash-card dash-card-int"
                     onClick={() => { window.location.href = adapter.paths.listing(l.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = adapter.paths.listing(l.id); } }}
@@ -342,7 +341,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
               listing state is one card, nothing else). Whole card opens the profile. */}
           {hasListings && !brandComplete && (
-            <a href={adapter.paths.profile} className="dash-card dash-card-int dash-brand dash-block rl-in" style={{ borderLeft: `3px solid ${brandAccent}`, '--rl-d': '120ms' }}
+            <a href={adapter.paths.profile} className="dash-card dash-card-int dash-brand dash-block" style={{ borderLeft: `3px solid ${brandAccent}` }}
               title="You and your brand" aria-label="Set up your profile and branding">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
               <div className="dash-brand-identity">
@@ -474,9 +473,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-ghost:hover { background: ${C.paperDeep}; border-color: ${C.ink}; }
 
         @media (prefers-reduced-motion: no-preference) {
-          /* Tighten the shared app-reveal on this screen only — same travel, ≤400ms
-             (opacity, then transform, matching .rl-in's property order). */
-          .dash-bg :global(.rl-in) { transition-duration: 340ms, 380ms; }
           .dash-new { transition: transform 200ms ${EASE}, box-shadow 220ms ease; }
           .dash-new:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); }
           .dash-new:active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
