@@ -11,6 +11,7 @@ import { Field, Textarea, SelectField, ToggleField } from '../apply/fields';
 import { serializePets } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { NBSP, noWidow, dateLong, money, moneyYr, moneyMo, count } from '../../lib/typeset';
+import { DURATION, CURVE, MOTION_QUERY } from '../../lib/motion';
 
 export { money, dateLong, noWidow };
 export const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
@@ -139,6 +140,12 @@ export const ProfileStyles = () => (
     .mp-progress > span { display: block; height: 100%; background: ${C.ink}; }
     .mp-toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 300; background: ${C.ink}; color: ${C.paper}; padding: var(--s-3) var(--s-4); border-radius: ${R.ctrl}px; box-shadow: 0 8px 24px rgba(15,15,16,0.22); font-size: var(--t-body-2); font-weight: 600; max-width: calc(100vw - 32px); text-align: center; cursor: pointer; }
     .mp-sub { padding-left: var(--s-4); border-left: 2px solid var(--rule); display: grid; gap: var(--gap-card); }
+    /* A card that mounts fades in, opacity only (lib/motion.js): it is present and laid out first,
+       the fade follows, and nothing waits for it. Reduced motion: no animation at all. */
+    @media ${MOTION_QUERY} {
+      .mp-enter { animation: mp-fade ${DURATION.short}ms ${CURVE.enter} both; }
+      @keyframes mp-fade { from { opacity: 0; } to { opacity: 1; } }
+    }
   `}</style>
 );
 

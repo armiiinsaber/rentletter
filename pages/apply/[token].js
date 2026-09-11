@@ -10,10 +10,10 @@
 //      -> POST /api/invite/tag to link the RL to this invite
 //      -> best-effort POST /api/send to email the tenant their number.
 //   4. Show the tenant their RL number with a clear confirmation.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Wordmark, useReveal } from '../../components/ui';
+import { GlobalStyle, Wordmark } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
 import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } from '../../lib/provinces';
@@ -103,16 +103,19 @@ export default function ApplyPage({ invited = null }) {
   const [copied, setCopied] = useState(false);
   const [touched, setTouched] = useState({});
   const [triedSubmit, setTriedSubmit] = useState(false);
-  // One step at a time on the phone (all of them stacked from 720px up). Invited from Pipeline:
-  // the form arrives filled and opens on the review card; Edit opens a step and Continue returns.
+  // One step at a time, at every width: the current step's card is rendered, no other step is in
+  // the DOM. Invited from Pipeline: the form arrives filled and opens on the review card; Edit
+  // opens a step and Continue returns to the review.
   const [step, setStep] = useState(invited && invited.form ? STEPS.length : 1);
   const [fromReview, setFromReview] = useState(false);
-  const [stacked, setStacked] = useState(false);
+  // After a step change the new card's top comes into view: an effect after commit, no timer,
+  // no transition, nothing a browser might skip.
+  const shownStep = useRef(step);
   useEffect(() => {
-    const mq = window.matchMedia('(min-width: 720px)');
-    const on = () => setStacked(mq.matches); on();
-    mq.addEventListener('change', on); return () => mq.removeEventListener('change', on);
-  }, []);
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    document.getElementById(`step-${String(step).padStart(2, '0')}`)?.scrollIntoView({ block: 'start' });
+  }, [step]);
   // ── Saved-profile reuse ─────────────────────────────────────────────────────────────────
   // /my-application stores the tenant's RL + owner token in localStorage on THIS device (the
   // token never travels in a URL we create). If present, offer to fill this form from that
@@ -120,9 +123,6 @@ export default function ApplyPage({ invited = null }) {
   // same validation + review-and-confirm step — nothing is sent until they confirm.
   const [saved, setSaved] = useState(null);          // { source:'profile', email } | { source:'device', app, token }
   const [prefill, setPrefill] = useState({ state: 'idle', error: '', source: null, dismissed: false }); // state: idle|loading|applied|error
-  // Reveal the form on load / scroll. Depends on `status` so sections that mount once the invite
-  // resolves (status → 'ready') get observed. Presentation only — no effect on validation.
-  useReveal(status);
 
   const update = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -440,23 +440,22 @@ export default function ApplyPage({ invited = null }) {
     setTimeout(() => setCopied(false), 1800);
   };
 
-  // ── the form as cards: one step at a time on the phone, all of them stacked on a wide screen ──
+  // ── the form as cards: the current step's card, at every width ──
   const pad = (n) => String(n).padStart(2, '0');
   const stepValid = (n) => STEPS[n - 1].keys.every((k) => vital[k]);
-  const scrollTop = () => { if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); };
   const goNext = () => {
     const s = STEPS[step - 1];
     if (!stepValid(step)) { setTouched((t) => ({ ...t, ...Object.fromEntries(s.keys.map((k) => [k, true])) })); setError('Please complete the required fields.'); return; }
-    setError(''); setStep(fromReview ? STEPS.length : Math.min(step + 1, STEPS.length)); setFromReview(false); scrollTop();
+    setError(''); setStep(fromReview ? STEPS.length : Math.min(step + 1, STEPS.length)); setFromReview(false);
   };
-  const goBack = () => { setError(''); setFromReview(false); setStep(Math.max(1, step - 1)); scrollTop(); };
-  const editStep = (n) => { setError(''); setFromReview(true); setStep(n); scrollTop(); };
+  const goBack = () => { setError(''); setFromReview(false); setStep(Math.max(1, step - 1)); };
+  const editStep = (n) => { setError(''); setFromReview(true); setStep(n); };
   const submitFromReview = () => {
     if (!allVitalValid) {
       setTriedSubmit(true);
       const first = STEPS.findIndex((s) => !s.keys.every((k) => vital[k]));
       setError('Please complete the required fields.');
-      if (first >= 0) { setFromReview(true); setStep(first + 1); scrollTop(); }
+      if (first >= 0) { setFromReview(true); setStep(first + 1); }
       return;
     }
     submitApplication();
@@ -618,7 +617,7 @@ export default function ApplyPage({ invited = null }) {
   const stepCard = (n) => {
     const last = n === STEPS.length;
     return (
-      <div key={n} id={`step-${pad(n)}`} className="rl-card rl-in mp-card" data-invited-review={last && invited ? '' : undefined}>
+      <div key={n} id={`step-${pad(n)}`} className="rl-card mp-card mp-enter" style={{ scrollMarginTop: 'var(--s-4)' }} data-invited-review={last && invited ? '' : undefined}>
         <div className="mp-step"><Dots items={[`Step ${n} of ${STEPS.length}`, STEPS[n - 1].title]} /></div>
         <div className="mp-progress" aria-hidden="true"><span style={{ width: `${Math.round((n / STEPS.length) * 100)}%` }} /></div>
         <div className="mp-form">{last ? reviewCard() : fieldsFor(n)}</div>
@@ -626,12 +625,12 @@ export default function ApplyPage({ invited = null }) {
         {last ? (
           <div className="mp-actions">
             <button type="button" onClick={submitFromReview} disabled={submitting} className="mp-btn mp-btn-red">{submitting ? 'Submitting' : 'Submit'}</button>
-            {!stacked && <button type="button" onClick={goBack} disabled={submitting} className="mp-link">Back</button>}
+            <button type="button" onClick={goBack} disabled={submitting} className="mp-link">Back</button>
           </div>
-        ) : !stacked && (
+        ) : (
           <div className="mp-actions">
             <button type="button" onClick={goNext} className="mp-btn">Continue</button>
-            {(step > 1 || fromReview) && <button type="button" onClick={fromReview ? () => { setFromReview(false); setStep(STEPS.length); scrollTop(); } : goBack} className="mp-link">{fromReview ? 'Back to review' : 'Back'}</button>}
+            {(step > 1 || fromReview) && <button type="button" onClick={fromReview ? () => { setFromReview(false); setStep(STEPS.length); } : goBack} className="mp-link">{fromReview ? 'Back to review' : 'Back'}</button>}
           </div>
         )}
         {last && <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(invited ? 'This creates a new application for this unit. Your earlier one is unchanged.' : 'This creates one application for this unit. Later changes go through your profile page.')}</p>}
@@ -639,7 +638,6 @@ export default function ApplyPage({ invited = null }) {
     );
   };
 
-  const visibleSteps = stacked ? STEPS.map((_, i) => i + 1) : [step];
   const inkMute = '#8f8b81', inkText = '#c8c2b3';
 
   return (
@@ -751,7 +749,7 @@ export default function ApplyPage({ invited = null }) {
             <>
               {/* Applying for banner from the resolved invite: the one ink surface on the page. */}
               {invite && (
-                <div className="mp-ink rl-in">
+                <div className="mp-ink">
                   <Eyebrow style={{ color: inkMute }}>You are applying to</Eyebrow>
                   <div className="mp-h2" style={{ color: C.paper, marginTop: 'var(--gap-line)' }}>{noWidow(invite.listingName || invite.unit?.address || 'Rental unit')}</div>
                   {invite.unit && (() => {
@@ -766,9 +764,10 @@ export default function ApplyPage({ invited = null }) {
               )}
 
               <div className="mp-stack">
-                {/* Saved profile offer: the apply in seconds entry point, when this device or session holds one. */}
-                {saved && !invited && prefill.state !== 'applied' && !prefill.dismissed && (
-                  <div className="rl-card rl-in mp-card">
+                {/* Saved profile offer: the apply in seconds entry point, when this device or session holds
+                    one. It unmounts the moment a choice is made; an error brings it back with the message. */}
+                {saved && !invited && (prefill.state === 'idle' || prefill.state === 'error') && !prefill.dismissed && (
+                  <div className="rl-card mp-card mp-enter">
                     <Eyebrow>Apply in seconds</Eyebrow>
                     <h2 className="mp-h2" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Fill this application from your saved profile')}</h2>
                     <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>
@@ -786,14 +785,14 @@ export default function ApplyPage({ invited = null }) {
                   </div>
                 )}
                 {prefill.state === 'applied' && (
-                  <div role="status" className="rl-card rl-in mp-card">
+                  <div role="status" className="rl-card mp-card mp-enter">
                     <p className="mp-p" style={{ color: C.ink }}>{noWidow('Filled from your saved profile. Check each step, especially income and your move in date, then submit. This creates a separate application for this listing; what you confirm here becomes your profile’s latest details.')}</p>
                     {prefill.source?.address && form.apartmentAddress && prefill.source.address.trim().toLowerCase() === form.apartmentAddress.trim().toLowerCase() && (
                       <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(`Your saved profile was already submitted for this same address (${prefill.source.app}). Submitting again adds a second application to the realtor's list. If you only want to update details, edit your profile instead.`)}</p>
                     )}
                   </div>
                 )}
-                {visibleSteps.map(stepCard)}
+                {stepCard(step)}
               </div>
             </>
           )}
