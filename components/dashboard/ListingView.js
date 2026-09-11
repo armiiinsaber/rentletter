@@ -10,6 +10,7 @@ import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
+import ApplicantCardRest from '../../components/dashboard/ApplicantCardRest';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import { computeFit, compareFit, capOf, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
@@ -735,87 +736,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {/* THE CARD AT REST. A div with a button role (a real button would be excluded from the drag
             gesture). Set aside: one muted line. Otherwise the header row, then the body for the
             applicant's state: their next action, nothing that does not apply. */}
-        {st.state === 'set_aside' ? (
-          <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
-            onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-              <span style={{ fontWeight: 700, color: C.inkSoft }}>{app.full_name || 'Applicant'}</span>
-              {a.decisionReasonCode ? ` · ${stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) })}` : ''}
-            </div>
-            <button type="button" onClick={stop(() => restoreApplicant(a))} style={{ ...textBtn, marginTop: 0, color: C.green, flexShrink: 0 }}>Restore</button>
-            <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
-          </div>
-        ) : (
-        <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
-          onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
-          style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-          {/* Row one: the name alone, never wrapping; a name past the row truncates and carries the full name in title. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 26 }}>
-            {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
-            <span title={app.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body)', fontWeight: 500, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.full_name || 'Applicant'}</span>
-          </div>
-          {/* Row two: the meter, the Fit number and the label as one group at the right, the chevron at the far right. */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--s-2)', minHeight: 26, marginTop: 'var(--s-1)', paddingLeft: tracking ? 18 : 0 }}>
-            {overall != null ? (
-              <AnimatedScore value={overall} index={rank ? rank - 1 : 0} refill={meterMuted ? 'muted' : 'full'} renderValue={(shown, target) => (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5, ${fit.label}`}>
-                  <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} muted={meterMuted} />
-                  <span className="t-d3 num" style={{ color: C.ink, lineHeight: 1 }}>{Number(shown).toFixed(1)}</span>
-                  <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
-                </span>
-              )} />
-            ) : (
-              <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>Rent share unknown</span>
-            )}
-            <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
-          </div>
-          {st.state === 'matched' && (<>
-            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-            {missed.length > 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
-            {dup}
-            {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
-          </>)}
-          {st.state === 'verified' && (<>
-            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-            <div style={stateLine}>{stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) })}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
-            {dup}
-          </>)}
-          {st.state === 'sent' && (<>
-            <div style={stateLine}>{stateLabel('sent', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
-            {dup}
-          </>)}
-          {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
-          {!open && a.landlordAnswer && a.landlordAnswer.answer && (
-            <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}>Landlord: {answerLine(a.landlordAnswer.answer)}{a.landlordAnswer.at ? ` · ${shortDate(a.landlordAnswer.at)}` : ''}</div>
-          )}
-          {st.state === 'new' && (<>
-            <div style={stateLine}>{stateLabel('new', 'line')}</div>
-            {dup}
-            {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
-          </>)}
-          {st.state === 'requested' && (<>
-            <div style={stateLine}>{stateLabel('requested', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}{(() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? ` · nudged ${shortDate(last)}` : ''; })()}</div>
-            {dup}
-            {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
-          </>)}
-          {st.state === 'checked' && (<>
-            <div style={stateLine}>{stateLabel('checked', 'line')}</div>
-            {dup}
-            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
-          </>)}
-          {st.state === 'mismatch' && (<>
-            <div style={stateLine}>{stateLabel('mismatch', 'line')}</div>
-            {dup}
-            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
-          </>)}
-          {st.state === 'edited' && (<>
-            <div style={stateLine}>{stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })}</div>
-            {dup}
-            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
-          </>)}
-        </div>
-        )}
+        <ApplicantCardRest a={a} rank={rank} isSetAside={isSetAside} listing={listing} profile={profile} tracking={tracking} fresh={fresh} open={open} isPrimary={isPrimaryCard}
+          onToggle={() => toggleApplicant(a)} onVerify={() => focusChecklist(a.linkId)} onRequestDocs={() => focusApplicantDocs(a.linkId)} onOpen={() => openApplicant(a)} onRestore={() => restoreApplicant(a)} />
 
         {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
           {/* Status line: rank and marks that only matter once you are looking at this person. */}

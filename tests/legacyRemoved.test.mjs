@@ -23,12 +23,12 @@ test('nothing references pages/api/landlord, the shortlist page or the download 
   assert.deepEqual(hits, []);
 });
 
-test('the two live invite routes moved and are what the tenant pages call', () => {
+test('the two live invite routes moved and are what the apply page calls', () => {
   assert.equal(existsSync(`${root}pages/api/invite/resolve.js`), true);
   assert.equal(existsSync(`${root}pages/api/invite/tag.js`), true);
+  // The homepage no longer carries a form: the apply page is the one caller.
   const apply = readFileSync(`${root}pages/apply/[token].js`, 'utf8');
-  const home = readFileSync(`${root}pages/index.js`, 'utf8');
-  for (const src of [apply, home]) { assert.match(src, /\/api\/invite\/resolve\?token=/); assert.match(src, /'\/api\/invite\/tag'/); }
+  assert.match(apply, /\/api\/invite\/resolve\?token=/); assert.match(apply, /'\/api\/invite\/tag'/);
   const resolve = readFileSync(`${root}pages/api/invite/resolve.js`, 'utf8');
     assert.match(resolve, /resolveInvite\(admin, String\(token\), rec\)/, 'the rented answer from 833ceef now comes from the row (lib/inviteResolve.js)');
   assert.match(resolve, /rented: true/);

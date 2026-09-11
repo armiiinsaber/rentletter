@@ -35,7 +35,7 @@ const FAQS = [
   {
     category: 'For realtors',
     q: 'How much does it cost?',
-    a: 'The first 50 realtors to sign up are founding members, free forever. After that, new accounts get a 7-day free trial, then $49.99/month (HST included). No setup fees, cancel any time.',
+    a: 'New accounts get a 7-day free trial, then $49.99/month (HST included). No setup fees, cancel any time.',
   },
   {
     category: 'For realtors',
