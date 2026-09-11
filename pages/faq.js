@@ -196,7 +196,7 @@ export default function FAQ() {
             </p>
             <a href="mailto:info@rentletter.ca" className="rl-btn" style={{
               display: 'inline-flex', alignItems: 'center', gap: 9,
-              background: C.red, color: C.paper, padding: '14px 24px', borderRadius: R.ctrl,
+              background: C.red, color: C.paper, padding: '14px var(--gap-card)', borderRadius: 'var(--btn-radius)',
               fontSize: 14, fontWeight: 600, textDecoration: 'none',
             }}>
               <Icon name="mail" size={16} /> info@rentletter.ca

@@ -48,9 +48,9 @@ export function OnboardingStyles() {
       .ob-h1 { font-family: ${FONT.serif}; font-weight: 600; font-size: clamp(28px, 7.2vw, 40px); letter-spacing: -0.025em; line-height: 1.08; color: ${C.ink}; text-wrap: balance; margin-bottom: 12px; }
       .ob-lead { font-size: clamp(15px, 4vw, 17px); color: ${C.inkSoft}; line-height: 1.55; text-wrap: pretty; margin-bottom: 24px; }
       .ob-form { display: grid; gap: 18px; }
-      .ob-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; padding: 0 22px; background: ${C.red}; color: ${C.paper}; border: none; border-radius: ${R.ctrl}px; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
+      .ob-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; padding: 0 var(--gap-card); background: ${C.red}; color: ${C.paper}; border: none; border-radius: var(--btn-radius); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
       .ob-primary:disabled { background: ${C.ruleDark}; cursor: not-allowed; }
-      .ob-skip { width: 100%; min-height: 50px; background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: ${R.ctrl}px; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+      .ob-skip { width: 100%; min-height: 50px; background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: var(--btn-radius); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
       .ob-actions { display: grid; gap: 10px; margin-top: 18px; }
       .ob-err { font-size: 14px; color: ${C.danger}; line-height: 1.5; text-wrap: balance; margin: 0; }
       .ob-card { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: ${R.card}px; padding: clamp(14px, 3vw, 20px); }

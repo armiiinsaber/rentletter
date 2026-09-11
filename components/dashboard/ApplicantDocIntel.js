@@ -262,10 +262,10 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setSending(false);
   };
   const { line: docLine, canSendAgain } = documentsLine(result ? [result] : [], docRequest);
-  const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
-  const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
-  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
-  const destSolidBtn = { background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
+  const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
+  const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
+  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+  const destSolidBtn = { background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
 
   return (
     <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
@@ -342,7 +342,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
 
           <div style={{ marginTop: 'var(--s-3)', display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
             <button onClick={analyze} disabled={!files.length || analyzing}
-              style={{ minHeight: 44, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, fontFamily: 'inherit', cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+              style={{ minHeight: 44, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, fontFamily: 'inherit', cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
               {analyzing && <span className="rl-dispin" aria-hidden="true" />}
               {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Analyze again' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
             </button>
@@ -361,11 +361,11 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only, separate from the ranked shortlist.</div>
                 <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={downloadConfirmPdf} disabled={pdfBusy}
-                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                     {pdfBusy && <span className="rl-dispin" aria-hidden="true" />}{pdfBusy ? 'Preparing…' : 'Download PDF'}
                   </button>
                   <button onClick={copyConfirmText} disabled={textBusy}
-                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                     {copied ? '✓ Copied' : textBusy ? 'Preparing…' : 'Copy text'}
                   </button>
                 </div>

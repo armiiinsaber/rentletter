@@ -142,11 +142,11 @@ export default function ReferralConsent() {
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                 <button type="button" onClick={() => decide('decline')} disabled={busy} className="rl-btn"
-                  style={{ background: C.paper, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: R.ctrl, padding: '15px 18px', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
+                  style={{ background: C.paper, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
                   Decline · don’t share
                 </button>
                 <button type="button" onClick={() => decide('approve')} disabled={busy} className="rl-btn"
-                  style={{ background: C.ink, color: C.paper, border: `2px solid ${C.ink}`, borderRadius: R.ctrl, padding: '15px 18px', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
+                  style={{ background: C.ink, color: C.paper, border: `2px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
                   {busy ? 'Working…' : `Approve, share with ${data.to?.name?.split(' ')[0] || 'them'}`}
                 </button>
               </div>

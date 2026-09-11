@@ -81,7 +81,7 @@ export default function KeepPage({ token, state, realtorName }) {
               {error && <div role="alert" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-4)' }}>
                 <button type="button" onClick={() => answer('yes')} disabled={!!busy}
-                  style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
+                  style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
                   {busy === 'yes' ? 'Saving' : 'Yes, keep me in mind'}
                 </button>
                 <button type="button" onClick={() => answer('no')} disabled={!!busy}

@@ -103,7 +103,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
               ))}
               {error && <div role="alert" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
               <button type="button" onClick={submit} disabled={busy || !complete}
-                style={{ marginTop: 'var(--s-4)', minHeight: 44, width: '100%', padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body)', fontWeight: 700, cursor: busy || !complete ? 'default' : 'pointer', opacity: busy || !complete ? 0.5 : 1, fontFamily: 'inherit' }}>
+                style={{ marginTop: 'var(--s-4)', minHeight: 44, width: '100%', padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: busy || !complete ? 'default' : 'pointer', opacity: busy || !complete ? 0.5 : 1, fontFamily: 'inherit' }}>
                 {busy ? 'Sending' : 'Submit'}
               </button>
             </>

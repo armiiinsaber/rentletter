@@ -261,12 +261,12 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             </span>
           )}
           <button onClick={onCancel}
-            style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '12px 20px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             Cancel
           </button>
           <button onClick={handleSaveClick} disabled={!canSave}
             title={canSave ? '' : 'Complete the required fields first'}
-            style={{ background: canSave ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.7 }}>
+            style={{ background: canSave ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.7 }}>
             {saving ? 'Saving…' : creating ? 'Create listing' : 'Save changes'}
           </button>
         </div>
@@ -299,11 +299,11 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               <button onClick={() => setConfirming(false)} disabled={saving}
-                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '12px 20px', fontSize: 13, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}>
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: saving ? 'default' : 'pointer' }}>
                 Cancel
               </button>
               <button onClick={confirmCreate} disabled={saving}
-                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 24px', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                style={{ background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                 {saving ? (creating ? 'Creating…' : 'Saving…') : creating ? 'Confirm & create' : 'Save changes'}
               </button>
             </div>

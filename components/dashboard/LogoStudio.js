@@ -279,7 +279,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           <div style={{ fontWeight: 800, marginBottom: 2 }}>Locked until we have {missing.join(' and ')}</div>
           <div style={{ color: C.inkSoft, marginBottom: 8 }}>The wordmark is built from your real name and brokerage, they’re the fields at the top of this form. Unlocks as soon as both are filled; no need to save first.</div>
           <button type="button" onClick={onJumpToDetails}
-            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.pill, padding: '8px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span aria-hidden="true">↑</span> Go to those fields
           </button>
         </div>
@@ -322,7 +322,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           {!busy && (
             <button onClick={generate} disabled={!colorsReady}
               title={colorsReady ? '' : 'Pick your two brand colours first'}
-              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '12px 18px', fontSize: 14, fontWeight: 700, cursor: !colorsReady ? 'not-allowed' : 'pointer', opacity: !colorsReady ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: !colorsReady ? 'not-allowed' : 'pointer', opacity: !colorsReady ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               {rounds.length ? 'Generate 3 again' : 'Generate 3 concepts'}
             </button>
           )}
@@ -353,10 +353,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           {rounds.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
               <button onClick={() => setRoundIdx((i) => Math.max(0, i - 1))} disabled={roundIdx === 0}
-                style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '4px 10px', fontSize: 13, cursor: roundIdx === 0 ? 'default' : 'pointer', color: C.inkSoft, opacity: roundIdx === 0 ? 0.4 : 1 }}>‹</button>
+                style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '4px var(--gap-card)', fontSize: 13, cursor: roundIdx === 0 ? 'default' : 'pointer', color: C.inkSoft, opacity: roundIdx === 0 ? 0.4 : 1 }}>‹</button>
               <span style={{ fontSize: 11.5, color: C.inkMute }}>Attempt {roundIdx + 1} of {rounds.length}</span>
               <button onClick={() => setRoundIdx((i) => Math.min(rounds.length - 1, i + 1))} disabled={roundIdx === rounds.length - 1}
-                style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '4px 10px', fontSize: 13, cursor: roundIdx === rounds.length - 1 ? 'default' : 'pointer', color: C.inkSoft, opacity: roundIdx === rounds.length - 1 ? 0.4 : 1 }}>›</button>
+                style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '4px var(--gap-card)', fontSize: 13, cursor: roundIdx === rounds.length - 1 ? 'default' : 'pointer', color: C.inkSoft, opacity: roundIdx === rounds.length - 1 ? 0.4 : 1 }}>›</button>
             </div>
           )}
 
@@ -376,11 +376,11 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
-                    style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved as your logo' : 'Use this logo'}
                   </button>
                   <button onClick={() => startRefine(v)} disabled={busy || usingKey !== null}
-                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '9px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     Refine this →
                   </button>
                 </div>
@@ -397,14 +397,14 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         <div ref={refineTopRef} style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
             <button onClick={exitRefine} disabled={busy}
-              style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+              style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '7px var(--gap-card)', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
               ‹ Back to all concepts
             </button>
             {refineHistory.length > 1 && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11.5, color: C.inkMute }}>Version {refineHistory.length}</span>
                 <button onClick={stepBack} disabled={busy}
-                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '7px var(--gap-card)', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
                   ↶ Undo last change
                 </button>
               </div>
@@ -423,7 +423,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             </div>
             <div style={{ marginTop: 12 }}>
               <button onClick={() => saveLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy}
-                style={{ background: savedKey === 'refine-cur' ? C.green : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== 'refine-cur' ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                style={{ background: savedKey === 'refine-cur' ? C.green : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== 'refine-cur' ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {usingKey === 'refine-cur' ? 'Saving…' : savedKey === 'refine-cur' ? '✓ Saved as your logo' : 'Use this version'}
               </button>
               {savedKey === 'refine-cur' && <span style={{ fontSize: 12, color: C.green, fontWeight: 600, marginLeft: 10 }}>This is now your branding.</span>}
@@ -438,7 +438,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               placeholder="e.g. make it bolder · use the accent colour · tighter spacing · simpler"
               style={{ width: '100%', padding: '11px 13px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
             <button onClick={doRefine} disabled={busy}
-              style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               {busy && <span className="rl-lspin" aria-hidden="true" />}
               {busy ? 'Refining…' : 'Refine this concept'}
             </button>
@@ -461,11 +461,11 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
-                        style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1 }}>
+                        style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1 }}>
                         {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved' : 'Use this'}
                       </button>
                       <button onClick={() => refineFurther(v)} disabled={busy || usingKey !== null}
-                        style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                        style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
                         Refine further →
                       </button>
                     </div>

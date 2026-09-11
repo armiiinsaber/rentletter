@@ -158,13 +158,13 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-4)' }}>
               {given && !isEditing ? (
                 <button type="button" data-answer={given.answer} onClick={() => setEditing((e) => ({ ...e, [a.rank]: true }))} aria-label={`You answered ${answerLine(given.answer)}. Tap to change.`}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, padding: '0 var(--s-4)', background: C.ink, color: C.paper, border: 'none', borderRadius: R.pill, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, padding: '0 var(--gap-card)', background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Icon name="check" size={14} color={C.red} strokeWidth={2.5} /> {given.answer === 'meet' ? 'You want to meet them' : 'Not for you'}
                 </button>
               ) : (
                 <>
                   <button type="button" onClick={() => answer(a.rank, 'meet', a.name)} disabled={busy === a.rank}
-                    style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I'd like to meet them</button>
+                    style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I'd like to meet them</button>
                   <button type="button" onClick={() => answer(a.rank, 'pass', a.name)} disabled={busy === a.rank}
                     style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Not for me</button>
                 </>

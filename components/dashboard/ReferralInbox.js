@@ -85,7 +85,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                         {listings.map((l) => <option key={l.id} value={l.id}>{l.name || l.address}{l.monthly_rent ? ` · $${Number(l.monthly_rent).toLocaleString('en-CA')}/mo` : ''}</option>)}
                       </select>
                       <button type="button" onClick={() => assign(ref)} disabled={!choice[ref.id] || busy === ref.id}
-                        style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !choice[ref.id] ? 'not-allowed' : 'pointer', opacity: !choice[ref.id] ? 0.5 : 1, minHeight: 42 }}>
+                        style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !choice[ref.id] ? 'not-allowed' : 'pointer', opacity: !choice[ref.id] ? 0.5 : 1, minHeight: 42 }}>
                         {busy === ref.id ? 'Assigning…' : 'Assign & rank'}
                       </button>
                       {listings.length === 0 && <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute }}>Create a listing first.</span>}

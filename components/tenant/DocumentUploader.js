@@ -220,7 +220,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           {disclosure && <div style={{ marginBottom: 16 }}>{disclosure}</div>}
           {setLine}
           <button type="button" onClick={() => { if (ready) { setError(''); setReviewing(true); } }} disabled={!ready} aria-live="polite"
-            style={{ width: '100%', minHeight: 48, background: ready ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '15px 24px', fontSize: 15, fontWeight: 700, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
+            style={{ width: '100%', minHeight: 48, background: ready ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
             {analyzingLabel || `Review ${done.length ? `${done.length} file${done.length === 1 ? '' : 's'}` : ''} & submit`}
           </button>
         </>
@@ -241,11 +241,11 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           )}
           {setLine}
           <button type="button" onClick={runSubmit} disabled={submitting} aria-live="polite"
-            style={{ width: '100%', minHeight: 48, background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '15px 24px', fontSize: 15, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.85 : 1, marginBottom: 10, fontFamily: 'inherit' }}>
+            style={{ width: '100%', minHeight: 48, background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.85 : 1, marginBottom: 10, fontFamily: 'inherit' }}>
             {submitLabel}
           </button>
           <button type="button" onClick={() => setReviewing(false)} disabled={submitting}
-            style={{ width: '100%', minHeight: 44, background: 'transparent', color: submitting ? C.inkMute : C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '12px 24px', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+            style={{ width: '100%', minHeight: 44, background: 'transparent', color: submitting ? C.inkMute : C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
             Back to add more
           </button>
         </>

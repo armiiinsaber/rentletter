@@ -371,7 +371,7 @@ export default function Home() {
             <div className="lh-right">
               <a href="/dashboard" className="rl-btn" style={{
                 background: C.ink, color: C.paper, textDecoration: 'none',
-                padding: '11px 18px', fontSize: 13, fontWeight: 600, borderRadius: R.ctrl,
+                padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 600, borderRadius: 'var(--btn-radius)',
                 display: 'inline-flex', alignItems: 'center', gap: 7,
               }}>
                 Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
@@ -437,7 +437,7 @@ export default function Home() {
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
                     <a href="/dashboard" className="rl-btn" style={{
-                      background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                      background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
                       padding: '16px 28px', fontSize: 15, fontWeight: 600,
                       display: 'inline-flex', alignItems: 'center', gap: 9,
                     }}>
@@ -446,7 +446,7 @@ export default function Home() {
                     <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!"
                       className="rl-btn" style={{
                         background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, textDecoration: 'none',
-                        borderRadius: R.ctrl, padding: '16px 28px', fontSize: 15, fontWeight: 500,
+                        borderRadius: 'var(--btn-radius)', padding: '16px var(--gap-card)', fontSize: 15, fontWeight: 500,
                         display: 'inline-flex', alignItems: 'center', gap: 8,
                       }}>
                       Book a 15-min demo
@@ -455,7 +455,7 @@ export default function Home() {
                         there's no 307 redirect hop / flash of any other route before it paints. */}
                     <a href="/demo/dashboard" className="rl-btn" style={{
                       background: 'transparent', color: C.red, border: `1px dashed ${C.red}`, textDecoration: 'none',
-                      borderRadius: R.ctrl, padding: '16px 24px', fontSize: 15, fontWeight: 600,
+                      borderRadius: 'var(--btn-radius)', padding: '16px var(--gap-card)', fontSize: 15, fontWeight: 600,
                       display: 'inline-flex', alignItems: 'center', gap: 8,
                     }}>
                       See a sample dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
@@ -602,7 +602,7 @@ export default function Home() {
                     border: `1px solid ${applyError ? C.red : C.ruleDark}`, background: C.paper, color: C.ink, outline: 'none',
                   }} />
                 <button onClick={goToApply} className="rl-btn" style={{
-                  flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl,
+                  flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)',
                   padding: '13px 22px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                 }}>
@@ -628,7 +628,7 @@ export default function Home() {
                 </p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                   <a href="/dashboard" className="rl-btn" style={{
-                    background: C.red, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                    background: C.red, color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
                     padding: '16px 32px', fontSize: 15, fontWeight: 600,
                     display: 'inline-flex', alignItems: 'center', gap: 9,
                   }}>
@@ -636,7 +636,7 @@ export default function Home() {
                   </a>
                   <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter" className="rl-btn" style={{
                     background: 'transparent', color: C.paper, border: `1px solid rgba(250,248,243,0.3)`, textDecoration: 'none',
-                    borderRadius: R.ctrl, padding: '16px 32px', fontSize: 15, fontWeight: 500,
+                    borderRadius: 'var(--btn-radius)', padding: '16px var(--gap-card)', fontSize: 15, fontWeight: 500,
                   }}>
                     Book a 15-min demo
                   </a>
@@ -752,7 +752,7 @@ export default function Home() {
                 Dev mode
               </span>
               <button onClick={fillTestData} className="rl-btn"
-                style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
+                style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', borderRadius: 'var(--btn-radius)', padding: '6px var(--gap-card)', fontSize: 11, fontWeight: 600 }}>
                 Fill random sample
               </button>
               <span style={{ fontSize: 11, color: '#7a5d12', opacity: 0.75 }}>
@@ -904,7 +904,7 @@ export default function Home() {
                   style={{
                     width: '100%', marginTop: 24,
                     background: isFormValid() ? C.ink : '#c8c2b3',
-                    color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '18px',
+                    color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '18px',
                     fontSize: 15, fontWeight: 600,
                     cursor: isFormValid() ? 'pointer' : 'not-allowed',
                   }}
@@ -1020,7 +1020,7 @@ export default function Home() {
                     }}
                     className="rl-btn"
                     style={{
-                      background: C.paper, color: C.ink, border: 'none', borderRadius: R.ctrl,
+                      background: C.paper, color: C.ink, border: 'none', borderRadius: 'var(--btn-radius)',
                       padding: '11px 20px', fontSize: 13, fontWeight: 600,
                       whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 7,
                     }}
@@ -1043,7 +1043,7 @@ export default function Home() {
                 {emailSending ? `Delivering to ${form.email}...` : emailSent ? `Sent to ${form.email}` : `Will email to ${form.email}`}
                 {!emailSent && !emailSending && (
                   <button onClick={() => sendEmail(form.email, form.fullName, applicationNumber)} className="rl-btn"
-                    style={{ marginLeft: 12, background: 'transparent', color: 'inherit', border: '1px solid currentColor', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    style={{ marginLeft: 12, background: 'transparent', color: 'inherit', border: '1px solid currentColor', borderRadius: 'var(--btn-radius)', padding: '6px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     Resend email
                   </button>
                 )}
@@ -1055,7 +1055,7 @@ export default function Home() {
               <div style={{ padding: '20px 24px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: `1px solid ${C.rule}` }}>
                 <h2 className="rl-serif" style={{ fontSize: 22, color: C.ink, letterSpacing: '-0.01em' }}>Tenant resume</h2>
                 <button onClick={() => copyText(resume, setCopiedResume)} className="rl-btn"
-                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                   <Icon name={copiedResume ? 'check' : 'copy'} size={14} strokeWidth={copiedResume ? 2.5 : 1.5} /> {copiedResume ? 'Copied' : 'Copy'}
                 </button>
               </div>
@@ -1069,7 +1069,7 @@ export default function Home() {
             </div>
 
             <button onClick={startOver} className="rl-btn"
-              style={{ marginTop: 8, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, padding: '14px 28px', fontSize: 14, fontWeight: 500 }}>
+              style={{ marginTop: 8, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14, fontWeight: 500 }}>
               Start a new application
             </button>
           </div>

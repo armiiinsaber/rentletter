@@ -54,12 +54,12 @@ export function PlanPicker({ hasCustomer, showPortal = true, compact = false }) 
         .pw-plan.annual { border-color: ${C.ruleDark}; }
         .pw-plan-h { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; min-height: 22px; }
         .pw-plan-l { font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; }
-        .pw-badge { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; color: ${C.inkSoft}; background: ${C.paperDeep}; border: 1px solid ${C.rule}; border-radius: ${R.pill}px; padding: 2px 8px; white-space: nowrap; }
+        .pw-badge { font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; color: ${C.inkSoft}; background: ${C.paperDeep}; border: 1px solid ${C.rule}; border-radius: var(--btn-radius); padding: 2px var(--gap-card); white-space: nowrap; }
         .pw-price { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px; margin-top: 4px; }
         .pw-amt { font-family: 'Fraunces', Georgia, serif; font-weight: 600; font-size: clamp(24px, 6.5vw, 34px); letter-spacing: -0.02em; color: ${C.ink}; font-variant-numeric: tabular-nums; line-height: 1; }
         .pw-per { font-size: 13px; color: ${C.inkMute}; }
         .pw-sub { font-size: 13px; color: ${C.inkSoft}; line-height: 1.45; text-wrap: balance; }
-        .pw-btn { margin-top: auto; padding-top: 0; min-height: 48px; border: none; border-radius: ${R.ctrl}px; background: ${C.ink}; color: ${C.paper}; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+        .pw-btn { margin-top: auto; padding-top: 0; min-height: 48px; border: none; border-radius: var(--btn-radius); background: ${C.ink}; color: ${C.paper}; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 12px; }
         .pw-btn:disabled { opacity: 0.6; cursor: wait; }
         .pw-err { margin-top: 12px; font-size: 13.5px; color: ${C.danger}; text-wrap: balance; }
         .pw-fine { margin-top: 12px; font-size: 12.5px; color: ${C.inkMute}; line-height: 1.55; text-wrap: balance; }

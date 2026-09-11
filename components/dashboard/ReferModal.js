@@ -48,8 +48,8 @@ export default function ReferModal({ listingId, applicant, onClose, onCreated })
         </div>
         {error && <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button type="button" onClick={onClose} disabled={busy} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: '11px 16px', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42 }}>Cancel</button>
-          <button type="submit" disabled={!valid || busy} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '11px 18px', fontSize: 13, fontWeight: 700, cursor: !valid || busy ? 'not-allowed' : 'pointer', opacity: !valid || busy ? 0.5 : 1, minHeight: 42, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button type="button" onClick={onClose} disabled={busy} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42 }}>Cancel</button>
+          <button type="submit" disabled={!valid || busy} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: !valid || busy ? 'not-allowed' : 'pointer', opacity: !valid || busy ? 0.5 : 1, minHeight: 42, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             {busy ? 'Sending…' : <>Ask the applicant <Icon name="send" size={14} /></>}
           </button>
         </div>

@@ -339,16 +339,16 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         onChange={(e) => { const f = e.target.files?.[0]; uploadLogo(f); e.target.value = ''; }} />
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
         <button onClick={() => fileRef.current?.click()} disabled={logoBusy}
-          style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>
+          style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>
           {logoBusy ? 'Working…' : 'Replace with upload'}
         </button>
         <button onClick={() => setStudioOpen((o) => !o)}
-          style={{ background: studioOpen ? C.card : C.red, color: studioOpen ? C.ink : C.paper, border: studioOpen ? `1px solid ${C.ruleDark}` : 'none', borderRadius: R.ctrl, padding: '10px 16px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+          style={{ background: studioOpen ? C.card : C.red, color: studioOpen ? C.ink : C.paper, border: studioOpen ? `1px solid ${C.ruleDark}` : 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
           {studioOpen ? 'Hide AI studio' : logoUrl ? 'Regenerate with AI' : 'Create with AI'}
         </button>
         {logoUrl && (
           <button onClick={removeLogo} disabled={logoBusy}
-            style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: R.ctrl, padding: '10px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             Remove
           </button>
         )}
@@ -433,7 +433,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {/* Explicit Save for a modal host only, same write path as the blur autosave (persistDetails). */}
       {onClose && <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <button onClick={save} disabled={saving}
-          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '14px 24px', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(215, 32, 39, 0.25)' : 'none' }}>
+          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(215, 32, 39, 0.25)' : 'none' }}>
           {saving ? 'Saving…' : (dirty ? 'Save changes' : 'Save')}
         </button>
         {!saving && dirty && (

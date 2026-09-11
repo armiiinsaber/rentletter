@@ -1,5 +1,5 @@
 // components/dashboard/PeopleList.js
-// Pipeline: the card on the dashboard. Everyone who was asked when a unit went rented (pending,
+// Pipeline: the ink block on the dashboard, the same surface as the greeting. Everyone who was asked when a unit went rented (pending,
 // muted, no invite yet) and everyone who said yes (consented, not ended), scored against every active listing (lib/pipelineState.js peopleRows, the same
 // Fit the listing page shows, documents excluded, confirmations carried). Each row: the name or
 // the email, then the best Fit and the provenance. Tapping a row expands it: one line per active
@@ -61,42 +61,44 @@ export default function PeopleList({ people, onChanged, className = '', style })
     if (p.applied) bits.push('applied'); else if (p.lastInvitedAt) bits.push(`invited ${shortDate(p.lastInvitedAt)}`);
     return bits.join(' · ');
   };
-  const ctrl = { minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };
+  // On ink: paper outlined controls, paper text, the muted paper for a row that is still waiting.
+  const ctrl = { minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.paper, border: `1.5px solid ${C.paper}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };
+  const quiet = { border: `1px solid ${C.instRule}`, color: C.instMute };
 
   return (
-    <section id="people" className={`rl-card ${className}`} aria-label="Pipeline" style={{ padding: 'var(--card-pad)', scrollMarginTop: 'var(--s-4)', ...style }}>
+    <section id="people" className={className} aria-label="Pipeline" style={{ background: C.inst, color: C.instText, borderRadius: 'var(--card-radius)', padding: 'var(--card-pad)', scrollMarginTop: 'var(--s-4)', ...style }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginBottom: rows.length ? 'var(--s-2)' : 'var(--s-1)' }}>
-        <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 'var(--t-d3)', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 'var(--lh-display)', color: C.ink }}>Pipeline</h2>
-        <span style={{ fontSize: 'var(--t-d3)', color: C.ink, lineHeight: 1, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{rows.length}</span>
+        <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 'var(--t-d3)', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 'var(--lh-display)', color: C.paper }}>Pipeline</h2>
+        <span style={{ fontSize: 'var(--t-d3)', color: C.paper, lineHeight: 1, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{rows.length}</span>
       </div>
       {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginBottom: 'var(--s-2)' }}>{note}</div> : null}
       {rows.length === 0 ? (
-        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Nobody yet. Applicants who lose out on a rented unit appear here once asked.</p>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Nobody yet. Applicants who lose out on a rented unit appear here once asked.</p>
       ) : (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {rows.map((p, i) => {
             const open = openId === p.id;
             return (
-              <li key={p.id} data-person={p.id} style={{ borderTop: i ? '1px solid var(--rule)' : 'none' }}>
+              <li key={p.id} data-person={p.id} style={{ borderTop: i ? `1px solid ${C.instRule}` : 'none' }}>
                 <div role="button" tabIndex={0} aria-expanded={open} onClick={() => setOpenId(open ? null : p.id)}
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(open ? null : p.id); } }}
                   style={{ minHeight: 44, padding: 'var(--s-2) 0', cursor: 'pointer' }}>
-                  <div style={{ fontSize: 'var(--t-body)', color: pending(p) ? C.inkMute : C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{p.display}</div>
-                  <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{line2(p)}</div>
+                  <div style={{ fontSize: 'var(--t-body)', color: pending(p) ? C.instMute : C.instText, fontWeight: 600, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{p.display}</div>
+                  <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{line2(p)}</div>
                 </div>
                 {open && (
                   <div style={{ paddingBottom: 'var(--s-3)' }}>
-                    {(p.fits || []).length === 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>No active listing to invite them to.</div>}
+                    {(p.fits || []).length === 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>No active listing to invite them to.</div>}
                     {(p.fits || []).map((f) => (
                       <div key={f.listingId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44 }}>
-                        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}><span className="num">{fitText(f)}</span> · {f.listingName}</div>
-                        {f.applied ? <span style={{ ...ctrl, border: `1px solid var(--rule)`, color: C.inkMute, display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>Applied</span>
-                          : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, border: `1px solid var(--rule)`, color: C.inkMute, cursor: 'default' }}>Invite</button>
-                          : f.invitedAt ? <button type="button" disabled style={{ ...ctrl, border: `1px solid var(--rule)`, color: C.inkMute, cursor: 'default' }}>Invited {shortDate(f.invitedAt)}</button>
+                        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}><span className="num">{fitText(f)}</span> · {f.listingName}</div>
+                        {f.applied ? <span style={{ ...ctrl, ...quiet, display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>Applied</span>
+                          : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, ...quiet, cursor: 'default' }}>Invite</button>
+                          : f.invitedAt ? <button type="button" disabled style={{ ...ctrl, ...quiet, cursor: 'default' }}>Invited {shortDate(f.invitedAt)}</button>
                           : <button type="button" onClick={() => invite(p, f)} disabled={busy === `${p.id}:${f.listingId}`} style={{ ...ctrl, opacity: busy === `${p.id}:${f.listingId}` ? 0.6 : 1 }}>{busy === `${p.id}:${f.listingId}` ? 'Sending' : 'Invite'}</button>}
                       </div>
                     ))}
-                    <button type="button" onClick={() => setConfirm(p)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Remove</button>
+                    <button type="button" onClick={() => setConfirm(p)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.instMute, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Remove</button>
                   </div>
                 )}
               </li>

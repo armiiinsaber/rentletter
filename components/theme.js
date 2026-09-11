@@ -6,7 +6,7 @@ export const C = {
   // Surfaces
   paper: '#faf8f3',      // page background (brand eggshell)
   paperDeep: '#f2eee3',  // recessed surface
-  card: '#fffdf8',       // raised card surface
+  card: '#ffffff',       // raised card surface
   // Instrument surfaces — the semantic home of the machine (AI/verification/live-data
   // panels). Paper = human/editorial, instrument = machine, red = signal between them.
   inst: '#101012',       // instrument panel background (near-ink, warm-neutral)

@@ -109,10 +109,10 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
   ];
 
-  const btn = (on) => ({
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--s-1)', minHeight: 44, minWidth: 156, padding: '0 var(--s-3)',
-    borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
-    background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: on ? 999 : R.ctrl,
+  const btn = () => ({
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 'var(--s-1)', minHeight: 44, minWidth: 156, padding: '0 var(--gap-card)',
+    borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0,
+    background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`,
   });
 
   return (

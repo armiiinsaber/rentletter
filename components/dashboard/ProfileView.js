@@ -35,7 +35,7 @@ export default function ProfileView({ initialProfile }) {
           </section>
           {/* Sign out: the account's exit, outlined, at the foot of the page that is about the account. */}
           <div style={{ marginTop: 'var(--gap-section)' }}>
-            <button type="button" onClick={signOut} style={{ minHeight: 44, padding: '0 var(--s-4)', borderRadius: R.ctrl, border: `1.5px solid ${C.ink}`, background: 'transparent', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Sign out</button>
+            <button type="button" onClick={signOut} style={{ minHeight: 44, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', border: `1.5px solid ${C.ink}`, background: 'transparent', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Sign out</button>
           </div>
         </div>
       </div>

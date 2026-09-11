@@ -81,7 +81,7 @@ export default async function handler(req, res) {
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f2eee3;padding:40px 16px;"><tr><td align="center">
     <table role="presentation" width="520" cellpadding="0" cellspacing="0" style="max-width:520px;">
       <tr><td style="background:#0f0f10;padding:20px 26px;color:#faf8f3;font-weight:800;font-size:18px;letter-spacing:-0.02em;">Rentletter</td></tr>
-      <tr><td style="background:#fffdf8;padding:28px 26px;border:1px solid #ece5d6;border-top:none;">
+      <tr><td style="background:#ffffff;padding:28px 26px;border:1px solid #ece5d6;border-top:none;">
         <p style="margin:0 0 12px;font-size:15px;color:#0f0f10;line-height:1.55;">Hi ${escapeHtml(tenantName || 'there')},</p>
         <p style="margin:0 0 18px;font-size:15px;color:#3a3a3c;line-height:1.6;">
           ${escapeHtml(realtorName)} has requested a few documents to finalize your rental application${address ? ` for <strong style="color:#0f0f10;">${escapeHtml(address)}</strong>` : ''}: ${SET_SENTENCE_LOWER}. You can upload them securely here:

@@ -36,7 +36,7 @@ export function reportEmail({ payload, pageUrl, landlordName }) {
   const text = `Hi ${landlordName || 'there'},\n\n${lines.join('\n')}\n${pageUrl ? `\nOpen the report: ${pageUrl}\n` : ''}\n${r.name}\n`;
   const html = `<!doctype html><html><body style="margin:0;padding:24px;background:#faf8f3;font-family:Inter,-apple-system,Helvetica,Arial,sans-serif;color:#0f0f10;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center">
-    <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;background:#fffdf8;border:1px solid #e3ddd0;border-radius:12px;">
+    <table role="presentation" width="520" cellspacing="0" cellpadding="0" style="max-width:520px;background:#ffffff;border:1px solid #e3ddd0;border-radius:12px;">
       <tr><td style="padding:24px;font-size:16px;line-height:1.5;">
         <p style="margin:0 0 12px;">Hi ${esc(landlordName || 'there')},</p>
         ${lines.map((l) => `<p style="margin:0 0 12px;">${esc(l)}</p>`).join('')}

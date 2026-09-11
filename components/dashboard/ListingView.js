@@ -678,7 +678,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
     const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
     const isPrimaryCard = a.linkId === primaryLinkId;
-    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: isPrimaryCard ? 'var(--action)' : 'transparent', color: isPrimaryCard ? C.paper : C.ink, border: isPrimaryCard ? 'none' : `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: isPrimaryCard ? 'var(--action)' : 'transparent', color: isPrimaryCard ? C.paper : C.ink, border: isPrimaryCard ? 'none' : `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
     const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', color: C.ink, border: 'none', fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
     const stateLine = { fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
     const confirmedBy = (by) => (!by || by === 'You' || by === String(profile?.full_name || '').trim() ? 'you' : by);
@@ -729,7 +729,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {recent?.linkId === a.linkId && (
           <div data-no-swipe role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', marginBottom: 'var(--s-3)', padding: 'var(--s-1) var(--s-1) var(--s-1) var(--s-3)', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.inkSoft }}>
             <span><strong style={{ color: C.ink }}>{recent.kind}.</strong> Not what you meant?</span>
-            <button type="button" onClick={undoRecent} style={{ minHeight: 40, padding: '0 var(--s-3)', background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Undo</button>
+            <button type="button" onClick={undoRecent} style={{ minHeight: 40, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Undo</button>
           </div>
         )}
         {/* THE CARD AT REST. A div with a button role (a real button would be excluded from the drag
@@ -866,23 +866,23 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
             {isSetAside ? (
               <button onClick={() => restoreApplicant(a)}
-                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
+                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
                 Restore
               </button>
             ) : (
               <button onClick={() => openSetAside(a)} title="Record a screenable reason to set aside"
-                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
+                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
                 Set aside
               </button>
             )}
             {referralsEnabled() && !app.referral_meta && !['pending', 'approved'].includes(ref?.status) && ( // lib/features.js
               <button onClick={() => setReferFor(a)} title="Refer this applicant to another realtor. They must approve first"
-                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
+                style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
                 Refer
               </button>
             )}
             <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
-              style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, marginLeft: 'auto', fontFamily: 'inherit' }}>
+              style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, marginLeft: 'auto', fontFamily: 'inherit' }}>
               Withdrew
             </button>
           </div>
@@ -922,7 +922,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 )}
               </h1>
               {/* Centred on the first line of the address: the line box is 28 * 1.15, the button 44. */}
-              <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--s-4)', marginTop: -6, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
+              <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--gap-card)', marginTop: -6, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
             </div>
             <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', overflowWrap: 'anywhere' }}>
               {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()} per month` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
@@ -943,10 +943,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 <>
                   <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link" title={inviteShareUrl}
                     style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none', textOverflow: 'ellipsis' }} />
-                  <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
+                  <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
                 </>
               ) : (
-                <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+                <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
               )}
             </div>
             {error && (
@@ -978,7 +978,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                             <div data-kit-text style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{String(text).replace(/ (\S+)$/, '\u00a0$1')}</div>
                           </div>
                           <button type="button" onClick={() => kitCopy(key, kitShort ? text : '')} disabled={!kitShort} aria-label={`Copy ${label.toLowerCase()}`}
-                            style={{ minHeight: 44, minWidth: 84, padding: '0 var(--s-4)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit', flexShrink: 0, alignSelf: 'center' }}>
+                            style={{ minHeight: 44, minWidth: 84, padding: '0 var(--gap-card)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit', flexShrink: 0, alignSelf: 'center' }}>
                             {kitCopied === key ? 'Copied' : 'Copy'}
                           </button>
                         </div>
@@ -991,7 +991,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>QR</div>
                           <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'pretty' }}>Opens the short link. Print it on the sign or the sheet.</div>
                           <button type="button" onClick={saveQr} disabled={!kitShort}
-                            style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit' }}>Save QR</button>
+                            style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit' }}>Save QR</button>
                         </div>
                       </div>
                     </div>
@@ -1034,7 +1034,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input value={sigDraft} onChange={(e) => setSigDraft(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Signing name on reports" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveSignature(); } if (e.key === 'Escape') setSigEditing(false); }}
                           style={{ flex: '1 1 200px', minWidth: 0, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 44 }} />
-                        <button type="button" onClick={saveSignature} disabled={sigBusy} style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, padding: '0 var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>{sigBusy ? 'Saving' : 'Save'}</button>
+                        <button type="button" onClick={saveSignature} disabled={sigBusy} style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>{sigBusy ? 'Saving' : 'Save'}</button>
                         <button type="button" onClick={() => setSigEditing(false)} disabled={sigBusy} style={{ background: 'transparent', border: 'none', padding: '0 var(--s-2)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>Cancel</button>
                       </div>
                     ) : (
@@ -1067,10 +1067,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
                         <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
                           style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
-                        <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
+                        <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
                       </div>
                     ) : (
-                      <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+                      <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
                     )}
                     <div style={{ display: 'flex', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-1)' }}>
                       {inviteShareUrl && listingOpen(l) && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
@@ -1081,7 +1081,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
                           onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
                           style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
-                        <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--s-4)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}>{addLoading ? 'Adding' : 'Add'}</button>
+                        <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}>{addLoading ? 'Adding' : 'Add'}</button>
                       </div>
                     )}
                   </div>
@@ -1089,10 +1089,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                     {listingOpen(l) ? (
                       <button type="button" onClick={() => { setRentedPick(active.length ? active[0].linkId : 'outside'); setRentedNotify(true); setRentedOpen(true); }} disabled={statusBusy}
-                        style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Mark as rented</button>
+                        style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Mark as rented</button>
                     ) : (
                       <button type="button" onClick={() => setStatus('active')} disabled={statusBusy}
-                        style={{ minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{statusBusy ? 'Working' : 'Reopen listing'}</button>
+                        style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{statusBusy ? 'Working' : 'Reopen listing'}</button>
                     )}
                   </div>
                   {/* Delete, last and alone, in the danger colour, with the existing confirm. */}
@@ -1166,7 +1166,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   ))}
                 </div>
                 {active.length >= 2 && (
-                  <button type="button" onClick={() => setCompareOpen(true)} style={{ marginTop: 'var(--s-4)', minHeight: 44, padding: '0 var(--s-4)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Compare</button>
+                  <button type="button" onClick={() => setCompareOpen(true)} style={{ marginTop: 'var(--s-4)', minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Compare</button>
                 )}
 
                 {setAsideList.length > 0 && (
@@ -1192,7 +1192,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <h2 className="t-d3" style={{ color: C.ink, margin: '0 0 var(--s-3)' }}>Landlord</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
-                  style={{ flex: '1 1 100%', minHeight: 44, background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '0 var(--s-4)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
+                  style={{ flex: '1 1 100%', minHeight: 44, background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
                   {sending ? 'Sending' : l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
@@ -1258,11 +1258,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={confirmSetAside}
                   disabled={!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())}
-                  style={{ flex: 1, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: R.ctrl, padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
+                  style={{ flex: 1, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
                   Set aside
                 </button>
                 <button onClick={() => setSetAsideFor(null)}
-                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: 'var(--s-3) var(--s-4)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
+                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-3) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>

@@ -119,7 +119,7 @@ export const ProfileStyles = () => (
     .mp-alert { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.danger}; font-weight: 600; text-wrap: pretty; overflow-wrap: anywhere; }
     .mp-link { background: transparent; border: none; padding: 0; min-height: 44px; display: inline-flex; align-items: center; color: ${C.ink}; font-size: var(--t-body-2); font-weight: 700; text-decoration: underline; cursor: pointer; font-family: inherit; text-align: left; }
     .mp-link:disabled { opacity: 0.5; cursor: default; }
-    .mp-btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; padding: 0 var(--s-4); background: transparent; color: ${C.ink}; border: 1.5px solid ${C.ink}; border-radius: ${R.ctrl}px; font-size: var(--t-body-2); font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; }
+    .mp-btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; padding: 0 var(--gap-card); background: transparent; color: ${C.ink}; border: 1.5px solid ${C.ink}; border-radius: var(--btn-radius); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; }
     .mp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .mp-btn-red { background: var(--action); color: ${C.paper}; border-color: var(--action); }
     .mp-btn-auto { width: auto; }

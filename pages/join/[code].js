@@ -49,14 +49,14 @@ export default function Join({ valid, recipientName, grantType, trialDays }) {
                 {name ? `${name}, your access to Rentletter is ready.` : 'Your access to Rentletter is ready.'}
               </h1>
               <p style={{ fontSize: 16.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 26, textWrap: 'balance' }}>{grantLine(grantType, trialDays)}</p>
-              <a href="/signup" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 52, padding: '0 28px', background: C.red, color: C.paper, borderRadius: R.ctrl, fontSize: 16, fontWeight: 700, textDecoration: 'none', width: '100%', maxWidth: 320 }}>Create your account</a>
+              <a href="/signup" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 52, padding: '0 var(--gap-card)', background: C.red, color: C.paper, borderRadius: 'var(--btn-radius)', fontSize: 16, fontWeight: 700, textDecoration: 'none', width: '100%', maxWidth: 320 }}>Create your account</a>
               <p style={{ fontSize: 13, color: C.inkMute, marginTop: 16, lineHeight: 1.5, textWrap: 'balance' }}>Already have an account? <a href="/signin" style={{ color: C.ink, fontWeight: 600 }}>Sign in</a> and your access is applied.</p>
             </>
           ) : (
             <>
               <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5.5vw, 36px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 14, textWrap: 'balance' }}>This link is no longer active.</h1>
               <p style={{ fontSize: 16, color: C.inkSoft, lineHeight: 1.55, marginBottom: 26, textWrap: 'balance' }}>You can still create a Rentletter account the usual way.</p>
-              <a href="/signup" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 52, padding: '0 28px', background: C.ink, color: C.paper, borderRadius: R.ctrl, fontSize: 16, fontWeight: 700, textDecoration: 'none', width: '100%', maxWidth: 320 }}>Go to signup</a>
+              <a href="/signup" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 52, padding: '0 var(--gap-card)', background: C.ink, color: C.paper, borderRadius: 'var(--btn-radius)', fontSize: 16, fontWeight: 700, textDecoration: 'none', width: '100%', maxWidth: 320 }}>Go to signup</a>
             </>
           )}
         </div>

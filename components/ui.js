@@ -22,6 +22,10 @@ export const GlobalStyle = () => (
       --lh-display: 1.15; --lh-body: 1.5; --lh-eyebrow: 1;
       --f-display: ${FONT.serif}; --f-body: ${FONT.sans};
       --card-pad: 16px; --card-radius: ${R.card}px; --rule: ${C.rule};
+      /* Every control is a pill: buttons, text buttons, chips, the confirm pills, the Invite
+         controls, every control on the tenant side. Cards, inputs, the drop zone, the meter and
+         the ink blocks keep --card-radius. */
+      --btn-radius: ${R.pill}px;
       --gap-section: 32px; --gap-card: 16px; --gap-line: 8px;
       /* The red budget: --action fills exactly one button per screen, the screen's primary action.
          Every other control is ink. The red tick and the red dot are signals, not controls. */
@@ -65,7 +69,8 @@ export const GlobalStyle = () => (
     /* Zero sharp edges — every control gets a soft radius unless it sets its
        own inline (pills, circles, and bespoke radii keep theirs since inline
        styles only override the properties they declare). */
-    button, input, textarea, select { border-radius: ${R.ctrl}px; }
+    button { border-radius: var(--btn-radius); }
+    input, textarea, select { border-radius: var(--card-radius); }
     input[type="range"] { border-radius: ${R.pill}px; }
     input:focus, textarea:focus, select:focus { outline: none; }
     a { color: inherit; }
@@ -259,7 +264,7 @@ export const ConfirmSheet = ({
           <button onClick={onConfirm} disabled={busy} autoFocus
             style={{
               flex: '1 1 auto', background: busy ? C.ruleDark : accent, color: C.paper, border: 'none',
-              borderRadius: R.ctrl, padding: '14px 18px', fontSize: 14.5, fontWeight: 700,
+              borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14.5, fontWeight: 700,
               cursor: busy ? 'wait' : 'pointer', minHeight: 48,
             }}>
             {busy ? 'Working…' : confirmLabel}
@@ -267,7 +272,7 @@ export const ConfirmSheet = ({
           <button onClick={onCancel} disabled={busy}
             style={{
               background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`,
-              borderRadius: R.ctrl, padding: '14px 18px', fontSize: 14.5, fontWeight: 600,
+              borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14.5, fontWeight: 600,
               cursor: busy ? 'not-allowed' : 'pointer', minHeight: 48,
             }}>
             {cancelLabel}

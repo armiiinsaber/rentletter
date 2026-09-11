@@ -25,7 +25,7 @@ export default function DocumentViewer({ doc, onClose }) {
           <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.instText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
           <div style={{ fontSize: 'var(--t-body-2)', color: '#9a958a', marginTop: 'var(--s-1)' }}>Held for your review · this view is logged</div>
         </div>
-        <button type="button" onClick={onClose} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--s-4)', borderRadius: R.ctrl, border: `1.5px solid ${C.instText}`, background: 'transparent', color: C.instText, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>Close</button>
+        <button type="button" onClick={onClose} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', border: `1.5px solid ${C.instText}`, background: 'transparent', color: C.instText, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>Close</button>
       </div>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isImage ? 12 : 0 }}>
         {isImage ? (

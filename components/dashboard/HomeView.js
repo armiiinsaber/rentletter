@@ -194,6 +194,25 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const greeting = clientHour == null ? '' : greetingFor(clientHour, firstName);
   // The bell receives one stable object per signals change: a fresh object every render would make
   // the bell's setSignals effect re render this page forever.
+  // The one line of standing: the listings that take applications, the applicants on them, and the
+  // listings whose report has not gone yet. A zero item is dropped; all three zero reads as nothing
+  // waiting. Counted from the signals already loaded, never a new call.
+  const standing = useMemo(() => {
+    if (!signals.loaded || !hasListings) return { line: '' };
+    const by = signals.applicantsByListing || {};
+    let applicants = 0, toSend = 0;
+    for (const l of openListings) {
+      const live = (by[l.id] || []).filter((a) => a && !isWithdrawn(a));
+      applicants += live.length;
+      if (live.length && !live.some((a) => a.lastSentAt || a.last_sent_at)) toSend++;
+    }
+    const bits = [
+      openListings.length ? `${openListings.length} listing${openListings.length === 1 ? '' : 's'}` : null,
+      applicants ? `${applicants} applicant${applicants === 1 ? '' : 's'}` : null,
+      toSend ? `${toSend} report${toSend === 1 ? '' : 's'} to send` : null,
+    ].filter(Boolean);
+    return { line: bits.join(' · ') };
+  }, [signals.loaded, signals.applicantsByListing, openListings, hasListings]);
   const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: listings || [] } : null), [signals, listings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
@@ -261,11 +280,18 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </div>
           )}
           {ready && <>
-          {/* 1. THE INK CARD: the greeting line alone (the hour from the client, lib/greeting.js). What is
-              next lives in the bell, the one list. Then the one red action on the page: New listing.
-              Three surfaces: ink, red, paper. */}
+          {/* 1. THE INK CARD: the greeting (the hour from the client, lib/greeting.js) over one line of
+              standing, counted from the loaded signals. No rows, no verbs, no links: what is next lives
+              in the bell. Then the one red action on the page: New listing. */}
           <section className="dash-ink" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
-            <h1 className="t-d3 dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d3) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
+            <h1 className="dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d1) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
+            {standing.line ? (
+              <div className="num" style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{standing.line}</div>
+            ) : (
+              <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)' }}>
+                <Icon name="check" size={15} color={C.red} strokeWidth={2.5} /> Nothing waiting on you.
+              </div>
+            )}
           </section>
           <button type="button" onClick={() => setModalOpen(true)} className="dash-new" style={{ marginTop: 'var(--s-3)' }}>
             <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
@@ -421,10 +447,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-dash { display: inline-block; width: 3px; height: 1em; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 
         /* ── Type scale: three tiers on this screen ──
-           display  (.dash-greet, .dash-h2)  Fraunces serif at --t-d3
+           display  (.dash-greet at --t-d1, .dash-h2 at --t-d3)  Fraunces serif
            body     (inherited) Inter 400/500 · everything else
            data     (.dash-data) Inter 800 + tabular-nums, every number that must line up */
-        .dash-greet { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); }
+        .dash-greet { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: var(--lh-display); }
         .dash-h2 { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; }
         .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .dash-eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; line-height: var(--lh-eyebrow); text-transform: uppercase; color: ${C.inkMute}; margin-bottom: var(--s-2); }

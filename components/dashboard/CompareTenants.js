@@ -99,7 +99,7 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
           <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 2 }}>A side by side lens on screenable facts, your ranking is unchanged.</div>
         </div>
         <button onClick={onClose} className="rl-btn"
-          style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
           ‹ Back to ranked list
         </button>
       </div>
