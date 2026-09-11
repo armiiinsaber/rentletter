@@ -365,17 +365,10 @@ export default function Home() {
                 single tidy row (wordmark + CTA) with no wrap/overflow at 360/390 */}
             <nav className="lh-nav" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(18px, 2.4vw, 30px)' }}>
               <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
-              <a href="/signin" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</a>
             </nav>
-            {/* RIGHT, primary CTA (drifts right + fades on scroll) */}
+            {/* RIGHT, the account link. The hero carries the page's one button pair. */}
             <div className="lh-right">
-              <a href="/dashboard" className="rl-btn" style={{
-                background: C.ink, color: C.paper, textDecoration: 'none',
-                padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 600, borderRadius: 'var(--btn-radius)',
-                display: 'inline-flex', alignItems: 'center', gap: 7,
-              }}>
-                Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
-              </a>
+              <a href="/signin" style={{ color: C.ink, textDecoration: 'underline', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>Sign in</a>
             </div>
           </ScrollHeader>
 
@@ -435,37 +428,26 @@ export default function Home() {
                 </ol>
 
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+                  {/* Two controls on one grid (components/ui.js rl-ctrl-row): one height, the card
+                      gap between them, the headline's left edge, side by side at 1280 and stacked
+                      at 390. */}
+                  <div className="rl-ctrl-row" style={{ marginBottom: 18 }}>
                     <a href="/dashboard" className="rl-btn" style={{
                       background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
-                      padding: '16px 28px', fontSize: 15, fontWeight: 600,
-                      display: 'inline-flex', alignItems: 'center', gap: 9,
+                      padding: '0 28px', fontSize: 15, fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
                     }}>
                       Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
                     </a>
                     <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!"
                       className="rl-btn" style={{
                         background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, textDecoration: 'none',
-                        borderRadius: 'var(--btn-radius)', padding: '16px var(--gap-card)', fontSize: 15, fontWeight: 500,
-                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                        borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 15, fontWeight: 500,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       }}>
-                      Book a 15-min demo
-                    </a>
-                    {/* Always available, link straight to the demo dashboard (not /demo) so
-                        there's no 307 redirect hop / flash of any other route before it paints. */}
-                    <a href="/demo/dashboard" className="rl-btn" style={{
-                      background: 'transparent', color: C.red, border: `1px dashed ${C.red}`, textDecoration: 'none',
-                      borderRadius: 'var(--btn-radius)', padding: '16px var(--gap-card)', fontSize: 15, fontWeight: 600,
-                      display: 'inline-flex', alignItems: 'center', gap: 8,
-                    }}>
-                      See a sample dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                      Book a 15 min demo
                     </a>
                   </div>
-                  {(
-                    <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 18 }}>
-                      The sample dashboard is preloaded with example tenants, not real data.
-                    </div>
-                  )}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                     {['Founding realtor spots open', 'No credit card', 'No setup'].map(t => (
                       <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkMute }}>
