@@ -10,6 +10,7 @@ import { C, R } from '../theme';
 import { ConfirmSheet } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { shortDate } from '../../lib/pipelineState';
+import { dots } from '../../lib/typeset.js';
 
 const fitText = (f) => (f.score != null ? `${Number(f.score).toFixed(1)} ${f.label}` : 'No Fit yet');
 
@@ -59,7 +60,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
     if (p.fromListingName) bits.push(`from ${p.fromListingName}`);
     if (p.expiresAt) bits.push(`until ${shortDate(p.expiresAt)}`);
     if (p.applied) bits.push('applied'); else if (p.lastInvitedAt) bits.push(`invited ${shortDate(p.lastInvitedAt)}`);
-    return bits.join(' · ');
+    return dots(bits.join(' · '));
   };
   // On ink: paper outlined controls, paper text, the muted paper for a row that is still waiting.
   const ctrl = { minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.paper, border: `1.5px solid ${C.paper}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };

@@ -36,13 +36,15 @@ export const guessProvince = (f) => (/\b(BC|B\.C\.|British Columbia|Vancouver|Vi
 // separator, so a wrap breaks between items and a dot never opens or closes a line.
 export function Dots({ items, sep = '·' }) {
   const list = (items || []).filter((x) => x !== null && x !== undefined && x !== '');
-  // The dot and its item share one text node, so the dot is never a word on its own.
+  // The separator is tied to the word that follows it, so a wrap falls between items and the dot
+  // never opens or closes a line. The item itself stays breakable, so a line fills to the edge.
   return (
     <>
       {list.map((it, i) => (
         <span key={i}>
           {i ? ' ' : ''}
-          <span style={{ display: 'inline-block', maxWidth: '100%', overflowWrap: 'anywhere' }}>{typeof it === 'string' ? `${i ? `${sep}${NBSP}` : ''}${noWidow(it)}` : <>{i ? `${sep}${NBSP}` : ''}{it}</>}</span>
+          {typeof it === 'string' ? (i ? `${sep}${NBSP}${noWidow(it)}` : noWidow(it))
+            : <>{i ? `${sep}${NBSP}` : ''}<span style={{ display: 'inline-block', maxWidth: '100%', overflowWrap: 'anywhere' }}>{it}</span></>}
         </span>
       ))}
     </>
@@ -110,7 +112,12 @@ export const ProfileStyles = () => (
     .mp-saved { font-family: var(--f-body); font-size: var(--t-body-2); font-weight: 600; color: ${C.inkMute}; letter-spacing: 0; }
     .mp-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-card) var(--s-4); align-items: start; margin-top: var(--gap-card); }
     .mp-facts-1 { grid-template-columns: minmax(0, 1fr); }
-    .mp-fact { min-width: 0; }
+    /* The label and its value on one row, the value at the right; the value wraps to its own line
+       only when it does not fit beside the label (R3). */
+    .mp-fact { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--gap-line) var(--gap-card); }
+    .mp-fact > .mp-label { flex: 0 1 auto; }
+    .mp-fact > .mp-value { flex: 0 1 auto; margin-top: 0; text-align: right; }
+    .mp-fact > .mp-value:only-child { text-align: left; }
     .mp-label { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.inkMute}; text-wrap: balance; }
     .mp-value { margin-top: var(--gap-line); font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.ink}; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
     .mp-empty { color: ${C.inkMute}; font-weight: 500; }
@@ -130,6 +137,8 @@ export const ProfileStyles = () => (
     .mp-actions { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; margin-top: var(--gap-card); }
     .mp-actions .mp-btn { width: auto; flex: 1 1 200px; }
     .mp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--gap-card); align-items: start; }
+    .mp-stats > * { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--gap-line) var(--gap-card); }
+    .mp-stats .mp-stat-v { margin-top: 0; }
     .mp-stat-v { margin-top: var(--gap-line); font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-wrap: pretty; }
     .mp-fold { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-top: var(--gap-card); background: transparent; border: none; border-top: 1px solid var(--rule); border-radius: 0; padding: 0; font: inherit; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; cursor: pointer; text-align: left; }
     .mp-list { list-style: none; margin: 0; padding: 0; }

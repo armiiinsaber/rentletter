@@ -69,6 +69,11 @@ export const GlobalStyle = () => (
     /* Zero sharp edges — every control gets a soft radius unless it sets its
        own inline (pills, circles, and bespoke radii keep theirs since inline
        styles only override the properties they declare). */
+    /* Controls that sit together: one height, one gap (the card gap), one left edge, and at 390
+       one width, so a row never mixes a full width control with a narrower one. */
+    .rl-ctrl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-card); }
+    .rl-ctrl-row > * { min-height: 44px; flex: 0 1 auto; }
+    @media (max-width: 420px) { .rl-ctrl-row > * { flex: 1 1 100%; width: 100%; } }
     button { border-radius: var(--btn-radius); }
     input, textarea, select { border-radius: var(--card-radius); }
     input[type="range"] { border-radius: ${R.pill}px; }

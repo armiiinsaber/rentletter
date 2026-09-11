@@ -12,6 +12,7 @@
 // the answers show under the row and count as a confirmation, never as a number.
 import React, { useState, useEffect } from 'react';
 import { C, R } from '../theme';
+import { dots } from '../../lib/typeset.js';
 import { Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { readVerification, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
@@ -131,11 +132,11 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-                  Said: {row.said}{row.docs != null ? <> · Docs: {row.docs}</> : null}
+                  Said: {dots(String(row.said))}{row.docs != null ? <> ·{'\u00A0'}Docs: {dots(String(row.docs))}</> : null}
                 </div>
                 {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Also seen: {line}</div>) : null}
                 {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}
-                {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>Asked {shortDate(refResp.sentAt)} · no answer yet</div> : null}
+                {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>Asked {shortDate(refResp.sentAt)} ·{'\u00A0'}no answer yet</div> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'answered' ? (
                   <div style={{ marginTop: 'var(--s-1)' }}>
                     <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{answerSummary(refResp.answers)}</div>
@@ -145,7 +146,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 {row.key === 'landlord' && asking ? (
                   <div style={{ marginTop: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', background: C.paperDeep, borderRadius: R.ctrl }}>
                     <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}>Six closed questions go to <span style={{ fontWeight: 700 }}>{landlordEmail}</span>. Nothing goes to {String(app.full_name || 'the applicant').split(/\s+/)[0]}.</div>
-                    <div style={{ display: 'flex', gap: 'var(--s-3)', alignItems: 'center', marginTop: 'var(--s-2)', flexWrap: 'wrap' }}>
+                    <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
                       <button type="button" onClick={sendAsk} disabled={sending} style={{ ...btn(false), minWidth: 0, opacity: sending ? 0.7 : 1 }}>{sending ? 'Sending' : 'Send'}</button>
                       <button type="button" onClick={() => setAsking(false)} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                     </div>
@@ -154,7 +155,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 {Array.isArray(row.second) && row.second.length ? row.second.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, overflowWrap: 'anywhere', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{line}</div>) : null}
               </div>
               {row.key && !shared ? (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2) var(--s-3)', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' }}>
+                <div className="rl-ctrl-row" style={{ minWidth: 0, maxWidth: '100%' }}>
                   <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                     aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                     style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>

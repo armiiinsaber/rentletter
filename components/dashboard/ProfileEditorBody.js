@@ -337,7 +337,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
 
       <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}
         onChange={(e) => { const f = e.target.files?.[0]; uploadLogo(f); e.target.value = ''; }} />
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
+      <div className="rl-ctrl-row" style={{ marginBottom: 14 }}>
         <button onClick={() => fileRef.current?.click()} disabled={logoBusy}
           style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>
           {logoBusy ? 'Working…' : 'Replace with upload'}
@@ -406,12 +406,12 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
           {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> · Saving</span>}
           {fontState === 'saved' && <span role="status" style={{ color: C.inkMute, fontWeight: 600 }}> · Saved</span>}
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--gap-card)', alignItems: 'stretch', gridAutoRows: '1fr' }}>
           {FONT_PAIRINGS.map((fp) => {
             const selected = fontId === fp.id;
             return (
               <button key={fp.id} type="button" onClick={() => selectFont(fp)}
-                style={{ textAlign: 'left', cursor: 'pointer', borderRadius: R.card, padding: 12, background: selected ? C.paperDeep : C.paper, border: `1px solid ${selected ? C.ink : C.rule}`, boxShadow: selected ? `0 0 0 1px ${C.ink}` : 'none' }}>
+                style={{ height: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: R.card, padding: 12, background: selected ? C.paperDeep : C.paper, border: `1px solid ${selected ? C.ink : C.rule}`, boxShadow: selected ? `0 0 0 1px ${C.ink}` : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
                   <span style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{fp.name}</span>
                   {selected

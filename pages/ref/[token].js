@@ -85,7 +85,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
                 <div key={q.key} style={{ borderTop: `1px solid ${C.rule}`, padding: 'var(--s-3) 0' }}>
                   <div style={{ fontSize: 'var(--t-body)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{i + 1}</span>{q.text(first)}</div>
                   {q.kind === 'range' && answers.when !== PNS && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: 'var(--s-2)', alignItems: 'center', marginBottom: 'var(--s-2)' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: 'var(--gap-card)', alignItems: 'center', marginBottom: 'var(--gap-card)' }}>
                       <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft }}>From</span>
                       <select aria-label="From month" value={when.from?.m || ''} onChange={(e) => setWhen('from', 'm', e.target.value)} style={select}><option value="">Month</option>{MONTHS.map((m, k) => <option key={m} value={k + 1}>{m}</option>)}</select>
                       <select aria-label="From year" value={when.from?.y || ''} onChange={(e) => setWhen('from', 'y', e.target.value)} style={select}><option value="">Year</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select>
@@ -94,7 +94,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
                       <select aria-label="To year" value={when.to?.y || ''} onChange={(e) => setWhen('to', 'y', e.target.value)} style={select}><option value="">Year</option>{years.map((y) => <option key={y} value={y}>{y}</option>)}</select>
                     </div>
                   )}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--s-2)' }}>
+                  <div className="rl-ctrl-row">
                     {q.options.map(([code, label]) => (
                       <button key={code} type="button" aria-pressed={answers[q.key] === code} onClick={() => set(q.key, answers[q.key] === code && q.kind === 'range' ? undefined : code)} style={pill(answers[q.key] === code)}>{label}</button>
                     ))}

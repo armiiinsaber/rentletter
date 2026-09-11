@@ -580,7 +580,7 @@ export default function Home() {
                   <Icon name="user" size={20} color={C.ink} />
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <h3 style={{ fontSize: 'clamp(18px, 2.4vw, 22px)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 4 }}>
+                  <h3 style={{ fontSize: 'clamp(18px, 2.4vw, 22px)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 'var(--gap-line)' }}>
                     Applying to a rental?
                   </h3>
                   <p style={{ fontSize: 14, lineHeight: 1.55, color: C.inkSoft, margin: 0 }}>
@@ -588,7 +588,7 @@ export default function Home() {
                   </p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+              <div className="rl-ctrl-row">
                 <input
                   type="text" inputMode="url" value={applyLink}
                   onChange={(e) => { setApplyLink(e.target.value); if (applyError) setApplyError(''); }}
@@ -597,14 +597,14 @@ export default function Home() {
                   aria-label="Paste the application link the listing realtor sent you"
                   aria-invalid={applyError ? true : undefined}
                   style={{
-                    flex: '1 1 240px', minWidth: 0, boxSizing: 'border-box',
-                    padding: '13px 15px', fontSize: 15, borderRadius: R.ctrl,
+                    minWidth: 0, boxSizing: 'border-box', minHeight: 44,
+                    padding: '0 var(--gap-card)', fontSize: 15, borderRadius: 'var(--card-radius)',
                     border: `1px solid ${applyError ? C.red : C.ruleDark}`, background: C.paper, color: C.ink, outline: 'none',
                   }} />
                 <button onClick={goToApply} className="rl-btn" style={{
                   flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)',
-                  padding: '13px 22px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  minHeight: 44, padding: '0 var(--gap-card)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}>
                   Go to my application <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={16} /></span>
                 </button>

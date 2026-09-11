@@ -33,6 +33,7 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
 import { stateLine } from '../../lib/listingStateLine.js';
+import { dots } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
 import { sentLine, answerLine } from '../../lib/reportSnapshot.js';
@@ -653,7 +654,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       {rows.map(([label, value]) => (
         <div key={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{value}</div>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{typeof value === 'string' ? dots(value) : value}</div>
         </div>
       ))}
     </div>
@@ -863,7 +864,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           />
 
           {/* ACTIONS, after the facts. The drag is the fast path; these are the deliberate one. */}
-          <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+          <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
             {isSetAside ? (
               <button onClick={() => restoreApplicant(a)}
                 style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
@@ -882,7 +883,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </button>
             )}
             <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
-              style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, marginLeft: 'auto', fontFamily: 'inherit' }}>
+              style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
               Withdrew
             </button>
           </div>
@@ -936,7 +937,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-3)' }}>No criteria set</div>
             )}
             {/* The invite link, one tap away: the URL in the field, Copy inside the row at the right. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
+            <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
               {!listingOpen(l) ? (
                 <div style={{ display: 'flex', alignItems: 'center', minHeight: 44, padding: '0 var(--s-3)', flex: 1, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 600 }}>Invite link closed</div>
               ) : inviteShareUrl ? (
@@ -958,7 +959,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {listingOpen(l) && inviteShareUrl && (
               <>
                 <button type="button" onClick={() => setKitOpen((o) => !o)} aria-expanded={kitOpen} aria-controls="listing-post-kit"
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, marginTop: 'var(--s-3)', padding: 0, background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, borderRadius: 0, color: C.ink, fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, marginTop: 'var(--gap-card)', padding: 0, background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, borderRadius: 0, color: C.ink, fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
                   <span>{kitOpen ? 'Hide post kit' : 'Post kit'}</span>
                   <span className={`m-chev ${kitOpen ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
                 </button>
@@ -1001,7 +1002,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
             {/* The toggle row: full width, 44px, hairline above, the applicant cards' chevron. */}
             <button type="button" onClick={() => setDetailsOpen((o) => !o)} aria-expanded={detailsOpen} aria-controls="listing-details"
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, marginTop: 'var(--s-3)', padding: 0, background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, borderRadius: 0, color: C.ink, fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, marginTop: 'var(--gap-card)', padding: 0, background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, borderRadius: 0, color: C.ink, fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' }}>
               <span>{detailsOpen ? 'Hide details' : 'Details'}</span>
               <span className={`m-chev ${detailsOpen ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
             </button>
@@ -1064,7 +1065,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     {!listingOpen(l) ? (
                       <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>Invite link closed. Reopen the listing to take applications again.</div>
                     ) : inviteShareUrl ? (
-                      <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <div className="rl-ctrl-row">
                         <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
                           style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
                         <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
@@ -1077,7 +1078,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
                     </div>
                     {addOpen && (
-                      <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
+                      <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
                         <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
                           onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
                           style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
@@ -1138,7 +1139,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
           <section className="rl-card" style={{ padding: 'var(--s-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
-              <h2 className="t-d3" style={{ color: C.ink }}>Applicants</h2>
+              <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
               <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
             </div>
             {stateLine(active) && <p className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}>{stateLine(active)}</p>}
@@ -1189,8 +1190,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               the red on this page, ink otherwise. */}
           {totalApplicants > 0 && (
             <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
-              <h2 className="t-d3" style={{ color: C.ink, margin: '0 0 var(--s-3)' }}>Landlord</h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
+              <h2 className="t-d2" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Landlord</h2>
+              <div className="rl-ctrl-row">
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
                   style={{ flex: '1 1 100%', minHeight: 44, background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
                   {sending ? 'Sending' : l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
@@ -1205,7 +1206,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </div>
               )}
               {/* From the latest snapshot once one exists; the live preview before any send. */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap' }}>
+              <div className="rl-ctrl-row">
                 <button type="button" onClick={downloadPdf} disabled={pdfBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: pdfBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>{pdfBusy ? 'Preparing' : 'Download PDF'}</button>
                 <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>{textBusy ? 'Composing' : textCopied ? 'Copied' : 'Copy text'}</button>
               </div>

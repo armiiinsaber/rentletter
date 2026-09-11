@@ -73,7 +73,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
       {!confirm ? (
         <button type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', border: 'none', color: C.ink, textDecoration: 'underline' }}>Delete all documents</button>
       ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-2)' }}>
+        <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
           <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
           <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.ink, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}>{busy === 'delete' ? 'Deleting' : 'Delete'}</button>
           <button type="button" onClick={() => setConfirm(false)} disabled={busy === 'delete'} style={{ ...btn44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}` }}>Cancel</button>
@@ -262,15 +262,15 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     setSending(false);
   };
   const { line: docLine, canSendAgain } = documentsLine(result ? [result] : [], docRequest);
-  const ghostBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
-  const secondaryBtn = { background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
-  const destOutlineBtn = { background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
-  const destSolidBtn = { background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
+  const ghostBtn = { minHeight: 44, background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
+  const secondaryBtn = { minHeight: 44, background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
+  const destOutlineBtn = { minHeight: 44, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+  const destSolidBtn = { minHeight: 44, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
 
   return (
     <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
       {/* The one line, and Send again while a request waits with nothing arrived. */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap', minHeight: 44 }}>
+      <div className="rl-ctrl-row" style={{ minHeight: 44 }}>
         <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)', flex: '1 1 200px', minWidth: 0, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{docLine}</span>
         {canSendAgain && <button type="button" onClick={sendAgain} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}>{sending ? 'Sending' : 'Send again'}</button>}
       </div>
@@ -340,7 +340,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             </div>
           )}
 
-          <div style={{ marginTop: 'var(--s-3)', display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
             <button onClick={analyze} disabled={!files.length || analyzing}
               style={{ minHeight: 44, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, fontFamily: 'inherit', cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
               {analyzing && <span className="rl-dispin" aria-hidden="true" />}
@@ -359,7 +359,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
               <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 800, color: C.ink, marginBottom: 'var(--s-1)' }}>Verify &amp; confirm to landlord</div>
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only, separate from the ranked shortlist.</div>
-                <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center' }}>
+                <div className="rl-ctrl-row">
                   <button onClick={downloadConfirmPdf} disabled={pdfBusy}
                     style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                     {pdfBusy && <span className="rl-dispin" aria-hidden="true" />}{pdfBusy ? 'Preparing…' : 'Download PDF'}
@@ -374,7 +374,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
               {/* Archive / delete this applicant's active analysis (Feature 4). */}
               <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                 {!confirmDelete ? (
-                  <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div className="rl-ctrl-row">
                     <button onClick={archiveActive} disabled={!!managing} style={{ ...secondaryBtn, opacity: managing ? 0.6 : 1 }}>
                       {managing === 'archive' && <span className="rl-dispin rl-dispin--dark" aria-hidden="true" />}{managing === 'archive' ? 'Archiving…' : 'Archive'}
                     </button>
