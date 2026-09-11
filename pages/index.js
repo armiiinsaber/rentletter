@@ -1,199 +1,1201 @@
-// pages/index.js
-// The homepage. One screen of copy for Ontario and BC realtors, a frame showing the real listing
-// page's applicants section rendered from the sandbox fixture at build time (components/dashboard/
-// ApplicantCardRest.js, read only, no network), the proof line, the trust chips and the footer.
-// Motion: the hero rises 8px and fades in on load through CSS keyframes, the frame's meters fill on
-// mount as they do in the product, the proof numbers count up once on a timer (lib/motion.js), all
-// behind the motion query. Nothing waits on scroll or an observer; nothing loops.
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import { C, R } from '../components/theme';
-import { GlobalStyle, Wordmark } from '../components/ui';
-import { MotionStyles } from '../components/motion';
-import ApplicantCardRest from '../components/dashboard/ApplicantCardRest';
-import { tween, DURATION, CURVE, MOTION_QUERY } from '../lib/motion';
-import { noWidow, NBSP } from '../lib/typeset';
+import { C, R, SH, EASE, FONT } from '../components/theme';
+import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
+import DeviceFrame from '../components/DeviceFrame';
+import HeroDemo from '../components/mockups/HeroDemo';
 
-const BOOK_URL = 'mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!';
-const STEPS = ['Share your link, tenants apply', 'Tick the checklist as you call', 'Send the landlord a branded report'];
-const SENTENCE = 'Tenants apply through your link, the AI reads their documents, you confirm the facts, and the landlord gets a branded report with your reasons.';
-const LINE = 'We do not verify anything, you do: Rentletter reads the documents, matches them to the application, and records every call you make.';
 
-// The frame's data, at build time: the Carlaw listing's top three active applicants from the
-// sandbox fixture, scored the way the listing page scores them. Dates and Fit are frozen in the
-// static props, so the server and the client render the same card.
-export async function getStaticProps() {
-  const { DEMO_LISTINGS, DEMO_PROFILE, buildDemoApplicants } = await import('../lib/demoFixture');
-  const { withLiveScore } = await import('../lib/deriveScorecard');
-  const { computeFit, compareFit } = await import('../lib/fitScore');
-  const { isActive, isWithdrawn } = await import('../lib/listingApplicantsVocabulary');
-  const listing = DEMO_LISTINGS[0];
-  const applicants = (buildDemoApplicants()[listing.id] || [])
-    .filter((a) => !isWithdrawn(a) && isActive(a))
-    .map((a) => withLiveScore(a, listing))
-    .map((x) => ({ ...x, application: { ...x.application, fit: computeFit({ application: x.application, listing, verification: x.docVerifications?.[0] || null, confirmations: x.confirmations }) } }))
-    .sort(compareFit)
-    .slice(0, 3);
-  const frame = JSON.parse(JSON.stringify({ listing, profile: { full_name: DEMO_PROFILE.full_name }, applicants }));
-  return { props: { frame } };
-}
-
-// A proof number that counts up once on load, on a timer (lib/motion.js tween). It renders at its
-// final value first, so the number reads without JS and under reduced motion.
-function Proof({ value, unit, label }) {
-  const [shown, setShown] = useState(value);
-  useEffect(() => {
-    if (!value) return undefined;
-    const cancel = tween({ from: 0, to: value, ms: DURATION.long, onFrame: (v) => setShown(Math.round(v)) });
-    return () => cancel(true);
-  }, [value]);
+// ─── STAT: the number as it is, no count up, no observer ───────────────
+const StatCounter = ({ numStr, label }) => {
+  const match = numStr.match(/^(\d+)\s+(.+)$/);
+  const target = match ? parseInt(match[1], 10) : 0;
+  const suffix = match ? ' ' + match[2] : numStr;
   return (
     <div>
-      <div className="lp-proof-n num">{shown}{unit ? `${NBSP}${unit}` : ''}</div>
-      <div className="lp-proof-l">{noWidow(label)}</div>
+      <div className="rl-serif" style={{ fontSize: 'clamp(34px, 5vw, 44px)', color: C.ink, letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1 }}>
+        {target}{suffix}
+      </div>
+      <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.4 }}>{label}</div>
     </div>
   );
+};
+
+
+
+// Extract the invite token from whatever a tenant pastes: a full apply URL
+// (https://…/apply/{token}, with/without trailing slash or query/hash), or a bare
+// token/code. Tolerant — the /apply page validates + handles invalid/expired tokens.
+function parseApplyInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return { ok: false };
+  const m = s.match(/\/apply\/([^/?#\s]+)/i); // token from a pasted apply link
+  const fromUrl = !!m;
+  const token = (m ? m[1] : s).replace(/[?#].*$/, '').replace(/^\/+|\/+$/g, '').trim();
+  if (!token) return { ok: false };
+  // Accept anything that came from an /apply/ link; for a bare paste, require a plausible
+  // token (no spaces/slashes, reasonable length) so obvious garbage gets a friendly error.
+  const plausible = /^[A-Za-z0-9_-]{6,}$/.test(token);
+  if (!fromUrl && !plausible) return { ok: false };
+  return { ok: true, token };
 }
 
-export default function Home({ frame }) {
-  const year = new Date().getFullYear();
-  return (
-    <>
-      <Head>
-        <title>Rentletter, rental screening for Ontario and BC realtors</title>
-        <meta name="description" content={SENTENCE} />
-      </Head>
-      <GlobalStyle /><MotionStyles />
-      <div className="lp-page">
-        <header className="lp-header">
-          <a href="/" aria-label="Rentletter home" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
-          <nav className="lp-nav" aria-label="Account">
-            <a href="/signin" className="lp-link">Sign in</a>
-            <a href="/signup" className="lp-link">Sign up</a>
-          </nav>
-        </header>
+export default function Home() {
+  const [step, setStep] = useState('landing');
+  const [applyLink, setApplyLink] = useState('');
+  const [applyError, setApplyError] = useState('');
+  const goToApply = () => {
+    const parsed = parseApplyInput(applyLink);
+    if (!parsed.ok) {
+      setApplyError("That doesn't look like a valid application link, paste the full link the listing realtor sent you.");
+      return;
+    }
+    setApplyError('');
+    window.location.assign(`/apply/${encodeURIComponent(parsed.token)}`);
+  };
+  const [form, setForm] = useState({
+    email: '',
+    apartmentAddress: '', apartmentDescription: '',
+    // Tier 1 — required (basic identity + landlord-needed)
+    fullName: '', phone: '',
+    // Tier 1 — employment (existing)
+    jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
+    // Tier 1 — current rental (expanded)
+    previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
+    currentRent: '',
+    moveInDate: '',
+    // Tier 1 — household details
+    numberOfOccupants: '1', occupantsDetails: '',
+    smoker: 'no',
+    // Tier 1 — co-applicant (progressive disclosure)
+    hasCoApplicant: false,
+    coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
+    coApplicantIncome: '', coApplicantRelationship: '',
+    // Tier 1 — existing lifestyle/disclosures
+    pets: '',
+    // Tier 2 — optional but landlord-helpful
 
-        <main className="lp-main">
-          <section className="lp-hero" aria-label="Rentletter">
-            <div className="lp-copy">
-              <div className="lp-eyebrow lp-rise" style={{ animationDelay: '0ms' }}><span className="lp-dash" aria-hidden="true" />For Ontario and BC realtors</div>
-              <h1 className="lp-h1 lp-rise" style={{ animationDelay: '60ms' }}>Screen every applicant. Send the landlord <span className="lp-red">one clear{NBSP}report</span>.</h1>
-              <p className="lp-p lp-rise" style={{ animationDelay: '120ms' }}>{noWidow(SENTENCE)}</p>
-              <div className="lp-actions lp-rise" style={{ animationDelay: '180ms' }}>
-                <a href="/demo/dashboard" className="lp-btn lp-btn-red">Try it with sample data</a>
-                <a href={BOOK_URL} className="lp-btn">Book a demo</a>
-              </div>
-              <ol className="lp-steps">
-                {STEPS.map((s, i) => <li key={s}><span className="lp-num" aria-hidden="true">{i + 1}</span><span>{noWidow(s)}</span></li>)}
-              </ol>
+    reference1Name: '', reference1Relationship: '', reference1Contact: '',
+    reference2Name: '', reference2Relationship: '', reference2Contact: '',
+  });
+  const [resume, setResume] = useState('');
+  const [applicationNumber, setApplicationNumber] = useState('');
+  const [error, setError] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [copiedResume, setCopiedResume] = useState(false);
+  const [copiedAppNum, setCopiedAppNum] = useState(false);
+
+  // ── Invite state — tenant arrived via a realtor's listing-scoped link ──
+  const [inviteToken, setInviteToken] = useState('');
+  const [inviteContext, setInviteContext] = useState(null); // { realtorName, realtorBrokerage, listingName, unit }
+
+
+  // The "See a sample dashboard" demo entry is ALWAYS available on the landing page —
+  // it must never depend on session/seen-demo state. (Previously it was gated to
+  // logged-out visitors via supabase.auth.getSession(), which hid it for signed-in
+  // realtors and flashed hidden on first paint. The sample dashboard is harmless to
+  // everyone, so any visitor — returning or not — can always launch it.)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const inviteParam = params.get('invite');
+
+    // ─── ENTRY 0: Tenant arrived via realtor's invite link ───
+    // Sandbox tokens (demo…) are answered by the resolver without an invite record.
+    if (inviteParam && (/^[a-f0-9]{20}$/.test(inviteParam) || /^demo\d{16}$/.test(inviteParam))) {
+      setInviteToken(inviteParam);
+      // Fetch the invite context to display "applying for X" banner
+      fetch(`/api/invite/resolve?token=${encodeURIComponent(inviteParam)}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json && !json.error) {
+            setInviteContext(json);
+            setStep('form'); // jump straight to form, no landing page
+          }
+        })
+        .catch(() => { /* swallow, tenant can still apply normally */ });
+      // Don't return — let the rest of the logic also run in case of other params
+    }
+
+    // ─── ENTRY 4: Returning user, restore the submitted application ───
+    const savedResume = localStorage.getItem('rentletter_resume');
+    const savedForm = localStorage.getItem('rentletter_form');
+    const savedAppNum = localStorage.getItem('rentletter_app_number');
+    if (savedAppNum && savedForm) {
+      setResume(savedResume || '');
+      setForm(JSON.parse(savedForm));
+      setApplicationNumber(savedAppNum);
+      setStep('result');
+    }
+  }, []);
+
+  // ─── HERO TILT — mouse-tracked 3-D tilt, skipped on touch + reduced-motion ───
+  const tiltRef = useRef(null);
+  const [heroTilt, setHeroTilt] = useState({ x: 0, y: 0 });
+  const [skipTilt, setSkipTilt] = useState(true);
+  useEffect(() => {
+    setSkipTilt(
+      window.matchMedia('(pointer: coarse)').matches ||
+      !window.matchMedia('(prefers-reduced-motion: no-preference)').matches
+    );
+  }, []);
+  const handleTiltMove = (e) => {
+    if (!tiltRef.current) return;
+    const r = tiltRef.current.getBoundingClientRect();
+    const dx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+    const dy = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    setHeroTilt({ x: dy * -2.5, y: dx * 2.5 });
+  };
+  const handleTiltLeave = () => setHeroTilt({ x: 0, y: 0 });
+
+  const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  const isFormValid = () => {
+    return form.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
+      && form.fullName && form.jobTitle && form.employer
+      && form.annualIncome && form.moveInDate;
+  };
+
+  const handlePay = () => {
+    // Free. The application is stored under a fresh number; nothing is sold after it.
+    localStorage.setItem('rentletter_form', JSON.stringify(form));
+    submitApplication(form);
+  };
+
+  // ─── DEV: Autofill test data ─────────────────
+  const fillTestData = () => {
+    const sampleProfiles = [
+      {
+        email: 'sarah.chen.test@example.com',
+        apartmentAddress: '144 Roxborough Drive, Toronto',
+        apartmentDescription: '1BR, Rosedale, $2,200/mo',
+        fullName: 'Sarah Chen',
+        jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
+        yearsAtJob: '4', annualIncome: '87000',
+        previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
+        previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
+        moveInDate: '2026-06-15',
+        pets: 'None',
+      },
+      {
+        email: 'james.okafor.test@example.com',
+        apartmentAddress: '88 Yonge Street, Toronto',
+        apartmentDescription: 'Studio, downtown, $1,850/mo',
+        fullName: 'James Okafor',
+        jobTitle: 'Software Engineer', employer: 'Shopify',
+        yearsAtJob: '1.5', annualIncome: '95000',
+        previousAddress: '', yearsAtPrevious: '',
+        previousLandlordName: '', previousLandlordContact: '',
+        moveInDate: '2026-07-01',
+        pets: 'None',
+      },
+      {
+        email: 'priya.nair.test@example.com',
+        apartmentAddress: '550 Queen Street West, Toronto',
+        apartmentDescription: '2BR, Queen West, $3,100/mo',
+        fullName: 'Priya Nair',
+        jobTitle: 'Senior UX Designer', employer: 'CIBC',
+        yearsAtJob: '5', annualIncome: '115000',
+        previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
+        previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
+        moveInDate: '2026-08-01',
+        pets: 'One indoor cat, 6 years old, vet records available',
+      },
+    ];
+    const random = sampleProfiles[Math.floor(Math.random() * sampleProfiles.length)];
+    setForm(random);
+  };
+
+  const submitApplication = async (data) => {
+    setError('');
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...data, mode: 'application' }),
+      });
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
+      setResume(json.resume);
+      if (json.applicationNumber) {
+        setApplicationNumber(json.applicationNumber);
+        localStorage.setItem('rentletter_app_number', json.applicationNumber);
+        // If this submission came from a realtor's invite link, tag it
+        if (inviteToken && /^[a-f0-9]{20}$/.test(inviteToken)) {
+          fetch('/api/invite/tag', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: inviteToken, applicationNumber: json.applicationNumber }),
+          }).catch(e => console.error('[tag-invite] fire-and-forget failed', e));
+        }
+      }
+      if (json.ownerToken) {
+        localStorage.setItem('rentletter_owner_token', json.ownerToken);
+      }
+      localStorage.setItem('rentletter_resume', json.resume);
+      window.history.replaceState({}, '', window.location.pathname);
+      setStep('result');
+      // The confirmation email: the application number and the owner token.
+      if (data.email && json.applicationNumber) {
+        sendEmail(data.email, data.fullName, json.applicationNumber, json.ownerToken, json.emailSig || null);
+      }
+    } catch (e) {
+      setError(e.message);
+      setStep('form');
+    }
+  };
+
+  const sendEmail = async (email, fullName, appNum, ownerTok, signature = null) => {
+    setEmailSending(true);
+    try {
+      const res = await fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          fullName,
+          applicationNumber: appNum || applicationNumber,
+          ownerToken: ownerTok || (typeof window !== 'undefined' ? localStorage.getItem('rentletter_owner_token') : null),
+          signature, // lib/sendSignature.js
+        }),
+      });
+      const json = await res.json();
+      if (json.success) setEmailSent(true);
+    } catch (e) {
+      console.error('Email send failed:', e);
+    }
+    setEmailSending(false);
+  };
+
+  const copyText = (text, setter) => {
+    navigator.clipboard.writeText(text);
+    setter(true);
+    setTimeout(() => setter(false), 2000);
+  };
+
+  // Default empty form — used for initial state + resets
+  const EMPTY_FORM = {
+    email: '',
+    apartmentAddress: '', apartmentDescription: '',
+    fullName: '', phone: '',
+    jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '',
+    previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
+    currentRent: '',
+    moveInDate: '',
+    numberOfOccupants: '1', occupantsDetails: '',
+    smoker: 'no',
+    hasCoApplicant: false,
+    coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
+    coApplicantIncome: '', coApplicantRelationship: '',
+    pets: '',
+
+    reference1Name: '', reference1Relationship: '', reference1Contact: '',
+    reference2Name: '', reference2Relationship: '', reference2Contact: '',
+  };
+
+  const startOver = () => {
+    if (!confirm('Clear this application and start fresh?')) return;
+    localStorage.removeItem('rentletter_resume');
+    localStorage.removeItem('rentletter_form');
+    localStorage.removeItem('rentletter_app_number');
+    setResume(''); setApplicationNumber('');
+    setForm(EMPTY_FORM);
+    setStep('landing');
+  };
+
+  const updateResume = (text) => { setResume(text); localStorage.setItem('rentletter_resume', text); };
+
+  // ── Landing header scroll-parallax + fade ────────────────────────────────────────────────
+  // As the page scrolls, the left zone (wordmark) drifts further LEFT, the right zone (CTA) drifts
+  // further RIGHT, and the whole header fades out — so it dissolves elegantly instead of hard-
+  // cutting against content passing under it. Eases back on scroll up. Transforms/opacity only;
+  // gated behind prefers-reduced-motion (static fallback: header stays put, still seamless via CSS).
+  useEffect(() => {
+    if (step !== 'landing') return;
+    if (typeof window === 'undefined') return;
+    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
+    const header = document.querySelector('.lp-shell .rl-header');
+    if (!header) return;
+    const left = header.querySelector('.lh-left');
+    const right = header.querySelector('.lh-right');
+    const DIST = 190;
+    let raf = 0;
+    const apply = () => {
+      raf = 0;
+      const t = Math.min(Math.max(window.scrollY / DIST, 0), 1);
+      header.style.opacity = String(1 - t * 0.86);      // eases to ~0.14, fades back in on scroll up
+      if (left) left.style.transform = `translate3d(${(-t * 30).toFixed(1)}px, 0, 0)`;
+      if (right) right.style.transform = `translate3d(${(t * 30).toFixed(1)}px, 0, 0)`;
+      header.style.pointerEvents = t > 0.9 ? 'none' : 'auto';
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
+    apply();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      header.style.opacity = ''; header.style.pointerEvents = '';
+      if (left) left.style.transform = ''; if (right) right.style.transform = '';
+    };
+  }, [step]);
+
+  // ════════════════════════════════════════════════════════════
+  // LANDING — minimal, confident, sparingly red
+  // ════════════════════════════════════════════════════════════
+  if (step === 'landing') {
+    return (
+      <>
+        <Head>
+          <title>Rentletter, Rental screening for Canadian realtors.</title>
+          <meta name="description" content="A dashboard for Canadian rental realtors to receive standardized tenant applications, rank every candidate against the landlord's criteria, and send polished reports to landlord clients." />
+        </Head>
+        <GlobalStyle />
+
+        <div className="lp-shell" style={{ minHeight: '100vh', background: C.paper }}>
+
+          {/* ── HEADER, balanced 3-zone: wordmark left · nav center · CTA right ── */}
+          <ScrollHeader>
+            {/* LEFT, wordmark (drifts left + fades on scroll) */}
+            <div className="lh-left">
+              <Wordmark />
             </div>
+            {/* CENTER, secondary nav; collapses to the footer on small screens so the bar stays a
+                single tidy row (wordmark + CTA) with no wrap/overflow at 360/390 */}
+            <nav className="lh-nav" style={{ display: 'flex', alignItems: 'center', gap: 'clamp(18px, 2.4vw, 30px)' }}>
+              <a href="/faq" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>FAQ</a>
+              <a href="/signin" style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 14, fontWeight: 500 }}>Sign in</a>
+            </nav>
+            {/* RIGHT, primary CTA (drifts right + fades on scroll) */}
+            <div className="lh-right">
+              <a href="/dashboard" className="rl-btn" style={{
+                background: C.ink, color: C.paper, textDecoration: 'none',
+                padding: '11px 18px', fontSize: 13, fontWeight: 600, borderRadius: R.ctrl,
+                display: 'inline-flex', alignItems: 'center', gap: 7,
+              }}>
+                Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+              </a>
+            </div>
+          </ScrollHeader>
 
-            {/* The frame: a phone at 390, a laptop from 900px up. Inside, the listing page's applicants
-                section from the fixture, the real card, the real meter, read only. */}
-            <div className="lp-frame-wrap">
-              <div className="lp-frame" role="img" aria-label="The listing page's applicants section, sample data">
-                <div className="lp-screen">
-                  <div className="lp-screen-head">
-                    <span className="t-d3" style={{ color: C.ink }}>Applicants</span>
-                    <span className="lp-count num">{frame.applicants.length}</span>
+          {/* ── HERO ──────────────────────────────────────── */}
+          <section style={{ padding: 'clamp(44px, 7vw, 96px) clamp(20px, 4vw, 32px) clamp(48px, 7vw, 80px)', maxWidth: 1200, margin: '0 auto' }}>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
+              gap: 'clamp(28px, 4vw, 64px)',
+              alignItems: 'center',
+            }}>
+
+              {/* LEFT · text */}
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+                  <span className="rl-rule-draw" style={{ height: 2, background: C.red, borderRadius: 1, display: 'block' }} />
+                  <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                    For Ontario &amp; BC Realtors · 2026
+                  </span>
+                </div>
+
+                <h1 className="rl-serif" style={{
+                  fontSize: 'clamp(42px, 6vw, 72px)',
+                  lineHeight: 1.02,
+                  letterSpacing: '-0.025em',
+                  color: C.ink,
+                  marginBottom: 26,
+                }}>
+                  <span style={{ display: 'block' }}>A simpler way to</span>
+                  <span style={{ display: 'block' }}>handle <span style={{ color: C.red }}>rental</span></span>
+                  <span style={{ display: 'block', color: C.red }}>applications.</span>
+                </h1>
+
+                {/* Hero sequence as a compact numbered 3-step. Deliberately small red numerals +
+                    short lines, visually distinct from the big serif 01/02/03 "How it works"
+                    section below. text-wrap:pretty guards against orphan words at 360/390. */}
+                <ol style={{
+                  listStyle: 'none', margin: '0 0 34px', padding: 0, maxWidth: 480,
+                  display: 'grid', gap: 13,
+                }}>
+                  {[
+                    'Send applicants one link.',
+                    'Standardized applications land in your dashboard, ranked.',
+                    'Send your landlord a polished report.',
+                  ].map((line, i) => (
+                    <li key={i} style={{ display: 'flex', gap: 13, alignItems: 'baseline' }}>
+                      <span aria-hidden="true" style={{
+                        flexShrink: 0, minWidth: 15, color: C.red, fontWeight: 700,
+                        fontSize: 14, fontVariantNumeric: 'tabular-nums', letterSpacing: '0.01em',
+                      }}>{i + 1}</span>
+                      <span style={{
+                        fontSize: 'clamp(16px, 1.7vw, 19px)', lineHeight: 1.45,
+                        color: C.inkSoft, textWrap: 'pretty',
+                      }}>{line}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+                    <a href="/dashboard" className="rl-btn" style={{
+                      background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                      padding: '16px 28px', fontSize: 15, fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', gap: 9,
+                    }}>
+                      Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                    </a>
+                    <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!"
+                      className="rl-btn" style={{
+                        background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, textDecoration: 'none',
+                        borderRadius: R.ctrl, padding: '16px 28px', fontSize: 15, fontWeight: 500,
+                        display: 'inline-flex', alignItems: 'center', gap: 8,
+                      }}>
+                      Book a 15-min demo
+                    </a>
+                    {/* Always available, link straight to the demo dashboard (not /demo) so
+                        there's no 307 redirect hop / flash of any other route before it paints. */}
+                    <a href="/demo/dashboard" className="rl-btn" style={{
+                      background: 'transparent', color: C.red, border: `1px dashed ${C.red}`, textDecoration: 'none',
+                      borderRadius: R.ctrl, padding: '16px 24px', fontSize: 15, fontWeight: 600,
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                    }}>
+                      See a sample dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                    </a>
                   </div>
-                  <div className="lp-cards">
-                    {frame.applicants.map((a, i) => (
-                      <div key={a.linkId} className="lp-card" style={{ border: `1px solid ${i === 0 ? 'var(--action)' : C.rule}`, borderLeft: `4px solid ${i === 0 ? 'var(--action)' : C.ruleDark}` }}>
-                        <ApplicantCardRest a={a} rank={i + 1} listing={frame.listing} profile={frame.profile} tracking fresh={false} readOnly />
-                      </div>
+                  {(
+                    <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 18 }}>
+                      The sample dashboard is preloaded with example tenants, not real data.
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                    {['Founding realtor spots open', 'No credit card', 'No setup'].map(t => (
+                      <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.inkMute }}>
+                        <span style={{ color: C.green, display: 'inline-flex' }}><Icon name="check" size={15} color={C.green} strokeWidth={2} /></span>{t}
+                      </span>
                     ))}
                   </div>
                 </div>
               </div>
-              <div className="lp-foot" aria-hidden="true" />
-              <p className="lp-muted">{noWidow('Sample data. The real thing looks exactly like this.')}</p>
+
+              {/* RIGHT, dashboard screenshot in browser-chrome frame */}
+              <div style={{ position: 'relative' }}>
+                <div ref={tiltRef}
+                  onMouseMove={skipTilt ? undefined : handleTiltMove}
+                  onMouseLeave={skipTilt ? undefined : handleTiltLeave}>
+                  <div style={{
+                    transform: skipTilt ? undefined : `perspective(1100px) rotateX(${heroTilt.x}deg) rotateY(${heroTilt.y}deg)`,
+                    transition: skipTilt ? undefined : ((heroTilt.x === 0 && heroTilt.y === 0) ? `transform 600ms ${EASE}` : 'transform 80ms ease'),
+                    willChange: skipTilt ? undefined : 'transform',
+                  }}>
+                    {/* Device frame: laptop with browser chrome ≥720px, phone below, the SAME live
+                        HeroDemo node either way (decorations swap via CSS; nothing re-mounts). */}
+                    <DeviceFrame variant="responsive" url="rentletter.ca/dashboard" aspect="4 / 3" phoneAspect="9 / 10.5" bg={`linear-gradient(160deg, ${C.card}, ${C.paperDeep})`}>
+                      <HeroDemo />
+                    </DeviceFrame>
+                  </div>
+                </div>
+                <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute }}>
+                  The Rentletter dashboard, one workspace per listing.
+                </div>
+              </div>
+            </div>
+
+            {/* Stats row, count-up animation when scrolled into view */}
+            <div style={{
+              marginTop: 'clamp(52px, 8vw, 88px)',
+              borderTop: `1px solid ${C.rule}`,
+              paddingTop: 36,
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 'clamp(20px, 3vw, 32px)',
+            }}>
+              <StatCounter numStr="3 days"  label="Typical screening time today" />
+              <StatCounter numStr="30 min"  label="The same job, on Rentletter" />
+              <StatCounter numStr="1 link"  label="Shared per listing" />
+              <StatCounter numStr="0 fees"  label="Charged to your applicants" />
             </div>
           </section>
 
-          <section className="lp-proof" aria-label="What you get back">
-            <Proof value={2} unit="hours" label="saved on every rental screened" />
-            <Proof value={0} unit="" label="documents left in your inbox" />
+          {/* ── DIFFERENTIATOR, its own quiet statement ── */}
+          <section style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.card }}>
+            <div style={{ maxWidth: 880, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px)', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase', marginBottom: 16 }}>
+                Where we fit
+              </div>
+              <p className="rl-serif" style={{ fontSize: 'clamp(21px, 3vw, 30px)', lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0 }}>
+                Rentletter organizes your applicants · {' '}
+                <span style={{ color: C.inkMute }}>from the first inquiry to the ranked list you hand your landlord.</span>
+              </p>
+            </div>
           </section>
 
-          <section className="lp-chips" aria-label="Terms">
-            <span className="lp-chip">Free trial</span>
-            <span className="lp-chip">No credit card</span>
-            <span className="lp-chip">Nothing to set up</span>
+          {/* ── PULL-QUOTE ── */}
+          <section style={{ background: C.ink, color: C.paper }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(52px, 8vw, 88px) clamp(20px, 4vw, 32px)' }}>
+              <blockquote className="rl-serif" style={{
+                fontSize: 'clamp(26px, 4vw, 44px)', lineHeight: 1.18, letterSpacing: '-0.02em',
+                color: C.paper, borderLeft: `3px solid ${C.red}`, paddingLeft: 'clamp(20px, 3vw, 32px)', margin: 0, maxWidth: 900,
+              }}>
+                Standardized applications. Documented decisions.<br /><span style={{ color: C.inkInverse }}>One dashboard.</span>
+              </blockquote>
+            </div>
           </section>
 
-          <p className="lp-line">{noWidow(LINE)}</p>
-        </main>
+          {/* ── HOW IT WORKS ── */}
+          <section style={{ padding: 'clamp(64px, 10vw, 112px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
+            <div style={{ marginBottom: 'clamp(40px, 6vw, 64px)', maxWidth: 640 }}>
+              <h2 style={{ fontSize: 12, fontWeight: 700, color: C.red, letterSpacing: '0.14em', textTransform: 'uppercase', margin: '0 0 18px' }}>
+                How it works
+              </h2>
+              <p className="rl-serif" style={{ fontSize: 'clamp(26px, 3.6vw, 38px)', lineHeight: 1.12, letterSpacing: '-0.02em', color: C.ink, margin: 0 }}>
+                From listing to landlord in four steps.
+              </p>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'clamp(20px, 3vw, 36px)' }}>
+              {[
+                { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your screening preferences. We generate a secure link tied to that listing.' },
+                { n: '02', icon: 'link', t: 'Share with applicants', d: 'Text or email the link. Standardized applications route into your dashboard automatically.' },
+                { n: '03', icon: 'list', t: 'Review and rank', d: 'Everyone ranked against your criteria, best fit first. Set aside with a reason, and document every decision.' },
+                { n: '04', icon: 'send', t: 'Send to your landlord', d: 'One click sends a co branded report with your name on it, free for you.' },
+              ].map(s => (
+                <div key={s.n} style={{ paddingTop: 22, position: 'relative' }}>
+                  <span className="rl-step-bar" style={{ background: C.red, position: 'absolute', top: 0, left: 0, right: 0 }} />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+                    <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.red, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: SH.rest }}>
+                      <Icon name={s.icon} size={20} color={C.paper} />
+                    </span>
+                    <span className="rl-serif" style={{ fontSize: 22, color: C.rule }}>{s.n}</span>
+                  </div>
+                  <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink, marginBottom: 8, letterSpacing: '-0.01em', lineHeight: 1.2 }}>{s.t}</h3>
+                  <p style={{ fontSize: 14.5, lineHeight: 1.6, color: C.inkSoft }}>{s.d}</p>
+                </div>
+              ))}
+            </div>
+          </section>
 
-        <footer className="lp-footer">
-          <div className="lp-footer-inner">
-            <a href="/my-application" className="lp-link">{noWidow('Applied somewhere? Open your application')}</a>
-            <nav className="lp-legal" aria-label="Legal">
-              <a href="/faq">FAQ</a>
-              <a href="/compliance">Compliance</a>
-              <a href="/privacy">Privacy</a>
-              <a href="/terms">Terms</a>
-              <a href="mailto:info@rentletter.ca">info@rentletter.ca</a>
-            </nav>
-            <p className="lp-line">{`© ${year} Rentletter`}<span className="lp-sep">{`·${NBSP}Ontario and BC, Canada`}</span><span className="lp-sep">{`·${NBSP}Not legal${NBSP}advice`}</span></p>
-          </div>
-        </footer>
-      </div>
-      <style jsx global>{`
-        .lp-page { min-height: 100vh; background: ${C.paper}; color: ${C.ink}; }
-        .lp-header { display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); padding: var(--s-3) var(--s-4); padding-top: calc(var(--s-3) + env(safe-area-inset-top, 0px)); border-bottom: 1px solid var(--rule); background: ${C.paper}; }
-        .lp-nav { display: flex; gap: var(--gap-card); }
-        .lp-link { display: inline-flex; align-items: center; min-height: 44px; color: ${C.ink}; font-size: var(--t-body-2); font-weight: 700; text-decoration: underline; }
-        .lp-main { max-width: 1200px; margin: 0 auto; padding: var(--gap-section) var(--s-4) var(--s-7); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); }
-        .lp-hero { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); align-items: start; }
-        .lp-copy { min-width: 0; }
-        .lp-eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; }
-        .lp-dash { display: inline-block; width: 3px; height: 11px; background: ${C.red}; border-radius: 1px; }
-        .lp-h1 { font-family: var(--f-display); font-size: var(--t-d1); line-height: var(--lh-display); font-weight: 600; letter-spacing: -0.02em; margin: var(--gap-line) 0 0; text-wrap: balance; }
-        .lp-red { color: ${C.red}; }
-        .lp-p { font-size: var(--t-body); line-height: var(--lh-body); color: ${C.inkSoft}; margin: var(--gap-card) 0 0; text-wrap: pretty; max-width: 36em; }
-        .lp-actions { display: flex; flex-direction: column; gap: var(--gap-card); margin-top: var(--gap-card); }
-        .lp-btn { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; width: 100%; height: 44px; padding: 0 var(--s-4); border: 1.5px solid ${C.ink}; border-radius: ${R.ctrl}px; color: ${C.ink}; font-size: var(--t-body-2); font-weight: 700; text-decoration: none; white-space: nowrap; }
-        .lp-btn-red { background: var(--action); border-color: var(--action); color: ${C.paper}; }
-        .lp-steps { list-style: none; margin: var(--gap-section) 0 0; padding: 0; display: grid; gap: var(--gap-card); }
-        .lp-steps li { display: flex; align-items: baseline; gap: var(--s-3); font-size: var(--t-body); line-height: var(--lh-body); color: ${C.ink}; }
-        .lp-num { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; color: ${C.red}; min-width: 1.1em; }
-        .lp-frame-wrap { min-width: 0; }
-        .lp-frame { background: ${C.ink}; border-radius: 28px; padding: 12px; }
-        .lp-screen { background: ${C.paperDeep}; border-radius: 18px; padding: var(--s-4); overflow: hidden; min-width: 0; }
-        .lp-foot { display: none; }
-        .lp-screen-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
-        .lp-count { font-size: var(--t-d3); font-weight: 800; letter-spacing: -0.02em; color: ${C.ink}; line-height: 1; }
-        .lp-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); margin-top: var(--gap-card); }
-        .lp-card { background: ${C.card}; border-radius: ${R.card}px; padding: var(--card-pad); min-width: 0; }
-        .lp-muted { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkMute}; margin: var(--gap-card) 0 0; text-wrap: pretty; }
-        .lp-proof { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-card); }
-        .lp-proof-n { font-family: var(--f-display); font-size: var(--t-d1); line-height: var(--lh-display); font-weight: 600; letter-spacing: -0.02em; color: ${C.ink}; }
-        .lp-proof-l { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; margin-top: var(--gap-line); text-wrap: pretty; }
-        .lp-chips { display: flex; flex-wrap: wrap; gap: var(--gap-card); }
-        .lp-chip { display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-4); border: 1.5px solid ${C.ink}; border-radius: 999px; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; }
-        .lp-line { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkMute}; margin: 0; max-width: 44em; text-wrap: pretty; }
-        .lp-sep { display: inline-block; margin-left: 0.35em; }
-        .lp-footer { border-top: 1px solid var(--rule); padding: var(--gap-section) var(--s-4) var(--s-6); background: ${C.paper}; }
-        .lp-footer-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); }
-        .lp-legal { display: flex; flex-wrap: wrap; gap: var(--gap-card); }
-        .lp-legal a { display: inline-flex; align-items: center; min-height: 44px; color: ${C.inkSoft}; font-size: var(--t-body-2); font-weight: 600; text-decoration: none; }
-        @media (min-width: 900px) {
-          .lp-hero { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: var(--s-7); }
-          .lp-actions { flex-direction: row; }
-          .lp-actions .lp-btn { width: auto; min-width: 220px; }
-          .lp-frame { border-radius: 14px 14px 3px 3px; padding: 10px; }
-          .lp-screen { border-radius: 6px; }
-          .lp-foot { display: block; height: 12px; background: #1c1c1f; border-radius: 0 0 12px 12px; margin: 0 -16px; }
-          .lp-proof { max-width: 560px; }
+          {/* ── TENANT ENTRY, paste the realtor's invite link → /apply/{token} ── */}
+          <section style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
+            <div className="rl-card" style={{ padding: 'clamp(22px, 3vw, 32px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Icon name="user" size={20} color={C.ink} />
+                </span>
+                <div style={{ minWidth: 0 }}>
+                  <h3 style={{ fontSize: 'clamp(18px, 2.4vw, 22px)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', marginBottom: 4 }}>
+                    Applying to a rental?
+                  </h3>
+                  <p style={{ fontSize: 14, lineHeight: 1.55, color: C.inkSoft, margin: 0 }}>
+                    Enter the application link the listing realtor sent you and we'll take you straight to the form. Applying is free.
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <input
+                  type="text" inputMode="url" value={applyLink}
+                  onChange={(e) => { setApplyLink(e.target.value); if (applyError) setApplyError(''); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') goToApply(); }}
+                  placeholder="rentletter.ca/apply/…"
+                  aria-label="Paste the application link the listing realtor sent you"
+                  aria-invalid={applyError ? true : undefined}
+                  style={{
+                    flex: '1 1 240px', minWidth: 0, boxSizing: 'border-box',
+                    padding: '13px 15px', fontSize: 15, borderRadius: R.ctrl,
+                    border: `1px solid ${applyError ? C.red : C.ruleDark}`, background: C.paper, color: C.ink, outline: 'none',
+                  }} />
+                <button onClick={goToApply} className="rl-btn" style={{
+                  flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: R.ctrl,
+                  padding: '13px 22px', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                }}>
+                  Go to my application <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={16} /></span>
+                </button>
+              </div>
+              {applyError
+                ? <div style={{ fontSize: 13, color: C.red, lineHeight: 1.5 }}>{applyError}</div>
+                : <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>Paste the full link (or just the code at the end). No account needed.</div>}
+            </div>
+          </section>
+
+          {/* ── BOTTOM CTA ── */}
+          <section style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px) clamp(72px, 10vw, 112px)' }}>
+            <div style={{ maxWidth: 1100, margin: '0 auto', background: C.ink, borderRadius: R.modal, padding: 'clamp(40px, 7vw, 72px) clamp(24px, 5vw, 64px)', position: 'relative', overflow: 'hidden' }}>
+              <span style={{ position: 'absolute', top: 0, left: 0, width: 6, height: '100%', background: C.red }} />
+              <div style={{ maxWidth: 620 }}>
+                <h2 className="rl-serif" style={{ fontSize: 'clamp(32px, 5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 18, color: C.paper }}>
+                  Set up your first listing.
+                </h2>
+                <p style={{ fontSize: 'clamp(15px, 2vw, 17px)', lineHeight: 1.6, color: C.inkInverse, marginBottom: 32 }}>
+                  Founding realtor spots are open for Ontario &amp; BC, free in exchange for your feedback. No credit card, no setup, your first applicant link is ready in minutes.
+                </p>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <a href="/dashboard" className="rl-btn" style={{
+                    background: C.red, color: C.paper, textDecoration: 'none', borderRadius: R.ctrl,
+                    padding: '16px 32px', fontSize: 15, fontWeight: 600,
+                    display: 'inline-flex', alignItems: 'center', gap: 9,
+                  }}>
+                    Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                  </a>
+                  <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter" className="rl-btn" style={{
+                    background: 'transparent', color: C.paper, border: `1px solid rgba(250,248,243,0.3)`, textDecoration: 'none',
+                    borderRadius: R.ctrl, padding: '16px 32px', fontSize: 15, fontWeight: 500,
+                  }}>
+                    Book a 15-min demo
+                  </a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* ── FOOTER ── */}
+          <footer style={{ padding: 'clamp(48px, 7vw, 72px) clamp(20px, 4vw, 32px) 48px', borderTop: `1px solid ${C.rule}`, background: C.card }}>
+            <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'clamp(28px, 4vw, 48px)', alignItems: 'start' }}>
+                <div style={{ minWidth: 180 }}>
+                  <Wordmark size="sm" />
+                  <p style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.6, marginTop: 14, maxWidth: 260 }}>
+                    Rental application screening for Canadian realtors. Built in Toronto.
+                  </p>
+                </div>
+                <FooterCol title="Product" links={[['Dashboard', '/dashboard'], ['Book a demo', 'mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter'], ['FAQ', '/faq']]} />
+                <FooterCol title="Company" links={[['Compliance', '/compliance'], ['Privacy', '/privacy'], ['Terms', '/terms'], ['Tenant profile', '/my-application']]} />
+                <FooterCol title="Contact" links={[['info@rentletter.ca', 'mailto:info@rentletter.ca']]} />
+              </div>
+              <div style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, fontSize: 12.5, color: C.inkMute }}>
+                © {new Date().getFullYear()} Rentletter · Ontario &amp; BC, Canada · Not legal advice
+              </div>
+            </div>
+          </footer>
+        </div>
+      <style jsx>{`
+        /* Landing header — seamless like the dashboard: drop the translucent tint + backdrop-filter
+           and the divider/shadow so it blends into the flat paper page (no colour/saturation seam),
+           and let the scroll-fade dissolve it instead of hard-cutting against content underneath. */
+        .lp-shell :global(.rl-header) {
+          background: transparent !important;
+          -webkit-backdrop-filter: none !important;
+          backdrop-filter: none !important;
+          border-bottom-color: transparent !important;
+          box-shadow: none !important;
+          transition: opacity 160ms linear !important;
+          will-change: opacity;
         }
-        /* The hero rises 8px and fades in on load, staggered 60ms through animation-delay; nothing
-           here waits on scroll. Reduced motion: the final state, no animation. */
-        @media ${MOTION_QUERY} {
-          @keyframes lp-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-          .lp-rise { animation: lp-rise ${DURATION.short}ms ${CURVE.enter} both; }
+        .lp-shell :global(.lh-left),
+        .lp-shell :global(.lh-right) { will-change: transform; }
+        /* Small screens: collapse the secondary nav (still in the footer) so the top bar is a single
+           tidy row, wordmark + primary CTA, with no wrap or overflow at 360/390. */
+        @media (max-width: 599px) {
+          .lp-shell :global(.lh-nav) { display: none !important; }
         }
       `}</style>
-    </>
+      </>
+    );
+  }
+
+
+
+  // ════════════════════════════════════════════════════════════
+  // FORM
+  // ════════════════════════════════════════════════════════════
+  if (step === 'form') {
+    return (
+      <>
+        <Head><title>Your details · Rentletter</title></Head>
+        <GlobalStyle />
+        <div style={{ minHeight: '100vh', background: C.paper }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <Wordmark />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <button onClick={() => setStep('landing')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
+                ← Back
+              </button>
+            </div>
+          </header>
+
+          <div style={{ maxWidth: 680, margin: '0 auto', padding: '64px 32px 80px' }}>
+
+            {/* INVITE BANNER, tenant arrived via a realtor's listing-scoped link */}
+            {inviteContext && (
+              <div style={{
+                background: C.ink, color: C.paper,
+                padding: '20px 24px',
+                marginBottom: 28, borderRadius: R.card,
+                borderLeft: `4px solid ${C.red}`,
+              }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 6 }}>
+                  Applying for
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>
+                  {inviteContext.listingName || (inviteContext.unit?.address) || 'Rental unit'}
+                </div>
+                {inviteContext.unit && (
+                  <div style={{ fontSize: 13, color: '#c8c2b3', marginBottom: 8 }}>
+                    {inviteContext.unit.monthlyRent && `$${inviteContext.unit.monthlyRent}/mo`}
+                    {inviteContext.unit.bedrooms && ` · ${inviteContext.unit.bedrooms} bed`}
+                  </div>
+                )}
+                {(inviteContext.realtorName || inviteContext.realtorBrokerage) && (
+                  <div style={{ fontSize: 13, color: '#c8c2b3' }}>
+                    Submitted to: <strong style={{ color: C.paper }}>{inviteContext.realtorName}</strong>
+                    {inviteContext.realtorBrokerage && ` · ${inviteContext.realtorBrokerage}`}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── DEV TEST BAR (will be removed before public launch) ── */}
+            <div style={{
+              marginBottom: 32, padding: '14px 18px',
+              background: '#fff8e1', border: `1px solid #f5d77a`, borderRadius: R.ctrl,
+              display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
+              fontSize: 12,
+            }}>
+              <span style={{ color: '#7a5d12', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 10 }}>
+                Dev mode
+              </span>
+              <button onClick={fillTestData} className="rl-btn"
+                style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 11, fontWeight: 600 }}>
+                Fill random sample
+              </button>
+              <span style={{ fontSize: 11, color: '#7a5d12', opacity: 0.75 }}>
+                Fills the form with sample data. Remove this block before launch.
+              </span>
+            </div>
+
+            <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.04 }}>
+              Tell us about you
+            </h1>
+            <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 56, lineHeight: 1.55 }}>
+              The more specific, the better. Skip anything that doesn't apply.
+            </p>
+
+            {error && (
+              <div style={{ background: C.redTint, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, padding: '14px 18px', marginBottom: 32, color: C.ink, fontSize: 14 }}>
+                {error}
+              </div>
+            )}
+
+            {/* Privacy-first positioning note */}
+            <div style={{
+              marginBottom: 40, padding: '18px 22px',
+              background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl,
+              fontSize: 13, color: C.inkSoft, lineHeight: 1.6,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
+                Designed to be privacy-first
+              </div>
+              We collect what landlords need to make a good decision, not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with Ontario Human Rights Code best practices.
+            </div>
+
+            <FormSection num="01" title="Where to send it" required>
+              <Field label="Email" value={form.email} onChange={v => update('email', v)} placeholder="you@example.com" type="email" />
+            </FormSection>
+
+            <FormSection num="02" title="The apartment">
+              <Field label="Address" value={form.apartmentAddress} onChange={v => update('apartmentAddress', v)} placeholder="123 King St W, Toronto" />
+              <Field label="Brief description" value={form.apartmentDescription} onChange={v => update('apartmentDescription', v)} placeholder="2BR, downtown, $2,400/mo" />
+            </FormSection>
+
+            <FormSection num="03" title="About you" required>
+              <Field label="Full name" value={form.fullName} onChange={v => update('fullName', v)} placeholder="Jane Doe" />
+              <Field label="Phone" value={form.phone} onChange={v => update('phone', v)} placeholder="(416) 555-0142" type="tel" />
+            </FormSection>
+
+            <FormSection num="04" title="Employment" required>
+              <Field label="Job title" value={form.jobTitle} onChange={v => update('jobTitle', v)} placeholder="Software engineer" />
+              <Field label="Employer" value={form.employer} onChange={v => update('employer', v)} placeholder="Shopify" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                <Field label="Years at this job" value={form.yearsAtJob} onChange={v => update('yearsAtJob', v)} placeholder="3" />
+                <Field label="Annual income (CAD)" value={form.annualIncome} onChange={v => update('annualIncome', v)} placeholder="85,000" type="number" />
+              </div>
+            </FormSection>
+
+            <FormSection num="05" title="Current rental">
+              <Field label="Current address" value={form.previousAddress} onChange={v => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                <Field label="Years there" value={form.yearsAtPrevious} onChange={v => update('yearsAtPrevious', v)} placeholder="2" />
+                <Field label="Current rent (CAD/mo)" value={form.currentRent} onChange={v => update('currentRent', v)} placeholder="2,200" type="number" />
+              </div>
+              <Field label="Current landlord name" value={form.previousLandlordName} onChange={v => update('previousLandlordName', v)} placeholder="John Smith" />
+              <Field label="Landlord contact" value={form.previousLandlordContact} onChange={v => update('previousLandlordContact', v)} placeholder="phone or email" />
+            </FormSection>
+
+            <FormSection num="06" title="Your move" required>
+              <Field label="Desired move in date" value={form.moveInDate} onChange={v => update('moveInDate', v)} type="date" />
+            </FormSection>
+
+            <FormSection num="07" title="Household">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                <Field label="Total occupants" value={form.numberOfOccupants} onChange={v => update('numberOfOccupants', v)} placeholder="2" type="number" />
+                <SelectField
+                  label="Smoker?"
+                  value={form.smoker}
+                  onChange={v => update('smoker', v)}
+                  options={[
+                    { value: 'no', label: 'Non-smoker' },
+                    { value: 'outdoor', label: 'Outdoor only' },
+                    { value: 'yes', label: 'Yes' },
+                  ]}
+                />
+              </div>
+              <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={v => update('occupantsDetails', v)} placeholder="One roommate (also on this application), no children." />
+
+              {/* Co-applicant toggle */}
+              <ToggleField
+                label="Applying with a co tenant? (another adult who’ll be on the lease)"
+                value={form.hasCoApplicant}
+                onChange={v => update('hasCoApplicant', v)}
+              />
+              {form.hasCoApplicant && (
+                <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4 }}>
+                  <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
+                    Co-applicant
+                  </div>
+                  <Field label="Full name" value={form.coApplicantName} onChange={v => update('coApplicantName', v)} placeholder="Alex Smith" />
+                  <Field label="Job title" value={form.coApplicantJobTitle} onChange={v => update('coApplicantJobTitle', v)} placeholder="Designer" />
+                  <Field label="Employer" value={form.coApplicantEmployer} onChange={v => update('coApplicantEmployer', v)} placeholder="Figma" />
+                  <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={v => update('coApplicantIncome', v)} placeholder="75,000" type="number" />
+                </div>
+              )}
+            </FormSection>
+
+            <FormSection num="08" title="Lifestyle">
+              <Field label="Pets" value={form.pets} onChange={v => update('pets', v)} placeholder="One small cat, indoor only, vet records available" />
+            </FormSection>
+
+            <FormSection num="09" title="References (optional but recommended)">
+              <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 18, lineHeight: 1.55 }}>
+                Two people who can vouch for you. Mentioning these by name on your application is more persuasive than saying "references available."
+              </p>
+              <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}`, marginBottom: 16 }}>
+                <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+                  Reference 1
+                </div>
+                <Field label="Full name" value={form.reference1Name} onChange={v => update('reference1Name', v)} placeholder="Sarah Johnson" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                  <Field label="Relationship" value={form.reference1Relationship} onChange={v => update('reference1Relationship', v)} placeholder="Current manager" />
+                  <Field label="Phone or email" value={form.reference1Contact} onChange={v => update('reference1Contact', v)} placeholder="416-555-0142" />
+                </div>
+              </div>
+              <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}` }}>
+                <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+                  Reference 2
+                </div>
+                <Field label="Full name" value={form.reference2Name} onChange={v => update('reference2Name', v)} placeholder="David Chen" />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
+                  <Field label="Relationship" value={form.reference2Relationship} onChange={v => update('reference2Relationship', v)} placeholder="Friend of 5 years" />
+                  <Field label="Phone or email" value={form.reference2Contact} onChange={v => update('reference2Contact', v)} placeholder="dchen@email.com" />
+                </div>
+              </div>
+            </FormSection>
+
+            {/* Generate button, free for all tenants */}
+            {(
+              <div className="rl-card" style={{ marginTop: 48, padding: '28px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
+                  <span style={{ fontSize: 15, color: C.inkSoft }}>Your professional rental application</span>
+                  <span style={{ fontSize: 13, color: C.green, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Free</span>
+                </div>
+                <div style={{ marginTop: 16, fontSize: 14, color: C.inkSoft, lineHeight: 1.6 }}>
+                  Submit your application and get a unique Rentletter number to share with realtors and landlords. No payment required.
+                </div>
+                <button
+                  onClick={handlePay}
+                  disabled={!isFormValid()}
+                  className="rl-btn"
+                  style={{
+                    width: '100%', marginTop: 24,
+                    background: isFormValid() ? C.ink : '#c8c2b3',
+                    color: C.paper, border: 'none', borderRadius: R.ctrl, padding: '18px',
+                    fontSize: 15, fontWeight: 600,
+                    cursor: isFormValid() ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  {isFormValid()
+                    ? 'Generate my application →'
+                    : 'Complete required fields'}
+                </button>
+                <p style={{ fontSize: 12, color: C.inkMute, marginTop: 14, textAlign: 'center' }}>
+                  Not legal advice
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+
+  // ════════════════════════════════════════════════════════════
+  // GENERATING
+  // ════════════════════════════════════════════════════════════
+  if (step === 'generating') {
+    return (
+      <>
+        <Head><title>Submitting · Rentletter</title></Head>
+        <GlobalStyle />
+        <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div style={{ textAlign: 'center', maxWidth: 440 }}>
+            <div style={{ display: 'inline-flex', gap: 6, marginBottom: 36 }}>
+              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.ink, animation: 'pulse 1.4s ease-in-out infinite' }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.ink, animation: 'pulse 1.4s ease-in-out 0.2s infinite' }} />
+              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.4s infinite' }} />
+            </div>
+            <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 40px)', lineHeight: 1.05, color: C.ink, letterSpacing: '-0.025em', marginBottom: 16 }}>
+              Submitting your application
+            </h2>
+            <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
+              A few seconds. Don't refresh.
+            </p>
+          </div>
+          <style jsx>{`
+            @keyframes pulse {
+              0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+              40% { opacity: 1; transform: scale(1); }
+            }
+          `}</style>
+        </div>
+      </>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // RESULT
+  // ════════════════════════════════════════════════════════════
+  if (step === 'result') {
+    return (
+      <>
+        <Head><title>Your application · Rentletter</title></Head>
+        <GlobalStyle />
+        <div style={{ minHeight: '100vh', background: C.paper }}>
+          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <Wordmark />
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <button onClick={startOver} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
+                Start fresh
+              </button>
+            </div>
+          </header>
+
+          <div style={{ maxWidth: 820, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px) 64px' }}>
+            <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.04, textWrap: 'balance' }}>
+              Your application is <span style={{ color: C.red, whiteSpace: 'nowrap' }}>submitted.</span>
+            </h1>
+            <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
+              Below is your application number and tenant resume. Share these with the listing realtor or landlord.
+            </p>
+
+            {/* Application Number Card, the trust signal for landlords */}
+            {applicationNumber && (
+              <div style={{
+                background: C.ink, color: C.paper, borderRadius: R.card,
+                padding: '24px 28px', marginBottom: 24,
+                position: 'relative', overflow: 'hidden',
+              }}>
+                <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 240 }}>
+                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                      Your Application Number
+                    </div>
+                    <div className="rl-serif" style={{ fontSize: 26, letterSpacing: '0.02em', marginBottom: 10, fontFamily: 'monospace' }}>
+                      {applicationNumber}
+                    </div>
+                    <p style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.55, maxWidth: 480 }}>
+                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants, for free, at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/dashboard</span>
+                    </p>
+                    <a href="/my-application"
+                      style={{
+                        display: 'inline-block', marginTop: 14,
+                        fontSize: 12, fontWeight: 600,
+                        color: C.paper, textDecoration: 'underline',
+                      }}>
+                      → See who viewed your application or revoke it
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(applicationNumber);
+                      setCopiedAppNum(true);
+                      setTimeout(() => setCopiedAppNum(false), 2000);
+                    }}
+                    className="rl-btn"
+                    style={{
+                      background: C.paper, color: C.ink, border: 'none', borderRadius: R.ctrl,
+                      padding: '11px 20px', fontSize: 13, fontWeight: 600,
+                      whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 7,
+                    }}
+                  >
+                    <Icon name={copiedAppNum ? 'check' : 'copy'} size={15} strokeWidth={copiedAppNum ? 2.5 : 1.5} /> {copiedAppNum ? 'Copied' : 'Copy number'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Email status */}
+            {form.email && (
+              <div style={{
+                background: emailSent ? C.greenTint : C.amberTint,
+                border: `1px solid ${emailSent ? '#c8d8cc' : '#e0d5a8'}`,
+                borderRadius: R.ctrl,
+                padding: '14px 18px', marginBottom: 24, fontSize: 14,
+                color: emailSent ? '#2d5a3f' : '#665a1f',
+              }}>
+                {emailSending ? `Delivering to ${form.email}...` : emailSent ? `Sent to ${form.email}` : `Will email to ${form.email}`}
+                {!emailSent && !emailSending && (
+                  <button onClick={() => sendEmail(form.email, form.fullName, applicationNumber)} className="rl-btn"
+                    style={{ marginLeft: 12, background: 'transparent', color: 'inherit', border: '1px solid currentColor', borderRadius: R.ctrl, padding: '6px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                    Resend email
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Resume */}
+            <div className="rl-card" style={{ marginBottom: 24, overflow: 'hidden' }}>
+              <div style={{ padding: '20px 24px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', borderBottom: `1px solid ${C.rule}` }}>
+                <h2 className="rl-serif" style={{ fontSize: 22, color: C.ink, letterSpacing: '-0.01em' }}>Tenant resume</h2>
+                <button onClick={() => copyText(resume, setCopiedResume)} className="rl-btn"
+                  style={{ background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, padding: '8px 16px', fontSize: 13, fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Icon name={copiedResume ? 'check' : 'copy'} size={14} strokeWidth={copiedResume ? 2.5 : 1.5} /> {copiedResume ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+              <textarea value={resume} onChange={e => updateResume(e.target.value)}
+                style={{
+                  width: '100%', minHeight: 320, padding: 24,
+                  fontFamily: "'Inter', sans-serif", fontSize: 13, lineHeight: 1.7,
+                  color: C.ink, background: C.card,
+                  border: 'none', outline: 'none', resize: 'vertical',
+                }} />
+            </div>
+
+            <button onClick={startOver} className="rl-btn"
+              style={{ marginTop: 8, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, padding: '14px 28px', fontSize: 14, fontWeight: 500 }}>
+              Start a new application
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  return null;
+}
+
+// ─── FOOTER COLUMN ────────────────────────────────────────────
+function FooterCol({ title, links }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 14 }}>{title}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
+        {links.map(([label, href]) => (
+          <a key={label} href={href} style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 13.5, lineHeight: 1.3 }}>{label}</a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── FORM COMPONENTS ──────────────────────────────────────────
+function FormSection({ num, title, required, children }) {
+  return (
+    <div style={{ marginBottom: 40, paddingBottom: 40, borderBottom: `1px solid ${C.rule}` }}>
+      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 14 }}>
+        <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500 }}>{num}</span>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>{title}</h3>
+        {required && <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}>Required</span>}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>{children}</div>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, placeholder, type = 'text' }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
+      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
+        style={{
+          width: '100%', padding: '14px 0', fontSize: 16,
+          border: 'none', borderBottom: `1px solid ${C.rule}`,
+          background: 'transparent', color: C.ink,
+          outline: 'none', transition: 'border color 0.2s',
+        }}
+        onFocus={e => e.target.style.borderBottomColor = C.ink}
+        onBlur={e => e.target.style.borderBottomColor = C.rule} />
+    </div>
+  );
+}
+
+function Textarea({ label, value, onChange, placeholder }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
+      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
+        style={{
+          width: '100%', padding: '14px 0', fontSize: 16,
+          border: 'none', borderBottom: `1px solid ${C.rule}`,
+          background: 'transparent', color: C.ink,
+          outline: 'none', resize: 'vertical', fontFamily: "'Inter', sans-serif",
+          lineHeight: 1.5, transition: 'border color 0.2s',
+        }}
+        onFocus={e => e.target.style.borderBottomColor = C.ink}
+        onBlur={e => e.target.style.borderBottomColor = C.rule} />
+    </div>
+  );
+}
+
+function SelectField({ label, value, onChange, options }) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: '100%', padding: '14px 0', fontSize: 16,
+          border: 'none', borderBottom: `1px solid ${C.rule}`,
+          background: 'transparent', color: C.ink,
+          outline: 'none', appearance: 'none',
+          fontFamily: "'Inter', sans-serif",
+          cursor: 'pointer',
+        }}
+        onFocus={e => e.target.style.borderBottomColor = C.ink}
+        onBlur={e => e.target.style.borderBottomColor = C.rule}>
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function ToggleField({ label, value, onChange }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0' }}>
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        style={{
+          width: 44, height: 24,
+          background: value ? C.red : C.rule,
+          border: 'none',
+          borderRadius: 12,
+          position: 'relative',
+          cursor: 'pointer',
+          transition: 'background 0.2s',
+          padding: 0,
+        }}>
+        <span style={{
+          position: 'absolute',
+          top: 2, left: value ? 22 : 2,
+          width: 20, height: 20, borderRadius: '50%',
+          background: C.paper,
+          transition: 'left 0.2s',
+        }} />
+      </button>
+      <span style={{ fontSize: 14, color: C.ink, fontWeight: 500, cursor: 'pointer' }} onClick={() => onChange(!value)}>
+        {label}
+      </span>
+    </div>
   );
 }
