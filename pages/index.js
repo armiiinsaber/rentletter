@@ -432,12 +432,12 @@ export default function Home() {
                       gap between them, the headline's left edge, side by side at 1280 and stacked
                       at 390. */}
                   <div className="rl-ctrl-row" style={{ marginBottom: 18 }}>
-                    <a href="/dashboard" className="rl-btn" style={{
+                    <a href="/demo/dashboard" className="rl-btn" style={{
                       background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
                       padding: '0 28px', fontSize: 15, fontWeight: 600,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
                     }}>
-                      Try the dashboard <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
+                      Try the dashboard with sample data <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
                     </a>
                     <a href="mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter&body=Hi%20Rentletter%20team%2C%0A%0AI%27d%20like%20to%20book%20a%2015-minute%20demo%20of%20Rentletter.%0A%0AMy%20brokerage%3A%20%0AMy%20preferred%20time%3A%20%0A%0AThanks!"
                       className="rl-btn" style={{
