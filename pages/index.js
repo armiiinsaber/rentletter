@@ -3,25 +3,37 @@ import Head from 'next/head';
 import { C, R, SH, EASE, FONT } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
 import DeviceFrame from '../components/DeviceFrame';
+import { tween, DURATION } from '../lib/motion';
+import { noWidow } from '../lib/typeset';
 import HeroDemo from '../components/mockups/HeroDemo';
 
 
-// ─── STAT: the number as it is, no count up, no observer ───────────────
-const StatCounter = ({ numStr, label }) => {
-  const match = numStr.match(/^(\d+)\s+(.+)$/);
-  const target = match ? parseInt(match[1], 10) : 0;
-  const suffix = match ? ' ' + match[2] : numStr;
+// ─── THE FOUR CELLS ───────────────────────────────────────────────
+// Each number counts from 0 to its value once on load, on a timer (lib/motion.js tween) over
+// DURATION.long, staggered 80ms across the four. The unit stands still beside the digits, which
+// hold the width of the final value, so nothing shifts while they run. Reduced motion renders the
+// value with no animation (tween calls back once). No observer, nothing on scroll, never again.
+const STATS = [
+  { value: 3, unit: 'days', label: 'screening by email and PDFs' },
+  { value: 30, unit: 'min', label: 'screening here' },
+  { value: 1, unit: 'link', label: 'posts anywhere, no PDFs back' },
+  { value: 0, unit: '', label: 'documents left in your inbox' },
+];
+const StatCounter = ({ value, unit, label, index }) => {
+  const [shown, setShown] = useState(value);
+  useEffect(() => {
+    const cancel = tween({ from: 0, to: value, ms: DURATION.long, delay: index * 80, onFrame: (v) => setShown(Math.round(v)) });
+    return () => cancel(true);
+  }, [value, index]);
   return (
-    <div>
-      <div className="rl-serif" style={{ fontSize: 'clamp(34px, 5vw, 44px)', color: C.ink, letterSpacing: '-0.02em', marginBottom: 6, lineHeight: 1 }}>
-        {target}{suffix}
+    <div className="lp-stat">
+      <div className="rl-serif lp-stat-n">
+        <span className="num" style={{ display: 'inline-block', minWidth: `${String(value).length}ch` }}>{shown}</span>{unit ? ` ${unit}` : ''}
       </div>
-      <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.4 }}>{label}</div>
+      <div className="lp-stat-l">{noWidow(label)}</div>
     </div>
   );
 };
-
-
 
 // Extract the invite token from whatever a tenant pastes: a full apply URL
 // (https://…/apply/{token}, with/without trailing slash or query/hash), or a bare
@@ -459,7 +471,7 @@ export default function Home() {
               </div>
 
               {/* RIGHT, dashboard screenshot in browser-chrome frame */}
-              <div style={{ position: 'relative' }}>
+              <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div ref={tiltRef}
                   onMouseMove={skipTilt ? undefined : handleTiltMove}
                   onMouseLeave={skipTilt ? undefined : handleTiltLeave}>
@@ -475,25 +487,16 @@ export default function Home() {
                     </DeviceFrame>
                   </div>
                 </div>
-                <div style={{ marginTop: 14, fontSize: 12, color: C.inkMute }}>
+                <div style={{ margin: 'auto 0', padding: 'var(--gap-card) 0', fontSize: 12, color: C.inkMute }}>
                   The Rentletter dashboard, one workspace per listing.
                 </div>
               </div>
             </div>
 
-            {/* Stats row, count-up animation when scrolled into view */}
-            <div style={{
-              marginTop: 'clamp(52px, 8vw, 88px)',
-              borderTop: `1px solid ${C.rule}`,
-              paddingTop: 36,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-              gap: 'clamp(20px, 3vw, 32px)',
-            }}>
-              <StatCounter numStr="3 days"  label="Typical screening time today" />
-              <StatCounter numStr="30 min"  label="The same job, on Rentletter" />
-              <StatCounter numStr="1 link"  label="Shared per listing" />
-              <StatCounter numStr="0 fees"  label="Charged to your applicants" />
+            {/* The four cells: two columns at 390, four across from 900px up. One column width, the
+                card gap between them, the label in a fixed box under its number so a cell never grows. */}
+            <div className="lp-stats">
+              {STATS.map((st, i) => <StatCounter key={st.label} value={st.value} unit={st.unit} label={st.label} index={i} />)}
             </div>
           </section>
 
@@ -647,6 +650,18 @@ export default function Home() {
             </div>
           </footer>
         </div>
+      <style jsx global>{`
+        /* The four cells: one column width, the card gap between them, the number in Fraunces at
+           the size it has always been, the label on the line gap under it in a fixed box (two lines
+           at 390, one from 900px up) so a cell never grows and no word falls alone. */
+        .lp-stats { margin-top: 0; border-top: 1px solid ${C.rule}; padding-top: 36px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-card); align-items: start; }
+        .lp-stat-n { font-size: clamp(34px, 5vw, 44px); color: ${C.ink}; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+        .lp-stat-l { margin-top: var(--gap-line); font-size: 13px; line-height: 1.4; color: ${C.inkMute}; height: 2.8em; overflow-wrap: anywhere; }
+        @media (min-width: 900px) {
+          .lp-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+          .lp-stat-l { height: 1.4em; }
+        }
+      `}</style>
       <style jsx>{`
         /* Landing header — seamless like the dashboard: drop the translucent tint + backdrop-filter
            and the divider/shadow so it blends into the flat paper page (no colour/saturation seam),
