@@ -249,7 +249,7 @@ export default function Mockups() {
 
           {/* The explainer film: the 1920 by 1080 cut, driven from the real sandbox and encoded by
               scripts/film. The product film below is unchanged. */}
-          <section className="mk-item" style={{ marginBottom: 'clamp(18px, 3vw, 28px)' }}>
+          <section className="mk-item" style={{ position: 'relative', marginBottom: 'clamp(18px, 3vw, 28px)' }}>
             <div className="mk-head">
               <div>
                 <div style={{ fontSize: 10.5, color: C.instMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Explainer</div>
@@ -265,6 +265,12 @@ export default function Mockups() {
               preload="metadata"
               style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', background: '#101012', borderRadius: 10 }}
             />
+            {/* The same export row every other scene carries (mk-ui mk-export, mk-xbtn), here as
+                links, since this film is a file rather than something rendered in the browser. */}
+            <div className="mk-ui mk-export" aria-label="Export">
+              <a className="mk-xbtn" href="/film/rentletter-film.mp4" download="rentletter-film.mp4">MP4 (2:12)</a>
+              <a className="mk-xbtn" href="/film/poster.jpg" download="rentletter-film-poster.jpg">Poster</a>
+            </div>
           </section>
 
           <div className="mk-grid" data-preset={preset.key}>
@@ -297,6 +303,8 @@ export default function Mockups() {
         .mk-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; color: ${C.instText}; }
         .mk-export { position: absolute; top: 10px; right: 10px; display: flex; gap: 6px; opacity: 0.55; transition: opacity 160ms ease; }
         .mk-stage:hover .mk-export, .mk-export:focus-within { opacity: 1; }
+        /* The film section has no stage to hover: its export row lifts with the section. */
+        .mk-item:hover .mk-export { opacity: 1; }
         .mk-xbtn { background: ${C.paper}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: ${R.pill}px; padding: 6px 11px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 30px; box-shadow: 0 2px 8px rgba(15,15,16,0.12); }
         .mk-xbtn:disabled { opacity: 0.5; cursor: wait; }
         /* while exporting: shadows and the gradient are composited in canvas (lib/mockupExport.js) */
