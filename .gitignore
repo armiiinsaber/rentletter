@@ -8,3 +8,8 @@ node_modules*
 .env*.local
 
 .claude/settings.local.json
+
+# The film: the working frames and the audio stay out of git; the finished MP4 and its poster are committed.
+out/
+public/film/narration.mp3
+public/film/bed.mp3

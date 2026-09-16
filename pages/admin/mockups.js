@@ -247,6 +247,26 @@ export default function Mockups() {
             <p>PNG downloads the stage as shown at 1×, 2× or 3×. Video renders the ranked-list loop (8.3 s) or the product film (43 s) frame by frame straight into H.264 at the chosen density — 3× is ~3800 px wide and takes a few minutes; the last export’s size shows next to the density chips. WebM appears only in browsers without WebCodecs. Exports are done in Chrome.</p>
           </details>
 
+          {/* The explainer film: the 1920 by 1080 cut, driven from the real sandbox and encoded by
+              scripts/film. The product film below is unchanged. */}
+          <section className="mk-item" style={{ marginBottom: 'clamp(18px, 3vw, 28px)' }}>
+            <div className="mk-head">
+              <div>
+                <div style={{ fontSize: 10.5, color: C.instMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Explainer</div>
+                <h2 style={{ fontFamily: 'Fraunces, Georgia, serif', fontSize: 22, fontWeight: 600, color: C.instText, letterSpacing: '-0.01em', margin: '4px 0 0' }}>The film we send before a call</h2>
+              </div>
+              <p style={{ fontSize: 12.5, color: C.instMute, lineHeight: 1.5, maxWidth: 420, margin: 0 }}>Two and a half minutes of the real sandbox, with the narration from docs/film-script.md.</p>
+            </div>
+            <video
+              src="/film/rentletter-film.mp4"
+              poster="/film/poster.jpg"
+              controls
+              playsInline
+              preload="metadata"
+              style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', background: '#101012', borderRadius: 10 }}
+            />
+          </section>
+
           <div className="mk-grid" data-preset={preset.key}>
             {shown.map((scene, i) => (
               <section key={scene.key} className="mk-item">
