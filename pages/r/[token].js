@@ -90,7 +90,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
   if (state !== 'ok' || !payload) {
     return shell(
       <div className="rl-card" style={card}>
-        <div style={{ marginBottom: 'var(--s-4)' }}><Wordmark /></div>
+        <div style={{ marginBottom: 'var(--s-4)' }}><a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a></div>
         <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{state === 'expired' ? 'This report has expired. Ask your realtor for a fresh one.' : 'This report is not available right now. Please try the link again in a moment.'}</p>
       </div>,
     );

@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { GlobalStyle } from '../ui';
+import { GlobalStyle, Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { C, R } from '../theme';
 import DashboardHeader from './DashboardHeader';
@@ -28,7 +28,12 @@ export default function ProfileView({ initialProfile }) {
       <div style={{ minHeight: '100vh', background: C.paperDeep, overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} />
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--gap-section) var(--s-4) 64px' }}>
-          <h1 className="t-d1" style={{ color: C.ink, margin: '0 0 var(--gap-section)' }}>Profile</h1>
+          {/* The same row the listing page carries at its top. */}
+          <a href={adapter.paths.home} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none' }}>
+            <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> Dashboard
+          </a>
+          <h1 className="t-d1" style={{ color: C.ink, margin: 'var(--s-4) 0 var(--gap-line)' }}>Profile</h1>
+          <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--gap-section)' }}>Changes save as you type.</p>
           {/* Identity, logo, brand colours and fonts: one card, one form. */}
           <section id="branding" className="rl-card" style={{ padding: 'var(--card-pad)', scrollMarginTop: 16 }}>
             <ProfileEditorBody profile={profile} onSaved={setProfile} />

@@ -371,7 +371,7 @@ export default function Home() {
           <ScrollHeader>
             {/* LEFT, wordmark (drifts left + fades on scroll) */}
             <div className="lh-left">
-              <Wordmark />
+              <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
             </div>
             {/* CENTER, secondary nav; collapses to the footer on small screens so the bar stays a
                 single tidy row (wordmark + CTA) with no wrap/overflow at 360/390 */}
@@ -635,7 +635,7 @@ export default function Home() {
             <div style={{ maxWidth: 1200, margin: '0 auto' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'clamp(28px, 4vw, 48px)', alignItems: 'start' }}>
                 <div style={{ minWidth: 180 }}>
-                  <Wordmark size="sm" />
+                  <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="sm" /></a>
                   <p style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.6, marginTop: 14, maxWidth: 260 }}>
                     Rental application screening for Canadian realtors. Built in Toronto.
                   </p>
@@ -704,7 +704,7 @@ export default function Home() {
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
           <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <Wordmark />
+            <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <button onClick={() => setStep('landing')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
                 ← Back
@@ -970,7 +970,7 @@ export default function Home() {
         <GlobalStyle />
         <div style={{ minHeight: '100vh', background: C.paper }}>
           <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <Wordmark />
+            <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
               <button onClick={startOver} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
                 Start fresh

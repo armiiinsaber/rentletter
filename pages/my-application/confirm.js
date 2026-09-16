@@ -41,7 +41,7 @@ export default function ConfirmPage({ t, kind, state }) {
       <GlobalStyle /><ProfileStyles />
       <div className="mp-page">
         <header className="mp-header">
-          <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
+          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
           <span className="mp-note">Profile</span>
         </header>
         <main className="mp-wrap">

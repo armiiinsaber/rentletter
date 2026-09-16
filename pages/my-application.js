@@ -145,7 +145,7 @@ export default function MyProfile() {
 
   const header = (right) => (
     <header className="mp-header">
-      <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
+      <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
       {right}
     </header>
   );

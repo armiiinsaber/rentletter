@@ -74,7 +74,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
       <Head><title>Rentletter</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle />
       <main style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-6) var(--s-4)', paddingTop: 'calc(var(--s-6) + env(safe-area-inset-top, 0px))' }}>
-        <div style={{ maxWidth: 560, margin: '0 auto var(--s-5)' }}><Wordmark /></div>
+        <div style={{ maxWidth: 560, margin: '0 auto var(--s-5)' }}><a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a></div>
         <div className="rl-card" style={{ maxWidth: 560, margin: '0 auto', padding: 'var(--card-pad)' }}>
           {view === 'open' ? (
             <>

@@ -44,7 +44,7 @@ export default function Onboarding({ initialProfile }) {
       <GlobalStyle />
       <OnboardingStyles />
       <div style={{ minHeight: '100dvh', background: C.paper }}>
-        <header style={{ padding: 'max(18px, env(safe-area-inset-top)) clamp(16px, 4vw, 32px) 0', maxWidth: 560, margin: '0 auto' }}><Wordmark /></header>
+        <header style={{ padding: 'max(18px, env(safe-area-inset-top)) clamp(16px, 4vw, 32px) 0', maxWidth: 560, margin: '0 auto' }}><a href="/dashboard" className="rl-mark" aria-label="Rentletter dashboard"><Wordmark /></a></header>
         <IdentityStep profile={profile} onSave={save} />
       </div>
     </>

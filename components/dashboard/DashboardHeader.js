@@ -31,7 +31,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
     <>
       <ScrollHeader maxWidth={1100}>
         {/* LEFT, wordmark: the dashboard. First beat of the reveal. */}
-        <a href={adapter.paths.home} aria-label="Rentletter dashboard" className="rl-hdr-mark">
+        <a href={adapter.paths.home} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">
           <Wordmark />
         </a>
         {/* CENTER, account status (trial countdown / lapsed / subscribed). Founders get no badge

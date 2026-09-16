@@ -649,7 +649,7 @@ export default function ApplyPage({ invited = null }) {
       <GlobalStyle /><ProfileStyles />
       <div className="mp-page">
         <header className="mp-header">
-          <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
+          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
           <span className="mp-note">Rental application</span>
         </header>
 

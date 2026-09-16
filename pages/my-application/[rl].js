@@ -128,7 +128,7 @@ export default function ApplicationPage() {
 
   const header = (
     <header className="mp-header">
-      <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
+      <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
       <a href="/my-application" className="mp-link">{cred?.via === 'profile' ? 'My profile' : 'Profile'}</a>
     </header>
   );

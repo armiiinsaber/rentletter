@@ -20,7 +20,7 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
       }}>
         <div style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'center' }}>
-            <a href="/" style={{ textDecoration: 'none' }}><Wordmark size="lg" /></a>
+            <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="lg" /></a>
           </div>
           <div className="rl-card" style={{ padding: 'clamp(24px, 5vw, 36px)' }}>
             {eyebrow && (

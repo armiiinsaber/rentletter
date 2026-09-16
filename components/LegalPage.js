@@ -45,7 +45,7 @@ export default function LegalPage({ content, metaTitle, metaDescription }) {
 
       <div style={{ minHeight: '100vh', background: C.paper, color: C.ink, overflowX: 'hidden' }}>
         <ScrollHeader maxWidth={880}>
-          <Link href="/" aria-label="Rentletter home" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></Link>
+          <Link href="/" aria-label="Rentletter home" className="rl-mark"><Wordmark /></Link>
           <Link href="/" style={{ color: C.inkSoft, fontSize: 13, fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={14} /></span> Back to home
           </Link>

@@ -120,7 +120,7 @@ export default function FAQ() {
       <div style={{ minHeight: '100vh', background: C.paper, color: C.ink }}>
 
         <ScrollHeader maxWidth={820}>
-          <Link href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></Link>
+          <Link href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></Link>
           <Link href="/" style={{ color: C.inkSoft, fontSize: 13, fontWeight: 500, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 7 }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={14} /></span> Back to home
           </Link>

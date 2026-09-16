@@ -40,7 +40,7 @@ export default function Join({ valid, recipientName, grantType, trialDays }) {
       <Head><title>{valid ? 'Your access to Rentletter' : 'Rentletter'}</title><meta name="robots" content="noindex, nofollow" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
       <GlobalStyle />
       <main style={{ minHeight: '100dvh', background: C.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'max(24px, env(safe-area-inset-top)) 24px max(32px, env(safe-area-inset-bottom))', textAlign: 'center' }}>
-        <div style={{ marginBottom: 'clamp(28px, 6vh, 48px)' }}><Wordmark size="lg" /></div>
+        <div style={{ marginBottom: 'clamp(28px, 6vh, 48px)' }}><a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="lg" /></a></div>
         <div style={{ maxWidth: 520, width: '100%' }}>
           <span aria-hidden="true" style={{ display: 'block', width: 26, height: 3, background: C.red, borderRadius: 1, margin: '0 auto 18px' }} />
           {valid ? (

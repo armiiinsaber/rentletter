@@ -25,7 +25,7 @@ export default function ShortLinkPage({ invalidMsg }) {
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
         <header style={{ borderBottom: `1px solid ${C.rule}`, padding: 'clamp(16px, 4vw, 22px) clamp(16px, 4vw, 32px)', paddingTop: 'calc(clamp(16px, 4vw, 22px) + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-          <a href="/" style={{ textDecoration: 'none', display: 'inline-flex' }}><Wordmark /></a>
+          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
           <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>Rental application</span>
         </header>
         <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(24px, 6vw, 56px) clamp(16px, 4vw, 32px) 80px' }}>

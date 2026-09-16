@@ -81,6 +81,8 @@ export const GlobalStyle = () => (
     a { color: inherit; }
     ::selection { background: ${C.red}; color: ${C.paper}; }
 
+    /* The wordmark is a link on every screen: a 44px tap target, the art untouched. */
+    .rl-mark { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; color: inherit; }
     .rl-serif { font-family: ${FONT.serif}; font-weight: 600; }
 
     /* ── Surfaces — always applied, no motion dependency ── */
