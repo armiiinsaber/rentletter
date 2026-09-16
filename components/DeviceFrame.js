@@ -13,7 +13,9 @@
 //
 // props: variant, url (laptop browser bar), aspect (content box ratio; laptop default 16/10,
 // phone 9/16, tablet 4/3), phoneAspect (responsive: ratio used in phone mode, default 9/15),
-// bg (content background), tone 'paper' | 'ink' (shadow colour), style, className.
+// bg (content background), tone 'paper' | 'ink' (shadow colour), style, className,
+// fit (laptop only: the screen's height follows the content instead of an aspect box, and the
+// content's own canvas paints the whole box, so no band of the screen surface can show).
 import { useEffect, useRef } from 'react';
 import { C, R } from './theme';
 
@@ -75,7 +77,7 @@ function StatusBar() {
 export const PHONE_ASPECT = '9 / 17';
 export const DEFAULT_ASPECT = { laptop: '16 / 10', phone: PHONE_ASPECT, tablet: '4 / 3', responsive: '16 / 10' };
 
-export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspect = '9 / 13.5', bg, tone = 'paper', dark = false, children, style, className = '' }) {
+export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspect = '9 / 13.5', bg, tone = 'paper', dark = false, fit = false, children, style, className = '' }) {
   const v = variant === 'responsive' ? 'responsive' : variant;
   const hasBar = v === 'laptop' || v === 'responsive';
   const hasPhone = v === 'phone' || v === 'responsive';
@@ -96,7 +98,7 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
     return () => ro?.disconnect();
   }, []);
   return (
-    <div ref={ref} className={`df df-${v} df-tone-${tone} ${dark ? 'df-dark' : ''} ${className}`} style={{ '--df-aspect': aspect || DEFAULT_ASPECT[v] || '16 / 10', '--df-phone-aspect': phoneAspect, '--df-bg': bg || (dark ? '#101012' : C.paper), ...style }}>
+    <div ref={ref} className={`df df-${v} df-tone-${tone} ${dark ? 'df-dark' : ''} ${fit ? 'df-fit' : ''} ${className}`} style={{ '--df-aspect': aspect || DEFAULT_ASPECT[v] || '16 / 10', '--df-phone-aspect': phoneAspect, '--df-bg': bg || (dark ? '#101012' : C.paper), ...style }}>
       {/* shell = bezel. screen = ONE rounded clipping surface (inner radius = outer − bezel) that
           contains the browser bar / status bar / island / content / home band. Anything inside
           (including transform-scaled content) is clipped by .df-screen, so corners stay clean. */}
@@ -151,6 +153,12 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
         .df-tablet .df-screen { border-radius: 10px; }
         .df-cam { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: #2a2a2e; box-shadow: 0 0 0 1px #3a3a3e; z-index: 1; }
 
+        /* ── fit (laptop): the content owns the box. No aspect ratio to letterbox against, both
+              scenes in one grid cell so the box takes their height, and the content's own canvas
+              painted across the box so a rounding hairline can never read as a band. ── */
+        .df-fit .df-content { aspect-ratio: auto; display: grid; background: var(--df-bg); }
+        .df-fit .df-content > * { grid-area: 1 / 1; position: relative !important; inset: auto !important; }
+
         /* ── responsive: laptop ≥ breakpoint, phone below (one content node) ── */
         .df-responsive .df-status, .df-responsive .df-safe { display: none; }
         @media (max-width: ${DEVICE_BREAKPOINT - 1}px) {
@@ -161,6 +169,9 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
           .df-responsive .df-status { display: block; }
           .df-responsive .df-safe { display: block; }
           .df-responsive .df-content { aspect-ratio: var(--df-phone-aspect); }
+          /* The phone is untouched: its box keeps the phone ratio and its scenes stay absolute. */
+          .df-responsive.df-fit .df-content { display: block; }
+          .df-responsive.df-fit .df-content > * { position: absolute !important; inset: 0 !important; }
         }
       `}</style>
     </div>
