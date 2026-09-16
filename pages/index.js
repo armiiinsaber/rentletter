@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { C, R, SH, EASE, FONT } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
-import DeviceFrame from '../components/DeviceFrame';
+import DeviceFrame, { DEVICE_BREAKPOINT } from '../components/DeviceFrame';
 import { tween, DURATION } from '../lib/motion';
 import { noWidow } from '../lib/typeset';
 import HeroDemo from '../components/mockups/HeroDemo';
@@ -482,7 +482,7 @@ export default function Home() {
                   }}>
                     {/* Device frame: laptop with browser chrome ≥720px, phone below, the SAME live
                         HeroDemo node either way (decorations swap via CSS; nothing re-mounts). */}
-                    <DeviceFrame variant="responsive" url="rentletter.ca/dashboard" aspect="4 / 3" phoneAspect="9 / 10.5" bg={`linear-gradient(160deg, ${C.card}, ${C.paperDeep})`}>
+                    <DeviceFrame className="lp-laptop" variant="responsive" url="rentletter.ca/dashboard" aspect="4 / 3" phoneAspect="9 / 10.5" bg={`linear-gradient(160deg, ${C.card}, ${C.paperDeep})`}>
                       <HeroDemo />
                     </DeviceFrame>
                   </div>
@@ -651,6 +651,11 @@ export default function Home() {
           </footer>
         </div>
       <style jsx global>{`
+        /* The laptop screen carries the content's own canvas, edge to edge inside the bezel. The
+           gradient it used to carry started on the card colour, which turned pure white in the
+           canvas pass and read as a strip between the bezel and the mockup's gutter. The phone
+           keeps the screen it has. */
+        @media (min-width: ${DEVICE_BREAKPOINT}px) { .lp-laptop .df-screen { background: ${C.paperDeep}; } }
         /* The four cells: one column width, the card gap between them, the number in Fraunces at
            the size it has always been, the label on the line gap under it in a fixed box (two lines
            at 390, one from 900px up) so a cell never grows and no word falls alone. */

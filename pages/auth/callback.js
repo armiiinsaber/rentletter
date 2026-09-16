@@ -1,16 +1,24 @@
 // pages/auth/callback.js
-// Handles Supabase email-link redirects (signup confirmation + password
-// recovery). Exchanges the PKCE ?code for a cookie session server-side, then
-// redirects to ?next (defaults to the dashboard). The PKCE code verifier was
-// stored as a cookie by the browser client at signUp / resetPasswordForEmail.
+// Handles Supabase email link redirects (signup confirmation, and any password recovery link
+// still pointing here). Exchanges the PKCE ?code for a cookie session server side, then redirects
+// to ?next (the dashboard by default). The PKCE code verifier was stored as a cookie by the
+// browser client at signUp. A recovery link goes to /reset-password, which can also read the
+// tokens Supabase puts in the fragment: a fragment never reaches this server.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
 import { redeemPromoFromCookie } from '../../lib/promoCookie';
 
 export async function getServerSideProps(ctx) {
   const code = typeof ctx.query.code === 'string' ? ctx.query.code : null;
   const rawNext = typeof ctx.query.next === 'string' ? ctx.query.next : '';
+  const type = typeof ctx.query.type === 'string' ? ctx.query.type : '';
+  const linkError = typeof ctx.query.error_code === 'string' ? ctx.query.error_code : (typeof ctx.query.error === 'string' ? ctx.query.error : '');
+  const recovery = type === 'recovery' || rawNext.startsWith('/reset-password');
   // Only allow internal redirect targets.
-  const next = rawNext.startsWith('/') ? rawNext : '/dashboard';
+  const next = rawNext.startsWith('/') ? rawNext : (recovery ? '/reset-password' : '/dashboard');
+  // A dead or spent link says so on the page that can offer another one.
+  if (linkError) {
+    return { redirect: { destination: recovery ? `/reset-password?error=${encodeURIComponent(linkError)}` : `/signin?error=${encodeURIComponent('Your link is invalid or has expired. Please try again.')}`, permanent: false } };
+  }
 
   if (!isSupabaseConfigured()) {
     return { redirect: { destination: '/signin?error=Sign-in%20is%20temporarily%20unavailable.', permanent: false } };
@@ -27,7 +35,7 @@ export async function getServerSideProps(ctx) {
     if (error) {
       return {
         redirect: {
-          destination: `/signin?error=${encodeURIComponent('Your link is invalid or has expired. Please try again.')}`,
+          destination: recovery ? `/reset-password?error=${encodeURIComponent('invalid_link')}` : `/signin?error=${encodeURIComponent('Your link is invalid or has expired. Please try again.')}`,
           permanent: false,
         },
       };

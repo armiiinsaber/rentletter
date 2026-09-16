@@ -45,7 +45,9 @@ test('a fresh profile with no name goes to onboarding', async () => {
 test('the entitlement each profile gets, as a value', async () => {
   const cases = [
     ['founder', { plan: 'founding' }, 'founding', true],
-    ['trialling', { plan: 'trial', trial_ends_at: new Date(NOW + 5 * DAY).toISOString() }, 'trialing', true],
+    // A live trial is five days from the REAL clock: lib/entitlements.js reads the real clock, so a
+    // date pinned to the fixture's frozen NOW turns into an expired trial as the calendar moves.
+    ['trialling', { plan: 'trial', trial_ends_at: new Date(Date.now() + 5 * DAY).toISOString() }, 'trialing', true],
     ['paid', { plan: 'paid', subscription_status: 'active' }, 'paid', true],
     ['past due in grace', { plan: 'paid', subscription_status: 'past_due', grace_ends_at: new Date(Date.now() + 3 * DAY).toISOString() }, 'past_due', true],
     ['lapsed trial', { plan: 'trial', trial_ends_at: ago(2) }, 'trial_expired', false],

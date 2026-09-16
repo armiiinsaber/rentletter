@@ -1,7 +1,8 @@
 // pages/forgot-password.js
-// Request a password-reset email via Supabase Auth. The link routes through
-// /auth/callback (establishing a short-lived recovery session) and on to
-// /reset-password, where the realtor sets a new password.
+// Request a password reset email via Supabase Auth. The link opens /reset-password directly:
+// that page reads the recovery credential in every shape Supabase sends (the PKCE code, the
+// hashed token, or the implicit pair in the fragment). A hop through /auth/callback cannot read a
+// fragment, since a fragment never reaches the server.
 import { useState } from 'react';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { isValidEmail } from '../lib/validation';
@@ -26,7 +27,7 @@ export default function ForgotPassword() {
     setError('');
     try {
       const supabase = getSupabaseBrowserClient();
-      const redirectTo = `${window.location.origin}/auth/callback?next=/reset-password`;
+      const redirectTo = `${window.location.origin}/reset-password`;
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
       if (resetError) {
         setError(resetError.message);
