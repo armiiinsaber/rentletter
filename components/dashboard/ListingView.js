@@ -901,7 +901,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       </Head>
       <GlobalStyle />
       <MotionStyles />
-      <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
+      <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} onAssistantAction={onNoticeAction} />
 
         {locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}

@@ -246,12 +246,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         {/* Tint the mobile browser chrome (status bar / toolbar) to the page eggshell so there is no
             white band at the very top or bottom edge. html/body/#__next backgrounds (below) cover the
             content, notch region (viewport-fit=cover), and overscroll canvas; this covers the chrome. */}
-        <meta name="theme-color" content={C.paperDeep} />
+        <meta name="theme-color" content={C.paper} />
       </Head>
       <GlobalStyle />
       {/* overflow-x: clip contains any horizontal overflow without creating a scroll container.
-          No min-height: html/body/#__next are pinned to the same canvas tone below, so a short
-          page needs no stretch, stretching only left a void of empty canvas under the footer. */}
+          The canvas comes from the root (components/ui.js), so this wrapper paints no tone of its
+          own; it only stretches to the viewport so a short page still reads as one surface. */}
       <div className="dash-bg" style={{ overflowX: 'clip' }}>
         {/* Static, in-flow header (see .dash-bg .rl-header below), it scrolls away with the page; its
             solid canvas background + safe-area padding cover the notch region at the top. */}
@@ -271,7 +271,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           paddingLeft: 'clamp(16px, 4vw, 32px)',
           // Ordinary bottom breathing room plus the home indicator inset. The "?" launcher is
           // position: fixed and overlaps the bottom right corner; it never pushes the page taller.
-          paddingBottom: 'calc(clamp(16px, 3vw, 24px) + env(safe-area-inset-bottom, 0px))',
+          paddingBottom: 'max(var(--s-6), env(safe-area-inset-bottom, 0px))',
         }}>
 
           {!ready && !listingsError && (
@@ -397,22 +397,26 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       </div>
 
       <style jsx>{`
-        /* ── Base canvas — ONE flat, uniform tone (C.paperDeep), no glows/gradients. The fixed header
-           carries the exact same colour (below), so header + page read as a single monochrome surface
-           top to bottom: no distinct header band, nothing to flash on scroll, and the notch region
-           matches too. The lighter cream cards (C.card) sit raised on top of this recessed canvas. ── */
+        /* ── Base canvas: ONE flat, uniform tone, painted at the root as var(--paper)
+           (components/ui.js), no glows and no gradients. The header carries the same token (below),
+           so header and page read as a single surface top to bottom: no distinct header band,
+           nothing to flash on scroll, and the notch region matches too. The white cards (C.card)
+           sit raised on that canvas. ── */
         .dash-bg {
-          background: ${C.paperDeep};
+          /* No background here: the canvas is painted at the root (components/ui.js var(--paper)),
+             so there is nothing to stop at the last card. Short pages still fill the viewport. */
+          min-height: 100vh;
+          min-height: 100dvh;
         }
         /* The dashboard header is a NORMAL, STATIC, in-flow element — it scrolls up and off with the
            page like any other content, NOT fixed/sticky. With no floating bar, there is no fixed layer
            for content to bleed under or be cut by, which eliminates the entire class of iOS fixed-vs-
            scrolling compositing bug (the half-cut title) at the source. It carries the exact page canvas
-           tone (C.paperDeep) so it reads as a seamless top strip of the monochrome page. Scoped here; the
+           tone (var(--paper)) so it reads as a seamless top strip of the page. Scoped here; the
            shared ScrollHeader (sticky) is unchanged on every other page. */
         .dash-bg :global(.rl-header) {
           position: static !important;            /* was fixed, now scrolls away with the page */
-          background: ${C.paperDeep} !important;  /* solid canvas tone, seamless with the page */
+          background: var(--paper) !important;  /* the one canvas tone, seamless with the page */
           -webkit-backdrop-filter: none !important;
           backdrop-filter: none !important;
           border-bottom-color: transparent !important;
@@ -429,15 +433,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           padding-top: 18px;
           padding-bottom: 18px;
         }
-        /* Seamless top AND bottom: match the root background to the flat .dash-bg canvas so there is
-           no tone step at the very top edge (under the status bar / above the header) or the very
-           bottom edge (browser chrome / iOS overscroll). One continuous canvas surface. */
-        :global(html),
-        :global(body),
-        :global(#__next) { background: ${C.paperDeep} !important; }
-        /* The overscroll bounce and the region behind the notch (viewport-fit=cover) paint the ROOT
-           element's background, so pin html to the canvas tone explicitly (not just via body). */
-        :global(html) { background-color: ${C.paperDeep} !important; }
         /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
         .dash-card {
           background: ${C.card};

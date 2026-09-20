@@ -22,6 +22,9 @@ export const GlobalStyle = () => (
       --lh-display: 1.15; --lh-body: 1.5; --lh-eyebrow: 1;
       --f-display: ${FONT.serif}; --f-body: ${FONT.sans};
       --card-pad: 16px; --card-radius: ${R.card}px; --rule: ${C.rule};
+      /* The one page canvas. Painted on html, body and the Next root below, so the area under short
+         content and the iOS overscroll region carry it too. */
+      --paper: ${C.paper};
       /* Every control is a pill: buttons, text buttons, chips, the confirm pills, the Invite
          controls, every control on the tenant side. Cards, inputs, the drop zone, the meter and
          the ink blocks keep --card-radius. */
@@ -47,13 +50,25 @@ export const GlobalStyle = () => (
     .t-eyebrow { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
     .num { font-variant-numeric: tabular-nums; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      background: var(--paper);
+      min-height: 100%;
+    }
+    /* The overscroll bounce and the region behind the notch (viewport-fit=cover) paint the ROOT
+       element's background, so html carries the canvas explicitly, not only through body. */
     html {
+      background-color: var(--paper);
       scroll-behavior: smooth;
       overflow-x: hidden;
       -webkit-text-size-adjust: 100%;
     }
+    /* The Next root sits between body and the page, so it carries the canvas too: nothing between
+       the root and a card can paint a different tone. */
+    #__next {
+      background-color: var(--paper);
+      min-height: 100%;
+    }
     body {
-      background: ${C.paper};
       color: ${C.ink};
       font-family: ${FONT.sans};
       overflow-x: hidden;

@@ -25,7 +25,7 @@ export default function ProfileView({ initialProfile }) {
         <meta name="description" content="Your realtor profile and branding." />
       </Head>
       <GlobalStyle />
-      <div style={{ minHeight: '100vh', background: C.paperDeep, overflowX: 'hidden' }}>
+      <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} />
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--gap-section) var(--s-4) 64px' }}>
           {/* The same row the listing page carries at its top. */}
