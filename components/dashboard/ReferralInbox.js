@@ -7,6 +7,7 @@ import { C, R } from '../theme';
 import { Icon } from '../ui';
 import ReferralCaution from './ReferralCaution';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { displayLabel } from '../../lib/listingAddress';
 
 const money = (n) => (n ? `$${Number(n).toLocaleString('en-CA')}` : null);
 const EMP = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
@@ -82,7 +83,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                       <select value={choice[ref.id] || ''} onChange={(e) => setChoice((c) => ({ ...c, [ref.id]: e.target.value }))} aria-label="Assign to listing"
                         style={{ flex: '1 1 200px', minWidth: 0, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 42 }}>
                         <option value="">Assign to a listing…</option>
-                        {listings.map((l) => <option key={l.id} value={l.id}>{l.name || l.address}{l.monthly_rent ? ` · $${Number(l.monthly_rent).toLocaleString('en-CA')}/mo` : ''}</option>)}
+                        {listings.map((l) => <option key={l.id} value={l.id}>{displayLabel(l)}{l.monthly_rent ? ` · $${Number(l.monthly_rent).toLocaleString('en-CA')}/mo` : ''}</option>)}
                       </select>
                       <button type="button" onClick={() => assign(ref)} disabled={!choice[ref.id] || busy === ref.id}
                         style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !choice[ref.id] ? 'not-allowed' : 'pointer', opacity: !choice[ref.id] ? 0.5 : 1, minHeight: 42 }}>

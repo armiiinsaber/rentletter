@@ -22,6 +22,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { logServerError } from '../../../lib/serverLog';
 import { isApplicationNumber } from '../../../lib/applicationIds';
+import { displayLabel } from '../../../lib/listingAddress';
 
 function safeEqual(a, b) { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || '')); return x.length > 0 && x.length === y.length && timingSafeEqual(x, y); }
 
@@ -75,7 +76,7 @@ async function enrich(apps) {
       const rl = byId.get(l.application_id);
       const a = out.find((x) => x.applicationNumber === rl);
       if (!a) continue;
-      a.listingName = l.listing?.name || l.listing?.address || a.listingName;
+      a.listingName = displayLabel(l.listing) || a.listingName;
       const r = realtors.get(l.listing?.profile_id);
       a.realtorName = r?.full_name || null; a.realtorBrokerage = r?.brokerage || null;
       a.status = statusFor(l);

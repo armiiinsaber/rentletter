@@ -26,7 +26,7 @@ export function reportEmail({ payload, pageUrl, landlordName }) {
   const r = payload.realtor || {};
   const n = payload.counts?.applicants || 0;
   const v = payload.counts?.verified || 0;
-  const address = payload.listing?.address || payload.listing?.name || 'your unit';
+  const address = payload.listing?.address || payload.listing?.name || 'your unit';   // the payload was built with the unit already joined (lib/reportSnapshot.js)
   const subject = `${address}: applicants from ${r.name}`;
   const lines = [
     `${r.name}${r.brokerage ? ` of ${r.brokerage}` : ''} is sending you the applicants for ${address}.`,

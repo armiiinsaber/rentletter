@@ -41,6 +41,7 @@ import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/sh
 import qrcode from 'qrcode-generator';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { referralsEnabled } from '../../lib/features';
+import { displayAddress, displayLabel } from '../../lib/listingAddress';
 
 const Row = ({ label, value }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-4)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
@@ -342,7 +343,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.invite_token, listing?.status]);
   const kitShort = shortCode ? shortUrlFor(shortCode) : '';
-  const kitTexts = postKitTexts(listing.address || listing.name, kitShort);
+  const kitTexts = postKitTexts(displayAddress(listing), kitShort);
   const kitCopy = (key, text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -358,7 +359,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const svg = kitQrSvg(); if (!svg) return;
     const blob = new Blob([svg], { type: 'image/svg+xml' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a'); a.href = url; a.download = `${addressSlug(listing.address || listing.name)}-rentletter.svg`;
+    const a = document.createElement('a'); a.href = url; a.download = `${addressSlug(displayAddress(listing))}-rentletter.svg`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
@@ -896,7 +897,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   return (
     <>
       <Head>
-        <title>{l.name || 'Listing'} · Rentletter</title>
+        <title>{displayLabel(l, 'Listing')} · Rentletter</title>
       </Head>
       <GlobalStyle />
       <MotionStyles />
@@ -915,7 +916,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <section className="rl-card" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
               <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>
-                {l.name || l.address || 'Untitled listing'}
+                {displayLabel(l, 'Untitled listing')}
                 {!listingOpen(l) && (
                   <span className="num" style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 var(--s-3)', marginLeft: 'var(--s-2)', borderRadius: R.pill, background: C.ink, color: C.paper, fontFamily: 'var(--f-body)', fontSize: 'var(--t-eyebrow)', fontWeight: 700, lineHeight: 1, letterSpacing: '0.04em', whiteSpace: 'nowrap', verticalAlign: 'middle', position: 'relative', top: -3 }}>
                     {l.status === 'closed' ? 'Closed' : 'Rented'}{l.closed_at ? ` · ${new Date(l.closed_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}
@@ -1012,7 +1013,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <div>
                 <div style={{ paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }} inert={!detailsOpen}>
                   <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-3)' }}>Unit & preferences</div>
-                  <Row label="Address" value={l.address || 'not set'} />
+                  <Row label="Address" value={displayAddress(l) || 'not set'} />
                   <Row label="Monthly rent" value={l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'not set'} />
                   <Row label="Bedrooms" value={formatUnit(l.bedrooms) || 'not set'} />
                   <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />

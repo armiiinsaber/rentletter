@@ -16,6 +16,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { authorizeApplicant } from '../../../lib/applicantAnalysis';
 import { kvReady, mintRequest, uploadUrl } from '../../../lib/docRequest';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
+import { displayLabel } from '../../../lib/listingAddress';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -52,7 +53,7 @@ export default async function handler(req, res) {
 
   const tenantName = String(ctx.application?.full_name || '').slice(0, 120);
   const tenantEmail = String(ctx.application?.email || '').trim().toLowerCase();
-  const listingName = String(ctx.listing?.name || ctx.listing?.address || 'your rental').slice(0, 120);
+  const listingName = String(displayLabel(ctx.listing, 'your rental')).slice(0, 120);
   const address = String(ctx.listing?.address || '').slice(0, 160);
 
   // Realtor profile (name for co-branding the tenant page + email).

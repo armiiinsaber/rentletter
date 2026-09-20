@@ -8,6 +8,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { loadApplicantVerification, verificationConfirmText } from '../../../lib/listingReportData';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { signingName } from '../../../lib/reportSignature';
+import { displayLabel } from '../../../lib/listingAddress';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -33,7 +34,7 @@ export default async function handler(req, res) {
       realtorName: signingName(loaded.profile),
       brokerage: loaded.profile?.brokerage || '',
       phone: loaded.profile?.phone || '',
-      unitName: loaded.listing?.name || loaded.listing?.address || '',
+      unitName: displayLabel(loaded.listing),
       applicantName: loaded.applicantName,
       verification: loaded.verification,
     });

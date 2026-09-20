@@ -10,6 +10,7 @@ import { buildLandlordReportPdf } from '../../../lib/landlordReportPdf';
 import { buildSnapshot } from '../../../lib/reportSnapshot';
 import { logServerError } from '../../../lib/serverLog';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
+import { displayLabel } from '../../../lib/listingAddress';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
     // The same payload a send would freeze, rendered without storing it.
     const payload = buildSnapshot({ listing: ctx.listing, applicants: ctx.active, profile: { ...ctx.profile, email: ctx.profile?.email || user.email } });
     const bytes = await buildLandlordReportPdf({ payload });
-    const slug = String(ctx.listing.name || ctx.listing.address || 'listing').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
+    const slug = String(displayLabel(ctx.listing, 'listing')).replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
     const filename = `shortlist-${slug}-${new Date().toISOString().slice(0, 10)}.pdf`;
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);

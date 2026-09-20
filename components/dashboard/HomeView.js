@@ -22,6 +22,7 @@ import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
 import { referralsEnabled } from '../../lib/features';
 import { needsProvince } from '../../lib/justInTime';
+import { displayLabel } from '../../lib/listingAddress';
 
 // ── Presentation-only helpers (no data logic) ─────────────────
 
@@ -327,12 +328,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </div>
               <div className="dash-grid">
                 {openListings.map((l) => (
-                  <div key={l.id} role="link" tabIndex={0} aria-label={l.name || l.address || 'Untitled listing'} className="dash-card dash-card-int"
+                  <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} className="dash-card dash-card-int"
                     onClick={() => { window.location.href = adapter.paths.listing(l.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = adapter.paths.listing(l.id); } }}
                     style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
                     {/* Name left, the rent right in tabular numerals, so the rents line up down the column. */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
-                      <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</div>
+                      <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
                       <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
                     <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>
@@ -352,7 +353,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                   <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
                     style={{ textDecoration: 'none', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
-                      <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{l.name || l.address || 'Untitled listing'}</div>
+                      <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
                       <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
                     <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{dots(listingStateLine(l, signals.applicantsByListing[l.id] || []))}</div>

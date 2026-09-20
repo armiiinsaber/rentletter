@@ -11,6 +11,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supa
 import { normalizeProvince } from '../../../lib/provinces';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { newShortCode, isShortCode, shortKey, shortUrl, INVITE_TTL } from '../../../lib/shortLink';
+import { displayAddress, displayLabel } from '../../../lib/listingAddress';
 
 function kvBase() {
   return (process.env.KV_REST_API_URL || '').replace(/\/+$/, '');
@@ -63,9 +64,9 @@ export default async function handler(req, res) {
     // so the tenant apply page can apply the right age-of-majority gate (ON 18 / BC 19).
     province: normalizeProvince(profile?.province),
     listingId: String(listing.id).slice(0, 64),
-    listingName: String(listing.name || 'Listing').slice(0, 80),
+    listingName: String(displayLabel(listing, 'Listing')).slice(0, 80),
     unit: {
-      address: listing.address || null,
+      address: displayAddress(listing) || null,
       monthlyRent: listing.monthly_rent != null ? String(listing.monthly_rent) : '',
       bedrooms: listing.bedrooms || '',
       allowsPets: listing.allows_pets || 'any',

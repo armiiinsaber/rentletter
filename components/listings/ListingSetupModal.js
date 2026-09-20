@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { DEFAULT_RENT_SHARE_CAP, CAP_HELPER, SAME_AS_CAP_NOTE, derivedMinIncome, sameAsCap, derivedLine, affordabilityPayload } from '../../lib/listingForm';
 import { C, R } from '../theme';
+import { displayAddress } from '../../lib/listingAddress';
 import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
 import { needsRentConfirm, RENT_WARNING } from '../../lib/listingEditWarning';
@@ -16,7 +17,7 @@ import { PROVINCE_OPTIONS } from '../../lib/provinces';
 // employment type, move in window, lease term, occupants, guarantor, parking spots, pets policy,
 // smoking allowed and EV parking columns are no longer written or read; they stay in the table.
 const EMPTY = {
-  address: '', monthly_rent: '', bedrooms: '',
+  address: '', unit: '', monthly_rent: '', bedrooms: '',
   allows_pets: 'no', allows_smoking: 'no', parking_included: 'no',
   landlord_name: '', landlord_email: '', landlord_phone: '',
   // AFFORDABILITY (lib/listingForm.js): the rent share cap defaults to 40 on a new listing (the
@@ -99,6 +100,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
       ...(askProvince && province ? { province } : {}),
       name,
       address: String(form.address).trim(),
+      unit: String(form.unit).trim() || null,
       monthly_rent: intOrNull(form.monthly_rent),
       bedrooms: String(form.bedrooms).trim(),
       allows_pets: form.allows_pets === 'yes' ? 'yes' : 'no',
@@ -179,6 +181,8 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             )}
             <label><span style={fieldLabel}>Address<Req /></span>
               <input type="text" value={form.address} onChange={(e) => set({ address: e.target.value })} placeholder="88 Bay Street" style={inputStyle} /></label>
+            <label><span style={fieldLabel}>Unit or suite (optional)</span>
+              <input type="text" value={form.unit} onChange={(e) => set({ unit: e.target.value })} placeholder="4B" style={inputStyle} /></label>
             <label><span style={fieldLabel}>Monthly rent (CAD)<Req /></span>
               <input type="text" inputMode="numeric" value={form.monthly_rent} onChange={(e) => set({ monthly_rent: e.target.value.replace(/[^\d]/g, '') })} placeholder="2400" style={inputStyle} /></label>
             <label><span style={fieldLabel}>Bedrooms<Req /></span>
@@ -283,7 +287,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16, textWrap: 'pretty' }}>{creating ? 'You can edit the details later, nothing here is locked in.' : RENT_WARNING}</p>
             <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
               {[
-                ['Address', String(form.address).trim()],
+                ['Address', displayAddress({ address: String(form.address).trim(), unit: String(form.unit).trim() })],
                 ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : 'not set'],
                 ['Bedrooms', formatUnit(form.bedrooms) || 'not set'],
                 // Join name + email with a middot ONLY when both exist (filter(Boolean) drops an
