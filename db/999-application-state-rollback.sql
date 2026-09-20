@@ -1,7 +1,7 @@
 -- db/999-application-state-rollback.sql
 -- DO NOT RUN as part of the setup. This UNDOES db/001, db/002, db/003 and db/004: it drops the state
 -- columns, the five new tables and their rows, the triggers and the enums. Nothing that existed
--- before those three files is touched: listings.status, decision_status, decision_priority,
+-- before those four files is touched: listings.status, decision_status, decision_priority,
 -- withdrawn_at and every document row stay as they are, and the application carries on reading
 -- them (lib/application-state.js falls back to those columns when the state column is absent).
 -- IDEMPOTENT: every statement is IF EXISTS.
