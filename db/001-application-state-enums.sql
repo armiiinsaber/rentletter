@@ -4,6 +4,7 @@
 -- IDEMPOTENT: each type is created only when it is missing, and every value is added with
 -- ADD VALUE IF NOT EXISTS, so a second run changes nothing. Nothing here touches a table or a row.
 -- The values MUST match lib/application-state.js (tests/applicationState.test.mjs compares them).
+-- The reconsidered state is added by db/004-application-state-reconsider.sql, which runs last.
 -- Undo: db/999-application-state-rollback.sql.
 
 -- 1. The state of one application on one listing (public.listing_applicants.state).
@@ -51,7 +52,9 @@ ALTER TYPE public.application_party_role ADD VALUE IF NOT EXISTS 'guarantor';
 ALTER TYPE public.application_party_role ADD VALUE IF NOT EXISTS 'occupant';
 
 -- 4. How to read an income amount (public.income_sources.kind). It says what the number is.
---    It is never a score input, never a rank and never a filter.
+--    It is never a score input, never a rank and never a filter. Three values and no more:
+--    employment, self_employed, other. An earlier copy of this file carried a fourth; where that
+--    copy was run, db/004-application-state-reconsider.sql takes it out again.
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type t JOIN pg_namespace n ON n.oid = t.typnamespace WHERE n.nspname = 'public' AND t.typname = 'income_source_kind') THEN
     CREATE TYPE public.income_source_kind AS ENUM ('employment');
@@ -59,7 +62,6 @@ DO $$ BEGIN
 END $$;
 ALTER TYPE public.income_source_kind ADD VALUE IF NOT EXISTS 'employment';
 ALTER TYPE public.income_source_kind ADD VALUE IF NOT EXISTS 'self_employed';
-ALTER TYPE public.income_source_kind ADD VALUE IF NOT EXISTS 'pension';
 ALTER TYPE public.income_source_kind ADD VALUE IF NOT EXISTS 'other';
 
 -- 5. Who moved an application (public.application_events.actor_type).

@@ -142,7 +142,8 @@
 --   listing_applicant_id  uuid        not null  references listing_applicants(id) on delete cascade
 --   applicant_person_id, application_party_id   nullable, on delete set null (db/002-application-state-tables.sql)
 --
--- The application state foundation (db/001, db/002, db/003 application state files)
+-- The application state foundation (db/001 to db/004 application state files; db/004 adds the
+-- reconsidered state and holds income_sources.kind to employment, self_employed, other)
 --   applicant_people      one portable person per verified email; facts only, never a Fit result   service role only
 --   application_parties   application_id references applications(id); primary, co_applicant,
 --                         guarantor, occupant; an occupant carries no income                       service role only

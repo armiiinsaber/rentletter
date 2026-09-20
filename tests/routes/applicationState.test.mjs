@@ -14,6 +14,7 @@ import { ROOT, walk, stateChangingRoutes, stateChangingFunctions, exportedFuncti
 
 const decision = (await import('../../pages/api/applicants/decision.js')).default;
 const withdraw = (await import('../../pages/api/applicants/withdraw.js')).default;
+const reconsider = (await import('../../pages/api/applicants/reconsider.js')).default;
 const requestDocuments = (await import('../../pages/api/applicants/request-documents.js')).default;
 const status = (await import('../../pages/api/listings/status.js')).default;
 const remove = (await import('../../pages/api/listings/delete.js')).default;
@@ -45,6 +46,7 @@ const src = (p) => readFileSync(join(ROOT, p), 'utf8');
 
 const EXPECTED_ROUTES = [
   'pages/api/applicants/decision.js',
+  'pages/api/applicants/reconsider.js',
   'pages/api/applicants/request-documents.js',
   'pages/api/applicants/withdraw.js',
   'pages/api/applications/mirror.js',
@@ -105,7 +107,7 @@ test('no status literal is compared or assigned outside lib/application-state.js
   const re = new RegExp([
     `(?:\\bstatus\\s*(?:===|!==|=|:|\\|\\|)\\s*${LISTING}|${LISTING}\\s*(?:===|!==)\\s*(?:\\w+\\.)?status\\b|setStatus\\(${LISTING}|statusPatch\\(${LISTING}|\\[${LISTING},\\s*${LISTING})`,
     `(?:(?:decision_?[sS]tatus|decision_?[pP]riority|\\.priority|\\bwas)\\s*(?:===|!==|=|:|\\|\\|)\\s*${DECISION}|${DECISION}\\s*(?:===|!==)\\s*(?:\\w+\\.)?decision\\w*)`,
-    "'(?:docs_pending|shortlisted|agreement_signed|deposit_received|lease_signed|moved_in|not_selected|withdrawn_by_applicant|withdrawn_by_realtor|fell_through)'",
+    "'(?:docs_pending|shortlisted|agreement_signed|deposit_received|lease_signed|moved_in|not_selected|withdrawn_by_applicant|withdrawn_by_realtor|fell_through|reconsidered)'",
   ].join('|'));
   // Not a listing or application status: a billing subscription, a consent or referral row, a
   // page's own view mode, a wizard step, an entitlement. Named file by file, with the reason.
@@ -203,6 +205,87 @@ test('listings/status reopen: the deal fell through, the listing is live again, 
   assert.equal(r.code, 200); assert.equal(row(s, 'J4').state, A.ACCEPTED); assert.equal(row(s, 'J1').state, A.NOT_SELECTED, 'the one that fell through is closed out');
 });
 
+const reopened = (extra = {}) => {
+  // L1 was rented to J1, the deal fell through, the listing is live again. J2 and J4 were told no.
+  const s = up({ states: { J1: A.FELL_THROUGH, J2: A.NOT_SELECTED, J4: A.NOT_SELECTED, J5: A.SHORTLISTED, ...(extra.states || {}) }, listingStates: { L1: extra.listingState || L.LIVE } });
+  return s;
+};
+
+test('reconsider: not_selected to reconsidered only while the listing is live, by its owner, with a reason', async () => {
+  for (const [listingState, status0] of [[L.RENTED, 'rented'], [L.PAUSED, 'active'], [L.WITHDRAWN, 'closed'], [L.DRAFT, 'active']]) {
+    const s = reopened({ listingState });
+    Object.assign(s.db.tables.listings.find((l) => l.id === 'L1'), { status: status0 });
+    const r = await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' });
+    assert.equal(r.code, 409, listingState); assert.equal(r.body.code, 'illegal_transition'); assert.deepEqual([r.body.from, r.body.to], [A.NOT_SELECTED, A.RECONSIDERED]);
+    assert.equal(row(s, 'J2').state, A.NOT_SELECTED, 'nothing written'); assert.equal(s.db.tables.application_events.length, 0);
+  }
+  const s = reopened();
+  assert.equal((await call(reconsider, { linkId: 'J2' })).code, 400, 'no reason');
+  assert.equal((await call(reconsider, { linkId: 'J2', reason: 'They seemed nice' })).code, 400, 'free text is not a reason');
+  assert.equal((await call(reconsider, { linkId: 'J9', reason: 'winner_fell_through' })).code, 403, 'someone else\'s applicant');
+  for (const id of ['J1', 'J5']) { const r = await call(reconsider, { linkId: id, reason: 'winner_fell_through' }); assert.equal(r.code, 409, `${id}: only not_selected enters`); }
+  assert.equal(s.db.tables.application_events.length, 0); assert.equal(row(s, 'J2').state, A.NOT_SELECTED);
+  const ok = await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' });
+  assert.equal(ok.code, 200, JSON.stringify(ok.body)); assert.equal(ok.body.state, A.RECONSIDERED); assert.equal(row(s, 'J2').state, A.RECONSIDERED);
+  assert.equal(row(s, 'J4').state, A.NOT_SELECTED, 'nobody else is revived');
+  assert.equal((await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' })).code, 409, 'a second time is refused: reconsidered is not not_selected');
+  // a lapsed plan cannot do it, and nobody signed out can
+  up({ user: null }); assert.equal((await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' })).code, 401);
+});
+
+test('entering reconsidered writes exactly one application_events row, carrying the reason, and restores no document', async () => {
+  const s = reopened();
+  const gone = { id: 'D1', listing_applicant_id: 'J2', profile_id: USER.id, storage_path: `${USER.id}/J2/old.pdf`, kind: 'pay stub', expires_at: '2026-08-01T00:00:00Z', deleted_at: '2026-08-01T04:00:00Z', deleted_by: 'expired', opened_count: 0 };
+  s.db.tables.applicant_documents.push({ ...gone });
+  const r = await call(reconsider, { linkId: 'J2', reason: 'winner_withdrew' });
+  assert.equal(r.code, 200, JSON.stringify(r.body));
+  const rows = s.db.tables.application_events.filter((e) => e.listing_applicant_id === 'J2');
+  assert.equal(rows.length, 1); assert.equal(s.db.tables.application_events.length, 1, 'and no row for anyone else');
+  assert.deepEqual([rows[0].from_state, rows[0].to_state, rows[0].actor_type, rows[0].actor, rows[0].reason], [A.NOT_SELECTED, A.RECONSIDERED, 'realtor', USER.id, 'winner_withdrew']);
+  assert.deepEqual(s.db.tables.applicant_documents.find((d) => d.id === 'D1'), gone, 'the expired document stays deleted');
+  assert.deepEqual(s.db.storageCalls, [], 'the bucket is not touched');
+  assert.equal(s.db.updates.filter((u) => u.table === 'applicant_documents').length, 0);
+  assert.equal(s.resend ? s.resend.sent.length : 0, 0, 'no email is sent from here (the re invite is not built)');
+});
+
+test('without its audit row the move does not stand', async () => {
+  const s = reopened();
+  s.db.failWhen = (q) => (q.table === 'application_events' && q.op === 'insert' ? { code: 'XX000', message: 'insert failed' } : null);
+  const r = await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' });
+  assert.equal(r.code, 503); assert.equal(row(s, 'J2').state, A.NOT_SELECTED, 'the state went back'); assert.equal(s.db.tables.application_events.length, 0);
+});
+
+test('reconsidered to accepted is refused with 409; reconsidered to shortlisted to accepted is allowed', async () => {
+  const s = reopened();
+  assert.equal((await call(reconsider, { linkId: 'J2', reason: 'listing_reopened' })).code, 200);
+  let r = await call(status, { listingId: 'L1', status: 'rented', rentedLinkId: 'J2', notify: false });
+  assert.equal(r.code, 409, JSON.stringify(r.body)); assert.equal(r.body.code, 'illegal_transition'); assert.deepEqual([r.body.from, r.body.to], [A.RECONSIDERED, A.ACCEPTED]);
+  const l1 = s.db.tables.listings.find((l) => l.id === 'L1');
+  assert.deepEqual([l1.status, l1.state], ['active', L.LIVE], 'the listing did not move'); assert.equal(row(s, 'J2').state, A.RECONSIDERED); assert.equal(row(s, 'J5').state, A.SHORTLISTED);
+  // The finalist mark is the way to shortlisted, then the winner.
+  r = await call(decision, { linkId: 'J2', priority: 'top' });
+  assert.equal(r.code, 200, JSON.stringify(r.body)); assert.equal(row(s, 'J2').state, A.SHORTLISTED);
+  r = await call(status, { listingId: 'L1', status: 'rented', rentedLinkId: 'J2', notify: false });
+  assert.equal(r.code, 200, JSON.stringify(r.body)); assert.equal(row(s, 'J2').state, A.ACCEPTED); assert.equal(row(s, 'J5').state, A.NOT_SELECTED);
+  assert.deepEqual(audit(s, 'J2'), [[A.NOT_SELECTED, A.RECONSIDERED, 'realtor'], [A.RECONSIDERED, A.SHORTLISTED, 'realtor'], [A.SHORTLISTED, A.ACCEPTED, 'realtor']]);
+});
+
+test('the other ways out of reconsidered: back to not_selected, or a withdrawal that cannot be undone into it', async () => {
+  const s = reopened();
+  assert.equal((await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' })).code, 200);
+  let r = await call(reconsider, { linkId: 'J2', undo: true });
+  assert.equal(r.code, 200); assert.equal(row(s, 'J2').state, A.NOT_SELECTED); assert.equal(s.db.tables.application_events.at(-1).reason, 'reconsider_undone');
+  assert.equal((await call(reconsider, { linkId: 'J4', undo: true })).code, 409, 'only a reconsidered one goes back');
+  assert.equal((await call(reconsider, { linkId: 'J4', reason: 'winner_fell_through' })).code, 200);
+  assert.equal((await call(withdraw, { linkId: 'J4' })).code, 200); assert.equal(row(s, 'J4').state, A.WITHDRAWN_BY_APPLICANT);
+  r = await call(withdraw, { linkId: 'J4', withdrawn: false });
+  assert.equal(r.code, 409, 'undoing it would skip the shortlist'); assert.equal(row(s, 'J4').state, A.WITHDRAWN_BY_APPLICANT); assert.ok(row(s, 'J4').withdrawn_at);
+  // Marking the listing rented closes out whoever is still reconsidered.
+  assert.equal((await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' })).code, 200);
+  assert.equal((await call(status, { listingId: 'L1', status: 'rented', rentedLinkId: 'J5', notify: false })).code, 200);
+  assert.equal(row(s, 'J2').state, A.NOT_SELECTED);
+});
+
 test('listings/status: a listing move the map does not allow answers 409; someone else\'s listing is refused first', async () => {
   const s = up({ listingStates: { L1: L.WITHDRAWN } });
   Object.assign(s.db.tables.listings.find((l) => l.id === 'L1'), { status: 'closed' });
@@ -265,6 +348,7 @@ test('before the migration has run: no state column, no audit table, and every r
   assert.equal(r.code, 200, JSON.stringify(r.body)); assert.equal(s.db.tables.listings.find((l) => l.id === 'L1').status, 'rented');
   r = await call(status, { listingId: 'L1', status: 'active' });
   assert.equal(r.code, 200); assert.equal(s.db.tables.listings.find((l) => l.id === 'L1').status, 'active');
+  assert.equal((await call(reconsider, { linkId: 'J2', reason: 'winner_fell_through' })).code, 409, 'with no stored state nobody is not_selected on a live listing, so there is nobody to reconsider');
   r = await call(status, { listingId: 'L1', status: 'rented', rentedLinkId: 'J4', notify: false });
   assert.equal(r.code, 200, 'with no stored state a reopened listing can be rented to anyone still on it, as today');
   assert.equal((await linkApplicantToListing(s.db, 'L2', 'A2', 'invite')).created, true);

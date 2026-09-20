@@ -21,18 +21,18 @@ const listeners = () => { try { return execSync(`lsof -tiTCP:${PORT} -sTCP:LISTE
 // The turn: a directory (mkdir is atomic) holding the walker's pid. A turn whose holder is no
 // longer running (a run that was killed) is cleared and taken.
 const running = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return false; } };
-async function takeTurn() {
+export async function takeTurn(turn = TURN) {
   for (;;) {
-    try { mkdirSync(TURN); writeFileSync(`${TURN}/pid`, String(process.pid)); return; } catch (e) { /* someone else is walking */ }
+    try { mkdirSync(turn); writeFileSync(`${turn}/pid`, String(process.pid)); return; } catch (e) { /* someone else is walking */ }
     let holder = 0; let age = 0;
-    try { holder = Number(readFileSync(`${TURN}/pid`, 'utf8')) || 0; } catch (e) { holder = 0; }
-    try { age = Date.now() - statSync(TURN).mtimeMs; } catch (e) { age = 0; }
-    if ((holder && !running(holder)) || (!holder && age > 5000)) { try { rmSync(TURN, { recursive: true, force: true }); } catch (e) { /* taken by another waiter */ } continue; }
+    try { holder = Number(readFileSync(`${turn}/pid`, 'utf8')) || 0; } catch (e) { holder = 0; }
+    try { age = Date.now() - statSync(turn).mtimeMs; } catch (e) { age = 0; }
+    if ((holder && !running(holder)) || (!holder && age > 5000)) { try { rmSync(turn, { recursive: true, force: true }); } catch (e) { /* taken by another waiter */ } continue; }
     await sleep(500);
   }
 }
-function giveTurn() {
-  try { if (Number(readFileSync(`${TURN}/pid`, 'utf8')) === process.pid) rmSync(TURN, { recursive: true, force: true }); } catch (e) { /* not ours, or already gone */ }
+export function giveTurn(turn = TURN) {
+  try { if (Number(readFileSync(`${turn}/pid`, 'utf8')) === process.pid) rmSync(turn, { recursive: true, force: true }); } catch (e) { /* not ours, or already gone */ }
 }
 
 export function devServer(probeUrl) {

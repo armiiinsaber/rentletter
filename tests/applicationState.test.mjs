@@ -3,12 +3,13 @@
 // and the migrations in db/ that carry the same words.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import * as S from '../lib/application-state.js';
 
 const { APPLICATION_STATE: A, LISTING_STATE: L } = S;
 const sql = (name) => readFileSync(new URL(`../db/${name}`, import.meta.url), 'utf8');
-const NEW_SQL = ['001-application-state-enums.sql', '002-application-state-tables.sql', '003-application-state-backfill.sql', '999-application-state-rollback.sql'];
+const NEW_SQL = ['001-application-state-enums.sql', '002-application-state-tables.sql', '003-application-state-backfill.sql', '004-application-state-reconsider.sql', '999-application-state-rollback.sql'];
+const RECONSIDER = { actorType: 'realtor', listingState: 'live', reason: 'winner_fell_through' };
 
 // Written out by hand, so a change to the module has to be made here as well.
 const EXPECTED = {
@@ -22,8 +23,12 @@ const EXPECTED = {
   lease_signed: ['moved_in', 'fell_through'],
   fell_through: ['shortlisted', 'not_selected', 'withdrawn_by_applicant', 'expired'],
   withdrawn_by_applicant: ['submitted', 'shortlisted', 'expired'],
-  moved_in: [], not_selected: [], withdrawn_by_realtor: [], expired: [],
+  moved_in: [], withdrawn_by_realtor: [], expired: [],
+  not_selected: ['reconsidered'],
+  reconsidered: ['shortlisted', 'withdrawn_by_applicant', 'not_selected'],
 };
+// In the map, and refused all the same unless the moment is right.
+const GUARDED = [['not_selected', 'reconsidered']];
 const EXPECTED_LISTING = {
   draft: ['live', 'withdrawn'],
   live: ['paused', 'rented', 'withdrawn'],
@@ -32,8 +37,8 @@ const EXPECTED_LISTING = {
   withdrawn: ['live'],
 };
 
-test('the fourteen application states and the five listing states, by name', () => {
-  assert.deepEqual([...S.APPLICATION_STATES], ['draft', 'submitted', 'docs_pending', 'shortlisted', 'accepted', 'agreement_signed', 'deposit_received', 'lease_signed', 'moved_in', 'not_selected', 'withdrawn_by_applicant', 'withdrawn_by_realtor', 'fell_through', 'expired']);
+test('the fifteen application states and the five listing states, by name', () => {
+  assert.deepEqual([...S.APPLICATION_STATES], ['draft', 'submitted', 'docs_pending', 'shortlisted', 'accepted', 'agreement_signed', 'deposit_received', 'lease_signed', 'moved_in', 'not_selected', 'withdrawn_by_applicant', 'withdrawn_by_realtor', 'fell_through', 'expired', 'reconsidered']);
   assert.deepEqual([...S.LISTING_STATES], ['draft', 'live', 'paused', 'rented', 'withdrawn']);
 });
 
@@ -41,11 +46,13 @@ test('every allowed transition is allowed, and nothing else is', () => {
   assert.deepEqual(JSON.parse(JSON.stringify(S.ALLOWED_TRANSITIONS)), EXPECTED);
   let allowed = 0; let refused = 0;
   for (const from of S.APPLICATION_STATES) for (const to of S.APPLICATION_STATES) {
-    const ok = EXPECTED[from].includes(to);
+    const guarded = GUARDED.some(([f, t]) => f === from && t === to);
+    const ok = EXPECTED[from].includes(to) && !guarded;
     assert.equal(S.canTransition(from, to), ok, `${from} to ${to}`);
+    assert.equal(S.canTransition(from, to, RECONSIDER), EXPECTED[from].includes(to), `${from} to ${to}, as a realtor on a live listing with a reason`);
     if (ok) { assert.equal(S.assertTransition(from, to), to); allowed++; } else { assert.throws(() => S.assertTransition(from, to), (e) => S.isTransitionError(e) && e.from === from && e.to === to && e.kind === 'application'); refused++; }
   }
-  assert.equal(allowed, 39); assert.equal(allowed + refused, 14 * 14);
+  assert.equal(allowed, 42); assert.equal(allowed + refused, 15 * 15);
   assert.deepEqual(JSON.parse(JSON.stringify(S.ALLOWED_LISTING_TRANSITIONS)), EXPECTED_LISTING);
   for (const from of S.LISTING_STATES) for (const to of S.LISTING_STATES) assert.equal(S.canTransitionListing(from, to), EXPECTED_LISTING[from].includes(to), `listing ${from} to ${to}`);
 });
@@ -56,6 +63,7 @@ test('forbidden transitions throw, submitted to moved_in first among them', () =
     [A.ACCEPTED, A.MOVED_IN], [A.ACCEPTED, A.DEPOSIT_RECEIVED], [A.ACCEPTED, A.NOT_SELECTED], [A.ACCEPTED, A.WITHDRAWN_BY_REALTOR],
     [A.AGREEMENT_SIGNED, A.LEASE_SIGNED], [A.DEPOSIT_RECEIVED, A.MOVED_IN],
     [A.NOT_SELECTED, A.SHORTLISTED], [A.NOT_SELECTED, A.ACCEPTED], [A.MOVED_IN, A.FELL_THROUGH], [A.EXPIRED, A.SUBMITTED], [A.WITHDRAWN_BY_REALTOR, A.SUBMITTED],
+    [A.RECONSIDERED, A.ACCEPTED], [A.RECONSIDERED, A.SUBMITTED], [A.SUBMITTED, A.RECONSIDERED], [A.SHORTLISTED, A.RECONSIDERED], [A.FELL_THROUGH, A.RECONSIDERED], [A.WITHDRAWN_BY_APPLICANT, A.RECONSIDERED],
     [A.DRAFT, A.ACCEPTED], [A.SUBMITTED, A.SUBMITTED], [A.SUBMITTED, 'rejected'], ['nonsense', A.SUBMITTED],
   ];
   for (const [from, to] of forbidden) {
@@ -72,8 +80,9 @@ test('accepted goes to agreement_signed, fell_through or withdrawn_by_applicant,
   assert.deepEqual([...S.ALLOWED_TRANSITIONS[A.ACCEPTED]].sort(), [A.AGREEMENT_SIGNED, A.FELL_THROUGH, A.WITHDRAWN_BY_APPLICANT].sort());
 });
 
-test('terminal: not_selected, moved_in, withdrawn_by_realtor and expired, and only those', () => {
-  assert.deepEqual(S.APPLICATION_STATES.filter(S.isTerminal).sort(), [A.EXPIRED, A.MOVED_IN, A.NOT_SELECTED, A.WITHDRAWN_BY_REALTOR].sort());
+test('terminal: moved_in, withdrawn_by_realtor and expired; not_selected has one guarded way out and no other', () => {
+  assert.deepEqual(S.APPLICATION_STATES.filter(S.isTerminal).sort(), [A.EXPIRED, A.MOVED_IN, A.WITHDRAWN_BY_REALTOR].sort());
+  assert.deepEqual([...S.ALLOWED_TRANSITIONS[A.NOT_SELECTED]], [A.RECONSIDERED]);
   assert.equal(S.isTerminal('nonsense'), false);
 });
 
@@ -161,7 +170,9 @@ test('the tenant still reads what they read before', () => {
 test('the enums in db/001 carry exactly the module\'s values', () => {
   const file = sql('001-application-state-enums.sql');
   const values = (type) => [...file.matchAll(new RegExp(`ALTER TYPE public\\.${type} ADD VALUE IF NOT EXISTS '([a-z_]+)';`, 'g'))].map((m) => m[1]);
-  assert.deepEqual(values('application_state'), [...S.APPLICATION_STATES]);
+  const later = [...sql('004-application-state-reconsider.sql').matchAll(/ALTER TYPE public\.application_state ADD VALUE IF NOT EXISTS '([a-z_]+)';/g)].map((m) => m[1]);
+  assert.deepEqual(later, ['reconsidered']);
+  assert.deepEqual([...values('application_state'), ...later], [...S.APPLICATION_STATES]);
   assert.deepEqual(values('listing_state'), [...S.LISTING_STATES]);
   assert.deepEqual(values('application_party_role'), [...S.PARTY_ROLES]);
   assert.deepEqual(values('income_source_kind'), [...S.INCOME_KINDS]);
@@ -207,4 +218,56 @@ test('the Fit score does not know the new tables exist', () => {
   for (const name of ['lib/fitScore.js', 'lib/deriveScorecard.js']) {
     assert.doesNotMatch(readFileSync(new URL(`../${name}`, import.meta.url), 'utf8'), /application_parties|income_sources|applicant_people|INCOME_KIND|PARTY_ROLE|application-state/, name);
   }
+});
+
+test('no Fit file references an income kind, or income_sources at all', () => {
+  const lib = new URL('../lib/', import.meta.url);
+  const fitFiles = readdirSync(lib).filter((f) => /fit|scorecard/i.test(f) && /\.js$/.test(f)).map((f) => `lib/${f}`);
+  assert.ok(fitFiles.includes('lib/fitScore.js') && fitFiles.includes('lib/deriveScorecard.js'), fitFiles.join(', '));
+  for (const name of fitFiles) {
+    const text = readFileSync(new URL(`../${name}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(text, /INCOME_KINDS?|income_?source_?kind|incomeKind|income_kind/i, `${name}: no income kind`);
+    // fitScore.js has its own incomeSource (stated or verified: where the figure came from). That
+    // is not the table and is left alone; the table's name, in either spelling, is what is refused.
+    assert.doesNotMatch(text, /income_sources?\b|incomeSources\b|from\('income/, `${name}: no income_sources at all`);
+  }
+});
+
+test('income kinds: employment, self_employed and other, in the module, in db/001 and held by db/004', () => {
+  assert.deepEqual([...S.INCOME_KINDS], ['employment', 'self_employed', 'other']);
+  const removed = ['pen', 'sion'].join('');
+  assert.equal(Object.values(S.INCOME_KIND).includes(removed), false);
+  assert.equal(sql('001-application-state-enums.sql').includes(`'${removed}'`), false, 'db/001 no longer creates it, so a second run cannot bring it back');
+  const four = sql('004-application-state-reconsider.sql');
+  assert.match(four, /CREATE TYPE public\.income_source_kind AS ENUM \('employment', 'self_employed', 'other'\);/);
+  assert.match(four, /ADD CONSTRAINT income_sources_kind_permitted CHECK \(kind::text IN \('employment', 'self_employed', 'other'\)\);/);
+  assert.match(four, /e\.enumlabel NOT IN \('employment', 'self_employed', 'other'\)/, 'the rebuild runs only while another value is in the type');
+  assert.equal(four.includes(`'${removed}'`), false, 'the removed word is not written anywhere');
+  for (const dir of ['lib', 'pages', 'components', 'db']) for (const f of readdirSync(new URL(`../${dir}/`, import.meta.url), { recursive: true }).filter((x) => /\.(js|sql)$/.test(String(x)))) {
+    assert.equal(readFileSync(new URL(`../${dir}/${f}`, import.meta.url), 'utf8').includes(`'${removed}'`), false, `${dir}/${f}`);
+  }
+});
+
+test('reconsidered: one way in, guarded; three ways out; never straight to the winner', () => {
+  const into = S.APPLICATION_STATES.filter((from) => S.canTransition(from, A.RECONSIDERED, RECONSIDER));
+  assert.deepEqual(into, [A.NOT_SELECTED], 'nothing else may enter reconsidered');
+  assert.equal(S.canTransition(null, A.RECONSIDERED, RECONSIDER), false, 'a new row cannot start there');
+  assert.deepEqual([...S.ALLOWED_TRANSITIONS[A.RECONSIDERED]].sort(), [A.NOT_SELECTED, A.SHORTLISTED, A.WITHDRAWN_BY_APPLICANT].sort());
+  // The guard: a realtor, a live listing, a reason from the list. Anything else is refused.
+  assert.equal(S.assertTransition(A.NOT_SELECTED, A.RECONSIDERED, RECONSIDER), A.RECONSIDERED);
+  for (const listingState of ['draft', 'paused', 'rented', 'withdrawn', null, undefined]) assert.throws(() => S.assertTransition(A.NOT_SELECTED, A.RECONSIDERED, { ...RECONSIDER, listingState }), /cannot move from not_selected to reconsidered/, String(listingState));
+  for (const actorType of ['applicant', 'system', null]) assert.throws(() => S.assertTransition(A.NOT_SELECTED, A.RECONSIDERED, { ...RECONSIDER, actorType }), /cannot move/, String(actorType));
+  for (const reason of [null, '', 'because', 'They seemed nice']) assert.throws(() => S.assertTransition(A.NOT_SELECTED, A.RECONSIDERED, { ...RECONSIDER, reason }), /cannot move/, String(reason));
+  assert.throws(() => S.assertTransition(A.NOT_SELECTED, A.RECONSIDERED), /cannot move/, 'no context at all');
+  assert.deepEqual(Object.keys(S.TRANSITION_GUARDS), ['not_selected>reconsidered']);
+  assert.equal(S.TRANSITION_GUARDS['not_selected>reconsidered'].audited, true);
+  // Reconsidered is not in play, holds nothing, and cannot be the winner until shortlisted.
+  assert.equal(S.isInPlay(A.RECONSIDERED), false); assert.equal(S.isActionable(A.RECONSIDERED, []), false); assert.equal(S.holdsListing(A.RECONSIDERED), false);
+  assert.throws(() => S.assertTransition(A.RECONSIDERED, A.ACCEPTED), /cannot move from reconsidered to accepted/);
+  assert.throws(() => S.rentedCascade([{ id: 'r', state: A.RECONSIDERED }], 'r'), /cannot move from reconsidered to accepted/);
+  assert.equal(S.assertTransition(S.assertTransition(A.RECONSIDERED, A.SHORTLISTED), A.ACCEPTED), A.ACCEPTED, 'through shortlisted it can');
+  // No cascade revives anyone: a reopen leaves not_selected alone, and renting closes out a reconsidered one.
+  assert.deepEqual(S.reopenCascade([{ id: 'n', state: A.NOT_SELECTED }, { id: 'r', state: A.RECONSIDERED }]), []);
+  assert.deepEqual(S.rentedCascade([{ id: 'w', state: A.SHORTLISTED }, { id: 'r', state: A.RECONSIDERED }, { id: 'n', state: A.NOT_SELECTED }], 'w'), [{ id: 'w', from: A.SHORTLISTED, to: A.ACCEPTED }, { id: 'r', from: A.RECONSIDERED, to: A.NOT_SELECTED }]);
+  for (const r of S.RECONSIDER_REASONS) assert.match(r, /^[a-z_]+$/, 'a code about the deal, never free text');
 });
