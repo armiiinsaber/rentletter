@@ -101,6 +101,7 @@
 --   created_at                          timestamptz           default now()      INFERRED
 --   updated_at                          timestamptz           default now()      INFERRED
 --   status, closed_at, rented_link_id   added by db/listing-status.sql (not in the export)
+--   state                               listing_state (draft, live, paused, rented, withdrawn), db/002-application-state-tables.sql
 --
 -- public.listing_applicants
 --   id                    uuid        not null  default gen_random_uuid()  primary key
@@ -121,6 +122,7 @@
 --   docs_verified         boolean
 --   confirmations         jsonb       not null  default '{}'   (db/screening.sql)
 --   last_sent_at          timestamptz                        (db/screening.sql)
+--   state                 application_state                   (db/002-application-state-tables.sql; the values are lib/application-state.js)
 --   unique (listing_id, application_id)
 --
 -- public.applications
@@ -138,6 +140,18 @@
 --
 -- public.applicant_documents (db/documents.sql)
 --   listing_applicant_id  uuid        not null  references listing_applicants(id) on delete cascade
+--   applicant_person_id, application_party_id   nullable, on delete set null (db/002-application-state-tables.sql)
+--
+-- The application state foundation (db/001, db/002, db/003 application state files)
+--   applicant_people      one portable person per verified email; facts only, never a Fit result   service role only
+--   application_parties   application_id references applications(id); primary, co_applicant,
+--                         guarantor, occupant; an occupant carries no income                       service role only
+--   income_sources        application_party_id references application_parties(id); kind, amount    service role only
+--   closings              listing_applicant_id unique; agreement, rent deposit (never more than
+--                         one month's rent), lease, keys, each with when and who                   realtor reads own
+--   application_events    listing_applicant_id; from_state, to_state, actor, actor_type, reason;
+--                         append only, one row per move                                            realtor reads own
+--   applications.applicant_person_id   nullable, references applicant_people(id) on delete set null
 --
 -- Row level security
 --   listings_all_own            on listings            for all    using (profile_id = auth.uid())

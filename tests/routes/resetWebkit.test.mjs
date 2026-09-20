@@ -18,7 +18,7 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(`${BASE}/reset-password`);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 180000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
 after(() => server.stop(), { timeout: 300000 });
 
 // A token shaped like the JWT supabase-js reads the expiry from, valid for an hour.

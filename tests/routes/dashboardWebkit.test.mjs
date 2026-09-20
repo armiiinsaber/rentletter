@@ -19,7 +19,7 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(URL_HOME);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 180000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
 after(() => server.stop(), { timeout: 300000 });
 
 // Laid out and not hidden: a box with height, display and visibility on, opacity 1.

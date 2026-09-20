@@ -6,6 +6,10 @@
 // notify on sends the not selected message to every active applicant who did not get the unit
 // (never set aside or withdrawn ones, never a missing email), creates one pending
 // pipeline_consents row per message with a crypto token, and records applicant_not_selected.
+// The state machine (lib/application-state.js): the listing's move and every application's move
+// are asserted before anything is written. Rented accepts the winner and sets every other
+// application still in play to not_selected; reopening a rented listing is a deal that fell
+// through for whoever held it. A refused move answers 409 and writes nothing.
 import { Resend } from 'resend';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -17,6 +21,8 @@ import { invalidateSignals } from '../../../lib/signalsCache';
 import { LISTING_STATUSES, statusPatch, ownedListing, notSelectedRecipients, notSelectedEmail, notSelectedFrom, newConsentToken, consentExpiry, statusTableAbsent } from '../../../lib/listingStatus';
 import { kvSrem } from '../../../lib/docRequest';
 import { displayLabel } from '../../../lib/listingAddress';
+import { ACTOR_TYPE, LISTING_STATE, isLegacyRented, isLegacyActive, listingStateFromLegacy, listingStateOf, applicationStateOf, rentedCascade, reopenCascade, isTransitionError } from '../../../lib/application-state';
+import { transitionListing, transitionApplications, refusal, listingRefusal } from '../../../lib/applicationTransitions';
 
 const siteBase = () => (process.env.NEXT_PUBLIC_SITE_URL || 'https://rentletter.ca').replace(/\/+$/, '');
 
@@ -41,19 +47,41 @@ export default async function handler(req, res) {
     if (!listing) return res.status(listing === null ? 404 : 403).json({ error: listing === null ? 'Listing not found.' : 'Not your listing.' });
 
     let winner = null;
-    if (status === 'rented' && rentedLinkId) {
+    if (isLegacyRented(status) && rentedLinkId) {
       const { data: link } = await admin.from('listing_applicants').select('id, listing_id, application_id').eq('id', String(rentedLinkId)).maybeSingle();
       if (!link || String(link.listing_id) !== String(listing.id)) return res.status(400).json({ error: 'That applicant is not on this listing.' });
       winner = link;
     }
     const patch = statusPatch(status, { rentedLinkId: winner ? winner.id : null });
-    const { error: upErr } = await admin.from('listings').update(patch).eq('id', listing.id);
+    // Every move this request makes, asserted up front: the listing's, then the applications'.
+    const fromState = listingStateOf(listing);
+    const toState = listingStateFromLegacy(status);
+    let moves = [];
+    let moved;
+    try {
+      const cascades = isLegacyRented(status) || (fromState === LISTING_STATE.RENTED && toState === LISTING_STATE.LIVE);
+      if (cascades) {
+        const { data: standing, error: sErr } = await admin.from('listing_applicants').select('*').eq('listing_id', listing.id);
+        if (sErr) throw sErr;
+        const applications = (standing || []).map((j) => ({ id: j.id, state: applicationStateOf(j, listing) }));
+        moves = isLegacyRented(status) ? rentedCascade(applications, winner ? winner.id : null) : reopenCascade(applications);
+      }
+      moved = await transitionListing(admin, { listing, to: toState, patch });
+    } catch (e) {
+      if (isTransitionError(e)) { const r = e.kind === 'listing' ? listingRefusal(e) : refusal(e); return res.status(r.status).json(r.body); }
+      throw e;
+    }
+    const upErr = moved.error;
     if (upErr) {
       if (statusTableAbsent(upErr)) return res.status(503).json({ error: 'Listing status is not set up yet (run db/listing-status.sql).' });
       throw upErr;
     }
+    // Already asserted above. A write that fails here is logged and the request carries on: the
+    // listing has moved, and the columns the screens read are already right.
+    try { await transitionApplications(admin, moves, { actor: user.id, actorType: ACTOR_TYPE.REALTOR, reason: isLegacyRented(status) ? 'listing_rented' : 'listing_reopened' }); }
+    catch (e) { logServerError('[listings/status] application states', e, { listingId: listing.id }); }
     invalidateSignals(user.id);
-    if (status !== 'active') {
+    if (!isLegacyActive(status)) {
       // Rented or closed: no applicant on this listing gets a document reminder (lib/nudges.js pending set).
       const { data: links } = await admin.from('listing_applicants').select('id').eq('listing_id', listing.id);
       for (const l of links || []) await kvSrem(l.id);
@@ -61,7 +89,7 @@ export default async function handler(req, res) {
     await recordEvent(admin, { profileId: user.id, listingId: listing.id, type: 'listing_updated', payload: { status, listingName: displayLabel(listing) || listing.name || listing.address || null } });
 
     let notified = 0, recipients = 0;
-    if (status === 'rented' && notify !== false) {
+    if (isLegacyRented(status) && notify !== false) {
       const { data: rows } = await admin.from('listing_applicants').select('id, application_id, decision_status, withdrawn_at, application:applications(id, full_name, email)').eq('listing_id', listing.id);
       const list = notSelectedRecipients(rows || [], winner ? winner.id : null);
       recipients = list.length;

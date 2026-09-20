@@ -17,7 +17,7 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(`${BASE}/demo/dashboard`);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 180000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
 after(() => server.stop(), { timeout: 300000 });
 
 // The routes the walk opens, compiled by the dev server before any tap: a first compile in dev
@@ -64,8 +64,16 @@ async function walk(browserType, launch, tag) {
     assert.equal(listingMark.href, '/demo/dashboard', 'the realtor wordmark points at the dashboard');
     assert.ok(listingMark.height >= 44, `a 44px tap target (${JSON.stringify(listingMark)})`);
     await shot('2-listing');
+    // Under parallel walks the dev server can reload the page as it drops an idle route, and a tap
+    // that lands inside that reload is lost: the tap is made once more before the walk gives up.
+    const onDashboard = (u) => u.pathname === '/demo/dashboard' && !u.searchParams.has('listing');
     await page.locator('a.rl-mark').first().tap();
-    await page.waitForURL((u) => u.pathname === '/demo/dashboard' && !u.searchParams.has('listing'), { timeout: 30000 });
+    try { await page.waitForURL(onDashboard, { timeout: 10000 }); }
+    catch (e) {
+      await page.locator('a.rl-mark').first().waitFor({ timeout: 30000 });
+      await page.locator('a.rl-mark').first().tap();
+      await page.waitForURL(onDashboard, { timeout: 30000 });
+    }
     await page.locator('.dash-ink').waitFor({ timeout: 30000 });
 
     // 3. The apply form: the wordmark is the way to the homepage. A tab of its own, so the

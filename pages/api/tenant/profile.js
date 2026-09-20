@@ -10,7 +10,7 @@
 //                              confirmed). Rate-limited.
 //     sign-out               → destroy the session + clear the cookie.
 import { Resend } from 'resend';
-import { DECISION_STATUS } from '../../../lib/listingApplicantsVocabulary';
+import { TENANT_STATUS, tenantStatusFor } from '../../../lib/application-state';
 import { timingSafeEqual } from 'crypto';
 import { kvGet } from '../../../lib/kv';
 import {
@@ -26,19 +26,11 @@ import { displayLabel } from '../../../lib/listingAddress';
 
 function safeEqual(a, b) { const x = Buffer.from(String(a || '')), y = Buffer.from(String(b || '')); return x.length > 0 && x.length === y.length && timingSafeEqual(x, y); }
 
-// Tenant-safe status wording. Realtor decisions are shown softly and never with reasons.
-// A withdrawal (withdrawn_at) always wins over decision_status: a tenant who withdrew is never
-// told they were "not selected".
-const STATUS = {
-  submitted: { key: 'submitted', label: 'Submitted' },
-  not_selected: { key: 'not_selected', label: 'Not selected for this unit' },
-  withdrawn: { key: 'withdrawn', label: 'Withdrawn' },
-};
-const statusFor = (link) => {
-  if (link.withdrawn_at) return STATUS.withdrawn;
-  if (link.decision_status === DECISION_STATUS.REJECT) return STATUS.not_selected;
-  return STATUS.submitted;
-};
+// Tenant safe status wording lives in lib/application-state.js (TENANT_STATUS, tenantStatusFor):
+// realtor decisions are shown softly and never with reasons, and a withdrawal always wins, so a
+// tenant who withdrew is never told they were not selected.
+const STATUS = TENANT_STATUS;
+const statusFor = tenantStatusFor;
 
 // Enrich the profile's application refs with listing name / realtor / status from Supabase.
 // Graceful: without Supabase (or before mirroring) each app simply reads "Submitted".

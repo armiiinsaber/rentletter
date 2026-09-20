@@ -18,7 +18,7 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(`${BASE}/`);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 180000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
 after(() => server.stop(), { timeout: 300000 });
 
 // The pages the walk opens, compiled by the dev server before the clock starts: a first compile
@@ -34,6 +34,9 @@ async function landing(browserType, launch, tag, width) {
   const out = { tag, width };
   try {
     await page.goto(`${BASE}/`, { waitUntil: 'load' });
+    // Under parallel walks the dev server can answer with its own refreshing page while a route
+    // compiles: the measurement is of the homepage, so wait for the homepage's headline first.
+    await page.locator('h1').first().waitFor({ state: 'attached', timeout: 30000 });
     // The clock starts at the first painted frame (Chrome can fire load before it paints).
     await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
     await page.waitForTimeout(200);

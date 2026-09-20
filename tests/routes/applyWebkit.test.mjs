@@ -18,7 +18,7 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(URL_APPLY);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 180000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
 after(() => server.stop(), { timeout: 300000 });
 
 const id = (n) => `step-${String(n).padStart(2, '0')}`;

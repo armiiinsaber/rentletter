@@ -36,6 +36,7 @@ import { stateLine } from '../../lib/listingStateLine.js';
 import { dots } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
+import { LEGACY_LISTING_STATUS, isLegacyClosed } from '../../lib/application-state.js';
 import { sentLine, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
@@ -291,7 +292,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     finally { setStatusBusy(false); }
   };
   const confirmRented = async () => {
-    const ok = await setStatus('rented', { rentedLinkId: rentedPick === 'outside' ? null : rentedPick, notify: rentedNotify });
+    const ok = await setStatus(LEGACY_LISTING_STATUS.RENTED, { rentedLinkId: rentedPick === 'outside' ? null : rentedPick, notify: rentedNotify });
     if (ok) setRentedOpen(false);
   };
 
@@ -919,7 +920,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 {displayLabel(l, 'Untitled listing')}
                 {!listingOpen(l) && (
                   <span className="num" style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 var(--s-3)', marginLeft: 'var(--s-2)', borderRadius: R.pill, background: C.ink, color: C.paper, fontFamily: 'var(--f-body)', fontSize: 'var(--t-eyebrow)', fontWeight: 700, lineHeight: 1, letterSpacing: '0.04em', whiteSpace: 'nowrap', verticalAlign: 'middle', position: 'relative', top: -3 }}>
-                    {l.status === 'closed' ? 'Closed' : 'Rented'}{l.closed_at ? ` · ${new Date(l.closed_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}
+                    {isLegacyClosed(l.status) ? 'Closed' : 'Rented'}{l.closed_at ? ` · ${new Date(l.closed_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}
                   </span>
                 )}
               </h1>
@@ -1093,7 +1094,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <button type="button" onClick={() => { setRentedPick(active.length ? active[0].linkId : 'outside'); setRentedNotify(true); setRentedOpen(true); }} disabled={statusBusy}
                         style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Mark as rented</button>
                     ) : (
-                      <button type="button" onClick={() => setStatus('active')} disabled={statusBusy}
+                      <button type="button" onClick={() => setStatus(LEGACY_LISTING_STATUS.ACTIVE)} disabled={statusBusy}
                         style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{statusBusy ? 'Working' : 'Reopen listing'}</button>
                     )}
                   </div>

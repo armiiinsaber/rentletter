@@ -19,6 +19,8 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { buildCombinedRun } from '../../../lib/uploadCombine';
 import { screenableFacts } from '../../../lib/applicantAnalysis';
 import { withActiveReport } from '../../../lib/docVerifications';
+import { APPLICATION_STATE, ACTOR_TYPE } from '../../../lib/application-state';
+import { transitionApplicationIfAllowed } from '../../../lib/applicationTransitions';
 
 // Only a token in the body. Modest duration, no large body.
 export const config = { maxDuration: 30 };
@@ -90,6 +92,12 @@ export default async function handler(req, res) {
           }
           if (listing?.profile_id) invalidateSignals(listing.profile_id); // the realtor's bell picks the upload up within the minute
 
+
+          // The documents are in: an application that was waiting on them is submitted again
+          // (lib/application-state.js). Anyone further along stays where they are. The token is
+          // bound to this applicant (the two key guard above). Never fails the upload.
+          try { await transitionApplicationIfAllowed(admin, { junction, listing, to: APPLICATION_STATE.SUBMITTED, onlyFrom: [APPLICATION_STATE.DOCS_PENDING], actor: junction.application_id, actorType: ACTOR_TYPE.APPLICANT, reason: 'documents_uploaded' }); }
+          catch (e) { console.warn('[upload/finalize] state:', e?.message || e); }
 
           // Notification marker (best-effort, isolated so a not-yet-migrated column can't fail it).
           try {

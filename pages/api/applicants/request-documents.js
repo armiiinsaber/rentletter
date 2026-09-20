@@ -17,6 +17,8 @@ import { authorizeApplicant } from '../../../lib/applicantAnalysis';
 import { kvReady, mintRequest, uploadUrl } from '../../../lib/docRequest';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { displayLabel } from '../../../lib/listingAddress';
+import { APPLICATION_STATE, ACTOR_TYPE } from '../../../lib/application-state';
+import { transitionApplicationIfAllowed } from '../../../lib/applicationTransitions';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -46,6 +48,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Could not load that applicant.' });
   }
   if (!ctx) return res.status(404).json({ error: 'Applicant not found.' });
+  // Explicit ownership, beside the RLS read above: the listing row must carry the caller.
+  if (String(ctx.listing.profile_id) !== String(user.id)) return res.status(403).json({ error: 'Not your listing.' });
   // Strict per-applicant binding (a stale linkId can never target a different applicant).
   if (applicationId != null && String(ctx.junction.application_id) !== String(applicationId)) {
     return res.status(409).json({ error: 'Applicant reference mismatch, please reload and try again.' });
@@ -109,6 +113,10 @@ export default async function handler(req, res) {
       }
     }
 
+    // A submitted application waits on documents from here (lib/application-state.js). Anyone
+    // further along stays where they are. Never fails the request: the link is already minted.
+    try { await transitionApplicationIfAllowed(getSupabaseAdminClient(), { junction: ctx.junction, listing: ctx.listing, to: APPLICATION_STATE.DOCS_PENDING, onlyFrom: [APPLICATION_STATE.SUBMITTED], actor: user.id, actorType: ACTOR_TYPE.REALTOR, reason: renew ? 'documents_requested_again' : 'documents_requested' }); }
+    catch (e) { console.error('[request-documents] state:', e?.message || e); }
     await recordForListing(getSupabaseAdminClient(), listingId, 'documents_requested', { applicationId: ctx.junction.application_id, linkId, payload: { renewed: !!renew, emailed } });
     invalidateSignals(user.id); return res.status(200).json({ ok: true, token, url, status, requestedAt, tenantEmail: tenantEmail || null, emailed, emailError });
   } catch (e) {
