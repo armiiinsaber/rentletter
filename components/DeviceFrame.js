@@ -130,6 +130,20 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
         .df-laptop, .df-responsive { --df-w: 560px; }
         .df-laptop .df-shell, .df-responsive .df-shell { border-radius: calc(var(--df-w) * 0.025) calc(var(--df-w) * 0.025) 0 0; padding: calc(var(--df-w) * 0.014) calc(var(--df-w) * 0.014) 0; }
         .df-laptop .df-screen, .df-responsive .df-screen { border-radius: calc(var(--df-w) * 0.011) calc(var(--df-w) * 0.011) 0 0; }
+        /* The seam. The bezel is a fraction of the width (7.546px at 539px wide), so the screen's
+           edge falls between device pixels, and the light screen and content backgrounds snap a
+           pixel past it inside the composited tilt layer: a light hairline on the bezel. A ring in
+           the bezel colour, drawn over the edge, 2px each side of it and on the same curve (outer
+           radius screen + 2, inner radius screen minus 2), leaves the bezel the only colour there.
+           The ring must reach past the edge on both sides: one that stops on the edge snaps to a
+           different pixel than the screen and lets the light through again. It hides 2px of the
+           screen's own margin (the visible bezel reads 2px wider) and changes no size, position
+           or shadow. */
+        .df-shell::after { content: ''; position: absolute; pointer-events: none; z-index: 2; border: 4px solid #101012; }
+        .df-laptop .df-shell::after, .df-responsive .df-shell::after {
+          top: calc(var(--df-w) * 0.014 - 2px); left: calc(var(--df-w) * 0.014 - 2px); right: calc(var(--df-w) * 0.014 - 2px); bottom: 0;
+          border-bottom: 0; border-radius: calc(var(--df-w) * 0.011 + 2px) calc(var(--df-w) * 0.011 + 2px) 0 0;
+        }
         .df-base { position: relative; height: calc(var(--df-w) * 0.021); margin: 0 -5%; background: linear-gradient(180deg, #34343a 0%, #1a1a1d 20%, #131315 60%, #0b0b0c 100%); border-radius: 0 0 10px 10px; box-shadow: 0 22px 30px -22px rgba(15,15,16,0.55); }
         .df-base::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: rgba(255,255,255,0.10); }
         .df-base::after { content: ''; position: absolute; left: 6%; right: 6%; bottom: -6px; height: 6px; border-radius: 0 0 50% 50% / 0 0 100% 100%; background: rgba(15,15,16,0.18); filter: blur(3px); }
@@ -140,6 +154,7 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
         .df-phone { --df-w: 360px; max-width: 360px; margin-left: auto; margin-right: auto; }
         .df-phone .df-shell { border-radius: calc(var(--df-w) * 0.139); padding: calc(var(--df-w) * 0.028); }
         .df-phone .df-screen { border-radius: calc(var(--df-w) * 0.111); }
+        .df-phone .df-shell::after { inset: calc(var(--df-w) * 0.028 - 2px); border-radius: calc(var(--df-w) * 0.111 + 2px); }
         /* status bar + home band are proportional to screen width (viewBox / aspect-ratio), so
            the phone looks identical at 211px (Story) and 360px. */
         .df-status { display: block; width: 100%; height: auto; flex: none; color: #0f0f10; }
@@ -151,6 +166,7 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
         /* ── tablet: shell radius 26, bezel 16 → screen radius 10 ── */
         .df-tablet .df-shell { border-radius: 26px; padding: 16px; }
         .df-tablet .df-screen { border-radius: 10px; }
+        .df-tablet .df-shell::after { inset: 14px; border-radius: 12px; }
         .df-cam { position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 5px; height: 5px; border-radius: 50%; background: #2a2a2e; box-shadow: 0 0 0 1px #3a3a3e; z-index: 1; }
 
         /* ── fit (laptop): the content owns the box. No aspect ratio to letterbox against, both
@@ -165,6 +181,7 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
           .df-responsive { --df-w: 358px; max-width: 360px; margin-left: auto; margin-right: auto; }
           .df-responsive .df-shell { border-radius: calc(var(--df-w) * 0.139); padding: calc(var(--df-w) * 0.028); }
           .df-responsive .df-screen { border-radius: calc(var(--df-w) * 0.111); }
+          .df-responsive .df-shell::after { inset: calc(var(--df-w) * 0.028 - 2px); border: 4px solid #101012; border-radius: calc(var(--df-w) * 0.111 + 2px); }
           .df-responsive .df-bar, .df-responsive .df-base { display: none; }
           .df-responsive .df-status { display: block; }
           .df-responsive .df-safe { display: block; }

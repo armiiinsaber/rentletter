@@ -13,12 +13,14 @@ import { Icon } from '../ui';
 //   2. SHORTLIST — the same applicants re-sorted by score, a "Top pick" rises,
 //                 and a "Send to landlord" bar appears.
 // transform/opacity only; respects prefers-reduced-motion (static shortlist).
+// Colour: ink tones only, the red tick motif for the fit ticks, and the one red score pill
+// (no green or amber status colours, the house rule).
 const HERO_APPLICANTS = [
-  { id: 'mei', initials: 'MT', color: '#1f7a8c', name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Income 30% of rent', true], ['Non-smoker', true]] },
-  { id: 'james', initials: 'JO', color: '#3a6ea5', name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income comfortably clears', true], ['Tenure under 2 yrs', false]] },
-  { id: 'priya', initials: 'PN', color: '#2d7d4a', name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income comfortably clears', true], ['5 yrs at employer', true]] },
-  { id: 'david', initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Income clears 30%', true], ['4 yr tenure', true]] },
-  { id: 'amara', initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['Income meets minimum', true], ['New to the city', false]] },
+  { id: 'mei', initials: 'MT', color: C.instRule, name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Income 30% of rent', true], ['Non-smoker', true]] },
+  { id: 'james', initials: 'JO', color: C.inkSoft, name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income comfortably clears', true], ['Tenure under 2 yrs', false]] },
+  { id: 'priya', initials: 'PN', color: C.ink, name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income comfortably clears', true], ['5 yrs at employer', true]] },
+  { id: 'david', initials: 'DT', color: C.instRaise, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Income clears 30%', true], ['4 yr tenure', true]] },
+  { id: 'amara', initials: 'AO', color: C.inkSoft, name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['Income meets minimum', true], ['New to the city', false]] },
 ];
 // Both scenes are ordered by score, desc — the mockup must show what the product does: the
 // emphasized applicant is the highest scorer. (Sorted from HERO_APPLICANTS, never hand-typed.)
@@ -30,7 +32,7 @@ function HeroAvatar({ a, size = 30 }) {
   return (
     <span aria-hidden="true" style={{
       width: size, height: size, flexShrink: 0, borderRadius: '50%',
-      background: a.color, color: '#fff',
+      background: a.color, color: C.paper,
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.4, fontWeight: 700, letterSpacing: '0.01em',
     }}>{a.initials}</span>
@@ -131,8 +133,8 @@ export default function HeroDemo({ step: controlledStep = null }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   <span style={{ fontSize: 'clamp(9px, 2.4vw, 11px)', fontWeight: 600, color: C.ink, background: C.paperDeep, borderRadius: R.pill, padding: '2px 8px' }}>{a.income}</span>
                   {a.fit.map(([label, ok], k) => (
-                    <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'clamp(9px, 2.4vw, 11px)', color: ok ? C.green : C.inkMute }}>
-                      <Icon name={ok ? 'check' : 'question'} size={12} color={ok ? C.green : C.inkMute} strokeWidth={2} />{label}
+                    <span key={k} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'clamp(9px, 2.4vw, 11px)', color: ok ? C.ink : C.inkMute }}>
+                      <Icon name={ok ? 'check' : 'question'} size={12} color={ok ? C.red : C.inkMute} strokeWidth={2} />{label}
                     </span>
                   ))}
                 </div>
@@ -152,7 +154,7 @@ export default function HeroDemo({ step: controlledStep = null }) {
       }} aria-hidden={!shortlistVisible}>
         <div style={head}>
           <span style={eyebrow}>Ranked · top 5</span>
-          <span style={{ fontSize: 'clamp(8px, 2.2vw, 10px)', color: C.green, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${C.green}`, borderRadius: R.pill, padding: '1px 7px' }}>Ranked</span>
+          <span style={{ fontSize: 'clamp(8px, 2.2vw, 10px)', color: C.ink, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', border: `1px solid ${C.ink}`, borderRadius: R.pill, padding: '1px 7px' }}>Ranked</span>
         </div>
         <div style={{ height: 1, background: C.rule }} />
         {HERO_RANKED.map((id, i) => {
