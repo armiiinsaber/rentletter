@@ -25,18 +25,18 @@ import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
 import { SET_ASIDE_REASONS, reasonLabel } from '../../lib/setAsideReasons';
 import { synthesisLine } from '../../lib/applicantSynthesis';
-import { applicantState, stateLabel } from '../../lib/applicantState';
-import { DECISION_STATUS, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
+import { applicantState, stateLabel, processState, offersReconsider, offersShortlist, reconsideredLine, RECONSIDER_COPY, RECONSIDER_REASON_LABELS } from '../../lib/applicantState';
+import { DECISION_STATUS, DECISION_PRIORITY, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
 import { stateLine } from '../../lib/listingStateLine.js';
-import { dots } from '../../lib/typeset.js';
+import { dots, noWidow } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
-import { LEGACY_LISTING_STATUS, listingStanding, withLocalDecision, withLocalListingStatus, carriedListingColumns } from '../../lib/application-state.js';
+import { LEGACY_LISTING_STATUS, APPLICATION_STATE, RECONSIDER_REASONS, listingStanding, applicantStanding, canTransition, withLocalDecision, withLocalListingStatus, carriedListingColumns, reconsideredLocalColumns } from '../../lib/application-state.js';
 import { sentLine, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
@@ -279,22 +279,33 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [rentedPick, setRentedPick] = useState('outside');
   const [rentedNotify, setRentedNotify] = useState(true);
   const [statusBusy, setStatusBusy] = useState(false);
-  const setStatus = async (status, extra = {}) => {
+  // onRefused(answer): a move the state machine refused (409, illegal_transition) goes to the
+  // caller, which says what to do next, in place of the generic error.
+  const setStatus = async (status, extra = {}, { onRefused } = {}) => {
     setStatusBusy(true); setError('');
     try {
       const r = await adapter.fetch('/api/listings/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id, status, ...extra }) });
       const j = await r.json().catch(() => ({}));
+      if (r.status === 409 && j?.code === 'illegal_transition' && onRefused) { onRefused(j); return false; }
       if (!r.ok || j?.error) { setError(j?.error || 'Could not update the listing.'); return false; }
       // The local copy moves with the answer, state included: the page reads the state first.
       setListing((l) => withLocalListingStatus(l, j));
       patchSignalsListingRow(listing.id, carriedListingColumns(withLocalListingStatus(listing, j)));
+      // The applicants moved with the listing on the server (accepted, not selected, fell through).
+      refreshApplicants();
       return true;
     } catch { setError('Could not update the listing.'); return false; }
     finally { setStatusBusy(false); }
   };
+  // The dead end: renting to someone already told no (or looked at again but not shortlisted) is
+  // refused by the state machine. The sheet says the one step that comes first, beside its control.
+  const [deadEnd, setDeadEnd] = useState(null); // { linkId, kind: 'reconsider' | 'shortlist' }
   const confirmRented = async () => {
-    const ok = await setStatus(LEGACY_LISTING_STATUS.RENTED, { rentedLinkId: rentedPick === 'outside' ? null : rentedPick, notify: rentedNotify });
-    if (ok) setRentedOpen(false);
+    const pick = rentedPick;
+    const ok = await setStatus(LEGACY_LISTING_STATUS.RENTED, { rentedLinkId: pick === 'outside' ? null : pick, notify: rentedNotify }, {
+      onRefused: (j) => setDeadEnd({ linkId: pick, kind: j.from === APPLICATION_STATE.RECONSIDERED ? 'shortlist' : 'reconsider' }),
+    });
+    if (ok) { setRentedOpen(false); setDeadEnd(null); }
   };
 
   const remove = async () => {
@@ -558,6 +569,53 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const restoreApplicant = (a) => {
     setDecision(a.linkId, { decisionStatus: DECISION_STATUS.NONE, decisionReasonCode: null });
   };
+  // RECONSIDER: POST /api/applicants/reconsider (session, entitlement, ownership, the guarded move
+  // on the server). The reason sheet, then the state line, an Undo for 10 seconds, and a line when
+  // the re invite could not be sent. From reconsidered the way on is Shortlist, never the winner.
+  const [reconsiderFor, setReconsiderFor] = useState(null);
+  const [reconsiderReason, setReconsiderReason] = useState(RECONSIDER_REASONS[0]);
+  const [reconsiderBusy, setReconsiderBusy] = useState(false);
+  const [undoFor, setUndoFor] = useState(null); // linkId, for 10 seconds after a reconsider
+  const [inviteNotSent, setInviteNotSent] = useState({}); // linkId -> true when the email did not go
+  useEffect(() => {
+    if (!undoFor) return undefined;
+    const t = setTimeout(() => setUndoFor(null), 10000);
+    return () => clearTimeout(t);
+  }, [undoFor]);
+  const openReconsider = (a) => { setRentedOpen(false); setDeadEnd(null); setReconsiderReason(RECONSIDER_REASONS[0]); setReconsiderFor(a); };
+  const postReconsider = async (body) => {
+    const r = await adapter.fetch('/api/applicants/reconsider', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok && !j?.error, j };
+  };
+  const confirmReconsider = async () => {
+    const a = reconsiderFor; if (!a) return;
+    setReconsiderBusy(true); setError('');
+    try {
+      const { ok, j } = await postReconsider({ linkId: a.linkId, reason: reconsiderReason });
+      if (!ok) { setError(j?.error ? `Could not reconsider: ${j.error}` : 'Could not reconsider.'); return; }
+      // The old columns the server wrote beside the state, in the dashboard's shape (lib/application-state.js).
+      setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...reconsideredLocalColumns(), state: j.state, reconsiderReason } : x)));
+      const failed = !!j.invite && j.invite.sent === false && !['already_invited', 'preview'].includes(j.invite.reason);
+      setInviteNotSent((m) => ({ ...m, [a.linkId]: failed }));
+      setUndoFor(a.linkId);
+      setReconsiderFor(null);
+    } catch { setError('Could not reconsider.'); }
+    finally { setReconsiderBusy(false); }
+  };
+  const undoReconsider = async (a) => {
+    setError('');
+    try {
+      const { ok, j } = await postReconsider({ linkId: a.linkId, undo: true });
+      if (!ok) { setError(j?.error ? `Could not undo: ${j.error}` : 'Could not undo.'); return; }
+      setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, state: j.state, reconsiderReason: null } : x)));
+      setInviteNotSent((m) => ({ ...m, [a.linkId]: false }));
+      setUndoFor(null);
+    } catch { setError('Could not undo.'); }
+  };
+  // Shortlist is the finalist mark (POST /api/applicants/decision, priority top), which moves a
+  // reconsidered applicant to shortlisted on the server and in the local copy alike.
+  const shortlistApplicant = (a) => { setDeadEnd(null); setDecision(a.linkId, { decisionPriority: DECISION_PRIORITY.TOP }); };
   // The two drag commits. Set aside still REQUIRES a screenable reason, so pushing a card left
   // opens the same reason sheet the button opens (the card springs back under it); confirming
   // there is the commit. Pushing a set aside card right restores it at once.
@@ -677,6 +735,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     // Where this applicant is in the process (lib/applicantState.js). The collapsed card's body is
     // that state's next action and nothing else; the expanded card is unchanged.
     const st = applicantState({ application: app, junction: a, verification: a.docVerifications?.[0] || null, listing });
+    // Told no, or looked at again: where they stand on the listing replaces the document line.
+    const ps = processState(a);
+    const docSt = ps ? null : st.state;
+    const canWithdraw = canTransition(applicantStanding(a, listing).state, APPLICATION_STATE.WITHDRAWN_BY_APPLICANT);
     // The meter renders on every active card. Its colour carries the confidence: muted grey while
     // the Fit rests on stated facts, the editorial red once documents match or the realtor verified.
     const meterMuted = !!fit && (fit.label === 'stated' || fit.label === 'check docs');
@@ -775,46 +837,56 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
-          {st.state === 'matched' && (<>
+          {docSt === 'matched' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             {missed.length > 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
             {dup}
             {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
           </>)}
-          {st.state === 'verified' && (<>
+          {docSt === 'verified' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             <div style={stateLine}>{stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) })}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
             {dup}
           </>)}
-          {st.state === 'sent' && (<>
+          {docSt === 'sent' && (<>
             <div style={stateLine}>{stateLabel('sent', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
             {dup}
+          </>)}
+          {ps === APPLICATION_STATE.NOT_SELECTED && (<>
+            <div style={stateLine}>{stateLabel(APPLICATION_STATE.NOT_SELECTED, 'line')}</div>
+            {dup}
+          </>)}
+          {ps === APPLICATION_STATE.RECONSIDERED && (<>
+            <div style={stateLine}>{noWidow(reconsideredLine(a.reconsiderReason))}</div>
+            {inviteNotSent[a.linkId] && <div style={{ ...stateLine, color: C.ink }}>{RECONSIDER_COPY.emailNotSent}</div>}
+            {dup}
+            {undoFor === a.linkId && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" data-no-swipe onClick={stop(() => undoReconsider(a))} style={textBtn}>{RECONSIDER_COPY.undo}</button></div>}
           </>)}
           {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
           {!open && a.landlordAnswer && a.landlordAnswer.answer && (
             <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}>Landlord: {answerLine(a.landlordAnswer.answer)}{a.landlordAnswer.at ? ` · ${shortDate(a.landlordAnswer.at)}` : ''}</div>
           )}
-          {st.state === 'new' && (<>
+          {docSt === 'new' && (<>
             <div style={stateLine}>{stateLabel('new', 'line')}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
           </>)}
-          {st.state === 'requested' && (<>
+          {docSt === 'requested' && (<>
             <div style={stateLine}>{stateLabel('requested', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}{(() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? ` · nudged ${shortDate(last)}` : ''; })()}</div>
             {dup}
             {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
-          {st.state === 'checked' && (<>
+          {docSt === 'checked' && (<>
             <div style={stateLine}>{stateLabel('checked', 'line')}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
-          {st.state === 'mismatch' && (<>
+          {docSt === 'mismatch' && (<>
             <div style={stateLine}>{stateLabel('mismatch', 'line')}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
-          {st.state === 'edited' && (<>
+          {docSt === 'edited' && (<>
             <div style={stateLine}>{stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })}</div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
@@ -880,16 +952,28 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Set aside
               </button>
             )}
+            {offersReconsider(a, listing) && (
+              <button type="button" onClick={() => openReconsider(a)}
+                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>
+                {RECONSIDER_COPY.action}
+              </button>
+            )}
+            {offersShortlist(a) && (
+              <button type="button" onClick={() => shortlistApplicant(a)}
+                style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>
+                {RECONSIDER_COPY.shortlist}
+              </button>
+            )}
             {referralsEnabled() && !app.referral_meta && !['pending', 'approved'].includes(ref?.status) && ( // lib/features.js
               <button onClick={() => setReferFor(a)} title="Refer this applicant to another realtor. They must approve first"
                 style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer', minHeight: 40 }}>
                 Refer
               </button>
             )}
-            <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
+            {canWithdraw && <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
               style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
               Withdrew
-            </button>
+            </button>}
           </div>
         </div>)}
       </div>
@@ -1112,7 +1196,19 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {/* WHO GOT IT: the existing bottom sheet; the radio list is its body. Confirm is the one red button on it. */}
           <ConfirmSheet open={sigSheet} title="Sign the report as" confirmLabel="Send" cancelLabel="Cancel" busy={sigBusy || sending} onConfirm={signAndSend} onCancel={() => setSigSheet(false)}
             body={<input value={sigValue} onChange={(e) => setSigValue(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Sign the report as" style={{ width: '100%', minHeight: 44, padding: '0 var(--s-3)', fontSize: 16, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, fontFamily: 'inherit' }} />} />
-          <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} onConfirm={confirmRented} onCancel={() => setRentedOpen(false)}
+          <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} onConfirm={confirmRented} onCancel={() => { setRentedOpen(false); setDeadEnd(null); }}
+            footer={deadEnd && deadEnd.linkId === rentedPick ? (() => {
+              const who = applicants.find((x) => x.linkId === deadEnd.linkId);
+              return (
+                <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                  <span style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 1.35 }}>{deadEnd.kind === 'shortlist' ? RECONSIDER_COPY.deadEndShortlist : RECONSIDER_COPY.deadEnd}</span>
+                  <button type="button" onClick={() => (deadEnd.kind === 'shortlist' ? shortlistApplicant(who) : openReconsider(who))} disabled={!who}
+                    style={{ flexShrink: 0, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>
+                    {deadEnd.kind === 'shortlist' ? RECONSIDER_COPY.shortlist : RECONSIDER_COPY.action}
+                  </button>
+                </div>
+              );
+            })() : null}
             body={(
               <span style={{ display: 'block' }}>
                 <span role="radiogroup" aria-label="Who got the unit" style={{ display: 'block' }}>
@@ -1120,14 +1216,14 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     const fit = a.application?.fit;
                     return (
                       <label key={a.linkId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
-                        <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => setRentedPick(a.linkId)} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
-                        <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{a.application?.full_name || 'Applicant'}</span>
+                        <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => { setRentedPick(a.linkId); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                        <span title={a.application?.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.application?.full_name || 'Applicant'}</span>
                         {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap', flexShrink: 0 }}>Fit {Number(fit.score).toFixed(1)} · {fit.label}</span>}
                       </label>
                     );
                   })}
                   <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
-                    <input type="radio" name="rented-pick" checked={rentedPick === 'outside'} onChange={() => setRentedPick('outside')} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                    <input type="radio" name="rented-pick" checked={rentedPick === 'outside'} onChange={() => { setRentedPick('outside'); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
                     <span>Someone outside Rentletter</span>
                   </label>
                 </span>
@@ -1135,6 +1231,19 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <input type="checkbox" checked={rentedNotify} onChange={(e) => setRentedNotify(e.target.checked)} style={{ width: 20, height: 20, margin: '1px 0 0', accentColor: C.ink, flexShrink: 0 }} />
                   <span style={{ textWrap: 'pretty' }}>Let the others know and ask if they want to be kept for similar units</span>
                 </label>
+              </span>
+            )} />
+
+          {/* WHY LOOK AGAIN: three screenable, factual reasons about the deal, never about the person. */}
+          <ConfirmSheet open={!!reconsiderFor} cardRadius title={RECONSIDER_COPY.sheetTitle} confirmLabel={RECONSIDER_COPY.confirm} cancelLabel="Cancel" busy={reconsiderBusy} onConfirm={confirmReconsider} onCancel={() => setReconsiderFor(null)}
+            body={(
+              <span role="radiogroup" aria-label={RECONSIDER_COPY.sheetTitle} style={{ display: 'block' }}>
+                {RECONSIDER_REASONS.map((code) => (
+                  <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
+                    <input type="radio" name="reconsider-reason" checked={reconsiderReason === code} onChange={() => setReconsiderReason(code)} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, textWrap: 'pretty' }}>{RECONSIDER_REASON_LABELS[code]}</span>
+                  </label>
+                ))}
               </span>
             )} />
 

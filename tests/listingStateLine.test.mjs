@@ -14,7 +14,7 @@ test('the state line in order, non zero counts only', () => {
     a(), a({ decisionStatus: 'reject' }), a({ withdrawnAt: '2026-08-01T00:00:00Z' }),
   ];
   assert.equal(stateLine(apps), '1 verified · 2 docs match · 2 to check · 1 waiting on documents · 1 no documents');
-  assert.deepEqual(stateCounts(apps), { verified: 1, matched: 2, check: 2, waiting: 1, none: 1, sent: 0 });
+  assert.deepEqual(stateCounts(apps), { verified: 1, matched: 2, check: 2, waiting: 1, none: 1, sent: 0, lookedAgain: 0, notSelected: 0 });
   assert.equal(stateLine([a({ confirmations: { employer: { at: 'x', by: 'You' } } }), a()]), '1 verified · 1 no documents');
   assert.equal(stateLine([]), '');
 });

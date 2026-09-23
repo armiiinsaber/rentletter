@@ -113,6 +113,7 @@ test('no status literal is compared or assigned outside lib/application-state.js
   // page's own view mode, a wizard step, an entitlement. Named file by file, with the reason.
   const NOT_A_STATE = {
     'lib/application-state.js': 'the definitions',
+    'lib/stateLabels.js': 'the words each surface shows (a count word, not a state compared or written)',
     'lib/billing.js': 'Stripe subscription status', 'lib/entitlements.js': 'entitlement status', 'lib/adminData.js': 'entitlement status',
     'components/dashboard/StatusBadge.js': 'entitlement status', 'components/dashboard/LogoStudio.js': 'wizard step',
     'pages/apply/[token].js': 'the page\'s own view mode', 'lib/referrals.js': 'referral row', 'lib/pipeline.js': 'consent row', 'lib/pipelineState.js': 'consent row',
@@ -245,7 +246,8 @@ test('entering reconsidered writes exactly one application_events row, carrying 
   assert.deepEqual(s.db.tables.applicant_documents.find((d) => d.id === 'D1'), gone, 'the expired document stays deleted');
   assert.deepEqual(s.db.storageCalls, [], 'the bucket is not touched');
   assert.equal(s.db.updates.filter((u) => u.table === 'applicant_documents').length, 0);
-  assert.equal(s.resend ? s.resend.sent.length : 0, 0, 'no email is sent from here (the re invite is not built)');
+  // The re invite (lib/reconsiderInvite.js) is the one email, and it restores nothing either.
+  assert.equal(s.resend.sent.length, 1, 'exactly one email: the re invite');
 });
 
 test('without its audit row the move does not stand', async () => {

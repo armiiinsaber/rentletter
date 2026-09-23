@@ -261,9 +261,11 @@ export const TickMeter = ({ value, max = 5, size = 14, showValue = true, onDark 
 // action verb, never "OK"; destructive actions use the danger red, not brand red.
 // Renders nothing when closed. Escape or scrim-tap cancels (disabled while busy).
 // Callers migrate per-phase — build here in B1, adopt in B2+.
+// footer renders under the buttons (a line about the action just refused sits under it).
+// cardRadius gives the sheet the card radius (--card-radius) in place of the modal radius.
 export const ConfirmSheet = ({
-  open, title, body, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
-  danger = false, busy = false, onConfirm, onCancel,
+  open, title, body, footer = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
+  danger = false, busy = false, onConfirm, onCancel, cardRadius = false,
 }) => {
   useEffect(() => {
     if (!open) return;
@@ -276,7 +278,7 @@ export const ConfirmSheet = ({
   return (
     <div onClick={() => { if (!busy) onCancel?.(); }} role="presentation" className="rl-sheet-scrim">
       <div onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true"
-        aria-label={title} className="rl-sheet">
+        aria-label={title} className={`rl-sheet${cardRadius ? ' rl-sheet-card' : ''}`}>
         <span className="rl-sheet-tick" style={{ background: accent }} aria-hidden="true" />
         <h3 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', marginBottom: 8 }}>
           {title}
@@ -285,7 +287,7 @@ export const ConfirmSheet = ({
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={onConfirm} disabled={busy} autoFocus
             style={{
-              flex: '1 1 auto', background: busy ? C.ruleDark : accent, color: C.paper, border: 'none',
+              flex: '1 1 0', minWidth: 0, background: busy ? C.ruleDark : accent, color: C.paper, border: `1px solid ${busy ? C.ruleDark : accent}`,
               borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14.5, fontWeight: 700,
               cursor: busy ? 'wait' : 'pointer', minHeight: 48,
             }}>
@@ -293,13 +295,14 @@ export const ConfirmSheet = ({
           </button>
           <button onClick={onCancel} disabled={busy}
             style={{
-              background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`,
+              flex: '1 1 0', minWidth: 0, background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`,
               borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14.5, fontWeight: 600,
               cursor: busy ? 'not-allowed' : 'pointer', minHeight: 48,
             }}>
             {cancelLabel}
           </button>
         </div>
+        {footer}
       </div>
       <style jsx>{`
         .rl-sheet-scrim {
@@ -313,13 +316,17 @@ export const ConfirmSheet = ({
           width: 100%; max-width: 420px; padding: 22px 22px 20px; overflow: hidden;
         }
         .rl-sheet-tick { position: absolute; top: 0; left: 0; width: 44px; height: 3px; }
+        .rl-sheet.rl-sheet-card { border-radius: var(--card-radius); }
         /* Phone: bottom sheet — thumb-reachable, clears the home indicator. */
         @media (max-width: 640px) {
           .rl-sheet-scrim { align-items: flex-end; padding: 0; }
           .rl-sheet {
             max-width: none; border-radius: ${R.modal}px ${R.modal}px 0 0; border-bottom: none;
             padding: 22px clamp(18px, 5vw, 24px) calc(20px + env(safe-area-inset-bottom, 0px));
+            /* The visible viewport, not the largest one: a long list scrolls inside the sheet. */
+            max-height: calc(100dvh - var(--s-5)); overflow-y: auto; overscroll-behavior: contain;
           }
+          .rl-sheet.rl-sheet-card { border-radius: var(--card-radius) var(--card-radius) 0 0; }
         }
         @media (prefers-reduced-motion: no-preference) {
           .rl-sheet { animation: rl-sheet-in 200ms ${EASE} both; }
