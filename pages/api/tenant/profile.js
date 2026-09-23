@@ -10,7 +10,7 @@
 //                              confirmed). Rate-limited.
 //     sign-out               → destroy the session + clear the cookie.
 import { Resend } from 'resend';
-import { TENANT_STATUS, tenantStatusFor } from '../../../lib/application-state';
+import { TENANT_STATUS, tenantStatusFor, applicantStanding } from '../../../lib/application-state';
 import { timingSafeEqual } from 'crypto';
 import { kvGet } from '../../../lib/kv';
 import {
@@ -53,10 +53,14 @@ async function enrich(apps) {
     const byId = new Map((rows || []).map((r) => [r.id, r.application_number]));
     if (!byId.size) return out;
     const linksQ = (cols) => admin.from('listing_applicants')
-      .select(`application_id, decision_status, decision_changed_at, created_at, ${cols}listing:listings(name, address, profile_id)`)
+      .select(`id, application_id, decision_status, decision_changed_at, created_at, ${cols}listing:listings(name, address, profile_id)`)
       .in('application_id', [...byId.keys()]).order('created_at', { ascending: true });
-    let linksRes = await linksQ('withdrawn_at, ');
-    if (linksRes.error) linksRes = await linksQ(''); // before db/listing-applicants-vocabulary.sql has run
+    // The state is what is read (lib/application-state.js tenantStatusFor); the old columns ride
+    // along for the fallback. Before db/002 there is no state column, before
+    // db/listing-applicants-vocabulary.sql no withdrawn_at either.
+    let linksRes = await linksQ('withdrawn_at, state, ');
+    if (linksRes.error) linksRes = await linksQ('withdrawn_at, ');
+    if (linksRes.error) linksRes = await linksQ('');
     const links = linksRes.data;
     const realtorIds = [...new Set((links || []).map((l) => l.listing?.profile_id).filter(Boolean))];
     let realtors = new Map();
@@ -72,7 +76,8 @@ async function enrich(apps) {
       const r = realtors.get(l.listing?.profile_id);
       a.realtorName = r?.full_name || null; a.realtorBrokerage = r?.brokerage || null;
       a.status = statusFor(l);
-      a.statusChangedAt = l.withdrawn_at || l.decision_changed_at || null;
+      const standing = applicantStanding(l);
+      a.statusChangedAt = standing.withdrawnSince || standing.changedAt || null;
     }
   } catch (e) { /* columns/tables may not exist yet, statuses stay "Submitted" */ }
   return out;

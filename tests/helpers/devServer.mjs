@@ -41,11 +41,12 @@ export function devServer(probeUrl) {
   const me = `${USERS}/${process.pid}`;
   return {
     async start() {
-      await takeTurn();
-      // Register before looking: a file that finds the server already answering still counts as
-      // a user, or the owner could take the server down in the middle of that file's walk.
+      // Register first, before waiting for a turn and before looking for the server: a file that
+      // is still waiting, or that finds the server already answering, counts as a user, or the
+      // owner could take the server down before that file's walk has run.
       mkdirSync(USERS, { recursive: true });
       writeFileSync(me, String(Date.now()));
+      await takeTurn();
       if (await up()) return;
       try { closeSync(openSync(LOCK, 'wx')); owner = true; } catch (e) { owner = false; }
       if (owner) child = spawn('npx', ['next', 'dev', '-p', String(PORT)], { cwd: new URL('../..', import.meta.url).pathname, stdio: 'ignore', detached: true });

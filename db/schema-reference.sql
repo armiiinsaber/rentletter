@@ -142,6 +142,8 @@
 --   listing_applicant_id  uuid        not null  references listing_applicants(id) on delete cascade
 --   applicant_person_id, application_party_id   nullable, on delete set null (db/002-application-state-tables.sql)
 --
+-- db/005-application-state-resync.sql brings the state back in step with the old columns once;
+-- db/state-parity-check.sql (read only) lists any row where the two disagree.
 -- The application state foundation (db/001 to db/004 application state files; db/004 adds the
 -- reconsidered state and holds income_sources.kind to employment, self_employed, other)
 --   applicant_people      one portable person per verified email; facts only, never a Fit result   service role only

@@ -34,7 +34,7 @@ test('the AI insight is gone: no route, no generator, no control, no ai_insight 
     if (!p.endsWith('lib/docVerifications.js')) assert.doesNotMatch(s, /ai_insight/, p);
   }
   const bridge = read(`${root}lib/supabaseBridge.js`);
-  assert.match(bridge, /const OPTIONAL_JUNCTION_COLS = \['doc_verifications', 'reviewed_at', 'withdrawn_at', 'confirmations', 'last_sent_at'\];/);
+  assert.match(bridge, /const OPTIONAL_JUNCTION_COLS = \['doc_verifications', 'reviewed_at', 'withdrawn_at', 'confirmations', 'last_sent_at', 'state'\];/);
   const dv = read(`${root}lib/docVerifications.js`);
   assert.match(dv, /ai_insight: null/, 'the archive entry keeps its key, always null now');
 });

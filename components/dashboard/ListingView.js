@@ -36,7 +36,7 @@ import { stateLine } from '../../lib/listingStateLine.js';
 import { dots } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
-import { LEGACY_LISTING_STATUS, isLegacyClosed } from '../../lib/application-state.js';
+import { LEGACY_LISTING_STATUS, listingStanding, withLocalDecision, withLocalListingStatus, carriedListingColumns } from '../../lib/application-state.js';
 import { sentLine, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
@@ -285,8 +285,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       const r = await adapter.fetch('/api/listings/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id, status, ...extra }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j?.error) { setError(j?.error || 'Could not update the listing.'); return false; }
-      setListing((l) => ({ ...l, status: j.status, closed_at: j.closedAt ?? null, rented_link_id: j.rentedLinkId ?? null }));
-      patchSignalsListingRow(listing.id, { status: j.status, closed_at: j.closedAt ?? null, rented_link_id: j.rentedLinkId ?? null });
+      // The local copy moves with the answer, state included: the page reads the state first.
+      setListing((l) => withLocalListingStatus(l, j));
+      patchSignalsListingRow(listing.id, carriedListingColumns(withLocalListingStatus(listing, j)));
       return true;
     } catch { setError('Could not update the listing.'); return false; }
     finally { setStatusBusy(false); }
@@ -342,7 +343,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listing?.invite_token, listing?.status]);
+  }, [listing?.invite_token, listingOpen(listing)]);
   const kitShort = shortCode ? shortUrlFor(shortCode) : '';
   const kitTexts = postKitTexts(displayAddress(listing), kitShort);
   const kitCopy = (key, text) => {
@@ -518,7 +519,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const setDecision = async (linkId, patch) => {
     const changedAt = new Date().toISOString();
     const before = applicants.find((a) => a.linkId === linkId) || null;
-    setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? { ...a, ...patch, decisionChangedAt: changedAt } : a)));
+    // The optimistic copy moves by the server's own rules, state included (lib/application-state.js).
+    setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? withLocalDecision(a, patch, changedAt) : a)));
     const revert = (msg) => { if (before) setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? before : a))); setError(msg); };
     try {
       let r;
@@ -920,7 +922,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 {displayLabel(l, 'Untitled listing')}
                 {!listingOpen(l) && (
                   <span className="num" style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 var(--s-3)', marginLeft: 'var(--s-2)', borderRadius: R.pill, background: C.ink, color: C.paper, fontFamily: 'var(--f-body)', fontSize: 'var(--t-eyebrow)', fontWeight: 700, lineHeight: 1, letterSpacing: '0.04em', whiteSpace: 'nowrap', verticalAlign: 'middle', position: 'relative', top: -3 }}>
-                    {isLegacyClosed(l.status) ? 'Closed' : 'Rented'}{l.closed_at ? ` · ${new Date(l.closed_at).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}
+                    {listingStanding(l).withdrawn ? 'Closed' : 'Rented'}{listingStanding(l).closedAt ? ` · ${new Date(listingStanding(l).closedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}
                   </span>
                 )}
               </h1>

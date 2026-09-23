@@ -59,7 +59,8 @@ export default async function handler(req, res) {
     let moves = [];
     let moved;
     try {
-      const cascades = isLegacyRented(status) || (fromState === LISTING_STATE.RENTED && toState === LISTING_STATE.LIVE);
+      // Leaving rented, to live or to withdrawn, is a deal that fell through for whoever held it.
+      const cascades = isLegacyRented(status) || (fromState === LISTING_STATE.RENTED && toState !== LISTING_STATE.RENTED);
       if (cascades) {
         const { data: standing, error: sErr } = await admin.from('listing_applicants').select('*').eq('listing_id', listing.id);
         if (sErr) throw sErr;
@@ -90,7 +91,7 @@ export default async function handler(req, res) {
 
     let notified = 0, recipients = 0;
     if (isLegacyRented(status) && notify !== false) {
-      const { data: rows } = await admin.from('listing_applicants').select('id, application_id, decision_status, withdrawn_at, application:applications(id, full_name, email)').eq('listing_id', listing.id);
+      const { data: rows } = await admin.from('listing_applicants').select('*, application:applications(id, full_name, email)').eq('listing_id', listing.id);
       const list = notSelectedRecipients(rows || [], winner ? winner.id : null);
       recipients = list.length;
       const name = realtorName(gate.profile, user);
@@ -114,7 +115,7 @@ export default async function handler(req, res) {
         }
       }
     }
-    return res.status(200).json({ ok: true, status, closedAt: patch.closed_at, rentedLinkId: patch.rented_link_id, recipients, notified });
+    return res.status(200).json({ ok: true, status, state: toState, closedAt: patch.closed_at, rentedLinkId: patch.rented_link_id, recipients, notified });
   } catch (e) {
     logServerError('[listings/status]', e, { listingId, status, userId: user.id });
     return res.status(500).json({ error: 'Could not update the listing.' });

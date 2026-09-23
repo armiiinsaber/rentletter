@@ -10,14 +10,17 @@
 // with the whole file sent as one query string, BEGIN and COMMIT included, which is exactly
 // what the editor sends. A failure rolls the transaction back and stops the path.
 //
-//   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again
+//   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again, then every combination
+//                         of state and old columns, 005, 005 again
 //   Path B  upgrade       baseline, the OLD 001 (git show b11f1f8, four income kinds), 002, 003,
-//                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again
+//                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
+//                         three drifted rows, 005, 005 again
 //   Path C  rollback      after path B: 999, 999 again
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import * as S from '../lib/application-state.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const read = (rel) => readFileSync(`${ROOT}${rel}`, 'utf8');
@@ -32,6 +35,8 @@ const FILES = {
   m002: 'db/002-application-state-tables.sql',
   m003: 'db/003-application-state-backfill.sql',
   m004: 'db/004-application-state-reconsider.sql',
+  m005: 'db/005-application-state-resync.sql',
+  parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
 // The fourth income kind the old 001 created. Spelled in two halves so the word itself is not
@@ -235,6 +240,73 @@ async function checkEnd(db, { constraint = true } = {}) {
   check(same((await rows(db, "SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = ANY($1) ORDER BY 1", [NEW_TABLES])).map((r) => r.policyname), ['application_events_select_own', 'closings_select_own']), 'the only policies on the new tables are the two read your own policies');
 }
 
+// ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
+// The parity file is one read only statement; its rows are what it lists.
+const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
+const applicantRows = (db) => rows(db, "SELECT la.id, la.listing_id, la.state::text AS state, la.decision_status, la.decision_priority, la.withdrawn_at::text AS withdrawn_at, l.status, l.rented_link_id FROM public.listing_applicants la JOIN public.listings l ON l.id = la.listing_id");
+const verdictOf = (r) => S.applicantDisagreement(r, { status: r.status, rented_link_id: r.rented_link_id });
+const targetOf = (r) => S.resyncTarget(r, { status: r.status, rented_link_id: r.rented_link_id });
+const stillDisagree = async (db) => (await rows(db, statements(read(FILES.m005)).at(-1).text))[0];
+
+// Every state, with every old column combination, in every place a row can be: on a live
+// listing, on a closed one, the winner of a rented listing, and someone else on a rented listing.
+async function seedCombinations(db) {
+  const hex = (n) => n.toString(16).padStart(4, '0');
+  const combos = [];
+  for (const state of S.APPLICATION_STATES) for (const status of Object.values(S.DECISION_STATUS)) for (const priority of Object.values(S.DECISION_PRIORITY)) for (const withdrawn of [false, true]) combos.push({ state, status, priority, withdrawn });
+  const appId = (k) => `eeeeeee1-0000-4000-8000-00000000${hex(k)}`;
+  const listingId = (k) => `fffffff1-0000-4000-8000-00000000${hex(k)}`;
+  const linkId = (role, k) => `${role}${role}${role}${role}${role}${role}${role}1-0000-4000-8000-00000000${hex(k)}`;
+  const values = (list) => list.map((r) => `(${r.map((v) => (v == null ? 'NULL' : `'${v}'`)).join(', ')})`).join(',\n');
+  await db.exec(`INSERT INTO public.applications (id, application_number, full_name) VALUES\n${values(combos.map((c, k) => [appId(k), `RL-COMBO-${k}`, `Combination ${k}`]))}`);
+  const shared = { live: listingId(9000), closed: listingId(9001) };
+  await db.exec(`INSERT INTO public.listings (id, profile_id, name, monthly_rent, status, state) VALUES ('${shared.live}', '${ID.me}', 'All combinations, live', 2000, 'active', 'live'), ('${shared.closed}', '${ID.me}', 'All combinations, closed', 2000, 'closed', 'withdrawn')`);
+  await db.exec(`INSERT INTO public.listings (id, profile_id, name, monthly_rent, status, state) VALUES\n${values(combos.map((c, k) => [listingId(k), ID.me, `Rented ${k}`, 2000, 'rented', 'rented']))}`);
+  const link = (id, listing, k, c) => [id, listing, appId(k), c.status, c.priority, c.withdrawn ? '2026-09-10T00:00:00Z' : null, c.state];
+  const all = [];
+  combos.forEach((c, k) => { all.push(link(linkId('1', k), shared.live, k, c), link(linkId('2', k), shared.closed, k, c), link(linkId('3', k), listingId(k), k, c), link(linkId('4', k), listingId(k), (k + 1) % combos.length, c)); });
+  await db.exec(`INSERT INTO public.listing_applicants (id, listing_id, application_id, decision_status, decision_priority, withdrawn_at, state) VALUES\n${values(all)}`);
+  for (let k = 0; k < combos.length; k++) await db.query('UPDATE public.listings SET rented_link_id = $1 WHERE id = $2', [linkId('3', k), listingId(k)]);
+  // Listings: every state against every status.
+  const ls = []; let n = 9100;
+  for (const state of S.LISTING_STATES) for (const status of S.LEGACY_LISTING_STATUSES) ls.push([listingId(n++), ID.me, `Listing ${state} ${status}`, 2000, status, state]);
+  await db.exec(`INSERT INTO public.listings (id, profile_id, name, monthly_rent, status, state) VALUES\n${values(ls)}`);
+  return { applicants: all.length, listings: ls.length };
+}
+
+async function checkResync(db, label) {
+  const before = await applicantRows(db);
+  const events0 = await one(db, 'SELECT count(*)::int FROM public.application_events');
+  // 1. The parity file lists exactly the rows the module says disagree, with the same reason and the same expected state.
+  const listed = await parityRows(db);
+  const wantApplicants = before.filter((r) => verdictOf(r)).map((r) => `${r.id}|${verdictOf(r)}|${S.applicationStateOf({ ...r, state: null }, r)}`).sort();
+  const gotApplicants = listed.filter((r) => r.kind === 'applicant').map((r) => `${r.id}|${r.disagreement}|${r.expected}`).sort();
+  check(same(gotApplicants, wantApplicants), `${label}: db/state-parity-check.sql lists the ${wantApplicants.length} applicants lib/application-state.js says disagree, of ${before.length}, reason and expected state included`, `${gotApplicants.length} listed`);
+  const listingsBefore = await rows(db, 'SELECT id, status, state::text AS state FROM public.listings');
+  const wantListings = listingsBefore.filter((l) => S.listingDisagreement(l)).map((l) => `${l.id}|${S.listingDisagreement(l)}`).sort();
+  check(same(listed.filter((r) => r.kind === 'listing').map((r) => `${r.id}|${r.disagreement}`).sort(), wantListings), `${label}: and the ${wantListings.length} listings, of ${listingsBefore.length}`);
+  // 2. The resync sets exactly those rows, to exactly what the module names, and no row in reconsidered.
+  await step(db, `${label} 005`, FILES.m005);
+  const after = Object.fromEntries((await applicantRows(db)).map((r) => [r.id, r]));
+  const wrong = before.filter((r) => after[r.id].state !== (targetOf(r) || r.state));
+  check(wrong.length === 0, `${label}: every row reads what resyncTarget names, and every other row is untouched`, wrong.slice(0, 3).map((r) => `${r.id} ${r.state} to ${after[r.id].state}, wanted ${targetOf(r) || r.state}`).join('; '));
+  const changed = before.filter((r) => targetOf(r));
+  check(before.filter((r) => r.state === 'reconsidered').every((r) => after[r.id].state === 'reconsidered'), `${label}: no row in reconsidered was touched (${before.filter((r) => r.state === 'reconsidered').length} of them)`);
+  const audit = await rows(db, "SELECT listing_applicant_id AS id, from_state::text AS f, to_state::text AS t, actor, actor_type::text AS actor_type FROM public.application_events WHERE reason = 'resync'");
+  check(audit.length === changed.length && same(audit.map((a) => `${a.id}|${a.f}|${a.t}|${a.actor}|${a.actor_type}`).sort(), changed.map((r) => `${r.id}|${r.state}|${targetOf(r)}|resync|system`).sort()), `${label}: one application_events row per changed row (${changed.length}), actor system, reason resync, from and to right`);
+  check((await one(db, 'SELECT count(*)::int FROM public.application_events')) === events0 + changed.length, `${label}: and no audit row for anything else`);
+  check(same(before.map((r) => [r.id, r.decision_status, r.decision_priority, r.withdrawn_at]).sort(), Object.values(after).map((r) => [r.id, r.decision_status, r.decision_priority, r.withdrawn_at]).sort()), `${label}: no old column was changed`);
+  check((await rows(db, 'SELECT id, status, state::text AS state FROM public.listings')).every((l) => !S.listingDisagreement(l)), `${label}: every listing agrees, and draft and paused were left alone`);
+  // 3. What is left, and the second run.
+  const left = await parityRows(db);
+  check(left.every((r) => r.kind === 'applicant' && r.state === 'reconsidered'), `${label}: what the parity check still lists is in reconsidered, and nothing else (${left.length})`);
+  const tail = await stillDisagree(db);
+  check(Number(tail.still_disagree) === 0 && Number(tail.reconsidered_left_alone) === left.length && Number(tail.resync_audit_rows) === changed.length, `${label}: db/005 ends on still_disagree 0`, JSON.stringify(tail));
+  await step(db, `${label} 005 again`, FILES.m005);
+  check((await one(db, 'SELECT count(*)::int FROM public.application_events')) === events0 + changed.length && same(Object.values(after).map((r) => [r.id, r.state]).sort(), (await applicantRows(db)).map((r) => [r.id, r.state]).sort()), `${label}: 005 again changes no row and adds no audit row`);
+  return changed.length;
+}
+
 // ── the paths ───────────────────────────────────────────────────────────────────────
 async function pathA() {
   say('\nPATH A  fresh setup');
@@ -252,6 +324,11 @@ async function pathA() {
   await step(db, 'A7 (002 again)', FILES.m002);
   await step(db, 'A8 (003 again)', FILES.m003);
   check((await one(db, "SELECT count(*)::int FROM public.application_events WHERE reason = 'backfill'")) === LINKS.length, '003 again adds no second starting row'); await checkEnd(db);
+  // db/005: on the backfilled rows alone there is nothing to do, then on every combination.
+  check((await parityRows(db)).length === 0, 'after the backfill the parity check lists nothing');
+  const seeded = await seedCombinations(db);
+  say(`  seeded: ${seeded.applicants} applicants (15 states, 3 decision_status, 2 decision_priority, withdrawn or not, 4 places) and ${seeded.listings} listings (5 states, 3 status)`);
+  await checkResync(db, 'A9');
   await db.close();
 }
 
@@ -275,6 +352,11 @@ async function pathB() {
   await step(db, 'B6 (001 again)', FILES.m001);
   check((await one(db, 'SELECT kind::text || \' \' || annual_amount FROM public.income_sources WHERE id = $1', [income])) === 'other 30000', 'the row still reads other, amount untouched');
   await checkEnd(db); await checkRules(db);
+  // db/005 on three rows whose state drifted while their old columns stayed where they were.
+  await db.query("UPDATE public.listing_applicants SET state = 'withdrawn_by_applicant' WHERE id = $1", [link(1)]); // withdrawn_at is empty: reads submitted again
+  await db.query("UPDATE public.listing_applicants SET state = 'submitted' WHERE id = $1", [link(2)]);              // the mark is on: reads shortlisted again
+  await db.query("UPDATE public.listing_applicants SET state = 'reconsidered' WHERE id = $1", [link(7)]);           // on a rented listing: listed, never reset
+  check((await checkResync(db, 'B7')) === 2, 'two of the three drifted rows were reset, the reconsidered one was left alone');
   check(same(await legacySnapshot(db), before), 'status, closed_at, rented_link_id, the decision columns, withdrawn_at and the document row are what they were before 001');
   return { db, before };
 }
