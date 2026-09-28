@@ -77,7 +77,7 @@ export default function Home() {
     currentRent: '',
     moveInDate: '',
     // Tier 1 — household details
-    numberOfOccupants: '1', occupantsDetails: '',
+    numberOfOccupants: '1',
     smoker: 'no',
     // Tier 1 — co-applicant (progressive disclosure)
     hasCoApplicant: false,
@@ -296,7 +296,7 @@ export default function Home() {
     previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '',
     currentRent: '',
     moveInDate: '',
-    numberOfOccupants: '1', occupantsDetails: '',
+    numberOfOccupants: '1',
     smoker: 'no',
     hasCoApplicant: false,
     coApplicantName: '', coApplicantAge: '', coApplicantEmployer: '', coApplicantJobTitle: '',
@@ -838,7 +838,6 @@ export default function Home() {
                   ]}
                 />
               </div>
-              <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={v => update('occupantsDetails', v)} placeholder="One roommate (also on this application), no children." />
 
               {/* Co-applicant toggle */}
               <ToggleField
@@ -1121,24 +1120,6 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
           border: 'none', borderBottom: `1px solid ${C.rule}`,
           background: 'transparent', color: C.ink,
           outline: 'none', transition: 'border color 0.2s',
-        }}
-        onFocus={e => e.target.style.borderBottomColor = C.ink}
-        onBlur={e => e.target.style.borderBottomColor = C.rule} />
-    </div>
-  );
-}
-
-function Textarea({ label, value, onChange, placeholder }) {
-  return (
-    <div>
-      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
-      <textarea value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder} rows={3}
-        style={{
-          width: '100%', padding: '14px 0', fontSize: 16,
-          border: 'none', borderBottom: `1px solid ${C.rule}`,
-          background: 'transparent', color: C.ink,
-          outline: 'none', resize: 'vertical', fontFamily: "'Inter', sans-serif",
-          lineHeight: 1.5, transition: 'border color 0.2s',
         }}
         onFocus={e => e.target.style.borderBottomColor = C.ink}
         onBlur={e => e.target.style.borderBottomColor = C.rule} />

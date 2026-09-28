@@ -20,11 +20,12 @@ import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } f
 import { formatUnit } from '../../lib/unitType';
 import { EMPTY_FORM, serializePets, ageFromDob } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
-import { Field, Textarea, SelectField, ToggleField } from '../../components/apply/fields';
+import { Field, SelectField, ToggleField } from '../../components/apply/fields';
 import { ProfileStyles, Eyebrow, Dots, DotText, EMP_LABEL, noWidow } from '../../components/tenant/ProfileFacts';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
+import { runSubmitChain, SAVING_COPY } from '../../lib/submitChain';
 
 // ?from={prefillToken}: the invite from Pipeline (pages/api/pipeline/invite.js). Resolved on the
 // server through the service role (lib/pipeline.js readPrefill): the token maps to an application
@@ -86,8 +87,12 @@ const STEPS = [
 
 export default function ApplyPage({ invited = null }) {
   const router = useRouter();
-  // status: 'loading' | 'invalid' | 'ready' | 'submitting' | 'done'
+  // status: 'loading' | 'invalid' | 'ready' | 'submitting' | 'saving' | 'done'
+  // saving: the number exists and the tag and mirror are on their way (lib/submitChain.js); the
+  // done page shows only once the mirror answered. saveHeld: every try failed, Try again shows.
   const [status, setStatus] = useState('loading');
+  const [saveHeld, setSaveHeld] = useState(false);
+  const generated = useRef(null); // { applicationNumber, ownerToken, emailSig, token } from /api/generate
   const [invalidMsg, setInvalidMsg] = useState('');
   const [rented, setRented] = useState(null);       // { realtorName, listingName } when the unit is gone
   const [keepEmail, setKeepEmail] = useState('');
@@ -344,10 +349,12 @@ export default function ApplyPage({ invited = null }) {
     ];
     return rows;
   };
-  // Final submission — only from the review step's "Confirm & submit". The successful-submit
-  // flow (RL generation, KV tag, Supabase mirror, email, success screen) is unchanged.
+  // Final submission, only from the review step's "Confirm & submit". Generate answers with the
+  // number; the tag and the mirror then run through lib/submitChain.js (three retries with a
+  // pause), and the done page shows once the mirror answered. If every try fails the tenant is
+  // held on "Saving your application" with Try again, which reruns the chain on the same number.
   const submitApplication = async () => {
-    if (status === 'submitting') return; // guard against double-submit
+    if (status === 'submitting' || status === 'saving') return; // guard against double-submit
     setError('');
     setStatus('submitting');
     const token = String(router.query.token || '');
@@ -365,71 +372,60 @@ export default function ApplyPage({ invited = null }) {
       }
       const applicationNumber = json.applicationNumber;
       const ownerToken = json.ownerToken;
-
-      // Show the tenant their RL immediately — the steps below are best-effort and
-      // must never block or break the tenant's confirmation.
-      setResult({ applicationNumber, ownerToken });
-      setStatus('done');
-      if (invited?.token) fetch('/api/pipeline/prefill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: invited.token }) }).catch(() => {});
+      generated.current = { applicationNumber, ownerToken, emailSig: json.emailSig || null, token };
       // Keep the profile on this device so the next invite link offers "use my saved profile".
       try {
         if (ownerToken) { localStorage.setItem('rentletter_app_number', applicationNumber); localStorage.setItem('rentletter_owner_token', ownerToken); }
       } catch (e) { /* private mode, the email carries the same keys */ }
+      if (invited?.token) fetch('/api/pipeline/prefill', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: invited.token }) }).catch(() => {});
       window.scrollTo({ top: 0, behavior: 'smooth' });
-
-      // Background: tag the invite (KV), then mirror into Supabase (the bridge —
-      // mirror runs AFTER tag so the RL is present in invite_submissions:{token}),
-      // then email the tenant. All non-blocking.
-      (async () => {
-        let minted = null;
-        try {
-          // 2. Tag this submission to the realtor's invite (KV).
-          await fetch('/api/invite/tag', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, applicationNumber }),
-          });
-          // 3. Mirror into Supabase so it appears under the listing in the dashboard. The mirror
-          //    also mints the document request; its token drives the upload card and the email line.
-          const mr = await fetch('/api/applications/mirror', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, applicationNumber }),
-          });
-          const mj = await mr.json().catch(() => ({}));
-          if (mj?.docRequest?.token) { minted = { token: mj.docRequest.token, url: mj.docRequest.url }; setDocRequest(minted); }
-        } catch (e) {
-          console.error('[apply] tag/mirror failed (non-fatal)', e);
-        }
-        // 3b. Attach to the tenant's unified profile (by email) and refresh its facts. Owner token
-        // proves ownership; no session needed. Best-effort.
-        fetch('/api/tenant/sync-application', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ applicationNumber, ownerToken }),
-        }).catch(() => {});
-        // 4. Best-effort: email the tenant their number + owner token — confirmation
-        // only. No letter/resume fields: the legacy rent-letter PDF and tenant-résumé
-        // attachments were removed from the product; /api/send now sends the lean
-        // confirmation (the /my-application recovery path depends on this email).
-        if (form.email) {
-          fetch('/api/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: form.email,
-              fullName: form.fullName,
-              applicationNumber,
-              ownerToken,
-              uploadUrl: minted?.url || null,
-              signature: json.emailSig || null, // lib/sendSignature.js: the generate route signed this send
-            }),
-          }).catch((e) => console.error('[apply] email send failed', e));
-        }
-      })();
+      await saveToListing();
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.');
       setStatus('ready');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  // 2. Tag the invite (KV), then 3. mirror into Supabase so the application appears under the
+  // listing; the mirror also mints the document request whose token drives the upload card and
+  // the email line. Done only after both answered; held with Try again otherwise.
+  const saveToListing = async () => {
+    const g = generated.current;
+    if (!g) return;
+    setSaveHeld(false);
+    setStatus('saving');
+    const post = async (url, body) => {
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      return { ok: r.ok, status: r.status, json: await r.json().catch(() => ({})) };
+    };
+    const out = await runSubmitChain({ post, token: g.token, applicationNumber: g.applicationNumber });
+    if (!out.ok) { console.warn(`[apply] ${out.step} failed after ${out.attempts} tries: ${out.error?.message || out.error}`); setSaveHeld(true); return; }
+    if (out.docRequest) setDocRequest(out.docRequest);
+    setResult({ applicationNumber: g.applicationNumber, ownerToken: g.ownerToken });
+    setStatus('done');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // 3b. Attach to the tenant's unified profile (by email) and refresh its facts. Owner token
+    // proves ownership; no session needed. Best-effort.
+    fetch('/api/tenant/sync-application', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ applicationNumber: g.applicationNumber, ownerToken: g.ownerToken }),
+    }).catch(() => {});
+    // 4. Best effort: email the tenant their number and owner token, the confirmation only
+    // (the /my-application recovery path depends on this email).
+    if (form.email) {
+      fetch('/api/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          fullName: form.fullName,
+          applicationNumber: g.applicationNumber,
+          ownerToken: g.ownerToken,
+          uploadUrl: out.docRequest?.url || null,
+          signature: g.emailSig, // lib/sendSignature.js: the generate route signed this send
+        }),
+      }).catch((e) => console.error('[apply] email send failed', e));
     }
   };
 
@@ -534,10 +530,9 @@ export default function ApplyPage({ invited = null }) {
       case 'household': return (
         <>
           <div className="mp-grid2">
-            <Field label="Total occupants" value={form.numberOfOccupants} onChange={(v) => update('numberOfOccupants', v)} placeholder="2" type="number" inputMode="numeric" hint="The number of people who will live in the unit." />
+            <Field label="Total occupants" value={form.numberOfOccupants} onChange={(v) => update('numberOfOccupants', v)} placeholder="2" type="number" inputMode="numeric" hint="Used only to check the unit's occupancy limit. Not scored." />
             <SelectField label="Smoking or vaping" value={form.smoker} onChange={(v) => update('smoker', v)} options={[{ value: 'no', label: 'No' }, { value: 'outdoor', label: 'Outdoor only' }, { value: 'yes', label: 'Yes' }]} />
           </div>
-          <Textarea label="Other occupants (optional)" value={form.occupantsDetails} onChange={(v) => update('occupantsDetails', v)} placeholder="One roommate, also on this application." />
           {/* Structured pet capture, serialized into the stored pets string (serializePets). */}
           <ToggleField label="Do you have pets?" value={form.hasPets} onChange={(v) => updatePets({ hasPets: v })} />
           {form.hasPets && (
@@ -680,7 +675,7 @@ export default function ApplyPage({ invited = null }) {
                   </div>
                   {keep.state === 'error' && <p role="alert" className="mp-alert">{noWidow(keep.message)}</p>}
                   <button type="submit" disabled={keep.state === 'busy'} className="mp-btn">{keep.state === 'busy' ? 'Saving' : 'Yes, keep me in mind'}</button>
-                  <p className="mp-note">{noWidow('No account is created. Your email is kept for 60 days for this purpose only.')}</p>
+                  <p className="mp-note">{noWidow('No account is created. Once you confirm from your email, it is kept for 60 days for this purpose only.')}</p>
                 </form>
               )}
             </div>
@@ -691,6 +686,21 @@ export default function ApplyPage({ invited = null }) {
               <h1 className="mp-h1">{noWidow('This link is no longer active')}</h1>
               <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(invalidMsg)}</p>
               <a href="/" className="mp-btn" style={{ marginTop: 'var(--gap-card)' }}>Go to Rentletter</a>
+            </div>
+          )}
+
+          {status === 'saving' && (
+            <div className="rl-card mp-card" role="status" aria-live="polite">
+              <Eyebrow>Application submitted</Eyebrow>
+              <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(saveHeld ? SAVING_COPY.heldTitle : SAVING_COPY.title)}</h1>
+              <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(saveHeld ? SAVING_COPY.heldBody : SAVING_COPY.body)}</p>
+              {generated.current && (
+                <div className="mp-fact" style={{ marginTop: 'var(--gap-card)' }}>
+                  <div className="mp-label">Your application number</div>
+                  <div className="mp-value num">{generated.current.applicationNumber}</div>
+                </div>
+              )}
+              {saveHeld && <button type="button" onClick={saveToListing} className="mp-btn mp-btn-red" style={{ marginTop: 'var(--gap-card)' }}>{SAVING_COPY.tryAgain}</button>}
             </div>
           )}
 

@@ -67,7 +67,9 @@ export function fakeDb(tables, { absentColumns = [], onQuery = null, failWhen = 
       if (q.order) out = [...out].sort((a, b) => (String(a[q.order.col] || '') < String(b[q.order.col] || '') ? -1 : 1) * (q.order.asc ? 1 : -1));
       if (q.limit) out = out.slice(0, q.limit);
       out = out.map((r) => ({ ...r }));
-      if (/application:applications\(\*\)/.test(q.select)) out.forEach((r) => { r.application = (db.applications || []).find((a) => String(a.id) === String(r.application_id)) || null; });
+      // The one join the routes use: application:applications(*) or a column list.
+      const join = /application:applications\(([^)]*)\)/.exec(q.select);
+      if (join) { const cols = join[1].trim() === '*' ? null : join[1].split(',').map((c) => c.trim()).filter(Boolean); out.forEach((r) => { const a = (db.applications || []).find((x) => String(x.id) === String(r.application_id)) || null; r.application = a && cols ? Object.fromEntries(cols.map((c) => [c, a[c]])) : a; }); }
       if (q.single) return { data: out[0] || null, error: null };
       return { data: out, error: null };
     };

@@ -9,6 +9,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { devServer, BASE } from '../helpers/devServer.mjs';
+import { requireWebkit } from '../helpers/browsers.mjs';
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 let pw = null; try { pw = await import('playwright-core'); } catch (e) { pw = null; }
@@ -99,7 +100,8 @@ async function walk(browserType, launch, tag) {
   } finally { await browser.close(); }
 }
 
-test('password reset in WebKit at 390 with a stubbed Supabase', { skip: haveWebkit ? false : 'WebKit binary absent (npx playwright install webkit)' }, async () => {
+test('password reset in WebKit at 390 with a stubbed Supabase', async () => {
+  requireWebkit(); // fails with the install line when the binary is missing, never skips
   const shots = await walk(pw.webkit, {}, 'wk');
   assert.equal(shots.length, 4);
 });

@@ -7,11 +7,12 @@
 //   the dead end: Mark rented to someone told no says "Reconsider them first." beside the pill,
 //     which opens the reason sheet.
 // Screenshots go to /tmp/reconsider-{wk|cr}-*.png, and the rendered email to /tmp/reconsider-email.png.
-// Skipped when playwright-core or the browser binary is absent.
+// Fails, never skips, when playwright-core or the WebKit binary is absent (tests/helpers/browsers.mjs).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { devServer, BASE } from '../helpers/devServer.mjs';
+import { requireWebkit } from '../helpers/browsers.mjs';
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 let pw = null; try { pw = await import('playwright-core'); } catch (e) { pw = null; }
@@ -132,7 +133,7 @@ async function deadEnd(browserType, launch, tag) {
   } finally { await browser.close(); }
 }
 
-const W = { skip: haveWebkit ? false : 'WebKit binary absent (npx playwright install webkit)' };
+const W = {}; // a WebKit walk never skips: requireWebkit() fails it when the binary is missing
 const C = { skip: haveChrome ? false : 'Chrome binary absent' };
 test('reconsider, the full path to accepted, in WebKit at 390 by 844 with an iPhone user agent', W, async () => {
   await fullPath(pw.webkit, {}, 'wk');
@@ -142,7 +143,7 @@ test('reconsider, the full path to accepted, in WebKit at 390 by 844 with an iPh
   await page.setContent(m.html); await page.screenshot({ path: '/tmp/reconsider-email.png', fullPage: true }); await browser.close();
 });
 test('the same full path in Chrome', C, () => fullPath(pw.chromium, { executablePath: chromeBin }, 'cr'));
-test('reconsider, then Undo, in WebKit', W, () => undoPath(pw.webkit, {}, 'wk'));
+test('reconsider, then Undo, in WebKit', W, () => { requireWebkit(); return undoPath(pw.webkit, {}, 'wk'); });
 test('the same Undo in Chrome', C, () => undoPath(pw.chromium, { executablePath: chromeBin }, 'cr'));
-test('the dead end line under Mark rented, in WebKit', W, () => deadEnd(pw.webkit, {}, 'wk'));
+test('the dead end line under Mark rented, in WebKit', W, () => { requireWebkit(); return deadEnd(pw.webkit, {}, 'wk'); });
 test('the same dead end in Chrome', C, () => deadEnd(pw.chromium, { executablePath: chromeBin }, 'cr'));

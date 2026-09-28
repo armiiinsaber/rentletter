@@ -36,6 +36,8 @@ const FILES = {
   m003: 'db/003-application-state-backfill.sql',
   m004: 'db/004-application-state-reconsider.sql',
   m005: 'db/005-application-state-resync.sql',
+  m006: 'db/006-trial-default.sql',
+  m007: 'db/007-drop-other-occupants.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -240,6 +242,51 @@ async function checkEnd(db, { constraint = true } = {}) {
   check(same((await rows(db, "SELECT policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = ANY($1) ORDER BY 1", [NEW_TABLES])).map((r) => r.policyname), ['application_events_select_own', 'closings_select_own']), 'the only policies on the new tables are the two read your own policies');
 }
 
+// ── db/006 and db/007 ──────────────────────────────────────────────────────────
+// Rows planted before 006 runs: the ones the backfill must leave alone, beside the two baseline
+// profiles at none with no history, which it must move to trial.
+const P = { history: '33333333-3333-4333-8333-333333333333', lapsed: '44444444-4444-4444-8444-444444444444', founder: '55555555-5555-4555-8555-555555555555', fresh: '66666666-6666-4666-8666-666666666666', explicit: '77777777-7777-4777-8777-777777777777' };
+async function plantBefore006(db) {
+  await db.query("INSERT INTO public.profiles (id, email, plan, stripe_customer_id) VALUES ($1, 'history@example.com', 'none', 'cus_123')", [P.history]);
+  await db.query("INSERT INTO public.profiles (id, email, plan, trial_ends_at) VALUES ($1, 'lapsed@example.com', 'none', '2026-01-01T00:00:00Z')", [P.lapsed]);
+  await db.query("INSERT INTO public.profiles (id, email, plan) VALUES ($1, 'founder@example.com', 'founding')", [P.founder]);
+  await db.query('CREATE INDEX IF NOT EXISTS applications_occupants_details_idx ON public.applications (occupants_details)');
+  check((await hasColumn(db, 'applications', 'occupants_details')) === true && (await one(db, "SELECT to_regclass('public.applications_occupants_details_idx') IS NOT NULL")) === true, 'before 007: occupants_details and an index on it exist');
+}
+const profileOf = (db, id) => rows(db, "SELECT plan, trial_ends_at::text AS trial_ends_at, to_char(trial_ends_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') AS ends_day, stripe_customer_id FROM public.profiles WHERE id = $1", [id]).then((r) => r[0]);
+const within7Days = async (db, iso) => one(db, "SELECT $1::timestamptz BETWEEN now() + interval '7 days' - interval '2 minutes' AND now() + interval '7 days' + interval '2 minutes'", [iso]);
+async function check006(db, label) {
+  for (const id of [ID.me, ID.other]) { const p = await profileOf(db, id); check(p.plan === 'trial' && !!p.trial_ends_at && (await within7Days(db, p.trial_ends_at)), `${label}: a profile at none with no history is on trial, ending in 7 days`, JSON.stringify(p)); }
+  check((await profileOf(db, P.history)).plan === 'none', `${label}: a profile at none with a Stripe customer is left at none`);
+  const lapsed = await profileOf(db, P.lapsed); check(lapsed.plan === 'none' && lapsed.ends_day === '2026-01-01', `${label}: a lapsed trial keeps its plan and its end date`, JSON.stringify(lapsed));
+  check((await profileOf(db, P.founder)).plan === 'founding', `${label}: a founder stays founding`);
+  check((await one(db, "SELECT column_default FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'plan'")).includes('trial'), `${label}: plan defaults to trial`);
+  check((await hasTrigger(db, 'profiles_start_trial')) === true, `${label}: the insert trigger exists`);
+}
+async function checkInsertAfter006(db) {
+  await db.query("INSERT INTO public.profiles (id, email) VALUES ($1, 'fresh@example.com')", [P.fresh]);
+  const fresh = await profileOf(db, P.fresh); check(fresh.plan === 'trial' && (await within7Days(db, fresh.trial_ends_at)), 'a new profile with no plan given starts on trial, ending in 7 days', JSON.stringify(fresh));
+  await db.query("INSERT INTO public.profiles (id, email, plan) VALUES ($1, 'explicit@example.com', 'none')", [P.explicit]);
+  const explicit = await profileOf(db, P.explicit); check(explicit.plan === 'trial' && !!explicit.trial_ends_at, 'a new profile inserted at none starts on trial too');
+  const paid = await one(db, "INSERT INTO public.profiles (email, plan, subscription_status) VALUES ('paid@example.com', 'paid', 'active') RETURNING plan || ' ' || coalesce(trial_ends_at::text, 'null')");
+  check(paid === 'paid null', 'a paid profile passes through the trigger untouched');
+}
+async function check007(db, label) {
+  check((await hasColumn(db, 'applications', 'occupants_details')) === false, `${label}: applications.occupants_details is gone`);
+  check((await one(db, "SELECT to_regclass('public.applications_occupants_details_idx') IS NULL")) === true, `${label}: the index on it is gone`);
+  check((await hasColumn(db, 'applications', 'number_of_occupants')) === (await one(db, "SELECT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'applications' AND column_name = 'number_of_occupants')")), `${label}: nothing else on applications changed`);
+}
+async function run006And007(db, tag) {
+  await plantBefore006(db);
+  await step(db, `${tag}1`, FILES.m006); await check006(db, `${tag}1`);
+  const ends = (await profileOf(db, ID.me)).trial_ends_at;
+  await step(db, `${tag}2 (006 again)`, FILES.m006); await check006(db, `${tag}2`);
+  check((await profileOf(db, ID.me)).trial_ends_at === ends, `${tag}2: a second run leaves the trial end date where it was`);
+  await checkInsertAfter006(db);
+  await step(db, `${tag}3`, FILES.m007); await check007(db, `${tag}3`);
+  await step(db, `${tag}4 (007 again)`, FILES.m007); await check007(db, `${tag}4`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -329,6 +376,7 @@ async function pathA() {
   const seeded = await seedCombinations(db);
   say(`  seeded: ${seeded.applicants} applicants (15 states, 3 decision_status, 2 decision_priority, withdrawn or not, 4 places) and ${seeded.listings} listings (5 states, 3 status)`);
   await checkResync(db, 'A9');
+  await run006And007(db, 'A1');
   await db.close();
 }
 
@@ -358,6 +406,7 @@ async function pathB() {
   await db.query("UPDATE public.listing_applicants SET state = 'reconsidered' WHERE id = $1", [link(7)]);           // on a rented listing: listed, never reset
   check((await checkResync(db, 'B7')) === 2, 'two of the three drifted rows were reset, the reconsidered one was left alone');
   check(same(await legacySnapshot(db), before), 'status, closed_at, rented_link_id, the decision columns, withdrawn_at and the document row are what they were before 001');
+  await run006And007(db, 'B');
   return { db, before };
 }
 

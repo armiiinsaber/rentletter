@@ -28,7 +28,11 @@ test('the two live invite routes moved and are what the tenant pages call', () =
   assert.equal(existsSync(`${root}pages/api/invite/tag.js`), true);
   const apply = readFileSync(`${root}pages/apply/[token].js`, 'utf8');
   const home = readFileSync(`${root}pages/index.js`, 'utf8');
-  for (const src of [apply, home]) { assert.match(src, /\/api\/invite\/resolve\?token=/); assert.match(src, /'\/api\/invite\/tag'/); }
+  for (const src of [apply, home]) assert.match(src, /\/api\/invite\/resolve\?token=/);
+  // The apply page tags through lib/submitChain.js (retried, before the done page); the homepage form still calls it directly.
+  assert.match(home, /'\/api\/invite\/tag'/);
+  assert.match(apply, /runSubmitChain\(/);
+  assert.match(readFileSync(`${root}lib/submitChain.js`, 'utf8'), /'\/api\/invite\/tag'/);
   const resolve = readFileSync(`${root}pages/api/invite/resolve.js`, 'utf8');
     assert.match(resolve, /resolveInvite\(admin, String\(token\), rec\)/, 'the rented answer from 833ceef now comes from the row (lib/inviteResolve.js)');
   assert.match(resolve, /rented: true/);

@@ -131,7 +131,7 @@ test('prefill: the token resolves to the application as a form, surviving fields
     assert.equal(r.consentId, 'C1'); assert.equal('owner_token' in r.application, false); assert.equal('cover_letter' in r.application, false);
     const form = rowToForm(r.application);
     assert.equal(form.email, 'A1@example.com'); assert.equal(form.fullName, 'Person A1'); assert.equal(form.annualIncome, '110000'); assert.equal(form.moveInDate, '2026-10-01'); assert.equal(form.rentalStatus, 'current'); assert.equal(form.pets, 'One cat');
-    assert.equal(form.numberOfOccupants, '1'); assert.equal(form.occupantsDetails, ''); assert.equal(form.smoker, 'no'); // untouched defaults, never read from the row
+    assert.equal(form.numberOfOccupants, '1'); assert.equal(form.smoker, 'no'); // untouched defaults, never read from the row
     assert.equal(form.apartmentAddress, '', 'the unit comes from the invite');
     assert.equal(await P.readPrefill(admin, 'NOTATOKEN'), null);
     assert.equal(await P.readPrefill(admin, P.newPrefillToken()), null, 'unknown token');

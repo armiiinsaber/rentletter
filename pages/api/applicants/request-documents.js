@@ -17,6 +17,7 @@ import { authorizeApplicant } from '../../../lib/applicantAnalysis';
 import { kvReady, mintRequest, uploadUrl } from '../../../lib/docRequest';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { displayLabel } from '../../../lib/listingAddress';
+import { notSelectedFrom } from '../../../lib/listingState';
 import { APPLICATION_STATE, ACTOR_TYPE } from '../../../lib/application-state';
 import { transitionApplicationIfAllowed } from '../../../lib/applicationTransitions';
 
@@ -98,8 +99,9 @@ export default async function handler(req, res) {
     </table>
   </td></tr></table>
 </body></html>`;
+          // In the realtor's name, reply to the realtor, like every other tenant email (lib/listingState.js notSelectedFrom).
           await resend.emails.send({
-            from: 'Rentletter <hello@rentletter.ca>',
+            from: notSelectedFrom(realtorName),
             to: tenantEmail,
             reply_to: user.email,
             subject: `${realtorName}: upload your documents for your rental application`,

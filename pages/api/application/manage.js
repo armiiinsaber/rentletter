@@ -29,6 +29,7 @@ import { logServerError } from '../../../lib/serverLog';
 import { attachApplication } from '../../../lib/tenantProfileStore';
 import { revokeReferralByApplication } from '../../../lib/referrals';
 import { isApplicationNumber } from '../../../lib/applicationIds';
+import { standingForApplication } from '../../../lib/tenantStanding';
 
 const UPDATE_LIMIT_PER_HOUR = 20;
 const ONE_YEAR = 31536000;
@@ -82,8 +83,12 @@ export default async function handler(req, res) {
       // unified profile (no facts refresh — viewing isn't a statement of current truth).
       attachApplication(application, { refreshFacts: false }).catch(() => {});
       const log = (await kvGet(`auditlog:${appNum}`)) || [];
+      // Where it stands on the listing (lib/tenantStanding.js): the line the tenant reads, null
+      // when the application never reached a listing.
+      const standing = isSupabaseConfigured() && process.env.SUPABASE_SERVICE_ROLE_KEY ? await standingForApplication(getSupabaseAdminClient(), appNum) : null;
       return res.status(200).json({
         applicationNumber: appNum,
+        standing,
         revoked: !!application.revoked,
         revokedAt: application.revokedAt || null,
         createdAt: application.createdAt,

@@ -14,6 +14,7 @@
 // owner_token is never selected or returned.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../lib/supabase/admin';
+import { requireEntitlement } from '../../lib/requireEntitlement';
 import { notificationsFor, EMPTY_FEED } from '../../lib/notificationsFeed';
 
 export default async function handler(req, res) {
@@ -28,7 +29,10 @@ export default async function handler(req, res) {
   if (!user) return res.status(401).json({ error: 'Not signed in.' });
 
   if (req.method === 'POST') {
+    // Write path: needs an unlocked plan (lib/entitlements.js), 402 otherwise, like every realtor write.
+    if (!(await requireEntitlement(req, res, supabase, user))) return;
     try {
+      // Ownership: the row is the caller's own profile and nothing else.
       await supabase.from('profiles').update({ notifications_last_seen: new Date().toISOString() }).eq('id', user.id);
     } catch (e) {
       // Best-effort: if the column isn't migrated yet, the count simply reappears on reload.

@@ -8,6 +8,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
 import { devServer, BASE } from '../helpers/devServer.mjs';
+import { requireWebkit } from '../helpers/browsers.mjs';
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const UA_DESK = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15';
@@ -68,7 +69,8 @@ async function landing(browserType, launch, tag, width) {
   } finally { await browser.close(); }
 }
 
-test('homepage in WebKit at 390 and 1280', { skip: haveWebkit ? false : 'WebKit binary absent (npx playwright install webkit)' }, async () => {
+test('homepage in WebKit at 390 and 1280', async () => {
+  requireWebkit(); // fails with the install line when the binary is missing, never skips
   const a = await landing(pw.webkit, {}, 'wk', 390);
   const b = await landing(pw.webkit, {}, 'wk', 1280);
   console.log('webkit homepage', JSON.stringify({ a, b }));

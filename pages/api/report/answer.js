@@ -9,7 +9,7 @@ import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { checkSubmitLimits } from '../../../lib/rateLimit';
 import { isReportToken } from '../../../lib/applicationIds';
-import { snapshotByToken } from '../../../lib/reportSnapshotStore';
+import { snapshotByToken, reopenedAfter, REOPENED_LINE } from '../../../lib/reportSnapshotStore';
 import { recordEvent } from '../../../lib/events';
 import { invalidateSignals } from '../../../lib/signalsCache';
 import { logServerError } from '../../../lib/serverLog';
@@ -35,6 +35,8 @@ export default async function handler(req, res) {
     const row = await snapshotByToken(admin, t);
     if (!row) return res.status(404).json({ error: 'This report is not available.' });
     if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return res.status(410).json({ error: 'This report has expired.' });
+    // After a reopen the applicants on this report have moved on: no answer lands on them.
+    if (await reopenedAfter(admin, row)) return res.status(409).json({ error: REOPENED_LINE, code: 'reopened' });
     const applicant = ((row.payload && row.payload.applicants) || []).find((a) => Number(a.rank) === r);
     if (!applicant) return res.status(400).json({ error: 'No applicant at that rank.' });
     const answers = { ...(row.answers && typeof row.answers === 'object' ? row.answers : {}), [String(r)]: { answer, at } };

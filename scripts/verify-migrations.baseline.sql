@@ -35,12 +35,19 @@ CREATE TABLE storage.buckets (
 );
 
 -- STUB 4. public.profiles. The reference names only its two policies (db/schema-reference.sql
--- lines 160 and 161), not its columns; the migrations need its primary key and nothing else.
+-- lines 160 and 161), not its columns; the state migrations need its primary key, and db/006
+-- needs the billing columns as db/billing-and-promos.sql lines 18 to 27 add them.
 CREATE TABLE public.profiles (
-  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  email      text,
-  full_name  text,
-  created_at timestamptz DEFAULT now()
+  id                     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email                  text,
+  full_name              text,
+  created_at             timestamptz DEFAULT now(),
+  plan                   text NOT NULL DEFAULT 'none' CHECK (plan IN ('none', 'founding', 'trial', 'paid')),
+  trial_ends_at          timestamptz,
+  promo_code_used        text,
+  stripe_customer_id     text,
+  stripe_subscription_id text,
+  subscription_status    text
 );
 
 -- ── THE DOCUMENTED TABLES (db/schema-reference.sql) ────────────────────────────────
@@ -102,8 +109,10 @@ CREATE TABLE public.applications (
   business_name      text,
   co_applicant       jsonb,
   scorecard          jsonb,
+  occupants_details  text,
   created_at         timestamptz DEFAULT now()
 );
+-- occupants_details is here so db/007-drop-other-occupants.sql has the column to drop.
 
 -- public.listing_applicants, lines 105 to 124, with the three check constraints of lines 15 to
 -- 27. withdrawn_at comes from db/listing-applicants-vocabulary.sql, which the script runs next.

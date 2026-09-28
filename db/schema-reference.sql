@@ -132,7 +132,8 @@
 --   employer, job_title, years_at_job, annual_income, net_income, net_income_source,
 --   employment_type, business_name, prev_address, years_at_previous, prev_landlord_name,
 --   prev_landlord_contact, current_rent, move_in_date, reason_for_moving, number_of_occupants,
---   occupants_details, smoker, ev_parking_needed, co_applicant jsonb, personality (always null),
+--   smoker, ev_parking_needed, co_applicant jsonb, personality (always null),
+--   (occupants_details was dropped by db/007-drop-other-occupants.sql),
 --   pets, disclosures, vehicle_make_model, vehicle_year, references jsonb, scorecard jsonb,
 --   rent_to_income_ratio, apartment_address, apartment_description, estimated_rent,
 --   cover_letter, owner_token, profile_updated_at, profile_revision

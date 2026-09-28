@@ -281,13 +281,16 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [statusBusy, setStatusBusy] = useState(false);
   // onRefused(answer): a move the state machine refused (409, illegal_transition) goes to the
   // caller, which says what to do next, in place of the generic error.
+  const [notReached, setNotReached] = useState([]); // [{ name, reason }] from the last status change
   const setStatus = async (status, extra = {}, { onRefused } = {}) => {
-    setStatusBusy(true); setError('');
+    setStatusBusy(true); setError(''); setNotReached([]);
     try {
       const r = await adapter.fetch('/api/listings/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id, status, ...extra }) });
       const j = await r.json().catch(() => ({}));
       if (r.status === 409 && j?.code === 'illegal_transition' && onRefused) { onRefused(j); return false; }
       if (!r.ok || j?.error) { setError(j?.error || 'Could not update the listing.'); return false; }
+      // Who the messages did not reach (no email on file, a failed send), by name.
+      setNotReached(Array.isArray(j.notReached) ? j.notReached : []);
       // The local copy moves with the answer, state included: the page reads the state first.
       setListing((l) => withLocalListingStatus(l, j));
       patchSignalsListingRow(listing.id, carriedListingColumns(withLocalListingStatus(listing, j)));
@@ -308,17 +311,22 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     if (ok) { setRentedOpen(false); setDeadEnd(null); }
   };
 
+  // Delete and withdraw confirm in the sheet (components/ui.js ConfirmSheet), destructive wording,
+  // the destructive action in the danger red, never the browser's own dialog.
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [withdrawFor, setWithdrawFor] = useState(null); // the applicant object
   const remove = async () => {
-    if (!confirm('Delete this listing? This cannot be undone.')) return;
+    setDeleteBusy(true);
     try {
       // The route closes the listing first (the invite link answers rented from then on), then deletes.
       const r = await adapter.fetch('/api/listings/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id }) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || j?.error) { setError(j?.error || 'Could not delete the listing.'); return; }
+      if (!r.ok || j?.error) { setError(j?.error || 'Could not delete the listing.'); setDeleteOpen(false); return; }
       router.push(adapter.paths.home);
     } catch (e) {
-      setError('Could not delete the listing.');
-    }
+      setError('Could not delete the listing.'); setDeleteOpen(false);
+    } finally { setDeleteBusy(false); }
   };
 
   const getInvite = async (regenerate = false) => {
@@ -631,8 +639,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   };
   const undoRecent = () => { if (!recent) return; setDecision(recent.linkId, recent.prev); setRecent(null); clearTimeout(recentTimer.current); };
   // Remove = genuine tenant WITHDRAWAL only (not a screening decision).
-  const withdrawApplicant = (a) => {
-    if (!confirm(`Mark ${a.application?.full_name || 'this applicant'} as withdrawn? Use this only if the tenant withdrew. It removes them from your ranked list.`)) return;
+  const withdrawApplicant = (a) => setWithdrawFor(a);
+  const confirmWithdraw = () => {
+    const a = withdrawFor; if (!a) return;
+    setWithdrawFor(null);
     setDecision(a.linkId, { withdrawnAt: new Date().toISOString(), decisionReasonCode: null });
   };
 
@@ -1041,6 +1051,24 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {error && (
               <div style={{ marginTop: 'var(--s-3)', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
             )}
+            {/* NOT REACHED: after a status change, whoever the messages did not reach, by name, with the one reason. */}
+            {notReached.length > 0 && (
+              <div id="not-reached" role="status" style={{ marginTop: 'var(--s-3)', padding: 'var(--s-3) var(--s-4)', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ink}`, fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)' }}>
+                  <span style={{ fontWeight: 700 }}>Not reached</span>
+                  <button type="button" onClick={() => setNotReached([])} aria-label="Dismiss" style={{ minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' }}>Dismiss</button>
+                </div>
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }}>
+                  {notReached.map((n, i) => (
+                    <li key={i} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0 var(--s-3)', minHeight: 32 }}>
+                      <span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{noWidow(n.name)}</span>
+                      <span style={{ color: C.inkSoft, flexShrink: 0 }}>{n.reason === 'no_email' ? 'No email on file' : n.reason === 'preview' ? 'Demo: nothing is sent' : n.reason === 'no_mailer' ? 'Email is off' : 'Email did not go out'}</span>
+                    </li>
+                  ))}
+                </ul>
+                <div style={{ color: C.inkSoft, marginTop: 'var(--s-2)' }}>Reach them another way.</div>
+              </div>
+            )}
             {/* THE POST KIT: a 44px toggle row under the invite row, hidden with it when the listing
                 is rented or closed. Open: the short link, three texts and the QR, each with an ink
                 outlined Copy at the right that reads Copied for two seconds. */}
@@ -1184,9 +1212,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{statusBusy ? 'Working' : 'Reopen listing'}</button>
                     )}
                   </div>
-                  {/* Delete, last and alone, in the danger colour, with the existing confirm. */}
+                  {/* Delete, last and alone, in the danger colour; the confirm sheet below asks first. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                    <button onClick={remove} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
+                    <button onClick={() => setDeleteOpen(true)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
                   </div>
                 </div>
               </div>
@@ -1233,6 +1261,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </label>
               </span>
             )} />
+
+          {/* DELETE and WITHDRAW: the confirm sheet, destructive wording, the danger red on the action. */}
+          <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} onConfirm={remove} onCancel={() => setDeleteOpen(false)}
+            body="Every applicant on it is removed with it, and the invite link stops working. This cannot be undone." />
+          <ConfirmSheet open={!!withdrawFor} danger title={`Mark ${withdrawFor?.application?.full_name || 'this applicant'} as withdrawn?`} confirmLabel="Mark withdrawn" cancelLabel="Cancel" onConfirm={confirmWithdraw} onCancel={() => setWithdrawFor(null)}
+            body="Only when the tenant told you they withdrew. It removes them from your ranked list." />
 
           {/* WHY LOOK AGAIN: three screenable, factual reasons about the deal, never about the person. */}
           <ConfirmSheet open={!!reconsiderFor} cardRadius title={RECONSIDER_COPY.sheetTitle} confirmLabel={RECONSIDER_COPY.confirm} cancelLabel="Cancel" busy={reconsiderBusy} onConfirm={confirmReconsider} onCancel={() => setReconsiderFor(null)}

@@ -53,7 +53,7 @@ function buildTemplatedResume(data) {
     currentRent,
     moveDate,
     apartmentAddress, apartmentDescription,
-    numberOfOccupants, occupantsDetails, smoker,
+    numberOfOccupants, smoker,
     hasCoApplicant, coApplicantName, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
     pets,
     references,
@@ -106,7 +106,6 @@ function buildTemplatedResume(data) {
 
   lines.push(` · HOUSEHOLD · `);
   lines.push(`Occupants: ${numberOfOccupants || '1'}`);
-  if (occupantsDetails) lines.push(`Details: ${occupantsDetails}`);
   lines.push(`Smoker: ${smoker === 'yes' ? 'Yes' : 'No'}`);
   if (pets && pets.toLowerCase() !== 'none' && pets.toLowerCase() !== 'no') {
     lines.push(`Pets: ${pets}`);
@@ -160,7 +159,7 @@ export default async function handler(req, res) {
     previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
     currentRent,
     moveInDate,
-    numberOfOccupants, occupantsDetails, smoker,
+    numberOfOccupants, smoker,
     hasCoApplicant, coApplicantName, coApplicantEmployer,
     coApplicantJobTitle, coApplicantIncome,
     pets,
@@ -204,7 +203,7 @@ export default async function handler(req, res) {
       previousAddress, yearsAtPrevious, previousLandlordName, previousLandlordContact,
       currentRent, moveDate,
       apartmentAddress, apartmentDescription,
-      numberOfOccupants, occupantsDetails, smoker,
+      numberOfOccupants, smoker,
       hasCoApplicant, coApplicantName, coApplicantJobTitle, coApplicantEmployer, coApplicantIncome,
       pets,
       references: [
@@ -272,7 +271,6 @@ export default async function handler(req, res) {
       },
       household: {
         numberOfOccupants: numberOfOccupants || '1',
-        occupantsDetails: occupantsDetails || null,
         smoker: smoker || 'no',
         evParkingNeeded: null, // removed from every form; the key stays, always null
       },

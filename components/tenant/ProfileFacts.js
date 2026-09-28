@@ -7,7 +7,7 @@
 // never opens or closes a line; every prose line runs through noWidow (lib/typeset.js).
 import { C, R } from '../theme';
 import { Icon } from '../ui';
-import { Field, Textarea, SelectField, ToggleField } from '../apply/fields';
+import { Field, SelectField, ToggleField } from '../apply/fields';
 import { serializePets } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { NBSP, noWidow, dateLong, money, moneyYr, moneyMo, count } from '../../lib/typeset';
@@ -36,18 +36,15 @@ export const guessProvince = (f) => (/\b(BC|B\.C\.|British Columbia|Vancouver|Vi
 // separator, so a wrap breaks between items and a dot never opens or closes a line.
 export function Dots({ items, sep = '·' }) {
   const list = (items || []).filter((x) => x !== null && x !== undefined && x !== '');
-  // The separator is tied to the word that follows it, so a wrap falls between items and the dot
-  // never opens or closes a line. The item itself stays breakable, so a line fills to the edge.
+  // The separator is drawn in the gap before every item but the first, and clipped away when
+  // that item opens a wrapped line: no line ever begins or ends with a dot. Each item stays
+  // breakable, so a long value still fills to the edge.
   return (
-    <>
+    <span className="mp-dots" data-sep={sep}>
       {list.map((it, i) => (
-        <span key={i}>
-          {i ? ' ' : ''}
-          {typeof it === 'string' ? (i ? `${sep}${NBSP}${noWidow(it)}` : noWidow(it))
-            : <>{i ? `${sep}${NBSP}` : ''}<span style={{ display: 'inline-block', maxWidth: '100%', overflowWrap: 'anywhere' }}>{it}</span></>}
-        </span>
+        <span key={i} className="mp-dot-item">{typeof it === 'string' ? noWidow(it) : it}</span>
       ))}
-    </>
+    </span>
   );
 }
 // A stored "a · b" string, rendered through Dots.
@@ -60,10 +57,10 @@ export const Eyebrow = ({ children, style }) => (
 export function Row({ label, value, multiline }) {
   const empty = value === null || value === undefined || value === '';
   // A long single value (an email, an address) takes the full row rather than breaking mid word.
-  const wide = typeof value === 'string' && value.length > 22;
+  const wide = typeof value === 'string' && value.length > 16;
   return (
     <div className="mp-fact" style={wide ? { gridColumn: '1 / -1' } : undefined}>
-      <div className="mp-label">{label}</div>
+      <div className="mp-label">{noWidow(label)}</div>
       <div className={`mp-value${empty ? ' mp-empty' : ''}`} style={multiline ? { whiteSpace: 'pre-wrap' } : undefined}>{empty ? 'Not provided' : typeof value === 'string' ? noWidow(value) : value}</div>
     </div>
   );
@@ -110,7 +107,7 @@ export const ProfileStyles = () => (
     .mp-h2 { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; text-wrap: balance; }
     .mp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 44px; }
     .mp-saved { font-family: var(--f-body); font-size: var(--t-body-2); font-weight: 600; color: ${C.inkMute}; letter-spacing: 0; }
-    .mp-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-card) var(--s-4); align-items: start; margin-top: var(--gap-card); }
+    .mp-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-card) var(--s-4); align-items: start; margin-top: var(--gap-line); } /* the line gap under the title row (R4) */
     .mp-facts-1 { grid-template-columns: minmax(0, 1fr); }
     /* The label and its value on one row, the value at the right; the value wraps to its own line
        only when it does not fit beside the label (R3). */
@@ -118,6 +115,9 @@ export const ProfileStyles = () => (
     .mp-fact > .mp-label { flex: 0 1 auto; }
     .mp-fact > .mp-value { flex: 0 1 auto; margin-top: 0; text-align: right; }
     .mp-fact > .mp-value:only-child { text-align: left; }
+    .mp-dots { display: inline-flex; flex-wrap: wrap; column-gap: 0.9em; row-gap: 0; max-width: 100%; overflow: hidden; vertical-align: baseline; }
+    .mp-dot-item { position: relative; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+    .mp-dot-item + .mp-dot-item::before { content: attr(data-sep); content: '·'; position: absolute; left: -0.9em; width: 0.9em; text-align: center; top: 0; }
     .mp-label { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.inkMute}; text-wrap: balance; }
     .mp-value { margin-top: var(--gap-line); font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.ink}; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
     .mp-empty { color: ${C.inkMute}; font-weight: 500; }
@@ -245,17 +245,16 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
 
       <Section {...sec('household')} title="Household and pets"
         rows={<>
-          <Row label="Occupants" value={occupants ? <Dots items={[count(occupants, 'person', 'people'), f.occupantsDetails]} /> : null} />
+          <Row label="Occupants" value={occupants ? count(occupants, 'person', 'people') : null} />
           <Row label="Smoking or vaping" value={{ no: 'No', yes: 'Yes', outdoor: 'Outdoor only' }[f.smoker] || 'No'} />
           <Row label="Pets" value={f.pets || 'None'} />
           <Row label="Co tenant" value={f.hasCoApplicant ? <Dots items={[f.coApplicantName || 'Yes', [f.coApplicantJobTitle, f.coApplicantEmployer].filter(Boolean).join(' at '), moneyYr(f.coApplicantIncome)]} /> : 'Applying alone'} />
         </>}>
         {draft && <>
           <div className="mp-grid2">
-            <Field label="Total occupants" value={d.numberOfOccupants} onChange={(v) => set('numberOfOccupants', v)} type="number" inputMode="numeric" />
+            <Field label="Total occupants" value={d.numberOfOccupants} onChange={(v) => set('numberOfOccupants', v)} type="number" inputMode="numeric" hint="Used only to check the unit's occupancy limit. Not scored." />
             <SelectField label="Smoking or vaping" value={d.smoker} onChange={(v) => set('smoker', v)} options={[{ value: 'no', label: 'No' }, { value: 'outdoor', label: 'Outdoor only' }, { value: 'yes', label: 'Yes' }]} />
           </div>
-          <Textarea label="Other occupants (optional)" value={d.occupantsDetails} onChange={(v) => set('occupantsDetails', v)} />
           <ToggleField label="Do you have pets?" value={d.hasPets} onChange={(v) => updatePets({ hasPets: v })} />
           {d.hasPets && (
             <div className="mp-sub">

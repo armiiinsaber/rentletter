@@ -12,6 +12,8 @@ import { C } from '../../components/theme';
 import { GlobalStyle, Wordmark } from '../../components/ui';
 import { formFromApplication, buildApplicationFromForm } from '../../lib/tenantProfile';
 import { ProfileStyles, FactSections, Eyebrow, Dots, Chevron, noWidow, dateLong } from '../../components/tenant/ProfileFacts';
+import { TENANT_LINES } from '../../lib/applicantState';
+import { APPLICATION_STATE } from '../../lib/application-state';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -24,6 +26,8 @@ async function demoRecord() {
   return {
     profile: buildApplicationFromForm(null, rowToForm(demoPrefillRow())), createdAt: ago(9), updatedAt: null, revoked: false, revokedAt: null, profileRevision: 1,
     lookups: [{ at: ago(6), ipHash: 'a91f2c', uaShort: 'Chrome macOS' }, { at: ago(3), ipHash: 'a91f2c', uaShort: 'Chrome macOS' }, { at: ago(1), ipHash: '7be04d', uaShort: 'Safari iPhone' }], lookupCount: 3,
+    // Where it stands (lib/tenantStanding.js in the product): the sandbox application is shortlisted.
+    standing: { state: APPLICATION_STATE.SHORTLISTED, line: TENANT_LINES[APPLICATION_STATE.SHORTLISTED], since: ago(2) },
   };
 }
 
@@ -123,7 +127,7 @@ export default function ApplicationPage() {
   const facts = data ? formFromApplication(data.profile) : null;
   const revoked = !!data?.revoked;
   const listingLabel = meta?.listingName || data?.profile?.apartment?.address || 'this listing';
-  const realtorFirst = (meta?.realtorName || 'the realtor').trim().split(/\s+/)[0];
+  const realtorFirst = meta?.realtorName ? meta.realtorName.trim().split(/\s+/)[0] : 'the realtor';
   const lastLookup = data?.lookups?.length ? data.lookups[data.lookups.length - 1].at : null;
 
   const header = (
@@ -171,6 +175,13 @@ export default function ApplicationPage() {
               <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{listingLabel}</h1>
               <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(`Edits change what ${realtorFirst} sees for ${listingLabel}.`)}</p>
               <a href="/my-application" className="mp-link">Edit your profile instead</a>
+              {/* Where it stands: one line per state (lib/applicantState.js TENANT_LINES), label and line on one row when they fit. */}
+              {data?.standing?.line && (
+                <div className="mp-fact" id="standing" style={{ marginTop: 'var(--gap-card)', justifyContent: 'flex-start' }}>
+                  <div className="mp-label">Where it stands</div>
+                  <div className="mp-value" style={{ textAlign: 'left' }}>{noWidow(data.standing.line)}</div>
+                </div>
+              )}
               {error && <p role="alert" className="mp-alert">{noWidow(error)}</p>}
               {saveError && <p role="alert" className="mp-alert">{noWidow(saveError)}</p>}
               {revoked && <p role="status" className="mp-note">{noWidow(`Revoked${data.revokedAt ? ` since ${dateLong(data.revokedAt)}` : ''}. The realtor sees a revoked notice instead of your details, and editing is paused.`)}</p>}

@@ -27,12 +27,14 @@ export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return { props: { token, payload: null, answers: {}, state: 'unavailable', sandbox: false } };
   try {
     const { getSupabaseAdminClient } = await import('../../lib/supabase/admin');
-    const { snapshotByToken, noteOpened } = await import('../../lib/reportSnapshotStore');
+    const { snapshotByToken, noteOpened, reopenedAfter } = await import('../../lib/reportSnapshotStore');
     const { recordEvent } = await import('../../lib/events');
     const admin = getSupabaseAdminClient();
     const row = await snapshotByToken(admin, token);
     if (!row) return { notFound: true };
     if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return { props: { token, payload: null, answers: {}, state: 'expired', sandbox: false } };
+    // The listing's state since the send: reopened means the applicants on this report moved on.
+    if (await reopenedAfter(admin, row)) return { props: { token, payload: null, answers: {}, state: 'reopened', sandbox: false } };
     // opened_count, last_opened_at and report_opened at most once an hour (lib/reportSnapshotStore.js).
     try { await noteOpened(admin, row, { recordEvent }); } catch (e) { console.warn('[r] open not recorded:', e?.message || e); }
     return { props: { token, payload: forLandlordPage(row.payload), answers: row.answers && typeof row.answers === 'object' ? row.answers : {}, state: 'ok', sandbox: false } };
@@ -91,7 +93,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
     return shell(
       <div className="rl-card" style={card}>
         <div style={{ marginBottom: 'var(--s-4)' }}><a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a></div>
-        <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{state === 'expired' ? 'This report has expired. Ask your realtor for a fresh one.' : 'This report is not available right now. Please try the link again in a moment.'}</p>
+        <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{state === 'expired' ? 'This report has expired. Ask your realtor for a fresh one.' : state === 'reopened' ? 'This listing was reopened. Ask your realtor for a fresh report.' : 'This report is not available right now. Please try the link again in a moment.'}</p>
       </div>,
     );
   }
