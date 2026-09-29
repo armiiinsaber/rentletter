@@ -81,7 +81,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                   {!assignedListing && (
                     <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center', marginTop: 'var(--s-3)' }}>
                       <select value={choice[ref.id] || ''} onChange={(e) => setChoice((c) => ({ ...c, [ref.id]: e.target.value }))} aria-label="Assign to listing"
-                        style={{ flex: '1 1 200px', minWidth: 0, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body-2)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 42 }}>
+                        style={{ flex: '1 1 200px', minWidth: 0, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--card-radius)', background: C.card, color: C.ink, minHeight: 42 }}>
                         <option value="">Assign to a listing…</option>
                         {listings.map((l) => <option key={l.id} value={l.id}>{displayLabel(l)}{l.monthly_rent ? ` · $${Number(l.monthly_rent).toLocaleString('en-CA')}/mo` : ''}</option>)}
                       </select>

@@ -7,9 +7,9 @@
 import { useState, useEffect } from 'react';
 import { isSandboxToken } from '../../lib/features';
 import Head from 'next/head';
-import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
+import { GlobalStyle, Wordmark, Icon, DotLine } from '../../components/ui';
+import { noWidow } from '../../lib/typeset.js';
 import { C, R } from '../../components/theme';
-import { dots } from '../../lib/typeset.js';
 import { isReportToken } from '../../lib/applicationIds';
 import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot';
 
@@ -84,6 +84,12 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
     <>
       <Head><title>Applicants · Rentletter</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle />
+      {/* The four numbers: one row on a wide screen, two by two on a phone, where a quarter of the card
+          cannot hold "$117,000 (joint)" or the RENT SHARE label on one line. */}
+      <style jsx global>{`
+        .rl-nums { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        @media (max-width: 420px) { .rl-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      `}</style>
       <main style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-5) var(--s-4) var(--s-7)', paddingTop: 'calc(var(--s-5) + env(safe-area-inset-top, 0px))' }}>
         <div style={{ maxWidth: 640, margin: '0 auto' }}>{children}</div>
       </main>
@@ -111,7 +117,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
         </div>
         <h1 className="t-d1" style={{ color: C.ink, margin: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{listing.address}</h1>
         <div className="num" style={{ fontSize: 'var(--t-body)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-2)' }}>
-          {dots([listing.rent != null ? `${money(listing.rent)} per month` : null, listing.bedroomsLabel || null].filter(Boolean).join(' · '))}
+          <DotLine items={[listing.rent != null ? `${money(listing.rent)} per month` : null, listing.bedroomsLabel || null]} />
         </div>
         <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>
           Prepared {longDate(payload.generatedAt)}{listing.landlordName ? ` for ${listing.landlordName}` : ''}
@@ -125,7 +131,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
         return (
           <section key={a.rank} className="rl-card" style={card} aria-label={`${a.rank}. ${a.name}`}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--s-3)' }}>
-              <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{a.name}</div>
+              <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{noWidow(a.name)}</div>
               {a.fit && a.fit.score != null ? (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', flexShrink: 0 }}>
                   <span className="t-d3 num" style={{ color: C.ink }}>{Number(a.fit.score).toFixed(1)}</span>
@@ -135,12 +141,12 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             </div>
             {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{a.sentence}</p> : null}
             {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.green, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{String(a.confirmedLine).replace(/ · (\S+ \S+)$/, '\u00a0·\u00a0$1')}</div> : null}
-            {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>Below the one above: {dots(a.reason.charAt(0).toLowerCase() + a.reason.slice(1))}</div> : null}
-            <div className="num" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'var(--s-2)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+            {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'pretty' }}><DotLine items={String(a.reason.charAt(0).toLowerCase() + a.reason.slice(1)).split(' · ').map((r, i) => (i ? r : `Below the one above: ${r}`))} /></div> : null}
+            <div className="num rl-nums" style={{ display: 'grid', gap: 'var(--s-2)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
               {[['Income', n.annualIncome != null ? `${money(n.annualIncome)}${n.incomeJoint ? ' (joint)' : ''}` : 'not given'], ['Rent share', n.rentSharePct != null ? `${Math.round(n.rentSharePct)}%` : 'unknown'], ['At job', n.yearsAtJob ? `${n.yearsAtJob} yr${n.yearsAtJob === 1 ? '' : 's'}` : 'not given'], ['References', String(n.references || 0)]].map(([k, v]) => (
                 <div key={k} style={{ minWidth: 0 }}>
                   <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>{k}</div>
-                  <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, overflowWrap: 'anywhere' }}>{v}</div>
+                  <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, overflowWrap: 'anywhere' }}>{noWidow(v)}</div>
                 </div>
               ))}
             </div>
@@ -180,7 +186,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
       {error ? <div role="alert" className="rl-card" style={{ ...card, color: C.danger, fontSize: 'var(--t-body-2)' }}>{error}</div> : null}
 
       <section className="rl-card" style={card}>
-        {listing.criteriaLine ? <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Ranked against {realtor.name}'s criteria: {dots(listing.criteriaLine)}.</p> : null}
+        {listing.criteriaLine ? <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}><DotLine items={`${listing.criteriaLine}.`.split(' · ').map((c, i) => (i ? c : `Ranked against ${realtor.name}'s criteria: ${c}`))} /></p> : null}
         {realtor.signature ? <p style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', overflowWrap: 'anywhere' }}>{realtor.signature}</p> : null}
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>Sent through Rentletter on behalf of {realtor.name}. This link is private to you.</p>
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{listing.fitLine || FIT_LINE}</p>

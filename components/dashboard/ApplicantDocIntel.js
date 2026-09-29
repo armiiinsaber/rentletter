@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { SET_SENTENCE_REALTOR } from '../../lib/documentSet';
 import { documentsLine } from '../../lib/documentsLine';
 import { C, R } from '../theme';
-import { Icon } from '../ui';
+import { Icon, DotLine } from '../ui';
 import DocIntelReport from './DocIntelReport';
 import { editedAfterVerification, fmtShort } from '../../lib/profileEdits';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -64,7 +64,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
           <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{cap(d.kind)}</div>
-              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>{d.uploadedBy === 'tenant' ? 'from tenant' : 'you'} · {fmt(d.uploadedAt)} · {goes(d)}</div>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)' }}><DotLine items={[d.uploadedBy === 'tenant' ? 'from tenant' : 'you', fmt(d.uploadedAt), goes(d)]} /></div>
             </div>
             <button type="button" onClick={() => view(d)} disabled={!!busy} aria-label={`View ${d.kind}`} style={{ ...btn44, minWidth: 64, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, opacity: busy === d.id ? 0.6 : 1 }}>{busy === d.id ? 'Opening' : 'View'}</button>
           </div>

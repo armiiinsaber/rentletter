@@ -49,14 +49,14 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
 
 // Shared input + button styles for the auth forms.
 export const authInputStyle = {
-  width: '100%', padding: '13px 15px', fontSize: 15,
-  border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
-  background: C.paper, color: C.ink, outline: 'none', marginBottom: 4,
+  width: '100%', padding: '13px 15px', fontSize: 'var(--t-body)', minHeight: 48,
+  border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--card-radius)',
+  background: C.paper, color: C.ink, marginBottom: 4,
 };
 
 export function authButtonStyle(enabled) {
   return {
-    width: '100%', borderRadius: R.ctrl, border: 'none',
+    width: '100%', borderRadius: 'var(--btn-radius)', border: 'none',
     background: enabled ? C.red : '#c8c2b3', color: C.paper,
     padding: '15px', fontSize: 15, fontWeight: 700, marginTop: 8,
     cursor: enabled ? 'pointer' : 'not-allowed', minHeight: 52,

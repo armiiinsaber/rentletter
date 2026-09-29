@@ -7,10 +7,9 @@
 // a confirm. Every write goes through /api/pipeline/* (session, entitlement, ownership).
 import { useEffect, useState } from 'react';
 import { C, R } from '../theme';
-import { ConfirmSheet } from '../ui';
+import { ConfirmSheet, DotLine } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { shortDate } from '../../lib/pipelineState';
-import { dots } from '../../lib/typeset.js';
 
 const fitText = (f) => (f.score != null ? `${Number(f.score).toFixed(1)} ${f.label}` : 'No Fit yet');
 
@@ -55,12 +54,13 @@ export default function PeopleList({ people, onChanged, className = '', style })
 
   const pending = (p) => p.status === 'pending';
   const line2 = (p) => {
-    if (pending(p)) return `asked ${shortDate(p.askedAt)} · no answer yet`;
+    if (pending(p)) return <DotLine items={[`asked ${shortDate(p.askedAt)}`, 'no answer yet']} />;
     const bits = [p.best ? `${Number(p.best.score).toFixed(1)} ${p.best.label} for ${p.best.listingName}` : 'Asked to hear about similar units'];
-    if (p.fromListingName) bits.push(`from ${p.fromListingName}`);
+    // The address once: "from" only when they came from a listing other than the one scored.
+    if (p.fromListingName && !(p.best && p.best.listingName === p.fromListingName)) bits.push(`from ${p.fromListingName}`);
     if (p.expiresAt) bits.push(`until ${shortDate(p.expiresAt)}`);
     if (p.applied) bits.push('applied'); else if (p.lastInvitedAt) bits.push(`invited ${shortDate(p.lastInvitedAt)}`);
-    return dots(bits.join(' · '));
+    return <DotLine items={bits} />;
   };
   // On ink: paper outlined controls, paper text, the muted paper for a row that is still waiting.
   const ctrl = { minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.paper, border: `1.5px solid ${C.paper}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };

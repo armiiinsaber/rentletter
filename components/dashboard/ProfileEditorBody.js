@@ -16,6 +16,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { C, R } from '../theme';
+import { DotLine } from '../ui';
+import { noWidow } from '../../lib/typeset';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { buildPalette, PALETTE_ORDER, readableText } from '../../lib/brandPalette';
@@ -25,8 +27,8 @@ import LogoStudio from './LogoStudio';
 import { Crossfade, MotionStyles } from '../motion';
 
 const inputStyle = {
-  width: '100%', padding: '12px 14px', fontSize: 14, borderRadius: R.ctrl,
-  border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none',
+  width: '100%', padding: '12px 14px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)',
+  border: `1px solid ${C.rule}`, background: C.paper, color: C.ink,
 };
 
 const ALLOWED = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/svg+xml': 'svg', 'image/webp': 'webp' };
@@ -420,9 +422,9 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
                 </div>
                 <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{fp.mood}</div>
                 <div style={{ fontFamily: fp.heading.css, fontWeight: fp.heading.weight, letterSpacing: fp.heading.letterSpacing, fontSize: 22, color: C.ink, lineHeight: 1.1 }}>Aa Heading</div>
-                <div style={{ fontFamily: fp.body.css, fontWeight: fp.body.weight, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginTop: 4 }}>The quick brown fox jumps over the lazy dog.</div>
+                <div style={{ fontFamily: fp.body.css, fontWeight: fp.body.weight, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginTop: 4 }}>{noWidow('The quick brown fox jumps over the lazy dog.')}</div>
                 <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 8, lineHeight: 1.4 }}>
-                  In reports: {fp.heading.script ? `your name in ${fp.heading.family}` : `headings in ${fp.heading.family}`} · text in {fp.body.family}
+                  <DotLine items={[`In reports: ${fp.heading.script ? `your name in ${fp.heading.family}` : `headings in ${fp.heading.family}`}`, `text in ${fp.body.family}`]} />
                 </div>
               </button>
             );

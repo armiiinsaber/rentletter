@@ -8,6 +8,8 @@
 // labelled, no horizontal overflow.
 import { useState } from 'react';
 import { C, R } from '../theme';
+import { DotLine } from '../ui';
+import { noWidow } from '../../lib/typeset';
 import { unitRulesApply, ruleLine } from '../../lib/unitRules';
 
 // ── Normalization helpers (used by each page to build the `pool` items) ──
@@ -74,7 +76,7 @@ function computeLeaders(selected) {
   return leaders;
 }
 
-const selectStyle = { appearance: 'none', background: C.paper, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, color: C.ink, fontSize: 12.5, fontWeight: 600, padding: '6px 26px 6px 10px', cursor: 'pointer', maxWidth: '100%' };
+const selectStyle = { appearance: 'none', background: C.paper, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, color: C.ink, fontSize: 'var(--t-body)', fontWeight: 600, padding: '6px 26px 6px 10px', cursor: 'pointer', maxWidth: '100%' };
 
 export default function CompareTenants({ pool, onClose, unitRules = null }) {
   const [selectedIds, setSelectedIds] = useState(() => pool.slice(0, 3).map((t) => t.id));
@@ -88,7 +90,10 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
   const addId = (id) => setSelectedIds((ids) => (ids.length < 3 && !ids.includes(id) ? [...ids, id] : ids));
 
   const n = selected.length;
-  const LeaderTick = () => <span aria-label="category leader" title="Best in this category" style={{ color: C.green, fontWeight: 800, marginLeft: 6 }}>✓</span>;
+  // The leader mark is the red tick, the score language (no green status colour). It stays on the
+  // line with the value's last two words, so it never wraps alone.
+  const LeaderTick = () => <span aria-label="category leader" title="Best in this category" style={{ color: C.red, fontWeight: 800, marginLeft: 6 }}>✓</span>;
+  const withTick = (text) => { const words = String(text).split(' '); const tail = words.splice(Math.max(0, words.length - 2)).join('\u00a0'); return <>{words.length ? `${words.join(' ')} ` : ''}<span style={{ whiteSpace: 'nowrap' }}>{tail}<LeaderTick /></span></>; };
 
   return (
     <div>
@@ -96,7 +101,7 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
         <div>
           <div style={{ fontSize: 'clamp(16px,3.5vw,19px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>Compare tenants</div>
-          <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 2 }}>A side by side lens on screenable facts, your ranking is unchanged.</div>
+          <div style={{ fontSize: 'var(--t-body)', color: C.inkMute, marginTop: 2 }}>A side by side lens on screenable facts, your ranking is unchanged.</div>
         </div>
         <button onClick={onClose} className="rl-btn"
           style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -107,19 +112,19 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
       {/* Editing strip, swap any slot, remove (min 2), add (max 3) */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '12px 0 16px' }}>
         {selected.map((t, idx) => (
-          <div key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.pill, padding: '4px 6px 4px 10px' }}>
+          <div key={t.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, maxWidth: '100%', minWidth: 0, background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.pill, padding: '0 0 0 10px' }}>
             <span style={{ fontSize: 11, fontWeight: 800, color: C.inkMute }}>#{t.rank}</span>
-            <select value={t.id} onChange={(e) => swapAt(idx, e.target.value)} aria-label={`Compared tenant ${idx + 1}`} style={{ ...selectStyle, background: 'transparent', border: 'none', padding: '4px 4px', fontWeight: 700 }}>
+            <select value={t.id} onChange={(e) => swapAt(idx, e.target.value)} aria-label={`Compared tenant ${idx + 1}`} style={{ ...selectStyle, background: 'transparent', border: 'none', padding: '0 4px', minHeight: 44, minWidth: 0, flex: '1 1 auto', textOverflow: 'ellipsis', fontWeight: 700 }}>
               {[t, ...available].map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             {n > 2 && (
               <button onClick={() => removeAt(idx)} aria-label={`Remove ${t.name}`}
-                style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px' }}>×</button>
+                style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0, minWidth: 44, minHeight: 44 }}>×</button>
             )}
           </div>
         ))}
         {n < 3 && available.length > 0 && (
-          <select value="" onChange={(e) => e.target.value && addId(e.target.value)} aria-label="Add a tenant to compare" style={selectStyle}>
+          <select value="" onChange={(e) => e.target.value && addId(e.target.value)} aria-label="Add a tenant to compare" style={{ ...selectStyle, minHeight: 44 }}>
             <option value="">+ Add tenant…</option>
             {available.map((o) => <option key={o.id} value={o.id}>#{o.rank} {o.name}</option>)}
           </select>
@@ -145,7 +150,7 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
               {selected.map((t) => {
                 const lead = leaders[c.key]?.has(t.id);
                 return (
-                  <div key={t.id} style={{ padding: '10px 12px', borderLeft: `1px solid ${C.rule}`, background: lead ? C.greenTint : 'transparent', display: 'flex', alignItems: 'center' }}>
+                  <div key={t.id} style={{ padding: '10px 12px', borderLeft: `1px solid ${C.rule}`, background: 'transparent', display: 'flex', alignItems: 'center' }}>
                     <span style={{ fontSize: 13, fontWeight: lead ? 800 : 600, color: c.kind === 'rank' ? C.inkSoft : C.ink, overflowWrap: 'anywhere' }}>{valueOf(c, t)}</span>
                     {lead && <LeaderTick />}
                   </div>
@@ -156,25 +161,23 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
         </div>
       </div>
 
-      {/* MOBILE · category-by-category, every value labelled, no horizontal scroll */}
+      {/* PHONE · one card per category, one row per tenant: the name left, the value right on the
+          same row (R3), so a value never breaks mid word in a narrow column. */}
       <div className="cmp-mobile">
-        <div style={{ display: 'grid', gap: 10 }}>
+        <div style={{ display: 'grid', gap: 'var(--s-2)' }}>
           {CATEGORIES.map((c) => (
-            <div key={c.key} style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 12, background: C.card }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }}>{c.label}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, minmax(0,1fr))`, gap: 8 }}>
-                {selected.map((t) => {
-                  const lead = leaders[c.key]?.has(t.id);
-                  return (
-                    <div key={t.id} style={{ minWidth: 0, background: lead ? C.greenTint : C.paperDeep, border: `1px solid ${lead ? C.green : C.rule}`, borderRadius: R.ctrl, padding: '7px 9px' }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: C.inkMute, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{firstName(t.name)} · #{t.rank}</div>
-                      <div style={{ fontSize: 12.5, fontWeight: lead ? 800 : 600, color: C.ink, overflowWrap: 'anywhere', marginTop: 2 }}>
-                        {valueOf(c, t)}{lead && <LeaderTick />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            <div key={c.key} style={{ border: `1px solid ${C.rule}`, borderRadius: 'var(--card-radius)', padding: 'var(--s-3)', background: C.card }}>
+              <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', lineHeight: 'var(--lh-body)' }}>{noWidow(c.label)}</div>
+              {selected.map((t) => {
+                const lead = leaders[c.key]?.has(t.id);
+                const value = valueOf(c, t);
+                return (
+                  <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginTop: 'var(--s-1)' }}>
+                    <span style={{ flexShrink: 0, fontSize: 'var(--t-body-2)', color: C.inkSoft }}><DotLine items={[firstName(t.name), `#${t.rank}`]} /></span>
+                    <span style={{ minWidth: 0, textAlign: 'right', fontSize: 'var(--t-body)', fontWeight: lead ? 800 : 600, color: C.ink, lineHeight: 'var(--lh-body)' }}>{lead ? withTick(value) : noWidow(value)}</span>
+                  </div>
+                );
+              })}
             </div>
           ))}
         </div>
@@ -182,18 +185,18 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
 
       {unitRulesApply(unitRules) && (
         <div style={{ marginTop: 14, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 12, background: C.card }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Unit rules · {ruleLine(unitRules)}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}><DotLine items={['Unit rules', ...String(ruleLine(unitRules)).split(' · ')]} /></div>
           <div style={{ display: 'grid', gap: 4 }}>
             {selected.map((t) => (
-              <div key={t.id} style={{ fontSize: 12.5, color: C.inkSoft, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-                <span style={{ fontWeight: 700, color: C.ink }}>{firstName(t.name)}</span>: {[t.smoker ? t.smoker.toLowerCase() : 'smoking not stated', t.pets ? `pets: ${t.pets}` : 'no pets stated'].join(' · ')}
+              <div key={t.id} style={{ fontSize: 'var(--t-body)', color: C.inkSoft, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
+                <DotLine items={[<><span style={{ fontWeight: 700, color: C.ink }}>{firstName(t.name)}</span>:{'\u00a0'}{t.smoker ? t.smoker.toLowerCase() : 'smoking not stated'}</>, t.pets ? `pets: ${t.pets}` : 'no pets stated']} />
               </div>
             ))}
           </div>
         </div>
       )}
       <div style={{ fontSize: 11.5, color: C.inkMute, marginTop: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ color: C.green, fontWeight: 800 }}>✓</span> marks the category leader on objective screenable facts only. Comparison never uses protected grounds.
+        <span style={{ color: C.red, fontWeight: 800 }}>✓</span><span>{noWidow('marks the category leader on objective screenable facts only. Comparison never uses protected grounds.')}</span>
       </div>
 
       <style jsx>{`

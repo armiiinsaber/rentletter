@@ -5,6 +5,7 @@
 
 import { useEffect, useRef } from 'react';
 import { C, R, SH, EASE, FONT } from './theme';
+import { noWidow } from '../lib/typeset';
 
 // ─── GLOBAL STYLE + MOTION LANGUAGE ──────────────────────────
 // One stylesheet. All motion guarded by prefers-reduced-motion so the page
@@ -33,6 +34,9 @@ export const GlobalStyle = () => (
       /* The red budget: --action fills exactly one button per screen, the screen's primary action.
          Every other control is ink. The red tick and the red dot are signals, not controls. */
       --action: ${C.red};
+      /* The field focus ring: ink, 18.05 to 1 on paper and 19.16 on white. An instrument surface
+         sets its own (components/admin/AdminShell.js). */
+      --focus-ring: ${C.ink};
     }
     /* The two webfonts, self hosted (public/fonts, the latin variable files), swapped in when they
        arrive; the preloads live in pages/_document.js. */
@@ -80,19 +84,31 @@ export const GlobalStyle = () => (
     /* Media never forces the page wider than the viewport */
     img, svg, video, canvas, iframe { max-width: 100%; }
     button, input, textarea, select { font-family: ${FONT.sans}; }
+    /* Every field is 16px or more: iOS Safari zooms the page when a field under 16px takes focus,
+       Face ID autofill focuses the sign in field, and the zoom carried into the dashboard. A field
+       may set a larger size; tests/fieldSize.test.mjs fails on any smaller one. */
+    input, textarea, select { font-size: var(--t-body); }
+    /* One placeholder colour, the mute token, which passes 4.5 to 1 on every field background. */
+    input::placeholder, textarea::placeholder { color: ${C.inkMute}; opacity: 1; }
     button { cursor: pointer; border: none; background: none; }
     /* Zero sharp edges — every control gets a soft radius unless it sets its
        own inline (pills, circles, and bespoke radii keep theirs since inline
        styles only override the properties they declare). */
     /* Controls that sit together: one height, one gap (the card gap), one left edge, and at 390
        one width, so a row never mixes a full width control with a narrower one. */
+    /* A line of facts joined by a dot (DotLine below). The dot belongs to the item after it: it is
+       drawn in the gap before that item and clipped at the left edge when the item opens a line, so
+       no line begins or ends with a dot (R1). */
+    .rl-dots { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.9em; row-gap: 0; max-width: 100%; overflow: hidden; vertical-align: baseline; }
+    .rl-dots.rl-dots-block { display: flex; }
+    .rl-dot { position: relative; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
+    .rl-dot + .rl-dot::before { content: '·'; position: absolute; left: -0.9em; width: 0.9em; text-align: center; }
     .rl-ctrl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-card); }
     .rl-ctrl-row > * { min-height: 44px; flex: 0 1 auto; }
     @media (max-width: 420px) { .rl-ctrl-row > * { flex: 1 1 100%; width: 100%; } }
     button { border-radius: var(--btn-radius); }
     input, textarea, select { border-radius: var(--card-radius); }
     input[type="range"] { border-radius: ${R.pill}px; }
-    input:focus, textarea:focus, select:focus { outline: none; }
     a { color: inherit; }
     ::selection { background: ${C.red}; color: ${C.paper}; }
 
@@ -143,13 +159,36 @@ export const GlobalStyle = () => (
       .rl-dot { animation: rl-pulse 1.3s ease-in-out infinite; }
     }
 
-    /* Focus-visible ring for keyboard users — accessibility, always on */
-    a:focus-visible, button:focus-visible, input:focus-visible,
-    textarea:focus-visible, select:focus-visible {
-      outline: 2px solid ${C.red}; outline-offset: 2px; border-radius: 4px;
+    /* Focus ring for keyboard users on links and buttons, always on. The outline follows each
+       control's own radius, so a pill stays a pill. */
+    a:focus-visible, button:focus-visible {
+      outline: 2px solid ${C.red}; outline-offset: 2px;
+    }
+    /* Fields: a visible ink ring on every focus (a text field matches :focus-visible on a tap too),
+       on paper and on white. Important because a field's inline style must never switch it off. */
+    input:focus-visible, textarea:focus-visible, select:focus-visible {
+      outline: 2px solid var(--focus-ring) !important; outline-offset: 2px;
     }
   `}</style>
 );
+
+// ─── DOTLINE: one line of facts joined by a dot ─────────────
+// <DotLine items={['2 applicants', '1 not selected']} /> or <DotLine text="a · b · c" />. The one
+// shared helper for every dot separated line (lib/typeset.js dots() stays for plain strings such
+// as titles). Each item keeps its last two words together, and a label keeps its colon with the
+// value after it, so no item leaves an orphan or ends a line on a colon. block: a flex line that
+// fills its parent in place of an inline one.
+export const DotLine = ({ items, text, block = false, className = '', style }) => {
+  const list = (items || String(text ?? '').split(/ [·|] /))
+    .filter((x) => x !== null && x !== undefined && x !== false && x !== '')
+    .map((x) => (typeof x === 'string' ? noWidow(x.replace(/: /g, ':\u00a0')) : x));
+  if (!list.length) return null;
+  return (
+    <span className={`rl-dots${block ? ' rl-dots-block' : ''}${className ? ` ${className}` : ''}`} style={style}>
+      {list.map((it, i) => <span key={i} className="rl-dot">{it}</span>)}
+    </span>
+  );
+};
 
 // ─── WORDMARK — Time-magazine red bar + bold sans ────────────
 export const Wordmark = ({ size = 'sm', onDark = false }) => {

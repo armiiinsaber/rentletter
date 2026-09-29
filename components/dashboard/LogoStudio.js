@@ -91,7 +91,7 @@ function ColorField({ label, value, onChange, disabled }) {
       <ColorWheel value={valid ? value : '#1f3a5f'} onChange={onChange} size={150} disabled={disabled} />
       <input type="text" value={hex} disabled={disabled} onChange={(e) => apply(e.target.value)} placeholder="#1f3a5f" spellCheck={false}
         aria-label={`${label} hex`}
-        style={{ width: 150, marginTop: 8, padding: '8px 10px', fontSize: 13, fontFamily: 'monospace', textAlign: 'center', borderRadius: R.ctrl, border: `1px solid ${valid || !hex ? C.rule : C.red}`, background: C.paper, color: C.ink, outline: 'none' }} />
+        style={{ width: 150, marginTop: 8, padding: '8px 10px', fontSize: 'var(--t-body)', fontFamily: 'monospace', textAlign: 'center', borderRadius: 'var(--card-radius)', border: `1px solid ${valid || !hex ? C.rule : C.red}`, background: C.paper, color: C.ink }} />
     </div>
   );
 }
@@ -314,7 +314,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 2 · Describe <span style={{ color: C.inkMute, fontWeight: 600 }}>(optional)</span></div>
               <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} disabled={busy}
                 placeholder="Describe your logo, a house, a key, your initials, a mood… or leave blank and we'll design from your name."
-                style={{ width: '100%', padding: '10px 12px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '10px 12px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit' }} />
             </div>
           )}
 
@@ -436,7 +436,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             <input value={refineBrief} onChange={(e) => setRefineBrief(e.target.value)} disabled={busy}
               onKeyDown={(e) => { if (e.key === 'Enter') doRefine(); }}
               placeholder="e.g. make it bolder · use the accent colour · tighter spacing · simpler"
-              style={{ width: '100%', padding: '11px 13px', fontSize: 14, borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
+              style={{ width: '100%', padding: '11px 13px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink }} />
             <button onClick={doRefine} disabled={busy}
               style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               {busy && <span className="rl-lspin" aria-hidden="true" />}

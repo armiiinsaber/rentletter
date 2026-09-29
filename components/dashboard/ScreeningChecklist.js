@@ -12,8 +12,9 @@
 // the answers show under the row and count as a confirmation, never as a number.
 import React, { useState, useEffect } from 'react';
 import { C, R } from '../theme';
-import { dots } from '../../lib/typeset.js';
-import { Icon } from '../ui';
+import { Icon, DotLine } from '../ui';
+// "Said: a · b" as dot line items, the label on the first: labelled('Said', 'a · b') -> ['Said: a', 'b'].
+const labelled = (label, value) => String(value).split(' · ').map((v, i) => (i ? v : `${label}: ${v}`));
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { readVerification, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
 import { applicantState, stateLabel } from '../../lib/applicantState';
@@ -132,14 +133,14 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-                  Said: {dots(String(row.said))}{row.docs != null ? <> ·{'\u00A0'}Docs: {dots(String(row.docs))}</> : null}
+                  <DotLine items={[...labelled('Said', row.said), ...(row.docs != null ? labelled('Docs', row.docs) : [])]} />
                 </div>
                 {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Also seen: {line}</div>) : null}
                 {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>Asked {shortDate(refResp.sentAt)} ·{'\u00A0'}no answer yet</div> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'answered' ? (
                   <div style={{ marginTop: 'var(--s-1)' }}>
-                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{answerSummary(refResp.answers)}</div>
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}><DotLine text={answerSummary(refResp.answers)} /></div>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 2 }}><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Answered {shortDate(refResp.answeredAt)}</span></div>
                   </div>
                 ) : null}

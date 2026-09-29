@@ -6,7 +6,7 @@
 // line and card gaps. Every "a · b" line is built by Dots so a wrap breaks between items and a dot
 // never opens or closes a line; every prose line runs through noWidow (lib/typeset.js).
 import { C, R } from '../theme';
-import { Icon } from '../ui';
+import { Icon, DotLine } from '../ui';
 import { Field, SelectField, ToggleField } from '../apply/fields';
 import { serializePets } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
@@ -34,21 +34,12 @@ export const guessProvince = (f) => (/\b(BC|B\.C\.|British Columbia|Vancouver|Vi
 // ── atoms ─────────────────────────────────────────────────────────────────────────────────
 // Dots: the items of an "a · b · c" line. Each item is an inline block that carries its own
 // separator, so a wrap breaks between items and a dot never opens or closes a line.
-export function Dots({ items, sep = '·' }) {
-  const list = (items || []).filter((x) => x !== null && x !== undefined && x !== '');
-  // The separator is drawn in the gap before every item but the first, and clipped away when
-  // that item opens a wrapped line: no line ever begins or ends with a dot. Each item stays
-  // breakable, so a long value still fills to the edge.
-  return (
-    <span className="mp-dots" data-sep={sep}>
-      {list.map((it, i) => (
-        <span key={i} className="mp-dot-item">{typeof it === 'string' ? noWidow(it) : it}</span>
-      ))}
-    </span>
-  );
+// The shared dot line (components/ui.js DotLine): the dot binds to the item after it.
+export function Dots({ items }) {
+  return <DotLine items={items} />;
 }
 // A stored "a · b" string, rendered through Dots.
-export const DotText = ({ text }) => <Dots items={String(text || '').split(' · ')} />;
+export const DotText = ({ text }) => <DotLine text={text} />;
 
 export const Eyebrow = ({ children, style }) => (
   <div className="mp-eyebrow" style={style}><span className="mp-dash" aria-hidden="true" />{children}</div>
@@ -115,9 +106,6 @@ export const ProfileStyles = () => (
     .mp-fact > .mp-label { flex: 0 1 auto; }
     .mp-fact > .mp-value { flex: 0 1 auto; margin-top: 0; text-align: right; }
     .mp-fact > .mp-value:only-child { text-align: left; }
-    .mp-dots { display: inline-flex; flex-wrap: wrap; column-gap: 0.9em; row-gap: 0; max-width: 100%; overflow: hidden; vertical-align: baseline; }
-    .mp-dot-item { position: relative; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-    .mp-dot-item + .mp-dot-item::before { content: attr(data-sep); content: '·'; position: absolute; left: -0.9em; width: 0.9em; text-align: center; top: 0; }
     .mp-label { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.inkMute}; text-wrap: balance; }
     .mp-value { margin-top: var(--gap-line); font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.ink}; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
     .mp-empty { color: ${C.inkMute}; font-weight: 500; }
@@ -130,7 +118,7 @@ export const ProfileStyles = () => (
     .mp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .mp-btn-red { background: var(--action); color: ${C.paper}; border-color: var(--action); }
     .mp-btn-auto { width: auto; }
-    .mp-input { display: block; width: 100%; min-height: 44px; padding: 0 var(--s-3); font-size: 16px; border: 1px solid ${C.rule}; border-radius: ${R.ctrl}px; background: ${C.paper}; color: ${C.ink}; outline: none; font-family: inherit; }
+    .mp-input { display: block; width: 100%; min-height: 44px; padding: 0 var(--s-3); font-size: var(--t-body); border: 1px solid ${C.rule}; border-radius: var(--card-radius); background: ${C.paper}; color: ${C.ink}; font-family: inherit; }
     .mp-input:focus { border-color: ${C.ink}; }
     .mp-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); margin-top: var(--gap-card); }
     .mp-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--gap-card); }

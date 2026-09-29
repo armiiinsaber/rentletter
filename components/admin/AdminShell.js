@@ -140,6 +140,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         .ad-input { width: 100%; padding: 11px 12px; font: inherit; font-size: 16px; line-height: 1.3; border: 1px solid ${C.instRule}; border-radius: ${R.ctrl}px; background: ${C.inst}; color: ${C.instText}; outline: none; min-height: 46px; -webkit-appearance: none; appearance: none; }
         .ad-input::placeholder { color: ${C.instMute}; }
         .ad-input:focus { border-color: ${C.instText}; }
+        .ad-input, .ad-shell select, .ad-shell textarea { --focus-ring: ${C.instText}; } /* the field ring on the instrument surface */
         select.ad-input { background-image: linear-gradient(45deg, transparent 50%, ${C.instMute} 50%), linear-gradient(135deg, ${C.instMute} 50%, transparent 50%); background-position: calc(100% - 18px) 55%, calc(100% - 13px) 55%; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 34px; }
         textarea.ad-input { resize: vertical; line-height: 1.5; }
         input.ad-input[type="date"], input.ad-input[type="datetime-local"] { color-scheme: dark; }

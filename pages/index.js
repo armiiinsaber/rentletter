@@ -583,8 +583,8 @@ export default function Home() {
                   aria-invalid={applyError ? true : undefined}
                   style={{
                     minWidth: 0, boxSizing: 'border-box', minHeight: 44,
-                    padding: '0 var(--gap-card)', fontSize: 15, borderRadius: 'var(--card-radius)',
-                    border: `1px solid ${applyError ? C.red : C.ruleDark}`, background: C.paper, color: C.ink, outline: 'none',
+                    padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)',
+                    border: `1px solid ${applyError ? C.red : C.ruleDark}`, background: C.paper, color: C.ink,
                   }} />
                 <button onClick={goToApply} className="rl-btn" style={{
                   flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)',
@@ -1063,9 +1063,9 @@ export default function Home() {
               <textarea value={resume} onChange={e => updateResume(e.target.value)}
                 style={{
                   width: '100%', minHeight: 320, padding: 24,
-                  fontFamily: "'Inter', sans-serif", fontSize: 13, lineHeight: 1.7,
+                  fontFamily: "'Inter', sans-serif", fontSize: 'var(--t-body)', lineHeight: 1.7,
                   color: C.ink, background: C.card,
-                  border: 'none', outline: 'none', resize: 'vertical',
+                  border: 'none', resize: 'vertical',
                 }} />
             </div>
 
@@ -1119,7 +1119,7 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
           width: '100%', padding: '14px 0', fontSize: 16,
           border: 'none', borderBottom: `1px solid ${C.rule}`,
           background: 'transparent', color: C.ink,
-          outline: 'none', transition: 'border color 0.2s',
+          transition: 'border color 0.2s',
         }}
         onFocus={e => e.target.style.borderBottomColor = C.ink}
         onBlur={e => e.target.style.borderBottomColor = C.rule} />
@@ -1138,7 +1138,7 @@ function SelectField({ label, value, onChange, options }) {
           width: '100%', padding: '14px 0', fontSize: 16,
           border: 'none', borderBottom: `1px solid ${C.rule}`,
           background: 'transparent', color: C.ink,
-          outline: 'none', appearance: 'none',
+          appearance: 'none',
           fontFamily: "'Inter', sans-serif",
           cursor: 'pointer',
         }}

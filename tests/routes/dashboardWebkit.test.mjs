@@ -8,7 +8,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE } from '../helpers/devServer.mjs';
+import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 
 const URL_HOME = `${BASE}/demo/dashboard`;
@@ -20,8 +20,8 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(URL_HOME);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
-after(() => server.stop(), { timeout: 300000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
+after(() => server.stop(), { timeout: STOP_TIMEOUT });
 
 // Laid out and not hidden: a box with height, display and visibility on, opacity 1.
 const boxOf = (page, selector) => page.evaluate((sel) => {

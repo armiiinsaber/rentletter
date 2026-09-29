@@ -7,7 +7,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE } from '../helpers/devServer.mjs';
+import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
@@ -18,8 +18,8 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(`${BASE}/demo/dashboard`);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
-after(() => server.stop(), { timeout: 300000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
+after(() => server.stop(), { timeout: STOP_TIMEOUT });
 
 // The routes the walk opens, compiled by the dev server before any tap: a first compile in dev
 // otherwise lands inside the navigation the walk is waiting for.

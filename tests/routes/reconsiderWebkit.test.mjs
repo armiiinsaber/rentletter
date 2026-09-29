@@ -11,7 +11,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE } from '../helpers/devServer.mjs';
+import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
@@ -23,8 +23,8 @@ const haveChrome = !!pw && existsSync(chromeBin);
 const { reconsiderEmail } = await import('../../lib/reconsiderInvite.js');
 
 const server = devServer(`${BASE}/demo/dashboard`);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
-after(() => server.stop(), { timeout: 300000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
+after(() => server.stop(), { timeout: STOP_TIMEOUT });
 const LISTING = `${BASE}/demo/dashboard?listing=demo-carlaw`;
 const warm = () => Promise.all([`${BASE}/demo/dashboard`, LISTING].map((u) => fetch(u).catch(() => null)));
 
@@ -84,7 +84,7 @@ async function fullPath(browserType, launch, tag) {
     await shot(p, tag, 'sheet');
     await sheet(p).getByRole('button', { name: 'Reconsider', exact: true }).click();
     await sheet(p).waitFor({ state: 'detached', timeout: 10000 });
-    await card.getByText('Reconsidered · the first choice withdrew').waitFor({ timeout: 10000 });
+    await card.locator('.rl-dots').filter({ hasText: 'Reconsidered' }).filter({ hasText: 'the first choice withdrew' }).waitFor({ timeout: 10000 }); // one dot line (components/ui.js DotLine): the dot is drawn, not typed
     assert.equal(await card.getByRole('button', { name: 'Undo', exact: true }).count(), 1, 'Undo is offered');
     await shot(p, tag, 'card-after-undo', card);
     assert.equal(await card.getByRole('button', { name: 'Reconsider', exact: true }).count(), 0, 'no Reconsider once reconsidered');
@@ -106,7 +106,7 @@ async function undoPath(browserType, launch, tag) {
     await header(p, 'Wei Chen').click(); await p.waitForTimeout(500);
     await card.getByRole('button', { name: 'Reconsider', exact: true }).click();
     await sheet(p).getByRole('button', { name: 'Reconsider', exact: true }).click();
-    await card.getByText('Reconsidered · the first choice fell through').waitFor({ timeout: 10000 });
+    await card.locator('.rl-dots').filter({ hasText: 'Reconsidered' }).filter({ hasText: 'the first choice fell through' }).waitFor({ timeout: 10000 }); // one dot line (components/ui.js DotLine): the dot is drawn, not typed
     await card.getByRole('button', { name: 'Undo', exact: true }).click();
     await card.getByText('Not selected', { exact: true }).waitFor({ timeout: 10000 });
     assert.equal(await card.getByRole('button', { name: 'Undo', exact: true }).count(), 0, 'the Undo goes');

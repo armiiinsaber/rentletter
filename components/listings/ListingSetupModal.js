@@ -30,7 +30,7 @@ const EMPTY = {
 
 const inputStyle = {
   width: '100%', padding: '11px 12px', fontSize: 16, borderRadius: R.ctrl,
-  border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none',
+  border: `1px solid ${C.rule}`, background: C.paper, color: C.ink,
 };
 const fieldLabel = { fontSize: 13, color: C.ink, fontWeight: 600, display: 'block', marginBottom: 4 };
 const sectionLabel = { fontSize: 10, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 18, marginBottom: 10 };

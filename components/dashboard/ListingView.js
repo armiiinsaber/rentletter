@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, TickMeter, ConfirmSheet } from '../../components/ui';
+import { GlobalStyle, Icon, TickMeter, ConfirmSheet, DotLine } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -33,7 +33,7 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
 import { stateLine } from '../../lib/listingStateLine.js';
-import { dots, noWidow } from '../../lib/typeset.js';
+import { noWidow } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
 import { LEGACY_LISTING_STATUS, APPLICATION_STATE, RECONSIDER_REASONS, listingStanding, applicantStanding, canTransition, withLocalDecision, withLocalListingStatus, carriedListingColumns, reconsideredLocalColumns } from '../../lib/application-state.js';
@@ -714,7 +714,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div key={key} style={{ borderTop: `1px solid ${C.rule}`, marginTop: 'var(--s-2)' }}>
         <button type="button" aria-expanded={on} aria-controls={`applicant-${a.linkId}-${key}`} onClick={() => toggleSection(a.linkId, key, defOpen)}
           style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', background: 'transparent', border: 'none', padding: 'var(--s-1) 0', cursor: 'pointer', font: 'inherit', color: C.inkMute, textAlign: 'left' }}>
-          <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{title}</span>
+          <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{noWidow(title)}</span>
           <span className={`m-chev ${on ? 'open' : ''}`} aria-hidden="true"><Icon name="chevronD" size={16} /></span>
         </button>
         {on && <div id={`applicant-${a.linkId}-${key}`} style={{ paddingBottom: 'var(--s-3)' }}>{body}</div>}
@@ -725,8 +725,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
         <div key={label} style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
-          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{typeof value === 'string' ? dots(value) : value}</div>
+          <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{noWidow(label)}</div>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{typeof value === 'string' ? <DotLine text={value} /> : value}</div>
         </div>
       ))}
     </div>
@@ -763,7 +763,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
     const smokerLabel = app.smoker ? ({ no: 'Non-smoker', outdoor: 'Outdoor only', yes: 'Yes' }[app.smoker] || String(app.smoker)) : null;
     // Two applications from one person (lib/duplicates.js): one muted line under the state line, nothing merged.
-    const dup = duplicateLine(a) ? <div style={{ ...stateLine, color: C.inkMute }}>{duplicateLine(a)}</div> : null;
+    const dup = duplicateLine(a) ? <div style={{ ...stateLine, color: C.inkMute }}>{noWidow(duplicateLine(a))}</div> : null;
     const present = (rows) => rows.filter(([, v]) => v != null && v !== '');
     // The facts, grouped. A group with nothing in it does not render.
     const incomeRows = present([
@@ -817,10 +817,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
             <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-              <span style={{ fontWeight: 700, color: C.inkSoft }}>{app.full_name || 'Applicant'}</span>
-              {a.decisionReasonCode ? ` · ${stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) })}` : ''}
+              <DotLine items={[<span key="n" style={{ fontWeight: 700, color: C.inkSoft }}>{app.full_name || 'Applicant'}</span>, a.decisionReasonCode ? stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) }) : null]} />
             </div>
-            <button type="button" onClick={stop(() => restoreApplicant(a))} style={{ ...textBtn, marginTop: 0, color: C.green, flexShrink: 0 }}>Restore</button>
+            <button type="button" onClick={stop(() => restoreApplicant(a))} style={{ ...textBtn, marginTop: 0, color: C.ink, flexShrink: 0 }}>Restore</button>
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
         ) : (
@@ -855,11 +854,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </>)}
           {docSt === 'verified' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-            <div style={stateLine}>{stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) })}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+            <div style={stateLine}><DotLine items={[stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) }), st.since ? shortDate(st.since) : null]} /></div>
             {dup}
           </>)}
           {docSt === 'sent' && (<>
-            <div style={stateLine}>{stateLabel('sent', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}</div>
+            <div style={stateLine}><DotLine items={[stateLabel('sent', 'line'), st.since ? shortDate(st.since) : null]} /></div>
             {dup}
           </>)}
           {ps === APPLICATION_STATE.NOT_SELECTED && (<>
@@ -867,14 +866,14 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {dup}
           </>)}
           {ps === APPLICATION_STATE.RECONSIDERED && (<>
-            <div style={stateLine}>{noWidow(reconsideredLine(a.reconsiderReason))}</div>
+            <div style={stateLine}><DotLine text={reconsideredLine(a.reconsiderReason)} /></div>
             {inviteNotSent[a.linkId] && <div style={{ ...stateLine, color: C.ink }}>{RECONSIDER_COPY.emailNotSent}</div>}
             {dup}
             {undoFor === a.linkId && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" data-no-swipe onClick={stop(() => undoReconsider(a))} style={textBtn}>{RECONSIDER_COPY.undo}</button></div>}
           </>)}
           {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
           {!open && a.landlordAnswer && a.landlordAnswer.answer && (
-            <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}>Landlord: {answerLine(a.landlordAnswer.answer)}{a.landlordAnswer.at ? ` · ${shortDate(a.landlordAnswer.at)}` : ''}</div>
+            <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}><DotLine items={[`Landlord: ${answerLine(a.landlordAnswer.answer)}`, a.landlordAnswer.at ? shortDate(a.landlordAnswer.at) : null]} /></div>
           )}
           {docSt === 'new' && (<>
             <div style={stateLine}>{stateLabel('new', 'line')}</div>
@@ -882,12 +881,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
           </>)}
           {docSt === 'requested' && (<>
-            <div style={stateLine}>{stateLabel('requested', 'line')}{st.since ? ` · ${shortDate(st.since)}` : ''}{(() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? ` · nudged ${shortDate(last)}` : ''; })()}</div>
+            <div style={stateLine}><DotLine items={[stateLabel('requested', 'line'), st.since ? shortDate(st.since) : null, (() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? `nudged ${shortDate(last)}` : null; })()]} /></div>
             {dup}
             {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
           {docSt === 'checked' && (<>
-            <div style={stateLine}>{stateLabel('checked', 'line')}</div>
+            <div style={stateLine}><DotLine text={stateLabel('checked', 'line')} /></div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
@@ -897,7 +896,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
           {docSt === 'edited' && (<>
-            <div style={stateLine}>{stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })}</div>
+            <div style={stateLine}><DotLine text={stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })} /></div>
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
@@ -1041,7 +1040,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               ) : inviteShareUrl ? (
                 <>
                   <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link" title={inviteShareUrl}
-                    style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none', textOverflow: 'ellipsis' }} />
+                    style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, textOverflow: 'ellipsis' }} />
                   <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
                 </>
               ) : (
@@ -1091,8 +1090,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         <div key={key} data-kit-item={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-3)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>{label}</div>
-                            {/* Display only: the last space is non breaking so no last word stands alone; the copy stays plain. */}
-                            <div data-kit-text style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{String(text).replace(/ (\S+)$/, '\u00a0$1')}</div>
+                            {/* Display only: the last space is non breaking so no last word stands alone, and a colon keeps the
+                                link after it on its line (R1); the copy stays plain. */}
+                            <div data-kit-text style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{String(text).replace(/: /g, ':\u00a0').replace(/ (\S+)$/, '\u00a0$1')}</div>
                           </div>
                           <button type="button" onClick={() => kitCopy(key, kitShort ? text : '')} disabled={!kitShort} aria-label={`Copy ${label.toLowerCase()}`}
                             style={{ minHeight: 44, minWidth: 84, padding: '0 var(--gap-card)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit', flexShrink: 0, alignSelf: 'center' }}>
@@ -1183,7 +1183,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     ) : inviteShareUrl ? (
                       <div className="rl-ctrl-row">
                         <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
-                          style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, outline: 'none' }} />
+                          style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink }} />
                         <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
                       </div>
                     ) : (
@@ -1197,7 +1197,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
                         <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
                           onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
-                          style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none' }} />
+                          style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink }} />
                         <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}>{addLoading ? 'Adding' : 'Add'}</button>
                       </div>
                     )}
@@ -1289,7 +1289,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
               <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
             </div>
-            {stateLine(active) && <p className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}>{stateLine(active)}</p>}
+            {stateLine(active) && <p className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}><DotLine text={stateLine(active)} /></p>}
 
             {totalApplicants === 0 ? (
               <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
@@ -1390,7 +1390,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </p>
               <label style={{ display: 'block', fontSize: 'var(--t-eyebrow)', color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Reason (required)</label>
               <select value={setAsideCode} onChange={(e) => setSetAsideCode(e.target.value)}
-                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', marginBottom: 'var(--s-3)' }}>
+                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, marginBottom: 'var(--s-3)' }}>
                 <option value="">Select a reason…</option>
                 {SET_ASIDE_REASONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
               </select>
@@ -1399,18 +1399,19 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </label>
               <textarea value={setAsideNote} onChange={(e) => setSetAsideNote(e.target.value)} rows={3}
                 placeholder="e.g. stated income $42k vs $60k minimum"
-                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body-2)', borderRadius: R.ctrl, border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, outline: 'none', resize: 'vertical', fontFamily: 'inherit', marginBottom: 'var(--s-2)' }} />
+                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit', marginBottom: 'var(--s-2)' }} />
               <p style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-4)' }}>
                 Use only screenable facts (income, references, tenure, occupancy). Never protected grounds.
               </p>
+              {/* The two actions share one width, one height and one gap (R2), as on the confirm sheet. */}
               <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button onClick={confirmSetAside}
                   disabled={!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())}
-                  style={{ flex: 1, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
+                  style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: '1px solid transparent', borderRadius: 'var(--btn-radius)', padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
                   Set aside
                 </button>
                 <button onClick={() => setSetAsideFor(null)}
-                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-3) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
+                  style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 600, cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>

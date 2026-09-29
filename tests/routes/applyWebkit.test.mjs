@@ -7,7 +7,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE } from '../helpers/devServer.mjs';
+import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 
 const URL_APPLY = `${BASE}/apply/demo0000000000000001`;
@@ -19,8 +19,8 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const server = devServer(URL_APPLY);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: 420000 });
-after(() => server.stop(), { timeout: 300000 });
+before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
+after(() => server.stop(), { timeout: STOP_TIMEOUT });
 
 const id = (n) => `step-${String(n).padStart(2, '0')}`;
 // The step card's box: rendered, opaque, and the space above it (to the element before it in

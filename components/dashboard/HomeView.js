@@ -6,13 +6,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon } from '../../components/ui';
+import { GlobalStyle, Icon, DotLine } from '../../components/ui';
 import { getEntitlement } from '../../lib/entitlements';
 import Paywall from './Paywall';
 import { C, R, EASE, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
 import { listingStateLine } from '../../lib/listingStateLine.js';
-import { dots } from '../../lib/typeset.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
@@ -340,7 +339,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                       {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
                     </div>
                     {/* One line of state: the applicants by what they need, then the report. */}
-                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{dots(listingStateLine(l, signals.applicantsByListing[l.id] || []))}</div>
+                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}><DotLine block text={listingStateLine(l, signals.applicantsByListing[l.id] || [])} /></div>
                   </div>
                 ))}
                 {/* Rented and closed listings, below the active ones under one muted word. */}
@@ -356,7 +355,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                       <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
                       <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
-                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{dots(listingStateLine(l, signals.applicantsByListing[l.id] || []))}</div>
+                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}><DotLine block text={listingStateLine(l, signals.applicantsByListing[l.id] || [])} /></div>
                   </a>
                 ))}
               </div>

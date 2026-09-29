@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { C, R, FONT } from '../theme';
 
 const NAME_MAX = 80;
-const input = { width: '100%', padding: '13px 14px', fontSize: 17, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 52, outline: 'none' };
+const input = { width: '100%', padding: '13px 14px', fontSize: 17, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 52 };
 const label = { display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 };
 
 function Shell({ title, lead, children, aside }) {

@@ -25,7 +25,7 @@ export const C = {
   // Ink
   ink: '#0f0f10',
   inkSoft: '#3a3a3c',
-  inkMute: '#86868b',
+  inkMute: '#6b6b70',    // secondary text and placeholders: 4.99 on paper, 5.30 on white, 4.57 on paperDeep (WCAG AA 4.5)
   inkInverse: '#c8c2b3', // muted text on ink backgrounds
   // Lines
   rule: '#e3ddd0',       // hairline

@@ -12,6 +12,12 @@ import { mkdirSync, openSync, closeSync, writeFileSync, unlinkSync, readdirSync,
 
 export const PORT = 3123;
 export const BASE = `http://localhost:${PORT}`;
+// How long the server's owner waits for the other walk files, and the after hook timeout each walk
+// file gives stop(), a minute longer.
+export const STOP_WAIT = 1500000;
+export const STOP_TIMEOUT = STOP_WAIT + 60000;
+// A walk file waits in its before hook for its turn behind every other walk: the same bound.
+export const START_TIMEOUT = STOP_WAIT + 60000;
 const LOCK = `/tmp/rentletter-dev-${PORT}.lock`;
 const USERS = `/tmp/rentletter-dev-${PORT}.users`;
 const TURN = `/tmp/rentletter-dev-${PORT}.turn`;
@@ -59,8 +65,12 @@ export function devServer(probeUrl) {
       if (!owner) return;
       // Wait for the other files to finish with the server, then take it down: the process group
       // first, then whatever still listens on the port (Next runs its server in a child of its own).
+      // A user whose process is gone (a run that was killed) is dropped, so only live walks are waited
+      // for. The cap covers every walk file in turn (tests/routes/zoomWebkit.test.mjs alone walks about
+      // five minutes); each file's after hook allows the same (STOP_TIMEOUT).
       const t0 = Date.now();
-      while (Date.now() - t0 < 240000 && existsSync(USERS) && readdirSync(USERS).length) await sleep(500);
+      const live = () => { if (!existsSync(USERS)) return 0; let n = 0; for (const f of readdirSync(USERS)) { if (running(Number(f))) n++; else { try { unlinkSync(`${USERS}/${f}`); } catch (e) { /* gone */ } } } return n; };
+      while (Date.now() - t0 < STOP_WAIT && live()) await sleep(500);
       if (child) { try { process.kill(-child.pid); } catch (e) { /* already gone */ } }
       for (const pid of listeners()) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* already gone */ } }
       try { unlinkSync(LOCK); } catch (e) { /* already gone */ }
