@@ -6,6 +6,7 @@
 import Head from 'next/head';
 import { C, R } from '../../components/theme';
 import { GlobalStyle, Wordmark } from '../../components/ui';
+import AppHead from '../../components/AppHead';
 import { validatePromoCode, normalizeCode, CODE_RE } from '../../lib/promos';
 
 export const PROMO_COOKIE = 'rl_promo';
@@ -38,6 +39,7 @@ export default function Join({ valid, recipientName, grantType, trialDays }) {
   return (
     <>
       <Head><title>{valid ? 'Your access to Rentletter' : 'Rentletter'}</title><meta name="robots" content="noindex, nofollow" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <AppHead />
       <GlobalStyle />
       <main style={{ minHeight: '100dvh', background: C.paper, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 'max(24px, env(safe-area-inset-top)) 24px max(32px, env(safe-area-inset-bottom))', textAlign: 'center' }}>
         <div style={{ marginBottom: 'clamp(28px, 6vh, 48px)' }}><a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="auth" /></a></div>

@@ -6,6 +6,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, ScrollHeader } from '../components/ui';
+import AppHead from '../components/AppHead';
 
 export default function CompliancePage() {
   return (
@@ -14,6 +15,7 @@ export default function CompliancePage() {
         <title>Compliance & Fair Housing · Rentletter</title>
         <meta name="description" content="How Rentletter helps Canadian property managers meet HRTO and provincial human rights obligations during tenant screening." />
       </Head>
+      <AppHead />
       <GlobalStyle />
 
       <div style={{ minHeight: '100vh', background: C.paper, color: C.ink }}>

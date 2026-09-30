@@ -115,9 +115,27 @@ test('the manifest, the icons, the favicon and the launch images', async () => {
   for (const [f, px] of [['icon-192', 192], ['icon-512', 512], ['icon-maskable-192', 192], ['icon-maskable-512', 512], ['apple-touch-icon', 180], ['favicon-32', 32], ['favicon-16', 16]]) {
     const m = await sharp(join(ROOT, `public/icons/${f}.png`)).metadata(); assert.deepEqual([m.width, m.height], [px, px], f);
   }
-  // the small mark: the admin icon's own pixels (public/admin-icon-512.png), within edge antialiasing
-  const a = await sharp(join(ROOT, 'public/admin-icon-512.png')).removeAlpha().raw().toBuffer(); const b = await sharp(join(ROOT, 'public/icons/icon-512.png')).removeAlpha().raw().toBuffer();
-  let diff = 0; for (let i = 0; i < a.length; i++) diff += Math.abs(a[i] - b[i]); assert.ok(diff / a.length < 1, `the same mark as the admin install (${(diff / a.length).toFixed(2)})`);
+  // the realtor icon is the admin icon inverted: every solid pixel of the admin icon (ink ground,
+  // red stripe, paper R) is, in the realtor icon, red ground, ink stripe, white R; only the
+  // antialiased edge pixels may differ
+  const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const INVERSE = [[hex('#101012'), hex('#d72027')], [hex('#d72027'), hex('#101012')], [hex('#e8e4d9'), hex('#ffffff')]];
+  const dist = (p, q) => Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]);
+  for (const [admin, realtor] of [['admin-icon-512.png', 'icons/icon-512.png'], ['admin-icon-512-maskable.png', 'icons/icon-maskable-512.png'], ['admin-icon-192.png', 'icons/icon-192.png'], ['admin-icon-180.png', 'icons/apple-touch-icon.png']]) {
+    const a = await sharp(join(ROOT, 'public', admin)).removeAlpha().raw().toBuffer(); const b = await sharp(join(ROOT, 'public', realtor)).removeAlpha().raw().toBuffer();
+    assert.equal(a.length, b.length, realtor);
+    // an interior pixel: it and its eight neighbours are the same solid colour in the admin icon
+    const W = Math.round(Math.sqrt(a.length / 3)); const at = (buf, x, y) => { const i = (y * W + x) * 3; return [buf[i], buf[i + 1], buf[i + 2]]; };
+    let solid = 0, wrong = 0;
+    for (let y = 1; y < W - 1; y++) for (let x = 1; x < W - 1; x++) {
+      const pa = at(a, x, y); const pair = INVERSE.find(([from]) => dist(pa, from) <= 12); if (!pair) continue;
+      let interior = true; for (let dy = -1; dy <= 1 && interior; dy++) for (let dx = -1; dx <= 1; dx++) if (dist(at(a, x + dx, y + dy), pair[0]) > 12) { interior = false; break; }
+      if (!interior) continue;
+      solid++; if (dist(at(b, x, y), pair[1]) > 36) wrong++;
+    }
+    assert.ok(solid > a.length / 3 * 0.85, `${realtor}: most pixels are interior (${solid})`);
+    assert.ok(wrong / solid < 0.002, `${realtor}: the admin icon inverted, ${wrong} of ${solid} interior pixels off`);
+  }
   const ico = readFileSync(join(ROOT, 'public/favicon.ico')); assert.equal(ico.readUInt16LE(2), 1); assert.equal(ico.readUInt16LE(4), 2); assert.deepEqual([ico[6], ico[22]], [16, 32]);
   const { SPLASH, splashFile } = await import('../lib/brand/splash.js');
   assert.ok(SPLASH.length >= 10);
@@ -125,9 +143,31 @@ test('the manifest, the icons, the favicon and the launch images', async () => {
   assert.ok(existsSync(join(ROOT, 'public/admin.webmanifest')) && /"start_url": "\/admin\/crm"/.test(src('public/admin.webmanifest')), 'the admin install is left as it is');
 });
 
+test('the admin install is byte for byte what it was', async () => {
+  const { createHash } = await import('node:crypto');
+  const sha = (f) => createHash('sha256').update(readFileSync(join(ROOT, 'public', f))).digest('hex');
+  assert.deepEqual({
+    'admin-icon-180.png': sha('admin-icon-180.png'), 'admin-icon-192.png': sha('admin-icon-192.png'),
+    'admin-icon-512-maskable.png': sha('admin-icon-512-maskable.png'), 'admin-icon-512.png': sha('admin-icon-512.png'),
+    'admin.webmanifest': sha('admin.webmanifest'),
+  }, {
+    'admin-icon-180.png': '3eac5ba9fbe32612e2f3bed71a1005ccd3cd24a68e9e2a07d76d6eed4c8ab316',
+    'admin-icon-192.png': 'fc99ac0b35b412d96d2b638fa3fc968b790d09d604727eb16928b9e0fe68d0c0',
+    'admin-icon-512-maskable.png': '525a2ed56749e15270d50eeff080b550b3dcef4544fa3ee0cc9179e5d657edd1',
+    'admin-icon-512.png': '58336067dba391d66695e3732faaf99f9c5165226311cca241fd7d35aab47000',
+    'admin.webmanifest': '74761f3cd8881523449efb2196260dd5d0d74853a367323e17fda57355a877ae',
+  });
+  assert.match(src('components/admin/AdminShell.js'), /<link rel="manifest" href="\/admin\.webmanifest" \/>/);
+  assert.match(src('components/admin/AdminShell.js'), /<link rel="apple-touch-icon" href="\/admin-icon-180\.png" \/>/);
+});
+
 test('only the realtor surfaces carry the app head; sign in autofills', () => {
   const carriers = SOURCES.filter((p) => /\.js$/.test(p) && /<AppHead \/>/.test(readFileSync(p, 'utf8'))).map((p) => relative(ROOT, p)).sort();
-  assert.deepEqual(carriers, ['components/auth/AuthShell.js', 'components/dashboard/DashboardHeader.js', 'pages/onboarding.js']);
+  assert.deepEqual(carriers, ['components/auth/AuthShell.js', 'components/dashboard/DashboardHeader.js', 'pages/compliance.js', 'pages/faq.js', 'pages/index.js', 'pages/join/[code].js', 'pages/onboarding.js']);
+  // no tenant or landlord page carries it, directly or through a shell that does
+  for (const page of ['pages/apply/[token].js', 'pages/upload/[token].js', 'pages/my-application.js', 'pages/my-application/[rl].js', 'pages/my-application/confirm.js', 'pages/keep/[token].js', 'pages/r/[token].js', 'pages/ref/[token].js', 'pages/refer/[token].js', 'pages/a/[code].js']) {
+    assert.doesNotMatch(src(page), /AppHead|AuthShell|DashboardHeader|manifest\.webmanifest|apple-touch-icon/, page);
+  }
   const app = src('components/AppHead.js');
   for (const s of ['rel="manifest" href="/manifest.webmanifest"', 'name="apple-mobile-web-app-capable" content="yes"', 'name="apple-mobile-web-app-status-bar-style" content="default"', 'name="apple-mobile-web-app-title" content="Rentletter"', 'rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png"', 'rel="apple-touch-startup-image"']) assert.ok(app.includes(s), s);
   const doc = src('pages/_document.js'); assert.ok(doc.includes('href="/favicon.ico"') && doc.includes('/icons/favicon-32.png') && doc.includes('/icons/favicon-16.png'));

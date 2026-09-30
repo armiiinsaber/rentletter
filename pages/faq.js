@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, ScrollHeader, Icon } from '../components/ui';
+import AppHead from '../components/AppHead';
 
 const FAQS = [
   // ─── GENERAL ─────────────────────────────────────
@@ -115,6 +116,7 @@ export default function FAQ() {
         <title>FAQ · Rentletter</title>
         <meta name="description" content="Common questions about Rentletter, for realtors, landlords, and property managers." />
       </Head>
+      <AppHead />
       <GlobalStyle />
 
       <div style={{ minHeight: '100vh', background: C.paper, color: C.ink }}>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { C, R, SH, EASE, FONT } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
+import AppHead from '../components/AppHead';
 import DeviceFrame, { DEVICE_BREAKPOINT } from '../components/DeviceFrame';
 import { tween, DURATION } from '../lib/motion';
 import { noWidow } from '../lib/typeset';
@@ -363,6 +364,7 @@ export default function Home() {
           <title>Rentletter, Rental screening for Canadian realtors.</title>
           <meta name="description" content="A dashboard for Canadian rental realtors to receive standardized tenant applications, rank every candidate against the landlord's criteria, and send polished reports to landlord clients." />
         </Head>
+        <AppHead />
         <GlobalStyle />
 
         <div className="lp-shell" style={{ minHeight: '100vh', background: C.paper }}>

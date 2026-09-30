@@ -1,9 +1,11 @@
 // components/AppHead.js
 // The installed realtor app: the manifest (public/manifest.webmanifest, start /dashboard, scope /),
 // the iOS home screen tags, the touch icon and the launch images, all from the small mark and the
-// logo (scripts/brand/build-brand.mjs). Rendered by the realtor surfaces only: the dashboard header
-// (components/dashboard/DashboardHeader.js), the sign in shell (components/auth/AuthShell.js) and
-// onboarding. Tenant and landlord pages never carry it. The admin keeps its own install
+// logo (scripts/brand/build-brand.mjs). Rendered on every page a realtor can add to the Home
+// Screen: the marketing home (pages/index.js), the FAQ, compliance and founder join pages, the sign
+// in shell (components/auth/AuthShell.js: sign in, sign up, forgot, reset), onboarding and the
+// dashboard header (components/dashboard/DashboardHeader.js). Tenant and landlord pages (apply,
+// upload, my application, keep, r, ref, refer, a) never carry it. The admin keeps its own install
 // (components/admin/AdminShell.js). The status bar is "default": dark text that reads on paper.
 import Head from 'next/head';
 import { C } from './theme';

@@ -56,6 +56,17 @@ async function headAndAssets(browser, tag) {
     assert.equal(man.start_url, '/dashboard'); assert.equal(man.short_name, 'Rentletter');
     for (const u of ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/favicon.ico', '/sw.js', '/offline.html', '/splash/splash-1170x2532.png', '/brand/rentletter-logo-email.png']) assert.equal((await page.request.get(u)).status(), 200, `${tag}: ${u}`);
     assert.match(await (await page.request.get('/offline.html')).text(), /You're offline\. Rentletter will reconnect on its&nbsp;own\./);
+    // Every page a realtor can add to the Home Screen links the manifest and the 180 touch icon in the
+    // server rendered head (what iOS reads when it adds); no tenant or landlord page does.
+    const MANIFEST = '<link rel="manifest" href="/manifest.webmanifest"'; const TOUCH = '<link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png"';
+    for (const url of ['/', '/faq', '/compliance', '/signin', '/signup', '/forgot-password', '/join/not-a-code']) {
+      const html = await (await page.request.get(url)).text();
+      assert.ok(html.includes(MANIFEST) && html.includes(TOUCH) && html.includes('<meta name="apple-mobile-web-app-title" content="Rentletter"'), `${tag}: ${url} links the manifest, the 180 icon and the app title`);
+    }
+    for (const url of ['/apply/demo0000000000000001', '/upload/demo0000000000000000000000000000', '/my-application', '/my-application/DEMO', '/keep/demo-token-0001', '/r/demo-demo-carlaw', '/ref/demo-ref-expired']) {
+      const html = await (await page.request.get(url)).text();
+      assert.ok(!html.includes('rel="manifest"') && !html.includes('rel="apple-touch-icon"'), `${tag}: ${url} carries no manifest and no touch icon`);
+    }
     for (const url of ['/apply/demo0000000000000001', '/r/demo-demo-carlaw', '/my-application/DEMO']) {
       const p = await ctx.newPage(); // a fresh page each: the report page settles its own URL after load
       await open(p, url);
