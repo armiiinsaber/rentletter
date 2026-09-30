@@ -124,7 +124,6 @@ export function MotionStyles() {
         .m-xfade > * { animation: m-in var(--m-base) var(--m-enter) both; }
         .m-swipe-label { transition: transform var(--m-short) var(--m-emphasis); }
         .m-chev { transition: transform var(--m-short) var(--m-settle); }
-        .m-expand { animation: m-in var(--m-base) var(--m-enter) both; transform-origin: top center; }
         .m-card-leave { transition: opacity var(--m-base) var(--m-settle), transform var(--m-base) var(--m-settle); }
         .m-tl-enter { animation: m-in var(--m-base) var(--m-enter) both; }
         @keyframes m-in { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }

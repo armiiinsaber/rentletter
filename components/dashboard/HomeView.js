@@ -6,12 +6,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, DotLine } from '../../components/ui';
+import { GlobalStyle, Icon, StatusPills } from '../../components/ui';
 import { getEntitlement } from '../../lib/entitlements';
 import Paywall from './Paywall';
 import { C, R, EASE, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
-import { listingStateLine } from '../../lib/listingStateLine.js';
+import { listingStatePills } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import InstallHint from '../../components/dashboard/InstallHint';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
@@ -200,7 +200,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // listings whose report has not gone yet. A zero item is dropped; all three zero reads as nothing
   // waiting. Counted from the signals already loaded, never a new call.
   const standing = useMemo(() => {
-    if (!signals.loaded || !hasListings) return { line: '' };
+    if (!signals.loaded || !hasListings) return { line: '', items: [] };
     const by = signals.applicantsByListing || {};
     let applicants = 0, toSend = 0;
     for (const l of openListings) {
@@ -213,7 +213,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       applicants ? `${applicants} applicant${applicants === 1 ? '' : 's'}` : null,
       toSend ? `${toSend} report${toSend === 1 ? '' : 's'} to send` : null,
     ].filter(Boolean);
-    return { line: bits.join(' · ') };
+    return { line: bits.join(' · '), items: bits };
   }, [signals.loaded, signals.applicantsByListing, openListings, hasListings]);
   const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: listings || [] } : null), [signals, listings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
@@ -288,7 +288,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           <section className="dash-ink" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
             <h1 className="dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d1) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
             {standing.line ? (
-              <div className="num" style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{standing.line}</div>
+              <StatusPills tone="ink" label="Your workspace" items={standing.items} style={{ marginTop: 'var(--s-3)' }} />
             ) : (
               <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)' }}>
                 <Icon name="check" size={15} color={C.red} strokeWidth={2.5} /> Nothing waiting on you.
@@ -339,10 +339,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                       <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
                     <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>
-                      {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
+                      {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? `, ${formatUnit(l.bedrooms)}` : ''}
                     </div>
-                    {/* One line of state: the applicants by what they need, then the report. */}
-                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}><DotLine block text={listingStateLine(l, signals.applicantsByListing[l.id] || [])} /></div>
+                    {/* The state as pills: the applicants by what they need, then the report; the one
+                        fact that needs the realtor is the filled pill (lib/listingStateLine.js). */}
+                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || [])} />
                   </div>
                 ))}
                 {/* Rented and closed listings, below the active ones under one muted word. */}
@@ -358,7 +359,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                       <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
                       <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
-                    <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}><DotLine block text={listingStateLine(l, signals.applicantsByListing[l.id] || [])} /></div>
+                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || [])} />
                   </a>
                 ))}
               </div>
@@ -496,6 +497,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
         /* Instant (motion-independent) hover colour states — safe for reduced-motion */
         .dash-ghost:hover { background: ${C.paperDeep}; border-color: ${C.ink}; }
+        /* The listing cards never move: a pointer that hovers darkens the border, at once. */
+        @media (hover: hover) { .dash-card-int:hover { border-color: ${C.ruleDark}; } }
 
         @media (prefers-reduced-motion: no-preference) {
           .dash-new { transition: transform 200ms ${EASE}, box-shadow 220ms ease; }
@@ -503,11 +506,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           .dash-new:active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
           .dash-ghost { transition: background 160ms ease, border-color 160ms ease, transform 180ms ${EASE}; }
           .dash-ghost:hover { transform: translateY(-1px); }
-          .dash-card-int { transition: transform 260ms ${EASE}, box-shadow 260ms ease, border-color 200ms ease; }
-          .dash-card-int:hover { transform: translateY(-4px); box-shadow: 0 4px 10px rgba(15, 15, 16, 0.06), 0 22px 48px rgba(15, 15, 16, 0.11); border-color: #e4dcc9; }
-          .dash-card-int:active { transform: translateY(-1px); transition-duration: 110ms; }
-          .dash-card-int .rl-arrow { transition: transform 220ms ${EASE}; }
-          .dash-card-int:hover .rl-arrow { transform: translateX(4px); }
         }
       `}</style>
     </>

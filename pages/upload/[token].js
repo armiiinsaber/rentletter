@@ -17,6 +17,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
+import { noWidow } from '../../lib/typeset.js';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
 
 // The set the card asks for is lib/documentSet.js, rendered by the uploader itself.
@@ -83,7 +84,7 @@ export default function UploadPage() {
           {status === 'invalid' && (
             <div className="rl-card" style={{ padding: 'clamp(28px, 6vw, 44px)', textAlign: 'center' }}>
               <div style={{ display: 'inline-flex', marginBottom: 14, color: C.inkMute }}><Icon name="link" size={30} /></div>
-              <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10 }}>This link is no longer active</h1>
+              <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10, textWrap: 'balance' }}>{noWidow('This link is no longer active')}</h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 24px' }}>{invalidMsg}</p>
               <a href="/" className="rl-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)', padding: '13px var(--gap-card)', fontSize: 14, fontWeight: 700 }}>Go to Rentletter</a>
             </div>

@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, TickMeter, ConfirmSheet, DotLine } from '../../components/ui';
+import { GlobalStyle, Icon, TickMeter, ConfirmSheet, StatusPills, StackedLines } from '../../components/ui';
 import { isStandalone } from '../../lib/standalone';
 import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
@@ -33,12 +33,12 @@ import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
-import { stateLine } from '../../lib/listingStateLine.js';
+import { statePills } from '../../lib/listingStateLine.js';
 import { noWidow } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
 import { LEGACY_LISTING_STATUS, APPLICATION_STATE, RECONSIDER_REASONS, listingStanding, applicantStanding, canTransition, withLocalDecision, withLocalListingStatus, carriedListingColumns, reconsideredLocalColumns } from '../../lib/application-state.js';
-import { sentLine, answerLine } from '../../lib/reportSnapshot.js';
+import { sentPills, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -717,7 +717,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   });
 
   const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
-  const pill = (text, fg, bg, extra = {}) => <span style={{ fontSize: 'var(--t-eyebrow)', color: fg, background: bg, fontWeight: 700, letterSpacing: '0.08em', padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, whiteSpace: 'nowrap', ...extra }}>{text}</span>;
   // A labelled, collapsible section inside the open card. Only the chevron moves (transform).
   const renderSection = (a, key, title, defOpen, body) => {
     const on = sectionOpen(a.linkId, key, defOpen);
@@ -737,7 +736,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       {rows.map(([label, value]) => (
         <div key={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{noWidow(label)}</div>
-          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{typeof value === 'string' ? <DotLine text={value} /> : value}</div>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{typeof value === 'string' ? <StackedLines text={value} /> : value}</div>
         </div>
       ))}
     </div>
@@ -769,6 +768,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: isPrimaryCard ? 'var(--action)' : 'transparent', color: isPrimaryCard ? C.paper : C.ink, border: isPrimaryCard ? 'none' : `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
     const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', color: C.ink, border: 'none', fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
     const stateLine = { fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
+    // The card's state as pills (components/ui.js StatusPills): short facts, never a sentence. The
+    // card's own button carries the action, so no pill here is filled.
+    const pills = (items) => <StatusPills label="Applicant status" items={items} style={{ marginTop: 'var(--s-2)', paddingLeft: tracking ? 18 : 0 }} />;
+    const facts = (label) => String(label || '').split(' · ').filter(Boolean);
     const confirmedBy = (by) => (!by || by === 'You' || by === String(profile?.full_name || '').trim() ? 'you' : by);
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
     const coIncome = app.co_applicant?.annualIncome ?? app.co_applicant?.annual_income;
@@ -804,7 +807,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const leftAction = !isSetAside ? { label: 'Set aside' } : null;
     const rightAction = isSetAside ? { label: 'Restore', tone: 'good' } : null;
     const ref = referrals[a.linkId];
-    const refMap = { pending: ['Pending applicant approval', C.inkSoft, C.paperDeep], declined: ['Referral declined', C.inkMute, C.paperDeep], approved: [`Sent to ${ref?.to?.name || ref?.to?.email}`, C.green, C.greenTint], expired: ['Referral expired', C.inkMute, C.paperDeep], revoked: ['Referral revoked', C.inkMute, C.paperDeep] };
+    const refMap = { pending: 'Pending applicant approval', declined: 'Referral declined', approved: `Sent to ${ref?.to?.name || ref?.to?.email}`, expired: 'Referral expired', revoked: 'Referral revoked' };
     return (
       <SwipeCard key={a.linkId} flipKey={a.linkId} id={`applicant-${a.linkId}`} leftAction={leftAction} rightAction={rightAction}
         onCommit={(side) => onSwipeCommit(a, side)} departing={departing[a.linkId]?.side || null}
@@ -812,7 +815,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div style={{
         minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${first ? 'var(--action)' : C.rule}`, borderLeft: `4px solid ${borderColor}`,
-        borderRadius: R.card, padding: 'var(--card-pad)', opacity: isSetAside ? 0.94 : 1,
+        borderRadius: R.card, padding: 'var(--card-pad)',
       }}>
         {recent?.linkId === a.linkId && (
           <div data-no-swipe role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', marginBottom: 'var(--s-3)', padding: 'var(--s-1) var(--s-1) var(--s-1) var(--s-3)', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.inkSoft }}>
@@ -827,8 +830,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
             onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-            <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.35, overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-              <DotLine items={[<span key="n" style={{ fontWeight: 700, color: C.inkSoft }}>{app.full_name || 'Applicant'}</span>, a.decisionReasonCode ? stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) }) : null]} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</div>
+              {a.decisionReasonCode ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{noWidow(stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) }))}</div> : null}
             </div>
             <button type="button" onClick={stop(() => restoreApplicant(a))} style={{ ...textBtn, marginTop: 0, color: C.ink, flexShrink: 0 }}>Restore</button>
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
@@ -859,70 +863,73 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </div>
           {docSt === 'matched' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-            {missed.length > 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{missed.join(' · ')}</div>}
+            {missed.length > 0 && pills(missed)}
             {dup}
             {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
           </>)}
           {docSt === 'verified' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
-            <div style={stateLine}><DotLine items={[stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) }), st.since ? shortDate(st.since) : null]} /></div>
+            {pills([stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) }), st.since ? shortDate(st.since) : null])}
             {dup}
           </>)}
           {docSt === 'sent' && (<>
-            <div style={stateLine}><DotLine items={[stateLabel('sent', 'line'), st.since ? shortDate(st.since) : null]} /></div>
+            {pills([stateLabel('sent', 'line'), st.since ? shortDate(st.since) : null])}
             {dup}
           </>)}
           {ps === APPLICATION_STATE.NOT_SELECTED && (<>
-            <div style={stateLine}>{stateLabel(APPLICATION_STATE.NOT_SELECTED, 'line')}</div>
+            {pills([stateLabel(APPLICATION_STATE.NOT_SELECTED, 'line')])}
             {dup}
           </>)}
           {ps === APPLICATION_STATE.RECONSIDERED && (<>
-            <div style={stateLine}><DotLine text={reconsideredLine(a.reconsiderReason)} /></div>
+            {pills(facts(reconsideredLine(a.reconsiderReason)))}
             {inviteNotSent[a.linkId] && <div style={{ ...stateLine, color: C.ink }}>{RECONSIDER_COPY.emailNotSent}</div>}
             {dup}
             {undoFor === a.linkId && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" data-no-swipe onClick={stop(() => undoReconsider(a))} style={textBtn}>{RECONSIDER_COPY.undo}</button></div>}
           </>)}
           {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
           {!open && a.landlordAnswer && a.landlordAnswer.answer && (
-            <div style={{ ...stateLine, color: C.ink, fontWeight: 600 }}><DotLine items={[`Landlord: ${answerLine(a.landlordAnswer.answer)}`, a.landlordAnswer.at ? shortDate(a.landlordAnswer.at) : null]} /></div>
+            pills([`Landlord: ${answerLine(a.landlordAnswer.answer)}`, a.landlordAnswer.at ? shortDate(a.landlordAnswer.at) : null])
           )}
           {docSt === 'new' && (<>
-            <div style={stateLine}>{stateLabel('new', 'line')}</div>
+            {pills([stateLabel('new', 'line')])}
             {dup}
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
           </>)}
           {docSt === 'requested' && (<>
-            <div style={stateLine}><DotLine items={[stateLabel('requested', 'line'), st.since ? shortDate(st.since) : null, (() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? `nudged ${shortDate(last)}` : null; })()]} /></div>
+            {pills([stateLabel('requested', 'line'), st.since ? shortDate(st.since) : null, (() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? `nudged ${shortDate(last)}` : null; })()])}
             {dup}
             {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
           {docSt === 'checked' && (<>
-            <div style={stateLine}><DotLine text={stateLabel('checked', 'line')} /></div>
+            {pills(facts(stateLabel('checked', 'line')))}
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
           {docSt === 'mismatch' && (<>
-            <div style={stateLine}>{stateLabel('mismatch', 'line')}</div>
+            {pills([stateLabel('mismatch', 'line')])}
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
           {docSt === 'edited' && (<>
-            <div style={stateLine}><DotLine text={stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })} /></div>
+            {pills(facts(stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })))}
             {dup}
             {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
           </>)}
         </div>
         )}
 
-        {open && (<div id={`applicant-${a.linkId}-body`} className="m-expand">
+        {/* The open body appears at once: nothing on the card fades or scales in. */}
+        {open && (<div id={`applicant-${a.linkId}-body`}>
           {/* Status line: rank and marks that only matter once you are looking at this person. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginTop: 'var(--s-3)' }}>
-            {rank != null && !isSetAside && pill(`Rank ${rank}`, C.inkSoft, C.paperDeep)}
-            {isSetAside && pill('Set aside', C.inkSoft, C.rule)}
-            {isFinalist(a) && !isSetAside && pill('Finalist', C.paper, C.ink)}
-            {ref && (() => { const [label, fg, bg] = refMap[ref.status] || [ref.status, C.inkMute, C.paperDeep]; return pill(label, fg, bg); })()}
-            {editedAfterVerification(app, a.docVerifications).edited && pill('Edited after verification', C.amber, C.amberTint, { border: `1px solid ${C.amber}` })}
-            <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', marginLeft: 'auto' }}>{app.application_number}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
+            <StatusPills label="This applicant" style={{ flex: 1, minWidth: 0 }} items={[
+              rank != null && !isSetAside ? `Rank ${rank}` : null,
+              isSetAside ? 'Set aside' : null,
+              isFinalist(a) && !isSetAside ? 'Finalist' : null,
+              ref ? (refMap[ref.status] || ref.status) : null,
+              editedAfterVerification(app, a.docVerifications).edited ? 'Edited after verification' : null,
+            ]} />
+            <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', marginLeft: 'auto', flexShrink: 0 }}>{app.application_number}</span>
           </div>
           {app.referral_meta && <ReferralCaution meta={app.referral_meta} compact />}
           {isSetAside && (
@@ -1018,29 +1025,24 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </a>
 
           {/* THE HEADER CARD: the listing as one paper card above the applicants. Address with
-              Edit, rent and unit, the criteria as chips, the invite link row, then the Details
+              Edit, the listing's facts and its criteria as pills, the invite link row, then the Details
               toggle row; the Details panel opens inside this card. */}
           <section className="rl-card" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
               <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>
                 {displayLabel(l, 'Untitled listing')}
-                {!listingOpen(l) && (
-                  <span className="num" style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 var(--s-3)', marginLeft: 'var(--s-2)', borderRadius: R.pill, background: C.ink, color: C.paper, fontFamily: 'var(--f-body)', fontSize: 'var(--t-eyebrow)', fontWeight: 700, lineHeight: 1, letterSpacing: '0.04em', whiteSpace: 'nowrap', verticalAlign: 'middle', position: 'relative', top: -3 }}>
-                    {listingStanding(l).withdrawn ? 'Closed' : 'Rented'}{listingStanding(l).closedAt ? ` · ${new Date(listingStanding(l).closedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' })}` : ''}
-                  </span>
-                )}
               </h1>
               {/* Centred on the first line of the address: the line box is 28 * 1.15, the button 44. */}
               <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--gap-card)', marginTop: -6, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
             </div>
-            <div className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', overflowWrap: 'anywhere' }}>
-              {l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()} per month` : 'Rent not set'}{formatUnit(l.bedrooms) ? ` · ${formatUnit(l.bedrooms)}` : ''}
-            </div>
-            {/* Criteria as chips (the pill radius, ink outline, 28px), wrapping whole so nothing dangles. */}
+            {/* The listing's facts, then its criteria: one pill each (components/ui.js StatusPills). */}
+            <StatusPills label="The listing" style={{ marginTop: 'var(--s-3)' }} items={[
+              !listingOpen(l) ? [listingStanding(l).withdrawn ? 'Closed' : 'Rented', listingStanding(l).closedAt ? new Date(listingStanding(l).closedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : null].filter(Boolean).join(' ') : null,
+              l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString('en-CA')} per month` : 'Rent not set',
+              formatUnit(l.bedrooms) || null,
+            ]} />
             {criteria.length ? (
-              <div className="num" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
-                {criteria.map((c) => <span key={c} style={{ display: 'inline-flex', alignItems: 'center', height: 28, padding: '0 var(--s-3)', borderRadius: R.pill, border: `1px solid ${C.ink}`, color: C.ink, fontSize: 'var(--t-eyebrow)', fontWeight: 700, lineHeight: 1, whiteSpace: 'nowrap' }}>{c}</span>)}
-              </div>
+              <StatusPills label="Criteria" items={criteria} style={{ marginTop: 'var(--s-2)' }} />
             ) : (
               <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-3)' }}>No criteria set</div>
             )}
@@ -1257,7 +1259,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <label key={a.linkId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
                         <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => { setRentedPick(a.linkId); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
                         <span title={a.application?.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.application?.full_name || 'Applicant'}</span>
-                        {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap', flexShrink: 0 }}>Fit {Number(fit.score).toFixed(1)} · {fit.label}</span>}
+                        {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap', flexShrink: 0 }}>Fit {Number(fit.score).toFixed(1)} ({fit.label})</span>}
                       </label>
                     );
                   })}
@@ -1300,7 +1302,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
               <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
             </div>
-            {stateLine(active) && <p className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-3)', textWrap: 'pretty' }}><DotLine text={stateLine(active)} /></p>}
+            {statePills(active).length > 0 && <StatusPills label="Applicants by state" items={statePills(active)} style={{ marginBottom: 'var(--s-3)' }} />}
 
             {totalApplicants === 0 ? (
               <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
@@ -1357,9 +1359,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
               {/* The latest frozen report: when it went, how often it was opened, how many want to meet. */}
-              {l.snapshot && sentLine(l.snapshot) && (
-                <div className="num" style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', display: 'flex', alignItems: 'center', gap: 'var(--s-3)', flexWrap: 'wrap' }}>
-                  <span style={{ textWrap: 'pretty' }}>{sentLine(l.snapshot)}</span>
+              {l.snapshot && sentPills(l.snapshot) && (
+                <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2) var(--s-3)', flexWrap: 'wrap' }}>
+                  <StatusPills label="The report" items={sentPills(l.snapshot)} />
                   <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" onClick={() => setBrandHint(true)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
                 </div>
               )}

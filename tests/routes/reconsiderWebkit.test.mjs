@@ -84,7 +84,7 @@ async function fullPath(browserType, launch, tag) {
     await shot(p, tag, 'sheet');
     await sheet(p).getByRole('button', { name: 'Reconsider', exact: true }).click();
     await sheet(p).waitFor({ state: 'detached', timeout: 10000 });
-    await card.locator('.rl-dots').filter({ hasText: 'Reconsidered' }).filter({ hasText: 'the first choice withdrew' }).waitFor({ timeout: 10000 }); // one dot line (components/ui.js DotLine): the dot is drawn, not typed
+    await card.locator('.rl-pills').filter({ hasText: 'Reconsidered' }).filter({ hasText: 'the first choice withdrew' }).waitFor({ timeout: 10000 }); // one pill row (components/ui.js StatusPills): each fact is its own pill
     assert.equal(await card.getByRole('button', { name: 'Undo', exact: true }).count(), 1, 'Undo is offered');
     await shot(p, tag, 'card-after-undo', card);
     assert.equal(await card.getByRole('button', { name: 'Reconsider', exact: true }).count(), 0, 'no Reconsider once reconsidered');
@@ -106,7 +106,7 @@ async function undoPath(browserType, launch, tag) {
     await header(p, 'Wei Chen').click(); await p.waitForTimeout(500);
     await card.getByRole('button', { name: 'Reconsider', exact: true }).click();
     await sheet(p).getByRole('button', { name: 'Reconsider', exact: true }).click();
-    await card.locator('.rl-dots').filter({ hasText: 'Reconsidered' }).filter({ hasText: 'the first choice fell through' }).waitFor({ timeout: 10000 }); // one dot line (components/ui.js DotLine): the dot is drawn, not typed
+    await card.locator('.rl-pills').filter({ hasText: 'Reconsidered' }).filter({ hasText: 'the first choice fell through' }).waitFor({ timeout: 10000 }); // one pill row (components/ui.js StatusPills): each fact is its own pill
     await card.getByRole('button', { name: 'Undo', exact: true }).click();
     await card.getByText('Not selected', { exact: true }).waitFor({ timeout: 10000 });
     assert.equal(await card.getByRole('button', { name: 'Undo', exact: true }).count(), 0, 'the Undo goes');

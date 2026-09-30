@@ -7,12 +7,16 @@
 // dashboard header (components/dashboard/DashboardHeader.js). Tenant and landlord pages (apply,
 // upload, my application, keep, r, ref, refer, a) never carry it. The admin keeps its own install
 // (components/admin/AdminShell.js). The status bar is "default": dark text that reads on paper.
+// The app is portrait only: the manifest says so, and UprightOverlay covers a landscape phone in
+// standalone (components/UprightOverlay.js).
 import Head from 'next/head';
 import { C } from './theme';
 import { SPLASH, splashFile, splashMedia } from '../lib/brand/splash';
+import UprightOverlay from './UprightOverlay';
 
 export default function AppHead() {
   return (
+    <>
     <Head>
       <link key="rl-manifest" rel="manifest" href="/manifest.webmanifest" />
       <meta key="rl-theme" name="theme-color" content={C.paper} />
@@ -23,5 +27,7 @@ export default function AppHead() {
       <link key="rl-touch-icon" rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
       {SPLASH.map((s) => <link key={`rl-splash-${s.w}-${s.h}-${s.dpr}`} rel="apple-touch-startup-image" href={splashFile(s)} media={splashMedia(s)} />)}
     </Head>
+    <UprightOverlay />
+    </>
   );
 }

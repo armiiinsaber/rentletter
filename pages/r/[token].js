@@ -7,7 +7,7 @@
 import { useState, useEffect } from 'react';
 import { isSandboxToken } from '../../lib/features';
 import Head from 'next/head';
-import { GlobalStyle, Wordmark, Icon, DotLine } from '../../components/ui';
+import { GlobalStyle, Wordmark, Icon, StatusPills } from '../../components/ui';
 import { noWidow } from '../../lib/typeset.js';
 import { C, R } from '../../components/theme';
 import { isReportToken } from '../../lib/applicationIds';
@@ -116,9 +116,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
           </div>
         </div>
         <h1 className="t-d1" style={{ color: C.ink, margin: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{listing.address}</h1>
-        <div className="num" style={{ fontSize: 'var(--t-body)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-2)' }}>
-          <DotLine items={[listing.rent != null ? `${money(listing.rent)} per month` : null, listing.bedroomsLabel || null]} />
-        </div>
+        <StatusPills label="The unit" items={[listing.rent != null ? `${money(listing.rent)} per month` : null, listing.bedroomsLabel || null]} style={{ marginTop: 'var(--s-3)' }} />
         <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>
           Prepared {longDate(payload.generatedAt)}{listing.landlordName ? ` for ${listing.landlordName}` : ''}
         </div>
@@ -140,8 +138,8 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
               ) : <span style={eyebrow}>Rent share unknown</span>}
             </div>
             {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{a.sentence}</p> : null}
-            {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.green, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{String(a.confirmedLine).replace(/ · (\S+ \S+)$/, '\u00a0·\u00a0$1')}</div> : null}
-            {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'pretty' }}><DotLine items={String(a.reason.charAt(0).toLowerCase() + a.reason.slice(1)).split(' · ').map((r, i) => (i ? r : `Below the one above: ${r}`))} /></div> : null}
+            {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(String(a.confirmedLine).replace(/ · (\S+ \S+)$/, ' ($1)'))}</div> : null}
+            {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(`Below the one above: ${String(a.reason.charAt(0).toLowerCase() + a.reason.slice(1)).split(' · ').join(', ')}.`)}</div> : null}
             <div className="num rl-nums" style={{ display: 'grid', gap: 'var(--s-2)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
               {[['Income', n.annualIncome != null ? `${money(n.annualIncome)}${n.incomeJoint ? ' (joint)' : ''}` : 'not given'], ['Rent share', n.rentSharePct != null ? `${Math.round(n.rentSharePct)}%` : 'unknown'], ['At job', n.yearsAtJob ? `${n.yearsAtJob} yr${n.yearsAtJob === 1 ? '' : 's'}` : 'not given'], ['References', String(n.references || 0)]].map(([k, v]) => (
                 <div key={k} style={{ minWidth: 0 }}>
@@ -158,7 +156,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
                     <span aria-hidden="true" style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {c.status === 'met' ? <Icon name="check" size={13} color={C.red} strokeWidth={2.5} /> : c.status === 'missed' ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.ink, display: 'inline-block' }} /> : null}
                     </span>
-                    <span className="num" style={{ minWidth: 0, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{c.text}</span>
+                    <span className="num" style={{ minWidth: 0, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{noWidow(String(c.text).split(' · ').join(', '))}</span>
                   </li>
                 ))}
               </ul>
@@ -186,8 +184,11 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
       {error ? <div role="alert" className="rl-card" style={{ ...card, color: C.danger, fontSize: 'var(--t-body-2)' }}>{error}</div> : null}
 
       <section className="rl-card" style={card}>
-        {listing.criteriaLine ? <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}><DotLine items={`${listing.criteriaLine}.`.split(' · ').map((c, i) => (i ? c : `Ranked against ${realtor.name}'s criteria: ${c}`))} /></p> : null}
-        {realtor.signature ? <p style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', overflowWrap: 'anywhere' }}>{realtor.signature}</p> : null}
+        {listing.criteriaLine ? <>
+          <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{noWidow(`Ranked against the criteria ${realtor.name} set.`)}</p>
+          <StatusPills label="The criteria" items={String(listing.criteriaLine).split(' · ')} style={{ marginTop: 'var(--s-2)' }} />
+        </> : null}
+        {realtor.signature ? <p style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', overflowWrap: 'anywhere' }}>{String(realtor.signature).split(' · ').join(', ')}</p> : null}
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>Sent through Rentletter on behalf of {realtor.name}. This link is private to you.</p>
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{listing.fitLine || FIT_LINE}</p>
         <a href={`/api/report/pdf?token=${encodeURIComponent(token)}`} download style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 'var(--s-3)', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline' }}>Download PDF</a>

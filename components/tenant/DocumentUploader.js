@@ -159,7 +159,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
             {it.met ? <Icon name="check" size={12} color={C.red} strokeWidth={3} /> : null}
           </span>
           <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, flex: 1, minWidth: 0, textWrap: 'pretty' }}>
-            {it.label}{it.optional ? <span style={{ color: C.inkMute, whiteSpace: 'nowrap' }}> · not used in scoring</span> : null}
+            {it.label}{it.optional ? <span style={{ display: 'block', color: C.inkMute }}>Not used in scoring</span> : null}
           </span>
           {it.max > 1 ? <span style={{ fontSize: 12.5, color: C.inkMute, flexShrink: 0 }}>{Math.min(it.count, it.max)} of {it.max}</span> : null}
         </div>

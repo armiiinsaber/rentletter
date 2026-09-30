@@ -7,6 +7,7 @@
 import { useState } from 'react';
 import { DEFAULT_RENT_SHARE_CAP, CAP_HELPER, SAME_AS_CAP_NOTE, derivedMinIncome, sameAsCap, derivedLine, affordabilityPayload } from '../../lib/listingForm';
 import { C, R } from '../theme';
+import { StackedLines } from '../ui';
 import { displayAddress } from '../../lib/listingAddress';
 import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
@@ -292,10 +293,8 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
                 ['Address', displayAddress({ address: String(form.address).trim(), unit: String(form.unit).trim() })],
                 ['Monthly rent', rentNum ? `$${rentNum.toLocaleString()}` : 'not set'],
                 ['Bedrooms', formatUnit(form.bedrooms) || 'not set'],
-                // Join name + email with a middot ONLY when both exist (filter(Boolean) drops an
-                // empty side → no leading/trailing dot). Non-breaking spaces keep the middot glued
-                // between the two so it can never wrap to a line edge as an orphan "·".
-                ['Landlord', [String(form.landlord_name).trim(), String(form.landlord_email).trim().toLowerCase()].filter(Boolean).join(' · ')],
+                // The name over the email, one per line, no separator between them.
+                ['Landlord', <StackedLines parts={[String(form.landlord_name).trim(), String(form.landlord_email).trim().toLowerCase()]} />],
               ].map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 14, padding: '5px 0', fontSize: 13 }}>
                   <span style={{ color: C.inkMute, fontWeight: 600, minWidth: 0, flexShrink: 0 }}>{k}</span>

@@ -12,7 +12,7 @@
 // the answers show under the row and count as a confirmation, never as a number.
 import React, { useState, useEffect } from 'react';
 import { C, R } from '../theme';
-import { Icon, DotLine } from '../ui';
+import { Icon, StatusPills, StackedLines } from '../ui';
 // "Said: a · b" as dot line items, the label on the first: labelled('Said', 'a · b') -> ['Said: a', 'b'].
 const labelled = (label, value) => String(value).split(' · ').map((v, i) => (i ? v : `${label}: ${v}`));
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -133,14 +133,14 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-                  <DotLine items={[...labelled('Said', row.said), ...(row.docs != null ? labelled('Docs', row.docs) : [])]} />
+                  <StackedLines parts={[labelled('Said', row.said).join(', '), row.docs != null ? labelled('Docs', row.docs).join(', ') : null]} />
                 </div>
                 {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Also seen: {line}</div>) : null}
                 {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}
-                {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)' }}>Asked {shortDate(refResp.sentAt)} ·{'\u00A0'}no answer yet</div> : null}
+                {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <StatusPills label="Reference" items={[`Asked ${shortDate(refResp.sentAt)}`, 'no answer yet']} style={{ marginTop: 'var(--s-1)' }} /> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'answered' ? (
                   <div style={{ marginTop: 'var(--s-1)' }}>
-                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}><DotLine text={answerSummary(refResp.answers)} /></div>
+                    <StatusPills label="Reference answers" items={String(answerSummary(refResp.answers) || '').split(' · ')} />
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 2 }}><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Answered {shortDate(refResp.answeredAt)}</span></div>
                   </div>
                 ) : null}
@@ -160,7 +160,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                   <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                     aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                     style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                    {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed · {shortDate(c.at)}</span></> : row.verb}
+                    {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}
                   </button>
                   {row.key === 'landlord' && landlordEmail && !asking && (!refResp || refResp.status !== 'pending') ? (
                     <button type="button" onClick={() => setAsking(true)} style={{ ...btn(false), minWidth: 0 }}>Ask by email</button>
@@ -176,7 +176,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                   aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                   style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                  {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed · {shortDate(c.at)}</span></> : row.verb}
+                  {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}
                 </button>
               ) : null}
             </div>

@@ -45,5 +45,5 @@ test('the copy carries no dash, and the four emails and the realtor helper say t
   for (const n of [1, 2]) assert.match(nudgeEmail({ nudge: n, listingName: 'Carlaw', realtorName: 'S', applicantName: 'P', uploadUrl: 'https://rentletter.ca/upload/t' }).paras[0], /waiting on your documents: one to three recent pay stubs, an employment letter, and a credit report if you have one\.$/);
   for (const f of ['pages/api/applicants/request-documents.js', 'pages/api/send.js', 'components/dashboard/ApplicantDocIntel.js', 'lib/nudges.js']) assert.match(readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'), /SET_SENTENCE_(LOWER|REALTOR)/, f);
   assert.match(uploader, /PDF or image, up to \{MAX_FILES\} files, 3MB each/);
-  assert.match(uploader, /not used in scoring/);
+  assert.match(uploader, />Not used in scoring</, 'the optional item says so on its own line');
 });

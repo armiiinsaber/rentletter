@@ -3,10 +3,10 @@
 // shape (lib/tenantProfile EMPTY_FORM), used by /my-application (the profile: edits reach future
 // applications) and /my-application/[rl] (one snapshot: edits reach that realtor). Everything is on
 // the realtor tokens (components/ui.js GlobalStyle): the card, the eyebrow, the text button, the
-// line and card gaps. Every "a · b" line is built by Dots so a wrap breaks between items and a dot
-// never opens or closes a line; every prose line runs through noWidow (lib/typeset.js).
+// line and card gaps. A value made of several facts puts each on its own line (components/ui.js
+// StackedLines), with no dots between them; every prose line runs through noWidow (lib/typeset.js).
 import { C, R } from '../theme';
-import { Icon, DotLine } from '../ui';
+import { Icon, StackedLines } from '../ui';
 import { Field, SelectField, ToggleField } from '../apply/fields';
 import { serializePets } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
@@ -32,14 +32,10 @@ const tenureLabel = (yrs) => {
 export const guessProvince = (f) => (/\b(BC|B\.C\.|British Columbia|Vancouver|Victoria|Burnaby|Surrey|Richmond|Kelowna)\b/i.test(`${f?.previousAddress || ''} ${f?.apartmentAddress || ''}`) ? 'BC' : 'ON');
 
 // ── atoms ─────────────────────────────────────────────────────────────────────────────────
-// Dots: the items of an "a · b · c" line. Each item is an inline block that carries its own
-// separator, so a wrap breaks between items and a dot never opens or closes a line.
-// The shared dot line (components/ui.js DotLine): the dot binds to the item after it.
-export function Dots({ items }) {
-  return <DotLine items={items} />;
-}
-// A stored "a · b" string, rendered through Dots.
-export const DotText = ({ text }) => <DotLine text={text} />;
+// Several facts in one value: one fact per line, no separators (components/ui.js StackedLines).
+export const Lines = ({ items }) => <StackedLines parts={items} />;
+// A stored "a · b" string, one part per line.
+export const LinesText = ({ text }) => <StackedLines text={text} />;
 
 export const Eyebrow = ({ children, style }) => (
   <div className="mp-eyebrow" style={style}><span className="mp-dash" aria-hidden="true" />{children}</div>
@@ -175,10 +171,10 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
       <Section {...sec('employment')} title="Employment and income"
         rows={<>
           <Row label="Job title" value={f.jobTitle} />
-          <Row label={selfEmp ? 'Business' : 'Employer'} value={f.employer ? <Dots items={[f.employer, EMP_LABEL[f.employmentType]]} /> : null} />
+          <Row label={selfEmp ? 'Business' : 'Employer'} value={f.employer ? <Lines items={[f.employer, EMP_LABEL[f.employmentType]]} /> : null} />
           <Row label={selfEmp ? 'Years in business' : 'Time in role'} value={f.yearsAtJob ? `${f.yearsAtJob}${NBSP}yr${String(f.yearsAtJob) === '1' ? '' : 's'}` : null} />
           <Row label="Income before tax" value={moneyYr(f.annualIncome)} />
-          <Row label="After tax" value={moneyYr(f.netIncome) ? <Dots items={[moneyYr(f.netIncome), f.netIncomeSource === 'stated' ? 'you entered' : 'estimate']} /> : null} />
+          <Row label="After tax" value={moneyYr(f.netIncome) ? <Lines items={[moneyYr(f.netIncome), f.netIncomeSource === 'stated' ? 'you entered' : 'estimate']} /> : null} />
         </>}>
         {draft && <>
           <SelectField label="Employment type" value={d.employmentType} onChange={(v) => updateEmployment({ employmentType: v })} options={[{ value: '', label: 'Select' }, { value: 'full-time', label: 'Full time' }, { value: 'part-time', label: 'Part time' }, { value: 'contract', label: 'Contract' }, { value: 'self-employed', label: 'Self employed (own or family business)' }]} />
@@ -206,7 +202,7 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
           <Row label="Address" value={f.previousAddress} />
           <Row label="Time there" value={tenureLabel(f.yearsAtPrevious)} />
           <Row label="Rent" value={moneyMo(f.currentRent)} />
-          <Row label="Landlord reference" value={f.previousLandlordName ? <Dots items={[f.previousLandlordName, ...contactParts]} /> : null} />
+          <Row label="Landlord reference" value={f.previousLandlordName ? <Lines items={[f.previousLandlordName, ...contactParts]} /> : null} />
         </> : <Row label="Previous rental" value="None listed" />}>
         {draft && <>
           <SelectField label="Your rental situation" value={d.rentalStatus} onChange={updateRentalStatus} options={[{ value: 'current', label: 'I am renting now' }, { value: 'previous', label: 'I have rented before, but not right now' }, { value: 'none', label: 'No previous rental to list' }]} />
@@ -236,7 +232,7 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
           <Row label="Occupants" value={occupants ? count(occupants, 'person', 'people') : null} />
           <Row label="Smoking or vaping" value={{ no: 'No', yes: 'Yes', outdoor: 'Outdoor only' }[f.smoker] || 'No'} />
           <Row label="Pets" value={f.pets || 'None'} />
-          <Row label="Co tenant" value={f.hasCoApplicant ? <Dots items={[f.coApplicantName || 'Yes', [f.coApplicantJobTitle, f.coApplicantEmployer].filter(Boolean).join(' at '), moneyYr(f.coApplicantIncome)]} /> : 'Applying alone'} />
+          <Row label="Co tenant" value={f.hasCoApplicant ? <Lines items={[f.coApplicantName || 'Yes', [f.coApplicantJobTitle, f.coApplicantEmployer].filter(Boolean).join(' at '), moneyYr(f.coApplicantIncome)]} /> : 'Applying alone'} />
         </>}>
         {draft && <>
           <div className="mp-grid2">
@@ -269,7 +265,7 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
       </Section>
 
       <Section {...sec('references')} title="References" single={refs.length === 0}
-        rows={refs.length ? refs.map((n) => <Row key={n} label={`Reference ${n}`} value={<Dots items={[f[`reference${n}Name`], f[`reference${n}Relationship`], f[`reference${n}Contact`]]} />} />)
+        rows={refs.length ? refs.map((n) => <Row key={n} label={`Reference ${n}`} value={<Lines items={[f[`reference${n}Name`], f[`reference${n}Relationship`], f[`reference${n}Contact`]]} />} />)
           : <Row label="References" value={count(0, 'provided', 'provided')} />}>
         {draft && [1, 2].map((n) => (
           <div key={n} className="mp-sub">

@@ -5,7 +5,7 @@
 // comparisonRows). Then the documents read, one small card each. No summary paragraph, no
 // confidence, no status colours: state is the tick, the dot and the words.
 import { C, R } from '../theme';
-import { Icon } from '../ui';
+import { Icon, StatusPills, StackedLines } from '../ui';
 import { comparisonRows } from '../../lib/documentsLine';
 
 const DOC_LABEL = {
@@ -45,7 +45,7 @@ export default function DocIntelReport({ result }) {
               <span style={{ marginTop: 3 }}><Mark status={r.status} /></span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 'var(--lh-body)' }}>{r.field}</div>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Said: {r.said} · Docs: {r.docs}</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}><StackedLines parts={[`Said: ${r.said}`, `Docs: ${r.docs}`]} /></div>
                 {r.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>Also seen: {line}</div>)}
               </div>
             </li>
@@ -69,7 +69,7 @@ export default function DocIntelReport({ result }) {
                     <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={d.filename}>{d.filename}</span>
                   </div>
                   {isUnrecognized && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{d.notes || 'This file does not read as a rental screening document. Ask the applicant to resend.'}</div>}
-                  {isCredit && <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>Credit report on file · score {ex.creditScore != null ? ex.creditScore : 'not legible'} · not used in Fit</div>}
+                  {isCredit && <StatusPills label="Credit report" items={['Credit report on file', `score ${ex.creditScore != null ? ex.creditScore : 'not legible'}`, 'not used in Fit']} />}
                   {rowKeys.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-1)' }}>
                       {rowKeys.map((k) => (

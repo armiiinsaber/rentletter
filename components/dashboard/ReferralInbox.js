@@ -4,7 +4,7 @@
 // THAT listing. Renders nothing when the inbox is empty.
 import { useState, useEffect, useRef } from 'react';
 import { C, R } from '../theme';
-import { Icon } from '../ui';
+import { Icon, StatusPills, StackedLines } from '../ui';
 import ReferralCaution from './ReferralCaution';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { displayLabel } from '../../lib/listingAddress';
@@ -67,11 +67,9 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 'var(--t-body)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{a.name || 'Applicant'}</div>
                       <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', overflowWrap: 'anywhere' }}>
-                        {[a.jobTitle, a.employer].filter(Boolean).join(' at ') || 'Role not listed'}{EMP[a.employmentType] ? ` · ${EMP[a.employmentType]}` : ''}{a.annualIncome ? ` · ${money(a.annualIncome)}/yr before tax` : ''}{a.netIncome ? ` · ~${money(a.netIncome)} after tax` : ''}
+                        <StackedLines parts={[[a.jobTitle, a.employer].filter(Boolean).join(' at ') || 'Role not listed', EMP[a.employmentType] || null, a.annualIncome ? `${money(a.annualIncome)} a year before tax` : null, a.netIncome ? `About ${money(a.netIncome)} after tax` : null]} />
                       </div>
-                      <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>
-                        {[a.yearsAtJob ? `${a.yearsAtJob} yrs in role` : null, a.rentalYears ? `${a.rentalYears} yrs renting${a.hasLandlordRef ? ' · landlord ref' : ''}` : null, a.occupants ? `${a.occupants} occupant(s)` : null, a.pets ? `pets: ${a.pets}` : null, a.moveInDate ? `move in ${a.moveInDate}` : null].filter(Boolean).join(' · ')}
-                      </div>
+                      <StatusPills label="Applicant" items={[a.yearsAtJob ? `${a.yearsAtJob} yrs in role` : null, a.rentalYears ? `${a.rentalYears} yrs renting` : null, a.rentalYears && a.hasLandlordRef ? 'landlord ref' : null, a.occupants ? `${a.occupants} occupant(s)` : null, a.pets ? `pets: ${a.pets}` : null, a.moveInDate ? `move in ${a.moveInDate}` : null]} style={{ marginTop: 'var(--s-2)' }} />
                     </div>
                     {assignedListing
                       ? <a href={adapter.paths.listing(assignedListing.id)} style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.green, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', flexShrink: 0 }}><Icon name="check" size={14} color={C.green} strokeWidth={2.5} /> On {assignedListing.name || 'your listing'}</a>
@@ -83,7 +81,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                       <select value={choice[ref.id] || ''} onChange={(e) => setChoice((c) => ({ ...c, [ref.id]: e.target.value }))} aria-label="Assign to listing"
                         style={{ flex: '1 1 200px', minWidth: 0, padding: 'var(--s-2) var(--s-3)', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--card-radius)', background: C.card, color: C.ink, minHeight: 42 }}>
                         <option value="">Assign to a listing…</option>
-                        {listings.map((l) => <option key={l.id} value={l.id}>{displayLabel(l)}{l.monthly_rent ? ` · $${Number(l.monthly_rent).toLocaleString('en-CA')}/mo` : ''}</option>)}
+                        {listings.map((l) => <option key={l.id} value={l.id}>{displayLabel(l)}{l.monthly_rent ? `, $${Number(l.monthly_rent).toLocaleString('en-CA')} per month` : ''}</option>)}
                       </select>
                       <button type="button" onClick={() => assign(ref)} disabled={!choice[ref.id] || busy === ref.id}
                         style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !choice[ref.id] ? 'not-allowed' : 'pointer', opacity: !choice[ref.id] ? 0.5 : 1, minHeight: 42 }}>

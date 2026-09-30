@@ -1,6 +1,6 @@
 // components/dashboard/ApplicantDocIntel.js
-// The document panel under the checklist: one line ("Documents · 4 read · income and employer on
-// the letter", with Send again while a request waits), the Documents held list, and a 44px fold
+// The document panel under the checklist: "Documents" over its facts as pills ("4 read", "income
+// and employer on the letter"), with Send again while a request waits, the Documents held list, and a 44px fold
 // "What the documents say" (closed by default) holding the comparison rows in the checklist's
 // words, the documents read, the realtor's own upload (up to 6 files, one request per file, one
 // finalize), the landlord confirmation and the archive controls. Real dashboard only (it calls
@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { SET_SENTENCE_REALTOR } from '../../lib/documentSet';
 import { documentsLine } from '../../lib/documentsLine';
 import { C, R } from '../theme';
-import { Icon, DotLine } from '../ui';
+import { Icon, StatusPills } from '../ui';
 import DocIntelReport from './DocIntelReport';
 import { editedAfterVerification, fmtShort } from '../../lib/profileEdits';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -51,7 +51,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
     return (
       <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
         {heading}
-        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4 }}>{last ? `Deleted ${fmt(last.deletedAt)} · ${byLabel(last.deletedBy)}` : 'None held'}</div>
+        {last ? <StatusPills label="Documents removed" items={[`Deleted ${fmt(last.deletedAt)}`, byLabel(last.deletedBy)]} /> : <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4 }}>None held</div>}
       </div>
     );
   }
@@ -64,7 +64,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
           <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{cap(d.kind)}</div>
-              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)' }}><DotLine items={[d.uploadedBy === 'tenant' ? 'from tenant' : 'you', fmt(d.uploadedAt), goes(d)]} /></div>
+              <StatusPills label="Document" items={[d.uploadedBy === 'tenant' ? 'from tenant' : 'you', fmt(d.uploadedAt), goes(d)]} style={{ marginTop: 'var(--s-1)' }} />
             </div>
             <button type="button" onClick={() => view(d)} disabled={!!busy} aria-label={`View ${d.kind}`} style={{ ...btn44, minWidth: 64, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, opacity: busy === d.id ? 0.6 : 1 }}>{busy === d.id ? 'Opening' : 'View'}</button>
           </div>
@@ -271,7 +271,10 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
       {/* The one line, and Send again while a request waits with nothing arrived. */}
       <div className="rl-ctrl-row" style={{ minHeight: 44 }}>
-        <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)', flex: '1 1 200px', minWidth: 0, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{docLine}</span>
+        <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)' }}>{docLine.split(' · ')[0]}</div>
+          <StatusPills label="Documents" items={docLine.split(' · ').slice(1)} style={{ marginTop: 'var(--s-2)' }} />
+        </div>
         {canSendAgain && <button type="button" onClick={sendAgain} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}>{sending ? 'Sending' : 'Send again'}</button>}
       </div>
       {sentNote ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{sentNote}</div> : null}
@@ -297,7 +300,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       {open && viewing && (
         <div style={{ marginTop: 'var(--s-3)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', marginBottom: 'var(--s-3)' }}>
-            <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.inkMute, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived · {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ' · tenant' : ''}</span>
+            <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.inkMute, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Archived {fmtDate(viewing.archived_at)}{viewing.source === 'tenant' ? ', from the tenant' : ''}</span>
             <button onClick={() => setViewing(null)} style={{ ...ghostBtn, color: C.ink }}>← Back</button>
           </div>
           <DocIntelReport result={viewing.report} />
@@ -346,7 +349,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
               {analyzing && <span className="rl-dispin" aria-hidden="true" />}
               {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Analyze again' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
             </button>
-            <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>Held for your review · deleted in {RETENTION_DAYS} days or when you delete them</span>
+            <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>Held for your review. Deleted in {RETENTION_DAYS} days or when you delete them.</span>
           </div>
 
           </div>
@@ -381,7 +384,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                     <button onClick={() => { setConfirmDelete(true); setError(''); }} disabled={!!managing} style={{ ...destOutlineBtn, opacity: managing ? 0.6 : 1 }}>
                       Delete
                     </button>
-                    <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, minWidth: 0 }}>Archive keeps a copy in history · Delete removes it permanently.</span>
+                    <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, minWidth: 0 }}>Archive keeps a copy in history. Delete removes it permanently.</span>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -410,9 +413,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                 <div style={{ marginTop: 'var(--s-2)', display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
                   {archived.map((entry) => (
                     <div key={entry.id} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', flexWrap: 'wrap', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)' }}>
-                      <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        Archived · {fmtDate(entry.archived_at)}{entry.source === 'tenant' ? ' · tenant upload' : ''}
-                      </span>
+                      <StatusPills label="Archived report" items={['Archived', fmtDate(entry.archived_at), entry.source === 'tenant' ? 'tenant upload' : null]} style={{ flex: 1, minWidth: 0 }} />
                       <button onClick={() => setViewing(entry)} style={{ ...ghostBtn, padding: 'var(--s-1) var(--s-3)', color: C.ink }}>View</button>
                       {confirmArchId === entry.id ? (
                         <span style={{ display: 'inline-flex', gap: 'var(--s-1)', alignItems: 'center' }}>

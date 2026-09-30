@@ -13,7 +13,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Wordmark } from '../../components/ui';
+import { GlobalStyle, Wordmark, StatusPills } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
 import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } from '../../lib/provinces';
@@ -21,7 +21,7 @@ import { formatUnit } from '../../lib/unitType';
 import { EMPTY_FORM, serializePets, ageFromDob } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { Field, SelectField, ToggleField } from '../../components/apply/fields';
-import { ProfileStyles, Eyebrow, Dots, DotText, EMP_LABEL, noWidow } from '../../components/tenant/ProfileFacts';
+import { ProfileStyles, Eyebrow, LinesText, EMP_LABEL, noWidow } from '../../components/tenant/ProfileFacts';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
@@ -600,7 +600,7 @@ export default function ApplyPage({ invited = null }) {
                 <button type="button" onClick={() => editStep(n)} disabled={submitting} className="mp-link">Edit</button>
               </div>
               <div className="mp-facts" style={{ marginTop: 0 }}>
-                {mine.map(([k, v]) => <div key={k} className="mp-fact"><div className="mp-label">{k}</div><div className="mp-value"><DotText text={v || 'not set'} /></div></div>)}
+                {mine.map(([k, v]) => <div key={k} className="mp-fact"><div className="mp-label">{k}</div><div className="mp-value"><LinesText text={v || 'not set'} /></div></div>)}
               </div>
             </div>
           );
@@ -613,7 +613,7 @@ export default function ApplyPage({ invited = null }) {
     const last = n === STEPS.length;
     return (
       <div key={n} id={`step-${pad(n)}`} className="rl-card mp-card mp-enter" style={{ scrollMarginTop: 'var(--s-4)' }} data-invited-review={last && invited ? '' : undefined}>
-        <div className="mp-step"><Dots items={[`Step ${n} of ${STEPS.length}`, STEPS[n - 1].title]} /></div>
+        <div className="mp-step">{`Step ${n} of ${STEPS.length}: ${STEPS[n - 1].title}`}</div>
         <div className="mp-progress" aria-hidden="true"><span style={{ width: `${Math.round((n / STEPS.length) * 100)}%` }} /></div>
         <div className="mp-form">{last ? reviewCard() : fieldsFor(n)}</div>
         {error && n === step && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(error)}</p>}
@@ -764,11 +764,14 @@ export default function ApplyPage({ invited = null }) {
                   <div className="mp-h2" style={{ color: C.paper, marginTop: 'var(--gap-line)' }}>{noWidow(invite.listingName || invite.unit?.address || 'Rental unit')}</div>
                   {invite.unit && (() => {
                     const addr = invite.unit.address && invite.unit.address !== (invite.listingName || '') ? invite.unit.address : null;
-                    const bits = [invite.unit.monthlyRent ? `$${Number(invite.unit.monthlyRent).toLocaleString('en-CA')}/mo` : null, formatUnit(invite.unit.bedrooms) || null, addr];
-                    return bits.some(Boolean) ? <div className="mp-p" style={{ color: inkText, marginTop: 'var(--gap-line)' }}><Dots items={bits} /></div> : null;
+                    const bits = [invite.unit.monthlyRent ? `$${Number(invite.unit.monthlyRent).toLocaleString('en-CA')} per month` : null, formatUnit(invite.unit.bedrooms) || null];
+                    return <>
+                      {addr ? <div className="mp-p" style={{ color: inkText, marginTop: 'var(--gap-line)' }}>{noWidow(addr)}</div> : null}
+                      <StatusPills tone="ink" label="The unit" items={bits} style={{ marginTop: 'var(--s-3)' }} />
+                    </>;
                   })()}
                   {(invite.realtorName || invite.realtorBrokerage) && (
-                    <div className="mp-p" style={{ color: inkText, marginTop: 'var(--gap-line)' }}><Dots items={[`Goes to ${invite.realtorName || ''}`.trim(), invite.realtorBrokerage]} /></div>
+                    <div className="mp-p" style={{ color: inkText, marginTop: 'var(--gap-line)' }}>{noWidow(`Goes to ${[invite.realtorName, invite.realtorBrokerage].filter(Boolean).join(', ')}`)}</div>
                   )}
                 </div>
               )}

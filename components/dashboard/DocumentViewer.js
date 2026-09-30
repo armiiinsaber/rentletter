@@ -23,7 +23,7 @@ export default function DocumentViewer({ doc, onClose }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', padding: 'max(10px, env(safe-area-inset-top)) 14px 10px 16px', borderBottom: `1px solid ${C.instRule}`, flexShrink: 0 }}>
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.instText, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{title}</div>
-          <div style={{ fontSize: 'var(--t-body-2)', color: '#9a958a', marginTop: 'var(--s-1)' }}>Held for your review · this view is logged</div>
+          <div style={{ fontSize: 'var(--t-body-2)', color: '#9a958a', marginTop: 'var(--s-1)' }}>Held for your review. This view is logged.</div>
         </div>
         <button type="button" onClick={onClose} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', border: `1.5px solid ${C.instText}`, background: 'transparent', color: C.instText, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', flexShrink: 0, fontFamily: 'inherit' }}>Close</button>
       </div>

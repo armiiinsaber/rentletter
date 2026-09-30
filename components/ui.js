@@ -97,13 +97,17 @@ export const GlobalStyle = () => (
        styles only override the properties they declare). */
     /* Controls that sit together: one height, one gap (the card gap), one left edge, and at 390
        one width, so a row never mixes a full width control with a narrower one. */
-    /* A line of facts joined by a dot (DotLine below). The dot belongs to the item after it: it is
-       drawn in the gap before that item and clipped at the left edge when the item opens a line, so
-       no line begins or ends with a dot (R1). */
-    .rl-dots { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.9em; row-gap: 0; max-width: 100%; overflow: hidden; vertical-align: baseline; }
-    .rl-dots.rl-dots-block { display: flex; }
-    .rl-dot { position: relative; min-width: 0; max-width: 100%; overflow-wrap: anywhere; }
-    .rl-dot + .rl-dot::before { content: '·'; position: absolute; left: -0.9em; width: 0.9em; text-align: center; }
+    /* Status pills (StatusPills below): each fact its own pill, wrapping as a whole unit, 8px apart
+       both ways, left aligned. Paper fill, rule border and ink text on white cards; the one fact
+       that needs the realtor's action is filled ink. On ink surfaces, transparent with a paper
+       border at 24 percent. Never animated: no transition, no animation, full opacity. */
+    .rl-pills { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .rl-pill { box-sizing: border-box; display: inline-flex; align-items: center; height: 28px; max-width: 100%; padding: 0 12px;
+      border-radius: 999px; border: 1px solid ${C.rule}; background: ${C.paper}; color: ${C.ink};
+      font-family: ${FONT.sans}; font-size: 14px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; transition: none; animation: none; }
+    .rl-pill.rl-pill-action { background: ${C.inst}; border-color: ${C.inst}; color: ${C.paper}; }
+    .rl-pills.rl-pills-ink .rl-pill { background: transparent; border-color: rgba(250, 248, 243, 0.24); color: ${C.paper}; }
     .rl-ctrl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-card); }
     .rl-ctrl-row > * { min-height: 44px; flex: 0 1 auto; }
     @media (max-width: 420px) { .rl-ctrl-row > * { flex: 1 1 100%; width: 100%; } }
@@ -173,22 +177,31 @@ export const GlobalStyle = () => (
   `}</style>
 );
 
-// ─── DOTLINE: one line of facts joined by a dot ─────────────
-// <DotLine items={['2 applicants', '1 not selected']} /> or <DotLine text="a · b · c" />. The one
-// shared helper for every dot separated line (lib/typeset.js dots() stays for plain strings such
-// as titles). Each item keeps its last two words together, and a label keeps its colon with the
-// value after it, so no item leaves an orphan or ends a line on a colon. block: a flex line that
-// fills its parent in place of an inline one.
-export const DotLine = ({ items, text, block = false, className = '', style }) => {
-  const list = (items || String(text ?? '').split(/ [·|] /))
-    .filter((x) => x !== null && x !== undefined && x !== false && x !== '')
-    .map((x) => (typeof x === 'string' ? noWidow(x.replace(/: /g, ':\u00a0')) : x));
+// ─── STATUS PILLS: a list of short facts, one pill each ─────
+// <StatusPills items={['2 applicants', { text: 'report not sent', action: true }]} />. The one
+// component for every list of short status or count facts; a full sentence stays text. items:
+// strings or { text, action }; null, false and '' are skipped. tone 'paper' on white and paper
+// cards, 'ink' on ink surfaces (the Pipeline card, the welcome card). At most one pill is filled:
+// the first fact marked action, and only on paper. Pills are not controls; a list, not buttons.
+export const StatusPills = ({ items, tone = 'paper', label, className = '', style }) => {
+  const list = (items || []).map((x) => (typeof x === 'string' ? { text: x } : x)).filter((x) => x && x.text);
   if (!list.length) return null;
+  const action = tone === 'paper' ? list.findIndex((x) => x.action) : -1;
   return (
-    <span className={`rl-dots${block ? ' rl-dots-block' : ''}${className ? ` ${className}` : ''}`} style={style}>
-      {list.map((it, i) => <span key={i} className="rl-dot">{it}</span>)}
-    </span>
+    <ul className={`rl-pills rl-pills-${tone}${className ? ` ${className}` : ''}`} aria-label={label} style={style}>
+      {list.map((x, i) => <li key={i} className={`rl-pill${i === action ? ' rl-pill-action' : ''}`}>{x.text}</li>)}
+    </ul>
   );
+};
+
+// ─── STACKED LINES: parts of one value, one per line ───────
+// For a value made of several parts that are not statuses (an employer and the employment type, a
+// name and a phone number): each part on its own line, no separator, the last two words of each
+// kept together. parts: strings or nodes; empty ones are skipped. A value string written with
+// " · " between its parts is split on it.
+export const StackedLines = ({ parts, text }) => {
+  const list = (parts || String(text ?? '').split(' · ')).filter((x) => x !== null && x !== undefined && x !== false && x !== '');
+  return <>{list.map((x, i) => <span key={i} style={{ display: 'block' }}>{typeof x === 'string' ? noWidow(x) : x}</span>)}</>;
 };
 
 // ─── WORDMARK: the official logo, the one mark everywhere ─────

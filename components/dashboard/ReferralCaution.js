@@ -11,7 +11,7 @@ export default function ReferralCaution({ meta, compact = false }) {
   const v = meta.verification;
   return (
     <div style={{ marginTop: compact ? 8 : 12, padding: compact ? '8px 12px' : '10px 14px', background: C.paperDeep, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.ink}`, borderRadius: R.ctrl, fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55 }}>
-      <div style={{ color: C.ink, fontWeight: 700, textWrap: 'pretty' }}>Referred by {meta.fromName || 'another realtor'}{meta.fromBrokerage ? ` · ${meta.fromBrokerage}` : ''}{meta.approvedAt ? ` · applicant approved ${dateLong(meta.approvedAt)}` : ''}</div>
+      <div style={{ color: C.ink, fontWeight: 700, textWrap: 'pretty' }}>Referred by {meta.fromName || 'another realtor'}{meta.fromBrokerage ? `, ${meta.fromBrokerage}` : ''}.{meta.approvedAt ? ` The applicant approved on ${dateLong(meta.approvedAt)}.` : ''}</div>
       {meta.note && <div style={{ marginTop: 'var(--s-1)', fontStyle: 'italic', textWrap: 'pretty' }}>“{meta.note}”</div>}
       {v ? (
         <div style={{ marginTop: 'var(--s-1)', padding: 'var(--s-2) var(--s-2)', background: C.amberTint, borderLeft: `3px solid ${C.amber}`, borderRadius: R.ctrl, color: C.ink }}>

@@ -15,8 +15,8 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../components/theme';
-import { GlobalStyle, Wordmark } from '../components/ui';
-import { ProfileStyles, FactSections, Eyebrow, Dots, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
+import { GlobalStyle, Wordmark, StatusPills } from '../components/ui';
+import { ProfileStyles, FactSections, Eyebrow, Lines, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 
 const LS_APP = 'rentletter_app_number';
@@ -218,7 +218,7 @@ export default function MyProfile() {
         <div className="rl-card mp-card">
           <Eyebrow>My profile</Eyebrow>
           <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{f?.fullName || 'Your profile'}</h1>
-          <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}><Dots items={[profile.email, f && (f.jobTitle || f.employer) ? [f.jobTitle, f.employer].filter(Boolean).join(' at ') : null, profile.factsUpdatedAt ? `Details updated ${dateLong(profile.factsUpdatedAt)}` : null]} /></p>
+          <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}><Lines items={[profile.email, f && (f.jobTitle || f.employer) ? [f.jobTitle, f.employer].filter(Boolean).join(' at ') : null, profile.factsUpdatedAt ? `Details updated ${dateLong(profile.factsUpdatedAt)}` : null]} /></p>
           {noticeEl && <div style={{ marginTop: 'var(--gap-card)' }}>{noticeEl}</div>}
         </div>
         {/* Reuse: the one ink surface on the page. */}
@@ -260,7 +260,8 @@ export default function MyProfile() {
               <li key={a.applicationNumber}>
                 <a href={`/my-application/${a.applicationNumber}`} style={{ textDecoration: 'none', color: C.ink, minWidth: 0, flex: 1 }}>
                   <span className="mp-value" style={{ marginTop: 0, display: 'block' }}>{noWidow(a.listingName || 'Rental unit')}</span>
-                  <span className="mp-note" style={{ display: 'block' }}><Dots items={[a.realtorName, a.realtorBrokerage, a.submittedAt ? dateLong(a.submittedAt) : null, a.updatedAt ? `edited ${dateLong(a.updatedAt)}` : null, a.revoked ? 'Revoked' : (a.status?.label || null)]} /></span>
+                  {a.realtorName || a.realtorBrokerage ? <span className="mp-note" style={{ display: 'block' }}>{noWidow(`Sent to ${[a.realtorName, a.realtorBrokerage].filter(Boolean).join(', ')}`)}</span> : null}
+                  <StatusPills label="This application" items={[a.submittedAt ? dateLong(a.submittedAt) : null, a.updatedAt ? `Edited ${dateLong(a.updatedAt)}` : null, a.revoked ? 'Revoked' : (a.status?.label || null)]} style={{ margin: 'var(--s-2) 0' }} />
                   {a.referral && <span className="mp-note" style={{ display: 'block' }}>{noWidow(`Shared with ${a.referral.toName || 'another realtor'} by ${a.referral.fromName || 'your realtor'} with your approval.`)}</span>}
                   <span className="mp-note mp-mono" style={{ display: 'block' }}>{a.applicationNumber}</span>
                 </a>

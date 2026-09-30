@@ -9,9 +9,9 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../../components/theme';
-import { GlobalStyle, Wordmark } from '../../components/ui';
+import { GlobalStyle, Wordmark, StatusPills } from '../../components/ui';
 import { formFromApplication, buildApplicationFromForm } from '../../lib/tenantProfile';
-import { ProfileStyles, FactSections, Eyebrow, Dots, Chevron, noWidow, dateLong } from '../../components/tenant/ProfileFacts';
+import { ProfileStyles, FactSections, Eyebrow, Chevron, noWidow, dateLong } from '../../components/tenant/ProfileFacts';
 import { TENANT_LINES } from '../../lib/applicantState';
 import { APPLICATION_STATE } from '../../lib/application-state';
 
@@ -171,7 +171,8 @@ export default function ApplicationPage() {
           {/* Section one: what this page is, then the six fact cards. */}
           <div className="mp-stack">
             <div className="rl-card mp-card">
-              <Eyebrow>What you sent <span className="mp-mono">{rl}</span> <span>{revoked ? 'Revoked' : 'Submitted'}</span></Eyebrow>
+              <Eyebrow>What you sent</Eyebrow>
+              <StatusPills label="This application" items={[rl, revoked ? 'Revoked' : 'Submitted']} style={{ marginTop: 'var(--gap-line)' }} />
               <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{listingLabel}</h1>
               <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(`Edits change what ${realtorFirst} sees for ${listingLabel}.`)}</p>
               <a href="/my-application" className="mp-link">Edit your profile instead</a>
@@ -213,7 +214,7 @@ export default function ApplicationPage() {
               {actionLoading ? 'Working' : revoked ? 'Reactivate application' : 'Revoke application'}
             </button>
             <button type="button" onClick={() => setShowLog((v) => !v)} aria-expanded={showLog} className="mp-fold">
-              <span><Dots items={['Lookup history', String(data.lookupCount || 0)]} /></span><Chevron open={showLog} />
+              <span className="num">{`Lookup history (${Number(data.lookupCount) || 0})`}</span><Chevron open={showLog} />
             </button>
             {showLog && ((data.lookups || []).length === 0 ? <p className="mp-p">{noWidow('No one has looked up this application yet. When the realtor pulls it up, it shows here.')}</p> : (
               <ul className="mp-list">

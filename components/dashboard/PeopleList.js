@@ -7,7 +7,7 @@
 // a confirm. Every write goes through /api/pipeline/* (session, entitlement, ownership).
 import { useEffect, useState } from 'react';
 import { C, R } from '../theme';
-import { ConfirmSheet, DotLine } from '../ui';
+import { ConfirmSheet, StatusPills } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { shortDate } from '../../lib/pipelineState';
 
@@ -54,13 +54,13 @@ export default function PeopleList({ people, onChanged, className = '', style })
 
   const pending = (p) => p.status === 'pending';
   const line2 = (p) => {
-    if (pending(p)) return <DotLine items={[`asked ${shortDate(p.askedAt)}`, 'no answer yet']} />;
+    if (pending(p)) return <StatusPills tone="ink" label="Status" items={[`asked ${shortDate(p.askedAt)}`, 'no answer yet']} />;
     const bits = [p.best ? `${Number(p.best.score).toFixed(1)} ${p.best.label} for ${p.best.listingName}` : 'Asked to hear about similar units'];
     // The address once: "from" only when they came from a listing other than the one scored.
     if (p.fromListingName && !(p.best && p.best.listingName === p.fromListingName)) bits.push(`from ${p.fromListingName}`);
     if (p.expiresAt) bits.push(`until ${shortDate(p.expiresAt)}`);
     if (p.applied) bits.push('applied'); else if (p.lastInvitedAt) bits.push(`invited ${shortDate(p.lastInvitedAt)}`);
-    return <DotLine items={bits} />;
+    return <StatusPills tone="ink" label="Status" items={bits} />;
   };
   // On ink: paper outlined controls, paper text, the muted paper for a row that is still waiting.
   const ctrl = { minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.paper, border: `1.5px solid ${C.paper}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };
@@ -85,14 +85,14 @@ export default function PeopleList({ people, onChanged, className = '', style })
                   onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenId(open ? null : p.id); } }}
                   style={{ minHeight: 44, padding: 'var(--s-2) 0', cursor: 'pointer' }}>
                   <div style={{ fontSize: 'var(--t-body)', color: pending(p) ? C.instMute : C.instText, fontWeight: 600, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{p.display}</div>
-                  <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{line2(p)}</div>
+                  <div style={{ marginTop: 'var(--s-2)' }}>{line2(p)}</div>
                 </div>
                 {open && (
                   <div style={{ paddingBottom: 'var(--s-3)' }}>
                     {(p.fits || []).length === 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>No active listing to invite them to.</div>}
                     {(p.fits || []).map((f) => (
                       <div key={f.listingId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44 }}>
-                        <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}><span className="num">{fitText(f)}</span> · {f.listingName}</div>
+                        <StatusPills tone="ink" label={`Fit for ${f.listingName}`} items={[fitText(f), f.listingName]} style={{ flex: 1, minWidth: 0 }} />
                         {f.applied ? <span style={{ ...ctrl, ...quiet, display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>Applied</span>
                           : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, ...quiet, cursor: 'default' }}>Invite</button>
                           : f.invitedAt ? <button type="button" disabled style={{ ...ctrl, ...quiet, cursor: 'default' }}>Invited {shortDate(f.invitedAt)}</button>

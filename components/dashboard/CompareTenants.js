@@ -8,7 +8,7 @@
 // labelled, no horizontal overflow.
 import { useState } from 'react';
 import { C, R } from '../theme';
-import { DotLine } from '../ui';
+import { StatusPills, StackedLines } from '../ui';
 import { noWidow } from '../../lib/typeset';
 import { unitRulesApply, ruleLine } from '../../lib/unitRules';
 
@@ -173,7 +173,7 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
                 const value = valueOf(c, t);
                 return (
                   <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginTop: 'var(--s-1)' }}>
-                    <span style={{ flexShrink: 0, fontSize: 'var(--t-body-2)', color: C.inkSoft }}><DotLine items={[firstName(t.name), `#${t.rank}`]} /></span>
+                    <span style={{ flexShrink: 0, fontSize: 'var(--t-body-2)', color: C.inkSoft }}>{firstName(t.name)} <span className="num" style={{ color: C.inkMute }}>#{t.rank}</span></span>
                     <span style={{ minWidth: 0, textAlign: 'right', fontSize: 'var(--t-body)', fontWeight: lead ? 800 : 600, color: C.ink, lineHeight: 'var(--lh-body)' }}>{lead ? withTick(value) : noWidow(value)}</span>
                   </div>
                 );
@@ -185,11 +185,12 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
 
       {unitRulesApply(unitRules) && (
         <div style={{ marginTop: 14, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 12, background: C.card }}>
-          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}><DotLine items={['Unit rules', ...String(ruleLine(unitRules)).split(' · ')]} /></div>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: C.inkMute, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Unit rules</div>
+          <StatusPills label="Unit rules" items={String(ruleLine(unitRules)).split(' · ')} style={{ marginBottom: 'var(--s-2)' }} />
           <div style={{ display: 'grid', gap: 4 }}>
             {selected.map((t) => (
               <div key={t.id} style={{ fontSize: 'var(--t-body)', color: C.inkSoft, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-                <DotLine items={[<><span style={{ fontWeight: 700, color: C.ink }}>{firstName(t.name)}</span>:{'\u00a0'}{t.smoker ? t.smoker.toLowerCase() : 'smoking not stated'}</>, t.pets ? `pets: ${t.pets}` : 'no pets stated']} />
+                <StackedLines parts={[<><span style={{ fontWeight: 700, color: C.ink }}>{firstName(t.name)}</span>:{'\u00a0'}{t.smoker ? t.smoker.toLowerCase() : 'smoking not stated'}</>, t.pets ? `pets: ${t.pets}` : 'no pets stated']} />
               </div>
             ))}
           </div>

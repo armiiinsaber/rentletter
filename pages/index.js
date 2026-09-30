@@ -738,13 +738,13 @@ export default function Home() {
                 {inviteContext.unit && (
                   <div style={{ fontSize: 13, color: '#c8c2b3', marginBottom: 8 }}>
                     {inviteContext.unit.monthlyRent && `$${inviteContext.unit.monthlyRent}/mo`}
-                    {inviteContext.unit.bedrooms && ` · ${inviteContext.unit.bedrooms} bed`}
+                    {inviteContext.unit.bedrooms && `, ${inviteContext.unit.bedrooms} bed`}
                   </div>
                 )}
                 {(inviteContext.realtorName || inviteContext.realtorBrokerage) && (
                   <div style={{ fontSize: 13, color: '#c8c2b3' }}>
                     Submitted to: <strong style={{ color: C.paper }}>{inviteContext.realtorName}</strong>
-                    {inviteContext.realtorBrokerage && ` · ${inviteContext.realtorBrokerage}`}
+                    {inviteContext.realtorBrokerage && `, ${inviteContext.realtorBrokerage}`}
                   </div>
                 )}
               </div>

@@ -16,7 +16,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import Head from 'next/head';
 import { C, R } from '../theme';
-import { DotLine } from '../ui';
 import { noWidow } from '../../lib/typeset';
 import { getSupabaseBrowserClient } from '../../lib/supabase/client';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -356,7 +355,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         )}
       </div>
       <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 16 }}>
-        Upload accepts PNG, JPG, SVG, or WebP · under 2MB (PNG/JPG render in the PDF).
+        Upload accepts PNG, JPG, SVG or WebP under 2MB. PNG and JPG render in the PDF.
       </p>
 
       {studioOpen && (
@@ -405,8 +404,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         <label style={{ ...sectionLabel, marginBottom: 4 }}>Font pairing</label>
         <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
           Pick a heading + body pairing. Every pairing here is embedded in your landlord reports, the heading sets your name, the body sets everything else. Script headings style your name only; report text stays in the clean body face.
-          {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> · Saving</span>}
-          {fontState === 'saved' && <span role="status" style={{ color: C.inkMute, fontWeight: 600 }}> · Saved</span>}
+          {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> Saving.</span>}
+          {fontState === 'saved' && <span role="status" style={{ color: C.inkMute, fontWeight: 600 }}> Saved.</span>}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--gap-card)', alignItems: 'stretch', gridAutoRows: '1fr' }}>
           {FONT_PAIRINGS.map((fp) => {
@@ -420,11 +419,11 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
                     ? <span style={{ fontSize: 10, fontWeight: 800, color: C.paper, background: C.ink, padding: '2px 8px', borderRadius: R.pill }}>IN USE</span>
                     : fp.id === suggestedFontId && <span style={{ fontSize: 10, fontWeight: 700, color: C.red, border: `1px solid ${C.red}`, padding: '1px 7px', borderRadius: R.pill }}>SUGGESTED</span>}
                 </div>
-                <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{fp.mood}</div>
+                <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{String(fp.mood).split(' · ').join(', ')}</div>
                 <div style={{ fontFamily: fp.heading.css, fontWeight: fp.heading.weight, letterSpacing: fp.heading.letterSpacing, fontSize: 22, color: C.ink, lineHeight: 1.1 }}>Aa Heading</div>
                 <div style={{ fontFamily: fp.body.css, fontWeight: fp.body.weight, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginTop: 4 }}>{noWidow('The quick brown fox jumps over the lazy dog.')}</div>
                 <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 8, lineHeight: 1.4 }}>
-                  <DotLine items={[`In reports: ${fp.heading.script ? `your name in ${fp.heading.family}` : `headings in ${fp.heading.family}`}`, `text in ${fp.body.family}`]} />
+                  {noWidow(`In reports: ${fp.heading.script ? `your name in ${fp.heading.family}` : `headings in ${fp.heading.family}`}, text in ${fp.body.family}.`)}
                 </div>
               </button>
             );
