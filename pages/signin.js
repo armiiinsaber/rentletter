@@ -62,7 +62,7 @@ export default function SignIn() {
         {error && <div style={authErrorStyle}>{error}</div>}
         <label style={{ ...authLabelStyle, marginTop: 0 }} htmlFor="email">Email</label>
         <input
-          id="email" type="email" inputMode="email" autoComplete="email"
+          id="email" name="username" type="email" inputMode="email" autoComplete="username"
           value={email} onChange={(e) => setEmail(e.target.value)} onBlur={() => setTouched(true)}
           placeholder="you@brokerage.com" style={authInputStyle}
         />
@@ -71,7 +71,7 @@ export default function SignIn() {
         )}
         <label style={authLabelStyle} htmlFor="password">Password</label>
         <input
-          id="password" type="password" autoComplete="current-password"
+          id="password" name="password" type="password" autoComplete="current-password"
           value={password} onChange={(e) => setPassword(e.target.value)}
           placeholder="Your password" style={authInputStyle}
         />

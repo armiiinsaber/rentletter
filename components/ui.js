@@ -6,6 +6,7 @@
 import { useEffect, useRef } from 'react';
 import { C, R, SH, EASE, FONT } from './theme';
 import { noWidow } from '../lib/typeset';
+import { LOGO } from '../lib/brand/logoPaths';
 
 // ─── GLOBAL STYLE + MOTION LANGUAGE ──────────────────────────
 // One stylesheet. All motion guarded by prefers-reduced-motion so the page
@@ -190,19 +191,24 @@ export const DotLine = ({ items, text, block = false, className = '', style }) =
   );
 };
 
-// ─── WORDMARK — Time-magazine red bar + bold sans ────────────
-export const Wordmark = ({ size = 'sm', onDark = false }) => {
-  const isLg = size === 'lg';
+// ─── WORDMARK: the official logo, the one mark everywhere ─────
+// The red bar (the tick motif), then "Rentletter" in Fraunces 600 at optical size 144, drawn as
+// vector paths (lib/brand/logoPaths.js, built by scripts/brand/build-brand.mjs), so it is the same
+// logo before the web font arrives, in the PDF and in the email PNG. size: a named size (the cap
+// height in px) or a number of px; onDark: paper letters on ink. Inside a link, the link carries
+// the name; standalone, the SVG does (role img, "Rentletter"). The 44px target stays on the link
+// (.rl-mark). At 32px and under the brand is the small mark (public/icons), never this.
+export const WORDMARK_CAP = Object.freeze({ header: 16, footer: 13, auth: 22, hero: 32, mock: 9 });
+export const Wordmark = ({ size = 'header', onDark = false, style }) => {
+  const cap = typeof size === 'number' ? size : (WORDMARK_CAP[size] || WORDMARK_CAP.header);
+  const k = cap / 100;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: isLg ? 11 : 8 }}>
-      <span style={{ width: isLg ? 5 : 3.5, height: isLg ? 30 : 21, background: C.red, borderRadius: 1, flexShrink: 0 }} />
-      <span style={{
-        fontSize: isLg ? 25 : 18, color: onDark ? C.paper : C.ink,
-        fontWeight: 800, letterSpacing: '-0.025em', lineHeight: 1,
-      }}>
-        Rentletter
-      </span>
-    </span>
+    <svg className="rl-wordmark" width={Math.round(LOGO.w * k * 10) / 10} height={Math.round(LOGO.h * k * 10) / 10}
+      viewBox={`0 0 ${LOGO.w} ${LOGO.h}`} role="img" aria-label="Rentletter" focusable="false"
+      style={{ display: 'block', flexShrink: 0, overflow: 'visible', ...style }}>
+      <rect x={LOGO.bar.x} y={LOGO.bar.y} width={LOGO.bar.w} height={LOGO.bar.h} rx={LOGO.bar.rx} fill={C.red} />
+      <path d={LOGO.text} fill={onDark ? C.paper : C.ink} />
+    </svg>
   );
 };
 

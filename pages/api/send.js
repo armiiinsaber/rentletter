@@ -4,6 +4,7 @@ import { isApplicationNumber, isOwnerToken, normalizeApplicationNumber, normaliz
 import { verifyConfirmation } from '../../lib/sendSignature';
 import { checkSubmitLimits } from '../../lib/rateLimit';
 import { kvIncr, kvExpire } from '../../lib/kv';
+import { emailLogoHtml } from '../../lib/brand/emailLogo';
 
 // Every interpolated field is escaped; the number and the token are also validated against
 // lib/applicationIds.js before they get here, so the escape is a second wall.
@@ -27,19 +28,10 @@ function buildConfirmationHtml({ firstName, applicationNumber, ownerToken, uploa
       <td align="center" style="padding: 56px 24px;">
         <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560" style="max-width: 560px; background: #faf8f3;">
 
-          <!-- Header, wordmark with red bar -->
+          <!-- Header, the logo (lib/brand/emailLogo.js) -->
           <tr>
             <td style="padding-bottom: 28px; border-bottom: 1px solid #e3ddd0;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                <tr>
-                  <td style="vertical-align: middle; padding-right: 8px;">
-                    <div style="width: 4px; height: 24px; background: #d72027;"></div>
-                  </td>
-                  <td style="vertical-align: middle; font-family: 'Inter', sans-serif; font-size: 20px; font-weight: 800; color: #0f0f10; letter-spacing: -0.02em;">
-                    Rentletter
-                  </td>
-                </tr>
-              </table>
+              ${emailLogoHtml()}
             </td>
           </tr>
 
@@ -139,16 +131,7 @@ The Rentletter desk
               <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
                 <tr>
                   <td>
-                    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-                      <tr>
-                        <td style="vertical-align: middle; padding-right: 6px;">
-                          <div style="width: 3px; height: 14px; background: #d72027;"></div>
-                        </td>
-                        <td style="vertical-align: middle; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 800; color: #0f0f10; letter-spacing: -0.01em;">
-                          Rentletter
-                        </td>
-                      </tr>
-                    </table>
+                    ${emailLogoHtml(undefined, 66)}
                   </td>
                   <td align="right" style="font-family: 'Inter', sans-serif; font-size: 12px; color: #86868b;">
                     Ontario and BC · Not legal advice

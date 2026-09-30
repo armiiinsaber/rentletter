@@ -19,6 +19,7 @@
 import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import DeviceFrame from '../DeviceFrame';
 import { C } from '../theme';
+import { Wordmark } from '../ui';
 import { FILM_DURATION, WORLD, LAPTOP, PHONE, LAPTOP_DESIGN, PHONE_DESIGN, camera, screenOpacity, phonePose, overlays, beats } from './timeline';
 import { ListingScreen, ApplyScreen, RankedScreen, VerifyScreen, ReportScreen, StudioScreen, studioBrand } from './beats';
 
@@ -125,11 +126,11 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
       </div>
       {/* overlays, stage space (Story: lifted above Instagram's bottom-20% caption band) */}
       <div style={{ position: 'absolute', left: story ? '7%' : '5%', bottom: story ? '24%' : '6%', display: 'inline-flex', alignItems: 'center', gap: 8, opacity: ov.wordmarkIntro * 0.85, transform: `translate(0, ${(1 - ov.wordmarkIntro) * 6}px)` }} aria-hidden="true">
-        <span style={{ width: 3.5, height: 21, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 'clamp(14px, 1.8vw, 18px)', fontWeight: 800, letterSpacing: '-0.025em', color: C.ink }}>Rentletter</span>
+        <Wordmark style={{ height: 'clamp(11px, 1.4vw, 14px)', width: 'auto' }} />
       </div>
       <div style={{ position: 'absolute', left: 0, right: 0, bottom: story ? '30%' : narrow ? '7%' : '9%', textAlign: 'center', padding: '0 6%' }} aria-hidden={ov.endWordmark < 0.5}>
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, opacity: ov.endWordmark, transform: `translate(0, ${(1 - ov.endWordmark) * 10}px)` }}>
-          <span style={{ width: 5, height: 30, background: C.red, borderRadius: 1 }} /><span className="rl-serif" style={{ fontSize: 'clamp(26px, 4vw, 42px)', letterSpacing: '-0.025em', color: C.ink, lineHeight: 1 }}>Rentletter</span>
+          <Wordmark size="hero" style={{ height: 'clamp(20px, 3.1vw, 32px)', width: 'auto' }} />
         </div>
         <div style={{ fontSize: 'clamp(12px, 1.5vw, 15px)', color: C.inkSoft, marginTop: 8, opacity: ov.endTagline, transform: `translate(0, ${(1 - ov.endTagline) * 6}px)`, textWrap: 'balance' }}>The AI assistant for rental realtors.</div>
       </div>

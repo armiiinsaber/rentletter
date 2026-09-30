@@ -635,17 +635,19 @@ export default function Home() {
             <div style={{ maxWidth: 1200, margin: '0 auto' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'clamp(28px, 4vw, 48px)', alignItems: 'start' }}>
                 <div style={{ minWidth: 180 }}>
-                  <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="sm" /></a>
+                  <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="footer" /></a>
                   <p style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.6, marginTop: 14, maxWidth: 260 }}>
-                    Rental application screening for Canadian realtors. Built in Toronto.
+                    Rental application screening for Canadian realtors. Built in{'\u00a0'}Toronto.
                   </p>
                 </div>
                 <FooterCol title="Product" links={[['Dashboard', '/dashboard'], ['Book a demo', 'mailto:info@rentletter.ca?subject=Demo%20request%20-%20Rentletter'], ['FAQ', '/faq']]} />
                 <FooterCol title="Company" links={[['Compliance', '/compliance'], ['Privacy', '/privacy'], ['Terms', '/terms'], ['Tenant profile', '/my-application']]} />
                 <FooterCol title="Contact" links={[['info@rentletter.ca', 'mailto:info@rentletter.ca']]} />
               </div>
-              <div style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, fontSize: 12.5, color: C.inkMute }}>
-                © {new Date().getFullYear()} Rentletter · Ontario &amp; BC, Canada · Not legal advice
+              {/* Three facts, a dot between them drawn in the gap and clipped where a line wraps: no line
+                  starts or ends with a dot, and no fact breaks across lines. */}
+              <div className="lp-legal" style={{ marginTop: 'clamp(36px, 5vw, 52px)', paddingTop: 24, borderTop: `1px solid ${C.rule}`, fontSize: 12.5, color: C.inkMute }}>
+                <span>© {new Date().getFullYear()} Rentletter</span><span>Ontario &amp; BC, Canada</span><span>Not legal advice</span>
               </div>
             </div>
           </footer>
@@ -662,6 +664,9 @@ export default function Home() {
         .lp-stats { margin-top: 0; border-top: 1px solid ${C.rule}; padding-top: 36px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-card); align-items: start; }
         .lp-stat-n { font-size: clamp(34px, 5vw, 44px); color: ${C.ink}; letter-spacing: -0.02em; line-height: 1; font-variant-numeric: tabular-nums; }
         .lp-stat-l { margin-top: var(--gap-line); font-size: 13px; line-height: 1.4; color: ${C.inkMute}; height: 2.8em; overflow-wrap: anywhere; }
+        .lp-legal { display: flex; flex-wrap: wrap; column-gap: 0.9em; overflow: hidden; }
+        .lp-legal > span { position: relative; white-space: nowrap; }
+        .lp-legal > span + span::before { content: '·'; position: absolute; left: -0.9em; width: 0.9em; text-align: center; }
         @media (min-width: 900px) {
           .lp-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
           .lp-stat-l { height: 1.4em; }

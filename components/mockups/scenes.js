@@ -8,7 +8,7 @@
 //
 // Imported ONLY by /admin/mockups — never by the landing page (keeps the hero bundle light).
 import { C, R } from '../theme';
-import { Icon, TickMeter } from '../ui';
+import { Icon, TickMeter, Wordmark } from '../ui';
 import HeroDemo from './HeroDemo';
 
 export const CAST = [
@@ -173,7 +173,7 @@ export function DashboardHomeScene() {
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.paper, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '10px 14px', borderBottom: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 3, height: 14, background: C.red, display: 'inline-block' }} /><span style={{ fontSize: 13, fontWeight: 800, color: C.ink, letterSpacing: '-0.02em' }}>Rentletter</span></span>
+        <Wordmark size="mock" />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}><span style={{ position: 'relative', display: 'inline-flex' }}><Icon name="bell" size={15} color={C.ink} /><span style={{ position: 'absolute', top: -2, right: -2, width: 7, height: 7, borderRadius: '50%', background: C.red }} /></span></span>
       </div>
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}>

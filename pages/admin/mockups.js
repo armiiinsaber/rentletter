@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { C, R } from '../../components/theme';
 import AdminShell from '../../components/admin/AdminShell';
+import { Wordmark } from '../../components/ui';
 import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
 import { SCENES } from '../../components/mockups/scenes';
 import { isAdmin } from '../../lib/adminAuth';
@@ -140,8 +141,8 @@ function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
       {caption && (
         <div style={{ position: 'absolute', left: 0, right: 0, bottom: '3.5%', textAlign: 'center', color: CANVAS[canvas].fg, padding: '0 6%' }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 'clamp(10px, 1.4vw, 13px)', fontWeight: 700, letterSpacing: '-0.01em' }}>
-            <span style={{ width: 3, height: 14, background: C.red, display: 'inline-block' }} /> Rentletter
-            <span style={{ fontWeight: 500, opacity: 0.7 }}>· {scene.title}</span>
+            <Wordmark onDark={canvas === 'ink'} style={{ height: 'clamp(11px, 1.5vw, 14px)', width: 'auto' }} />
+            <span style={{ fontWeight: 500, opacity: 0.7 }}>·{'\u00a0'}{scene.title}</span>
           </div>
         </div>
       )}

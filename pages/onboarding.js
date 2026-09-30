@@ -8,6 +8,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../components/theme';
 import { GlobalStyle, Wordmark } from '../components/ui';
+import AppHead from '../components/AppHead';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { isOnboarded } from '../lib/onboarding';
 import { IdentityStep, OnboardingStyles } from '../components/onboarding/OnboardingFlow';
@@ -41,6 +42,7 @@ export default function Onboarding({ initialProfile }) {
   return (
     <>
       <Head><title>Set up Rentletter</title><meta name="robots" content="noindex, nofollow" /><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" /></Head>
+      <AppHead />
       <GlobalStyle />
       <OnboardingStyles />
       <div style={{ minHeight: '100dvh', background: C.paper }}>

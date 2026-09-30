@@ -13,6 +13,7 @@ import { C, R, EASE, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
 import { listingStateLine } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
+import InstallHint from '../../components/dashboard/InstallHint';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
@@ -297,6 +298,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           <button type="button" onClick={() => setModalOpen(true)} className="dash-new" style={{ marginTop: 'var(--s-3)' }}>
             <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
           </button>
+          {/* iOS Safari only, until dismissed once on this device (components/dashboard/InstallHint.js). */}
+          <InstallHint />
           {listingsLoaded && !hasListings && (
             <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5, marginTop: 'var(--s-3)', maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
           )}

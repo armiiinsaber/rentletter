@@ -9,6 +9,10 @@ export default function Document() {
       <Head>
         <link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="/fonts/inter-latin.woff2" />
         <link rel="preload" as="font" type="font/woff2" crossOrigin="anonymous" href="/fonts/fraunces-latin.woff2" />
+        {/* The favicon: the small mark (scripts/brand/build-brand.mjs), at 32 and 16. */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" />
       </Head>
       <body>
         <Main />

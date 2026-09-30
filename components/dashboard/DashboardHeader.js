@@ -10,7 +10,10 @@
 //   • a staggered page-load reveal (wordmark first, then the control cluster left→right)
 //   • hover / press / focus micro-interactions on the avatar, sign-out, and bell
 //   • all motion is transform/opacity only and gated behind prefers-reduced-motion.
+import { useEffect } from 'react';
 import { ScrollHeader, Wordmark, Icon } from '../ui';
+import AppHead from '../AppHead';
+import { registerServiceWorker } from '../../lib/serviceWorker';
 import { C, R, EASE } from '../theme';
 import StatusBadge from './StatusBadge';
 import AssistantBell from './AssistantBell';
@@ -27,8 +30,11 @@ function initialsOf(profile) {
 
 export default function DashboardHeader({ profile, signals = null, onAssistantAction }) {
   const adapter = useAdapter();
+  // The service worker (public/sw.js) registers from the realtor side only, in production.
+  useEffect(() => { registerServiceWorker(); }, []);
   return (
     <>
+      <AppHead />
       <ScrollHeader maxWidth={1100}>
         {/* LEFT, wordmark: the dashboard. First beat of the reveal. */}
         <a href={adapter.paths.home} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">

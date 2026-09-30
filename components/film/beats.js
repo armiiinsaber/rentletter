@@ -5,7 +5,7 @@
 // wide, and ProductFilm scales them into the devices. transform/opacity only — nothing here
 // changes layout over time.
 import { C, R, SH } from '../theme';
-import { Icon, TickMeter } from '../ui';
+import { Icon, TickMeter, Wordmark } from '../ui';
 import { CAST, Avatar, Eyebrow, money } from '../mockups/scenes';
 
 const fade = (k, dy = 6) => ({ opacity: k, transform: `translate(0, ${(1 - k) * dy}px)` });
@@ -25,7 +25,7 @@ export function LogoMark({ size = 28, color = DEFAULT_BRAND, paper = C.paper, va
 const Screen = ({ children, dark }) => <div style={{ position: 'absolute', inset: 0, background: dark ? '#101012' : C.paper, color: dark ? '#e8e4d9' : C.ink, overflow: 'hidden' }}>{children}</div>;
 const Chrome = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px', borderBottom: `1px solid ${C.rule}` }}>
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 3, height: 14, background: C.red }} /><span style={{ fontSize: 13, fontWeight: 800, letterSpacing: '-0.02em' }}>Rentletter</span></span>
+    <Wordmark size="mock" />
     <span style={{ width: 22, height: 22, borderRadius: '50%', background: C.ink, color: C.paper, fontSize: 8.5, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>SC</span>
   </div>
 );

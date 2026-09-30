@@ -6,6 +6,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, TickMeter, ConfirmSheet, DotLine } from '../../components/ui';
+import { isStandalone } from '../../lib/standalone';
 import { C, R } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -469,11 +470,21 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       const r = listing.snapshot?.token ? await fetch(`/api/report/pdf?token=${encodeURIComponent(listing.snapshot.token)}`) : await adapter.fetch(`/api/listings/report-pdf?listingId=${encodeURIComponent(listing.id)}`);
       if (!r.ok) { const j = await r.json().catch(() => ({})); setSendMsg(j?.error || 'Could not generate the PDF.'); setPdfBusy(false); return; }
       const blob = await r.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = `ranked-applicants-${new Date().toISOString().slice(0, 10)}.pdf`;
-      document.body.appendChild(a); a.click(); a.remove();
-      URL.revokeObjectURL(url);
+      const name = `ranked-applicants-${new Date().toISOString().slice(0, 10)}.pdf`;
+      // In the installed app there is no browser back: a download opened in the app window would
+      // leave the realtor on the PDF with no way back. There the PDF goes to the share sheet (save
+      // to Files, Mail, AirDrop), which always returns to the app. In a browser tab, a download.
+      const FileCtor = typeof window !== 'undefined' ? window.File : null;
+      const file = typeof FileCtor === 'function' ? new FileCtor([blob], name, { type: 'application/pdf' }) : null;
+      if (isStandalone() && file && navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: name }); } catch (e) { /* the realtor closed the sheet */ }
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = name;
+        document.body.appendChild(a); a.click(); a.remove();
+        URL.revokeObjectURL(url);
+      }
     } catch (e) { setSendMsg('Could not generate the PDF.'); }
     setPdfBusy(false);
   };
@@ -1378,9 +1389,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       )}
       {setAsideFor && (
           <div onClick={() => setSetAsideFor(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--s-4)', zIndex: 100 }}>
+            style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'max(var(--s-4), env(safe-area-inset-top, 0px)) var(--s-4) max(var(--s-4), env(safe-area-inset-bottom, 0px))', zIndex: 100 }}>
             <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-              style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.modal, padding: 'var(--s-4)' }}>
+              style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '100%', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.modal, padding: 'var(--s-4)' }}>
               <div style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Set aside</div>
               <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 'var(--s-2)' }}>
                 {setAsideFor.application?.full_name || 'Applicant'}

@@ -148,10 +148,11 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
       style={inline ? { display: 'block' } : {
         position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.5)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 'clamp(16px, 4vw, 32px)', zIndex: 100,
+        // Clear the status bar and the home indicator in the installed app (viewport-fit=cover).
+        padding: 'max(clamp(16px, 4vw, 32px), env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 32px) max(clamp(16px, 4vw, 32px), env(safe-area-inset-bottom, 0px))', zIndex: 100,
       }}>
       <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-        style={inline ? { background: C.card, width: '100%', border: `1px solid ${C.rule}` } : { background: C.paper, maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.rule}` }}>
+        style={inline ? { background: C.card, width: '100%', border: `1px solid ${C.rule}` } : { background: C.paper, maxWidth: 640, width: '100%', maxHeight: '100%', overflowY: 'auto', border: `1px solid ${C.rule}` }}>
 
         {/* Header */}
         <div style={{ padding: 'clamp(20px, 4vw, 28px)', borderBottom: `1px solid ${C.rule}` }}>
@@ -159,7 +160,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             {creating ? 'New listing' : 'Listing setup'}
           </div>
           <h3 style={{ fontSize: 'clamp(20px, 4vw, 26px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-            Unit basics and landlord preferences
+            Unit basics and landlord{'\u00a0'}preferences
           </h3>
           {creating && (
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
@@ -207,7 +208,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
 
           {/* OHRC notice · preserved word-for-word */}
           <div style={{ margin: '18px 0', padding: '12px 14px', background: C.paperDeep, borderRadius: R.ctrl, borderLeft: `4px solid ${C.inkSoft}`, fontSize: 12, color: C.inkSoft, lineHeight: 1.55 }}>
-            <strong>Why some fields aren't here:</strong> Ontario's Human Rights Code prohibits screening tenants on gender, age, family status, race, religion, disability, or receipt of public assistance. The fields below are legally screenable criteria. Stating discriminatory preferences in writing can trigger HRTO complaints, for both you and your landlord client.
+            <strong>Why some fields aren't here:</strong> Ontario's Human Rights Code prohibits screening tenants on gender, age, family status, race, religion, disability, or receipt of public assistance. The fields below are legally screenable criteria. Stating discriminatory preferences in writing can trigger HRTO complaints, for both you and your landlord{'\u00a0'}client.
           </div>
 
           {/* PREFERENCES, financial. The rent share cap is the affordability rule; the minimum income
@@ -264,13 +265,14 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
               Still needed: <span style={{ color: C.inkSoft, fontWeight: 600 }}>{missing.join(', ')}</span>.
             </span>
           )}
+          {/* Cancel and the primary share one height and one border width (R2), both 44px targets. */}
           <button onClick={onCancel}
-            style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ minHeight: 44, background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             Cancel
           </button>
           <button onClick={handleSaveClick} disabled={!canSave}
             title={canSave ? '' : 'Complete the required fields first'}
-            style={{ background: canSave ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.7 }}>
+            style={{ minHeight: 44, background: canSave ? C.red : C.ruleDark, color: C.paper, border: '1px solid transparent', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.7 }}>
             {saving ? 'Saving…' : creating ? 'Create listing' : 'Save changes'}
           </button>
         </div>

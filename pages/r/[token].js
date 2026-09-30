@@ -192,6 +192,10 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{listing.fitLine || FIT_LINE}</p>
         <a href={`/api/report/pdf?token=${encodeURIComponent(token)}`} download style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 'var(--s-3)', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline' }}>Download PDF</a>
       </section>
+      {/* The Rentletter logo at the foot, as on every page of the PDF (lib/landlordReportPdf.js). */}
+      <footer style={{ display: 'flex', justifyContent: 'center', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="footer" /></a>
+      </footer>
     </>,
   );
 }

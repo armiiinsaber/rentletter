@@ -29,7 +29,7 @@ test('send.js: 401 without or with a wrong signature, 400 on a bad number, escap
   r = res(); await late(post({ email: 'a@b.co', applicationNumber: appNum, ownerToken, signature: good }), r); assert.equal(r.code, 401, 'expired after 15 minutes');
   r = res(); await handler(post({ email: 'a@b.co', fullName: '<img src=x> Priya', applicationNumber: appNum, ownerToken, uploadUrl: 'https://rentletter.ca/upload/' + 'a'.repeat(32), signature: good }), r);
   assert.equal(r.code, 200); assert.equal(sent.length, 1); assert.equal(sent[0].to, 'a@b.co');
-  assert.match(sent[0].html, /&lt;img\./); assert.doesNotMatch(sent[0].html, /<img/); assert.match(sent[0].html, new RegExp(ownerToken)); assert.match(sent[0].html, /upload\/a{32}/);
+  assert.match(sent[0].html, /&lt;img\./); assert.doesNotMatch(sent[0].html, /<img src=x/); assert.ok((sent[0].html.match(/<img [^>]*>/g) || []).every((t) => /src="https:\/\/[^"]+\/brand\/rentletter-logo-email\.png" [^>]*alt="Rentletter"/.test(t)), 'the only images are the hosted logo'); assert.match(sent[0].html, new RegExp(ownerToken)); assert.match(sent[0].html, /upload\/a{32}/);
   assert.equal(verifyConfirmation({ applicationNumber: appNum, email: 'A@B.CO ', exp: good.exp, sig: good.sig }, { now }), true, 'case and whitespace on the email do not matter');
   for (let i = 0; i < 31; i++) { r = res(); await handler(post({ email: 'a@b.co', applicationNumber: appNum, signature: good }, '198.51.100.9'), r); }
   assert.equal(r.code, 429, 'the 31st call from one IP in the hour');

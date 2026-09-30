@@ -3,6 +3,7 @@
 // paper background, centered rounded card, wordmark. Presentation only.
 import Head from 'next/head';
 import { GlobalStyle, Wordmark } from '../ui';
+import AppHead from '../AppHead';
 import { C, R, SH } from '../theme';
 
 export default function AuthShell({ title, eyebrow, heading, sub, children, footer }) {
@@ -12,6 +13,7 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
         <title>{title} · Rentletter</title>
         <meta name="description" content="Rentletter realtor dashboard." />
       </Head>
+      <AppHead />
       <GlobalStyle />
       <div style={{
         minHeight: '100vh', background: C.paper, color: C.ink,
@@ -20,7 +22,7 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
       }}>
         <div style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'center' }}>
-            <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="lg" /></a>
+            <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="auth" /></a>
           </div>
           <div className="rl-card" style={{ padding: 'clamp(24px, 5vw, 36px)' }}>
             {eyebrow && (
