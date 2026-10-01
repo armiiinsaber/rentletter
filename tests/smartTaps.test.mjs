@@ -57,6 +57,11 @@ test('a form field is never covered, and a control inside a card is not held bac
   assert.equal(first.t, 10, 'up to the field, not over it'); assert.equal(first.b, 0, 'the rows touch');
   assert.equal(second.t, 0); assert.equal(second.b, 20, 'the second takes all of its 44 below');
   assert.equal(size(boxes[1], first).h, 34, 'held by its neighbours on both sides');
+  // With 20px between the two rows (the New listing sheet), both reach 44.
+  const spaced = [box(20, 852, 170, 64, { fixed: true }), box(20, 926, 350, 24), box(20, 970, 350, 24)];
+  const [, s1, s2] = planHitAreas(spaced);
+  assert.deepEqual([size(spaced[1], s1).h, size(spaced[2], s2).h], [44, 44]);
+  assert.deepEqual([s1.t, s1.b, s2.t, s2.b], [10, 10, 10, 10]);
   // A 30px button inside a card: the card does not limit it.
   const card = box(0, 0, 360, 200); const btn = box(300, 160, 30, 30, { inside: [0] });
   const [, e] = planHitAreas([card, btn]);

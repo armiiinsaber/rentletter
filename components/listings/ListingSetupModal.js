@@ -229,7 +229,9 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
               <input type="number" min="0" step="0.5" inputMode="decimal" value={form.pref_min_years_at_job} onChange={(e) => set({ pref_min_years_at_job: e.target.value })} placeholder="e.g. 1" style={inputStyle} /></label>
           </div>
 
-          <div style={{ marginTop: 10 }}>
+          {/* 20px between the two rows: each 24px row then reaches a 44px hit area (10px above and below
+              it, the gap split at its midpoint; lib/motion.js planHitAreas). */}
+          <div style={{ marginTop: 10, display: 'grid', rowGap: 20 }}>
             <Check k="pref_requires_landlord_reference" label="Require previous landlord reference" />
             <Check k="pref_requires_employer_verification" label="Require employer verification" />
           </div>

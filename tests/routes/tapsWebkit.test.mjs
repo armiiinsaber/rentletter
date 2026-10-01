@@ -2,8 +2,8 @@
 // On the sandbox (the walks' dev server):
 //   1. Every target is at least 44 by 44: every button, link, checkbox, switch and tappable row on
 //      the dashboard, a listing, an open applicant, the open Pipeline, the New listing sheet, the
-//      profile and the tenant form, at 390 and at 360. Where two targets sit closer than that, each
-//      reaches its neighbour's own area on both sides (the gap split at the midpoint), never less.
+//      profile and the tenant form, at 390 and at 360, its area grown invisibly where needed and
+//      split at the midpoint with a neighbour; none is left short.
 //   2. The tap resolver: a near miss activates the nearest target, with the press on it; an
 //      ambiguous tap activates nothing; a near miss beside Delete listing, or beside Remove in its
 //      confirm sheet, activates nothing; a tap that was part of a drag or a scroll activates
@@ -108,8 +108,9 @@ async function hitAreas(browser, tag) {
       await s.go(page);
       const r = await page.evaluate(HITS);
       assert.ok(r.checked > 0, `${tag} ${width} ${s.name}: targets checked`);
-      assert.deepEqual(r.failures, [], `${tag} ${width} ${s.name}: every target reaches 44 by 44 or its neighbours`);
-      for (const b of r.bounded) notes.push(`${width} ${s.name}: ${b}, held by its neighbours`);
+      assert.deepEqual(r.failures, [], `${tag} ${width} ${s.name}: no target leaves free space unused`);
+      assert.deepEqual(r.bounded, [], `${tag} ${width} ${s.name}: every target reaches 44 by 44`);
+      notes.push(`${width} ${s.name}: ${r.checked} targets, each at least 44 by 44`);
       await ctx.close();
     }
   }
