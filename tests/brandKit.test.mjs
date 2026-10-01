@@ -185,6 +185,21 @@ test('the copy carries no dash as punctuation and nothing personal', async () =>
     assert.doesNotMatch(t, /@|\b\d{3}[ .]\d{3}[ .]\d{4}\b/, `${p}: no email address or phone number`);
   }
   for (const g of manifest.groups) for (const it of g.items) for (const s of [it.title, it.note, ...it.rows.map((r) => r.label || '')]) assert.doesNotMatch(s, /[\u2013\u2014]|\s-\s/, `${it.key}: ${s}`);
-  // The two licenses are the SIL text under each family's own copyright line.
-  for (const fam of ['Fraunces', 'Inter']) { const ofl = file(`type/${fam}/OFL.txt`).toString(); assert.match(ofl, new RegExp(`^Copyright \\d{4} The ${fam} Project Authors`)); assert.match(ofl, /SIL OPEN FONT LICENSE Version 1\.1/); }
+});
+
+// The licenses are exempt from the copy rules above: each is its project's own file, unedited.
+test('each font folder carries its project license, byte for byte as published upstream', () => {
+  const UPSTREAM = {
+    // undercasetype/Fraunces, OFL.txt at master (commit 284bc5ea73b1)
+    Fraunces: { sha256: 'bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b', first: 'Copyright 2018 The Fraunces Project Authors (https://github.com/undercasetype/Fraunces)' },
+    // rsms/inter, LICENSE.txt at master (commit 3ac1bd32a473)
+    Inter: { sha256: '262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a', first: 'Copyright (c) 2016 The Inter Project Authors (https://github.com/rsms/inter)' },
+  };
+  for (const [fam, up] of Object.entries(UPSTREAM)) {
+    const vendored = readFileSync(join(ROOT, `public/fonts/licenses/${fam}-OFL.txt`));
+    assert.equal(sha(vendored), up.sha256, `public/fonts/licenses/${fam}-OFL.txt is the upstream file, unedited`);
+    const inKit = file(`type/${fam}/OFL.txt`);
+    assert.ok(inKit.equals(vendored), `type/${fam}/OFL.txt is copied byte for byte`);
+    assert.equal(inKit.toString('utf8').split('\n')[0], up.first, `${fam}: the upstream copyright line`);
+  }
 });

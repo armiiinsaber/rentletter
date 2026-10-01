@@ -24,6 +24,8 @@ export const SOURCE_FILES = Object.freeze([
   ['components/theme.js', 'code'],
   ['public/fonts/fraunces-latin.woff2', 'bytes'],
   ['public/fonts/inter-latin.woff2', 'bytes'],
+  ['public/fonts/licenses/Fraunces-OFL.txt', 'bytes'],
+  ['public/fonts/licenses/Inter-OFL.txt', 'bytes'],
 ]);
 
 export function kitSources(root) {
