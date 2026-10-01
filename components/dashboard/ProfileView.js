@@ -2,17 +2,19 @@
 // The profile page: the header, the title, the editor card (components/dashboard/ProfileEditorBody.js)
 // and Sign out. pages/profile.js mounts it over the Supabase session; /demo/dashboard?profile=1
 // mounts it over the sandbox adapter. Every field saves on its own and says Saved beside its label.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { GlobalStyle, Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { linkProps, rememberProfile } from '../nav/routes';
 import { C, R } from '../theme';
 import DashboardHeader from './DashboardHeader';
 import ProfileEditorBody from './ProfileEditorBody';
 
 export default function ProfileView({ initialProfile }) {
   const [profile, setProfile] = useState(initialProfile);
+  useEffect(() => { rememberProfile(profile); }, [profile]);
   const router = useRouter();
   const adapter = useAdapter();
   // Sign out lives here (the header's identity circle opens this page).
@@ -29,7 +31,7 @@ export default function ProfileView({ initialProfile }) {
         <DashboardHeader profile={profile} />
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--gap-section) var(--s-4) 64px' }}>
           {/* The same row the listing page carries at its top. */}
-          <a href={adapter.paths.home} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none' }}>
+          <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> Dashboard
           </a>
           <h1 className="t-d1" style={{ color: C.ink, margin: 'var(--s-4) 0 var(--gap-line)' }}>Profile</h1>

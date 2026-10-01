@@ -49,15 +49,26 @@ export async function getServerSideProps(ctx) {
   }
   // Ownership confirmed by RLS above → read applicant bodies with the service-role
   // client (applications has no realtor RLS). owner_token is stripped in the helper.
-  let initialApplicants = [];
+  // A tap inside the app is Next's own data request (/_next/data/...): then the page is sent from the
+  // checks above and the listing alone, and the applicants come to the page through
+  // /api/listings/applicants, which checks the session and the ownership itself, started on the
+  // touch (components/nav/routes.js). initialApplicants null tells the page so. A full load still
+  // brings them here, with the report snapshot read beside them rather than after them.
+  const inApp = String(ctx.req?.url || '').startsWith('/_next/data/') || ctx.req?.headers?.['x-nextjs-data'] === '1';
+  let initialApplicants = inApp ? null : [];
   try {
     const admin = getSupabaseAdminClient();
-    initialApplicants = await fetchListingApplicants(admin, listing.id);
-    // Attach doc_verifications via the shared STRICT two-key helper (same as the
-    // applicants-refresh and landlord-report paths), so attribution is identical everywhere.
-    await attachDocVerifications(admin, listing.id, initialApplicants, 'dashboard');
+    const applicantsRead = inApp ? Promise.resolve(null) : (async () => {
+      const list = await fetchListingApplicants(admin, listing.id);
+      // Attach doc_verifications via the shared STRICT two-key helper (same as the
+      // applicants-refresh and landlord-report paths), so attribution is identical everywhere.
+      await attachDocVerifications(admin, listing.id, list, 'dashboard');
+      return list;
+    })();
     // The latest report snapshot for the Present to landlord line (absent table: no line).
-    const latest = (await latestSnapshots(admin, [listing.id])).get(String(listing.id));
+    const [list, snapshots] = await Promise.all([applicantsRead, latestSnapshots(admin, [listing.id])]);
+    if (!inApp) initialApplicants = list;
+    const latest = snapshots.get(String(listing.id));
     if (latest) listing.snapshot = latest.meta;
   } catch (e) {
     console.error('[listing gSSP] applicants read failed:', e?.message || e);

@@ -17,6 +17,9 @@
 // tests/helpers/fakeSupabase.mjs re exports fakeDb as fakeSupabase and fakeKvStore's fetch as
 // fakeKv, so the older tests keep running on the same code.
 export const LATENCY = 3;
+// One round trip: LATENCY, or what a harness sets (tests/helpers/fakeNextServer.mjs sets a real
+// world figure so a page's sequential reads cost what they would against the database).
+const latency = () => (globalThis.__rlFakeLatencyMs ?? LATENCY);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ── the database ────────────────────────────────────────────────────────────────────────────────
@@ -41,7 +44,7 @@ export function fakeDb(tables, { absentColumns = [], onQuery = null, failWhen = 
   const from = (table) => {
     const q = { table, select: '*', filters: [], order: null, limit: null, single: false, op: 'select', payload: null, onConflict: '' };
     const run = async () => {
-      await sleep(LATENCY);
+      await sleep(latency());
       queries.push({ table, op: q.op, select: q.select, filters: q.filters.map((f) => f.slice(0, 2)) });
       if (onQuery) onQuery(q);
       if (api.failWhen) { const err = api.failWhen(q); if (err) return { data: null, error: err }; }
@@ -138,7 +141,7 @@ export function fakeKvStore({ now = Date.now() } = {}) {
       default: return json('OK');
     }
   };
-  const fetchImpl = async (url, init) => { await sleep(LATENCY); const u = String(url); return handle(u.slice(base.length), init); };
+  const fetchImpl = async (url, init) => { await sleep(latency()); const u = String(url); return handle(u.slice(base.length), init); };
   return { base, values, lists, sets, expiresAt, expires, counters, calls, clock, fetch: fetchImpl, ttl: (k) => (alive(k) ? (expiresAt[k] == null ? -1 : Math.round((expiresAt[k] - clock.now) / 1000)) : -2), get, install() { process.env.KV_REST_API_URL = base; process.env.KV_REST_API_TOKEN = 'fake'; const real = globalThis.fetch; globalThis.fetch = async (url, init) => (String(url).startsWith(base) ? fetchImpl(url, init) : real(url, init)); return () => { globalThis.fetch = real; delete process.env.KV_REST_API_URL; delete process.env.KV_REST_API_TOKEN; }; } };
 }
 
@@ -211,7 +214,7 @@ function rlsView(db, user) {
       return proxy;
     },
     rpc: db.rpc, storage: db.storage,
-    auth: { getUser: async () => ({ data: { user }, error: user ? null : { message: 'Auth session missing' } }), signOut: async () => ({ error: null }) },
+    auth: { getUser: async () => { await sleep(latency()); return { data: { user }, error: user ? null : { message: 'Auth session missing' } }; }, signOut: async () => ({ error: null }) },
   };
   return view;
 }

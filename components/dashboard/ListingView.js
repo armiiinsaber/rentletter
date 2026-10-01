@@ -7,8 +7,11 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, TickMeter, ConfirmSheet, StatusPills, StackedLines } from '../../components/ui';
 import { isStandalone } from '../../lib/standalone';
-import { C, R } from '../../components/theme';
+import { C, R, SH } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
+import Sheet from '../Sheet';
+import { go, linkProps, takeWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants } from '../nav/routes';
+import { ApplicantSkeletons } from '../nav/RouteSkeleton';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
@@ -67,7 +70,34 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // Access verdict (lib/entitlements.js) — read only; the paywall replaces the page when false.
   const entitlement = getEntitlement(profile); const locked = !entitlement.canUseProduct;
   const [listing, setListing] = useState(initialListing);
-  const [applicants, setApplicants] = useState(initialApplicants || []);
+  // What this screen shows, kept for the next screen's skeleton (components/nav/routes.js).
+  useEffect(() => { rememberProfile(profile); }, [profile]);
+  useEffect(() => { if (listing) rememberListings([listing]); }, [listing]);
+  // initialApplicants null: the page came by a tap inside the app (pages/listing/[id].js), so the
+  // applicants load here, through the same read the page refreshes with, usually already started
+  // on the touch (components/nav/routes.js). Applicants seen earlier this session show at once
+  // and are refreshed behind; otherwise skeleton cards hold their place.
+  const [applicants, setApplicants] = useState(() => initialApplicants || seenApplicants(initialListing?.id) || []);
+  const [applicantsLoaded, setApplicantsLoaded] = useState(() => initialApplicants != null || seenApplicants(initialListing?.id) != null);
+  useEffect(() => {
+    if (initialApplicants != null || !initialListing?.id) return undefined;
+    let cancelled = false;
+    (async () => {
+      const url = applicantsUrl(initialListing.id);
+      let list = null;
+      try {
+        const warmed = adapter.kind === 'real' ? takeWarm(url) : null;
+        if (warmed) { const w = await warmed; if (w.ok && Array.isArray(w.json?.applicants)) list = w.json.applicants; }
+        if (!list) { const r = await adapter.fetch(url); const j = await r.json().catch(() => ({})); if (r.ok && Array.isArray(j.applicants)) list = j.applicants; }
+      } catch (e) { list = null; }
+      if (cancelled) return;
+      if (list) setApplicants(list); else if (!seenApplicants(initialListing.id)) setError('Could not load the applicants. Pull down or reopen the listing to try again.');
+      setApplicantsLoaded(true);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => { if (applicantsLoaded) rememberApplicants(initialListing?.id, applicants); }, [applicantsLoaded, applicants, initialListing?.id]);
   // Realtor→realtor handoff: referrals this realtor has sent for applicants on this listing
   // (keyed by linkId) + the applicant being referred right now.
   const [referrals, setReferrals] = useState({});
@@ -172,8 +202,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.id, applicants]);
   // Deep links: ?applicant=&panel= (above), then the older #docs=<linkId>[&renew] and #report. The
-  // query params are removed once handled so a reload does not re expand.
+  // query params are removed once handled so a reload does not re expand. They wait for the
+  // applicants, which may still be loading after a tap inside the app.
+  const deepLinked = useRef(false);
   useEffect(() => {
+    if (!applicantsLoaded || deepLinked.current) return undefined;
+    deepLinked.current = true;
     const params = new URLSearchParams(window.location.search);
     const panel = params.get('panel');
     if (panel === 'checklist' || panel === 'documents' || panel === 'report') {
@@ -193,7 +227,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const timers = [0, 700, 1600].map((ms) => setTimeout(aim, ms));
     return () => timers.forEach(clearTimeout);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [applicantsLoaded]);
   useEffect(() => {
     if (!listing?.id || !referralsEnabled()) return; // lib/features.js: no referral read while paused
     adapter.fetch(`/api/referrals/list?listingId=${encodeURIComponent(listing.id)}`).then((r) => (r.ok ? r.json() : { byLink: {} })).then((j) => setReferrals(j.byLink || {})).catch(() => {});
@@ -206,6 +240,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [setAsideNote, setSetAsideNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
+  const say = (msg) => setToast(msg);
+  useEffect(() => { if (!toast) return undefined; const t = setTimeout(() => setToast(''), 6000); return () => clearTimeout(t); }, [toast]);
   const [inviteUrl, setInviteUrl] = useState(initialListing.invite_url || '');
   // Signing name on reports (lib/reportSignature): profiles.report_signature wins, else the display
   // name. Editable here because the person signing a report is not always the account holder.
@@ -324,7 +361,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       const r = await adapter.fetch('/api/listings/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j?.error) { setError(j?.error || 'Could not delete the listing.'); setDeleteOpen(false); return; }
-      router.push(adapter.paths.home);
+      go(adapter.paths.home, { back: true, replace: true });
     } catch (e) {
       setError('Could not delete the listing.'); setDeleteOpen(false);
     } finally { setDeleteBusy(false); }
@@ -551,7 +588,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const before = applicants.find((a) => a.linkId === linkId) || null;
     // The optimistic copy moves by the server's own rules, state included (lib/application-state.js).
     setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? withLocalDecision(a, patch, changedAt) : a)));
-    const revert = (msg) => { if (before) setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? before : a))); setError(msg); };
+    const revert = (msg) => { if (before) setApplicants((prev) => prev.map((a) => (a.linkId === linkId ? before : a))); setError(msg); say(`${String(msg).replace(/\.?$/, '.')} It is back as it was.`); };
     try {
       let r;
       if ('withdrawnAt' in patch) {
@@ -593,7 +630,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // the re invite could not be sent. From reconsidered the way on is Shortlist, never the winner.
   const [reconsiderFor, setReconsiderFor] = useState(null);
   const [reconsiderReason, setReconsiderReason] = useState(RECONSIDER_REASONS[0]);
-  const [reconsiderBusy, setReconsiderBusy] = useState(false);
+  const reconsiderBusy = false; // optimistic: the sheet closes at once and never waits
   const [undoFor, setUndoFor] = useState(null); // linkId, for 10 seconds after a reconsider
   const [inviteNotSent, setInviteNotSent] = useState({}); // linkId -> true when the email did not go
   useEffect(() => {
@@ -607,30 +644,38 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const j = await r.json().catch(() => ({}));
     return { ok: r.ok && !j?.error, j };
   };
+  // Optimistic: the card moves to reconsidered, the sheet closes and Undo shows at once; the request
+  // runs behind. On a failure the card goes back to exactly what it was and the realtor is told.
   const confirmReconsider = async () => {
     const a = reconsiderFor; if (!a) return;
-    setReconsiderBusy(true); setError('');
+    const before = applicants.find((x) => x.linkId === a.linkId) || a;
+    const reason = reconsiderReason;
+    const putBack = (msg) => { setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? before : x))); setUndoFor((u) => (u === a.linkId ? null : u)); setError(msg); say(`${String(msg).replace(/\.?$/, '.')} It is back as it was.`); };
+    setError('');
+    // The old columns the server writes beside the state, in the dashboard's shape (lib/application-state.js).
+    setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...reconsideredLocalColumns(), state: APPLICATION_STATE.RECONSIDERED, reconsiderReason: reason } : x)));
+    setUndoFor(a.linkId);
+    setReconsiderFor(null);
     try {
-      const { ok, j } = await postReconsider({ linkId: a.linkId, reason: reconsiderReason });
-      if (!ok) { setError(j?.error ? `Could not reconsider: ${j.error}` : 'Could not reconsider.'); return; }
-      // The old columns the server wrote beside the state, in the dashboard's shape (lib/application-state.js).
-      setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...reconsideredLocalColumns(), state: j.state, reconsiderReason } : x)));
+      const { ok, j } = await postReconsider({ linkId: a.linkId, reason });
+      if (!ok) { putBack(j?.error ? `Could not reconsider: ${j.error}.` : 'Could not reconsider.'); return; }
+      setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, state: j.state } : x)));
       const failed = !!j.invite && j.invite.sent === false && !['already_invited', 'preview'].includes(j.invite.reason);
       setInviteNotSent((m) => ({ ...m, [a.linkId]: failed }));
-      setUndoFor(a.linkId);
-      setReconsiderFor(null);
-    } catch { setError('Could not reconsider.'); }
-    finally { setReconsiderBusy(false); }
+    } catch { putBack('Could not reconsider.'); }
   };
   const undoReconsider = async (a) => {
+    const before = applicants.find((x) => x.linkId === a.linkId) || a;
     setError('');
+    setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, state: APPLICATION_STATE.NOT_SELECTED, reconsiderReason: null } : x)));
+    setInviteNotSent((m) => ({ ...m, [a.linkId]: false }));
+    setUndoFor(null);
+    const putBack = (msg) => { setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? before : x))); setUndoFor(a.linkId); setError(msg); say(`${String(msg).replace(/\.?$/, '.')} It is back as it was.`); };
     try {
       const { ok, j } = await postReconsider({ linkId: a.linkId, undo: true });
-      if (!ok) { setError(j?.error ? `Could not undo: ${j.error}` : 'Could not undo.'); return; }
-      setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, state: j.state, reconsiderReason: null } : x)));
-      setInviteNotSent((m) => ({ ...m, [a.linkId]: false }));
-      setUndoFor(null);
-    } catch { setError('Could not undo.'); }
+      if (!ok) { putBack(j?.error ? `Could not undo: ${j.error}.` : 'Could not undo.'); return; }
+      setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, state: j.state } : x)));
+    } catch { putBack('Could not undo.'); }
   };
   // Shortlist is the finalist mark (POST /api/applicants/decision, priority top), which moves a
   // reconsidered applicant to shortlisted on the server and in the local copy alike.
@@ -812,7 +857,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <SwipeCard key={a.linkId} flipKey={a.linkId} id={`applicant-${a.linkId}`} leftAction={leftAction} rightAction={rightAction}
         onCommit={(side) => onSwipeCommit(a, side)} departing={departing[a.linkId]?.side || null}
         hint={hintFor === a.linkId} onHintDone={() => setHintFor(null)}>
-      <div style={{
+      <div data-press-host="" style={{
         minWidth: 0,
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${first ? 'var(--action)' : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'var(--card-pad)',
@@ -827,7 +872,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             gesture). Set aside: one muted line. Otherwise the header row, then the body for the
             applicant's state: their next action, nothing that does not apply. */}
         {st.state === 'set_aside' ? (
-          <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
+          <div role="button" tabIndex={0} data-press-to-host="" aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
             onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
             style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -838,7 +883,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
         ) : (
-        <div role="button" tabIndex={0} aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
+        <div role="button" tabIndex={0} data-press-to-host="" aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
           onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
           style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
           {/* Row one: the name alone, never wrapping; a name past the row truncates and carries the full name in title. */}
@@ -1020,7 +1065,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
         {locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
         {!locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) clamp(16px, 4vw, 32px) var(--s-7)' }}>
-          <a href={adapter.paths.home} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
+          <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
 
@@ -1300,11 +1345,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <section className="rl-card" style={{ padding: 'var(--s-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
               <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
-              <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
+              {applicantsLoaded ? <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span> : null}
             </div>
             {statePills(active).length > 0 && <StatusPills label="Applicants by state" items={statePills(active)} style={{ marginBottom: 'var(--s-3)' }} />}
 
-            {totalApplicants === 0 ? (
+            {!applicantsLoaded ? (
+              <ApplicantSkeletons />
+            ) : totalApplicants === 0 ? (
               <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
                 <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>
                 <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, marginBottom: 'var(--s-1)' }}>No applicants yet</div>
@@ -1371,7 +1418,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>{textBusy ? 'Composing' : textCopied ? 'Copied' : 'Copy text'}</button>
               </div>
               {brandHint && needsBrandingHint(profile) && (
-                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'pretty' }}>{BRANDING_HINT} <a href={adapter.paths.profile} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'pretty' }}>{BRANDING_HINT} <a {...linkProps(adapter.paths.profile)} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
               )}
               {sendMsg && (
                 <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{sendMsg}</div>
@@ -1380,22 +1427,20 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           )}
         </div>}
 
-        {editOpen && (
-          <ListingSetupModal mode="edit" initial={listing} activeApplicants={active.length} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
-        )}
+        <ListingSetupModal open={editOpen} mode="edit" initial={listing} activeApplicants={active.length} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
 
-        {/* Set-aside reason modal, an OHRC-safe, screenable reason is REQUIRED. */}
-        {referralsEnabled() && referFor && (
-        <ReferModal listingId={listing.id} applicant={referFor} onClose={() => setReferFor(null)}
+        {referralsEnabled() && (
+        <ReferModal open={!!referFor} listingId={listing.id} applicant={referFor} onClose={() => setReferFor(null)}
           onCreated={(ref) => { setReferrals((m) => ({ ...m, [referFor.linkId]: ref })); setReferFor(null); }} />
       )}
-      {setAsideFor && (
-          <div onClick={() => setSetAsideFor(null)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'max(var(--s-4), env(safe-area-inset-top, 0px)) var(--s-4) max(var(--s-4), env(safe-area-inset-bottom, 0px))', zIndex: 100 }}>
-            <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-              style={{ background: C.paper, maxWidth: 460, width: '100%', maxHeight: '100%', overflowY: 'auto', border: `1px solid ${C.rule}`, borderRadius: R.modal, padding: 'var(--s-4)' }}>
-              <div style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Set aside</div>
-              <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 'var(--s-2)' }}>
+      {/* Set aside: an OHRC safe, screenable reason is REQUIRED. A chosen reason or a typed note is
+          unsaved input: a tap on the dimmed page asks before dropping it. */}
+      <Sheet open={!!setAsideFor} onClose={() => setSetAsideFor(null)} label="Set aside" panelClassName="rl-modal" maxWidth={460}
+        dirty={!!setAsideCode || !!setAsideNote.trim()} discardTitle="Discard this reason?">
+        {setAsideFor ? (
+          <div style={{ padding: '4px var(--s-4) var(--s-4)' }}>
+              <div data-sheet-drag="" style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Set aside</div>
+              <h3 data-sheet-drag="" style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 'var(--s-2)' }}>
                 {setAsideFor.application?.full_name || 'Applicant'}
               </h3>
               <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-4)' }}>
@@ -1428,12 +1473,17 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   Cancel
                 </button>
               </div>
-            </div>
           </div>
-        )}
+        ) : null}
+      </Sheet>
       </div>
       <DocumentViewer doc={viewer} onClose={() => setViewer(null)} />
+      {/* A quick action that failed on the server: the screen already went back; this says so,
+          wherever the realtor is on the page. */}
+      <div role="status" aria-live="polite" className="lv-toast" data-toast={toast ? '' : undefined}>{toast}</div>
       <style jsx>{`
+        .lv-toast:empty { display: none; }
+        .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; background: ${C.inst}; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); box-shadow: ${SH.raised}; text-wrap: pretty; }
         .lv-fold { display: grid; grid-template-rows: 0fr; }
         .lv-fold.lv-fold-open { grid-template-rows: 1fr; }
         .lv-fold > div { overflow: hidden; min-height: 0; }

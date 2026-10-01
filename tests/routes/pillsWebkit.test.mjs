@@ -5,8 +5,9 @@
 //      transition, no animation and full opacity. Every pill row keeps one 8px gap both ways, starts
 //      at its left edge, and the pills on one line share their top and height. At most one filled
 //      pill per card. Nothing animates a pill or anything that holds a pill row, from the first
-//      paint on; the one exception is the first run swipe hint, which slides the first applicant
-//      card (components/motion/swipe.js) and never fades it.
+//      paint on, with three exceptions that never fade a pill: the first run swipe hint slides the
+//      first applicant card (components/motion/swipe.js), the page behind an open sheet scales back
+//      a little (components/Sheet.js), and a press scales what is pressed (lib/motion.js).
 //   2. The screens the task names carry their pill rows: the dashboard listing cards, the Pipeline
 //      card, the listing header card, the applicant cards, the landlord report, the tenant's
 //      application page and the applying banner.
@@ -34,7 +35,7 @@ const open = async (page, url) => { await page.goto(url, { waitUntil: 'networkid
 // Before any script: record every animation and transition that starts, with its target.
 const RECORD = () => {
   window.__rlMoves = [];
-  const rec = (e) => window.__rlMoves.push({ t: e.target, name: e.animationName || e.propertyName, kind: e.type });
+  const rec = (e) => window.__rlMoves.push({ t: e.target, name: e.animationName || e.propertyName, kind: e.type, pressed: !!(e.target && e.target.classList && (e.target.classList.contains('rl-pressing') || e.target.classList.contains('rl-released'))) });
   document.addEventListener('animationstart', rec, true);
   document.addEventListener('transitionrun', rec, true);
 };
@@ -50,6 +51,9 @@ const AUDIT = () => {
   const problems = []; const ratios = {};
   const shown = (el) => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
   const pills = [...document.querySelectorAll('.rl-pill')].filter(shown);
+  // Behind an open sheet the page is scaled back a little by design (components/Sheet.js): its
+  // pills keep their colours and stillness, but their size is read in front only.
+  const behindSheet = (el) => document.documentElement.classList.contains('rl-sheet-open') && document.getElementById('__next').contains(el);
   for (const el of pills) {
     const cs = getComputedStyle(el); const txt = el.textContent.trim(); const r = el.getBoundingClientRect();
     const bg = behind(el); const fg = parse(cs.color);
@@ -63,14 +67,14 @@ const AUDIT = () => {
     if (cs.transitionDuration.split(',').some((d) => parseFloat(d) > 0)) problems.push(`transition ${cs.transitionProperty}: ${txt}`);
     if (cs.opacity !== '1') problems.push(`opacity ${cs.opacity}: ${txt}`);
     for (let a = el.parentElement; a; a = a.parentElement) if (parseFloat(getComputedStyle(a).opacity) < 1) { problems.push(`faded by ${a.tagName.toLowerCase()}.${a.className}: ${txt}`); break; }
-    if (Math.abs(r.height - 28) > 0.5) problems.push(`height ${r.height}: ${txt}`);
+    if (!behindSheet(el) && Math.abs(r.height - 28) > 0.5) problems.push(`height ${r.height}: ${txt}`);
     if (cs.fontSize !== '14px' || !/tabular-nums/.test(cs.fontVariantNumeric) || !/Inter/.test(cs.fontFamily)) problems.push(`type ${cs.fontSize} ${cs.fontVariantNumeric}: ${txt}`);
     if (el.scrollWidth > el.clientWidth + 1) problems.push(`cut: ${txt}`);
     if (r.right > window.innerWidth + 0.5 || r.left < -0.5) problems.push(`off screen: ${txt}`);
     if (/·/.test(txt)) problems.push(`dot: ${txt}`);
     if (el.querySelector('button, a') || el.closest('button, a')) { if (Math.min(r.height, r.width) < 44 && !el.closest('button, a')) problems.push(`small target: ${txt}`); }
   }
-  for (const row of [...document.querySelectorAll('.rl-pills')].filter(shown)) {
+  for (const row of [...document.querySelectorAll('.rl-pills')].filter(shown).filter((r) => !behindSheet(r))) {
     const cs = getComputedStyle(row); const rr = row.getBoundingClientRect(); const edge = rr.left + parseFloat(cs.borderLeftWidth) + parseFloat(cs.paddingLeft);
     if (cs.columnGap !== '8px' || cs.rowGap !== '8px') problems.push(`gap ${cs.columnGap} ${cs.rowGap}: ${row.textContent}`);
     if (/·/.test(row.textContent)) problems.push(`dot in row: ${row.textContent}`);
@@ -98,6 +102,8 @@ const AUDIT = () => {
   // Nothing that holds a pill row is set to move or fade on hover or press either.
   const holders = new Set(); for (const r of rows) for (let a = r; a && a !== document.body; a = a.parentElement) holders.add(a);
   for (const a of holders) {
+    // The page behind an open sheet scales back by design (components/Sheet.js): only while a sheet is up.
+    if (a.id === '__next' && /rl-sheet-(open|closing)/.test(document.documentElement.className)) continue;
     const cs = getComputedStyle(a); const props = cs.transitionProperty.split(',').map((x) => x.trim()); const durs = cs.transitionDuration.split(',').map(parseFloat);
     if (props.some((pr, i) => /^(all|transform|opacity|translate|scale)$/.test(pr) && (durs[i] ?? durs[durs.length - 1]) > 0)) problems.push(`set to move: ${a.tagName.toLowerCase()}.${a.className} ${cs.transitionProperty}`);
     if (cs.animationName !== 'none') problems.push(`animated: ${a.tagName.toLowerCase()}.${a.className} ${cs.animationName}`);
@@ -105,6 +111,8 @@ const AUDIT = () => {
   for (const m of window.__rlMoves || []) {
     if (!m.t || m.t.nodeType !== 1 || !rows.some((r) => r.contains(m.t) || m.t.contains(r))) continue;
     if (m.t.classList.contains('m-swipe-card') && m.name === 'transform') continue; // the first run swipe hint
+    if (m.t.id === '__next' && /^(scale|border-radius|border-(top|bottom)-(left|right)-radius)$/.test(m.name)) continue; // the page behind a sheet (components/Sheet.js)
+    if (m.pressed && /^(scale|box-shadow|opacity)$/.test(m.name)) continue; // a press (lib/motion.js installPress)
     problems.push(`moves: ${m.kind} ${m.name} on ${m.t.tagName.toLowerCase()}.${m.t.className}`);
   }
   return { pills: pills.length, problems, ratios };

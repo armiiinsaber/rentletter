@@ -10,7 +10,7 @@
 // changes. A row whose item goes between loads slides out, a new one slides in (lib/motion.js
 // durations, none under reduced motion).
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { createPortal } from 'react-dom';
+import Sheet from '../Sheet';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { ActionRows } from './ActionRow';
@@ -20,6 +20,7 @@ import { eventTitle, eventHref, groupByDay } from '../../lib/eventTypes';
 import { useAssistantStore, dismissAction, markOpened } from '../../lib/assistantStore';
 import { DURATION, CURVE } from '../../lib/motion';
 import { navigateToAction } from './actionNav';
+import { go } from '../nav/routes';
 import { referralsEnabled } from '../../lib/features';
 
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' });
@@ -59,14 +60,15 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
         if (cancelled) return;
         known.current = new Set((j.events || []).map((e) => e.id));
         setEvents(j.events || []); setLastReadAt(j.lastReadAt || null); setNextBefore(j.nextBefore || null);
-        adapter.fetch('/api/events/read', { method: 'POST' }).catch(() => {});
+        // Marked read behind the list, never in front of it. If the server says no, the realtor
+        // is told, and the same items show as new again next time.
+        adapter.fetch('/api/events/read', { method: 'POST' }).then((r) => { if (!r.ok && !cancelled) setNote('Could not mark these as read. They will show as new next time.'); })
+          .catch(() => { if (!cancelled) setNote('Could not mark these as read. They will show as new next time.'); });
       } catch (e) { /* the timeline just stays empty */ }
       if (!cancelled) setLoading(false);
     })();
-    const prev = document.body.style.overflow; document.body.style.overflow = 'hidden';
-    const key = (e) => { if (e.key === 'Escape') onClose?.(); };
-    document.addEventListener('keydown', key);
-    return () => { cancelled = true; document.body.style.overflow = prev; document.removeEventListener('keydown', key); };
+    // The sheet (components/Sheet.js) locks the page and closes on Escape.
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -89,18 +91,17 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
 
   const go = (item) => { onClose?.(); navigateToAction(item, adapter.paths); };
   const dismiss = async (item) => { const err = await dismissAction(adapter, item); setNote(err || ''); };
-  const goEvent = (e) => { const href = eventHref(e, adapter.paths); onClose?.(); if (href) window.location.href = href; };
+  const goEvent = (e) => { const href = eventHref(e, adapter.paths); onClose?.(); if (href) go(href); };
 
   const unread = (e) => !lastReadAt || new Date(e.created_at) > new Date(lastReadAt);
   const groups = useMemo(() => groupByDay(events), [events]);
-  if (!open || typeof document === 'undefined') return null;
   const s = signals || {};
   const listings = s.listings || [];
   void store;
 
-  return createPortal(
-    <div role="dialog" aria-modal="true" aria-label="Next" className="al-panel" style={{ position: 'fixed', inset: 0, zIndex: 10000, background: C.paper, display: 'flex', flexDirection: 'column', paddingTop: 'env(safe-area-inset-top, 0px)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', padding: '12px clamp(14px, 4vw, 24px) 0', flexShrink: 0 }}>
+  return (
+    <Sheet open={open} onClose={onClose} label="Next" tall flush maxWidth={720} panelClassName="al-panel">
+      <div data-sheet-drag="" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', padding: '0 clamp(14px, 4vw, 24px)', flexShrink: 0 }}>
         <span className="t-d3" style={{ color: C.ink }}>Next{items.length ? <span className="num" style={{ color: C.inkMute, fontWeight: 500, marginLeft: 'var(--s-2)' }}>{items.length}</span> : null}</span>
         <button type="button" onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.pill, color: C.ink, cursor: 'pointer' }}><Icon name="x" size={16} /></button>
       </div>
@@ -114,7 +115,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
       </div>
 
       {tab === 'next' && (
-        <section role="tabpanel" aria-label="Next" style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '6px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
+        <section role="tabpanel" aria-label="Next" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch', padding: '6px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
           <ActionRows items={items} onGo={go} onDismiss={dismiss} />
           {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginTop: 'var(--s-2)' }}>{note}</div> : null}
           {referralsEnabled() && ( // lib/features.js: no inbox block while referrals are paused
@@ -123,7 +124,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
         </section>
       )}
       {tab === 'history' && (
-        <section role="tabpanel" aria-label="History" style={{ flex: 1, minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch', padding: '14px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
+        <section role="tabpanel" aria-label="History" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch', padding: '14px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
           {!events.length && !loading && <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5 }}>Nothing yet. From here on, what happens on your listings is recorded here.</p>}
           {groups.map((g) => (
             <div key={g.key} style={{ marginBottom: 'var(--s-3)' }}>
@@ -155,7 +156,6 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
         @keyframes al-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
         @media (pointer: coarse) { .al-x { display: none !important; } }
       `}</style>
-    </div>,
-    document.body,
+    </Sheet>
   );
 }

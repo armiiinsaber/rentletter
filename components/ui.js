@@ -7,6 +7,8 @@ import { useEffect, useRef } from 'react';
 import { C, R, SH, EASE, FONT } from './theme';
 import { noWidow } from '../lib/typeset';
 import { LOGO } from '../lib/brand/logoPaths';
+import { PRESS_CSS, NAV_CSS } from '../lib/motion';
+import Sheet, { SHEET_PAGE_CSS } from './Sheet';
 
 // ─── GLOBAL STYLE + MOTION LANGUAGE ──────────────────────────
 // One stylesheet. All motion guarded by prefers-reduced-motion so the page
@@ -66,7 +68,14 @@ export const GlobalStyle = () => (
       scroll-behavior: smooth;
       overflow-x: hidden;
       -webkit-text-size-adjust: 100%;
+      /* Nothing drags past the last element: no rubber band past the page's end. */
+      overscroll-behavior-y: none;
     }
+    body { overscroll-behavior-y: none; }
+    /* The press (lib/motion.js), the page behind a sheet (components/Sheet.js), the push. */
+    ${PRESS_CSS}
+    ${SHEET_PAGE_CSS}
+    ${NAV_CSS}
     /* The Next root sits between body and the page, so it carries the canvas too: nothing between
        the root and a card can paint a different tone. */
     #__next {
@@ -150,16 +159,16 @@ export const GlobalStyle = () => (
     @media (prefers-reduced-motion: no-preference) {
       @keyframes rl-pulse    { 0%,80%,100% { opacity: .2; transform: scale(.8) } 40% { opacity: 1; transform: scale(1) } }
 
-      /* Button micro-interactions */
-      .rl-btn { transition: transform 200ms ${EASE}, box-shadow 200ms ease, background 160ms ease, border-color 160ms ease; }
-      .rl-btn:not(:disabled):hover  { transform: translateY(-2px); box-shadow: ${SH.raised}; }
-      .rl-btn:not(:disabled):active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
-      .rl-btn .rl-arrow { display: inline-block; transition: transform 220ms ${EASE}; }
-      .rl-btn:not(:disabled):hover .rl-arrow { transform: translateX(4px); }
-
-      /* Card lift */
-      .rl-card-lift { transition: transform 240ms ${EASE}, box-shadow 240ms ease; }
-      .rl-card-lift:hover { transform: translateY(-4px); box-shadow: ${SH.raised}; }
+      /* Hover lifts, for pointers that hover only: a tap on a phone never leaves one stuck. The
+         press itself is the shared one (lib/motion.js installPress). */
+      @media (hover: hover) {
+        .rl-btn { transition: transform 200ms ${EASE}, box-shadow 200ms ease, background 160ms ease, border-color 160ms ease; }
+        .rl-btn:not(:disabled):hover  { transform: translateY(-2px); box-shadow: ${SH.raised}; }
+        .rl-btn .rl-arrow { display: inline-block; transition: transform 220ms ${EASE}; }
+        .rl-btn:not(:disabled):hover .rl-arrow { transform: translateX(4px); }
+        .rl-card-lift { transition: transform 240ms ${EASE}, box-shadow 240ms ease; }
+        .rl-card-lift:hover { transform: translateY(-4px); box-shadow: ${SH.raised}; }
+      }
 
       .rl-dot { animation: rl-pulse 1.3s ease-in-out infinite; }
     }
@@ -233,7 +242,9 @@ export const ScrollHeader = ({ children, maxWidth = 1200 }) => {
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const onScroll = () => el.classList.toggle('rl-shrink', window.scrollY > 8);
+    // While a sheet pins the page (components/Sheet.js), the jump to the top is not a scroll: the
+    // header keeps its state, so nothing shifts when the page is put back.
+    const onScroll = () => { if (document.body.style.position === 'fixed') return; el.classList.toggle('rl-shrink', window.scrollY > 8); };
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -313,40 +324,29 @@ export const TickMeter = ({ value, max = 5, size = 14, showValue = true, onDark 
   );
 };
 
-// ─── CONFIRM SHEET — replaces native window.confirm() ────────────────────────
-// One confirmation idiom product-wide: a bottom sheet on phones (thumb-reachable,
-// safe-area aware), a centered card on desktop. The confirm button carries the
-// action verb, never "OK"; destructive actions use the danger red, not brand red.
-// Renders nothing when closed. Escape or scrim-tap cancels (disabled while busy).
-// Callers migrate per-phase — build here in B1, adopt in B2+.
+// ─── CONFIRM SHEET: in place of the native window.confirm() ─────────────────
+// One confirmation idiom product wide, on the one sheet (components/Sheet.js): an iOS style
+// bottom sheet with its grab handle; the title drags it down. The confirm button carries the
+// action verb, never "OK"; destructive actions use the danger red, not brand red. Escape, a
+// drag down or a tap on the dimmed page cancels, never while busy.
 // footer renders under the buttons (a line about the action just refused sits under it).
-// cardRadius gives the sheet the card radius (--card-radius) in place of the modal radius.
 export const ConfirmSheet = ({
   open, title, body, footer = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
-  danger = false, busy = false, onConfirm, onCancel, cardRadius = false,
+  danger = false, busy = false, onConfirm, onCancel,
 }) => {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e) => { if (e.key === 'Escape' && !busy) onCancel?.(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, busy, onCancel]);
-  if (!open) return null;
   const accent = danger ? C.danger : C.red;
   return (
-    <div onClick={() => { if (!busy) onCancel?.(); }} role="presentation" className="rl-sheet-scrim">
-      <div onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true"
-        aria-label={title} className={`rl-sheet${cardRadius ? ' rl-sheet-card' : ''}`}>
-        <span className="rl-sheet-tick" style={{ background: accent }} aria-hidden="true" />
-        <h3 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', marginBottom: 8 }}>
+    <Sheet open={open} onClose={onCancel} role="alertdialog" label={title} busy={busy} maxWidth={480}>
+      <div style={{ padding: '4px 20px 20px' }}>
+        <h3 data-sheet-drag="" style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', marginBottom: 8 }}>
           {title}
         </h3>
-        {body && <p style={{ fontSize: 13.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18 }}>{body}</p>}
+        {body && <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18, textWrap: 'pretty' }}>{typeof body === 'string' ? noWidow(body) : body}</p>}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={onConfirm} disabled={busy} autoFocus
             style={{
               flex: '1 1 0', minWidth: 0, background: busy ? C.ruleDark : accent, color: C.paper, border: `1px solid ${busy ? C.ruleDark : accent}`,
-              borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14.5, fontWeight: 700,
+              borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 15, fontWeight: 700,
               cursor: busy ? 'wait' : 'pointer', minHeight: 48,
             }}>
             {busy ? 'Working…' : confirmLabel}
@@ -354,7 +354,7 @@ export const ConfirmSheet = ({
           <button onClick={onCancel} disabled={busy}
             style={{
               flex: '1 1 0', minWidth: 0, background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`,
-              borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14.5, fontWeight: 600,
+              borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 15, fontWeight: 600,
               cursor: busy ? 'not-allowed' : 'pointer', minHeight: 48,
             }}>
             {cancelLabel}
@@ -362,39 +362,7 @@ export const ConfirmSheet = ({
         </div>
         {footer}
       </div>
-      <style jsx>{`
-        .rl-sheet-scrim {
-          position: fixed; inset: 0; z-index: 130; background: rgba(15, 15, 16, 0.5);
-          display: flex; align-items: center; justify-content: center;
-          padding: clamp(16px, 4vw, 32px);
-        }
-        .rl-sheet {
-          position: relative; background: ${C.paper}; border: 1px solid ${C.rule};
-          border-radius: ${R.modal}px; box-shadow: ${SH.modal};
-          width: 100%; max-width: 420px; padding: 22px 22px 20px; overflow: hidden;
-        }
-        .rl-sheet-tick { position: absolute; top: 0; left: 0; width: 44px; height: 3px; }
-        .rl-sheet.rl-sheet-card { border-radius: var(--card-radius); }
-        /* Phone: bottom sheet — thumb-reachable, clears the home indicator. */
-        @media (max-width: 640px) {
-          .rl-sheet-scrim { align-items: flex-end; padding: 0; }
-          .rl-sheet {
-            max-width: none; border-radius: ${R.modal}px ${R.modal}px 0 0; border-bottom: none;
-            padding: 22px clamp(18px, 5vw, 24px) calc(20px + env(safe-area-inset-bottom, 0px));
-            /* The visible viewport, not the largest one: a long list scrolls inside the sheet. */
-            max-height: calc(100dvh - var(--s-5)); overflow-y: auto; overscroll-behavior: contain;
-          }
-          .rl-sheet.rl-sheet-card { border-radius: var(--card-radius) var(--card-radius) 0 0; }
-        }
-        @media (prefers-reduced-motion: no-preference) {
-          .rl-sheet { animation: rl-sheet-in 200ms ${EASE} both; }
-          @keyframes rl-sheet-in {
-            from { opacity: 0; transform: translateY(14px); }
-            to { opacity: 1; transform: none; }
-          }
-        }
-      `}</style>
-    </div>
+    </Sheet>
   );
 };
 

@@ -65,8 +65,12 @@ export async function getServerSideProps(ctx) {
   // First run: identity and province are required before the dashboard means anything. Skipped
   // branding or a skipped first listing never redirect (lib/onboarding.js).
   if (needsOnboarding(finalProfile)) return { redirect: { destination: '/onboarding', permanent: false } };
+  // A tap inside the app is Next's own data request (/_next/data/...): the dashboard then draws the
+  // signals it already has and refreshes them through their own routes (components/dashboard/
+  // HomeView.js), so the page is sent from the checks above alone. A full load brings them here.
+  const inApp = String(ctx.req?.url || '').startsWith('/_next/data/') || ctx.req?.headers?.['x-nextjs-data'] === '1';
   let initialSignals = null;
-  if (!listingsError) {
+  if (!listingsError && !inApp) {
     try { initialSignals = await loadSignals({ supabase, user, listings: listings || [] }); }
     catch (e) { console.warn('[dashboard] signals fell back to the client:', e?.message || e); initialSignals = null; }
   }

@@ -9,7 +9,7 @@ import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, StatusPills } from '../../components/ui';
 import { getEntitlement } from '../../lib/entitlements';
 import Paywall from './Paywall';
-import { C, R, EASE, FONT } from '../../components/theme';
+import { C, R, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
 import { listingStatePills } from '../../lib/listingStateLine.js';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
@@ -18,6 +18,7 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
+import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, SIGNALS_URL } from '../nav/routes';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
 import { referralsEnabled } from '../../lib/features';
@@ -82,9 +83,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const adapter = useAdapter();
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
+  useEffect(() => { rememberProfile(profile); }, [profile]);
   // listings: null = not known yet (the server query failed; the client retries below),
   // [] = known to be empty (the only state that may show the guided empty state).
   const [listings, setListings] = useState(Array.isArray(initialListings) ? initialListings : null);
+  useEffect(() => { rememberListings(listings || []); }, [listings]);
   const [listingsError, setListingsError] = useState(initialListingsError);
   const [modalOpen, setModalOpen] = useState(false);
   useEffect(() => { try { if (new URLSearchParams(window.location.search).get('new') === '1') setModalOpen(true); } catch (e) { /* ignore */ } }, []);
@@ -113,7 +116,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       try { await adapter.fetch('/api/listings/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: data.id }) }); } catch (e) { /* the listing page offers the link */ }
       setSaving(false);
       setModalOpen(false);
-      router.push(adapter.paths.listing(data.id));
+      go(adapter.paths.listing(data.id));
     } catch (e) {
       setError('Could not create the listing. Please try again.');
       setSaving(false);
@@ -147,11 +150,25 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // them server side as initialSignals) so the dashboard commits in one paint. Without them
   // (demo workspace, or a server side failure) they are fetched here and the page holds its
   // skeleton until they land, so nothing ever appears after the rest. No AI involved.
-  const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : { applicantsByListing: {}, people: [], notifications: [], referralsInbox: [], referralsSent: [], loaded: false }));
+  // After a tap inside the app the page comes without them (pages/dashboard.js): the signals seen
+  // earlier this session show at once and the fetch below refreshes them.
+  const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : (seenSignals() || { applicantsByListing: {}, people: [], notifications: [], referralsInbox: [], referralsSent: [], loaded: false })));
+  useEffect(() => { rememberSignals(signals); }, [signals]);
   useEffect(() => {
     if (signals.loaded && initialSignals) return undefined; // came with the page
     let cancelled = false;
+    // Leaving the page cancels the reads in flight; that is not a failure to fall back from.
+    const leaving = () => { cancelled = true; };
+    window.addEventListener('pagehide', leaving);
     (async () => {
+      // The app: one read, usually started on the touch that brought the realtor here
+      // (components/nav/routes.js). The sandbox, or a failed read, takes the parts one by one.
+      if (adapter.kind === 'real') {
+        const warmed = takeWarm(SIGNALS_URL);
+        const got = warmed ? await warmed : await adapter.fetch(SIGNALS_URL).then(async (r) => ({ ok: r.ok, json: await r.json().catch(() => ({})) })).catch(() => ({ ok: false, json: {} }));
+        if (cancelled) return;
+        if (got.ok && got.json?.signals) { setSignals({ ...got.json.signals, loaded: true }); return; }
+      }
       const get = (u) => adapter.fetch(u).then((r) => (r.ok ? r.json() : null)).catch(() => null);
       const ls = (listings || []).slice(0, 12);
       const [notif, inbox, sent, ppl, ...apps] = await Promise.all([
@@ -166,7 +183,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       ls.forEach((l, i) => { applicantsByListing[l.id] = apps[i]?.applicants || []; });
       setSignals({ applicantsByListing, people: ppl?.people || [], notifications: notif?.items || [], referralsInbox: inbox?.referrals || [], referralsSent: Object.values(sent?.byLink || {}), latestEventAt: null, loaded: true });
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.removeEventListener('pagehide', leaving); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listings]);
   // The first screen commits as one piece: listings known AND the assistant inputs in hand.
@@ -180,7 +197,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const openAssistant = () => window.dispatchEvent(new CustomEvent(OPEN_EVENT));
   const onNoticeAction = (a) => {
     if (a.type === 'panel') { openAssistant(); return; }
-    if (a.event === 'request-docs' && a.listingId && a.linkId) window.location.href = `${adapter.paths.listing(a.listingId)}#docs=${encodeURIComponent(a.linkId)}${a.renew ? '&renew' : ''}`;
+    if (a.event === 'request-docs' && a.listingId && a.linkId) go(`${adapter.paths.listing(a.listingId)}#docs=${encodeURIComponent(a.linkId)}${a.renew ? '&renew' : ''}`);
   };
   // "#referrals" deep link (the Assign action): the inbox mounts only after its own fetch, so a
   // plain hash jump on page load finds nothing — wait for the section, then scroll to it.
@@ -330,8 +347,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </div>
               <div className="dash-grid">
                 {openListings.map((l) => (
-                  <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} className="dash-card dash-card-int"
-                    onClick={() => { window.location.href = adapter.paths.listing(l.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); window.location.href = adapter.paths.listing(l.id); } }}
+                  <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} className="dash-card dash-card-int" data-press="card"
+                    {...cardProps(adapter.paths.listing(l.id))}
                     style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
                     {/* Name left, the rent right in tabular numerals, so the rents line up down the column. */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
@@ -353,7 +370,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                   </div>
                 )}
                 {closedListings.map((l) => (
-                  <a key={l.id} href={adapter.paths.listing(l.id)} className="dash-card dash-card-int"
+                  <a key={l.id} {...linkProps(adapter.paths.listing(l.id))} data-press="card" className="dash-card dash-card-int"
                     style={{ textDecoration: 'none', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
                       <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
@@ -372,7 +389,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
               listing state is one card, nothing else). Whole card opens the profile. */}
           {hasListings && !brandComplete && (
-            <a href={adapter.paths.profile} className="dash-card dash-card-int dash-brand dash-block" style={{ borderLeft: `3px solid ${brandAccent}` }}
+            <a {...linkProps(adapter.paths.profile)} data-press="card" className="dash-card dash-card-int dash-brand dash-block" style={{ borderLeft: `3px solid ${brandAccent}` }}
               title="You and your brand" aria-label="Set up your profile and branding">
               <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
               <div className="dash-brand-identity">
@@ -394,9 +411,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           </>}
         </div>}
 
-        {modalOpen && (
-          <ListingSetupModal mode="create" askProvince={needsProvince(profile)} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
-        )}
+        <ListingSetupModal open={modalOpen} mode="create" askProvince={needsProvince(profile)} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
       </div>
 
       <style jsx>{`
@@ -500,13 +515,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* The listing cards never move: a pointer that hovers darkens the border, at once. */
         @media (hover: hover) { .dash-card-int:hover { border-color: ${C.ruleDark}; } }
 
-        @media (prefers-reduced-motion: no-preference) {
-          .dash-new { transition: transform 200ms ${EASE}, box-shadow 220ms ease; }
-          .dash-new:hover { transform: translateY(-1px); box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); }
-          .dash-new:active { transform: translateY(0); box-shadow: none; transition-duration: 90ms; }
-          .dash-ghost { transition: background 160ms ease, border-color 160ms ease, transform 180ms ${EASE}; }
-          .dash-ghost:hover { transform: translateY(-1px); }
-        }
+        /* The press is the shared one (lib/motion.js installPress); a pointer that hovers gets a shadow, at once. */
+        @media (hover: hover) { .dash-new:hover { box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); } }
       `}</style>
     </>
   );

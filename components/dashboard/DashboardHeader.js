@@ -14,10 +14,11 @@ import { useEffect } from 'react';
 import { ScrollHeader, Wordmark, Icon } from '../ui';
 import AppHead from '../AppHead';
 import { registerServiceWorker } from '../../lib/serviceWorker';
-import { C, R, EASE } from '../theme';
+import { C, R } from '../theme';
 import StatusBadge from './StatusBadge';
 import AssistantBell from './AssistantBell';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { linkProps } from '../nav/routes';
 
 function initialsOf(profile) {
   const n = (profile?.full_name || '').trim();
@@ -37,7 +38,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
       <AppHead />
       <ScrollHeader maxWidth={1100}>
         {/* LEFT, wordmark: the dashboard. First beat of the reveal. */}
-        <a href={adapter.paths.home} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">
+        <a {...linkProps(adapter.paths.home)} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">
           <Wordmark />
         </a>
         {/* CENTER, account status (trial countdown / lapsed / subscribed). Founders get no badge
@@ -55,7 +56,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
           </span>
           {/* The realtor's identity: a 44px circle with their initials (never the uploaded logo) at the
               right edge. Tapping it opens the profile page, where sign out lives. */}
-          <a href={adapter.paths.profile} title="Your profile" aria-label="Your profile" className="rl-hdr-avatar">
+          <a {...linkProps(adapter.paths.profile)} title="Your profile" aria-label="Your profile" className="rl-hdr-avatar">
             {initialsOf(profile)}
           </a>
         </div>
@@ -112,16 +113,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
         .rl-hdr-bellwrap :global(button):hover { box-shadow: 0 0 0 4px rgba(15, 15, 16, 0.05); }
         .rl-hdr-bellwrap :global(button):focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.red}; }
 
-        /* ── Motion: staggered reveal + hover/press transforms — only when motion is welcome ── */
-        @media (prefers-reduced-motion: no-preference) {
-          /* No page load reveal: the header renders at full opacity, laid out first. */
-          .rl-hdr-mark { transition: transform 220ms ${EASE}; }
-          .rl-hdr-mark:hover { transform: translateY(-1px); }
-          .rl-hdr-avatar { transition: transform 200ms ${EASE}, box-shadow 200ms ${EASE}; }
-          .rl-hdr-avatar:hover { transform: translateY(-1px) scale(1.05); }
-          .rl-hdr-avatar:active { transform: scale(0.95); }
-          .rl-hdr-bellwrap :global(button) { transition: box-shadow 200ms ease; }
-        }
+        /* No movement of its own: the press is the shared one (lib/motion.js installPress). */
         }
       `}</style>
     </>

@@ -8,15 +8,20 @@
 // (lib/standalone.js) for an iOS that does not match the query. Rendered by components/AppHead.js, so
 // it is on every page a realtor can add and never on a tenant, landlord or admin page. In Safari (not
 // standalone) it never shows, on any page.
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { C, FONT } from './theme';
 import { isStandalone } from '../lib/standalone';
 
 export const UPRIGHT_MEDIA = '(orientation: landscape) and (max-height: 500px)';
 
 export default function UprightOverlay() {
-  useEffect(() => { document.documentElement.classList.toggle('rl-standalone', isStandalone()); }, []);
-  return (
+  // Rendered in place first (it works with no script at all), then moved to the end of <body>: a
+  // fixed layer inside the page would follow the page when it scales back behind a sheet
+  // (components/Sheet.js) and no longer cover the screen.
+  const [host, setHost] = useState(null);
+  useEffect(() => { document.documentElement.classList.toggle('rl-standalone', isStandalone()); setHost(document.body); }, []);
+  const overlay = (
     <div className="rl-upright" data-upright="">
       <img className="rl-upright-mark" src="/icons/mark.svg" width="48" height="48" alt="" />
       <p className="rl-upright-line">Turn your phone upright.</p>
@@ -34,4 +39,5 @@ export default function UprightOverlay() {
       `}</style>
     </div>
   );
+  return host ? createPortal(overlay, host) : overlay;
 }

@@ -1,18 +1,25 @@
 // components/dashboard/ReferModal.js
 // Realtor 1 → "Refer to another realtor". Creates a PENDING referral; the applicant must approve
 // by email before anything is shared. The modal says so plainly.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import Sheet from '../Sheet';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 
-export default function ReferModal({ listingId, applicant, onClose, onCreated }) {
+// A bottom sheet (components/Sheet.js). It stays mounted so it can slide away, starts empty each
+// time it opens, and asks before dropping a name, an email or a note already typed.
+export default function ReferModal({ open = true, listingId, applicant: given, onClose, onCreated }) {
+  const last = useRef(given); if (given) last.current = given;
+  const applicant = given || last.current;
   const adapter = useAdapter();
   const [toName, setToName] = useState('');
   const [toEmail, setToEmail] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  useEffect(() => { if (open) { setToName(''); setToEmail(''); setNote(''); setError(''); setBusy(false); } }, [open]);
+  const dirty = !!(toName.trim() || toEmail.trim() || note.trim());
   const app = applicant?.application || {};
   const valid = toName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail);
 
@@ -29,9 +36,9 @@ export default function ReferModal({ listingId, applicant, onClose, onCreated })
   };
 
   return (
-    <div onClick={() => !busy && onClose()} style={{ position: 'fixed', inset: 0, background: 'rgba(15,15,16,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(12px, 3vw, 24px)', zIndex: 140 }}>
-      <form onClick={(e) => e.stopPropagation()} onSubmit={submit} className="rl-modal" style={{ maxWidth: 480, width: '100%', maxHeight: '92vh', overflowY: 'auto', padding: 'clamp(18px, 4vw, 26px)' }}>
-        <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Refer to another realtor</div>
+    <Sheet open={open} onClose={onClose} label="Refer to another realtor" dirty={dirty} busy={busy} maxWidth={480} panelClassName="rl-modal">
+      <form onSubmit={submit} style={{ padding: '4px clamp(18px, 4vw, 26px) clamp(18px, 4vw, 26px)' }}>
+        <div data-sheet-drag="" style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Refer to another realtor</div>
         <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', lineHeight: 1.2, marginBottom: 6 }}>Pass {app.full_name ? app.full_name.split(' ')[0] : 'this applicant'} to a colleague</h3>
         <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
           Good applicant, wrong unit? Refer them. <strong style={{ color: C.ink }}>Nothing is shared until the applicant approves</strong>, they get an email showing exactly what would go to the other realtor, and can decline. You’ll see the outcome here.
@@ -54,6 +61,6 @@ export default function ReferModal({ listingId, applicant, onClose, onCreated })
           </button>
         </div>
       </form>
-    </div>
+    </Sheet>
   );
 }

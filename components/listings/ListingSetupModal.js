@@ -4,10 +4,11 @@
 // Save is gated on address, monthly rent and bedrooms; the listing is named from
 // its address. Maps 1:1 to the Supabase `listings` columns. Presentation matches
 // the design system; fully rounded; fits mobile.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_RENT_SHARE_CAP, CAP_HELPER, SAME_AS_CAP_NOTE, derivedMinIncome, sameAsCap, derivedLine, affordabilityPayload } from '../../lib/listingForm';
 import { C, R } from '../theme';
 import { StackedLines } from '../ui';
+import Sheet from '../Sheet';
 import { displayAddress } from '../../lib/listingAddress';
 import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
@@ -47,9 +48,11 @@ function numOrNull(v) {
   return Number.isNaN(n) ? null : n;
 }
 
-// inline: render the same form in the page flow (no scrim, no fixed positioning). Used by first
-// run onboarding, so there is exactly one create listing form in the product.
-export default function ListingSetupModal({ mode = 'create', initial = null, activeApplicants = 0, askProvince = false, onCancel, onSave, saving = false, inline = false }) {
+// inline: render the same form in the page flow (no sheet). Used by first run onboarding, so there
+// is exactly one create listing form in the product. Otherwise it is a bottom sheet
+// (components/Sheet.js) that stays mounted so it can slide away; each time it opens, the form
+// starts fresh, and once anything is typed a tap on the dimmed page asks before discarding.
+export default function ListingSetupModal({ open = true, mode = 'create', initial = null, activeApplicants = 0, askProvince = false, onCancel, onSave, saving = false, inline = false }) {
   // The realtor's province, asked once, at the first listing (lib/justInTime.js), written to the profile.
   const [province, setProvince] = useState('');
   const seed = { ...EMPTY };
@@ -62,6 +65,14 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
   const [form, setForm] = useState(seed);
   const [confirming, setConfirming] = useState(false); // create-time "are you sure" step
   const [triedSave, setTriedSave] = useState(false);
+  const seedRef = useRef(JSON.stringify(seed));
+  useEffect(() => {
+    if (!open || inline) return;
+    seedRef.current = JSON.stringify(seed);
+    setForm(seed); setConfirming(false); setTriedSave(false); setProvince('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+  const dirty = JSON.stringify(form) !== seedRef.current || !!province;
   const set = (patch) => setForm((f) => ({ ...f, ...patch }));
 
   const creating = mode === 'create';
@@ -143,20 +154,10 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
     </label>
   );
 
-  return (
-    <div
-      onClick={inline ? undefined : onCancel}
-      style={inline ? { display: 'block' } : {
-        position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        // Clear the status bar and the home indicator in the installed app (viewport-fit=cover).
-        padding: 'max(clamp(16px, 4vw, 32px), env(safe-area-inset-top, 0px)) clamp(16px, 4vw, 32px) max(clamp(16px, 4vw, 32px), env(safe-area-inset-bottom, 0px))', zIndex: 100,
-      }}>
-      <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-        style={inline ? { background: C.card, width: '100%', border: `1px solid ${C.rule}` } : { background: C.paper, maxWidth: 640, width: '100%', maxHeight: '100%', overflowY: 'auto', border: `1px solid ${C.rule}` }}>
-
-        {/* Header */}
-        <div style={{ padding: 'clamp(20px, 4vw, 28px)', borderBottom: `1px solid ${C.rule}` }}>
+  const body = (
+    <>
+        {/* Header: on the sheet, dragging it down dismisses the sheet. */}
+        <div data-sheet-drag={inline ? undefined : ''} style={{ padding: inline ? 'clamp(20px, 4vw, 28px)' : '4px clamp(20px, 4vw, 28px) clamp(20px, 4vw, 28px)', borderBottom: `1px solid ${C.rule}` }}>
           <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>
             {creating ? 'New listing' : 'Listing setup'}
           </div>
@@ -165,7 +166,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
           </h3>
           {creating && (
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
-              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: {askProvince ? 'your province (asked once, here), ' : ''}address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited later.
+              Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: {askProvince ? 'your province (asked once, here), ' : ''}address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited{'\u00a0'}later.
             </p>
           )}
         </div>
@@ -219,7 +220,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             <label><span style={fieldLabel}>Max rent to income (%)</span>
               <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder={String(DEFAULT_RENT_SHARE_CAP)} style={inputStyle} />
               <span style={{ display: 'block', fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 4, textWrap: 'pretty' }}>{CAP_HELPER}</span></label>
-            <label><span style={fieldLabel}>Minimum annual income (optional)</span>
+            <label><span style={fieldLabel}>Minimum annual income{'\u00a0'}(optional)</span>
               <input type="number" min="0" step="1000" inputMode="numeric" value={form.pref_min_annual_income} onChange={(e) => set({ pref_min_annual_income: e.target.value })} placeholder="" style={inputStyle} />
               <span style={{ display: 'block', fontSize: 12, color: minSameAsCap ? C.ink : C.inkMute, lineHeight: 1.5, marginTop: 4, fontVariantNumeric: 'tabular-nums', textWrap: 'pretty' }}>
                 {minSameAsCap ? SAME_AS_CAP_NOTE : (derivedLine(ratioPct, rentNum) || 'Add the rent and a cap above to see what the cap works out to.')}
@@ -260,7 +261,7 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
         </div>
 
         {/* Footer */}
-        <div style={{ padding: 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px)', borderTop: `1px solid ${C.rule}`, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', position: 'sticky', bottom: 0, background: C.paper }}>
+        <div style={{ padding: inline ? 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px)' : 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px) calc(clamp(16px, 3vw, 22px) + env(safe-area-inset-bottom, 0px))', borderTop: `1px solid ${C.rule}`, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', position: 'sticky', bottom: 0, background: C.paper }}>
           {!allValid && (
             <span style={{ flex: '1 1 100%', minWidth: 0, fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, order: -1 }}>
               Still needed: <span style={{ color: C.inkSoft, fontWeight: 600 }}>{missing.join(', ')}</span>.
@@ -277,14 +278,13 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
             {saving ? 'Saving…' : creating ? 'Create listing' : 'Save changes'}
           </button>
         </div>
-      </div>
-
-      {/* CREATE-TIME CONFIRMATION, extra check before the listing is created. */}
-      {confirming && (
-        <div onClick={(e) => { e.stopPropagation(); if (!saving) setConfirming(false); }}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(15, 15, 16, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(16px, 4vw, 32px)', zIndex: 120 }}>
-          <div onClick={(e) => e.stopPropagation()} className="rl-modal"
-            style={{ background: C.paper, maxWidth: 440, width: '100%', border: `1px solid ${C.rule}`, padding: 'clamp(20px, 4vw, 28px)' }}>
+    </>
+  );
+  // CREATE TIME CONFIRMATION, one more check before the listing is created or the rent changes.
+  const confirmSheet = (
+    <Sheet open={confirming} onClose={() => { if (!saving) setConfirming(false); }} role="alertdialog" busy={saving} maxWidth={440}
+      panelClassName="rl-modal" label={creating ? 'Create this listing?' : 'Save these changes?'}>
+      <div style={{ padding: '4px clamp(20px, 4vw, 28px) clamp(20px, 4vw, 28px)' }}>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>{creating ? 'Confirm new listing' : 'Confirm changes'}</div>
             <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>{creating ? 'Create this listing?' : 'Save these changes?'}</h3>
             <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16, textWrap: 'pretty' }}>{creating ? 'You can edit the details later, nothing here is locked in.' : RENT_WARNING}</p>
@@ -312,9 +312,24 @@ export default function ListingSetupModal({ mode = 'create', initial = null, act
                 {saving ? (creating ? 'Creating…' : 'Saving…') : creating ? 'Confirm & create' : 'Save changes'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-    </div>
+      </div>
+    </Sheet>
+  );
+  if (inline) {
+    return (
+      <div style={{ display: 'block' }}>
+        <div className="rl-modal" style={{ background: C.card, width: '100%', border: `1px solid ${C.rule}` }}>{body}</div>
+        {confirmSheet}
+      </div>
+    );
+  }
+  return (
+    <>
+      <Sheet open={open} onClose={onCancel} label={creating ? 'New listing' : 'Listing setup'} dirty={dirty} busy={saving} maxWidth={640} padSafe={false}
+        panelClassName="rl-modal" discardTitle={creating ? 'Discard this listing?' : 'Discard your changes?'}>
+        {body}
+      </Sheet>
+      {confirmSheet}
+    </>
   );
 }

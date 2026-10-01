@@ -1,8 +1,9 @@
 // pages/_app.js
-// App wrapper — sets a single, correct viewport meta for every page so mobile
-// renders at device width (no pinch-to-zoom, no horizontal scroll). Presentation
-// only; no data or routing changes.
+// App wrapper: a single, correct viewport meta for every page so mobile renders at device width
+// (no pinch to zoom, no horizontal scroll), and the frame that makes realtor navigation feel
+// native (components/nav/RouteFrame.js: the destination at once, the push, the press feedback).
 import Head from 'next/head';
+import RouteFrame from '../components/nav/RouteFrame';
 
 export default function App({ Component, pageProps }) {
   return (
@@ -17,7 +18,7 @@ export default function App({ Component, pageProps }) {
             this by setting its own theme-color in its <Head> (Next dedupes by meta name). */}
         <meta name="theme-color" content="#faf8f3" />
       </Head>
-      <Component {...pageProps} />
+      <RouteFrame><Component {...pageProps} /></RouteFrame>
     </>
   );
 }
