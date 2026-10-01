@@ -71,7 +71,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
         ))}
       </div>
       {!confirm ? (
-        <button type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', border: 'none', color: C.ink, textDecoration: 'underline' }}>Delete all documents</button>
+        <button data-destructive="" type="button" onClick={() => { setConfirm(true); setErr(''); }} style={{ ...btn44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', border: 'none', color: C.ink, textDecoration: 'underline' }}>Delete all documents</button>
       ) : (
         <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
           <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
@@ -336,7 +336,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', background: C.paperDeep, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'var(--s-2) var(--s-3)' }}>
                   <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{f.name}</span>
                   <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>{(f.size / 1024 / 1024).toFixed(1)}MB</span>
-                  <button onClick={(e) => { e.stopPropagation(); removeFile(i); }} aria-label="Remove"
+                  <button data-destructive="" onClick={(e) => { e.stopPropagation(); removeFile(i); }} aria-label="Remove"
                     style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 'var(--t-body)', lineHeight: 1, padding: 0 }}>×</button>
                 </div>
               ))}
@@ -381,7 +381,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                     <button onClick={archiveActive} disabled={!!managing} style={{ ...secondaryBtn, opacity: managing ? 0.6 : 1 }}>
                       {managing === 'archive' && <span className="rl-dispin rl-dispin--dark" aria-hidden="true" />}{managing === 'archive' ? 'Archiving…' : 'Archive'}
                     </button>
-                    <button onClick={() => { setConfirmDelete(true); setError(''); }} disabled={!!managing} style={{ ...destOutlineBtn, opacity: managing ? 0.6 : 1 }}>
+                    <button data-destructive="" onClick={() => { setConfirmDelete(true); setError(''); }} disabled={!!managing} style={{ ...destOutlineBtn, opacity: managing ? 0.6 : 1 }}>
                       Delete
                     </button>
                     <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, minWidth: 0 }}>Archive keeps a copy in history. Delete removes it permanently.</span>
@@ -417,13 +417,13 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                       <button onClick={() => setViewing(entry)} style={{ ...ghostBtn, padding: 'var(--s-1) var(--s-3)', color: C.ink }}>View</button>
                       {confirmArchId === entry.id ? (
                         <span style={{ display: 'inline-flex', gap: 'var(--s-1)', alignItems: 'center' }}>
-                          <button onClick={() => deleteArchivedEntry(entry.id)} disabled={managing === 'delete-archived'} style={{ ...destSolidBtn, padding: 'var(--s-1) var(--s-3)' }}>
+                          <button data-destructive="" onClick={() => deleteArchivedEntry(entry.id)} disabled={managing === 'delete-archived'} style={{ ...destSolidBtn, padding: 'var(--s-1) var(--s-3)' }}>
                             {managing === 'delete-archived' && <span className="rl-dispin" aria-hidden="true" />}Delete
                           </button>
                           <button onClick={() => setConfirmArchId('')} style={{ ...ghostBtn, padding: 'var(--s-1) var(--s-3)' }}>Cancel</button>
                         </span>
                       ) : (
-                        <button onClick={() => { setConfirmArchId(entry.id); setError(''); }} style={{ ...destOutlineBtn, padding: 'var(--s-1) var(--s-3)' }}>Delete</button>
+                        <button data-destructive="" onClick={() => { setConfirmArchId(entry.id); setError(''); }} style={{ ...destOutlineBtn, padding: 'var(--s-1) var(--s-3)' }}>Delete</button>
                       )}
                     </div>
                   ))}

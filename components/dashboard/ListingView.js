@@ -23,7 +23,7 @@ import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSign
 import { needsSignature, defaultSignature, needsBrandingHint, BRANDING_HINT, BRANDING_HINT_LINK } from '../../lib/justInTime';
 import { AnimatedScore, useFlip, ReportDeparture, MotionStyles } from '../motion';
 import SwipeCard from '../motion/swipe';
-import { CURVE, DURATION, prefersReducedMotion } from '../../lib/motion';
+import { CURVE, DURATION, prefersReducedMotion, cardTap } from '../../lib/motion';
 import { formatUnit } from '../../lib/unitType';
 import { editedAfterVerification } from '../../lib/profileEdits';
 import CompareTenants, { toNum, smokerLabel, employmentTypeFromTitle } from '../../components/dashboard/CompareTenants';
@@ -857,8 +857,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <SwipeCard key={a.linkId} flipKey={a.linkId} id={`applicant-${a.linkId}`} leftAction={leftAction} rightAction={rightAction}
         onCommit={(side) => onSwipeCommit(a, side)} departing={departing[a.linkId]?.side || null}
         hint={hintFor === a.linkId} onHintDone={() => setHintFor(null)}>
-      <div data-press-host="" style={{
-        minWidth: 0,
+      {/* The whole card is the target: a tap anywhere opens or closes it; a control keeps its own action. */}
+      <div data-press-host="" data-tap-card="" onClick={cardTap(() => toggleApplicant(a))} style={{
+        minWidth: 0, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
         background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${first ? 'var(--action)' : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'var(--card-pad)',
       }}>
@@ -1019,7 +1020,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Restore
               </button>
             ) : (
-              <button onClick={() => openSetAside(a)} title="Record a screenable reason to set aside"
+              <button data-destructive="" onClick={() => openSetAside(a)} title="Record a screenable reason to set aside"
                 style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
                 Set aside
               </button>
@@ -1042,7 +1043,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Refer
               </button>
             )}
-            {canWithdraw && <button onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
+            {canWithdraw && <button data-destructive="" onClick={() => withdrawApplicant(a)} title="Tenant withdrew"
               style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>
               Withdrew
             </button>}
@@ -1263,7 +1264,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   {/* Mark as rented (or Reopen): ink outlined, 44px, above Delete. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                     {listingOpen(l) ? (
-                      <button type="button" onClick={() => { setRentedPick(active.length ? active[0].linkId : 'outside'); setRentedNotify(true); setRentedOpen(true); }} disabled={statusBusy}
+                      <button data-destructive="" type="button" onClick={() => { setRentedPick(active.length ? active[0].linkId : 'outside'); setRentedNotify(true); setRentedOpen(true); }} disabled={statusBusy}
                         style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Mark as rented</button>
                     ) : (
                       <button type="button" onClick={() => setStatus(LEGACY_LISTING_STATUS.ACTIVE)} disabled={statusBusy}
@@ -1272,7 +1273,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   </div>
                   {/* Delete, last and alone, in the danger colour; the confirm sheet below asks first. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                    <button onClick={() => setDeleteOpen(true)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
+                    <button data-destructive="" onClick={() => setDeleteOpen(true)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
                   </div>
                 </div>
               </div>
@@ -1463,7 +1464,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </p>
               {/* The two actions share one width, one height and one gap (R2), as on the confirm sheet. */}
               <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
-                <button onClick={confirmSetAside}
+                <button data-destructive="" onClick={confirmSetAside}
                   disabled={!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())}
                   style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: '1px solid transparent', borderRadius: 'var(--btn-radius)', padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
                   Set aside

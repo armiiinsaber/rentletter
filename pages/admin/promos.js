@@ -93,7 +93,7 @@ export default function Promos() {
                       <ul className="pr-reds">{c.redemptions.map((r) => <li key={r.profileId}><span className="ad-tick" aria-hidden="true" /><span style={{ minWidth: 0, overflowWrap: 'anywhere' }}><strong>{r.name || 'No name yet'}</strong>{r.email ? <span className="ad-mono" style={{ color: C.instMute }}> · {r.email}</span> : ''}</span><span className="ad-quiet ad-num" style={{ marginLeft: 'auto', whiteSpace: 'nowrap' }}>{fmtStamp(r.redeemedAt)}</span></li>)}</ul>
                     ) : <p className="ad-quiet">Nobody yet.</p>}
                     {c.note && <p className="ad-quiet" style={{ marginTop: 12 }}>{c.note}</p>}
-                    {c.active && <div style={{ marginTop: 14 }}><button type="button" className="ad-btn ghost sm" style={{ color: C.instDangerText }} onClick={() => setRevoke(c)}>Revoke code</button></div>}
+                    {c.active && <div style={{ marginTop: 14 }}><button data-destructive="" type="button" className="ad-btn ghost sm" style={{ color: C.instDangerText }} onClick={() => setRevoke(c)}>Revoke code</button></div>}
                   </div>
                 )}
               </li>

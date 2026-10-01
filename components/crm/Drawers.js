@@ -39,7 +39,7 @@ export function Notes({ notes, onAdd, onDelete, autoFocus }) {
           {notes.map((n) => (
             <li key={n.id} className="crm-note">
               <div className="crm-note-meta"><span className="ad-tick" aria-hidden="true" /><span className="ad-num">{fmtStamp(n.created_at)}</span>
-                <button type="button" className="crm-note-del" onClick={() => { if (confirm('Delete this note?')) onDelete(n.id); }} aria-label="Delete note"><Icon name="x" size={12} /></button>
+                <button data-destructive="" type="button" className="crm-note-del" onClick={() => { if (confirm('Delete this note?')) onDelete(n.id); }} aria-label="Delete note"><Icon name="x" size={12} /></button>
               </div>
               <div className="crm-note-body">{n.body}</div>
             </li>
@@ -134,7 +134,7 @@ export function LeadDrawer({ lead, brokerages, brokeragesById, notes, focusNotes
   return (
     <Sheet eyebrow={STAGE[lead.stage]?.label} title={lead.name} wide onClose={() => { if (!dirty || confirm('Discard unsaved changes?')) onClose(); }}
       footer={editing ? (
-        <><button type="submit" form="crm-lead-form" className="ad-btn primary" disabled={busy || !dirty || !form.name.trim()}>{busy ? 'Saving…' : 'Save'}</button><button type="button" className="ad-btn ghost" onClick={() => setEditing(false)} disabled={busy}>Cancel</button>{err && <span role="alert" style={{ fontSize: 13, color: C.instDangerText }}>{err}</span>}<button type="button" className="ad-btn ghost" style={{ marginLeft: 'auto', color: C.instDangerText }} onClick={() => { if (confirm(`Delete ${lead.name} and their notes? This cannot be undone.`)) onDelete(lead.id); }}>Delete</button></>
+        <><button type="submit" form="crm-lead-form" className="ad-btn primary" disabled={busy || !dirty || !form.name.trim()}>{busy ? 'Saving…' : 'Save'}</button><button type="button" className="ad-btn ghost" onClick={() => setEditing(false)} disabled={busy}>Cancel</button>{err && <span role="alert" style={{ fontSize: 13, color: C.instDangerText }}>{err}</span>}<button data-destructive="" type="button" className="ad-btn ghost" style={{ marginLeft: 'auto', color: C.instDangerText }} onClick={() => { if (confirm(`Delete ${lead.name} and their notes? This cannot be undone.`)) onDelete(lead.id); }}>Delete</button></>
       ) : (
         <><button type="button" className="ad-btn secondary" onClick={() => setEditing(true)}><Icon name="edit" size={14} /> Edit details</button>{d && <span className="ad-pill" style={{ marginLeft: 'auto', color: st.overdue ? C.instDangerText : C.instMute, borderColor: st.overdue ? C.instDangerText : C.instRule }}>{d.label} · {d.text}</span>}</>
       )}>
@@ -172,7 +172,7 @@ export function BrokerageDrawer({ brokerage, leads, notes, onSave, onDelete, onA
   const people = [...leads].sort((a, b) => STAGES.findIndex((s) => s.key === a.stage) - STAGES.findIndex((s) => s.key === b.stage));
   return (
     <Sheet eyebrow="Brokerage" title={brokerage.name} wide onClose={onClose}
-      footer={<><button type="submit" form="crm-brk-form" className="ad-btn primary" disabled={busy || !dirty || !name.trim()}>{busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>{err && <span role="alert" style={{ fontSize: 13, color: C.instDangerText }}>{err}</span>}<button type="button" className="ad-btn ghost" style={{ marginLeft: 'auto', color: C.instDangerText }} onClick={() => { if (confirm(`Delete ${brokerage.name}? Its people stay, unlinked.`)) onDelete(brokerage.id); }}>Delete</button></>}>
+      footer={<><button type="submit" form="crm-brk-form" className="ad-btn primary" disabled={busy || !dirty || !name.trim()}>{busy ? 'Saving…' : dirty ? 'Save' : 'Saved'}</button>{err && <span role="alert" style={{ fontSize: 13, color: C.instDangerText }}>{err}</span>}<button data-destructive="" type="button" className="ad-btn ghost" style={{ marginLeft: 'auto', color: C.instDangerText }} onClick={() => { if (confirm(`Delete ${brokerage.name}? Its people stay, unlinked.`)) onDelete(brokerage.id); }}>Delete</button></>}>
       <form id="crm-brk-form" onSubmit={save} className="crm-form">
         <Field label="Name" span><input className="ad-input" value={name} onChange={(e) => setName(e.target.value)} required autoCapitalize="words" /></Field>
         <Field label="Website" span><input className="ad-input" type="url" value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="Optional" inputMode="url" autoCapitalize="none" autoCorrect="off" /></Field>

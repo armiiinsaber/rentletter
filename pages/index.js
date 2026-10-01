@@ -4,7 +4,7 @@ import { C, R, SH, EASE, FONT } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
 import AppHead from '../components/AppHead';
 import DeviceFrame, { DEVICE_BREAKPOINT } from '../components/DeviceFrame';
-import { tween, DURATION } from '../lib/motion';
+import { tween, DURATION, cardTap } from '../lib/motion';
 import { noWidow } from '../lib/typeset';
 import HeroDemo from '../components/mockups/HeroDemo';
 
@@ -1161,7 +1161,8 @@ function SelectField({ label, value, onChange, options }) {
 
 function ToggleField({ label, value, onChange }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0' }}>
+    // The whole row is the target: the switch, its words and the gap between them.
+    <div data-tap-card="" onClick={cardTap(() => onChange(!value))} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', cursor: 'pointer' }}>
       <button
         type="button"
         onClick={() => onChange(!value)}
@@ -1183,7 +1184,7 @@ function ToggleField({ label, value, onChange }) {
           transition: 'left 0.2s',
         }} />
       </button>
-      <span style={{ fontSize: 14, color: C.ink, fontWeight: 500, cursor: 'pointer' }} onClick={() => onChange(!value)}>
+      <span style={{ fontSize: 14, color: C.ink, fontWeight: 500, cursor: 'pointer' }}>
         {label}
       </span>
     </div>

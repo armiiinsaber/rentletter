@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 import { C, R, SH, EASE, FONT } from './theme';
 import { noWidow } from '../lib/typeset';
 import { LOGO } from '../lib/brand/logoPaths';
-import { PRESS_CSS, NAV_CSS } from '../lib/motion';
+import { PRESS_CSS, NAV_CSS, HIT_CSS } from '../lib/motion';
 import Sheet, { SHEET_PAGE_CSS } from './Sheet';
 
 // ─── GLOBAL STYLE + MOTION LANGUAGE ──────────────────────────
@@ -74,6 +74,7 @@ export const GlobalStyle = () => (
     body { overscroll-behavior-y: none; }
     /* The press (lib/motion.js), the page behind a sheet (components/Sheet.js), the push. */
     ${PRESS_CSS}
+    ${HIT_CSS}
     ${SHEET_PAGE_CSS}
     ${NAV_CSS}
     /* The Next root sits between body and the page, so it carries the canvas too: nothing between
@@ -343,7 +344,8 @@ export const ConfirmSheet = ({
         </h3>
         {body && <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18, textWrap: 'pretty' }}>{typeof body === 'string' ? noWidow(body) : body}</p>}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={onConfirm} disabled={busy} autoFocus
+          {/* A confirmation is only ever a direct hit (lib/motion.js: the tap resolver skips it). */}
+          <button data-destructive="" onClick={onConfirm} disabled={busy} autoFocus
             style={{
               flex: '1 1 0', minWidth: 0, background: busy ? C.ruleDark : accent, color: C.paper, border: `1px solid ${busy ? C.ruleDark : accent}`,
               borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 15, fontWeight: 700,

@@ -6,10 +6,14 @@
 // from when that is another listing, the date it lasts until, and applied or invited. The whole card
 // is one tap target (Enter and Space too): a tap anywhere opens it and a tap anywhere closes it,
 // while the controls inside keep their own action. Open, each active listing gets one row: its
-// score, its address and its one control (Invite, Invited, or the Applied mark), so the summary
+// score, its address and Applied as pills, or its one control (Invite, Invited), so the summary
 // drops the score, the address and the status those rows now carry; each fact shows once. Remove
 // asks first. Every write goes through /api/pipeline/* (session, entitlement, ownership).
+// The card has no dead band: its header row opens and closes the list, and with one person in it
+// a tap anywhere on the card, header included, opens and closes that person. The card's padding
+// belongs to the band beside it (the header, or the person row level with it).
 import { useEffect, useState } from 'react';
+import { cardTap } from '../../lib/motion';
 import { C, R } from '../theme';
 import { ConfirmSheet, StatusPills } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -73,26 +77,45 @@ export default function PeopleList({ people, onChanged, className = '', style })
     return bits.length ? <StatusPills tone="ink" label="Status" items={bits} /> : null;
   };
   const toggle = (id) => setOpenId((cur) => (cur === id ? null : id));
+  const [listOpen, setListOpen] = useState(true);
+  const single = rows.length === 1;
+  const headerOpen = single ? openId === rows[0].id : listOpen;
+  const toggleHeader = () => { if (single) toggle(rows[0].id); else setListOpen((v) => !v); };
+  // A tap on the card that is not on a control or a person row: the band it is level with.
+  const onCard = cardTap((e) => {
+    if (single) { toggle(rows[0].id); return; }
+    const y = e.clientY;
+    const persons = [...e.currentTarget.querySelectorAll('[data-person-row]')];
+    const level = persons.find((el) => { const b = el.getBoundingClientRect(); return y >= b.top && y <= b.bottom; });
+    if (level) { toggle(level.getAttribute('data-person-row')); return; }
+    const last = persons[persons.length - 1];
+    if (last && y > last.getBoundingClientRect().bottom) { toggle(last.getAttribute('data-person-row')); return; }
+    toggleHeader();
+  });
   // On ink: paper outlined controls, paper text, the muted paper for a row that is still waiting.
   const ctrl = { minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.paper, border: `1.5px solid ${C.paper}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };
   const quiet = { border: `1px solid ${C.instRule}`, color: C.instMute };
 
   return (
-    <section id="people" className={className} aria-label="Pipeline" style={{ background: C.inst, color: C.instText, borderRadius: 'var(--card-radius)', padding: 'var(--card-pad)', scrollMarginTop: 'var(--s-4)', ...style }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginBottom: rows.length ? 'var(--s-2)' : 'var(--s-1)' }}>
-        <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 'var(--t-d3)', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 'var(--lh-display)', color: C.paper }}>Pipeline</h2>
+    <section id="people" className={className} aria-label="Pipeline" data-tap-card={rows.length ? '' : undefined} data-press={rows.length ? 'card' : undefined} onClick={rows.length ? onCard : undefined} style={{ cursor: rows.length ? 'pointer' : undefined, WebkitTapHighlightColor: 'transparent', background: C.inst, color: C.instText, borderRadius: 'var(--card-radius)', padding: 'var(--card-pad)', scrollMarginTop: 'var(--s-4)', ...style }}>
+      {/* The header row: its band of the card opens and closes the list (with one person, that
+          person); the title is the button a keyboard reaches. */}
+      <div data-pipeline-head="" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginBottom: rows.length ? (single || listOpen ? 'var(--s-2)' : 0) : 'var(--s-1)' }}>
+        <h2 style={{ margin: 0, fontFamily: 'var(--f-display)', fontSize: 'var(--t-d3)', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 'var(--lh-display)', color: C.paper }}>
+          {rows.length ? <button type="button" aria-expanded={headerOpen} onClick={toggleHeader} style={{ display: 'inline', margin: 0, padding: 0, border: 'none', background: 'transparent', color: 'inherit', font: 'inherit', letterSpacing: 'inherit', lineHeight: 'inherit', textAlign: 'left', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>Pipeline</button> : 'Pipeline'}
+        </h2>
         <span style={{ fontSize: 'var(--t-d3)', color: C.paper, lineHeight: 1, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums' }}>{rows.length}</span>
       </div>
       {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginBottom: 'var(--s-2)' }}>{note}</div> : null}
       {rows.length === 0 ? (
         <p style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Nobody yet. Applicants who lose out on a rented unit appear here once asked.</p>
-      ) : (
+      ) : (single || listOpen) && (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {rows.map((p, i) => {
             const open = openId === p.id;
             return (
               <li key={p.id} data-person={p.id} style={{ borderTop: i ? `1px solid ${C.instRule}` : 'none' }}>
-                <div role="button" tabIndex={0} aria-expanded={open} aria-label={`${p.display}, ${open ? 'tap to close' : 'tap to open'}`} data-press=""
+                <div role="button" tabIndex={0} aria-expanded={open} aria-label={`${p.display}, ${open ? 'tap to close' : 'tap to open'}`} data-press="" data-person-row={p.id}
                   onClick={(e) => { const own = e.target.closest(OWN_ACTION); if (own && own !== e.currentTarget) return; toggle(p.id); }}
                   onKeyDown={(e) => { if (e.target !== e.currentTarget) return; if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(p.id); } }}
                   style={{ minHeight: 44, padding: 'var(--s-2) 0', cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
@@ -104,14 +127,16 @@ export default function PeopleList({ people, onChanged, className = '', style })
                       {(p.fits || []).map((f) => (
                         <div key={f.listingId} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s-2) var(--s-3)', minHeight: 44, padding: 'var(--s-1) 0' }}>
                           {/* The pills keep their full width; when the row is too narrow the control moves below them. */}
-                          <StatusPills tone="ink" label={`Fit for ${f.listingName}`} items={[fitText(f), f.listingName]} style={{ flex: '1 1 auto' }} />
-                          {f.applied ? <span data-own-action="" style={{ ...ctrl, ...quiet, display: 'inline-flex', alignItems: 'center', cursor: 'default' }}>Applied</span>
-                            : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, ...quiet, cursor: 'default' }}>Invite</button>
-                            : f.invitedAt ? <button type="button" disabled style={{ ...ctrl, ...quiet, cursor: 'default' }}>Invited {shortDate(f.invitedAt)}</button>
+                          {/* Applied is a status, not an action: a pill like the others, full contrast, not tappable. */}
+                          <StatusPills tone="ink" label={`Fit for ${f.listingName}`} items={[fitText(f), f.listingName, f.applied ? 'Applied' : null]} style={{ flex: '1 1 auto' }} />
+                          {f.applied ? null
+                            // These two are statuses drawn as controls: a tap on them is a tap on the row.
+                            : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, ...quiet, cursor: 'default', pointerEvents: 'none' }}>Invite</button>
+                            : f.invitedAt ? <button type="button" disabled style={{ ...ctrl, ...quiet, cursor: 'default', pointerEvents: 'none' }}>Invited {shortDate(f.invitedAt)}</button>
                             : <button type="button" onClick={() => invite(p, f)} disabled={busy === `${p.id}:${f.listingId}`} style={{ ...ctrl, opacity: busy === `${p.id}:${f.listingId}` ? 0.6 : 1 }}>{busy === `${p.id}:${f.listingId}` ? 'Sending' : 'Invite'}</button>}
                         </div>
                       ))}
-                      <button type="button" onClick={() => setConfirm(p)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.instMute, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Remove</button>
+                      <button type="button" data-destructive="" onClick={() => setConfirm(p)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, minWidth: 44, padding: 0, background: 'transparent', border: 'none', color: C.instMute, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Remove</button>
                     </div>
                   )}
                 </div>

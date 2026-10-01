@@ -301,7 +301,7 @@ export default function MyProfile() {
         {emailMsg && <p role="status" className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(emailMsg)}</p>}
         <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Your profile holds the facts you typed, never documents. Anything you upload for a realtor is held for that realtor only for 14 days, then deleted.')}</p>
       </div>
-      {toast && <div role="status" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
+      {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
     </>
   ));
 }

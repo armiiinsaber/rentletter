@@ -210,7 +210,7 @@ export default function ApplicationPage() {
               <div><div className="mp-label">Last edited</div><div className="mp-stat-v">{data.updatedAt ? dateLong(data.updatedAt) : 'Never'}</div></div>
             </div>
             <p className="mp-p" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(revoked ? 'The realtor sees a revoked notice instead of your details. Reactivate to restore their access and your editing.' : 'Anyone with this application number can view it. Revoking affects only this application, not your profile or other applications.')}</p>
-            <button type="button" onClick={() => performAction(revoked ? 'unrevoke' : 'revoke')} disabled={actionLoading || !!editing} className={`mp-btn${revoked ? '' : ' mp-btn-red'}`} style={{ marginTop: 'var(--gap-card)' }}>
+            <button data-destructive="" type="button" onClick={() => performAction(revoked ? 'unrevoke' : 'revoke')} disabled={actionLoading || !!editing} className={`mp-btn${revoked ? '' : ' mp-btn-red'}`} style={{ marginTop: 'var(--gap-card)' }}>
               {actionLoading ? 'Working' : revoked ? 'Reactivate application' : 'Revoke application'}
             </button>
             <button type="button" onClick={() => setShowLog((v) => !v)} aria-expanded={showLog} className="mp-fold">
@@ -232,7 +232,7 @@ export default function ApplicationPage() {
             {showLog && <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Viewer identifiers are hashed. We do not store IP addresses.')}</p>}
           </section>
         </div>
-        {toast && <div role="status" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
+        {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
       </div>
     </>
   );

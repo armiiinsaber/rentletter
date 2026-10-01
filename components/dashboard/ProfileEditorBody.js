@@ -348,7 +348,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
           {studioOpen ? 'Hide AI studio' : logoUrl ? 'Regenerate with AI' : 'Create with AI'}
         </button>
         {logoUrl && (
-          <button onClick={removeLogo} disabled={logoBusy}
+          <button data-destructive="" onClick={removeLogo} disabled={logoBusy}
             style={{ background: 'transparent', color: C.red, border: `1px solid ${C.red}`, borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             Remove
           </button>

@@ -4,14 +4,15 @@
 // (components/nav/RouteSkeleton.js) while the server confirms the session and the ownership and
 // sends the page, then the page itself. The sandbox has its data in memory, so its next view is
 // simply drawn. Either way the screen pushes in from the right, or back from the left (lib/motion.js
-// NAV_CSS, slideIn). It also installs the one press mechanism (lib/motion.js installPress) and
-// switches it off on the tenant and landlord pages, where nothing animates.
+// NAV_CSS, slideIn). It also installs the one press mechanism (lib/motion.js installPress, switched
+// off on the tenant and landlord pages, where nothing animates), the 44 by 44 hit areas
+// (installHitAreas) and the tap resolver (installTapResolver), which work on every page.
 import { useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import Router from 'next/router';
 import { routeOf, takeDirection } from './routes';
 import RouteSkeleton from './RouteSkeleton';
-import { installPress, prefersReducedMotion, slideIn } from '../../lib/motion';
+import { installPress, installHitAreas, installTapResolver, prefersReducedMotion, slideIn } from '../../lib/motion';
 
 // Tenant and landlord pages: no press feedback, no motion.
 export const QUIET = /^\/(apply|upload|my-application|keep|ref|refer|a|r)(\/|$)/;
@@ -19,7 +20,8 @@ export const QUIET = /^\/(apply|upload|my-application|keep|ref|refer|a|r)(\/|$)/
 export default function RouteFrame({ children }) {
   const [pending, setPending] = useState(null);
   const at = useRef('');
-  useEffect(() => installPress(), []);
+  // The press, the 44 by 44 hit areas and the tap resolver: once, for every page (lib/motion.js).
+  useEffect(() => { const a = installPress(); const b = installHitAreas(); const c = installTapResolver(); return () => { a(); b(); c(); }; }, []);
   useEffect(() => {
     const html = document.documentElement;
     const scope = (path) => { if (QUIET.test(path)) html.setAttribute('data-no-press', ''); else html.removeAttribute('data-no-press'); };

@@ -165,7 +165,7 @@ export default function Sheet({
   const shown = phase === 'open';
   return createPortal(
     <div className={`rl-sh-root${reduced ? ' rl-sh-reduced' : ''}${shown ? ' rl-sh-shown' : ''}`} role="presentation" data-sheet="">
-      <div className="rl-sh-scrim" onClick={() => requestClose()} aria-hidden="true" />
+      <div className="rl-sh-scrim" data-tap="" onClick={() => requestClose()} aria-hidden="true" />
       <div ref={panelRef} id={id} className={`rl-sh-panel${tall ? ' rl-sh-tall' : ''}${tone === 'ink' ? ' rl-sh-ink' : ''}${panelClassName ? ` ${panelClassName}` : ''}`} role={role} aria-modal="true" aria-label={kept.current.label} tabIndex={-1}
         style={{ maxWidth }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
         <div className="rl-sh-grab" aria-hidden="true"><span className="rl-sh-handle" /></div>
@@ -177,7 +177,7 @@ export default function Sheet({
             <h3 style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', margin: '0 0 8px' }}>{discardTitle}</h3>
             <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.5, margin: '0 0 16px' }}>{discardBody}</p>
             <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" onClick={() => { setAsking(false); onClose?.(); }} style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: C.danger, color: C.paper, border: `1px solid ${C.danger}`, borderRadius: 'var(--btn-radius)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Discard</button>
+              <button data-destructive="" type="button" onClick={() => { setAsking(false); onClose?.(); }} style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: C.danger, color: C.paper, border: `1px solid ${C.danger}`, borderRadius: 'var(--btn-radius)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Discard</button>
               <button type="button" onClick={() => setAsking(false)} autoFocus style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Keep editing</button>
             </div>
           </div>

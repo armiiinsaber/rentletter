@@ -184,7 +184,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
 export function Sheet({ title, eyebrow, onClose, children, footer, wide, labelledBy }) {
   useEffect(() => { const k = (e) => { if (e.key === 'Escape') onClose(); }; document.addEventListener('keydown', k); return () => document.removeEventListener('keydown', k); }, [onClose]);
   return (
-    <div className="ad-scrim" onClick={onClose}>
+    <div className="ad-scrim" data-tap="" onClick={onClose}>
       <div className={`ad-sheet ${wide ? 'wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}>
         <header className="ad-sheet-h">
           <div style={{ minWidth: 0 }}>{eyebrow && <div className="ad-eyebrow">{eyebrow}</div>}<h2 className="ad-h2" id={labelledBy} style={{ overflowWrap: 'anywhere' }}>{title}</h2></div>

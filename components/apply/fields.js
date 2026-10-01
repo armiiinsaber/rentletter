@@ -6,6 +6,7 @@
 import { useId } from 'react';
 import { C } from '../theme';
 import { noWidow } from '../../lib/typeset';
+import { cardTap } from '../../lib/motion';
 
 const Label = ({ children, required, htmlFor }) => (
   <label htmlFor={htmlFor} className="mp-label" style={{ display: 'block' }}>{children}{required && <span aria-hidden="true" style={{ marginLeft: 4 }}>*</span>}</label>
@@ -52,12 +53,13 @@ export function SelectField({ label, value, onChange, options }) {
 
 export function ToggleField({ label, value, onChange }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44 }}>
+    // The whole row is the target: the switch, its words and the gap between them.
+    <div data-tap-card="" onClick={cardTap(() => onChange(!value))} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer' }}>
       <button type="button" role="switch" aria-checked={!!value} aria-label={label} onClick={() => onChange(!value)}
         style={{ width: 44, height: 24, background: value ? C.ink : C.rule, border: 'none', borderRadius: 12, position: 'relative', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
         <span style={{ position: 'absolute', top: 2, left: value ? 22 : 2, width: 20, height: 20, borderRadius: '50%', background: C.paper }} />
       </button>
-      <span className="mp-value" style={{ marginTop: 0, cursor: 'pointer', textWrap: 'pretty' }} onClick={() => onChange(!value)}>{noWidow(label)}</span>
+      <span className="mp-value" style={{ marginTop: 0, cursor: 'pointer', textWrap: 'pretty' }}>{noWidow(label)}</span>
     </div>
   );
 }

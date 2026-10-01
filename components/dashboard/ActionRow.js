@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { C } from '../theme';
 import { Icon } from '../ui';
-import { DURATION, CURVE, prefersReducedMotion } from '../../lib/motion';
+import { DURATION, CURVE, prefersReducedMotion, cardTap } from '../../lib/motion';
 
 const SWIPE = { axisLock: 8, commit: 64 };
 
@@ -41,6 +41,7 @@ export function ActionRow({ item, phase, onGo, onDismiss, first: firstRow = fals
   const lineTwo = item.reason && item.reason !== lineOne ? item.reason : item.detail;
   return (
     <li ref={ref} className={`al-row ${phase === 'enter' ? 'al-enter' : ''} ${phase === 'leave' ? 'al-leave' : ''}`} data-key={item.key} data-kind={item.kind}
+      data-tap-card="" onClick={cardTap(onGo)}
       style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-1)', borderTop: firstRow ? 'none' : `1px solid ${p.rule}` }}>
       <div role="button" tabIndex={0} onClick={onGo} onKeyDown={key} style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 'var(--s-2) 0', cursor: 'pointer' }}>
         <span style={{ display: 'block', fontSize: 'var(--t-body)', fontWeight: 700, color: p.text, letterSpacing: '-0.01em', lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{lineOne}</span>

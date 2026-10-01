@@ -5,6 +5,7 @@
 // module hooks, which also cover the require() calls Next makes at run time. Each database or key
 // value call waits LATENCY_MS, so a page's sequential reads cost what they would in production.
 //   node tests/helpers/fakeNextServer.mjs <port> [dev|prod] [latencyMs]
+// GET /__fake/pipeline?people=1|2 sets how many people the Pipeline holds (below).
 // It builds into, or serves from, .next-fake-<port> (NEXT_DIST_DIR, next.config.js); prod needs
 // `NEXT_DIST_DIR=.next-fake-<port> FAKE_STACK_BUILD=1 next build` first. Prints "ready" when up.
 import { registerHooks, createRequire } from 'node:module';
@@ -38,5 +39,17 @@ const next = require('next');
 const app = next({ dev: mode !== 'prod', dir: ROOT, hostname: 'localhost', port });
 const handle = app.getRequestHandler();
 await app.prepare();
-http.createServer((req, res) => handle(req, res)).listen(port, () => console.log('ready'));
+// For a walk: how many people the Pipeline holds. GET /__fake/pipeline?people=2 adds a second
+// consent beside the fixture's one: Applicant B2B2, asked on L2, who has applied to L1 (Applied on
+// that row). people=1 puts it back.
+const oneConsent = [...(t.pipeline_consents || [])];
+const secondConsent = { id: 'PC2', profile_id: USER.id, listing_id: 'L2', application_id: 'A2', email: 'aB2B2@example.com', status: 'consented', consented_at: new Date(Date.now() - 4 * 86400000).toISOString(), expires_at: new Date(Date.now() + 56 * 86400000).toISOString(), invites: [] };
+http.createServer((req, res) => {
+  if (req.url.startsWith('/__fake/pipeline')) {
+    const n = Number(new URL(req.url, 'http://localhost').searchParams.get('people'));
+    t.pipeline_consents = n === 2 ? [...oneConsent, secondConsent] : [...oneConsent];
+    res.end(String(t.pipeline_consents.length)); return;
+  }
+  handle(req, res);
+}).listen(port, () => console.log('ready'));
 process.on('SIGTERM', () => process.exit(0));

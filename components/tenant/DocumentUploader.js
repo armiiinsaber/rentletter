@@ -183,7 +183,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
         </span>
       </span>
       <span style={{ fontSize: 11, color: C.inkMute, flexShrink: 0 }}>{(f.file.size / 1024 / 1024).toFixed(1)}MB</span>
-      {removable && f.status !== 'analyzing' && f.status !== 'removing' && <button type="button" onClick={(e) => { e.stopPropagation(); removeFile(f.key); }} aria-label={`Remove ${f.file.name}`}
+      {removable && f.status !== 'analyzing' && f.status !== 'removing' && <button data-destructive="" type="button" onClick={(e) => { e.stopPropagation(); removeFile(f.key); }} aria-label={`Remove ${f.file.name}`}
         style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: 0, minWidth: 44, minHeight: 44, flexShrink: 0 }}>×</button>}
     </div>
   );

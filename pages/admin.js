@@ -235,7 +235,7 @@ export default function Admin({ authed: initialAuthed }) {
             <span className="ad-num" style={{ fontSize: 13.5, fontWeight: 700, flex: '1 1 auto' }}>{selected.length} selected</span>
             <button type="button" className="ad-btn secondary sm" disabled={busy} onClick={() => openAction('suspend')}>Suspend</button>
             <button type="button" className="ad-btn secondary sm" disabled={busy} onClick={() => openAction('unsuspend')}>Reinstate</button>
-            <button type="button" className="ad-btn danger sm" disabled={busy} onClick={() => openAction('delete')}>Delete…</button>
+            <button data-destructive="" type="button" className="ad-btn danger sm" disabled={busy} onClick={() => openAction('delete')}>Delete…</button>
             <button type="button" className="ad-btn ghost sm" onClick={() => setSel(new Set())}>Clear</button>
           </div>
         )}

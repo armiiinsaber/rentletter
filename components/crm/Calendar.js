@@ -58,7 +58,7 @@ export default function Calendar({ leads, onOpen, onReschedule }) {
         {cells.map((day) => {
           const list = byDay[day] || []; const isT = day === t; const hot = over === `day:${day}`;
           return (
-            <div key={day} role="gridcell" data-drop={`day:${day}`} className={`crm-day ${inMonth(day) ? '' : 'out'} ${isT ? 'today' : ''} ${hot ? 'hot' : ''} ${sel === day ? 'sel' : ''}`} onClick={() => setSel(day)}>
+            <div key={day} role="gridcell" data-tap="" data-drop={`day:${day}`} className={`crm-day ${inMonth(day) ? '' : 'out'} ${isT ? 'today' : ''} ${hot ? 'hot' : ''} ${sel === day ? 'sel' : ''}`} onClick={() => setSel(day)}>
               <span className="crm-day-n">{parseYmd(day).getDate()}{isT && <span className="crm-day-today">Today</span>}</span>
               <div className="crm-day-items">{list.map((it) => <Chip key={`${it.kind}:${it.lead.id}`} it={it} bind={bind} lifted={dragging?.id === `${it.kind}:${it.lead.id}`} onOpen={onOpen} />)}</div>
               <div className="crm-day-dots" aria-label={list.length ? `${list.length} items` : undefined}>{list.slice(0, 4).map((it) => <span key={`${it.kind}:${it.lead.id}`} className={`crm-dot ${it.kind} ${it.tone}`} />)}</div>

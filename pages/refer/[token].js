@@ -141,7 +141,7 @@ export default function ReferralConsent() {
               {error && <div role="alert" style={{ marginBottom: 14, padding: '11px 14px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink }}>{error}</div>}
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
-                <button type="button" onClick={() => decide('decline')} disabled={busy} className="rl-btn"
+                <button data-destructive="" type="button" onClick={() => decide('decline')} disabled={busy} className="rl-btn"
                   style={{ background: C.paper, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
                   Decline, don’t share
                 </button>

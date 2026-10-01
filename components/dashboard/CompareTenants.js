@@ -118,7 +118,7 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
               {[t, ...available].map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
             </select>
             {n > 2 && (
-              <button onClick={() => removeAt(idx)} aria-label={`Remove ${t.name}`}
+              <button data-destructive="" onClick={() => removeAt(idx)} aria-label={`Remove ${t.name}`}
                 style={{ background: 'transparent', border: 'none', color: C.inkMute, cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0, minWidth: 44, minHeight: 44 }}>×</button>
             )}
           </div>
