@@ -14,27 +14,28 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { SPLASH, splashFile } from '../../lib/brand/splash.js';
+import { INK, PAPER, PALETTES, r2, logoSvg as drawLogo, markSvg as drawMark } from './draw.mjs';
+
+// npm run brand:kit: the brand kit only (scripts/brand/kit.mjs), drawn from the generated paths
+// (lib/brand/logoPaths.js) and the tokens. It never runs the font again and never rewrites the
+// icons, the splash images or lib/brand.
+if (process.argv[2] === 'kit') {
+  const { buildKit } = await import('./kit.mjs');
+  await buildKit();
+  process.exit(0);
+}
 
 const require = createRequire(import.meta.url);
 const opentype = require('opentype.js');
 const { Resvg } = require('@resvg/resvg-js');
 
-// The tokens (components/theme.js), as literals so this script runs without the React tree.
-const INK = '#0f0f10', RED = '#d72027', PAPER = '#faf8f3', INST = '#101012', INST_TEXT = '#e8e4d9', WHITE = '#ffffff';
-// The small mark in two palettes on one geometry. The admin install (public/admin-icon-*.png, never
-// rebuilt here) is the ink ground with the red stripe and the paper R. The realtor app is its
-// inverse: the red ground, the ink stripe (inst, #101012) and the white R (card, #ffffff).
-export const PALETTES = Object.freeze({
-  admin: Object.freeze({ ground: INST, stripe: RED, letter: INST_TEXT }),
-  realtor: Object.freeze({ ground: RED, stripe: INST, letter: WHITE }),
-});
+export { PALETTES };
 
 const tmp = mkdtempSync(join(tmpdir(), 'rl-brand-'));
 const ttf = join(tmp, 'fraunces-600-opsz144.ttf');
 execFileSync('python3', ['scripts/brand/fraunces-instance.py', ttf], { stdio: 'inherit' });
 const font = opentype.loadSync(ttf);
 const CAP = font.tables.os2.sCapHeight; // 1400 of 2000
-const r2 = (n) => Math.round(n * 100) / 100;
 
 // ── THE LOGO: the red bar, then "Rentletter". Units: the cap height is 100. The proportions are
 // the logo the film ends on (components/film/ProductFilm.js): the bar as tall as the capitals,
@@ -79,18 +80,9 @@ export const MARK = ${JSON.stringify(MARK)};
 `);
 
 // ── SVG, then PNG ──
-const logoSvg = ({ height, ink = INK, bg = null, pad = 0, w = null, h = null }) => {
-  const s = height / LOGO.h; const W = w ?? Math.ceil(LOGO.w * s + pad * 2); const H = h ?? Math.ceil(height + pad * 2);
-  const ox = (W - LOGO.w * s) / 2, oy = (H - LOGO.h * s) / 2;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${bg ? `<rect width="${W}" height="${H}" fill="${bg}"/>` : ''}<g transform="translate(${r2(ox)} ${r2(oy)}) scale(${s})"><rect x="${LOGO.bar.x}" y="${LOGO.bar.y}" width="${LOGO.bar.w}" height="${LOGO.bar.h}" rx="${LOGO.bar.rx}" fill="${RED}"/><path d="${LOGO.text}" fill="${ink}"/></g></svg>`;
-};
-// The mark at a pixel size. At 32 and under the bar snaps to whole pixels, so it stays one crisp
-// stroke; the geometry is otherwise the same mark.
-const markSvg = ({ px, kind = 'any', palette = PALETTES.realtor }) => {
-  const m = MARK[kind]; const s = px / MARK.size; let { x, y, w, h, rx } = m.bar; const { ground, stripe, letter } = palette;
-  if (px <= 32) { const X = Math.round(x * s), W = Math.max(1, Math.round(w * s)), Y = Math.round(y * s), H = Math.round(h * s); return `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 ${px} ${px}"><rect width="${px}" height="${px}" fill="${ground}"/><rect x="${X}" y="${Y}" width="${W}" height="${H}" fill="${stripe}"/><g transform="scale(${s})"><path d="${m.r}" fill="${letter}"/></g></svg>`; }
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${px}" height="${px}" viewBox="0 0 ${MARK.size} ${MARK.size}"><rect width="${MARK.size}" height="${MARK.size}" fill="${ground}"/><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${rx}" fill="${stripe}"/><path d="${m.r}" fill="${letter}"/></svg>`;
-};
+// The drawing lives in scripts/brand/draw.mjs, shared with the brand kit.
+const logoSvg = (o) => drawLogo(LOGO, o);
+const markSvg = (o) => drawMark(MARK, o);
 const png = (svg) => new Resvg(svg, { font: { loadSystemFonts: false } }).render().asPng();
 
 mkdirSync('public/brand', { recursive: true });

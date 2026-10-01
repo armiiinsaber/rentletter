@@ -1,0 +1,30 @@
+/* Rentletter tokens, built from components/theme.js. */
+:root {
+  --rl-paper: #faf8f3;
+  --rl-paper-deep: #f2eee3;
+  --rl-card: #ffffff;
+  --rl-rule: #e3ddd0;
+  --rl-rule-dark: #d6cfbe;
+  --rl-ink: #0f0f10;
+  --rl-ink-soft: #3a3a3c;
+  --rl-ink-mute: #6b6b70;
+  --rl-red: #d72027;
+  --rl-danger: #a8161c;
+  --rl-inst: #101012;
+  --rl-inst-raise: #1b1b1e;
+  --rl-inst-rule: #2a2a2e;
+  --rl-inst-text: #e8e4d9;
+  --rl-inst-mute: #8f8b81;
+  --rl-red-bright: #ff5a5f;
+  --rl-font-display: 'Fraunces', Georgia, serif;
+  --rl-font-text: 'Inter', -apple-system, sans-serif;
+  --rl-type-d1: 28px;
+  --rl-type-d2: 22px;
+  --rl-type-d3: 18px;
+  --rl-type-body: 16px;
+  --rl-type-body-2: 14px;
+  --rl-type-eyebrow: 11px;
+  --rl-radius-control: 8px;
+  --rl-radius-card: 12px;
+  --rl-radius-pill: 999px;
+}

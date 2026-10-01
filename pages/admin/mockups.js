@@ -1,11 +1,12 @@
 // pages/admin/mockups.js
-// FOUNDER-ONLY mockup showcase — the device-framed product scenes laid out to screenshot.
+// FOUNDER ONLY mockup showcase: the device framed product scenes laid out to screenshot, and the brand kit.
 // Behind the /admin session (redirects to /admin otherwise). Not linked publicly, noindex.
 // Each scene: a stage with a framing preset (Wide / Square / Portrait / Story) and a canvas
 // (paper / ink). The founder screenshots the stage; nothing else is needed.
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { C, R } from '../../components/theme';
 import AdminShell from '../../components/admin/AdminShell';
+import BrandKit from '../../components/admin/BrandKit';
 import { Wordmark } from '../../components/ui';
 import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
 import { SCENES } from '../../components/mockups/scenes';
@@ -36,9 +37,9 @@ const INK_STOPS = [['#1c1c1e', 0], ['#101012', 0.6], ['#0a0a0b', 1]];
 const CANVAS = { paper: { bg: radial(PAPER_STOPS), stops: PAPER_STOPS, tone: 'paper', fg: C.ink }, ink: { bg: radial(INK_STOPS), stops: INK_STOPS, tone: 'ink', fg: '#e8e4d9' } };
 
 // Scenes are laid out at a fixed DESIGN size and scaled to the device screen with a MEASURED
-// transform: scale() (ResizeObserver) — no container-query units, no CSS trig, so it behaves
+// transform: scale() (ResizeObserver), no container query units, no CSS trig, so it behaves
 // identically in every browser. The device itself is sized from the measured stage so it fits
-// by width AND height on every preset. Showcase-only — the hero keeps its own fluid sizing.
+// by width AND height on every preset. Showcase only: the hero keeps its own fluid sizing.
 const DESIGN = { laptop: 560, phone: 330, tablet: 640 };
 
 function useSize(ref) {
@@ -133,7 +134,7 @@ function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
           <ScaledScene dw={dw} dh={dh}><scene.Scene phone={isPhone} demoStep={demoStep} /></ScaledScene>
         </DeviceFrame>
       </div>
-      {/* export controls — class mk-ui is excluded from the rendered image */}
+      {/* export controls: class mk-ui is excluded from the rendered image */}
       <div className="mk-ui mk-export" aria-label="Export">
         <button type="button" className="mk-xbtn" disabled={!!busy} onClick={() => onExport('png', scene)}>{busy === `png:${scene.key}` ? 'Rendering…' : 'PNG'}</button>
         {scene.animated && <button type="button" className="mk-xbtn" disabled={!!busy} onClick={() => onExport('video', scene)}>{busy === `video:${scene.key}` ? 'Recording…' : 'Video'}</button>}
@@ -158,12 +159,12 @@ export default function Mockups() {
   const [density, setDensity] = useState(2);
   const [busy, setBusy] = useState('');
   const [progress, setProgress] = useState('');
-  const [lastExport, setLastExport] = useState(''); // "film · 3× · 3792×2133 · 612 MB" — so a density can be chosen on evidence
+  const [lastExport, setLastExport] = useState(''); // "film, 3×, 3792×2133, 612 MB", so a density can be chosen on evidence
   const shown = SCENES.filter((s) => !only || s.key === only);
   const stages = useRef(new Map());
   const register = useCallback((key, entry) => { if (entry) stages.current.set(key, entry); else stages.current.delete(key); }, []);
   const nextPaint = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-  // Wait until no CSS transitions are running under el (max 1.5s) — rasterizing while the hero
+  // Wait until no CSS transitions are running under el (max 1.5s): rasterizing while the hero
   // demo is mid-crossfade can stall the serializer.
   const settle = async (el) => { const t0 = performance.now(); while (performance.now() - t0 < 1500) { await nextPaint(); if (!el?.getAnimations || el.getAnimations({ subtree: true }).length === 0) return; } };
   const park = async (scene, st) => { st.setDemoStep(scene.film ? FILM_DURATION : (scene.stillStep ?? 0)); await nextPaint(); st.el.getAnimations?.({ subtree: true }).forEach((a) => { try { a.cancel(); } catch (e) { /* ignore */ } }); await nextPaint(); };
@@ -182,10 +183,10 @@ export default function Mockups() {
     const st = stages.current.get(scene.key); if (!st?.el) throw new Error('Stage not mounted');
     try {
       if (scene.film) {
-        // straight into H.264 — one fresh frame per tick, no JPEG in between (lib/mockupExport)
+        // straight into H.264: one fresh frame per tick, no JPEG in between (lib/mockupExport)
         const out = await captureTimelineMp4({ stage: st.el, setTime: st.setDemoStep, duration: FILM_DURATION, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering + encoding film frames ${i}/${n} at ${density}×`) });
         if (out) return { blob: out.blob, ext: 'mp4', width: out.width, height: out.height };
-        console.warn('[mockups] WebCodecs H.264 unavailable — capturing frames for the MediaRecorder fallback');
+        console.warn('[mockups] WebCodecs H.264 unavailable, capturing frames for the MediaRecorder fallback');
       }
       const frames = scene.film
         ? await captureTimelineFrames({ stage: st.el, setTime: st.setDemoStep, duration: FILM_DURATION, fps: 30, pixelRatio: density, onProgress: (i, n) => setProgress(`Rendering film frames ${i}/${n}`) })
@@ -230,7 +231,10 @@ export default function Mockups() {
             <div><div className="ad-eyebrow">Mockups</div><h1 className="ad-h1">Screenshot-ready scenes.</h1></div>
           </div>
 
-          {/* Controls — sticky so they travel with you down the page */}
+          {/* The brand kit: every logo, mark, colour and type file, built by npm run brand:kit. */}
+          <BrandKit />
+
+          {/* Controls: sticky so they travel with you down the page */}
           <div className="mk-controls">
             <div className="mk-group"><span className="mk-label">Framing</span>{PRESETS.map((p) => <button key={p.key} className={`mk-chip ${preset.key === p.key ? 'on' : ''}`} onClick={() => setPreset(p)} title={p.hint}>{p.label}</button>)}</div>
             <div className="mk-group"><span className="mk-label">Canvas</span>{['paper', 'ink'].map((c) => <button key={c} className={`mk-chip ${canvas === c ? 'on' : ''}`} onClick={() => setCanvas(c)}>{c === 'paper' ? 'Paper' : 'Ink'}</button>)}</div>
@@ -245,7 +249,7 @@ export default function Mockups() {
 
           <details className="mk-tips">
             <summary>How exports work</summary>
-            <p>PNG downloads the stage as shown at 1×, 2× or 3×. Video renders the ranked-list loop (8.3 s) or the product film (43 s) frame by frame straight into H.264 at the chosen density — 3× is ~3800 px wide and takes a few minutes; the last export’s size shows next to the density chips. WebM appears only in browsers without WebCodecs. Exports are done in Chrome.</p>
+            <p>PNG downloads the stage as shown at 1×, 2× or 3×. Video renders the ranked-list loop (8.3 s) or the product film (43 s) frame by frame straight into H.264 at the chosen density. 3× is about 3800 px wide and takes a few minutes. The last export’s size shows next to the density chips. WebM appears only in browsers without WebCodecs. Exports are done in Chrome.</p>
           </details>
 
           {/* The explainer film: the 1920 by 1080 cut, driven from the real sandbox and encoded by

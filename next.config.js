@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // A walk that needs its own dev server (tests/routes/brandKitWebkit.test.mjs) builds into its own
+  // folder, so it never shares .next with the walks' dev server. Unset, this is the usual .next.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // @resvg/resvg-js is a native Node addon that loads a platform-specific .node
   // binary via dynamic require(). Webpack can't bundle that, so it must be kept
   // external — otherwise the binary is missing from the serverless function and
