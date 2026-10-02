@@ -68,10 +68,11 @@ export const GlobalStyle = () => (
       scroll-behavior: smooth;
       overflow-x: hidden;
       -webkit-text-size-adjust: 100%;
-      /* Nothing drags past the last element: no rubber band past the page's end. */
+      /* Nothing drags past the last element: no rubber band past the page's end. On the root only:
+         body is a scroll box too (overflow-x hidden on both), and the same rule on it left Chrome
+         no way to hand a touch scroll up to the page, so the page did not scroll under a finger. */
       overscroll-behavior-y: none;
     }
-    body { overscroll-behavior-y: none; }
     /* The press (lib/motion.js), the page behind a sheet (components/Sheet.js), the push. */
     ${PRESS_CSS}
     ${HIT_CSS}

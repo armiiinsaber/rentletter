@@ -104,6 +104,38 @@ export function forgetData(as) {
   }
 }
 
+// ── The screens behind this one, in this session ─────────────────────────────────────────────
+// The app's own record of its history entries (each keyed by the key Next or writeAhead puts in the
+// entry's state), so the edge swipe (components/nav/EdgeBack.js) knows whether there is a screen of
+// the app to go back to, and which. An entry from before this session is unknown: no swipe back.
+const trail = { list: [], at: -1 };
+const stateKey = () => (typeof window !== 'undefined' && window.history.state && window.history.state.key) || null;
+// A screen arrived (the first load, then every completed navigation).
+export function trailLanded(url) {
+  const k = stateKey(); const here = trail.list[trail.at];
+  if (here && (here.key === k || here.key == null)) { here.key = k; here.url = url; return; } // the same entry: a replace, or a back already placed
+  trail.list.splice(trail.at + 1); trail.list.push({ key: k, url }); trail.at = trail.list.length - 1;
+}
+// Next writes the first entry's key after the first paint: take it before the next entry is written.
+export function trailFix() { const here = trail.list[trail.at]; if (here && here.key == null) here.key = stateKey(); }
+// A back or a forward through the browser's history.
+export function trailPopped() {
+  const k = stateKey(); const i = k == null ? -1 : trail.list.findIndex((e) => e.key === k);
+  if (i >= 0) { trail.at = i; return; }
+  trail.list = [{ key: k, url: window.location.pathname + window.location.search }]; trail.at = 0;
+}
+export const trailBack = () => (trail.at > 0 ? trail.list[trail.at - 1] : null);
+
+// ── How each screen last looked: a picture of it, drawn beneath the edge swipe ───────────────
+// (components/nav/EdgeBack.js captureScreen). The last four screens, by path.
+const screens = new Map();
+export function rememberScreen(url, shot) {
+  const r = routeOf(url); if (!r || !shot) return;
+  screens.delete(r.path); screens.set(r.path, shot);
+  while (screens.size > 4) screens.delete(screens.keys().next().value);
+}
+export const seenScreen = (url) => { const r = routeOf(url); return (r && screens.get(r.path)) || null; };
+
 // ── The history entry, written with the tap ──────────────────────────────────────────────────
 // Next writes a new screen's history entry only once its data has arrived, so while its skeleton
 // showed, the URL was still the old screen's and a back left that one: on an iPhone, Safari's back
@@ -118,6 +150,7 @@ function writeAhead(as) {
   const there = parse(as); if (!there) return;
   if (there.pathname + there.search === here) return; // the same screen (a hash at most): Next keeps it
   try {
+    trailFix();
     if (ahead) window.history.replaceState(entry(as), '', as); else window.history.pushState(entry(as), '', as);
     ahead = as;
     // From here on Next must answer every back: its shortcut for Safari reopening a page

@@ -12,6 +12,7 @@ import { C, R } from '../theme';
 import { GlobalStyle, Icon } from '../ui';
 import DashboardHeader from '../dashboard/DashboardHeader';
 import { seenListing, seenProfile, linkProps } from './routes';
+import { Snapshot } from './EdgeBack';
 import { formatUnit } from '../../lib/unitType';
 import { displayLabel } from '../../lib/listingAddress';
 
@@ -152,6 +153,8 @@ function RouteFailed({ route, onRetry }) {
 
 export default function RouteSkeleton({ route, onRetry }) {
   if (route.failed) return <RouteFailed route={route} onRetry={onRetry} />;
+  // An edge swipe's picture of the screen, until the screen itself arrives (components/nav/RouteFrame.js).
+  if (route.shot) return <Snapshot shot={route.shot} />;
   if (route.kind === 'listing') return <ListingSkeleton listingId={route.listingId} />;
   if (route.kind === 'dashboard') return <DashboardSkeleton />;
   if (route.kind === 'profile') return <ProfileSkeleton />;

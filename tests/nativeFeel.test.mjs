@@ -101,7 +101,9 @@ test('every sheet and modal on the realtor side is the one sheet', () => {
   assert.match(sheet, /window\.scrollTo\(\{ top: y, left: 0, behavior: 'instant' \}\)/, 'and put back exactly on close, never smoothly');
   assert.match(sheet, /<span className="rl-sh-handle" \/>/, 'a grab handle');
   assert.match(sheet, /transform: translateY\(100%\); transition: transform \$\{NATIVE\.sheet\}ms \$\{CURVE\.ios\}/, 'it rises over 320ms on the iOS curve');
-  assert.match(src('components/ui.js'), /overscroll-behavior-y: none;\s*\n\s*\}\s*\n\s*body \{ overscroll-behavior-y: none; \}/, 'the page root never drags past its last element');
+  const ui = src('components/ui.js');
+  assert.match(ui, /html \{[^}]*overscroll-behavior-y: none;\s*\n\s*\}/, 'the page root never drags past its last element');
+  assert.doesNotMatch(ui, /body \{[^}]*overscroll-behavior/, 'never on body: Chrome then could not scroll the page under a finger');
 });
 
 test('one press mechanism and the native timings, in lib/motion.js', async () => {

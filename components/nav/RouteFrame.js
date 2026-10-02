@@ -21,12 +21,21 @@
 //   A tap while a screen pushes in or goes back works: during a view transition both engines hit
 //   test only the root (the moving picture), so the tap ends the transition at once and a click
 //   that landed on the root goes to the control under the finger.
+// In the installed app a swipe from the left edge goes back (components/nav/EdgeBack.js): only on a
+// realtor screen below the dashboard with a screen of the app behind it in history, never with a
+// sheet open or while a screen is still on its way. The screen beneath is the picture of how it was
+// left (routes.js rememberScreen), else its skeleton. A completed swipe hands that picture to the
+// frame in the skeleton's place, under the same watch, until the screen itself arrives, scrolled
+// where it was left.
 import { useEffect, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import Router from 'next/router';
-import { routeOf, takeDirection, forgetData, settleAhead, alignAhead } from './routes';
+import { routeOf, takeDirection, forgetData, settleAhead, alignAhead, trailLanded, trailFix, trailPopped, trailBack, rememberScreen, seenScreen } from './routes';
 import RouteSkeleton, { SKELETON_WAIT } from './RouteSkeleton';
+import { installEdgeBack, captureScreen, Snapshot, PARALLAX, DIM } from './EdgeBack';
+import { C } from '../theme';
 import { installPress, installHitAreas, installTapResolver, prefersReducedMotion, slideIn, TAP_TARGETS } from '../../lib/motion';
+import { isStandalone } from '../../lib/standalone';
 
 // Tenant and landlord pages: no press feedback, no motion.
 export const QUIET = /^\/(apply|upload|my-application|keep|ref|refer|a|r)(\/|$)/;
@@ -34,6 +43,8 @@ const samePath = (a, b) => { const x = routeOf(a); const y = routeOf(b); return 
 
 export default function RouteFrame({ children }) {
   const [pending, setPending] = useState(null);
+  const [beneath, setBeneath] = useState(null); // the screen drawn beneath an edge swipe
+  const beneathEls = useRef({ shift: null, dim: null });
   const at = useRef('');
   const retryRoute = useRef(() => {});
   // The press, the 44 by 44 hit areas and the tap resolver: once, for every page (lib/motion.js).
@@ -42,12 +53,14 @@ export default function RouteFrame({ children }) {
     const html = document.documentElement;
     const scope = (path) => { if (QUIET.test(path)) html.setAttribute('data-no-press', ''); else html.removeAttribute('data-no-press'); };
     at.current = window.location.pathname + window.location.search; scope(window.location.pathname);
+    trailLanded(at.current);
     let landed = null; let later = null;
     let seq = 0; let active = null; // the navigation in flight: { id, url }, or null
     let shown = null; // the URL whose skeleton (or failure line) is on screen
     let retrying = null; // { url, round } for the next start of that URL: a retry, not a new visit
     let watch = 0; let clearing = 0;
     let moving = null; // the view transition on screen
+    let restore = null; // { url, y }: where a screen gone back to by a swipe was scrolled
     let aimed = null; // { x, y, at }: a tap that came during it
     // The watch on a skeleton: round 1 retries once by itself, round 2 shows the line and the pill.
     const arm = (id, url, round) => {
@@ -63,6 +76,10 @@ export default function RouteFrame({ children }) {
     const start = (url, opts = {}) => {
       const from = routeOf(at.current); const to = routeOf(url);
       if (!from || !to || QUIET.test(window.location.pathname)) return;
+      trailFix();
+      // Leaving a real screen: keep a picture of it for the swipe back to draw beneath.
+      if (!shown && !moving) rememberScreen(at.current, captureScreen());
+      if (restore && !samePath(restore.url, url)) restore = null;
       clearTimeout(clearing); clearTimeout(watch);
       const id = ++seq; active = { id, url };
       const again = retrying && samePath(retrying.url, url) ? retrying : null; retrying = null;
@@ -75,7 +92,8 @@ export default function RouteFrame({ children }) {
         if (!skeleton) { shown = null; if (underneath) flushSync(() => setPending(null)); return; }
         const fresh = !shown || !samePath(shown, url);
         shown = url;
-        flushSync(() => setPending({ ...to, url }));
+        // A swipe's picture of this screen stays in the skeleton's place until the screen arrives.
+        flushSync(() => setPending((p) => (p && p.shot && samePath(p.url, url) ? { ...p, ...to, url, failed: false } : { ...to, url })));
         if (fresh) window.scrollTo(0, 0);
         arm(id, url, again ? again.round : 1);
       };
@@ -95,9 +113,12 @@ export default function RouteFrame({ children }) {
     };
     const done = (url) => {
       active = null; shown = null; retrying = null; clearTimeout(watch); clearTimeout(clearing);
-      settleAhead();
+      settleAhead(); trailLanded(url);
       at.current = url; scope(new URL(url, window.location.href).pathname);
-      setPending(null);
+      const back = restore && samePath(restore.url, url) ? restore : null; restore = null;
+      // Gone back by a swipe: the screen itself, where it was left (as its picture showed it).
+      if (back) { flushSync(() => setPending(null)); window.scrollTo({ top: back.y, left: 0, behavior: 'instant' }); }
+      else setPending(null);
       // Not requestAnimationFrame: rendering is paused while a view transition waits on its update.
       if (landed) { const f = landed; landed = null; setTimeout(f, 0); }
       if (later) { const d = later; later = null; requestAnimationFrame(() => slideIn(document.getElementById('__next'), d)); }
@@ -118,7 +139,57 @@ export default function RouteFrame({ children }) {
       shown = null; retrying = null; setPending(null);
     };
     // A back while a screen was on its way: its entry is forward history now.
-    const popped = () => settleAhead();
+    const popped = () => { settleAhead(); trailPopped(); };
+
+    // ── The swipe from the left edge (components/nav/EdgeBack.js) ──
+    const page = () => document.getElementById('__next');
+    const edgeAllowed = () => {
+      if (!isStandalone() || QUIET.test(window.location.pathname)) return false;
+      const here = routeOf(at.current); if (!here || here.kind === 'demo' || here.depth === 0) return false; // never on the dashboard
+      if (active || shown || moving || html.dataset.nav || html.classList.contains('rl-sheet-open') || html.classList.contains('rl-sheet-closing')) return false;
+      const prev = trailBack(); const back = prev && routeOf(prev.url);
+      return !!back && back.kind !== 'demo';
+    };
+    // The page lifts above the screen beneath, with the edge shadow, until the swipe ends.
+    const drop = () => {
+      const el = page(); if (!el) return;
+      el.getAnimations().forEach((a) => a.cancel());
+      for (const k of ['transform', 'position', 'zIndex', 'boxShadow', 'willChange']) el.style[k] = '';
+      flushSync(() => setBeneath(null));
+    };
+    const edgeOpen = () => {
+      const prev = trailBack(); const route = prev && routeOf(prev.url); const el = page();
+      if (!route || !el) return null;
+      flushSync(() => setBeneath({ route: { ...route, url: prev.url }, shot: seenScreen(prev.url) }));
+      const { shift, dim } = beneathEls.current; if (!shift || !dim) { drop(); return null; }
+      shift.style.transform = `translate3d(${-PARALLAX * window.innerWidth}px, 0, 0)`; dim.style.opacity = String(DIM);
+      Object.assign(el.style, { position: 'relative', zIndex: '1', boxShadow: '-12px 0 24px rgba(15, 15, 16, 0.12)', willChange: 'transform' });
+      return { page: el, shift, dim };
+    };
+    const edgeCommit = (reduced) => {
+      const prev = trailBack(); const route = prev && routeOf(prev.url);
+      if (!route) { drop(); return; }
+      const shot = seenScreen(prev.url);
+      const swap = () => {
+        shown = prev.url;
+        flushSync(() => setPending({ ...route, url: prev.url, shot }));
+        window.scrollTo({ top: shot ? shot.y : 0, left: 0, behavior: 'instant' });
+        drop();
+      };
+      restore = shot ? { url: prev.url, y: shot.y } : null;
+      if (reduced && typeof document.startViewTransition === 'function') {
+        html.dataset.nav = 'fade';
+        const vt = document.startViewTransition(swap); moving = vt;
+        vt.finished.catch(() => {}).finally(() => { if (moving === vt) moving = null; delete html.dataset.nav; });
+      } else {
+        swap();
+        if (reduced) slideIn(page(), 'back');
+      }
+      // The same watch as any skeleton, from now: never permanent, even if the back never began.
+      const id = ++seq; active = { id, url: prev.url }; arm(id, prev.url, 1);
+      window.history.back();
+    };
+    const uninstallEdge = installEdgeBack({ allowed: edgeAllowed, open: edgeOpen, commit: edgeCommit, close: drop });
     // A tap during a transition: the transition ends, and the tap goes where it was aimed. On the
     // window, in the capture phase, so it comes before the press and the tap resolver.
     const touched = (e) => {
@@ -146,8 +217,25 @@ export default function RouteFrame({ children }) {
       window.removeEventListener('pointerdown', touched, true); window.removeEventListener('click', clicked, true);
       Router.events.off('routeChangeStart', start); Router.events.off('routeChangeComplete', done); Router.events.off('routeChangeError', failed);
       Router.events.off('beforeHistoryChange', alignAhead); window.removeEventListener('popstate', popped);
-      clearTimeout(watch); clearTimeout(clearing);
+      clearTimeout(watch); clearTimeout(clearing); uninstallEdge();
     };
   }, []);
-  return pending ? <RouteSkeleton route={pending} onRetry={() => retryRoute.current(pending.url)} /> : children;
+  const view = pending ? <RouteSkeleton route={pending} onRetry={() => retryRoute.current(pending.url)} /> : children;
+  // The screen beneath an edge swipe: fixed under the page, never interactive. Its slide and dim are
+  // set by the gesture as the finger moves (EdgeBack.js), never here. The tree keeps one shape, so
+  // the page is never mounted again when the swipe begins or ends.
+  return (
+    <>
+      {view}
+      {beneath && createPortal(
+        <div data-edge-beneath="" aria-hidden="true" inert style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', background: 'var(--paper)', pointerEvents: 'none' }}>
+          <div ref={(el) => { beneathEls.current.shift = el; }} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+            {beneath.shot ? <Snapshot shot={beneath.shot} fixed /> : <RouteSkeleton route={beneath.route} />}
+          </div>
+          <div ref={(el) => { beneathEls.current.dim = el; }} style={{ position: 'absolute', inset: 0, background: C.ink }} />
+        </div>,
+        document.body,
+      )}
+    </>
+  );
 }
