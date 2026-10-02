@@ -3,11 +3,15 @@
 // Each skeleton is the real layout: the same header, the same widths and paddings, the same cards,
 // with what is already known filled in (the listing's address and rent from the dashboard, the
 // realtor's own header) and quiet blocks where the rest will land. Nothing moves: no shimmer.
+// The way back is live in a skeleton too: "All listings" and "Dashboard" work before the page lands.
+// A skeleton is never permanent: useSkeletonWatch retries a load that has not landed after 4
+// seconds, once, and then LoadFailed takes the skeleton's place with a pill that loads it again.
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import { C, R } from '../theme';
 import { GlobalStyle, Icon } from '../ui';
 import DashboardHeader from '../dashboard/DashboardHeader';
-import { seenListing, seenProfile } from './routes';
+import { seenListing, seenProfile, linkProps } from './routes';
 import { formatUnit } from '../../lib/unitType';
 import { displayLabel } from '../../lib/listingAddress';
 
@@ -27,20 +31,50 @@ export function ApplicantSkeletons({ count = 3 }) {
   );
 }
 
-const Page = ({ maxWidth, padding, children, label }) => (
+const Page = ({ maxWidth, padding, children, label, busy = true }) => (
   <>
     <GlobalStyle />
-    <div style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }} data-skeleton-route={label} aria-busy="true">
+    <div style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }} data-skeleton-route={busy ? label : undefined} aria-busy={busy ? 'true' : undefined}>
       <DashboardHeader profile={seenProfile() || {}} />
       <div style={{ maxWidth, margin: '0 auto', padding }}>{children}</div>
     </div>
   </>
 );
+// The same look as before, now a link (components/nav/routes.js go, a back to the dashboard).
 const Back = ({ label }) => (
-  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft }}>
+  <a {...linkProps('/dashboard', { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none' }}>
     <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> {label}
-  </span>
+  </a>
 );
+
+// ── A skeleton is never permanent ────────────────────────────────────────────────────────────
+export const SKELETON_WAIT = 4000;
+// waiting: the skeleton is up. retry(): load it again with a live request. Four seconds after the
+// skeleton appears the load runs once more by itself; four seconds after that, failed is true and
+// the screen shows LoadFailed instead. again() is the pill: load again and start the watch over.
+export function useSkeletonWatch(waiting, retry) {
+  const retryRef = useRef(retry); retryRef.current = retry;
+  const [failed, setFailed] = useState(false);
+  const [round, setRound] = useState(0);
+  useEffect(() => {
+    if (!waiting) { setFailed(false); return undefined; }
+    let second = 0;
+    const first = setTimeout(() => { retryRef.current(); second = setTimeout(() => setFailed(true), SKELETON_WAIT); }, SKELETON_WAIT);
+    return () => { clearTimeout(first); clearTimeout(second); };
+  }, [waiting, round]);
+  const again = useCallback(() => { setFailed(false); retryRef.current(); setRound((n) => n + 1); }, []);
+  return { failed: !!waiting && failed, again };
+}
+// One calm line and a pill, in place of a skeleton whose load did not land. The pill loads the data
+// again, never the whole app.
+export function LoadFailed({ onRetry, style }) {
+  return (
+    <div data-load-failed="" role="status" style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s-2) var(--s-3)', padding: 'var(--s-3) 0', ...style }}>
+      <p style={{ margin: 0, fontSize: 'var(--t-body)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>Couldn’t load this.</p>
+      <button type="button" onClick={onRetry} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Try again</button>
+    </div>
+  );
+}
 
 function ListingSkeleton({ listingId }) {
   const l = seenListing(listingId);
@@ -105,7 +139,19 @@ function PlainSkeleton() {
   );
 }
 
-export default function RouteSkeleton({ route }) {
+// The route's load did not land (components/nav/RouteFrame.js): the same frame, the line and the pill.
+function RouteFailed({ route, onRetry }) {
+  const back = route.kind === 'listing' ? 'All listings' : route.kind === 'dashboard' ? null : 'Dashboard';
+  return (
+    <Page label="failed" busy={false} maxWidth={route.kind === 'dashboard' ? 1100 : 760} padding="var(--s-4) clamp(16px, 4vw, 32px) var(--s-7)">
+      {back && <Back label={back} />}
+      <LoadFailed onRetry={onRetry} />
+    </Page>
+  );
+}
+
+export default function RouteSkeleton({ route, onRetry }) {
+  if (route.failed) return <RouteFailed route={route} onRetry={onRetry} />;
   if (route.kind === 'listing') return <ListingSkeleton listingId={route.listingId} />;
   if (route.kind === 'dashboard') return <DashboardSkeleton />;
   if (route.kind === 'profile') return <ProfileSkeleton />;

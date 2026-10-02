@@ -10,8 +10,8 @@ import { isStandalone } from '../../lib/standalone';
 import { C, R, SH } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import Sheet from '../Sheet';
-import { go, linkProps, takeWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants } from '../nav/routes';
-import { ApplicantSkeletons } from '../nav/RouteSkeleton';
+import { go, linkProps, takeWarm, forgetWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants } from '../nav/routes';
+import { ApplicantSkeletons, useSkeletonWatch, LoadFailed } from '../nav/RouteSkeleton';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
@@ -79,6 +79,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // and are refreshed behind; otherwise skeleton cards hold their place.
   const [applicants, setApplicants] = useState(() => initialApplicants || seenApplicants(initialListing?.id) || []);
   const [applicantsLoaded, setApplicantsLoaded] = useState(() => initialApplicants != null || seenApplicants(initialListing?.id) != null);
+  // Each retry (the skeleton watch below) is a new round: a live request, never the one that did not land.
+  const [applicantsRound, setApplicantsRound] = useState(0);
   useEffect(() => {
     if (initialApplicants != null || !initialListing?.id) return undefined;
     let cancelled = false;
@@ -86,7 +88,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       const url = applicantsUrl(initialListing.id);
       let list = null;
       try {
-        const warmed = adapter.kind === 'real' ? takeWarm(url) : null;
+        if (applicantsRound > 0) forgetWarm(url);
+        const warmed = adapter.kind === 'real' && applicantsRound === 0 ? takeWarm(url) : null;
         if (warmed) { const w = await warmed; if (w.ok && Array.isArray(w.json?.applicants)) list = w.json.applicants; }
         if (!list) { const r = await adapter.fetch(url); const j = await r.json().catch(() => ({})); if (r.ok && Array.isArray(j.applicants)) list = j.applicants; }
       } catch (e) { list = null; }
@@ -96,7 +99,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [applicantsRound]);
+  // Never an endless skeleton: applicants that have not landed are asked for once more after 4
+  // seconds, then the line and the pill take the skeleton cards' place (components/nav/RouteSkeleton.js).
+  const applicantsWatch = useSkeletonWatch(!applicantsLoaded, () => setApplicantsRound((n) => n + 1));
   useEffect(() => { if (applicantsLoaded) rememberApplicants(initialListing?.id, applicants); }, [applicantsLoaded, applicants, initialListing?.id]);
   // Realtor→realtor handoff: referrals this realtor has sent for applicants on this listing
   // (keyed by linkId) + the applicant being referred right now.
@@ -1351,7 +1357,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {statePills(active).length > 0 && <StatusPills label="Applicants by state" items={statePills(active)} style={{ marginBottom: 'var(--s-3)' }} />}
 
             {!applicantsLoaded ? (
-              <ApplicantSkeletons />
+              applicantsWatch.failed ? <LoadFailed onRetry={applicantsWatch.again} /> : <ApplicantSkeletons />
             ) : totalApplicants === 0 ? (
               <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
                 <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>

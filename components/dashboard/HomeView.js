@@ -18,7 +18,8 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
-import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, SIGNALS_URL } from '../nav/routes';
+import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL } from '../nav/routes';
+import { useSkeletonWatch, LoadFailed } from '../nav/RouteSkeleton';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
 import { referralsEnabled } from '../../lib/features';
@@ -123,6 +124,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     }
   };
 
+  // Each retry of the first screen's loads (the skeleton watch below) is a new round: a live request,
+  // never the one that did not land.
+  const [loadRound, setLoadRound] = useState(0);
   const listingsLoaded = Array.isArray(listings);
   const hasListings = listingsLoaded && listings.length > 0;
   const openListings = listings.filter((l) => listingOpen(l));
@@ -144,7 +148,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listingsLoaded]);
+  }, [listingsLoaded, loadRound]);
   // ── Assistant data for "Rentletter noticed": the realtor's own applicants per listing,
   // notifications feed, referrals. Normally these arrive WITH the page (pages/dashboard.js loads
   // them server side as initialSignals) so the dashboard commits in one paint. Without them
@@ -164,7 +168,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       // The app: one read, usually started on the touch that brought the realtor here
       // (components/nav/routes.js). The sandbox, or a failed read, takes the parts one by one.
       if (adapter.kind === 'real') {
-        const warmed = takeWarm(SIGNALS_URL);
+        if (loadRound > 0) forgetWarm(SIGNALS_URL);
+        const warmed = loadRound > 0 ? null : takeWarm(SIGNALS_URL);
         const got = warmed ? await warmed : await adapter.fetch(SIGNALS_URL).then(async (r) => ({ ok: r.ok, json: await r.json().catch(() => ({})) })).catch(() => ({ ok: false, json: {} }));
         if (cancelled) return;
         if (got.ok && got.json?.signals) { setSignals({ ...got.json.signals, loaded: true }); return; }
@@ -185,9 +190,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     })();
     return () => { cancelled = true; window.removeEventListener('pagehide', leaving); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [listings]);
+  }, [listings, loadRound]);
   // The first screen commits as one piece: listings known AND the assistant inputs in hand.
   const ready = listingsLoaded && signals.loaded;
+  // Never an endless skeleton: a load that has not landed is retried once after 4 seconds, then the
+  // line and the pill take the skeleton's place (components/nav/RouteSkeleton.js). A page back from
+  // the browser's cache, its reads cut off when it was hidden, is retried the same way.
+  const skeletonWatch = useSkeletonWatch(!ready && !listingsError, () => setLoadRound((n) => n + 1));
   // Derived, presentation-only summaries from data that already exists (no fabrication,
   // no new API calls — everything below comes from the listings/profile already loaded).
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
@@ -291,7 +300,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           paddingBottom: 'max(var(--s-6), env(safe-area-inset-bottom, 0px))',
         }}>
 
-          {!ready && !listingsError && (
+          {!ready && !listingsError && skeletonWatch.failed && <LoadFailed onRetry={skeletonWatch.again} />}
+          {!ready && !listingsError && !skeletonWatch.failed && (
             <div aria-busy="true" aria-label="Loading your workspace">
               <div className="dash-skel" style={{ minHeight: 0, padding: 'var(--s-2) 0' }}><span className="dash-skel-line" style={{ width: '58%', height: 22 }} /><span className="dash-skel-line" style={{ width: '100%', height: 44, borderRadius: 12 }} /></div>
               <div className="dash-block dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>

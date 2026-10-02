@@ -44,14 +44,20 @@ export const seenSignals = () => (seen.signals && Date.now() - seen.signalsAt < 
 export const seenApplicants = (id) => (id == null ? null : seen.applicants.get(String(id)) || null);
 
 // ── Data started on the touch: one request per URL, kept 20 seconds for the page to take. ──────
+// A read that failed or was cut off is dropped the moment it settles, so nothing takes it later:
+// the page then makes a live request of its own.
 const warmCache = new Map();
 export function warm(url) {
   const hit = warmCache.get(url);
   if (hit && Date.now() - hit.at < 20000) return hit.promise;
   const promise = fetch(url, { credentials: 'same-origin' }).then(async (r) => ({ ok: r.ok, status: r.status, json: await r.json().catch(() => ({})) })).catch(() => ({ ok: false, status: 0, json: {} }));
-  warmCache.set(url, { at: Date.now(), promise });
+  const entry = { at: Date.now(), promise };
+  warmCache.set(url, entry);
+  promise.then((res) => { if (!res.ok && warmCache.get(url) === entry) warmCache.delete(url); });
   return promise;
 }
+// A retry wants a live answer, never the one it is retrying.
+export const forgetWarm = (url) => { warmCache.delete(url); };
 // The page takes what the touch started; the entry stays for its 20 seconds, so a page mounted
 // twice (React's development check) still gets the one request.
 export function takeWarm(url) {
@@ -77,6 +83,58 @@ export function prefetch(href) {
 let nextDirection = null;
 export const takeDirection = () => { const d = nextDirection; nextDirection = null; return d; };
 
+// ── Next's own copy of each page's data ──────────────────────────────────────────────────────
+// Next keeps every page data request in router.sdc, keyed by its data URL. In a production build a
+// navigation that is cancelled (a back, or another tap, before its data arrives) never removes its
+// entry: fetchNextData keeps it (node_modules/next/dist/shared/lib/router/router.js:360) and only a
+// route that completes deletes it (router.js:1335), after the cancellation has already thrown
+// (router.js:1576). The next visit to that screen then took the old, already settled answer: stale
+// data, and a navigation that completed before its own transition had drawn the skeleton, which
+// then stayed. The frame (components/nav/RouteFrame.js) forgets a route's entry whenever its
+// navigation ends without arriving, so the next one always makes a live request. Every data page
+// here is server rendered (no getStaticProps), so no entry is ever meant to outlive its navigation.
+export function forgetData(as) {
+  if (typeof window === 'undefined') return;
+  const r = Router.router; const u = parse(as);
+  const build = window.__NEXT_DATA__ && window.__NEXT_DATA__.buildId;
+  if (!r || !r.sdc || !u || !build) return;
+  const want = `/_next/data/${build}${u.pathname === '/' ? '/index' : u.pathname.replace(/\/$/, '')}.json`;
+  for (const key of Object.keys(r.sdc)) {
+    try { if (new URL(key, window.location.href).pathname === want) delete r.sdc[key]; } catch (e) { /* not a URL */ }
+  }
+}
+
+// ── The history entry, written with the tap ──────────────────────────────────────────────────
+// Next writes a new screen's history entry only once its data has arrived, so while its skeleton
+// showed, the URL was still the old screen's and a back left that one: on an iPhone, Safari's back
+// went to whatever came before the dashboard. A push now writes the entry at once, in Next's own
+// form, so the URL and the back gesture always match the screen on view. Next then sees the URL
+// already in place and writes nothing more (router.js:1089). Until the screen arrives, a second tap
+// replaces the entry instead of stacking a screen that never showed.
+let ahead = null; // the URL written ahead of its screen
+const entry = (as) => ({ url: as, as, options: { scroll: true }, __N: true, key: Math.random().toString(36).slice(2, 10) });
+function writeAhead(as) {
+  const here = window.location.pathname + window.location.search;
+  const there = parse(as); if (!there) return;
+  if (there.pathname + there.search === here) return; // the same screen (a hash at most): Next keeps it
+  try {
+    if (ahead) window.history.replaceState(entry(as), '', as); else window.history.pushState(entry(as), '', as);
+    ahead = as;
+    // From here on Next must answer every back: its shortcut for Safari reopening a page
+    // (router.js:1657) ignores the first popstate whose entry matches the screen under the skeleton.
+    if (Router.router) Router.router.isFirstPopStateEvent = false;
+  } catch (e) { ahead = null; }
+}
+// The screen arrived, or the realtor went back: the entry is history like any other.
+export const settleAhead = () => { ahead = null; };
+// A screen that ended somewhere else (the server redirected it): its entry takes that URL, in place.
+export function alignAhead(as) {
+  if (!ahead || typeof window === 'undefined') return;
+  const here = window.location.pathname + window.location.search + window.location.hash;
+  if (here !== as) { try { window.history.replaceState(entry(as), '', as); } catch (e) { /* Next writes its own */ } }
+  ahead = as;
+}
+
 // Go to a realtor screen through the router; anything else loads as a page.
 export function go(href, { back = null, replace = false } = {}) {
   if (typeof window === 'undefined') return;
@@ -85,6 +143,7 @@ export function go(href, { back = null, replace = false } = {}) {
   nextDirection = back == null ? null : back ? 'back' : 'push';
   const u = parse(href);
   const target = u.pathname + u.search + u.hash;
+  if (!replace && r.kind !== 'demo') writeAhead(target);
   if (replace) Router.replace(target); else Router.push(target);
 }
 
