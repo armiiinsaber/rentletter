@@ -14,7 +14,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
-import { takeTurn, giveTurn, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
@@ -28,7 +28,11 @@ const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:L
 const run = (cmd, args, env) => new Promise((res, rej) => { const p = spawn(cmd, args, { cwd: ROOT, env: { ...process.env, ...env }, stdio: 'ignore' }); p.on('exit', (code) => (code === 0 ? res() : rej(new Error(`${cmd} ${args.join(' ')} exited ${code}`)))); });
 before(async () => {
   if (!(haveWebkit || haveChrome) || process.env.BACK_BASE) return; // BACK_BASE: a server already running
-  await takeTurn(); turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+  turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  // Stuck past the walk limit (devServer.mjs): the fake stack server goes with the file.
+  onStuck(() => { if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } } for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } });
+  walkStep('building the fake stack for production');
   for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
   // Its own production build, in its own folder (next.config.js distDir): never the walks' .next.
   await run(process.execPath, [`${ROOT}node_modules/next/dist/bin/next`, 'build'], { NEXT_DIST_DIR: `.next-fake-${PORT}`, FAKE_STACK_BUILD: '1' });
@@ -37,6 +41,7 @@ before(async () => {
   for (const u of ['/dashboard', '/listing/L1', '/profile']) await fetch(`${BASE}${u}`).catch(() => null);
 }, { timeout: START_TIMEOUT + 600000 });
 after(async () => {
+  leaveTurn();
   if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } }
   for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
   if (turn) giveTurn();

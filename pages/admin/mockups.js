@@ -7,9 +7,10 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { C, R } from '../../components/theme';
 import AdminShell from '../../components/admin/AdminShell';
 import BrandKit from '../../components/admin/BrandKit';
-import { Wordmark } from '../../components/ui';
+import { Wordmark, StatusPills } from '../../components/ui';
 import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
-import { SCENES } from '../../components/mockups/scenes';
+import { SCENES, TenantApplyScene } from '../../components/mockups/scenes';
+import { FLOWS } from '../../components/mockups/DocsFirst';
 import { isAdmin } from '../../lib/adminAuth';
 import { HERO_STEP_DURATIONS, HERO_TRANSITION_MS } from '../../components/mockups/HeroDemo';
 import { renderPng, dataUrlToBlob, download, zipFiles, slug, captureLoopFrames, captureTimelineFrames, captureTimelineMp4, encodeFrames, encodeFramesMp4, bestVideoType } from '../../lib/mockupExport';
@@ -102,10 +103,12 @@ function FilmStage({ scene, preset, canvas, register, onExport, busy }) {
   );
 }
 
-function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
+// designWidth and content: a scene laid out at its own width (the prototype, at 390 or 360) and
+// drawn from the caller instead of scene.Scene.
+function Stage({ scene, preset, canvas, caption, register, onExport, busy, designWidth = null, content = null }) {
   const isPhone = scene.device === 'phone';
   const [demoStep, setDemoStep] = useState(null); // animated scenes: exporter drives the step
-  const dw = DESIGN[scene.device] || 560;
+  const dw = designWidth || DESIGN[scene.device] || 560;
   const [aw, ah] = String(scene.aspect || DEFAULT_ASPECT[scene.device] || '16 / 10').split('/').map((n) => Number(n.trim()));
   const ratio = ah / aw;
   const dh = Math.round(dw * ratio);
@@ -131,7 +134,7 @@ function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
       data-export-tone={CANVAS[canvas].tone} data-export-bg={CANVAS[canvas].stops.map(([c, p]) => `${c}@${p}`).join('|')}>
       <div style={{ width: width || undefined, visibility: width ? 'visible' : 'hidden', marginTop: caption ? '-4%' : 0 }}>
         <DeviceFrame variant={scene.device} url={scene.url} aspect={scene.aspect} tone={CANVAS[canvas].tone} dark={!!scene.dark}>
-          <ScaledScene dw={dw} dh={dh}><scene.Scene phone={isPhone} demoStep={demoStep} /></ScaledScene>
+          <ScaledScene dw={dw} dh={dh}>{content || <scene.Scene phone={isPhone} demoStep={demoStep} />}</ScaledScene>
         </DeviceFrame>
       </div>
       {/* export controls: class mk-ui is excluded from the rendered image */}
@@ -148,6 +151,58 @@ function Stage({ scene, preset, canvas, caption, register, onExport, busy }) {
         </div>
       )}
     </div>
+  );
+}
+
+// The documents first prototype (components/mockups/DocsFirst.js): above the frame, today's apply
+// flow against this one, steps and time; the frame switches between the current form and the
+// prototype, at 390 or 360, framed or at actual size; Reset starts over, and after Submit the
+// realtor's side of it is one tap away. The bar is page chrome (mk-ui), never in an export.
+function PrototypeStage(props) {
+  const { scene } = props;
+  const [view, setView] = useState('docs'); // 'docs' | 'today'
+  const [width, setWidth] = useState(390);
+  const [actual, setActual] = useState(false);
+  const [screen, setScreen] = useState('landing');
+  const proto = useRef(null);
+  const flatRef = useRef(null);
+  const onScreen = useCallback((v) => setScreen(v), []);
+  useEffect(() => { if (actual) { props.register(scene.key, { el: flatRef.current, setDemoStep: () => {} }); return () => props.register(scene.key, null); } return undefined; }, [actual, props.register, scene.key]); // eslint-disable-line react-hooks/exhaustive-deps
+  const Scene = scene.Scene;
+  const content = view === 'docs' ? <Scene ref={proto} onScreen={onScreen} /> : <TenantApplyScene />;
+  const chip = (on) => `mk-chip mk-tall ${on ? 'on' : ''}`;
+  return (
+    <>
+      <div className="mk-ui mk-proto" data-proto-bar="">
+        <div className="mk-compare" aria-label="Today against documents first">
+          {[FLOWS.today, FLOWS.docs].map((f) => (
+            <div key={f.label} className="mk-compare-row">
+              <span className="mk-label">{f.label}</span>
+              <StatusPills tone="ink" items={[`${f.steps} steps`, `About ${f.minutes} minutes`]} />
+            </div>
+          ))}
+        </div>
+        <div className="mk-controls-row">
+          <div className="mk-group"><span className="mk-label">Show</span>
+            <button type="button" data-proto-bar="today" className={chip(view === 'today')} onClick={() => setView('today')}>Current form</button>
+            <button type="button" data-proto-bar="docs" className={chip(view === 'docs')} onClick={() => setView('docs')}>Documents first</button>
+          </div>
+          <div className="mk-group"><span className="mk-label">Width</span>
+            {[390, 360].map((w) => <button key={w} type="button" data-proto-bar={`w${w}`} className={chip(width === w)} onClick={() => setWidth(w)}>{w}</button>)}
+            <button type="button" data-proto-bar="actual" className={chip(actual)} onClick={() => setActual((v) => !v)}>Actual size</button>
+          </div>
+          {view === 'docs' && (
+            <div className="mk-group">
+              <button type="button" data-proto-bar="reset" className={chip(false)} onClick={() => proto.current?.reset()}>Reset</button>
+              <button type="button" data-proto-bar="realtor" className={chip(screen === 'realtor')} disabled={screen !== 'done'} onClick={() => proto.current?.realtor()}>Realtor view</button>
+            </div>
+          )}
+        </div>
+      </div>
+      {actual
+        ? <div ref={flatRef} className="mk-proto-flat" data-proto-flat="" style={{ width, height: Math.round((width * 17) / 9) }}>{content}</div>
+        : <Stage {...props} designWidth={width} content={content} />}
+    </>
   );
 }
 
@@ -285,7 +340,9 @@ export default function Mockups() {
                   <div><div style={{ fontSize: 10.5, color: C.instMute, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{String(i + 1).padStart(2, '0')} · {scene.device}</div><h2 style={{ fontSize: 17, fontWeight: 800, color: C.instText, letterSpacing: '-0.015em', lineHeight: 1.2 }}>{scene.title}</h2></div>
                   <p style={{ fontSize: 12.5, color: C.instMute, lineHeight: 1.5, maxWidth: 420, margin: 0 }}>{scene.blurb}</p>
                 </div>
-                {scene.film ? <FilmStage scene={scene} preset={preset} canvas={canvas} register={register} onExport={onExport} busy={busy} /> : <Stage scene={scene} preset={preset} canvas={canvas} caption={caption} register={register} onExport={onExport} busy={busy} />}
+                {scene.film ? <FilmStage scene={scene} preset={preset} canvas={canvas} register={register} onExport={onExport} busy={busy} />
+                  : scene.prototype ? <PrototypeStage scene={scene} preset={preset} canvas={canvas} caption={caption} register={register} onExport={onExport} busy={busy} />
+                  : <Stage scene={scene} preset={preset} canvas={canvas} caption={caption} register={register} onExport={onExport} busy={busy} />}
               </section>
             ))}
           </div>
@@ -326,6 +383,14 @@ export default function Mockups() {
         .mk-time { font-size: 11px; font-variant-numeric: tabular-nums; color: ${C.inkSoft}; white-space: nowrap; }
         .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.instRule}; outline-offset: -1px; }
         @media (max-width: 520px) { .mk-grid, .mk-grid[data-preset] { grid-template-columns: 1fr; } }
+        /* The documents first prototype: the comparison strip and its controls above the frame. */
+        .mk-proto { display: grid; gap: 10px; margin-bottom: 12px; }
+        .mk-compare { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+        .mk-compare-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .mk-controls-row { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; }
+        .mk-chip.mk-tall { min-height: 44px; }
+        .mk-chip:disabled { opacity: 0.45; cursor: default; }
+        .mk-proto-flat { position: relative; overflow: hidden; margin: 0 auto; border-radius: 12px; outline: 1px solid ${C.instRule}; background: ${C.paper}; }
       `}</style>
     </AdminShell>
   );

@@ -8,7 +8,7 @@ import http from 'node:http';
 import { spawn, execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fakeKvStore } from './fakeStack.mjs';
-import { takeTurn, giveTurn } from './devServer.mjs';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep } from './devServer.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
@@ -22,7 +22,8 @@ export function adminServer(port) {
     base,
     password, // made up for this run, known only to this process
     async start() {
-      await takeTurn();
+      if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+      walkStep('starting the admin dev server');
       const store = fakeKvStore();
       kv = http.createServer((req, res) => {
         let body = ''; req.on('data', (c) => { body += c; });
@@ -32,8 +33,11 @@ export function adminServer(port) {
       for (const pid of listeners(port)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
       const env = { ...process.env, NEXT_DIST_DIR: `.next-walk-${port}`, ADMIN_PASSWORD: password, KV_REST_API_URL: `http://127.0.0.1:${kv.address().port}`, KV_REST_API_TOKEN: 'walk', KV_REST_API_READ_ONLY_TOKEN: 'walk' };
       child = spawn('npx', ['next', 'dev', '-p', String(port)], { cwd: new URL('../..', import.meta.url).pathname, env, stdio: 'ignore', detached: true });
+      // Stuck past the walk limit (devServer.mjs): the server and the store go with the file.
+      onStuck(() => { try { process.kill(-child.pid); } catch (e) { /* gone */ } for (const pid of listeners(port)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } try { kv.close(); } catch (e) { /* gone */ } });
       const t0 = Date.now();
-      while (Date.now() - t0 < 180000) { const ok = await fetch(`${base}/admin`).then((r) => r.status < 500).catch(() => false); if (ok) return; await sleep(1000); }
+      // A request the server accepts and never answers counts as not ready, never as a wait.
+      while (Date.now() - t0 < 180000) { const ok = await fetch(`${base}/admin`, { signal: AbortSignal.timeout(10000) }).then((r) => r.status < 500).catch(() => false); if (ok) return; await sleep(1000); }
       throw new Error(`The admin dev server on ${port} did not answer in 3 minutes`);
     },
     // Signs the browser context in: the first time through the real login route, which sets the
@@ -47,6 +51,7 @@ export function adminServer(port) {
       if (!session) throw new Error('admin sign in set no session cookie');
     },
     async stop() {
+      leaveTurn();
       if (child) { try { process.kill(-child.pid); } catch (e) { /* gone */ } }
       for (const pid of listeners(port)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
       if (kv) await new Promise((r) => kv.close(r));

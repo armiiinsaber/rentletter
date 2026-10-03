@@ -10,6 +10,7 @@
 import { C, R } from '../theme';
 import { Icon, TickMeter, Wordmark } from '../ui';
 import HeroDemo from './HeroDemo';
+import { DocsFirstScene } from './DocsFirst';
 
 export const CAST = [
   { initials: 'PN', color: '#2d7d4a', name: 'Priya Nair', role: 'Senior UX · CIBC', income: 115000, net: 84400, score: 4.6, tenure: '5 yrs', rent: 31 },
@@ -125,8 +126,8 @@ export function TenantApplyScene() {
         <F label="Annual income before tax (CAD) *" value="$115,000" done />
         <div style={{ padding: '7px 10px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45 }}>Estimated after tax income: <strong style={{ color: C.ink }}>$84,400</strong>, Ontario, 2026 rates. Correct it if yours differs.</div>
         <div style={{ marginTop: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.inkMute, marginBottom: 4 }}><span>Step 3 of 9</span><span>About 4 minutes left</span></div>
-          <div style={{ height: 3, background: C.rule, borderRadius: 2, marginBottom: 10 }}><div style={{ width: '33%', height: '100%', background: C.red, borderRadius: 2 }} /></div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: C.inkMute, marginBottom: 4 }}><span>Step 3 of 8</span><span>About 4 minutes left</span></div>
+          <div style={{ height: 3, background: C.rule, borderRadius: 2, marginBottom: 10 }}><div style={{ width: '38%', height: '100%', background: C.red, borderRadius: 2 }} /></div>
           <div style={{ background: C.red, color: C.paper, borderRadius: R.ctrl, padding: '12px', textAlign: 'center', fontSize: 13, fontWeight: 700 }}>Continue</div>
           <div style={{ fontSize: 8.5, color: C.inkMute, textAlign: 'center', marginTop: 6 }}>No account. No SIN, no bank login, no documents yet.</div>
         </div>
@@ -200,6 +201,7 @@ export const SCENES = [
   { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero, applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3', animated: true, stillStep: 3 },
   { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives, co branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/r/…', Scene: LandlordReportScene, aspect: '4 / 3' },
   { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read, facts matched, an OHRC safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
+  { key: 'docsfirst', title: 'Documents first', blurb: 'A tappable prototype: the tenant photographs their documents first, they are read and fill the form, the tenant confirms. Fake data, nothing live changes.', device: 'phone', prototype: true, Scene: DocsFirstScene },
   { key: 'apply', title: 'Tenant application', blurb: 'How simple it is to apply, one step at a time, no account.', device: 'phone', Scene: TenantApplyScene },
   { key: 'upload', title: 'Secure document upload', blurb: 'The tenant’s secure link experience: read, held 14 days, deleted.', device: 'phone', Scene: TenantUploadScene },
   { key: 'home', title: 'Dashboard on a phone', blurb: 'Mobile native: listings, applicants and new activity at a glance.', device: 'phone', Scene: DashboardHomeScene },
