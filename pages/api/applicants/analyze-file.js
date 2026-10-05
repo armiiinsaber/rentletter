@@ -11,6 +11,7 @@ import { analyzeOneFile } from '../../../lib/realtorUpload';
 import { runDocumentAnalysis } from '../../../lib/applicantAnalysis';
 import { storeAnalyzedDocuments } from '../../../lib/documentStore';
 import { kvReady, kvGetJson, kvSetJson, kvDel } from '../../../lib/docRequest';
+import { recordEvent } from '../../../lib/events';
 
 // A single base64 file (at most 4MB decoded, about 5.4MB encoded) plus a few ids: well under
 // Vercel's 4.5MB request body cap is impossible to promise for the encoding, so the client caps
@@ -25,6 +26,7 @@ export default withRealtor(async ({ user, admin }, req, res) => {
     kv: { get: kvGetJson, set: kvSetJson, del: kvDel },
     analyze: runDocumentAnalysis,
     store: (args) => storeAnalyzedDocuments(admin, args),
+    recordEvent, // a refused credit report records document_rejected (lib/creditShared.js)
   }, req.body || {});
   if (req.body) req.body.file = null;
   return res.status(r.status).json(r.body);

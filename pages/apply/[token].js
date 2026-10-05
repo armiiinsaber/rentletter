@@ -739,7 +739,7 @@ export default function ApplyPage({ invited = null }) {
                     {/* The set rows render inside the uploader (lib/documentSet.js); the retention line sits between them and the drop zone. */}
                     <div style={{ marginTop: 'var(--gap-card)' }}>
                       {docRequest?.token ? (
-                        <DocumentUploader token={docRequest.token} onDone={({ received }) => setDocs({ state: 'done', received })}
+                        <DocumentUploader token={docRequest.token} creditFirst={!!docRequest.askCreditReport} onDone={({ received }) => setDocs({ state: 'done', received })}
                           before={<p className="mp-note" style={{ marginBottom: 'var(--gap-card)' }}>{noWidow(`Held for ${invite?.realtorName || 'the realtor'}'s review for ${RETENTION_DAYS} days, then deleted. Do not upload anything showing your SIN.`)}</p>} />
                       ) : (
                         <>

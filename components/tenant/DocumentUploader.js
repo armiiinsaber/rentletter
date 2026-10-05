@@ -7,13 +7,16 @@
 //
 // The card asks for the set (lib/documentSet.js: one to three recent pay stubs, an employment
 // letter, a credit report if they have one) and ticks each row as the analysis recognises a file
-// of that type. Recognition is the analysed document type, so a tick appears when that file's
+// of that type. The credit report row is optional always (lib/creditShared.js): its own Add
+// control sends the file with expect set, so a file that does not read as a credit report, or one
+// whose name or date cannot be kept, comes back refused (422) with a plain message and is never
+// held. creditFirst (the listing asked for one) only moves that row first. Recognition is the analysed document type, so a tick appears when that file's
 // analysis returns, never on selection. An analysed file is already held for the realtor's review
 // (the route stores it after analysis), so removing one before Submit asks POST /api/upload/remove-file
 // to drop its staged facts and the held copy; the row unticks if the set no longer meets it. After
 // Submit nothing can be removed here.
 //
-//   <DocumentUploader token={t} before={node} disclosure={node} onDone={({ received }) => …} laterLine="…" />
+//   <DocumentUploader token={t} before={node} disclosure={node} onDone={({ received }) => …} laterLine="…" creditFirst />
 // before: rendered between the set rows and the drop zone (the retention line).
 // disclosure: rendered above the submit buttons in both phases.
 // laterLine: the line above the button while the set is incomplete.
@@ -21,6 +24,7 @@ import { useState, useRef, useEffect } from 'react';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { setStatus } from '../../lib/documentSet';
+import { CREDIT_KIND, CREDIT_CONSENT_LINE } from '../../lib/creditShared';
 
 export const MAX_FILES = 6; // the same cap the routes enforce (lib/applicantAnalysis.js MAX_DOCS)
 export const MAX_FILE = 3 * 1024 * 1024;
@@ -39,9 +43,11 @@ function readAsBase64(file) {
 }
 
 // Analyze ONE file, with a single automatic retry on network or 5xx. Returns { ok, documentType, message }.
-async function analyzeFile(token, f, index, total) {
+// expect: the row the tenant added it from (the credit report row), so the route can refuse a file
+// that is not what the row asked for. A refusal (422) is final: no retry, the message shows.
+async function analyzeFile(token, f, index, total, expect = null) {
   let body;
-  try { body = JSON.stringify({ token, index, total, file: { name: f.name, type: f.type, data: await readAsBase64(f) } }); }
+  try { body = JSON.stringify({ token, index, total, expect: expect || undefined, file: { name: f.name, type: f.type, data: await readAsBase64(f) } }); }
   catch (e) { return { ok: false, message: `We couldn't read ${f.name}. Please try again.` }; }
   let lastMsg = '';
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -50,7 +56,7 @@ async function analyzeFile(token, f, index, total) {
       const j = await r.json().catch(() => ({}));
       if (r.ok) return { ok: true, documentType: j?.documentType || null };
       lastMsg = j?.error || '';
-      if (r.status === 400 || r.status === 413 || r.status === 404 || r.status === 429) return { ok: false, message: lastMsg || `We couldn't process ${f.name}.` };
+      if (r.status === 400 || r.status === 413 || r.status === 404 || r.status === 422 || r.status === 429) return { ok: false, message: lastMsg || `We couldn't process ${f.name}.`, refused: r.status === 422 };
     } catch (e) { /* network blip, retry once */ }
   }
   return { ok: false, message: lastMsg || `We couldn't process ${f.name}. Please try again.` };
@@ -59,7 +65,7 @@ async function analyzeFile(token, f, index, total) {
 const TYPE_LABEL = { 'pay stub': 'Pay stub', 'employment letter': 'Employment letter', 'credit report': 'Credit report', 'bank statement': 'Bank statement', 'government ID': 'Government ID', 'reference letter': 'Reference letter' };
 const typeLabel = (t) => (!t || /unrecognized/i.test(t) ? 'Not recognised' : TYPE_LABEL[t] || t.charAt(0).toUpperCase() + t.slice(1));
 
-export default function DocumentUploader({ token, before = null, disclosure = null, onDone, laterLine = LATER_LINE }) {
+export default function DocumentUploader({ token, before = null, disclosure = null, onDone, laterLine = LATER_LINE, creditFirst = false }) {
   // [{ file, key, status: 'queued' | 'analyzing' | 'done' | 'failed', documentType, message }]
   const [files, setFiles] = useState([]);
   const [reviewing, setReviewing] = useState(false);
@@ -72,8 +78,9 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
   const busy = useRef(false);
   const nextIndex = useRef(0); // the staged index the routes know each file by, never reused within a session
   const inputRef = useRef(null);
+  const creditInputRef = useRef(null); // the credit row's own picker: one file, sent with expect
 
-  const addFiles = (incoming) => {
+  const addFiles = (incoming, expect = null) => {
     setError('');
     const picked = Array.from(incoming || []);
     const next = [...files];
@@ -86,7 +93,8 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
       const ext = (f.name.split('.').pop() || '').toLowerCase();
       if (!OK_EXT.includes(ext)) { msg = 'Please upload a PDF or image (JPG or PNG).'; continue; }
       if (f.size > MAX_FILE) { msg = `${f.name} is too large, please upload a version under 3MB.`; continue; }
-      next.push({ file: f, key, status: 'queued', documentType: null, message: '', stagedIndex: nextIndex.current++ }); added++;
+      next.push({ file: f, key, status: 'queued', documentType: null, message: '', stagedIndex: nextIndex.current++, expect }); added++;
+      if (expect) break; // the credit row takes one file
     }
     if (msg) setError(msg);
     if (added) setFinalizePending(false);
@@ -118,7 +126,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
     busy.current = true;
     const patch = (key, p) => setFiles((prev) => prev.map((x) => (x.key === key ? { ...x, ...p } : x)));
     patch(next.key, { status: 'analyzing' });
-    analyzeFile(token, next.file, next.stagedIndex, files.length)
+    analyzeFile(token, next.file, next.stagedIndex, files.length, next.expect)
       .then((res) => patch(next.key, res.ok ? { status: 'done', documentType: res.documentType } : { status: 'failed', message: res.message }))
       .finally(() => { busy.current = false; setTurn((t) => t + 1); });
   }, [files, turn, token]);
@@ -127,7 +135,8 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
   const analyzing = files.find((f) => f.status === 'analyzing' || f.status === 'queued');
   const removing = files.some((f) => f.status === 'removing');
   const failed = files.filter((f) => f.status === 'failed');
-  const set = setStatus(done.map((f) => ({ documentType: f.documentType })));
+  const set = setStatus(done.map((f) => ({ documentType: f.documentType })), { creditFirst });
+  const creditBusy = files.some((f) => f.expect === CREDIT_KIND && (f.status === 'queued' || f.status === 'analyzing'));
   const ready = done.length > 0 && !analyzing && !removing && failed.length === 0;
   const analyzingLabel = analyzing ? `Analyzing document ${files.indexOf(analyzing) + 1} of ${files.length}…` : null;
 
@@ -151,7 +160,9 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
   const submitLabel = finalizing ? 'Finalizing…' : finalizePending ? 'Finish submitting' : `Submit ${done.length} document${done.length === 1 ? '' : 's'}`;
 
   // The set: an empty circle per row that becomes the red tick as files of that type are recognised.
-  const setRows = (
+  // The credit row carries its one line note, its own Add pill (44px) while the uploader is open and
+  // no report is in yet, and the consent sentence under the rows.
+  const setRows = (withControls) => (
     <div role="list" aria-label="Your document set" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, marginBottom: 14 }}>
       {set.items.map((it) => (
         <div key={it.key} role="listitem" aria-label={`${it.label}${it.met ? ', added' : ''}${it.max > 1 ? `, ${Math.min(it.count, it.max)} of ${it.max}` : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 24 }}>
@@ -159,11 +170,18 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
             {it.met ? <Icon name="check" size={12} color={C.red} strokeWidth={3} /> : null}
           </span>
           <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, flex: 1, minWidth: 0, textWrap: 'pretty' }}>
-            {it.label}{it.optional ? <span style={{ display: 'block', color: C.inkMute }}>Not used in scoring</span> : null}
+            {it.label}{it.note ? <span style={{ display: 'block', fontSize: 12.5, color: C.inkMute }}>{it.note}</span> : null}
           </span>
           {it.max > 1 ? <span style={{ fontSize: 12.5, color: C.inkMute, flexShrink: 0 }}>{Math.min(it.count, it.max)} of {it.max}</span> : null}
+          {withControls && it.key === 'credit' && !it.met ? (
+            <button type="button" onClick={() => creditInputRef.current?.click()} disabled={creditBusy} aria-label="Add your credit report"
+              style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 14, fontWeight: 700, cursor: creditBusy ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: creditBusy ? 0.6 : 1 }}>
+              {creditBusy ? 'Reading' : 'Add'}
+            </button>
+          ) : null}
         </div>
       ))}
+      {withControls ? <div data-credit-consent="" style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, textWrap: 'pretty' }}>{CREDIT_CONSENT_LINE}</div> : null}
     </div>
   );
   const setLine = <div style={{ fontSize: 13, color: set.complete ? C.ink : C.inkSoft, lineHeight: 1.5, marginBottom: 10, textWrap: 'pretty' }}>{set.complete ? COMPLETE_LINE : laterLine}</div>;
@@ -199,7 +217,8 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
       `}</style>
       {!reviewing ? (
         <>
-          {setRows}
+          <input ref={creditInputRef} type="file" accept={OK_ACCEPT} style={{ display: 'none' }} onChange={(e) => { addFiles(e.target.files, CREDIT_KIND); e.target.value = ''; }} />
+          {setRows(true)}
           {before}
           <div
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
@@ -230,7 +249,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
             <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>Double check before you send</div>
             <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5, marginBottom: 14, textWrap: 'pretty' }}>You are about to send {done.length} document{done.length === 1 ? '' : 's'}. Each one was read as the type shown.</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, marginBottom: 14 }}>{done.map((f) => fileRow(f, C.paperDeep, false))}</div>
-            <div style={{ borderTop: `1px solid ${C.rule}`, paddingTop: 14 }}>{setRows}</div>
+            <div style={{ borderTop: `1px solid ${C.rule}`, paddingTop: 14 }}>{setRows(false)}</div>
           </div>
           {disclosure && <div style={{ marginBottom: 16 }}>{disclosure}</div>}
           {error && <div role="alert" style={{ marginBottom: 12, fontSize: 13, color: C.danger }}>{error}</div>}

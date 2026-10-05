@@ -33,6 +33,7 @@ DO $$ BEGIN
       'document_stored',
       'document_opened',
       'document_deleted',
+      'document_rejected',
       'documents_expired',
       'retention_run',
       'report_generated',

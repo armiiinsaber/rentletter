@@ -11,10 +11,10 @@
 // what the editor sends. A failure rolls the transaction back and stops the path.
 //
 //   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again, then every combination
-//                         of state and old columns, 005, 005 again
+//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, each twice
 //   Path B  upgrade       baseline, the OLD 001 (git show b11f1f8, four income kinds), 002, 003,
 //                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
-//                         three drifted rows, 005, 005 again
+//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, each twice
 //   Path C  rollback      after path B: 999, 999 again
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
@@ -38,6 +38,7 @@ const FILES = {
   m005: 'db/005-application-state-resync.sql',
   m006: 'db/006-trial-default.sql',
   m007: 'db/007-drop-other-occupants.sql',
+  credit: 'db/credit-shared.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -287,6 +288,30 @@ async function run006And007(db, tag) {
   await step(db, `${tag}4 (007 again)`, FILES.m007); await check007(db, `${tag}4`);
 }
 
+// ── db/credit-shared.sql ───────────────────────────────────────────────────────
+// The listing switch: present, false by default, left where it was on a second run; a listing
+// written without it reads false; the events constraint accepts document_rejected where the
+// events table exists (the baseline has none, so the guarded block returns).
+async function checkCredit(db, label) {
+  check((await hasColumn(db, 'listings', 'pref_ask_credit_report')) === true, `${label}: listings.pref_ask_credit_report exists`);
+  const col = (await rows(db, "SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = 'pref_ask_credit_report'"))[0];
+  check(col.is_nullable === 'NO' && /false/.test(col.column_default), `${label}: NOT NULL, default false`, JSON.stringify(col));
+  check((await one(db, 'SELECT bool_and(pref_ask_credit_report = false) FROM public.listings')) === true, `${label}: every existing listing reads false`);
+  const fresh = await one(db, "INSERT INTO public.listings (profile_id, name, monthly_rent) VALUES ($1, 'Fresh', 2000) RETURNING pref_ask_credit_report", [ID.me]);
+  check(fresh === false, `${label}: a listing inserted without the column reads false`);
+  await db.query("DELETE FROM public.listings WHERE name = 'Fresh'");
+  if (await hasTable(db, 'events')) check(/document_rejected/.test(await one(db, "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'events_type_check'")), `${label}: events.type accepts document_rejected`);
+  else check(true, `${label}: no events table here, the guarded block returned`);
+}
+async function runCredit(db, tag) {
+  await step(db, `${tag}1`, FILES.credit); await checkCredit(db, `${tag}1`);
+  await db.query('UPDATE public.listings SET pref_ask_credit_report = true WHERE id = $1', [ID.live]);
+  await step(db, `${tag}2 (credit-shared again)`, FILES.credit);
+  check((await one(db, 'SELECT pref_ask_credit_report FROM public.listings WHERE id = $1', [ID.live])) === true, `${tag}2: a second run leaves a switched on listing on`);
+  await db.query('UPDATE public.listings SET pref_ask_credit_report = false WHERE id = $1', [ID.live]);
+  await checkCredit(db, `${tag}2`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -377,6 +402,7 @@ async function pathA() {
   say(`  seeded: ${seeded.applicants} applicants (15 states, 3 decision_status, 2 decision_priority, withdrawn or not, 4 places) and ${seeded.listings} listings (5 states, 3 status)`);
   await checkResync(db, 'A9');
   await run006And007(db, 'A1');
+  await runCredit(db, 'A2');
   await db.close();
 }
 
@@ -407,6 +433,7 @@ async function pathB() {
   check((await checkResync(db, 'B7')) === 2, 'two of the three drifted rows were reset, the reconsidered one was left alone');
   check(same(await legacySnapshot(db), before), 'status, closed_at, rented_link_id, the decision columns, withdrawn_at and the document row are what they were before 001');
   await run006And007(db, 'B');
+  await runCredit(db, 'B9');
   return { db, before };
 }
 

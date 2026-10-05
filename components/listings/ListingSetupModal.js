@@ -14,6 +14,7 @@ import { isValidEmail } from '../../lib/validation';
 import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
 import { needsRentConfirm, RENT_WARNING } from '../../lib/listingEditWarning';
 import { PROVINCE_OPTIONS } from '../../lib/provinces';
+import { CREDIT_ASK_LABEL } from '../../lib/creditShared';
 
 // The form: six unit facts, the five criteria Fit reads, notes, the landlord client. The
 // employment type, move in window, lease term, occupants, guarantor, parking spots, pets policy,
@@ -27,6 +28,7 @@ const EMPTY = {
   // income is a separate criterion, empty by default, stored only when the realtor types it.
   pref_rent_to_income_max_pct: DEFAULT_RENT_SHARE_CAP, pref_min_annual_income: '', pref_min_years_at_job: '',
   pref_requires_landlord_reference: true, pref_requires_employer_verification: true,
+  pref_ask_credit_report: false, // the upload step shows the credit row first; never required (lib/creditShared.js)
   pref_notes: '',
 };
 
@@ -127,6 +129,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
       pref_min_years_at_job: numOrNull(form.pref_min_years_at_job),
       pref_requires_landlord_reference: !!form.pref_requires_landlord_reference,
       pref_requires_employer_verification: !!form.pref_requires_employer_verification,
+      pref_ask_credit_report: !!form.pref_ask_credit_report,
       pref_notes: String(form.pref_notes).trim() || null,
     };
   };
@@ -234,6 +237,9 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           <div style={{ marginTop: 10, display: 'grid', rowGap: 20 }}>
             <Check k="pref_requires_landlord_reference" label="Require previous landlord reference" />
             <Check k="pref_requires_employer_verification" label="Require employer verification" />
+            {/* The credit report switch: the tenant's upload step shows the credit row first. It is
+                never required and never a criterion (lib/creditShared.js). */}
+            <Check k="pref_ask_credit_report" label={CREDIT_ASK_LABEL} />
           </div>
 
           {/* notes */}

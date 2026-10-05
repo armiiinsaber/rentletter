@@ -85,16 +85,19 @@ test('stubs only from A with a credit report listing B: matched, B also seen', (
   assert.deepEqual(row(noDiff, 'Employer').alsoSeen, [], 'a credit report that agrees is not listed');
 });
 
-test('credit report only: nothing matched, documents on file, the checked state', () => {
+// A credit report the applicant shared is shown, never evidence (lib/creditShared.js): on its own it
+// reads as no report, so Fit, the label and the state are what they are with nothing on file.
+test('credit report only: nothing matched, no evidence, the new state', () => {
   const run = runOf([creditDoc(B)]);
   assert.equal(row(run, 'Employer').status, 'not_found'); assert.equal(row(run, 'Employer').found, null); assert.deepEqual(row(run, 'Employer').alsoSeen, []);
   assert.equal(row(run, 'Income').status, 'not_found'); assert.equal(row(run, 'Income').explanation, 'no pay stub or employment letter on file');
   assert.equal(run.nameMatch, 'match', 'a credit report is level 2 on the name');
   const v = readVerification(run);
-  assert.equal(v.state, 'ok'); assert.equal(v.incomeMatched, false); assert.equal(v.employerMatched, false); assert.equal(v.employerMismatch, false);
+  assert.equal(v.state, 'none'); assert.equal(v.incomeMatched, false); assert.equal(v.employerMatched, false); assert.equal(v.employerMismatch, false);
   const fit = computeFit({ application: APP, listing: LISTING, verification: run, confirmations: {} });
-  assert.equal(fit.label, 'stated'); assert.equal(fit.evidence.contradicted, false);
-  assert.equal(applicantState({ junction: { application: APP }, verification: run }).state, 'checked');
+  assert.equal(fit.label, 'stated'); assert.equal(fit.evidence.hasReport, false);
+  assert.equal(JSON.stringify(fit), JSON.stringify(computeFit({ application: APP, listing: LISTING, verification: null, confirmations: {} })), 'byte identical with no report');
+  assert.equal(applicantState({ junction: { application: APP }, verification: run }).state, 'new');
 });
 
 test('letter at 90,000 and stubs at 85,000: the letter is the figure, income close, both figures shown', () => {

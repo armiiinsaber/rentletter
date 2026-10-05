@@ -81,8 +81,12 @@ export function createHandler(deps = {}) {
           const { data: link } = await admin.from('listing_applicants').select('id').eq('listing_id', listing.id).eq('application_id', applicationId).maybeSingle();
           const { data: profile } = await admin.from('profiles').select('full_name, brokerage').eq('id', listing.profile_id).maybeSingle();
           if (link?.id) {
-            const minted = await mint({ listingId: listing.id, linkId: link.id, applicationId, tenantName: app?.tenant?.fullName || '', listingName: listing.name || listing.address || 'your rental', address: listing.address || '', realtorName: profile?.full_name || 'The listing realtor', brokerage: profile?.brokerage || '' });
-            docRequest = { token: minted.token, url: uploadUrl(minted.token), requestedAt: minted.requestedAt, minted: minted.minted };
+            // The listing's own switch (db/credit-shared.sql): read on its own so a database without
+            // the column still mints. It only moves the credit row first on the upload step.
+            let askCreditReport = false;
+            try { const { data: pref } = await admin.from('listings').select('pref_ask_credit_report').eq('id', listing.id).maybeSingle(); askCreditReport = !!(pref && pref.pref_ask_credit_report); } catch (e) { askCreditReport = false; }
+            const minted = await mint({ listingId: listing.id, linkId: link.id, applicationId, tenantName: app?.tenant?.fullName || '', listingName: listing.name || listing.address || 'your rental', address: listing.address || '', realtorName: profile?.full_name || 'The listing realtor', brokerage: profile?.brokerage || '', askCreditReport });
+            docRequest = { token: minted.token, url: uploadUrl(minted.token), requestedAt: minted.requestedAt, minted: minted.minted, askCreditReport: !!minted.askCreditReport };
             if (minted.minted) await record(admin, listing.id, 'documents_requested', { applicationId, linkId: link.id, payload: { auto: true, emailed: false } });
           }
         } catch (e) { console.error('[applications/mirror] document request mint failed:', e?.message || e); }

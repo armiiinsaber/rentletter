@@ -42,7 +42,7 @@
 --   type  text  CHECK (type IN (
 --     'applicant_applied', 'documents_requested', 'documents_uploaded', 'verification_completed',
 --     'verification_failed', 'report_generated', 'report_sent', 'report_opened', 'landlord_answered', 'applicant_set_aside',
---     'document_stored', 'document_opened', 'document_deleted', 'documents_nudged', 'documents_expired', 'retention_run',
+--     'document_stored', 'document_opened', 'document_deleted', 'document_rejected', 'documents_nudged', 'documents_expired', 'retention_run',
 --     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed', 'applicant_not_selected',
 --     'referral_received',
 --     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',
@@ -93,6 +93,7 @@
 --   pref_parking_spots                  integer
 --   pref_requires_landlord_reference    boolean               default true
 --   pref_requires_employer_verification boolean               default true
+--   pref_ask_credit_report              boolean  not null     default false   (db/credit-shared.sql: the upload step shows the credit row first; never required)
 --   pref_guarantor_accepted             boolean               default true
 --   pref_notes                          text
 --   invite_token                        text

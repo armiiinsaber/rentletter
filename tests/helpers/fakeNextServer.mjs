@@ -6,6 +6,12 @@
 // value call waits LATENCY_MS, so a page's sequential reads cost what they would in production.
 //   node tests/helpers/fakeNextServer.mjs <port> [dev|prod] [latencyMs]
 // GET /__fake/pipeline?people=1|2 sets how many people the Pipeline holds (below).
+// GET /__fake/docreq?link=J4&credit=1 mints (or returns) the tenant's document request for that
+// applicant and answers { token }; credit=1 marks the listing as asking for a credit report.
+// GET /__fake/documents?link=J6 answers the live held rows for that applicant; GET
+// /__fake/events?type=document_rejected answers the matching events. The credit walk
+// (tests/routes/creditWebkit.test.mjs) reads these. One held credit report (D9) sits on the other
+// realtor's applicant J9 from the start, so the open route's ownership check can be walked.
 // FAKE_PROFILE=lapsed signs in a realtor whose trial ended two days ago (the BILLING_OFF walk,
 // tests/routes/billingOffWebkit.test.mjs); unset, the fixture's founding realtor.
 // It builds into, or serves from, .next-fake-<port> (NEXT_DIST_DIR, next.config.js); prod needs
@@ -33,7 +39,11 @@ const { tables, USER } = await import('../routes/fixture.mjs');
 const lapsed = process.env.FAKE_PROFILE === 'lapsed';
 const t = tables(lapsed ? { plan: 'trial', profileOver: { trial_ends_at: new Date(Date.now() - 2 * 86400000).toISOString() } } : {});
 for (const a of t.applications || []) if (!('rent_to_income_ratio' in a)) a.rent_to_income_ratio = null;
+// The other realtor's held credit report: owned by OTHER through L9 and J9 (tests/routes/fixture.mjs).
+t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_applicant_id: 'J9', profile_id: 'realtor-2', storage_path: 'realtor-2/J9/d9.pdf', kind: 'credit report', mime: 'application/pdf', bytes: 1200, uploaded_by: 'tenant', uploaded_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 13 * 86400000).toISOString(), deleted_at: null, deleted_by: null, opened_count: 0, last_opened_at: null }];
 const stack = installFakeStack({ tables: t, user: USER });
+await stack.db.storage.from('applicant-documents').upload('realtor-2/J9/d9.pdf', Buffer.from('%PDF-1.4 other realtor credit report'), { contentType: 'application/pdf' });
+const { mintRequest } = await import('../../lib/docRequest.js');
 globalThis.__rlFakeStackFor = stack;
 process.env.NEXT_DIST_DIR = `.next-fake-${port}`;
 if (mode === 'prod') process.env.NODE_ENV = 'production'; // one React build, the production one
@@ -47,7 +57,22 @@ await app.prepare();
 // that row). people=1 puts it back.
 const oneConsent = [...(t.pipeline_consents || [])];
 const secondConsent = { id: 'PC2', profile_id: USER.id, listing_id: 'L2', application_id: 'A2', email: 'aB2B2@example.com', status: 'consented', consented_at: new Date(Date.now() - 4 * 86400000).toISOString(), expires_at: new Date(Date.now() + 56 * 86400000).toISOString(), invites: [] };
-http.createServer((req, res) => {
+http.createServer(async (req, res) => {
+  if (req.url.startsWith('/__fake/docreq')) {
+    const q = new URL(req.url, 'http://localhost').searchParams;
+    const link = String(q.get('link') || ''); const j = (t.listing_applicants || []).find((x) => x.id === link); const a = j && (t.applications || []).find((x) => x.id === j.application_id); const l = j && (t.listings || []).find((x) => x.id === j.listing_id);
+    if (!j || !a || !l) { res.statusCode = 404; res.end('{}'); return; }
+    const minted = await mintRequest({ listingId: l.id, linkId: j.id, applicationId: a.id, tenantName: a.full_name, listingName: l.name, address: l.address, realtorName: 'Sarah Chen', brokerage: 'Demo Realty', askCreditReport: q.get('credit') === '1' }, { renew: q.get('renew') === '1' });
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ token: minted.token })); return;
+  }
+  if (req.url.startsWith('/__fake/documents')) {
+    const link = String(new URL(req.url, 'http://localhost').searchParams.get('link') || '');
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify((t.applicant_documents || []).filter((d) => d.listing_applicant_id === link && !d.deleted_at).map((d) => ({ id: d.id, kind: d.kind })))); return;
+  }
+  if (req.url.startsWith('/__fake/events')) {
+    const type = String(new URL(req.url, 'http://localhost').searchParams.get('type') || '');
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify((t.events || []).filter((e) => !type || e.type === type).map((e) => ({ type: e.type, payload: e.payload })))); return;
+  }
   if (req.url.startsWith('/__fake/pipeline')) {
     const n = Number(new URL(req.url, 'http://localhost').searchParams.get('people'));
     t.pipeline_consents = n === 2 ? [...oneConsent, secondConsent] : [...oneConsent];

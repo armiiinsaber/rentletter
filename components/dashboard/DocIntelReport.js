@@ -7,6 +7,7 @@
 import { C, R } from '../theme';
 import { Icon, StatusPills, StackedLines } from '../ui';
 import { comparisonRows } from '../../lib/documentsLine';
+import { creditLines } from '../../lib/creditShared';
 
 const DOC_LABEL = {
   'pay stub': 'Pay stub', 'employment letter': 'Employment letter', 'credit report': 'Credit report',
@@ -69,7 +70,7 @@ export default function DocIntelReport({ result }) {
                     <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={d.filename}>{d.filename}</span>
                   </div>
                   {isUnrecognized && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{d.notes || 'This file does not read as a rental screening document. Ask the applicant to resend.'}</div>}
-                  {isCredit && <StatusPills label="Credit report" items={['Credit report on file', `score ${ex.creditScore != null ? ex.creditScore : 'not legible'}`, 'not used in Fit']} />}
+                  {isCredit && (() => { const c = creditLines({ documents: [d] }); return <StatusPills label="Credit report" items={[c.label, ...c.lines, 'not used in Fit']} />; })()}
                   {rowKeys.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-1)' }}>
                       {rowKeys.map((k) => (

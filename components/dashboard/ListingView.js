@@ -48,6 +48,8 @@ import qrcode from 'qrcode-generator';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { referralsEnabled } from '../../lib/features';
 import { displayAddress, displayLabel } from '../../lib/listingAddress';
+import { creditLines } from '../../lib/creditShared';
+import { CREDIT_ONLY_LINE } from '../../lib/stateLabels';
 
 const Row = ({ label, value }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-4)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
@@ -787,7 +789,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const renderRows = (rows) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
-        <div key={label} style={{ minWidth: 0 }}>
+        <div key={label} data-fact={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{noWidow(label)}</div>
           <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{typeof value === 'string' ? <StackedLines text={value} /> : value}</div>
         </div>
@@ -841,6 +843,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       ['Role', app.job_title || null],
       ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
       ['Rent to income', app.rent_to_income_ratio != null ? `${app.rent_to_income_ratio}%` : null],
+      // Credit: the report the applicant shared, as the reserved label plus provider and date; the
+      // checklist below carries every fact. Never scored (lib/creditShared.js).
+      ['Credit', (() => { const c = creditLines(a.docVerifications); return c.shared ? [c.label, c.lines[0]].filter(Boolean).join(' · ') : c.label; })()],
     ]);
     const tenancyRows = present([
       ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
@@ -945,7 +950,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             pills([`Landlord: ${answerLine(a.landlordAnswer.answer)}`, a.landlordAnswer.at ? shortDate(a.landlordAnswer.at) : null])
           )}
           {docSt === 'new' && (<>
-            {pills([stateLabel('new', 'line')])}
+            {pills([creditLines(a.docVerifications).shared ? CREDIT_ONLY_LINE : stateLabel('new', 'line')])}
             {dup}
             {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
           </>)}
@@ -1206,6 +1211,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
                   <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
+                  <Row label="Credit report asked" value={yn(l.pref_ask_credit_report)} />
                   {l.pref_notes && (
                     <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
                       <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}

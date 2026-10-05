@@ -13,6 +13,10 @@
 // realtor's review (lib/documentStore.js, 14 days or until deleted, db/documents.sql); nothing raw
 // goes to KV or logs. Nothing is written to listing_applicants here, that happens once, in
 // /api/upload/finalize.
+// A credit report (lib/creditShared.js) is kept only when its name matches the applicant, it shows
+// a legible date within 90 days, and (when the tenant added it as one, `expect`) it reads as a
+// credit report. A refused file is never written to the bucket: its bytes end with this request,
+// and document_rejected is recorded for the realtor's listing with the reason.
 import { kvReady, kvGetJson, kvSetJson, reqKey, stagingKey, isDocReqToken, STAGING_TTL } from '../../../lib/docRequest';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
@@ -20,6 +24,8 @@ import { runDocumentAnalysis, ALLOWED_DOC_MIME, MAX_DOCS } from '../../../lib/ap
 import { checkSubmitLimits } from '../../../lib/rateLimit';
 import { kvIncr, kvExpire } from '../../../lib/kv';
 import { storeAnalyzedDocuments, kindOf } from '../../../lib/documentStore';
+import { creditRejection, CREDIT_KIND } from '../../../lib/creditShared';
+import { recordForListing } from '../../../lib/events';
 
 // One document per request → a single base64 file (client-capped at ~3MB raw ≈ 4MB base64, under
 // Vercel's 4.5MB body cap). ONE Claude vision call: allow a modest duration for multi-page PDFs.
@@ -32,6 +38,7 @@ export default async function handler(req, res) {
   if (!kvReady()) return res.status(503).json({ error: 'Service unavailable.' });
 
   const { token, index, total } = req.body || {};
+  const expect = req.body && req.body.expect === CREDIT_KIND ? CREDIT_KIND : null; // the credit row's own picker
   let file = req.body && req.body.file;
   if (!isDocReqToken(token)) return res.status(400).json({ error: 'Invalid link.' });
   if (!file || typeof file !== 'object') return res.status(400).json({ error: 'No document received.' });
@@ -103,6 +110,16 @@ export default async function handler(req, res) {
   }
   if (!run || !Array.isArray(run.documents) || !run.documents.length) {
     return res.status(502).json({ error: `We couldn't read ${name}. Please try again.` });
+  }
+
+  // A credit report that cannot be kept: nothing is stored, nothing is staged, the reason is recorded.
+  const refused = creditRejection(run.documents[0], application ? application.full_name : null, { expected: expect === CREDIT_KIND });
+  if (refused) {
+    if (admin && application && listing) {
+      try { await recordForListing(admin, rec.listingId, 'document_rejected', { applicationId: application.id || rec.applicationId || null, linkId: rec.linkId, payload: { kind: CREDIT_KIND, reason: refused.code, applicantName: application.full_name || null, by: 'tenant' } }); }
+      catch (e) { console.error('[upload/analyze-file] reject event:', e?.message || e); }
+    }
+    return res.status(422).json({ error: refused.message, rejected: refused.code, filename: name });
   }
 
   // Held for the realtor's review: the original bytes (`data`, kept in scope for exactly this) go

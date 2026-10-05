@@ -25,5 +25,6 @@ export default async function handler(req, res) {
     brokerage: rec.brokerage || '',
     status: rec.status || 'requested', // 'requested' | 'received'
     receivedAt: rec.receivedAt || null,
+    askCreditReport: !!rec.askCreditReport, // the listing asked: the credit row leads, still optional
   });
 }

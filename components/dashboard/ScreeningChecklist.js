@@ -1,6 +1,10 @@
-// The screening checklist. Six rows, one per screenable tenancy fact: what the applicant said,
+// The screening checklist. Seven rows: six screenable tenancy facts, what the applicant said,
 // what the documents said (the same reading Fit uses, lib/fitScore.js readVerification), and
-// the realtor's own confirmation. The realtor verifies; the product makes it quick.
+// the realtor's own confirmation; then Credit, the report the applicant shared themselves
+// (lib/creditShared.js), shown as plain text under the reserved label "credit shared by
+// applicant", or "No credit report shared" in the same tone as any other optional item. Nothing
+// in that row moves Fit and nothing in it can read verified. The realtor verifies; the product
+// makes it quick.
 //
 // Confirmations are written through POST /api/applicants/confirm (entitlement gated, ownership
 // checked) into listing_applicants.confirmations (db/screening.sql). The tap is optimistic and
@@ -20,6 +24,7 @@ import { readVerification, incomeIsJoint, householdIncomeOf } from '../../lib/fi
 import { applicantState, stateLabel } from '../../lib/applicantState';
 import { isIdKind } from '../../lib/documentRetention';
 import { answerSummary, emailIn, RESEND_AFTER_DAYS } from '../../lib/referenceQuestions';
+import { creditLines } from '../../lib/creditShared';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
@@ -109,6 +114,8 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' , note: GUIDANCE },
     { key: 'reference', title: 'References', said: refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
+    // Credit: the applicant's own report, read and shown, never scored (lib/creditShared.js).
+    { key: null, title: 'Credit', credit: creditLines(report) },
   ];
 
   const btn = () => ({
@@ -132,8 +139,10 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
             <div key={row.title} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-1) var(--s-3)', padding: 'var(--s-3) var(--s-3)', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-                  <StackedLines parts={[labelled('Said', row.said).join(', '), row.docs != null ? labelled('Docs', row.docs).join(', ') : null]} />
+                <div data-credit-row={row.credit ? (row.credit.shared ? 'shared' : 'none') : undefined} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+                  {row.credit
+                    ? <StackedLines parts={[row.credit.label, ...row.credit.lines]} />
+                    : <StackedLines parts={[labelled('Said', row.said).join(', '), row.docs != null ? labelled('Docs', row.docs).join(', ') : null]} />}
                 </div>
                 {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Also seen: {line}</div>) : null}
                 {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}

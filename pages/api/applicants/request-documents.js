@@ -71,7 +71,7 @@ export default async function handler(req, res) {
     // One mint for both paths (lib/docRequest.js mintRequest): reuses a live request so the link
     // stays stable, unless the realtor renews ("Request again") after a prior submission, in which
     // case a brand new token is minted and the old link answers "already received".
-    const minted = await mintRequest({ listingId, linkId, applicationId: ctx.junction.application_id, tenantName, listingName, address, realtorName, brokerage }, { renew: !!renew });
+    const minted = await mintRequest({ listingId, linkId, applicationId: ctx.junction.application_id, tenantName, listingName, address, realtorName, brokerage, askCreditReport: !!ctx.listing?.pref_ask_credit_report }, { renew: !!renew });
     const { token, status, requestedAt } = minted;
 
     const url = uploadUrl(token);

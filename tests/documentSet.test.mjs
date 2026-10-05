@@ -3,6 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DOCUMENT_SET, setStatus, SET_SENTENCE, SET_SENTENCE_LOWER, SET_SENTENCE_REALTOR } from '../lib/documentSet.js';
+import { CREDIT_OPTIONAL_LINE } from '../lib/creditShared.js';
 import { nudgeEmail } from '../lib/nudges.js';
 
 const stubs = (n) => Array.from({ length: n }, (_, i) => ({ documentType: i % 2 ? 'Earnings statement' : 'pay stub' }));
@@ -13,8 +14,12 @@ test('the set as coded', () => {
   assert.deepEqual(DOCUMENT_SET.map((d) => [d.key, d.label, d.min, d.max, [...d.types], !!d.optional]), [
     ['paystubs', '1 to 3 recent pay stubs', 1, 3, ['pay stub'], false],
     ['letter', 'An employment letter', 1, 1, ['employment letter'], false],
-    ['credit', 'A credit report, if you have one', 0, 1, ['credit report'], true],
+    ['credit', 'A credit report', 0, 1, ['credit report'], true],
   ]);
+  assert.equal(DOCUMENT_SET[2].note, CREDIT_OPTIONAL_LINE, 'the one line under the credit row');
+  assert.equal(CREDIT_OPTIONAL_LINE, 'Optional. Your own report from Equifax, TransUnion, Borrowell or your bank.');
+  assert.deepEqual(setStatus([], { creditFirst: true }).items.map((it) => it.key), ['credit', 'paystubs', 'letter'], 'a listing that asks for one moves the row first and nothing else');
+  assert.equal(setStatus([], { creditFirst: true }).items[0].optional, true, 'still optional');
 });
 
 test('setStatus: zero, one, three and four stubs, with and without the letter and the credit report', () => {
@@ -45,5 +50,5 @@ test('the copy carries no dash, and the four emails and the realtor helper say t
   for (const n of [1, 2]) assert.match(nudgeEmail({ nudge: n, listingName: 'Carlaw', realtorName: 'S', applicantName: 'P', uploadUrl: 'https://rentletter.ca/upload/t' }).paras[0], /waiting on your documents: one to three recent pay stubs, an employment letter, and a credit report if you have one\.$/);
   for (const f of ['pages/api/applicants/request-documents.js', 'pages/api/send.js', 'components/dashboard/ApplicantDocIntel.js', 'lib/nudges.js']) assert.match(readFileSync(new URL(`../${f}`, import.meta.url), 'utf8'), /SET_SENTENCE_(LOWER|REALTOR)/, f);
   assert.match(uploader, /PDF or image, up to \{MAX_FILES\} files, 3MB each/);
-  assert.match(uploader, />Not used in scoring</, 'the optional item says so on its own line');
+  assert.match(uploader, /\{it\.note\}/, 'the optional item carries its note on its own line');
 });

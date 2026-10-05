@@ -151,11 +151,21 @@ export function fakeResend() {
   return { sent, emails: { send: async (mail) => { sent.push(mail); return { data: { id: `email-${sent.length}` }, error: null }; } } };
 }
 // extractionFor(filename) -> one document object; the fake returns the STRICT JSON the prompt asks for.
+// The name on the document is "Test Person" unless the file name carries one in parentheses:
+// "credit (Applicant D4D4).pdf". A credit report's date is ten days ago, or 120 days ago when the
+// file name says stale; "extra" in the name returns fields the product must never keep.
+const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
 export const defaultExtraction = (filename) => {
   const f = String(filename || '').toLowerCase();
-  if (/letter/.test(f)) return { filename, documentType: 'employment letter', unrecognized: false, extracted: { applicantName: 'Test Person', employer: 'Northwind Sample Clinic Inc.', employmentType: 'Full-time', jobTitle: 'Clinic Coordinator', startDate: 'March 1, 2023', annualSalaryPrinted: 85000, documentDate: 'August 25, 2026' }, notes: 'Signed.' };
-  if (/credit/.test(f)) return { filename, documentType: 'credit report', unrecognized: false, extracted: { applicantName: 'Test Person', creditScore: 712, scoreBand: 'Good', bureau: 'Equifax', reportDate: 'August 30, 2026' }, notes: 'Score 712.' };
-  return { filename, documentType: 'pay stub', unrecognized: false, extracted: { applicantName: 'Test Person', employer: 'Northwind Sample Clinic Inc.', periodStart: 'July 1, 2026', periodEnd: 'July 15, 2026', payDate: 'July 20, 2026', grossForPeriod: 3541.67, regularRate: 40.86, hours: 86.67, payFrequency: null, documentDate: 'July 20, 2026' }, notes: 'No frequency word printed.' };
+  const named = String(filename || '').match(/\(([^)]+)\)/);
+  const applicantName = named ? named[1].trim() : 'Test Person';
+  if (/letter/.test(f)) return { filename, documentType: 'employment letter', unrecognized: false, extracted: { applicantName, employer: 'Northwind Sample Clinic Inc.', employmentType: 'Full-time', jobTitle: 'Clinic Coordinator', startDate: 'March 1, 2023', annualSalaryPrinted: 85000, documentDate: 'August 25, 2026' }, notes: 'Signed.' };
+  if (/credit/.test(f)) {
+    const extracted = { applicantName, provider: 'Equifax', reportDate: /stale/.test(f) ? daysAgo(120) : /nodate/.test(f) ? null : daysAgo(10), creditScore: 712, scoreScale: '300 to 900', openAccounts: 4, collections: 0, bankruptcyOrProposal: false, latePayments: ['2025-03'], currentAddress: '12 Sample St, Toronto' };
+    if (/extra/.test(f)) Object.assign(extracted, { accountNumbers: ['4520 1234 5678 9012'], balances: [{ account: 'Visa', balance: 1200 }], previousAddresses: ['1 Old Rd'], employerHistory: ['Old Harbour Logistics'], inquiries: 3, employer: 'Old Harbour Logistics', scoreBand: 'Good' });
+    return { filename, documentType: 'credit report', unrecognized: false, extracted, notes: '' };
+  }
+  return { filename, documentType: 'pay stub', unrecognized: false, extracted: { applicantName, employer: 'Northwind Sample Clinic Inc.', periodStart: 'July 1, 2026', periodEnd: 'July 15, 2026', payDate: 'July 20, 2026', grossForPeriod: 3541.67, regularRate: 40.86, hours: 86.67, payFrequency: null, documentDate: 'July 20, 2026' }, notes: 'No frequency word printed.' };
 };
 export function fakeAnthropic(extractionFor = defaultExtraction) {
   const calls = [];

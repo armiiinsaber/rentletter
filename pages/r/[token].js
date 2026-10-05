@@ -148,6 +148,13 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
                 </div>
               ))}
             </div>
+            {/* Credit: the report the applicant shared, in the checklist's words, or that none was. Plain text, never scored. */}
+            <div data-credit-row={a.credit && a.credit.shared ? 'shared' : 'none'} style={{ marginTop: 'var(--s-3)', minWidth: 0 }}>
+              <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>Credit</div>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+                {a.credit ? <>{a.credit.shared ? <span style={{ display: 'block', fontWeight: 700 }}>{a.credit.label}</span> : noWidow(a.credit.label)}{(a.credit.lines || []).map((line) => <span key={line} style={{ display: 'block' }}>{noWidow(line)}</span>)}</> : null}
+              </div>
+            </div>
             {/* The math: one row per rule the realtor set. Met carries the red tick, missed a small ink dot, unverified nothing. */}
             {Array.isArray(a.criteria) && a.criteria.length ? (
               <ul aria-label="Against the criteria" style={{ listStyle: 'none', margin: 'var(--s-3) 0 0', padding: 0, display: 'grid', gap: 'var(--s-1)' }}>
