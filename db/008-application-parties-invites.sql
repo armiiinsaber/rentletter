@@ -16,8 +16,16 @@
 -- OHRC and BC Code: nothing here records a relationship, a family status or who lives with whom.
 -- A role on the lease is all that is kept.
 --
+-- listings.pref_guarantor_accepted: the realtor's switch "Guarantor accepted", a listing level
+-- setting applied to every applicant (the OHRC's same requirement for all tenants). No earlier
+-- file under db/ creates it (db/schema-reference.sql documents it alone), so it is added here:
+-- boolean NOT NULL DEFAULT false, a no op where the column already exists.
+--
 -- events.type gains party_invited, party_submitted, party_declined and party_withdrawn: the
 -- realtor's timeline rows for a party's progress.
+
+ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS pref_guarantor_accepted boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.listings.pref_guarantor_accepted IS 'Guarantor accepted: the primary may invite a guarantor on this listing, the same for every applicant (lib/parties.js). Never a criterion, never read by Fit.';
 
 ALTER TABLE public.application_parties ADD COLUMN IF NOT EXISTS party_token text;
 ALTER TABLE public.application_parties ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'invited';

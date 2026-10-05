@@ -317,6 +317,9 @@ async function runCredit(db, tag) {
 // The invite columns on application_parties: present, the status check, the unique token, a
 // second run leaves rows alone, and no new column carries a protected ground.
 async function checkParties(db, label) {
+  check((await hasColumn(db, 'listings', 'pref_guarantor_accepted')) === true, `${label}: listings.pref_guarantor_accepted exists`);
+  check(typeof (await one(db, "INSERT INTO public.listings (profile_id, name, monthly_rent) VALUES ($1, 'Guarantor probe', 2000) RETURNING pref_guarantor_accepted", [ID.me])) === 'boolean', `${label}: a listing inserted without the column reads a boolean, never null`);
+  await db.query("DELETE FROM public.listings WHERE name = 'Guarantor probe'");
   for (const c of ['party_token', 'status', 'invited_at', 'started_at', 'submitted_at', 'declined_at', 'withdrawn_at', 'consented_at', 'address']) check((await hasColumn(db, 'application_parties', c)) === true, `${label}: application_parties.${c} exists`);
   check((await one(db, "SELECT column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'application_parties' AND column_name = 'status'")).includes('invited'), `${label}: status defaults to invited`);
   check(/sticky|unknown|not_a_status/.test('') || /application_parties_status_check/.test(await refused(db, "INSERT INTO public.application_parties (application_id, role, full_name, status) VALUES ($1, 'co_applicant', 'X', 'sticky')", [app(5)]) || ''), `${label}: an unknown status is refused`);
