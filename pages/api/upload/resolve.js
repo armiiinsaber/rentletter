@@ -26,5 +26,6 @@ export default async function handler(req, res) {
     status: rec.status || 'requested', // 'requested' | 'received'
     receivedAt: rec.receivedAt || null,
     askCreditReport: !!rec.askCreditReport, // the listing asked: the credit row leads, still optional
+    party: !!rec.partyId, // a party's own request (lib/parties.js): their name is tenantName
   });
 }

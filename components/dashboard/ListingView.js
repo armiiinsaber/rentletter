@@ -50,6 +50,7 @@ import { referralsEnabled } from '../../lib/features';
 import { displayAddress, displayLabel } from '../../lib/listingAddress';
 import { creditLines } from '../../lib/creditShared';
 import { CREDIT_ONLY_LINE } from '../../lib/stateLabels';
+import { partyFacts, INVITE_CARD } from '../../lib/parties';
 
 const Row = ({ label, value }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-4)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
@@ -1005,7 +1006,40 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {livingRows.length > 0 && renderSection(a, 'living', 'Living situation', false, renderRows(livingRows))}
           </div>
 
-          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} onReference={(resp) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, referenceResponse: resp } : x)))} heldDocuments={a.storedDocuments} onViewDocument={viewDocument} />
+          {/* The people on this application (lib/parties.js): each under the primary with their role and
+              standing, each opening to their own facts and documents with the same labels. Their income
+              is stored and shown, never scored. */}
+          {Array.isArray(a.parties) && (
+            <div data-parties="" style={{ marginTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}`, paddingTop: 'var(--s-3)' }}>
+              <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute }}>People on this application</div>
+              {a.parties.length === 0 ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)' }}>{app.full_name || 'The applicant'} alone</div> : null}
+              {a.parties.map((p) => {
+                const docsOf = (a.storedDocuments || []).filter((d) => d && !d.deletedAt && String(d.partyId || '') === String(p.id));
+                const rows = present([
+                  ['Employer', [p.employer || p.businessName, p.employmentType ? EMP_LABEL[p.employmentType] || p.employmentType : null].filter(Boolean).join(' · ') || null],
+                  ['Role', p.jobTitle || null],
+                  ['Tenure', p.yearsAtJob ? `${p.yearsAtJob} yrs` : null],
+                  ['Income', p.annualIncome != null ? `${money(p.annualIncome)}/yr · ${p.label}` : null],
+                  ['Documents', docsOf.length ? docsOf.map((d) => d.kind).join(' · ') : 'None held'],
+                ]);
+                const body = (
+                  <div data-party-id={p.id}>
+                    {p.status === 'submitted' ? renderRows(rows) : <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{noWidow(p.status === 'declined' ? 'Declined the invite.' : p.status === 'withdrawn' ? 'Withdrew from this application.' : 'Their form is not in yet.')}</div>}
+                    {docsOf.length > 0 && (
+                      <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-3)' }}>
+                        {docsOf.map((d) => <button key={d.id} type="button" onClick={stop(() => viewDocument(d))} aria-label={`View ${p.name}'s ${d.kind}`} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{`View ${d.kind}`}</button>)}
+                      </div>
+                    )}
+                  </div>
+                );
+                // Commas, not separators: a wrapped title never starts or ends a line on a dot.
+                return <div key={p.id} data-party-row={p.status}>{renderSection(a, `party-${p.id}`, `${p.name}, ${String(p.roleLabel).toLowerCase()}, ${String(p.statusLabel).toLowerCase()}`, false, body)}</div>;
+              })}
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(INVITE_CARD.householdLine)}</div>
+            </div>
+          )}
+
+          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} onReference={(resp) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, referenceResponse: resp } : x)))} heldDocuments={(a.storedDocuments || []).filter((d) => !d.partyId)} onViewDocument={viewDocument} />
 
           <ApplicantDocIntel
             listingId={listing.id}
@@ -1017,7 +1051,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             profileUpdatedAt={app.profile_updated_at}
             onSaved={(patch) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, ...patch } : x)))}
             onAnalyzed={() => refreshApplicant(a.linkId)}
-            heldDocuments={a.storedDocuments}
+            heldDocuments={Array.isArray(a.storedDocuments) ? a.storedDocuments.filter((d) => !d.partyId) : a.storedDocuments}
             realtorName={profile?.full_name}
             onViewDocument={viewDocument}
             onDeleteDocuments={() => deleteDocuments(a.linkId)}
@@ -1212,6 +1246,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
                   <Row label="Credit report asked" value={yn(l.pref_ask_credit_report)} />
+                  <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted !== false)} />
                   {l.pref_notes && (
                     <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
                       <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}

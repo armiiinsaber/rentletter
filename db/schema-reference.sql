@@ -43,7 +43,7 @@
 --     'applicant_applied', 'documents_requested', 'documents_uploaded', 'verification_completed',
 --     'verification_failed', 'report_generated', 'report_sent', 'report_opened', 'landlord_answered', 'applicant_set_aside',
 --     'document_stored', 'document_opened', 'document_deleted', 'document_rejected', 'documents_nudged', 'documents_expired', 'retention_run',
---     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed', 'applicant_not_selected',
+--     'applicant_restored', 'applicant_withdrew', 'applicant_marked_finalist', 'applicant_confirmed', 'applicant_not_selected', 'party_invited', 'party_submitted', 'party_declined', 'party_withdrawn',
 --     'referral_received',
 --     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',
 --     'listing_created', 'listing_updated', 'branding_updated',
@@ -151,6 +151,10 @@
 --   applicant_people      one portable person per verified email; facts only, never a Fit result   service role only
 --   application_parties   application_id references applications(id); primary, co_applicant,
 --                         guarantor, occupant; an occupant carries no income                       service role only
+--                         db/008-application-parties-invites.sql adds party_token (unique, the party's
+--                         own credential), status (invited, in_progress, submitted, declined, withdrawn),
+--                         invited_at, started_at, submitted_at, declined_at, withdrawn_at, consented_at,
+--                         and address (a guarantor's, for the lease)
 --   income_sources        application_party_id references application_parties(id); kind, amount    service role only
 --   closings              listing_applicant_id unique; agreement, rent deposit (never more than
 --                         one month's rent), lease, keys, each with when and who                   realtor reads own

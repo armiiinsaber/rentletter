@@ -25,6 +25,7 @@ import { invalidateSignals } from '../../../lib/signalsCache';
 import { LISTING_STATUSES, statusPatch, ownedListing, notSelectedRecipients, notSelectedEmail, notSelectedFrom, newConsentToken, consentExpiry, statusTableAbsent, acceptedEmail, fellThroughEmail, existingConsent } from '../../../lib/listingStatus';
 import { kvSrem } from '../../../lib/docRequest';
 import { displayLabel } from '../../../lib/listingAddress';
+import { partyRecipients } from '../../../lib/partyStore';
 import { ACTOR_TYPE, LISTING_STATE, APPLICATION_STATE, isLegacyRented, isLegacyActive, listingStateFromLegacy, listingStateOf, applicationStateOf, rentedCascade, reopenCascade, isTransitionError } from '../../../lib/application-state';
 import { transitionListing, transitionApplications, refusal, listingRefusal } from '../../../lib/applicationTransitions';
 
@@ -105,13 +106,18 @@ export default async function handler(req, res) {
       return app ? { linkId: link.id, applicationId: app.id, name: app.full_name || 'Applicant', email: String(app.email || '').trim() } : null;
     };
     const notReached = []; // [{ name, reason }] reason: no_email | no_mailer | send_failed
+    // Every party on the application (lib/parties.js) receives the same email the primary does, once.
+    const partiesOf = async (applicationId) => { try { return applicationId ? await partyRecipients(admin, applicationId) : []; } catch (e) { return []; } };
     const mailMove = async (move, build, label) => {
       const who = await personOf(move.id);
       if (!who) return;
-      if (!who.email) { notReached.push({ name: who.name, reason: 'no_email' }); return; }
-      if (!resend) { notReached.push({ name: who.name, reason: 'no_mailer' }); return; }
-      try { await send(who.email, build({ listingName: unit, realtorName: name, applicantName: who.name })); }
-      catch (e) { logServerError(`[listings/status] ${label} email`, e, { listingId: listing.id, linkId: who.linkId }); notReached.push({ name: who.name, reason: 'send_failed' }); }
+      const people = [who, ...(await partiesOf(who.applicationId)).map((p) => ({ linkId: who.linkId, applicationId: who.applicationId, name: p.name, email: p.email }))];
+      for (const person of people) {
+        if (!person.email) { notReached.push({ name: person.name, reason: 'no_email' }); continue; }
+        if (!resend) { notReached.push({ name: person.name, reason: 'no_mailer' }); continue; }
+        try { await send(person.email, build({ listingName: unit, realtorName: name, applicantName: person.name })); }
+        catch (e) { logServerError(`[listings/status] ${label} email`, e, { listingId: listing.id, linkId: who.linkId }); notReached.push({ name: person.name, reason: 'send_failed' }); }
+      }
     };
     // The winner: once, with the move into accepted (a second mark rented is refused before this).
     for (const m of moves.filter((x) => x.to === APPLICATION_STATE.ACCEPTED)) await mailMove(m, acceptedEmail, 'accepted');
@@ -122,6 +128,9 @@ export default async function handler(req, res) {
     if (isLegacyRented(status) && notify !== false) {
       const { data: rows } = await admin.from('listing_applicants').select('*, application:applications(id, full_name, email)').eq('listing_id', listing.id);
       const list = notSelectedRecipients(rows || [], winner ? winner.id : null);
+      // The parties beside each of them, each once, under their own email.
+      const seen = new Set(list.map((r) => r.email));
+      for (const r of [...list]) for (const p of await partiesOf(r.applicationId)) { if (seen.has(p.email)) continue; seen.add(p.email); list.push({ linkId: r.linkId, applicationId: r.applicationId, name: p.name, email: p.email, party: true }); }
       recipients = list.length;
       let consentsAbsent = false;
       for (const r of list) {

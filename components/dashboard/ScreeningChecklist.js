@@ -25,6 +25,7 @@ import { applicantState, stateLabel } from '../../lib/applicantState';
 import { isIdKind } from '../../lib/documentRetention';
 import { answerSummary, emailIn, RESEND_AFTER_DAYS } from '../../lib/referenceQuestions';
 import { creditLines } from '../../lib/creditShared';
+import { partyConfirmKey, partyFacts } from '../../lib/parties';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
@@ -116,6 +117,14 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
     // Credit: the applicant's own report, read and shown, never scored (lib/creditShared.js).
     { key: null, title: 'Credit', credit: creditLines(report) },
+    // One row per party (lib/parties.js): what they stated, what their documents said, and the
+    // realtor's own call to their employer, the one way a party reads verified.
+    ...(Array.isArray(applicant.parties) ? applicant.parties.map((p) => {
+      const pv = readVerification(p.docVerifications && p.docVerifications[0] ? p.docVerifications[0] : null);
+      const pDocs = pv.state === 'none' ? 'none' : pv.state !== 'ok' ? 'name did not match' : pv.incomeMatched ? `${pv.incomeExplanation || 'income'} matches` : pv.incomeClose ? `${pv.incomeExplanation}, close to stated` : pv.incomeMismatch ? 'did not match' : 'nothing matched';
+      const notIn = p.status !== 'submitted';
+      return { key: notIn ? null : partyConfirmKey(p.id), title: `${p.roleLabel}: ${p.name}`, said: notIn ? (p.status === 'declined' ? 'declined' : p.status === 'withdrawn' ? 'withdrew' : 'form not in yet') : (partyFacts(p, conf).slice(0, 3).join(', ') || 'no income given'), docs: notIn ? null : pDocs, verb: 'Called employer', party: p.id };
+    }) : []),
   ];
 
   const btn = () => ({

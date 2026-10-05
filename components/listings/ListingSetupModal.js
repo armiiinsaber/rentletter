@@ -29,6 +29,7 @@ const EMPTY = {
   pref_rent_to_income_max_pct: DEFAULT_RENT_SHARE_CAP, pref_min_annual_income: '', pref_min_years_at_job: '',
   pref_requires_landlord_reference: true, pref_requires_employer_verification: true,
   pref_ask_credit_report: false, // the upload step shows the credit row first; never required (lib/creditShared.js)
+  pref_guarantor_accepted: true, // a guarantor may be invited on this listing, the same for every applicant (lib/parties.js)
   pref_notes: '',
 };
 
@@ -130,6 +131,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
       pref_requires_landlord_reference: !!form.pref_requires_landlord_reference,
       pref_requires_employer_verification: !!form.pref_requires_employer_verification,
       pref_ask_credit_report: !!form.pref_ask_credit_report,
+      pref_guarantor_accepted: !!form.pref_guarantor_accepted,
       pref_notes: String(form.pref_notes).trim() || null,
     };
   };
@@ -240,6 +242,9 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
             {/* The credit report switch: the tenant's upload step shows the credit row first. It is
                 never required and never a criterion (lib/creditShared.js). */}
             <Check k="pref_ask_credit_report" label={CREDIT_ASK_LABEL} />
+            {/* A guarantor: a listing level setting, the same for every applicant (OHRC). On, the primary
+                may invite one from the apply page (lib/parties.js). */}
+            <Check k="pref_guarantor_accepted" label="Guarantor accepted" />
           </div>
 
           {/* notes */}

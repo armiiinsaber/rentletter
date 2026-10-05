@@ -12,7 +12,7 @@ export const profile = (over = {}) => ({ id: USER.id, email: USER.email, full_na
 export function tables({ plan = 'founding', profileOver = {} } = {}) {
   const listings = [
     { id: 'L1', profile_id: USER.id, name: '210 Carlaw Ave, Unit 4', address: '210 Carlaw Ave, Unit 4, Toronto', monthly_rent: 2600, bedrooms: '2', allows_pets: 'no', allows_smoking: 'no', parking_included: 'no', landlord_name: 'Marco Rossi', landlord_email: 'marco@example.com', pref_rent_to_income_max_pct: 40, pref_min_annual_income: null, pref_min_years_at_job: 1, pref_requires_landlord_reference: true, pref_requires_employer_verification: false, status: 'active', invite_token: INVITE_TOKEN, invite_url: `https://rentletter.ca/apply/${INVITE_TOKEN}`, created_at: ago(30) },
-    { id: 'L2', profile_id: USER.id, name: '88 Harbour St, Unit 2104', address: '88 Harbour St, Unit 2104, Toronto', monthly_rent: 3100, bedrooms: '2', landlord_name: null, landlord_email: null, pref_rent_to_income_max_pct: 35, status: 'active', invite_token: null, invite_url: null, created_at: ago(20) },
+    { id: 'L2', profile_id: USER.id, name: '88 Harbour St, Unit 2104', address: '88 Harbour St, Unit 2104, Toronto', monthly_rent: 3100, bedrooms: '2', landlord_name: null, landlord_email: null, pref_rent_to_income_max_pct: 35, pref_guarantor_accepted: false, status: 'active', invite_token: null, invite_url: null, created_at: ago(20) },
     { id: 'L9', profile_id: OTHER.id, name: '1 Elsewhere Rd', address: '1 Elsewhere Rd, Toronto', monthly_rent: 2000, status: 'active', created_at: ago(10) },
   ];
   const app = (id, n, over = {}) => ({ id, application_number: `RL-2026-TEST-${n}`, full_name: `Applicant ${n}`, email: `a${n}@example.com`, phone: `416 555 0${String(n.charCodeAt(1) % 10)}${String(n.charCodeAt(0) % 10)}${String(n.charCodeAt(3) % 10)}`, job_title: 'Analyst', employer: `Employer ${n}`, years_at_job: '3', annual_income: 90000, prev_landlord_name: 'A. Owner', prev_address: '1 Old St', years_at_previous: '2', references: [{ name: 'R One' }], co_applicant: null, owner_token: `OWNERTOKENSECRET${n}${n}${n}${n}`, cover_letter: 'secret cover letter', created_at: ago(5), ...over });
@@ -39,6 +39,8 @@ export function tables({ plan = 'founding', profileOver = {} } = {}) {
     profiles, listings, applications, listing_applicants,
     events: [{ id: 'e1', profile_id: USER.id, listing_id: 'L1', type: 'applicant_applied', created_at: ago(5), payload: {} }],
     applicant_documents: [],
+    application_parties: [],
+    income_sources: [],
     report_snapshots: [],
     reference_responses: [{ id: 'RR1', listing_applicant_id: 'J1', profile_id: USER.id, token: 'r'.repeat(32), status: 'answered', answers: { stillRent: 'no', paidOnTime: 'always', damage: 'none', complaints: 'no', rentAgain: 'yes' }, sent_to: 'a.owner@example.com', sent_at: ago(4), answered_at: ago(3), created_at: ago(4) }],
     pipeline_consents: [{ id: 'PC1', profile_id: USER.id, listing_id: 'L2', application_id: 'A6', email: 'a6@example.com', status: 'consented', consented_at: ago(9), expires_at: new Date(NOW + 51 * DAY).toISOString(), invites: [] }],

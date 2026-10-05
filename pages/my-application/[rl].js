@@ -14,6 +14,7 @@ import { formFromApplication, buildApplicationFromForm } from '../../lib/tenantP
 import { ProfileStyles, FactSections, Eyebrow, Chevron, noWidow, dateLong } from '../../components/tenant/ProfileFacts';
 import { TENANT_LINES } from '../../lib/applicantState';
 import { APPLICATION_STATE } from '../../lib/application-state';
+import PartiesCard from '../../components/tenant/PartiesCard';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -187,6 +188,8 @@ export default function ApplicationPage() {
               {saveError && <p role="alert" className="mp-alert">{noWidow(saveError)}</p>}
               {revoked && <p role="status" className="mp-note">{noWidow(`Revoked${data.revokedAt ? ` since ${dateLong(data.revokedAt)}` : ''}. The realtor sees a revoked notice instead of your details, and editing is paused.`)}</p>}
             </div>
+            {/* The people on this application (components/tenant/PartiesCard.js); nothing in the sandbox. */}
+            {!sandbox && cred && <PartiesCard applicationNumber={rl} ownerToken={cred.token} />}
             <FactSections
               facts={facts} draft={draft} editing={editing} setDraft={setDraft}
               canEdit={!revoked && !editing} saving={saving} justSaved={justSaved}

@@ -11,8 +11,12 @@ import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { recordEvent } from '../../../lib/events';
 import { ownedApplicant, realtorName } from '../../../lib/ownApplicant';
 import { logServerError } from '../../../lib/serverLog';
+import { isPartyConfirmKey } from '../../../lib/parties';
 
+// The four facts, plus a party's employer: party:<id>:employer (lib/parties.js), the one way a
+// party's income reads verified.
 const KEYS = ['id', 'employer', 'landlord', 'reference'];
+const knownKey = (k) => KEYS.includes(k) || isPartyConfirmKey(k);
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -26,7 +30,7 @@ export default async function handler(req, res) {
   const gate = await requireEntitlement(req, res, supabase, user); if (!gate) return;
 
   const { linkId, key, on } = req.body || {};
-  if (!linkId || !KEYS.includes(key) || typeof on !== 'boolean') return res.status(400).json({ error: 'linkId, a known key and on are required.' });
+  if (!linkId || !knownKey(key) || typeof on !== 'boolean') return res.status(400).json({ error: 'linkId, a known key and on are required.' });
 
   try {
     const admin = getSupabaseAdminClient();

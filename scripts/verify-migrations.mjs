@@ -39,6 +39,7 @@ const FILES = {
   m006: 'db/006-trial-default.sql',
   m007: 'db/007-drop-other-occupants.sql',
   credit: 'db/credit-shared.sql',
+  parties: 'db/008-application-parties-invites.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -312,6 +313,29 @@ async function runCredit(db, tag) {
   await checkCredit(db, `${tag}2`);
 }
 
+// ── db/008-application-parties-invites.sql ──────────────────────────────────────
+// The invite columns on application_parties: present, the status check, the unique token, a
+// second run leaves rows alone, and no new column carries a protected ground.
+async function checkParties(db, label) {
+  for (const c of ['party_token', 'status', 'invited_at', 'started_at', 'submitted_at', 'declined_at', 'withdrawn_at', 'consented_at', 'address']) check((await hasColumn(db, 'application_parties', c)) === true, `${label}: application_parties.${c} exists`);
+  check((await one(db, "SELECT column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'application_parties' AND column_name = 'status'")).includes('invited'), `${label}: status defaults to invited`);
+  check(/sticky|unknown|not_a_status/.test('') || /application_parties_status_check/.test(await refused(db, "INSERT INTO public.application_parties (application_id, role, full_name, status) VALUES ($1, 'co_applicant', 'X', 'sticky')", [app(5)]) || ''), `${label}: an unknown status is refused`);
+  const tok = 'ABCDEFGHJKMNPQRSTUVWXYZ234567892';
+  const id = await one(db, "INSERT INTO public.application_parties (application_id, role, full_name, email, party_token) VALUES ($1, 'co_applicant', 'Party One', 'p1@example.com', $2) RETURNING id", [app(5), tok]);
+  check(/application_parties_token_idx|duplicate key/.test(await refused(db, "INSERT INTO public.application_parties (application_id, role, full_name, party_token) VALUES ($1, 'guarantor', 'Party Two', $2)", [app(5), tok]) || ''), `${label}: the party token is unique`);
+  check((await one(db, 'SELECT status FROM public.application_parties WHERE id = $1', [id])) === 'invited', `${label}: a new party starts invited`);
+  await db.query('DELETE FROM public.application_parties WHERE id = $1', [id]);
+  const cols = (await rows(db, "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'application_parties'")).map((r) => r.column_name);
+  check(!cols.some((c) => /relationship|marital|family|age|birth|gender|occupant/.test(c)), `${label}: no column records a relationship, a family status or a protected ground`, cols.join(', '));
+}
+async function runParties(db, tag) {
+  await step(db, `${tag}1`, FILES.parties); await checkParties(db, `${tag}1`);
+  const kept = await one(db, "INSERT INTO public.application_parties (application_id, role, full_name, status, party_token) VALUES ($1, 'guarantor', 'Kept', 'submitted', 'KEPTKEPTKEPTKEPTKEPTKEPTKEPTKEP2') RETURNING id", [app(5)]);
+  await step(db, `${tag}2 (008 again)`, FILES.parties); await checkParties(db, `${tag}2`);
+  check((await one(db, 'SELECT status FROM public.application_parties WHERE id = $1', [kept])) === 'submitted', `${tag}2: a second run leaves a submitted party where it was`);
+  await db.query('DELETE FROM public.application_parties WHERE id = $1', [kept]);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -403,6 +427,7 @@ async function pathA() {
   await checkResync(db, 'A9');
   await run006And007(db, 'A1');
   await runCredit(db, 'A2');
+  await runParties(db, 'A3');
   await db.close();
 }
 
@@ -434,6 +459,7 @@ async function pathB() {
   check(same(await legacySnapshot(db), before), 'status, closed_at, rented_link_id, the decision columns, withdrawn_at and the document row are what they were before 001');
   await run006And007(db, 'B');
   await runCredit(db, 'B9');
+  await runParties(db, 'B10');
   return { db, before };
 }
 

@@ -77,7 +77,10 @@ export default async function handler(req, res) {
   // applicant the token maps to). Needed so runDocumentAnalysis can compare the document to the
   // application's STATED values. Null-safe: if it can't bind, analysis still runs (comparisons come
   // back not-found) and the real two-key write guard is enforced later in finalize.
-  let application = null, listing = null, admin = null;
+  // A party's request (rec.partyId, lib/partyStore.js): the party's own row stands in for the
+  // application, so the name on the documents is checked against the party, not the primary, and
+  // the primary's stated facts never enter the analysis of a party's files.
+  let application = null, listing = null, admin = null, party = null;
   try {
     const supaOk = isSupabaseConfigured() && !!process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (supaOk && rec.linkId && rec.listingId) {
@@ -86,8 +89,15 @@ export default async function handler(req, res) {
         .from('listing_applicants').select('*, application:applications(*)')
         .eq('id', rec.linkId).eq('listing_id', rec.listingId).maybeSingle();
       const bound = junction && rec.applicationId != null && String(junction.application_id) === String(rec.applicationId);
+      if (bound && rec.partyId) {
+        const { data: p } = await admin.from('application_parties').select('*').eq('id', rec.partyId).eq('application_id', junction.application_id).maybeSingle();
+        party = p || null;
+      }
+      if (bound && rec.partyId && !party) { file.data = null; return res.status(404).json({ error: 'This upload link is no longer active.' }); }
       if (bound) {
-        application = { ...(junction.application || {}) };
+        application = party
+          ? { id: junction.application_id, full_name: party.full_name, annual_income: party.annual_income, employer: party.employer || party.business_name, job_title: party.job_title, years_at_job: party.years_at_job }
+          : { ...(junction.application || {}) };
         delete application.owner_token;  // never handled/exposed here
         delete application.cover_letter; // not needed for analysis
         const { data: l } = await admin.from('listings').select('*').eq('id', rec.listingId).maybeSingle();
@@ -129,7 +139,7 @@ export default async function handler(req, res) {
   let documentId = null; // the held row, so the tenant can remove this file before they submit (remove-file.js)
   if (admin && application && listing && listing.profile_id) {
     const firstOfSubmission = Object.keys(staging.items).length === 0;
-    const stored = await storeAnalyzedDocuments(admin, { profileId: listing.profile_id, listingId: rec.listingId, linkId: rec.linkId, applicationId: application.id || rec.applicationId || null, applicantName: application.full_name || null, uploadedBy: 'tenant', replace: firstOfSubmission, files: [{ mime, bytes: Buffer.from(data, 'base64'), kind: kindOf(run.documents[0]) }] });
+    const stored = await storeAnalyzedDocuments(admin, { profileId: listing.profile_id, listingId: rec.listingId, linkId: rec.linkId, applicationId: application.id || rec.applicationId || null, applicantName: application.full_name || null, uploadedBy: 'tenant', replace: firstOfSubmission, partyId: rec.partyId || null, files: [{ mime, bytes: Buffer.from(data, 'base64'), kind: kindOf(run.documents[0]) }] });
     documentId = stored && Array.isArray(stored.ids) ? stored.ids[0] || null : null;
   }
 

@@ -89,10 +89,10 @@ test('runNudges: sends one and two, stamps nudgedAt, records the event, prunes t
 
 test('the pending set writes and the mint sites', () => {
   const read = (f) => readFileSync(new URL(`../${f}`, import.meta.url), 'utf8');
-  assert.match(read('lib/docRequest.js'), /await kvSadd\(linkId\)/, 'sadd at mint');
-  assert.match(read('pages/api/upload/finalize.js'), /kvSrem\(rec\.linkId\)/, 'srem on finalize');
+  assert.match(read('lib/docRequest.js'), /await kvSadd\(partyId \? partyMember\(linkId, partyId\) : linkId\)/, 'sadd at mint, the party under its own member');
+  assert.match(read('pages/api/upload/finalize.js'), /kvSrem\(rec\.partyId \? `\$\{rec\.linkId\}:p:\$\{rec\.partyId\}` : rec\.linkId\)/, 'srem on finalize');
   assert.match(read('pages/api/listings/status.js'), /kvSrem\(l\.id\)/, 'srem on rented or closed');
-  assert.match(read('lib/nudges.js'), /kv\.srem\(linkId\)/, 'srem when the cron drops one');
+  assert.match(read('lib/nudges.js'), /kv\.srem\(member\)/, 'srem when the cron drops one');
   assert.match(read('pages/api/applications/mirror.js'), /\bmint(?:Request)?\(/, 'the invite mirror mints');
   assert.match(read('pages/api/applicants/request-documents.js'), /mintRequest\(/, 'the button mints through the same helper');
   assert.doesNotMatch(read('pages/api/listings/add-applicant.js'), /mintRequest|request-documents/, 'add by number does not mint');

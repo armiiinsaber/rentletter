@@ -21,6 +21,7 @@ import { screenableFacts } from '../../../lib/applicantAnalysis';
 import { withActiveReport } from '../../../lib/docVerifications';
 import { APPLICATION_STATE, ACTOR_TYPE } from '../../../lib/application-state';
 import { transitionApplicationIfAllowed } from '../../../lib/applicationTransitions';
+import { updateParty } from '../../../lib/partyStore';
 
 // Only a token in the body. Modest duration, no large body.
 export const config = { maxDuration: 30 };
@@ -67,7 +68,13 @@ export default async function handler(req, res) {
 
       if (bound) {
         persistAttempted = true;
-        const application = { ...(junction.application || {}) };
+        // A party's request (rec.partyId): the report is the party's, written on their own row
+        // (application_parties.doc_verifications), read against their own stated facts.
+        let party = null;
+        if (rec.partyId) { const { data: p } = await admin.from('application_parties').select('*').eq('id', rec.partyId).eq('application_id', junction.application_id).maybeSingle(); party = p || null; }
+        const application = party
+          ? { id: junction.application_id, full_name: party.full_name, annual_income: party.annual_income, employer: party.employer || party.business_name, job_title: party.job_title, years_at_job: party.years_at_job }
+          : { ...(junction.application || {}) };
         delete application.owner_token;
         delete application.cover_letter;
         const { data: listing } = await admin.from('listings').select('*').eq('id', rec.listingId).maybeSingle();
@@ -76,19 +83,27 @@ export default async function handler(req, res) {
 
         // Persist the combined result — tagged as a tenant self-upload — as the ACTIVE report,
         // preserving any archived history. Same column, row, and shape as the realtor path.
-        const newDocV = withActiveReport(junction.doc_verifications, { ...run, source: 'tenant' });
-        const { data: upRows, error: upErr } = await admin
-          .from('listing_applicants').update({ doc_verifications: newDocV }).eq('id', rec.linkId).select('id, application_id');
+        let upErr = null; let upRows = [];
+        if (rec.partyId && !party) { upErr = { message: 'party gone' }; }
+        else if (party) {
+          const newDocV = withActiveReport(party.doc_verifications, { ...run, source: 'tenant' });
+          upErr = await updateParty(admin, party.id, { doc_verifications: newDocV, docs_submitted_at: receivedAt, docs_verified: true });
+          upRows = upErr ? [] : [{ id: party.id }];
+        } else {
+          const newDocV = withActiveReport(junction.doc_verifications, { ...run, source: 'tenant' });
+          ({ data: upRows, error: upErr } = await admin
+            .from('listing_applicants').update({ doc_verifications: newDocV }).eq('id', rec.linkId).select('id, application_id'));
+        }
 
         if (upErr) { console.error('[upload/finalize] persist error:', upErr.message); persistFailed = true; }
         else if (!(upRows || []).length) { console.error('[upload/finalize] persist affected 0 rows'); persistFailed = true; }
         else {
           verified = true;
           {
-            const facts = verificationFacts(newDocV);
+            const facts = verificationFacts({ active: { ...run, source: 'tenant' }, archived: [] });
             const outcome = facts.incomeVerified || facts.employmentVerified ? 'verification_completed' : 'verification_failed';
-            await recordForListing(admin, rec.listingId, 'documents_uploaded', { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, documents: items.length } });
-            await recordForListing(admin, rec.listingId, outcome, { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, by: 'tenant', nameMatch: run.nameMatch || null } });
+            await recordForListing(admin, rec.listingId, 'documents_uploaded', { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, documents: items.length, partyId: party ? party.id : undefined, partyRole: party ? party.role : undefined } });
+            await recordForListing(admin, rec.listingId, outcome, { applicationId: junction.application_id, linkId: rec.linkId, payload: { applicantName: application.full_name || null, by: 'tenant', nameMatch: run.nameMatch || null, partyId: party ? party.id : undefined } });
           }
           if (listing?.profile_id) invalidateSignals(listing.profile_id); // the realtor's bell picks the upload up within the minute
 
@@ -101,7 +116,7 @@ export default async function handler(req, res) {
 
           // Notification marker (best-effort, isolated so a not-yet-migrated column can't fail it).
           try {
-            await admin.from('listing_applicants').update({ docs_submitted_at: receivedAt, docs_verified: true }).eq('id', rec.linkId);
+            if (!party) await admin.from('listing_applicants').update({ docs_submitted_at: receivedAt, docs_verified: true }).eq('id', rec.linkId);
           } catch (e) { console.warn('[upload/finalize] notification marker skipped:', e?.message || e); }
         }
       }
@@ -121,9 +136,9 @@ export default async function handler(req, res) {
   try {
     await kvSetJson(reqKey(token), { ...rec, status: 'received', receivedAt, fileCount, verified }, DOCREQ_TTL);
     if (rec.linkId) {
-      const ptr = await kvGetJson(appKey(rec.linkId));
-      await kvSetJson(appKey(rec.linkId), { ...(ptr || {}), token, status: 'received', requestedAt: (ptr && ptr.requestedAt) || rec.requestedAt || null, receivedAt, fileCount }, DOCREQ_TTL);
-      await kvSrem(rec.linkId); // the report exists: no more reminders (lib/nudges.js)
+      const ptr = await kvGetJson(appKey(rec.linkId, rec.partyId || null));
+      await kvSetJson(appKey(rec.linkId, rec.partyId || null), { ...(ptr || {}), token, status: 'received', requestedAt: (ptr && ptr.requestedAt) || rec.requestedAt || null, receivedAt, fileCount }, DOCREQ_TTL);
+      await kvSrem(rec.partyId ? `${rec.linkId}:p:${rec.partyId}` : rec.linkId); // the report exists: no more reminders (lib/nudges.js)
     }
     await kvDel(stagingKey(token));
   } catch (e) {

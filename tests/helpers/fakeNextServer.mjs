@@ -43,7 +43,8 @@ for (const a of t.applications || []) if (!('rent_to_income_ratio' in a)) a.rent
 t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_applicant_id: 'J9', profile_id: 'realtor-2', storage_path: 'realtor-2/J9/d9.pdf', kind: 'credit report', mime: 'application/pdf', bytes: 1200, uploaded_by: 'tenant', uploaded_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 13 * 86400000).toISOString(), deleted_at: null, deleted_by: null, opened_count: 0, last_opened_at: null }];
 const stack = installFakeStack({ tables: t, user: USER });
 await stack.db.storage.from('applicant-documents').upload('realtor-2/J9/d9.pdf', Buffer.from('%PDF-1.4 other realtor credit report'), { contentType: 'application/pdf' });
-const { mintRequest } = await import('../../lib/docRequest.js');
+const { mintRequest, kvSetJson } = await import('../../lib/docRequest.js');
+const { newOwnerToken } = await import('../../lib/applicationIds.js');
 globalThis.__rlFakeStackFor = stack;
 process.env.NEXT_DIST_DIR = `.next-fake-${port}`;
 if (mode === 'prod') process.env.NODE_ENV = 'production'; // one React build, the production one
@@ -64,6 +65,27 @@ http.createServer(async (req, res) => {
     if (!j || !a || !l) { res.statusCode = 404; res.end('{}'); return; }
     const minted = await mintRequest({ listingId: l.id, linkId: j.id, applicationId: a.id, tenantName: a.full_name, listingName: l.name, address: l.address, realtorName: 'Sarah Chen', brokerage: 'Demo Realty', askCreditReport: q.get('credit') === '1' }, { renew: q.get('renew') === '1' });
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ token: minted.token })); return;
+  }
+  // The parties walk (tests/routes/partiesWebkit.test.mjs): GET /__fake/app?link=J4 writes the KV
+  // app:{RL} record for that applicant with a fresh owner token and answers { applicationNumber,
+  // ownerToken }; GET /__fake/mail?to=x answers what the fake mailer sent to x; GET
+  // /__fake/parties?app=A4 answers that application's party rows without their tokens.
+  if (req.url.startsWith('/__fake/app')) {
+    const link = String(new URL(req.url, 'http://localhost').searchParams.get('link') || '');
+    const j = (t.listing_applicants || []).find((x) => x.id === link); const a = j && (t.applications || []).find((x) => x.id === j.application_id);
+    if (!a) { res.statusCode = 404; res.end('{}'); return; }
+    const ownerToken = newOwnerToken();
+    a.owner_token = ownerToken;
+    await kvSetJson(`app:${a.application_number}`, { applicationNumber: a.application_number, ownerToken, email: a.email, tenant: { fullName: a.full_name, phone: a.phone || '' }, employment: { annualIncome: a.annual_income }, createdAt: new Date().toISOString() }, 31536000);
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ applicationNumber: a.application_number, ownerToken, email: a.email })); return;
+  }
+  if (req.url.startsWith('/__fake/mail')) {
+    const to = String(new URL(req.url, 'http://localhost').searchParams.get('to') || '').toLowerCase();
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(stack.resend.sent.filter((m) => !to || String(m.to).toLowerCase() === to).map((m) => ({ to: m.to, subject: m.subject, text: m.text })))); return;
+  }
+  if (req.url.startsWith('/__fake/parties')) {
+    const appId = String(new URL(req.url, 'http://localhost').searchParams.get('app') || '');
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify((t.application_parties || []).filter((p) => p.application_id === appId).map(({ party_token, ...p }) => p))); return;
   }
   if (req.url.startsWith('/__fake/documents')) {
     const link = String(new URL(req.url, 'http://localhost').searchParams.get('link') || '');

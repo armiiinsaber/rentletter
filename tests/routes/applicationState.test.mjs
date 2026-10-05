@@ -53,6 +53,7 @@ const EXPECTED_ROUTES = [
   'pages/api/listings/add-applicant.js',
   'pages/api/listings/delete.js',
   'pages/api/listings/status.js',
+  'pages/api/party/self.js',
   'pages/api/referrals/assign.js',
   'pages/api/upload/finalize.js',
 ];
@@ -90,7 +91,7 @@ test('the routes that change a state, found from the source, and the one writer 
   assert.match(src('lib/supabaseBridge.js'), /const state = startingState\(\);/);
 
   // Session, entitlement and explicit ownership are still on every realtor route found.
-  for (const r of EXPECTED_ROUTES.filter((p) => !/upload\/finalize|applications\/mirror/.test(p))) {
+  for (const r of EXPECTED_ROUTES.filter((p) => !/upload\/finalize|applications\/mirror|party\/self/.test(p))) {
     const text = src(r);
     assert.ok(/withRealtor\(/.test(text) || (/(auth\.getUser\(\)|requireRealtor\()/.test(text) && /requireEntitlement\(/.test(text)), `${r}: session and entitlement`);
   }

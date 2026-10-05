@@ -23,6 +23,7 @@ import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { Field, SelectField, ToggleField } from '../../components/apply/fields';
 import { ProfileStyles, Eyebrow, LinesText, EMP_LABEL, noWidow } from '../../components/tenant/ProfileFacts';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
+import PartiesCard from '../../components/tenant/PartiesCard';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
 import { runSubmitChain, SAVING_COPY } from '../../lib/submitChain';
@@ -548,18 +549,9 @@ export default function ApplyPage({ invited = null }) {
               <Field label="Anything else about your pets (optional)" value={form.petNotes} onChange={(v) => updatePets({ petNotes: v })} placeholder="Breed, temperament, vet records available" />
             </div>
           )}
-          {/* Co tenant framing on purpose: another adult on the lease, never the nature of the
-              relationship (marital status is a protected ground). coApplicantRelationship stays ''. */}
-          <ToggleField label="Applying with a co tenant, another adult on the lease?" value={form.hasCoApplicant} onChange={(v) => update('hasCoApplicant', v)} />
-          {form.hasCoApplicant && (
-            <div className="mp-sub">
-              <div className="mp-label">Co tenant</div>
-              <Field label="Full name" value={form.coApplicantName} onChange={(v) => update('coApplicantName', v)} placeholder="Alex Smith" />
-              <Field label="Job title" value={form.coApplicantJobTitle} onChange={(v) => update('coApplicantJobTitle', v)} placeholder="Designer" />
-              <Field label="Employer" value={form.coApplicantEmployer} onChange={(v) => update('coApplicantEmployer', v)} placeholder="Figma" />
-              <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={(v) => update('coApplicantIncome', v)} placeholder="75,000" type="number" inputMode="numeric" />
-            </div>
-          )}
+          {/* Someone else on the lease fills their own form (lib/parties.js): the invite card comes after
+              submission. Nothing about a relationship is asked here or there. */}
+          <p className="mp-note">{noWidow('Applying with someone? After you submit, you can invite a co applicant, or a guarantor where the listing accepts one. They fill their own form.')}</p>
         </>
       );
       case 'refs': return (
@@ -724,6 +716,9 @@ export default function ApplyPage({ invited = null }) {
                   </>
                 )}
               </div>
+              {/* The people on this application (components/tenant/PartiesCard.js): invited by name and
+                  email, each to their own form. Only when the realtor received the application. */}
+              {result.ownerToken && !invite?.sandbox && <PartiesCard applicationNumber={result.applicationNumber} ownerToken={result.ownerToken} acceptsGuarantor={invite ? invite.acceptsGuarantor !== false : null} />}
               {/* THE LAST STEP: documents now, on the tenant's own per file path (components/tenant/
                   DocumentUploader.js, the same control as /upload/[token]). The request was minted at
                   submission; the token here is the document request token, never owner_token. */}

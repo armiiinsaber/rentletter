@@ -150,7 +150,7 @@ test('17: a listing older than 90 days with no KV record resolves from the row a
   const handler = createHandler({ getAdmin: () => admin, record: async () => null });
   let r = res(); await handler({ method: 'GET', query: { token } }, r);
   assert.equal(r.code, 200);
-  assert.deepEqual(r.body, { realtorName: 'Sarah Chen', realtorBrokerage: 'Demo Realty', listingName: '210 Carlaw Ave, Unit 4', unit: { address: '210 Carlaw Ave, Unit 4, Toronto', monthlyRent: '2600', bedrooms: '2', allowsPets: 'no', allowsSmoking: 'no', parkingIncluded: 'no' }, province: 'ON' });
+  assert.deepEqual(r.body, { realtorName: 'Sarah Chen', realtorBrokerage: 'Demo Realty', listingName: '210 Carlaw Ave, Unit 4', unit: { address: '210 Carlaw Ave, Unit 4, Toronto', monthlyRent: '2600', bedrooms: '2', allowsPets: 'no', allowsSmoking: 'no', parkingIncluded: 'no' }, province: 'ON', acceptsGuarantor: true });
   assert.equal(await inviteRent(admin, token, null), 2600, 'generate reads the rent from the row: estimated_rent is never null for a live listing');
   t.listings[0].status = 'rented';
   r = res(); await handler({ method: 'GET', query: { token } }, r);
