@@ -8,6 +8,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, StatusPills } from '../../components/ui';
 import { getEntitlement } from '../../lib/entitlements';
+import { billingOff } from '../../lib/billingOff';
 import Paywall from './Paywall';
 import { C, R, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
@@ -245,10 +246,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
   const entitlement = initialEntitlement || getEntitlement(profile);
-  const trialDays = entitlement.status === 'trialing' && entitlement.daysLeft != null && entitlement.daysLeft <= 7 ? entitlement.daysLeft : null;
+  // Billing off (lib/billingOff.js): no paywall, and no trial on screen.
+  const free = billingOff();
+  const trialDays = !free && entitlement.status === 'trialing' && entitlement.daysLeft != null && entitlement.daysLeft <= 7 ? entitlement.daysLeft : null;
   // Back from Checkout before the webhook landed → "payment received" instead of the paywall.
   const checkoutFlag = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('checkout') : null;
-  const locked = !entitlement.canUseProduct;
+  const locked = !free && !entitlement.canUseProduct;
   const brokerage = (profile?.brokerage || '').trim();
   // Branding is complete when there is a display name, a brokerage, and a logo (uploaded or
   // generated, both land in logo_url). Complete → the brand card leaves the dashboard; branding

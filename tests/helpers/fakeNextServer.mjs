@@ -6,6 +6,8 @@
 // value call waits LATENCY_MS, so a page's sequential reads cost what they would in production.
 //   node tests/helpers/fakeNextServer.mjs <port> [dev|prod] [latencyMs]
 // GET /__fake/pipeline?people=1|2 sets how many people the Pipeline holds (below).
+// FAKE_PROFILE=lapsed signs in a realtor whose trial ended two days ago (the BILLING_OFF walk,
+// tests/routes/billingOffWebkit.test.mjs); unset, the fixture's founding realtor.
 // It builds into, or serves from, .next-fake-<port> (NEXT_DIST_DIR, next.config.js); prod needs
 // `NEXT_DIST_DIR=.next-fake-<port> FAKE_STACK_BUILD=1 next build` first. Prints "ready" when up.
 import { registerHooks, createRequire } from 'node:module';
@@ -28,7 +30,8 @@ const { installFakeStack } = await import('./fakeStack.mjs');
 const { tables, USER } = await import('../routes/fixture.mjs');
 // The real tables have every column; the fixture leaves out one the listing page passes on, which
 // the database would send as null (Next refuses undefined in props).
-const t = tables();
+const lapsed = process.env.FAKE_PROFILE === 'lapsed';
+const t = tables(lapsed ? { plan: 'trial', profileOver: { trial_ends_at: new Date(Date.now() - 2 * 86400000).toISOString() } } : {});
 for (const a of t.applications || []) if (!('rent_to_income_ratio' in a)) a.rent_to_income_ratio = null;
 const stack = installFakeStack({ tables: t, user: USER });
 globalThis.__rlFakeStackFor = stack;

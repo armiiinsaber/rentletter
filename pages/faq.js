@@ -8,8 +8,15 @@ import { useState } from 'react';
 import { C, R } from '../components/theme';
 import { GlobalStyle, Wordmark, ScrollHeader, Icon } from '../components/ui';
 import AppHead from '../components/AppHead';
+import { noWidow } from '../lib/typeset';
 
+// The first question is the one sales realtors ask first (the homepage carries it too).
 const FAQS = [
+  {
+    category: 'For realtors',
+    q: 'I only do a few rentals a year.',
+    a: 'Then you pay nothing until a rental lands. When one does, it takes minutes instead of days.',
+  },
   // ─── GENERAL ─────────────────────────────────────
   {
     category: 'General',
@@ -36,7 +43,7 @@ const FAQS = [
   {
     category: 'For realtors',
     q: 'How much does it cost?',
-    a: 'New accounts get a 7-day free trial, then $49.99/month (HST included). No setup fees, cancel any time.',
+    a: 'Free to join. You pay only when a rental lands.',
   },
   {
     category: 'For realtors',
@@ -79,7 +86,7 @@ const FAQS = [
   },
   {
     category: 'For property managers',
-    q: 'Is this a full property-management system?',
+    q: 'Is this a full property management system?',
     a: 'No. Rentletter is focused on the applicant funnel, collecting, comparing, and presenting applicants for a vacancy. It is not a rent collection or maintenance platform. It is the clean front end to your leasing decision.',
   },
 
@@ -144,11 +151,8 @@ export default function FAQ() {
 
           {categories.map(cat => (
             <section key={cat} style={{ marginBottom: 40 }}>
-              <h2 style={{
-                fontSize: 12, fontWeight: 700, color: C.red,
-                letterSpacing: '0.12em', textTransform: 'uppercase',
-                marginBottom: 8, paddingBottom: 12, borderBottom: `1px solid ${C.rule}`,
-              }}>
+              {/* The category is the title of its group, one type step above the questions under it. */}
+              <h2 className="t-d3" style={{ color: C.ink, margin: '0 0 var(--gap-line)', paddingBottom: 12, borderBottom: `1px solid ${C.rule}` }}>
                 {cat}
               </h2>
               {FAQS.filter(f => f.category === cat).map((f, i) => {
@@ -164,8 +168,8 @@ export default function FAQ() {
                         padding: '20px 0', cursor: 'pointer',
                         display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14,
                       }}>
-                      <span style={{ fontSize: 16.5, fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>
-                        {f.q}
+                      <span style={{ fontSize: 'var(--t-body)', fontWeight: 600, color: C.ink, lineHeight: 1.4 }}>
+                        {noWidow(f.q)}
                       </span>
                       <span className={`rl-chev${isOpen ? ' rl-chev-open' : ''}`} style={{ flexShrink: 0, display: 'inline-flex', color: isOpen ? C.red : C.inkMute }}>
                         <Icon name="chevronD" size={20} />
@@ -175,7 +179,7 @@ export default function FAQ() {
                     <div className={`rl-acc${isOpen ? ' rl-acc-open' : ''}`}>
                       <div>
                         <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.7, padding: '0 36px 24px 0', margin: 0 }}>
-                          {f.a}
+                          {noWidow(f.a.replace(/: /g, ':\u00a0'))}
                         </p>
                       </div>
                     </div>
@@ -190,11 +194,11 @@ export default function FAQ() {
             <div style={{ fontSize: 11, color: '#f0b8bb', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Still have a question?
             </div>
-            <h3 className="rl-serif" style={{ fontSize: 'clamp(22px, 4vw, 30px)', color: C.paper, marginBottom: 10, letterSpacing: '-0.02em' }}>
+            <h3 className="t-d3" style={{ color: C.paper, margin: '0 0 var(--gap-line)' }}>
               Talk to the Rentletter team.
             </h3>
-            <p style={{ fontSize: 14.5, color: C.inkInverse, lineHeight: 1.6, marginBottom: 20, maxWidth: 520 }}>
-              Real human responses within 24 hours.
+            <p style={{ fontSize: 'var(--t-body)', color: C.inkInverse, lineHeight: 1.6, marginBottom: 20, maxWidth: 520 }}>
+              {noWidow('Real human responses within 24 hours.')}
             </p>
             <a href="mailto:info@rentletter.ca" className="rl-btn" style={{
               display: 'inline-flex', alignItems: 'center', gap: 9,

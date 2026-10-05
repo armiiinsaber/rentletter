@@ -4,8 +4,10 @@
 // decided by lib/entitlements.js; this only labels it.
 import { C, R } from '../theme';
 import { evaluateProfile } from '../../lib/accountStatus';
+import { billingOff } from '../../lib/billingOff';
 
 export default function StatusBadge({ profile }) {
+  if (billingOff()) return null; // nobody pays (lib/billingOff.js): no trial, no plan, no badge
   const s = evaluateProfile(profile);
   // founding → nothing; none → nothing (no gating yet — that ships with checkout)
   if (s.status === 'founding' || s.status === 'unknown' || s.status === 'none') return null;

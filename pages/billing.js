@@ -10,8 +10,12 @@ import PromoEntry from '../components/dashboard/PromoEntry';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { getEntitlement } from '../lib/entitlements';
 import { PLANS, money } from '../lib/billingConfig';
+import { billingOff } from '../lib/billingOff';
 
 export async function getServerSideProps(ctx) {
+  // Billing off (lib/billingOff.js): nobody pays, so there are no plans to show. The dashboard
+  // checks the session itself.
+  if (billingOff()) return { redirect: { destination: '/dashboard', permanent: false } };
   if (!isSupabaseConfigured()) return { redirect: { destination: '/signin?error=Sign-in%20is%20temporarily%20unavailable.', permanent: false } };
   const supabase = getSupabaseServerClient(ctx.req, ctx.res);
   const { data: { user } } = await supabase.auth.getUser();

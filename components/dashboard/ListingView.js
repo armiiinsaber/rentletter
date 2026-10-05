@@ -19,6 +19,7 @@ import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import { computeFit, compareFit, capOf, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
+import { billingOff } from '../../lib/billingOff';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
 import { needsSignature, defaultSignature, needsBrandingHint, BRANDING_HINT, BRANDING_HINT_LINK } from '../../lib/justInTime';
 import { AnimatedScore, useFlip, ReportDeparture, MotionStyles } from '../motion';
@@ -68,7 +69,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const router = useRouter();
   const [profile, setProfile] = useState(initialProfile);
   // Access verdict (lib/entitlements.js) — read only; the paywall replaces the page when false.
-  const entitlement = getEntitlement(profile); const locked = !entitlement.canUseProduct;
+  // Billing off (lib/billingOff.js): never locked.
+  const entitlement = getEntitlement(profile); const locked = !billingOff() && !entitlement.canUseProduct;
   const [listing, setListing] = useState(initialListing);
   // What this screen shows, kept for the next screen's skeleton (components/nav/routes.js).
   useEffect(() => { rememberProfile(profile); }, [profile]);

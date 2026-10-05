@@ -8,6 +8,7 @@ import { C, R } from '../../components/theme';
 import { GlobalStyle, Wordmark } from '../../components/ui';
 import AppHead from '../../components/AppHead';
 import { validatePromoCode, normalizeCode, CODE_RE } from '../../lib/promos';
+import { billingOff } from '../../lib/billingOff';
 
 export const PROMO_COOKIE = 'rl_promo';
 const THIRTY_DAYS = 30 * 24 * 3600;
@@ -28,6 +29,8 @@ export async function getServerSideProps({ params, res }) {
 const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
 const grantLine = (grantType, trialDays) => {
   if (grantType === 'lifetime') return 'Free for life, founding member.';
+  // Billing off (lib/billingOff.js): nobody pays, so no free period to count down.
+  if (billingOff()) return 'Free to join. Pay only when a rental lands.';
   if (!trialDays) return 'Free to start, no card required.';
   if (trialDays % 30 === 0) { const m = trialDays / 30; return `${m === 1 ? 'One month' : `${m} months`} free, no card required.`; }
   if (trialDays % 7 === 0) { const w = trialDays / 7; return `${w === 1 ? 'One week' : `${w} weeks`} free, no card required.`; }
