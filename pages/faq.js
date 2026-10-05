@@ -10,11 +10,11 @@ import { GlobalStyle, Wordmark, ScrollHeader, Icon } from '../components/ui';
 import AppHead from '../components/AppHead';
 import { noWidow } from '../lib/typeset';
 
-// The first question is the one sales realtors ask first (the homepage carries it too).
+// The first question is the homepage's too (pages/index.js FEW_RENTALS).
 const FAQS = [
   {
     category: 'For realtors',
-    q: 'I only do a few rentals a year.',
+    q: 'I don’t do many rentals.',
     a: 'Then you pay nothing until a rental lands. When one does, it takes minutes instead of days.',
   },
   // ─── GENERAL ─────────────────────────────────────

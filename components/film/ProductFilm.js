@@ -132,7 +132,8 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 11, opacity: ov.endWordmark, transform: `translate(0, ${(1 - ov.endWordmark) * 10}px)` }}>
           <Wordmark size="hero" style={{ height: 'clamp(20px, 3.1vw, 32px)', width: 'auto' }} />
         </div>
-        <div style={{ fontSize: 'clamp(12px, 1.5vw, 15px)', color: C.inkSoft, marginTop: 8, opacity: ov.endTagline, transform: `translate(0, ${(1 - ov.endTagline) * 6}px)`, textWrap: 'balance' }}>Rentals, done right. Back to selling.</div>
+        {/* The slogan: two lines on a narrow or story frame, one on a wide one, never a lone word. */}
+        <div style={{ fontSize: 'clamp(12px, 1.5vw, 15px)', color: C.inkSoft, marginTop: 8, opacity: ov.endTagline, transform: `translate(0, ${(1 - ov.endTagline) * 6}px)`, textWrap: 'balance' }}>{['Handled by AI.', 'Approved by you.'].map((line, i) => <span key={line} style={{ display: narrow || story ? 'block' : 'inline' }}>{i ? ' ' : ''}{line}</span>)}</div>
       </div>
       {/* reduced motion: the film holds its final frame; say so once, quietly */}
       {reduced && !controlled && <div style={{ position: 'absolute', right: 10, top: 10, fontSize: 10, color: C.inkMute, background: C.paper, border: `1px solid ${C.rule}`, borderRadius: 999, padding: '3px 8px' }}>Motion reduced</div>}

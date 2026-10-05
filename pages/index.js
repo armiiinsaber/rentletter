@@ -9,25 +9,26 @@ import { noWidow } from '../lib/typeset';
 import HeroDemo from '../components/mockups/HeroDemo';
 
 
-// ─── THE STORY ─────────────────────────────────────────────────────────────────────────────
-// The story, for sales realtors who still take rentals: less time, less paperwork, facts they can
-// trust, more rentals closed while they build their sales career. Every sentence below is one the
-// product backs today; the claims list (with the file that makes each one true) is in the commit.
-const HERO_HEADLINE = ['Rentals, done right.', 'Back to selling.'];
-const META_DESCRIPTION = 'For sales realtors in Ontario and BC who still take rentals. One link collects every applicant, documents are read and matched to what was stated, and your landlord gets a report with your name on it. Free to join. Pay only when a rental lands.';
+// ─── THE PAGE ──────────────────────────────────────────────────────────────────────────────
+// Short declarative lines about what the product does. Nothing here says who the reader is. Every
+// sentence below is one the product backs today; the claims list, with the file that makes each
+// one true, is in the commit.
+const HERO_HEADLINE = ['Handled by AI.', 'Approved by you.'];
+const META_DESCRIPTION = 'Rentletter reads every rental application and document, ranks applicants against your listing, and leaves the decision to you. Ontario and BC.';
+const OG_IMAGE = 'https://rentletter.ca/brand/kit/Rentletter-Brand-Kit/social/rentletter-og-1200x630.png'; // the brand kit's (scripts/brand/kit.mjs)
 const DEMO_MAIL = `mailto:info@rentletter.ca?subject=${encodeURIComponent('Rentletter demo request')}&body=${encodeURIComponent('Hi Rentletter team,\n\nI would like to book a 15 minute demo of Rentletter.\n\nMy brokerage: \nMy preferred time: \n\nThanks!')}`;
 const BLOCKS = [
-  { label: 'Time', title: 'One link does the asking.', body: 'Every applicant fills the same form from your listing’s link. They arrive ranked, best fit first.' },
-  { label: 'Paperwork', title: 'No attachments to chase.', body: 'Applicants upload documents through a secure link. Each file is held 14\u00a0days, then deleted.' },
-  { label: 'Confidence', title: 'Facts you can check.', body: 'Each document is read and matched against what the applicant stated. Verified appears only when you confirm the employer yourself.' },
-  { label: 'Volume', title: 'Several rentals at once.', body: 'Every listing keeps its own link, ranked list and landlord report. Runners up who say yes wait in Pipeline for your next unit.' },
+  { title: 'Read.', body: 'Every document is read and matched to what the applicant stated.' },
+  { title: 'Ranked.', body: 'Applicants appear in order against your listing’s criteria.' },
+  { title: 'Sure.', body: 'Each fact shows where it came from, and verified appears only when you confirmed it yourself.' },
+  { title: 'Done.', body: 'The landlord report carries your name and is ready to send.' },
 ];
-const FEW_RENTALS = { q: 'I only do a few rentals a year.', a: 'Then you pay nothing until a rental lands. When one does, it takes minutes instead of days.' };
+const FEW_RENTALS = { q: 'I don’t do many rentals.', a: 'Then you pay nothing until a rental lands. When one does, it takes minutes instead of days.' };
 const STEPS = [
-  { n: '01', icon: 'home', t: 'Create your listing', d: 'Add the unit and your landlord’s preferences. Your applicant link is ready at once.' },
+  { n: '01', icon: 'home', t: 'Create a listing', d: 'Add the unit and the landlord’s preferences. The applicant link is ready at once.' },
   { n: '02', icon: 'link', t: 'Share one link', d: 'Text it, email it or post it. Every applicant fills the same form.' },
-  { n: '03', icon: 'list', t: 'Review and rank', d: 'Applicants arrive ranked against your landlord’s criteria. Set one aside with a reason, and the decision is recorded.' },
-  { n: '04', icon: 'send', t: 'Send to your landlord', d: 'A report with your name and logo, every applicant ranked with one fact sentence each.' },
+  { n: '03', icon: 'list', t: 'Review the ranking', d: 'Applicants arrive in order against the landlord’s criteria. Set one aside with a reason, and the decision is recorded.' },
+  { n: '04', icon: 'send', t: 'Send the report', d: 'Your name and logo on top. Every applicant ranked, with one fact sentence each.' },
 ];
 
 // Extract the invite token from whatever a tenant pastes: a full apply URL
@@ -355,12 +356,16 @@ export default function Home() {
     return (
       <>
         <Head>
-          <title>Rentletter: rentals, done right. Back to selling.</title>
+          <title>Rentletter: handled by AI, approved by you.</title>
           <meta name="description" content={META_DESCRIPTION} />
           <meta property="og:type" content="website" />
           <meta property="og:site_name" content="Rentletter" />
-          <meta property="og:title" content="Rentals, done right. Back to selling." />
-          <meta property="og:description" content="For sales realtors who still take rentals. Free to join. Pay only when a rental lands." />
+          <meta property="og:title" content="Handled by AI. Approved by you." />
+          <meta property="og:description" content={META_DESCRIPTION} />
+          <meta property="og:image" content={OG_IMAGE} />
+          <meta property="og:image:width" content="1200" />
+          <meta property="og:image:height" content="630" />
+          <meta property="og:image:alt" content="Rentletter" />
         </Head>
         <AppHead />
         <GlobalStyle />
@@ -384,8 +389,7 @@ export default function Home() {
             </div>
           </ScrollHeader>
 
-          {/* ── HERO: for sales realtors who still take rentals. The rental gets done right, and they go
-              back to selling. ─────────────────────────────── */}
+          {/* ── HERO: handled by AI, approved by you. ─────────────────────────────── */}
           <section style={{ padding: 'clamp(44px, 7vw, 96px) clamp(20px, 4vw, 32px) clamp(48px, 7vw, 80px)', maxWidth: 1200, margin: '0 auto' }}>
             <div style={{
               display: 'grid',
@@ -411,8 +415,12 @@ export default function Home() {
                 }}>
                   {HERO_HEADLINE.map((line, i) => <span key={line} style={{ display: 'block', color: i === HERO_HEADLINE.length - 1 ? C.red : C.ink }}>{noWidow(line)}</span>)}
                 </h1>
-                <p style={{ fontSize: 'clamp(17px, 1.8vw, 20px)', lineHeight: 1.45, color: C.inkSoft, margin: '0 0 30px', maxWidth: 520, textWrap: 'pretty' }}>
-                  {noWidow('For sales realtors who still take rentals. Free to join. Pay only when a rental lands.')}
+                <p style={{ fontSize: 'clamp(17px, 1.8vw, 20px)', lineHeight: 1.45, color: C.inkSoft, margin: '0 0 var(--gap-line)', maxWidth: 520, textWrap: 'pretty' }}>
+                  <span className="lp-sentence">{noWidow('Every rental application, read and ranked.')}</span>{' '}
+                  <span className="lp-sentence">{noWidow('The decision stays yours.')}</span>
+                </p>
+                <p style={{ fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)', color: C.inkMute, margin: '0 0 30px' }}>
+                  {noWidow('Free to join. Pay only when a rental lands.')}
                 </p>
 
                 <div>
@@ -470,13 +478,12 @@ export default function Home() {
             </div>
           </section>
 
-          {/* ── FOUR BLOCKS: time, paperwork, confidence, volume. Every sentence is one the product
-              backs today (the claims list in the commit names the file for each). ── */}
+          {/* ── FOUR BLOCKS: read, ranked, sure, done. Every sentence is one the product backs today
+              (the claims list in the commit names the file for each). ── */}
           <section style={{ borderTop: `1px solid ${C.rule}`, background: C.card }}>
             <div className="lp-blocks" style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px)' }}>
               {BLOCKS.map((b) => (
-                <div key={b.label} className="lp-block">
-                  <div className="lp-eyebrow">{b.label}</div>
+                <div key={b.title} className="lp-block">
                   <h2 className="t-d3" style={{ margin: '0 0 var(--gap-line)', color: C.ink }}>{noWidow(b.title)}</h2>
                   <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'pretty' }}>{noWidow(b.body)}</p>
                 </div>
@@ -553,10 +560,10 @@ export default function Home() {
                 </span>
                 <div style={{ minWidth: 0 }}>
                   <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', margin: '0 0 var(--gap-line)' }}>
-                    Applying to a rental?
+                    Have an application link?
                   </h3>
                   <p style={{ fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, margin: 0, textWrap: 'pretty' }}>
-                    {noWidow('Enter the application link the listing realtor sent you and we will take you straight to the form. Applying is free.')}
+                    {noWidow('Paste it to go straight to the form. Applying is free.')}
                   </p>
                 </div>
               </div>
@@ -566,7 +573,7 @@ export default function Home() {
                   onChange={(e) => { setApplyLink(e.target.value); if (applyError) setApplyError(''); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') goToApply(); }}
                   placeholder="rentletter.ca/apply/…"
-                  aria-label="Paste the application link the listing realtor sent you"
+                  aria-label="Paste the application link"
                   aria-invalid={applyError ? true : undefined}
                   style={{
                     minWidth: 0, boxSizing: 'border-box', minHeight: 44,
@@ -583,7 +590,7 @@ export default function Home() {
               </div>
               {applyError
                 ? <div style={{ fontSize: 13, color: C.red, lineHeight: 1.5 }}>{applyError}</div>
-                : <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>{noWidow('Paste the full link (or just the code at the end). No account needed.')}</div>}
+                : <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>{noWidow('The full link or just the code at the end. No account needed.')}</div>}
             </div>
           </section>
 
@@ -592,10 +599,10 @@ export default function Home() {
             <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(56px, 8vw, 96px) clamp(20px, 4vw, 32px)', borderLeft: `6px solid ${C.red}` }}>
               <div style={{ maxWidth: 620 }}>
                 <h2 className="rl-serif" style={{ fontSize: 'clamp(32px, 5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, margin: '0 0 18px', color: C.paper }}>
-                  {noWidow('Your next rental, done right.')}
+                  {noWidow('Ready when your next listing is.')}
                 </h2>
                 <p style={{ fontSize: 'clamp(16px, 2vw, 18px)', lineHeight: 1.6, color: C.inkInverse, margin: '0 0 32px', textWrap: 'pretty' }}>
-                  {noWidow('Free to join. Pay only when a rental lands. Create a listing and its applicant link is ready at once.')}
+                  {noWidow('Create a listing and its applicant link is ready at once.')}
                 </p>
                 <div className="rl-ctrl-row">
                   <a href="/signup" className="rl-btn" style={{
@@ -624,7 +631,7 @@ export default function Home() {
                 <div style={{ minWidth: 180 }}>
                   <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="footer" /></a>
                   <p style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.6, marginTop: 14, maxWidth: 260 }}>
-                    Rental application screening for Canadian realtors. Built in{'\u00a0'}Toronto.
+                    Rental applications, read and ranked. Built in{'\u00a0'}Toronto.
                   </p>
                 </div>
                 <FooterCol title="Product" links={[['Dashboard', '/dashboard'], ['Book a demo', DEMO_MAIL], ['FAQ', '/faq']]} />
@@ -645,9 +652,12 @@ export default function Home() {
            canvas pass and read as a strip between the bezel and the mockup's gutter. The phone
            keeps the screen it has. */
         @media (min-width: ${DEVICE_BREAKPOINT}px) { .lp-laptop .df-screen, .lp-laptop .df-content { background: ${C.paperDeep}; } }
-        /* Each headline line holds on one line: the longer runs 8.7 times the type size, so the type
-           is 11% of the text column (the hero switches to two columns by width, not at a breakpoint). */
+        /* Each headline line holds on one line: the longer ("Approved by you.") runs 7.8 times the type
+           size, so at 11% of the text column it fills 86% of it (the hero switches to two columns by
+           width, not at a breakpoint). */
         .lp-hero-text { container-type: inline-size; }
+        /* From 700px each sentence of the subline keeps to its own line when both do not fit on one. */
+        @media (min-width: 700px) { .lp-sentence { display: inline-block; } }
         .lp-h1 { font-size: clamp(34px, 9.4vw, 60px); }
         @supports (font-size: 1cqi) { .lp-h1 { font-size: clamp(34px, 11cqi, 64px); } }
         /* The four blocks: one column at 390, two from 700px, four from 1100px; one gap. */
