@@ -12,6 +12,7 @@ import { noWidow } from '../../lib/typeset.js';
 import { C, R } from '../../components/theme';
 import { isReportToken } from '../../lib/applicationIds';
 import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot';
+import { fitLines } from '../../lib/fitScore';
 
 
 export async function getServerSideProps(ctx) {
@@ -133,10 +134,12 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
               {a.fit && a.fit.score != null ? (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', flexShrink: 0 }}>
                   <span className="t-d3 num" style={{ color: C.ink }}>{Number(a.fit.score).toFixed(1)}</span>
-                  <span style={{ ...eyebrow, color: a.fit.label === 'verified' ? C.green : C.inkMute }}>{a.fit.label}</span>
+                  <span style={{ ...eyebrow, color: a.fit.label === 'verified' ? C.ink : C.inkMute }}>{a.fit.label}</span>
                 </div>
-              ) : <span style={eyebrow}>Rent share unknown</span>}
+              ) : a.fit && a.fit.incomplete ? null : <span style={eyebrow}>Rent share unknown</span>}
             </div>
+            {/* Fit v2 (docs/fit-v2.md): what was assessed, then the facts the number rests on. A report frozen before v2 has neither. */}
+            {fitLines(a.fit).map((line) => <div key={line} data-fit-line="" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{noWidow(line)}</div>)}
             {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{a.sentence}</p> : null}
             {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(String(a.confirmedLine).replace(/ · (\S+ \S+)$/, ' ($1)'))}</div> : null}
             {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(`Below the one above: ${String(a.reason.charAt(0).toLowerCase() + a.reason.slice(1)).split(' · ').join(', ')}.`)}</div> : null}

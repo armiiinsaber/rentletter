@@ -131,7 +131,7 @@ export function RankedScreen({ b }) {
               <Avatar a={a} size={26} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}<span style={{ color: C.red, fontWeight: 600, opacity: topK }}> · Top pick</span></div>
-                <div style={{ fontSize: 10, color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr · {a.tenure} tenure</div>
+                <div style={{ fontSize: 10, color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr · {a.basis}</div>
               </div>
               <TickMeter value={score} size={10} />
               <span style={{ fontSize: 11.5, fontWeight: 700, color: topK > 0.5 ? C.paper : C.ink, background: topK > 0.5 ? C.red : C.paperDeep, borderRadius: R.pill, padding: '2px 8px', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{score.toFixed(1)}</span>
@@ -196,7 +196,7 @@ export function VerifyScreen({ b }) {
           <div style={{ position: 'absolute', left: 0, top: 2, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: '#e8e4d9', ...fade(b.deleted, 4) }}><span style={{ width: 3, height: 12, background: '#ff4d55' }} /><strong>3 files deleted.</strong><span style={{ color: '#9a958a' }}>Held 14 days for review, then gone. The confirmed facts remain.</span></div>
         </div>
         <div style={{ marginTop: 'auto', padding: '8px 12px', background: '#161618', border: '1px solid #2a2a2e', borderLeft: '3px solid #ff4d55', borderRadius: R.ctrl, fontSize: 10, lineHeight: 1.5, color: '#c8c2b3', ...fade(b.badge, 4) }}>
-          <strong style={{ color: '#e8e4d9' }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; tenure and title are consistent across documents.
+          <strong style={{ color: '#e8e4d9' }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; employer and title are consistent across documents.
         </div>
       </div>
     </Screen>
@@ -236,7 +236,7 @@ export function ReportScreen({ b, brand = null, logo = 0 }) {
       <div style={{ padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', ...fade(b.mast) }}>
           <div className="rl-serif" style={{ fontSize: 18, letterSpacing: '-0.02em' }}>Top 3 of 12 applicants</div>
-          <div style={{ fontSize: 9.5, color: C.inkMute }}>Ranked on income, tenure, history · Aug 20, 2026</div>
+          <div style={{ fontSize: 9.5, color: C.inkMute }}>Ranked on ability, truth, conduct · Aug 20, 2026</div>
         </div>
         {top.map((a, i) => (
           <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${i === 0 ? accent : C.rule}`, borderRadius: R.ctrl, ...fade(b.rows[i], 10) }}>

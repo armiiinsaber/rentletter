@@ -47,8 +47,9 @@ test('8: GET on the verify routes writes nothing and sends to the confirm page; 
 });
 
 // ── 9. ranked surfaces
-test('9: joint income is exposed by Fit and labelled on the report cells; unit rules leave Compare', async () => {
-  const { computeFit, incomeIsJoint, householdIncomeOf } = await import('../lib/fitScore.js');
+test('9: the old co_applicant jsonb is a card label only; Fit and the report cells carry the primary alone (docs/fit-v2.md); unit rules leave Compare', async () => {
+  const { computeFit } = await import('../lib/fitScore.js');
+  const { incomeIsJoint, householdIncomeOf } = await import('../lib/jointIncome.js');
   const { buildSnapshot } = await import('../lib/reportSnapshot.js');
   const { reportLines } = await import('../lib/landlordReportPdf.js');
   const { unitRulesApply, ruleLine } = await import('../lib/unitRules.js');
@@ -57,15 +58,15 @@ test('9: joint income is exposed by Fit and labelled on the report cells; unit r
   assert.equal(incomeIsJoint(solo), false); assert.equal(incomeIsJoint(joint), true); assert.equal(householdIncomeOf(joint), 117000);
   const listing = { monthly_rent: 2600, pref_rent_to_income_max_pct: 40 };
   const fj = computeFit({ application: joint, listing, verification: null, confirmations: {} }), fs = computeFit({ application: solo, listing, verification: null, confirmations: {} });
-  assert.equal(fj.incomeJoint, true); assert.equal(fs.incomeJoint, false); assert.equal(fj.incomeUsed, 117000);
+  assert.equal('incomeJoint' in fj, false); assert.equal(fj.incomeUsed, 79000); assert.equal(fj.scoreExact, fs.scoreExact);
   const payload = buildSnapshot({ listing, applicants: [
     { linkId: 'J1', decisionStatus: 'none', withdrawnAt: null, confirmations: {}, application: { ...joint, id: 'A1', fit: fj } },
     { linkId: 'J2', decisionStatus: 'none', withdrawnAt: null, confirmations: {}, application: { ...solo, id: 'A2', fit: fs } },
   ], profile: { id: 'P1', full_name: 'Sarah Chen' } });
   const byName = Object.fromEntries(payload.applicants.map((a) => [a.name, a]));
-  assert.equal(byName['Joint Person'].numbers.incomeJoint, true); assert.equal(byName['Solo Person'].numbers.incomeJoint, false);
+  assert.equal(byName['Joint Person'].numbers.incomeJoint, false); assert.equal(byName['Solo Person'].numbers.incomeJoint, false);
   const lines = reportLines(payload);
-  assert.equal(lines.blocks.find((b) => b.name === 'Joint Person').numbers[0][1], '$117,000 (joint)');
+  assert.equal(lines.blocks.find((b) => b.name === 'Joint Person').numbers[0][1], '$79,000');
   assert.equal(lines.blocks.find((b) => b.name === 'Solo Person').numbers[0][1], '$79,000');
   assert.equal(unitRulesApply({ pets: 'yes', smoking: 'yes' }), false, 'both allowed: no unit rules block');
   assert.equal(unitRulesApply({ pets: 'no', smoking: 'no' }), true); assert.equal(ruleLine({ pets: 'no', smoking: 'outdoor' }), 'no pets · smoking outdoors only');
@@ -193,7 +194,9 @@ test('21: every surface reads the one label map, and one realtor name on the lan
   assert.equal(by.request.title, STATE_LABELS.new.title); assert.equal(by.request.reason, STATE_LABELS.new.line);
   assert.equal(by.waiting.title, stateLabel('requested', 'title', { days: 5 })); assert.equal(by.verify.title, 'Verify Match');
   assert.equal(stateLine(apps), `1 ${STATE_LABELS.matched.count} · 2 ${STATE_LABELS.checked.count} · 1 ${STATE_LABELS.requested.count} · 1 ${STATE_LABELS.new.count}`);
-  const lower = { scoreExact: 3.0, E: 2.0, A: 4, R: 4, parts: {}, evidence: { hasReport: false } }, upper = { scoreExact: 4.5, E: 5, A: 4, R: 4, parts: {}, evidence: { hasReport: true } };
+  // Fit v2 shaped (lib/fitScore.js): the pillars carry the values the reason line reads.
+  const pillars = (A, E, R) => [{ name: 'ability', assessed: true, value: A }, { name: 'truth', assessed: E != null, value: E }, { name: 'conduct', assessed: true, value: R }];
+  const lower = { scoreExact: 3.0, E: null, A: 4, R: 4, pillars: pillars(4, null, 4), parts: {}, evidence: { hasReport: false } }, upper = { scoreExact: 4.5, E: 5, A: 4, R: 4, pillars: pillars(4, 5, 4), parts: {}, evidence: { hasReport: true } };
   assert.equal(fitReason(lower, upper), 'No documents yet'); assert.equal(STATE_LABELS.new.reason, 'no documents yet');
   assert.equal(fitReason({ ...lower, evidence: { hasReport: true, contradicted: true } }, upper), 'Documents did not match');
   // one name: a reference answered by email is recorded by 'reference'; the landlord sees the realtor's name

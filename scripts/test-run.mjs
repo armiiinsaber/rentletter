@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 export const CEILING = Number(process.env.TEST_CEILING_MS || 20 * 60 * 1000);
 // The ports the walks' servers listen on (devServer, adminServer, the fake stack servers).
-const WALK_PORTS = [3123, 3125, 3152, 3153, 3157, 3159, 3161, 3162, 3163, 3164];
+const WALK_PORTS = [3123, 3125, 3152, 3153, 3157, 3159, 3161, 3162, 3163, 3164, 3165];
 const WALK_FILES = ['/tmp/rentletter-dev-3123.turn', '/tmp/rentletter-dev-3123.lock', '/tmp/rentletter-dev-3123.users'];
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 

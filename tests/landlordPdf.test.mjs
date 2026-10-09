@@ -14,9 +14,10 @@ const payload = demoSnapshot('demo-carlaw');
 const withN = (n) => ({ ...payload, applicants: payload.applicants.slice(0, n), counts: { applicants: n, verified: payload.applicants.slice(0, n).filter((a) => a.fit?.label === 'verified').length } });
 const flat = (lines) => [lines.header.name, lines.header.brokerage, lines.header.address, lines.header.unitLine, lines.header.prepared, ...lines.blocks.flatMap((b) => [b.rank, b.name, b.fit, b.word, b.sentence, b.confirmed, b.reason, ...b.numbers.flat()]), lines.footer.criteria, lines.footer.signature, lines.footer.sent].filter(Boolean).join('\n');
 
-// With the criteria rows under the numbers (two columns per applicant) and the credit line under
-// them (lib/creditShared.js, one or two lines per applicant) two applicants fit a page.
-test('page count: one page for two applicants, two from three', async () => {
+// With the criteria rows under the numbers (two columns per applicant), the credit line under
+// them (lib/creditShared.js) and the two Fit lines under the name (docs/fit-v2.md) two applicants
+// fit a page, four fit two pages, and the fifth opens a third.
+test('page count: one page for two applicants, two from three, three from five', async () => {
   assert.ok(payload.applicants.length >= 5, 'the sandbox listing has five applicants');
   const two = await PDFDocument.load(await buildLandlordReportPdf({ payload: withN(2) }));
   const three = await PDFDocument.load(await buildLandlordReportPdf({ payload: withN(3) }));
@@ -25,7 +26,7 @@ test('page count: one page for two applicants, two from three', async () => {
   assert.equal(two.getPageCount(), 1);
   assert.equal(three.getPageCount(), 2);
   assert.equal(four.getPageCount(), 2);
-  assert.equal(five.getPageCount(), 2);
+  assert.equal(five.getPageCount(), 3);
   const { width, height } = four.getPage(0).getSize(); assert.deepEqual([width, height], [612, 792], 'Letter');
 });
 
@@ -34,7 +35,7 @@ test('every applicant prints with name, Fit and word; the old layout strings are
   for (const a of payload.applicants) { assert.match(t, new RegExp(`^${a.name}$`, 'm')); assert.match(t, new RegExp(`^${Number(a.fit.score).toFixed(1)}$`, 'm')); assert.match(t, new RegExp(`^${a.fit.label.toUpperCase()}$`, 'm')); }
   for (const banned of ['\n- ', 'Note:', 'RL-2026', 'Top', 'years with reference available', 'TOP MATCHES', 'ALSO RANKED', 'Powered by', 'Set aside', '/5']) assert.equal(t.includes(banned), false, `found ${JSON.stringify(banned)}`);
   assert.doesNotMatch(t, /[—–]/);
-  assert.match(t, /^Ranked against Sarah Chen's criteria: min \$75k · max 40% rent share · 1 yr at job · landlord reference\.$/m);
+  assert.match(t, /^Ranked against Sarah Chen's criteria: min \$75k · max 40% rent share · landlord reference\.$/m);
   assert.match(t, /^Sent through Rentletter on behalf of Sarah Chen\.$/m);
   assert.match(t, /^Prepared .* for Marco Rossi$/m);
   assert.match(t, /^\$2,600 per month · 2 bed$/m);

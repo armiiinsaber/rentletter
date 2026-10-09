@@ -13,11 +13,11 @@ import HeroDemo from './HeroDemo';
 import { DocsFirstScene } from './DocsFirst';
 
 export const CAST = [
-  { initials: 'PN', color: '#2d7d4a', name: 'Priya Nair', role: 'Senior UX · CIBC', income: 115000, net: 84400, score: 4.6, tenure: '5 yrs', rent: 31 },
-  { initials: 'JO', color: '#3a6ea5', name: 'James Okafor', role: 'Software Eng · Shopify', income: 95000, net: 70300, score: 4.2, tenure: '1.5 yrs', rent: 37 },
-  { initials: 'MT', color: '#1f7a8c', name: 'Mei Tanaka', role: 'Marketing Mgr · Loblaw', income: 87000, net: 64900, score: 3.9, tenure: '3 yrs', rent: 41 },
-  { initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: 78000, net: 59100, score: 3.6, tenure: '4 yrs', rent: 45 },
-  { initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB', income: 71000, net: 54500, score: 3.3, tenure: '8 mo', rent: 49 },
+  { initials: 'PN', color: '#2d7d4a', name: 'Priya Nair', role: 'Senior UX · CIBC', income: 115000, net: 84400, score: 4.6, basis: 'Rent paid on time, 5 yrs', rent: 31 },
+  { initials: 'JO', color: '#3a6ea5', name: 'James Okafor', role: 'Software Eng · Shopify', income: 95000, net: 70300, score: 4.2, basis: 'Conduct not assessed', rent: 37 },
+  { initials: 'MT', color: '#1f7a8c', name: 'Mei Tanaka', role: 'Marketing Mgr · Loblaw', income: 87000, net: 64900, score: 3.9, basis: 'Rent paid on time, 3 yrs', rent: 41 },
+  { initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: 78000, net: 59100, score: 3.6, basis: 'Rent paid on time, 4 yrs', rent: 45 },
+  { initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB', income: 71000, net: 54500, score: 3.3, basis: 'Rent paid on time, 8 mo', rent: 49 },
 ];
 export const money = (n) => `$${Number(n).toLocaleString('en-CA')}`;
 export const Avatar = ({ a, size = 28 }) => <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', background: a.color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 700 }}>{a.initials}</span>;
@@ -43,7 +43,7 @@ export function LandlordReportScene() {
       <div style={{ padding: `clamp(10px, 3%, 16px) ${pad}`, flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.6%, 10px)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
           <div className="rl-serif" style={{ fontSize: 'clamp(14px, 3.6vw, 19px)', color: C.ink, letterSpacing: '-0.02em' }}>Top 3 of 12 applicants</div>
-          <div style={{ fontSize: 'clamp(8.5px, 2vw, 10px)', color: C.inkMute }}>Ranked on income, tenure, history · Aug 20, 2026</div>
+          <div style={{ fontSize: 'clamp(8.5px, 2vw, 10px)', color: C.inkMute }}>Ranked on ability, truth, conduct · Aug 20, 2026</div>
         </div>
         {top.map((a, i) => (
           <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 'clamp(7px, 2%, 11px) clamp(9px, 2.4%, 13px)', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${i === 0 ? C.red : C.rule}`, borderRadius: R.ctrl }}>
@@ -97,7 +97,7 @@ export function VerificationScene({ phone = false }) {
         {['pay-stub-jul.pdf', 'employment-letter.pdf', 'credit-report.pdf'].map((n) => <span key={n} style={{ fontSize: 9.5, color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6 }}>📄 {n}</span>)}
       </div>
       <div style={{ marginTop: 'auto', padding: 'clamp(7px, 2%, 10px) clamp(9px, 2.4%, 12px)', background: '#161618', border: '1px solid #2a2a2e', borderLeft: '3px solid #ff4d55', borderRadius: R.ctrl, fontSize: 'clamp(9px, 2.3vw, 10.5px)', lineHeight: 1.5, color: '#c8c2b3' }}>
-        <strong style={{ color: '#e8e4d9' }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; tenure and title are consistent across documents. Credit report shows no collections. Nothing here considers background, family status, or source of income.
+        <strong style={{ color: '#e8e4d9' }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; employer and title are consistent across documents. Credit report shows no collections. Nothing here considers background, family status, or source of income.
       </div>
     </div>
   );

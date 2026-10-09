@@ -15,7 +15,7 @@ const { reportText } = await import('../lib/reportText.js');
 const { createListing } = await import('../lib/realtorWrites.js');
 
 const APP = { full_name: 'Test Person', annual_income: 90000, years_at_job: '1', years_at_previous: '2', prev_landlord_name: 'A. Owner', references: [{ name: 'R' }], employer: 'Northwind Sample Clinic Inc.' };
-const BASE = { monthly_rent: 2600, pref_min_years_at_job: 1, pref_requires_landlord_reference: true, pref_requires_employer_verification: true };
+const BASE = { monthly_rent: 2600, pref_requires_landlord_reference: true, pref_requires_employer_verification: true };
 const PROFILE = { id: 'P1', full_name: 'Sarah Chen', brokerage: 'Demo Realty' };
 const rowsFor = (listing, confirmations = {}) => {
   const fit = computeFit({ application: APP, listing, verification: null, confirmations });
@@ -61,40 +61,44 @@ test('a stored minimum equal to rent × 12 / cap within 2% is no minimum: $2,600
   assert.equal(withMin.criteria.some((c) => c.key === 'pref_min_annual_income'), false, 'no second criterion');
   assert.equal(criteriaLine(restated), 'max 30% rent share');
   const real = computeFit({ application: APP, listing: { monthly_rent: 2600, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 }, verification: null, confirmations: {} });
-  assert.equal(real.A, 2.0); assert.equal(real.evidence.incomeCapped, true, 'at 40% the same $104,000 is a real second rule');
+  // Fit v2: a minimum is a criterion row the landlord reads, never a cap on the number (docs/fit-v2.md).
+  const plain40 = computeFit({ application: APP, listing: { monthly_rent: 2600, pref_rent_to_income_max_pct: 40 }, verification: null, confirmations: {} });
+  assert.equal(real.A, plain40.A); assert.equal(real.evidence.incomeCapped, false, 'at 40% the same $104,000 is a real second rule, shown as a row');
+  assert.equal(real.criteria.find((c) => c.key === 'pref_min_annual_income').status, 'missed');
 });
 
 test('the rows on the payload: $2,600, $90,000, 35%, with and without the $104,000 minimum', () => {
   const plain = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40 });
   assert.deepEqual(plain.rows, [
     { key: 'rentShare', status: 'met', text: 'Rent share 35% · your max 40%' },
-    { key: 'tenure', status: 'met', text: 'At job 1 yr · your min 1 yr' },
     { key: 'landlordReference', status: 'met', text: 'Landlord reference · on file' },
     { key: 'employer', status: 'unverified', text: 'Employer · not verified' },
   ]);
   const withMin = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 });
   assert.deepEqual(withMin.rows[1], { key: 'minIncome', status: 'missed', text: 'Income $90,000 · your min $104,000' });
-  assert.equal(withMin.rows.length, 5);
+  assert.equal(withMin.rows.length, 4);
   const confirmed = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40 }, { employer: { at: '2026-09-06T00:00:00Z', by: 'Sarah Chen' } });
   assert.deepEqual(confirmed.rows.at(-1), { key: 'employer', status: 'met', text: 'Employer · confirmed by Sarah Chen' });
+  // A stored pref_min_years_at_job (a listing older than db/009) is read by nothing: no row, no cap.
   const strict = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 30, pref_min_years_at_job: 2, pref_requires_landlord_reference: true });
-  assert.deepEqual(strict.rows.slice(0, 2), [{ key: 'rentShare', status: 'missed', text: 'Rent share 35% · your max 30%' }, { key: 'tenure', status: 'missed', text: 'At job 1 yr · your min 2 yrs' }]);
+  assert.deepEqual(strict.rows.slice(0, 2), [{ key: 'rentShare', status: 'missed', text: 'Rent share 35% · your max 30%' }, { key: 'landlordReference', status: 'met', text: 'Landlord reference · on file' }]);
+  assert.equal(strict.fit.criteria.some((c) => /years_at_job/.test(c.key)), false);
   const documents = { analyzedAt: '2026-09-01T00:00:00Z', nameMatch: 'match', documents: [{ documentType: 'employment letter' }], comparisons: [{ field: 'Income', status: 'match', annual: 90000 }, { field: 'Employer', status: 'match', found: APP.employer }] };
   const matched = computeFit({ application: APP, listing: { ...BASE, pref_rent_to_income_max_pct: 40 }, verification: documents, confirmations: {} });
   assert.deepEqual(criteriaRows(matched, { ...BASE, pref_rent_to_income_max_pct: 40 }, {}, 'Sarah Chen').at(-1), { key: 'employer', status: 'met', text: 'Employer · matched on documents' });
   assert.equal(plain.payload.listing.fitLine, FIT_LINE);
-  assert.equal(FIT_LINE, 'Fit out of 5: half is affordability against this rent and your criteria, a third is what was verified, a fifth is tenure and references.');
+  assert.equal(FIT_LINE, 'Fit out of 5, over what was assessed: ability to pay this rent now, how far each fact is confirmed, and what a previous landlord reported. What is missing is left out, never counted against.');
   for (const r of [...plain.rows, ...withMin.rows]) assert.doesNotMatch(r.text, /[—–]/);
 });
 
 test('the PDF lines and the text report carry the rows and the one line', () => {
   const { payload } = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 });
   const lines = reportLines(payload);
-  assert.deepEqual(lines.blocks[0].criteria, [['met', 'Rent share 35% · your max 40%'], ['missed', 'Income $90,000 · your min $104,000'], ['met', 'At job 1 yr · your min 1 yr'], ['met', 'Landlord reference · on file'], ['unverified', 'Employer · not verified']]);
+  assert.deepEqual(lines.blocks[0].criteria, [['met', 'Rent share 35% · your max 40%'], ['missed', 'Income $90,000 · your min $104,000'], ['met', 'Landlord reference · on file'], ['unverified', 'Employer · not verified']]);
   assert.equal(lines.footer.fitLine, FIT_LINE);
   assert.match(lines.footer.criteria, /min \$104k · max 40% rent share/);
   const text = reportText(payload, { pageUrl: 'https://rentletter.ca/r/t' });
-  assert.match(text, /\n   ✓ Rent share 35% · your max 40%\n   • Income \$90,000 · your min \$104,000\n   ✓ At job 1 yr · your min 1 yr\n   ✓ Landlord reference · on file\n     Employer · not verified\n/);
+  assert.match(text, /\n   ✓ Rent share 35% · your max 40%\n   • Income \$90,000 · your min \$104,000\n   ✓ Landlord reference · on file\n     Employer · not verified\n/);
   assert.match(text, new RegExp(FIT_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(text, /[—–]/);
 });

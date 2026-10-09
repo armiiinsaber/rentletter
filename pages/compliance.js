@@ -63,7 +63,7 @@ export default function CompliancePage() {
             </SubSection>
 
             <SubSection title="2. Set aside reasons come from a fixed, screenable list">
-              Setting an applicant aside requires one reason from a fixed list of screenable facts: income below the stated minimum, rent share above the stated maximum, employment tenure below the stated minimum, no references, or another screenable fact the realtor names. No free text reaches the landlord, and Rentletter drafts no rationale.
+              Setting an applicant aside requires one reason from a fixed list of screenable facts: income below the stated minimum, rent share above the stated maximum, no references, or another screenable fact the realtor names. No free text reaches the landlord, and Rentletter drafts no rationale.
             </SubSection>
 
             <SubSection title="3. Documented decision trail">

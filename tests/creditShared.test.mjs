@@ -133,7 +133,7 @@ test('the row: the reserved label, plain facts, no judgement word, no colour, "N
 
 test('Fit is byte identical with and without a credit report, and a credit report alone is no report at all', () => {
   const application = { full_name: 'Test Person', annual_income: 85000, employer: 'Northwind Sample Clinic Inc.', years_at_job: '3', prev_landlord_name: 'A. Patel', years_at_previous: '4', references: [{ name: 'R' }] };
-  const listing = { monthly_rent: 2600, pref_requires_employer_verification: true, pref_min_years_at_job: 1 };
+  const listing = { monthly_rent: 2600, pref_requires_employer_verification: true };
   const without = computeFit({ application, listing, verification: report([letter, stub]), confirmations: {} });
   const withCredit = computeFit({ application, listing, verification: report([letter, stub, credit()]), confirmations: {} });
   assert.equal(JSON.stringify(withCredit), JSON.stringify(without));

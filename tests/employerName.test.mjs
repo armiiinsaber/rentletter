@@ -50,7 +50,7 @@ test('the read time recompute: an older report that stored a mismatch for Livena
   assert.equal(v.employerMatched, true); assert.equal(v.employerMismatch, false); assert.equal(v.incomeMatched, true);
   const app = { full_name: 'Alexandra Papadopoulos Whitfield', annual_income: 96000, employer: 'Livenation', years_at_job: '4', prev_landlord_name: 'H. Park', references: [] };
   const fit = computeFit({ application: app, listing: { monthly_rent: 2600, pref_rent_to_income_max_pct: 40 }, verification: report, confirmations: {} });
-  assert.equal(fit.label, 'docs match'); assert.equal(fit.E, 5.0, 'income and employer both matched');
+  assert.equal(fit.label, 'docs match'); assert.equal(fit.E, 4.0, 'income and employer both matched on documents (Fit v2: 4.0)');
   const facts = verificationFacts([report]);
   assert.equal(facts.employmentVerified, true); assert.equal(facts.employerMismatch, false);
   assert.match(synthesisLine({ application: { ...app, rent_to_income_ratio: 33 }, docVerifications: [report] }), /^Documented income/);

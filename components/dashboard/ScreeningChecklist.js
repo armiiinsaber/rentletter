@@ -20,7 +20,8 @@ import { Icon, StatusPills, StackedLines } from '../ui';
 // "Said: a · b" as dot line items, the label on the first: labelled('Said', 'a · b') -> ['Said: a', 'b'].
 const labelled = (label, value) => String(value).split(' · ').map((v, i) => (i ? v : `${label}: ${v}`));
 import { useAdapter } from '../../lib/dashboardAdapter';
-import { readVerification, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
+import { readVerification, fitLine } from '../../lib/fitScore';
+import { incomeIsJoint, householdIncomeOf } from '../../lib/jointIncome';
 import { applicantState, stateLabel } from '../../lib/applicantState';
 import { isIdKind } from '../../lib/documentRetention';
 import { answerSummary, emailIn, RESEND_AFTER_DAYS } from '../../lib/referenceQuestions';
@@ -138,6 +139,10 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
       <div style={{ marginBottom: 'var(--s-2)' }}>
         <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute }}>Screening checklist</div>
         <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)' }}>You verify. Documents only match.</div>
+        {/* Fit v2 (docs/fit-v2.md): the number over what was assessed, the one coverage line, and the
+            check docs items, which are shown here and never subtracted. */}
+        {fit ? <div data-checklist-fit="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{fitLine(fit)}{fit.incomplete ? `. ${fit.incomplete.next}` : fit.notAssessedLine ? `. ${fit.notAssessedLine}` : ''}</div> : null}
+        {fit && Array.isArray(fit.flags) && fit.flags.length ? <StatusPills label="Check docs" items={fit.flags.map((f) => f.text)} style={{ marginTop: 'var(--s-1)' }} /> : null}
       </div>
       <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, background: C.paper, overflow: 'hidden' }}>
         {rows.map((row, i) => {

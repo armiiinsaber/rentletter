@@ -16,12 +16,13 @@ const { latestSnapshots, attachLandlordAnswers, insertSnapshot } = await import(
 const { landlordAnsweredItem } = await import('../lib/actionsLandlord.js');
 const { demoSnapshot } = await import('../lib/demoReport.js');
 
-const listing = { id: 'L1', address: '210 Carlaw Ave, Unit 4, Toronto', name: '210 Carlaw Ave, Unit 4', monthly_rent: 2600, bedrooms: '2', pref_min_annual_income: 75000, pref_rent_to_income_max_pct: 40, pref_min_years_at_job: 1, pref_requires_landlord_reference: true, pref_requires_employer_verification: false, landlord_name: 'Marco Rossi', landlord_email: 'marco@example.com' };
+const listing = { id: 'L1', address: '210 Carlaw Ave, Unit 4, Toronto', name: '210 Carlaw Ave, Unit 4', monthly_rent: 2600, bedrooms: '2', pref_min_annual_income: 75000, pref_rent_to_income_max_pct: 40, pref_requires_landlord_reference: true, pref_requires_employer_verification: false, landlord_name: 'Marco Rossi', landlord_email: 'marco@example.com' };
 const profile = { id: 'P1', full_name: 'Sarah Chen', brokerage: 'Demo Realty', phone: '416 555 0100', email: 'sarah@example.com', logo_url: 'https://x/logo.png' };
-const fit = (score, label, ratio, parts = {}) => ({ score, scoreExact: score, label, ratio, incomeUsed: 92000, parts: { tenure: 1.3, tenancy: 1.4, refs: 0.8, landlordRef: true, ...parts }, evidence: {}, A: 5, E: 5, R: 5 });
+// A v2 shaped Fit (lib/fitScore.js): the three pillars, each assessed, the basis and the coverage.
+const fit = (score, label, ratio, over = {}) => { const A = over.A ?? 5, E = over.E ?? 5, R = over.R ?? 5; const p = (name, l, value) => ({ name, label: l, assessed: true, value, facts: [] }); return { score, scoreExact: score, label, model: 'fit-v2', ratio, incomeUsed: 92000, assessed: 3, of: 3, notAssessed: [], basis: over.basis || 'Stated income.', incomplete: null, flags: [], pillars: [p('ability', 'Ability', A), p('truth', 'Truth', E), p('conduct', 'Conduct', R)], parts: { landlordRef: over.landlordRef !== false, recentMonths: 0 }, evidence: over.evidence || {}, A, E, R }; };
 const applicants = [
   { linkId: 'J1', decisionStatus: 'none', withdrawnAt: null, confirmations: { employer: { at: '2026-09-02T00:00:00Z', by: 'Sarah Chen' } }, application: { id: 'A1', full_name: 'Priya Sharma', email: 'p@x.ca', phone: '416', owner_token: 'SECRET', job_title: 'Registered Nurse', employer: 'Sunnybrook', years_at_job: '5', annual_income: 92000, prev_landlord_name: 'Gail', references: [{}, {}], number_of_occupants: '1', reason_for_moving: 'x', disclosures: 'y', personality: 'z', cover_letter: 'w', decision_notes: 'n', fit: fit(4.8, 'verified', 34) } },
-  { linkId: 'J2', decisionStatus: 'none', withdrawnAt: null, confirmations: {}, application: { id: 'A2', full_name: 'David Kowalski', email: 'd@x.ca', job_title: 'Analyst', employer: 'Acme', years_at_job: '2', annual_income: 80000, references: [], fit: fit(4.1, 'stated', 39, { tenure: 0.9, landlordRef: false, tenancy: 0.2 }) } },
+  { linkId: 'J2', decisionStatus: 'none', withdrawnAt: null, confirmations: {}, application: { id: 'A2', full_name: 'David Kowalski', email: 'd@x.ca', job_title: 'Analyst', employer: 'Acme', years_at_job: '2', annual_income: 80000, references: [], fit: fit(4.1, 'stated', 39, { E: 2, R: 3, landlordRef: false }) } },
   { linkId: 'J3', decisionStatus: 'reject', withdrawnAt: null, confirmations: {}, application: { id: 'A3', full_name: 'Aside Person', fit: fit(2.0, 'stated', 60) } },
   { linkId: 'J4', decisionStatus: 'none', withdrawnAt: '2026-09-01T00:00:00Z', confirmations: {}, application: { id: 'A4', full_name: 'Gone Person', fit: fit(4.9, 'stated', 20) } },
 ];
@@ -44,7 +45,7 @@ test('the payload: active only in score order, the applicant keys, and none of t
   for (const [, k] of keys) assert.equal(banned.includes(k), false, `payload carries ${k}`);
   assert.equal(JSON.stringify(p.applicants).includes('SECRET'), false);
   assert.equal(p.counts.verified, 1); assert.equal(p.counts.applicants, 2);
-  assert.equal(p.listing.criteriaLine, 'min $75k · max 40% rent share · 1 yr at job · landlord reference');
+  assert.equal(p.listing.criteriaLine, 'min $75k · max 40% rent share · landlord reference');
   assert.equal(p.realtor.signature, 'Sarah Chen · Demo Realty · 416 555 0100');
   const page = forLandlordPage(p);
   assert.equal(JSON.stringify(page).includes('linkId'), false, 'the page never sees the realtor side mapping');
@@ -104,7 +105,7 @@ test('the text template: greeting, one line per applicant, the link, the sign of
   const p = buildSnapshot({ listing, applicants, profile });
   const t = reportText(p, { pageUrl: 'https://rentletter.ca/r/TOKEN' });
   assert.equal(t.split('\n')[0], 'Hi Marco,');
-  assert.match(t, /^1\. Priya Sharma, Fit 4\.8 \(VERIFIED\)\. Registered Nurse at Sunnybrook, 5 years at the job\./m);
+  assert.match(t, /^1\. Priya Sharma, Fit 4\.8 on 3 of 3 \(VERIFIED\)\. Registered Nurse at Sunnybrook, 5 years at the job\.[^\n]*\n   Stated income\.\n/m, 'the Fit line carries the coverage, the basis line follows');
   assert.match(t, /Open the report to see them and tell me who you would like to meet: https:\/\/rentletter\.ca\/r\/TOKEN/);
   assert.match(t, /\nSarah Chen\nDemo Realty · 416 555 0100$/);
   assert.doesNotMatch(t, /[—–]/);

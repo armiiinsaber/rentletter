@@ -11,10 +11,10 @@
 // what the editor sends. A failure rolls the transaction back and stops the path.
 //
 //   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again, then every combination
-//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, each twice
+//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, each twice
 //   Path B  upgrade       baseline, the OLD 001 (git show b11f1f8, four income kinds), 002, 003,
 //                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
-//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, each twice
+//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, each twice
 //   Path C  rollback      after path B: 999, 999 again
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
@@ -40,6 +40,7 @@ const FILES = {
   m007: 'db/007-drop-other-occupants.sql',
   credit: 'db/credit-shared.sql',
   parties: 'db/008-application-parties-invites.sql',
+  m009: 'db/009-drop-min-years-at-job.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -339,6 +340,27 @@ async function runParties(db, tag) {
   await db.query('DELETE FROM public.application_parties WHERE id = $1', [kept]);
 }
 
+// ── db/009-drop-min-years-at-job.sql ────────────────────────────────────────────
+// The column and any index on it are gone, the columns beside it are untouched, a listing written
+// without it still inserts, and a second run changes nothing.
+async function check009(db, label) {
+  check((await hasColumn(db, 'listings', 'pref_min_years_at_job')) === false, `${label}: listings.pref_min_years_at_job is gone`);
+  check((await one(db, "SELECT to_regclass('public.listings_pref_min_years_at_job_idx') IS NULL")) === true, `${label}: the index on it is gone`);
+  for (const c of ['pref_min_annual_income', 'pref_rent_to_income_max_pct', 'pref_requires_landlord_reference', 'pref_requires_employer_verification', 'pref_ask_credit_report', 'pref_guarantor_accepted']) check((await hasColumn(db, 'listings', c)) === true, `${label}: listings.${c} is still there`);
+  const fresh = await one(db, "INSERT INTO public.listings (profile_id, name, monthly_rent) VALUES ($1, 'After 009', 2000) RETURNING id", [ID.me]);
+  check(!!fresh, `${label}: a listing inserts without the column`);
+  await db.query("DELETE FROM public.listings WHERE name = 'After 009'");
+}
+async function run009(db, tag) {
+  await db.query('CREATE INDEX IF NOT EXISTS listings_pref_min_years_at_job_idx ON public.listings (pref_min_years_at_job)');
+  await db.query('UPDATE public.listings SET pref_min_years_at_job = 2 WHERE id = $1', [ID.live]);
+  check((await hasColumn(db, 'listings', 'pref_min_years_at_job')) === true && (await one(db, "SELECT to_regclass('public.listings_pref_min_years_at_job_idx') IS NOT NULL")) === true, `${tag}: before 009, the column, a value in it and an index on it exist`);
+  const count = await one(db, 'SELECT count(*)::int FROM public.listings');
+  await step(db, `${tag}1`, FILES.m009); await check009(db, `${tag}1`);
+  await step(db, `${tag}2 (009 again)`, FILES.m009); await check009(db, `${tag}2`);
+  check((await one(db, 'SELECT count(*)::int FROM public.listings')) === count, `${tag}2: no listing row was touched`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -431,6 +453,7 @@ async function pathA() {
   await run006And007(db, 'A1');
   await runCredit(db, 'A2');
   await runParties(db, 'A3');
+  await run009(db, 'A4');
   await db.close();
 }
 
@@ -463,6 +486,7 @@ async function pathB() {
   await run006And007(db, 'B');
   await runCredit(db, 'B9');
   await runParties(db, 'B10');
+  await run009(db, 'B11');
   return { db, before };
 }
 

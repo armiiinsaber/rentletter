@@ -71,14 +71,15 @@ test('answer: the GET reads and writes nothing; the tap writes answers, the conf
   assert.equal(yes.status, 200);
   const row = tables.reference_responses[0];
   assert.equal(row.status, 'answered'); assert.equal(row.answered_at, NOW.toISOString()); assert.equal(row.answers.rentOnTime, 'often_late');
-  assert.deepEqual(tables.listing_applicants[0].confirmations, { landlord_reference: { at: NOW.toISOString(), by: 'reference' } });
+  // The outcome rides on the confirmation, dated, so Fit's Conduct pillar reads it wherever confirmations are read (docs/fit-v2.md).
+  assert.deepEqual(tables.listing_applicants[0].confirmations, { landlord_reference: { at: NOW.toISOString(), by: 'reference', rentOnTime: 'often_late', damage: 'minor', again: 'no', from: { m: 3, y: 2023 }, to: { m: 8, y: 2026 } } });
   assert.equal((await S.answerRequest(admin, token, { rented: 'yes' }, { now: NOW })).status, 409, 'already answered');
   assert.equal((await S.readRequest(admin, token)).answered, true);
   // the No path
   const t2 = (await S.createRequest(admin, { linkId: 'J2', profileId: 'other', sentTo: 'x@y.z', now: NOW })).token;
   const no = await S.answerRequest(admin, t2, { rented: 'no', damage: 'significant' }, { now: NOW });
   assert.equal(no.status, 200); assert.deepEqual(tables.reference_responses[1].answers, { rented: 'no', notTheirTenant: true });
-  assert.deepEqual(tables.listing_applicants[1].confirmations, { landlord_reference: { at: NOW.toISOString(), by: 'reference' } });
+  assert.deepEqual(tables.listing_applicants[1].confirmations, { landlord_reference: { at: NOW.toISOString(), by: 'reference' } }, 'not their tenant: the confirmation alone, no outcome');
   // expired
   const t3 = (await S.createRequest(admin, { linkId: 'J1', profileId: 'me', sentTo: 'g@e.com', now: new Date(NOW.getTime() + 6 * 86400000) })).token;
   assert.equal((await S.answerRequest(admin, t3, { rented: 'yes' }, { now: new Date(NOW.getTime() + 30 * 86400000) })).status, 410);
@@ -91,30 +92,27 @@ test('answer: the GET reads and writes nothing; the tap writes answers, the conf
   assert.match(route, /checkSubmitLimits/); assert.match(route, /reference_answered/);
 });
 
-test('Fit: the emailed confirmation counts exactly as the call; no answer set moves the number', () => {
+test('Fit: the previous landlord\'s outcome feeds Conduct from the confirmation alone; a bare confirmation adds nothing; notice and free text never enter', () => {
   const { listings, applications } = db();
-  const app = applications[0], listing = listings[0];
-  const base = computeFit({ application: app, listing, verification: null, confirmations: {} });
-  const called = computeFit({ application: app, listing, verification: null, confirmations: { landlord: { at: days(0), by: 'You' } } });
-  const emailed = computeFit({ application: app, listing, verification: null, confirmations: { landlord_reference: { at: days(0), by: 'reference' } } });
-  assert.ok(called.scoreExact > base.scoreExact, 'the call adds to R');
-  assert.equal(emailed.scoreExact, called.scoreExact, 'the emailed answer counts the same');
-  assert.equal(emailed.score, called.score);
-  const both = computeFit({ application: app, listing, verification: null, confirmations: { landlord: { at: days(0), by: 'You' }, landlord_reference: { at: days(0), by: 'reference' } } });
-  assert.equal(both.scoreExact, called.scoreExact, 'both together add once');
-  // the answers themselves are never read by Fit: Always and Often late, None and Significant, No on 1, all identical
-  const sets = [
-    { rented: 'yes', rentOnTime: 'always', damage: 'none', notice: 'yes', again: 'yes' },
-    { rented: 'yes', rentOnTime: 'often_late', damage: 'significant', notice: 'no', again: 'no' },
-    { rented: 'no', notTheirTenant: true },
-    { rented: Q.PNS, rentOnTime: Q.PNS, damage: Q.PNS, notice: Q.PNS, again: Q.PNS },
-  ];
-  const scores = sets.map((answers) => computeFit({ application: { ...app, referenceAnswers: answers }, listing, verification: null, confirmations: { landlord_reference: { at: days(0), by: 'reference', answers } } }).scoreExact);
-  assert.deepEqual(scores, sets.map(() => called.scoreExact));
+  const app = { ...applications[0], created_at: days(-10) }, listing = listings[0];
+  const now = NOW.getTime();
+  const fit = (confirmations, extra = {}) => computeFit({ application: { ...app, ...extra }, listing, verification: null, confirmations, now });
+  const base = fit({});
+  const called = fit({ landlord: { at: days(0), by: 'You' } });
+  const bare = fit({ landlord_reference: { at: days(0), by: 'reference' } });
+  assert.ok(called.pillars[2].assessed, 'the call is a dated Conduct fact');
+  assert.equal(bare.scoreExact, base.scoreExact, 'a confirmation with no outcome (not their tenant) moves nothing');
+  const good = fit({ landlord_reference: { at: days(0), by: 'reference', rentOnTime: 'always', damage: 'none', again: 'yes', from: { m: 9, y: 2025 }, to: { m: 8, y: 2026 } } });
+  const poor = fit({ landlord_reference: { at: days(0), by: 'reference', rentOnTime: 'often_late', damage: 'significant', again: 'no', from: { m: 9, y: 2025 }, to: { m: 8, y: 2026 } } });
+  assert.ok(good.scoreExact > base.scoreExact && base.scoreExact > poor.scoreExact, `${good.scoreExact} > ${base.scoreExact} > ${poor.scoreExact}`);
+  assert.match(good.basis, /Rent paid on time, last \d+ months\./);
+  // notice given, the free text and the GET's answers object never enter: identical with and without
+  const withNoise = fit({ landlord_reference: { at: days(0), by: 'reference', rentOnTime: 'always', damage: 'none', again: 'yes', from: { m: 9, y: 2025 }, to: { m: 8, y: 2026 }, notice: 'no', answers: { rentOnTime: 'often_late' }, comment: 'free text' } }, { referenceAnswers: { rentOnTime: 'often_late' } });
+  assert.equal(JSON.stringify({ ...withNoise, confirmations: null }), JSON.stringify({ ...good, confirmations: null }), 'the confirmations echo as given; the number and the facts are the same');
   const src = readFileSync(new URL('../lib/fitScore.js', import.meta.url), 'utf8');
-  assert.doesNotMatch(src, /rentOnTime|notTheirTenant|\.answers|answers\[/, 'Fit never reads an answer');
+  assert.doesNotMatch(src, /notTheirTenant|\.answers|answers\[|\.notice|referenceAnswers/, 'Fit reads the outcome fields alone');
   // a pending request (no confirmation yet) changes nothing
-  assert.equal(computeFit({ application: app, listing, verification: null, confirmations: {} }).scoreExact, base.scoreExact);
+  assert.equal(fit({}).scoreExact, base.scoreExact);
 });
 
 test('the report line lists previous landlord (by email); the answers never reach the snapshot', () => {

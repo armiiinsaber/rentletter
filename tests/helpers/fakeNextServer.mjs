@@ -79,6 +79,15 @@ http.createServer(async (req, res) => {
     await kvSetJson(`app:${a.application_number}`, { applicationNumber: a.application_number, ownerToken, email: a.email, tenant: { fullName: a.full_name, phone: a.phone || '' }, employment: { annualIncome: a.annual_income }, createdAt: new Date().toISOString() }, 31536000);
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ applicationNumber: a.application_number, ownerToken, email: a.email })); return;
   }
+  // The Fit walk (tests/routes/fitWebkit.test.mjs): GET /__fake/history?link=J2&clear=1 clears that
+  // applicant's rental history on the fixture row, so a stated income is all Fit has to read.
+  if (req.url.startsWith('/__fake/history')) {
+    const q = new URL(req.url, 'http://localhost').searchParams; const link = String(q.get('link') || '');
+    const j = (t.listing_applicants || []).find((x) => x.id === link); const a = j && (t.applications || []).find((x) => x.id === j.application_id);
+    if (!a) { res.statusCode = 404; res.end('{}'); return; }
+    if (q.get('clear') === '1') { a.prev_landlord_name = null; a.prev_landlord_contact = null; a.prev_address = null; a.years_at_previous = null; }
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ id: a.id, prev_landlord_name: a.prev_landlord_name, years_at_previous: a.years_at_previous })); return;
+  }
   if (req.url.startsWith('/__fake/mail')) {
     const to = String(new URL(req.url, 'http://localhost').searchParams.get('to') || '').toLowerCase();
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(stack.resend.sent.filter((m) => !to || String(m.to).toLowerCase() === to).map((m) => ({ to: m.to, subject: m.subject, text: m.text })))); return;

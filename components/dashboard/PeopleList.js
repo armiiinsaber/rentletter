@@ -13,6 +13,7 @@
 // a tap anywhere on the card, header included, opens and closes that person. The card's padding
 // belongs to the band beside it (the header, or the person row level with it).
 import { useEffect, useState } from 'react';
+import { INCOMPLETE_LINE } from '../../lib/fitScore';
 import { cardTap } from '../../lib/motion';
 import { C, R } from '../theme';
 import { ConfirmSheet, StatusPills } from '../ui';
@@ -68,7 +69,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
   const line2 = (p, open) => {
     if (pending(p)) return <StatusPills tone="ink" label="Status" items={[`asked ${shortDate(p.askedAt)}`, 'no answer yet']} />;
     const bits = [];
-    if (!p.best) bits.push('Asked to hear about similar units');
+    if (!p.best) bits.push(p.unscored ? INCOMPLETE_LINE : 'Asked to hear about similar units');
     else if (!open) bits.push(`${Number(p.best.score).toFixed(1)} ${p.best.label}`, p.best.listingName);
     // The address once: "from" only when they came from a listing other than the one scored.
     if (p.fromListingName && !(p.best && p.best.listingName === p.fromListingName)) bits.push(`from ${p.fromListingName}`);

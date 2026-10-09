@@ -16,7 +16,8 @@ import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
-import { computeFit, compareFit, capOf, incomeIsJoint, householdIncomeOf } from '../../lib/fitScore';
+import { computeFit, compareFit, capOf, fitLine } from '../../lib/fitScore';
+import { incomeIsJoint, householdIncomeOf } from '../../lib/jointIncome';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
@@ -715,13 +716,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
   const l = listing;
   const inviteShareUrl = fullInviteUrl(); // complete URL shown + copied
-  // Criteria Fit reads, set ones only, in Fit's order: income floor, rent share cap, tenure,
+  // Criteria Fit reads, set ones only, in Fit's order: income floor, rent share cap,
   // landlord reference, employer verification.
   const moneyK = (n) => `$${Math.round(Number(n) / 1000)}k`;
   const criteria = [
     Number(l.pref_min_annual_income) > 0 ? `min ${moneyK(l.pref_min_annual_income)}` : null,
     `max ${capOf(l)}% rent share`, // a null cap reads 40 (lib/fitScore.js capOf)
-    Number(l.pref_min_years_at_job) > 0 ? `${Number(l.pref_min_years_at_job)} yr${Number(l.pref_min_years_at_job) === 1 ? '' : 's'} at job` : null,
     l.pref_requires_landlord_reference ? 'landlord reference' : null,
     l.pref_requires_employer_verification ? 'employer verification' : null,
   ].filter(Boolean);
@@ -787,6 +787,32 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       </div>
     );
   };
+  // The work behind the number (docs/fit-v2.md): the basis line, the three pillars with assessed or
+  // not assessed and each dated fact, then the check docs items, which never moved the number.
+  const renderFit = (fit) => (
+    <div data-fit-section="">
+      {fit.basis ? <div data-fit-basis="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 1.4, textWrap: 'pretty' }}>{noWidow(fit.basis)}</div> : null}
+      {fit.incomplete ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{noWidow(fit.incomplete.next)}</div> : null}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--s-2) var(--s-3)', marginTop: 'var(--s-2)' }}>
+        {(fit.pillars || []).map((p) => (
+          <div key={p.name} data-fit-pillar={p.name} data-fit-assessed={p.assessed ? 'yes' : 'no'} style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{p.label}</div>
+            <div className="num" style={{ fontSize: 'var(--t-body-2)', color: p.assessed ? C.ink : C.inkMute, fontWeight: 600, marginTop: 'var(--s-1)' }}>{p.assessed ? Number(p.value).toFixed(1) : 'Not assessed'}</div>
+            {(p.facts || []).slice(0, 4).map((f, i) => (
+              <div key={`${f.text}-${i}`} style={{ fontSize: 'var(--t-eyebrow)', color: f.weight > 0 ? C.inkSoft : C.inkMute, lineHeight: 1.4, marginTop: 2, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{noWidow([f.text, f.date].filter(Boolean).join(', ') + (f.context ? ', context' : ''))}</div>
+            ))}
+            {(p.facts || []).length > 4 ? <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, marginTop: 2 }}>{`${(p.facts || []).length - 4} more`}</div> : null}
+          </div>
+        ))}
+      </div>
+      {Array.isArray(fit.flags) && fit.flags.length > 0 ? (
+        <div data-fit-flags="" style={{ marginTop: 'var(--s-2)' }}>
+          <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Check docs</div>
+          {fit.flags.map((f) => <div key={f.key + f.text} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 2, textWrap: 'pretty' }}>{noWidow(f.text)}</div>)}
+        </div>
+      ) : null}
+    </div>
+  );
   const renderRows = (rows) => (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
@@ -910,17 +936,22 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--s-2)', minHeight: 26, marginTop: 'var(--s-1)', paddingLeft: tracking ? 18 : 0 }}>
             {overall != null ? (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} refill={meterMuted ? 'muted' : 'full'} renderValue={(shown, target) => (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexShrink: 0 }} aria-label={`${Number(target).toFixed(1)} out of 5, ${fit.label}`}>
+                <span data-fit-number="" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexShrink: 0 }} aria-label={`Fit ${Number(target).toFixed(1)} on ${fit.assessed} of ${fit.of}, ${fit.label}`}>
                   <TickMeter value={Math.round(shown * 10) / 10} size={11} showValue={false} muted={meterMuted} />
                   <span className="t-d3 num" style={{ color: C.ink, lineHeight: 1 }}>{Number(shown).toFixed(1)}</span>
+                  <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{`on ${fit.assessed} of ${fit.of}`}</span>
                   <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase' }}>{fit.label}</span>
                 </span>
               )} />
+            ) : fit && fit.incomplete ? (
+              // The first guardrail (docs/fit-v2.md): Ability alone is never a number.
+              <span data-fit-incomplete="" style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>{fit.incomplete.line}</span>
             ) : (
               <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>Rent share unknown</span>
             )}
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
+          {fit && (fit.incomplete || fit.notAssessedLine) ? <div data-fit-coverage="" style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{noWidow(fit.incomplete ? fit.incomplete.next : fit.notAssessedLine)}</div> : null}
           {docSt === 'matched' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             {missed.length > 0 && pills(missed)}
@@ -999,8 +1030,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             </div>
           )}
 
-          {/* THE FACTS, grouped. Money and tenancy open by default; the rest on request. */}
+          {/* THE FACTS, grouped. Fit, money and tenancy open by default; the rest on request. */}
           <div style={{ marginTop: 'var(--s-3)' }}>
+            {fit && renderSection(a, 'fit', fitLine(fit) || 'Fit', true, renderFit(fit))}
             {incomeRows.length > 0 && renderSection(a, 'income', 'Income and employment', true, renderRows(incomeRows))}
             {tenancyRows.length > 0 && renderSection(a, 'tenancy', 'Tenancy and landlord reference', true, renderRows(tenancyRows))}
             {livingRows.length > 0 && renderSection(a, 'living', 'Living situation', false, renderRows(livingRows))}
@@ -1242,7 +1274,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
                   <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
                   <Row label="Max rent to income" value={`${capOf(l)}%`} />
-                  <Row label="Min years at job" value={l.pref_min_years_at_job != null ? l.pref_min_years_at_job : 'not set'} />
                   <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
                   <Row label="Credit report asked" value={yn(l.pref_ask_credit_report)} />
@@ -1354,7 +1385,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <label key={a.linkId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
                         <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => { setRentedPick(a.linkId); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
                         <span title={a.application?.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.application?.full_name || 'Applicant'}</span>
-                        {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap', flexShrink: 0 }}>Fit {Number(fit.score).toFixed(1)} ({fit.label})</span>}
+                        {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap', flexShrink: 0 }}>{fitLine(fit)} ({fit.label})</span>}
                       </label>
                     );
                   })}
@@ -1509,7 +1540,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 placeholder="e.g. stated income $42k vs $60k minimum"
                 style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit', marginBottom: 'var(--s-2)' }} />
               <p style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-4)' }}>
-                Use only screenable facts (income, references, tenure, occupancy). Never protected grounds.
+                Use only screenable facts (income, references, tenancy, occupancy). Never protected grounds.
               </p>
               {/* The two actions share one width, one height and one gap (R2), as on the confirm sheet. */}
               <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>

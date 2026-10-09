@@ -26,7 +26,7 @@ const EMPTY = {
   // AFFORDABILITY (lib/listingForm.js): the rent share cap defaults to 40 on a new listing (the
   // database column default stays 30; a null cap reads as 40 everywhere). The minimum annual
   // income is a separate criterion, empty by default, stored only when the realtor types it.
-  pref_rent_to_income_max_pct: DEFAULT_RENT_SHARE_CAP, pref_min_annual_income: '', pref_min_years_at_job: '',
+  pref_rent_to_income_max_pct: DEFAULT_RENT_SHARE_CAP, pref_min_annual_income: '',
   pref_requires_landlord_reference: true, pref_requires_employer_verification: true,
   pref_ask_credit_report: false, // the upload step shows the credit row first; never required (lib/creditShared.js)
   pref_guarantor_accepted: true, // a guarantor may be invited on this listing, the same for every applicant (lib/parties.js)
@@ -127,7 +127,6 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
       // AFFORDABILITY: the cap as typed; the minimum income only when the realtor typed one.
       // Nothing is derived (lib/listingForm.js affordabilityPayload).
       ...affordabilityPayload(form),
-      pref_min_years_at_job: numOrNull(form.pref_min_years_at_job),
       pref_requires_landlord_reference: !!form.pref_requires_landlord_reference,
       pref_requires_employer_verification: !!form.pref_requires_employer_verification,
       pref_ask_credit_report: !!form.pref_ask_credit_report,
@@ -230,8 +229,6 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
               <span style={{ display: 'block', fontSize: 12, color: minSameAsCap ? C.ink : C.inkMute, lineHeight: 1.5, marginTop: 4, fontVariantNumeric: 'tabular-nums', textWrap: 'pretty' }}>
                 {minSameAsCap ? SAME_AS_CAP_NOTE : (derivedLine(ratioPct, rentNum) || 'Add the rent and a cap above to see what the cap works out to.')}
               </span></label>
-            <label><span style={fieldLabel}>Min years at job</span>
-              <input type="number" min="0" step="0.5" inputMode="decimal" value={form.pref_min_years_at_job} onChange={(e) => set({ pref_min_years_at_job: e.target.value })} placeholder="e.g. 1" style={inputStyle} /></label>
           </div>
 
           {/* 20px between the two rows: each 24px row then reaches a 44px hit area (10px above and below

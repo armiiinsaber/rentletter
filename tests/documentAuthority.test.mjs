@@ -62,7 +62,7 @@ test('letter at A and 85,000, stubs annualize to 85,000 at A, credit report list
   assert.equal(v.employerMatched, true); assert.equal(v.incomeMatched, true); assert.equal(v.incomeFound, 85000);
   assert.deepEqual(v.employerAlsoSeen, [`credit report lists ${B} (historical)`]); assert.equal(v.employerSince, 'since Mar 2023');
   const fit = computeFit({ application: APP, listing: LISTING, verification: run, confirmations: {} });
-  assert.equal(fit.label, 'docs match'); assert.equal(fit.incomeSource, 'verified'); assert.equal(fit.E, 5);
+  assert.equal(fit.label, 'docs match'); assert.equal(fit.incomeSource, 'verified'); assert.equal(fit.E, 4, 'Fit v2: documents matched read 4.0, verified is the realtor alone');
   assert.equal(applicantState({ junction: { application: APP }, verification: run }).state, 'matched');
   assert.equal(verificationFacts([run]).employerMismatch, false);
 });
