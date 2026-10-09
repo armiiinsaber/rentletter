@@ -72,8 +72,8 @@ export const authErrorStyle = {
 };
 
 export const authNoticeStyle = {
-  marginBottom: 12, padding: '12px 14px', background: '#f0f7f3',
-  borderRadius: R.ctrl, borderLeft: `3px solid ${C.green}`,
+  marginBottom: 12, padding: '12px 14px', background: C.info,
+  borderRadius: R.ctrl, borderLeft: `3px solid ${C.ink}`,
   fontSize: 13.5, color: C.ink, lineHeight: 1.5,
 };
 

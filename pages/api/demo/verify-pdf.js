@@ -10,11 +10,11 @@ export default async function handler(req, res) {
   try {
     const bytes = await buildVerificationPdf({ ...ctx, fonts: null });
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="demo-verification-${new Date().toISOString().slice(0, 10)}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="demo-documents-${new Date().toISOString().slice(0, 10)}.pdf"`);
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).send(Buffer.from(bytes));
   } catch (e) {
     logServerError('[demo/verify-pdf]', e, { linkId: req.query.linkId });
-    return res.status(500).json({ error: 'Could not generate the verification PDF.', code: 'report_failed' });
+    return res.status(500).json({ error: 'Could not generate the document summary PDF.', code: 'report_failed' });
   }
 }

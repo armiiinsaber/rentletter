@@ -379,7 +379,7 @@ export default function Mockups() {
         .mk-film { flex-direction: column; }
         .mk-scrub { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; background: rgba(250,248,243,0.92); border: 1px solid ${C.rule}; border-radius: ${R.pill}px; padding: 6px 10px; opacity: 0; }
         .mk-stage:hover .mk-scrub, .mk-scrub:focus-within { opacity: 1; }
-        .mk-scrub input[type=range] { flex: 1; accent-color: ${C.red}; min-width: 0; }
+        .mk-scrub input[type=range] { flex: 1; accent-color: ${C.red}; min-width: 0; height: 30px; margin: 0; } /* the buttons' height, one row (R2) */
         .mk-time { font-size: 11px; font-variant-numeric: tabular-nums; color: ${C.inkSoft}; white-space: nowrap; }
         .mk-stage { position: relative; width: 100%; display: flex; align-items: center; justify-content: center; border-radius: ${R.card}px; overflow: hidden; outline: 1px solid ${C.instRule}; outline-offset: -1px; }
         @media (max-width: 520px) { .mk-grid, .mk-grid[data-preset] { grid-template-columns: 1fr; } }

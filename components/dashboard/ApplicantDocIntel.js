@@ -107,7 +107,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   const [confirmArchId, setConfirmArchId] = useState('');
   const inputRef = useRef(null);
   const hasReport = !!result;
-  // "Edited after verification" — the tenant changed their profile after this report ran.
+  // "Edited after documents": the tenant changed their profile after this report ran.
   const edited = hasReport ? editedAfterVerification({ profile_updated_at: profileUpdatedAt }, [result]) : { edited: false };
 
   const addFiles = (incoming) => {
@@ -212,7 +212,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
     try { return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return 'earlier'; }
   };
 
-  // Stage-2: a SEPARATE landlord verification confirmation for THIS applicant only, as a
+  // Stage 2: a SEPARATE landlord document summary for THIS applicant only, as a
   // branded PDF or paste-ready text. Reads the applicant's own saved analysis (two-key bound).
   const downloadConfirmPdf = async () => {
     if (pdfBusy) return;
@@ -222,14 +222,14 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ listingId, linkId, applicationId }),
       });
-      if (!r.ok) { const j = await r.json().catch(() => ({})); setError(j?.error || 'Could not generate the verification PDF.'); setPdfBusy(false); return; }
+      if (!r.ok) { const j = await r.json().catch(() => ({})); setError(j?.error || 'Could not generate the document summary PDF.'); setPdfBusy(false); return; }
       const blob = await r.blob();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
-      link.href = url; link.download = `verification-${String(applicantName || 'applicant').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`;
+      link.href = url; link.download = `documents-${String(applicantName || 'applicant').replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.pdf`;
       document.body.appendChild(link); link.click(); link.remove();
       URL.revokeObjectURL(url);
-    } catch (e) { setError('Could not generate the verification PDF.'); }
+    } catch (e) { setError('Could not generate the document summary PDF.'); }
     setPdfBusy(false);
   };
   const copyConfirmText = async () => {
@@ -241,10 +241,10 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
         body: JSON.stringify({ listingId, linkId, applicationId }),
       });
       const j = await r.json();
-      if (!r.ok) { setError(j?.error || 'Could not generate the verification text.'); setTextBusy(false); return; }
+      if (!r.ok) { setError(j?.error || 'Could not generate the document summary text.'); setTextBusy(false); return; }
       await navigator.clipboard.writeText(j.text || '');
       setCopied(true); setTimeout(() => setCopied(false), 2200);
-    } catch (e) { setError('Could not copy the verification text.'); }
+    } catch (e) { setError('Could not copy the document summary text.'); }
     setTextBusy(false);
   };
 
@@ -280,7 +280,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       {sentNote ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{sentNote}</div> : null}
       {edited.edited && (
         <div role="note" style={{ marginTop: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
-          Edited after verification: {applicantName ? applicantName.split(' ')[0] : 'the applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were read on {fmtShort(edited.analyzedAt)}. Read them again if the change matters.
+          Edited after documents: {applicantName ? applicantName.split(' ')[0] : 'the applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were read on {fmtShort(edited.analyzedAt)}. Read them again if the change matters.
         </div>
       )}
 
@@ -360,8 +360,8 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
 
               {/* Stage 2 · SEPARATE landlord confirmation for THIS applicant only (PDF + text). */}
               <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 800, color: C.ink, marginBottom: 'var(--s-1)' }}>Verify &amp; confirm to landlord</div>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord a verification confirmation for <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only, separate from the ranked shortlist.</div>
+                <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 800, color: C.ink, marginBottom: 'var(--s-1)' }}>Document summary for the landlord</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord what the documents say about <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only, separate from the ranked shortlist.</div>
                 <div className="rl-ctrl-row">
                   <button onClick={downloadConfirmPdf} disabled={pdfBusy}
                     style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>

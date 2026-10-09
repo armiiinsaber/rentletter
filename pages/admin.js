@@ -27,13 +27,13 @@ function ago(iso) {
 // "Previously #3 (Aug 26, 2026)" — the founder number history recorded on renumber.
 const priorNumbers = (r) => (r.signupNumberHistory?.length ? `Previously ${r.signupNumberHistory.map((h) => `#${h.from} (until ${new Date(h.at).toLocaleDateString('en-CA', { dateStyle: 'medium' })})`).join(', ')}` : undefined);
 
-const StatusPill = ({ r }) => (r.suspended ? <span className="ad-pill danger">Suspended</span> : r.active ? <span className="ad-pill green">Active</span> : <span className="ad-pill quiet">Quiet</span>);
+const StatusPill = ({ r }) => (r.suspended ? <span className="ad-pill danger">Suspended</span> : r.active ? <span className="ad-pill on">Active</span> : <span className="ad-pill quiet">Quiet</span>);
 const FounderPill = ({ r }) => (r.accountStatus === 'founding' ? (
   <span title={priorNumbers(r)} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-    <span className="ad-pill green">Founder{r.signupNumber ? <span className="ad-num"> #{r.signupNumber}</span> : ''}</span>
+    <span className="ad-pill on">Founder{r.signupNumber ? <span className="ad-num"> #{r.signupNumber}</span> : ''}</span>
     {r.signupNumberHistory?.length > 0 && <span className="ad-num" style={{ fontSize: 11, color: C.instMute, whiteSpace: 'nowrap' }}>was #{r.signupNumberHistory.map((h) => h.from).join(', #')}</span>}
   </span>
-) : r.accountStatus === 'trialing' ? <span className="ad-pill amber">Trial</span> : r.accountStatus === 'trial_expired' ? <span className="ad-pill quiet">Trial ended</span> : r.accountStatus === 'paid' ? <span className="ad-pill green">Paid</span> : r.accountStatus === 'past_due' ? <span className="ad-pill amber">Past due</span> : null);
+) : r.accountStatus === 'trialing' ? <span className="ad-pill trial">Trial</span> : r.accountStatus === 'trial_expired' ? <span className="ad-pill quiet">Trial ended</span> : r.accountStatus === 'paid' ? <span className="ad-pill on">Paid</span> : r.accountStatus === 'past_due' ? <span className="ad-pill danger">Past due</span> : null);
 
 const COLS = [['email', 'Email'], ['name', 'Name'], ['brokerage', 'Brokerage'], ['province', 'Prov'], ['signupAt', 'Signed up'], ['listings', 'Listings'], ['applications', 'Applications'], ['lastActivity', 'Last activity'], ['active', 'Status']];
 
@@ -266,7 +266,7 @@ export default function Admin({ authed: initialAuthed }) {
           <Sheet eyebrow="Permanent deletion" title={`Delete ${modal.preview.accounts.length === 1 ? 'this account' : `${modal.preview.accounts.length} accounts`} and everything they own`} onClose={() => !busy && setModal(null)}
             footer={<><button type="button" className="ad-btn secondary" disabled={busy} onClick={() => setModal(null)}>Cancel</button><button type="button" className="ad-btn danger" disabled={busy || !allTyped} onClick={runAction} style={{ marginLeft: 'auto' }}>{busy ? 'Deleting…' : `Delete ${modal.preview.accounts.length === 1 ? 'account' : `${modal.preview.accounts.length} accounts`}`}</button></>}>
             <div className="ad-alert" style={{ marginBottom: 14 }}>
-              <span><strong>This cannot be undone.</strong> Removes {modal.preview.junctionRows} applicant link{modal.preview.junctionRows === 1 ? '' : 's'} (with decisions and verifications), {modal.preview.listings} listing{modal.preview.listings === 1 ? '' : 's'} and their invite links, the profile, logo and auth user.{modal.preview.applicationsSharedElsewhere ? ` ${modal.preview.applicationsSharedElsewhere} application${modal.preview.applicationsSharedElsewhere === 1 ? '' : 's'} also on other listings stay.` : ''}</span>
+              <span><strong>This cannot be undone.</strong> Removes {modal.preview.junctionRows} applicant link{modal.preview.junctionRows === 1 ? '' : 's'} (with decisions and document reports), {modal.preview.listings} listing{modal.preview.listings === 1 ? '' : 's'} and their invite links, the profile, logo and auth user.{modal.preview.applicationsSharedElsewhere ? ` ${modal.preview.applicationsSharedElsewhere} application${modal.preview.applicationsSharedElsewhere === 1 ? '' : 's'} also on other listings stay.` : ''}</span>
             </div>
             <div className="ad-well" style={{ overflow: 'hidden', marginBottom: 14 }}>
               {modal.preview.accounts.map((a, i) => (

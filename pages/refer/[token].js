@@ -90,7 +90,7 @@ export default function ReferralConsent() {
 
           {phase === 'done' && (
             <div className="rl-card" style={{ padding: 'clamp(22px, 5vw, 32px)' }}>
-              <Eyebrow color={decision === 'approve' ? C.green : C.inkMute}>{decision === 'approve' ? 'Shared' : 'Not shared'}</Eyebrow>
+              <Eyebrow color={decision === 'approve' ? C.ink : C.inkMute}>{decision === 'approve' ? 'Shared' : 'Not shared'}</Eyebrow>
               <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 34px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>
                 {decision === 'approve' ? `Your application is on its way to ${data?.to?.name || 'them'}.` : 'Declined. Nothing was shared.'}
               </h1>

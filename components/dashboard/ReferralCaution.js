@@ -14,7 +14,7 @@ export default function ReferralCaution({ meta, compact = false }) {
       <div style={{ color: C.ink, fontWeight: 700, textWrap: 'pretty' }}>Referred by {meta.fromName || 'another realtor'}{meta.fromBrokerage ? `, ${meta.fromBrokerage}` : ''}.{meta.approvedAt ? ` The applicant approved on ${dateLong(meta.approvedAt)}.` : ''}</div>
       {meta.note && <div style={{ marginTop: 'var(--s-1)', fontStyle: 'italic', textWrap: 'pretty' }}>“{meta.note}”</div>}
       {v ? (
-        <div style={{ marginTop: 'var(--s-1)', padding: 'var(--s-2) var(--s-2)', background: C.amberTint, borderLeft: `3px solid ${C.amber}`, borderRadius: R.ctrl, color: C.ink }}>
+        <div style={{ marginTop: 'var(--s-1)', padding: 'var(--s-2) var(--s-2)', background: C.paper, borderLeft: `3px solid ${C.ink}`, borderRadius: R.ctrl, color: C.ink }}>
           <strong>Prior document check, {v.analyzedAt ? dateLong(v.analyzedAt) : 'date unknown'}</strong>, run by {meta.fromName || 'the referring realtor'} for a different listing{v.forListing ? ` (${v.forListing})` : ''}, on documents as of then.{' '}
           {v.verified
             ? <>It found: {[v.incomeVerified ? `income${v.incomeFigure ? ` ${v.incomeFigure}` : ''} matched` : null, v.employmentVerified ? `employer${v.employerName ? ` ${v.employerName}` : ''} matched` : null, v.credit ? `credit ${v.credit.band || v.credit.score || 'report'} (${v.credit.bureau || 'bureau'})` : null].filter(Boolean).join('; ') || 'documents analysed'}.</>

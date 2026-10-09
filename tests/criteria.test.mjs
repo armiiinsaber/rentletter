@@ -60,7 +60,7 @@ test('the rows on the payload: $2,600, $90,000, 35%, with and without a stored f
   assert.deepEqual(plain.rows, [
     { key: 'rentShare', status: 'met', text: 'Rent share 35% · your max 40%' },
     { key: 'landlordReference', status: 'met', text: 'Landlord reference · on file' },
-    { key: 'employer', status: 'unverified', text: 'Employer · not verified' },
+    { key: 'employer', status: 'unverified', text: 'Employer · not confirmed' },
   ]);
   const withMin = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 });
   assert.deepEqual(withMin.rows, plain.rows, 'a stored floor adds no row');
@@ -81,11 +81,11 @@ test('the rows on the payload: $2,600, $90,000, 35%, with and without a stored f
 test('the PDF lines and the text report carry the rows and the one line', () => {
   const { payload } = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40 });
   const lines = reportLines(payload);
-  assert.deepEqual(lines.blocks[0].criteria, [['met', 'Rent share 35% · your max 40%'], ['met', 'Landlord reference · on file'], ['unverified', 'Employer · not verified']]);
+  assert.deepEqual(lines.blocks[0].criteria, [['met', 'Rent share 35% · your max 40%'], ['met', 'Landlord reference · on file'], ['unverified', 'Employer · not confirmed']]);
   assert.equal(lines.footer.fitLine, FIT_LINE);
   assert.match(lines.footer.criteria, /criteria: max 40% rent share · landlord reference · employer verification\./);
   const text = reportText(payload, { pageUrl: 'https://rentletter.ca/r/t' });
-  assert.match(text, /\n   ✓ Rent share 35% · your max 40%\n   ✓ Landlord reference · on file\n     Employer · not verified\n/);
+  assert.match(text, /\n   ✓ Rent share 35% · your max 40%\n   ✓ Landlord reference · on file\n     Employer · not confirmed\n/);
   assert.match(text, new RegExp(FIT_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.doesNotMatch(text, /[\u2014\u2013]/);
 });

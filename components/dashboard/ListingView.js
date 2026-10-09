@@ -1016,7 +1016,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               isSetAside ? 'Set aside' : null,
               isFinalist(a) && !isSetAside ? 'Finalist' : null,
               ref ? (refMap[ref.status] || ref.status) : null,
-              editedAfterVerification(app, a.docVerifications).edited ? 'Edited after verification' : null,
+              editedAfterVerification(app, a.docVerifications).edited ? 'Edited after documents' : null,
             ]} />
             <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', marginLeft: 'auto', flexShrink: 0 }}>{app.application_number}</span>
           </div>

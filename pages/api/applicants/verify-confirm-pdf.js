@@ -1,5 +1,5 @@
 // /api/applicants/verify-confirm-pdf
-// Realtor-authenticated. Stage-2 SINGLE-APPLICANT verification confirmation as a white-label
+// Realtor authenticated. Stage 2 SINGLE APPLICANT document summary as a white label
 // PDF for the landlord. Owner-only + strict two-key (linkId + applicationId) — same guards as
 // analyze-documents. Reads the applicant's OWN doc_verifications (no re-analysis); shows the
 // verified facts or a clear "Not verified …" line (e.g. document-name mismatch). owner_token
@@ -45,11 +45,11 @@ export default async function handler(req, res) {
 
     const slug = String(loaded.applicantName || 'applicant').replace(/[^a-z0-9]+/gi, '-').toLowerCase().slice(0, 40);
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="verification-${slug}-${new Date().toISOString().slice(0, 10)}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="documents-${slug}-${new Date().toISOString().slice(0, 10)}.pdf"`);
     res.setHeader('Content-Length', bytes.length);
     return res.status(200).send(Buffer.from(bytes));
   } catch (e) {
     logServerError('[verify-confirm-pdf]', e, { listingId, linkId, fontPairing: fontPairingForLog });
-    return res.status(500).json({ error: 'Could not generate the verification PDF.', code: 'report_failed' });
+    return res.status(500).json({ error: 'Could not generate the document summary PDF.', code: 'report_failed' });
   }
 }

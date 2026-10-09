@@ -1,4 +1,4 @@
-// POST /api/stripe/webhook — Stripe → Rentletter. Raw body (parser off) verified against
+// POST /api/stripe/webhook — Stripe → Rentletter. Raw body (parser off) checked against
 // STRIPE_WEBHOOK_SECRET; an unverified request is 400 and writes nothing. Then the event id is
 // inserted into stripe_events BEFORE anything else: a duplicate means a replay → 200, no-op.
 // Handled types mirror the subscription onto the profile (lib/billing.js); unhandled types are

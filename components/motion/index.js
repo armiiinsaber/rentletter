@@ -67,7 +67,7 @@ export function VerifiedMark({ verified, id }) {
   const landed = verified && wasVerified === false;
   useEffect(() => { seen.current.set(id, !!verified); }, [id, verified]);
   if (!verified) return null;
-  return <span className={`m-verified ${landed ? 'm-verified-land' : ''}`} title="Documents verified: the name on the documents matches and the details check out"><span className="m-verified-tick" aria-hidden="true" /> Verified</span>;
+  return <span className={`m-verified ${landed ? 'm-verified-land' : ''}`} title="Verified: you confirmed the employer yourself"><span className="m-verified-tick" aria-hidden="true" /> Verified</span>;
 }
 
 // d. REPORT SENT: the report leaves the screen. Rendered for one beat after a successful send;
@@ -93,8 +93,8 @@ export function MotionStyles() {
   return (
     <style jsx global>{`
       :root { ${MOTION_VARS} }
-      .m-verified { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.green}; background: ${C.greenTint}; border: 1px solid ${C.green}; padding: var(--s-1) var(--s-2); border-radius: 999px; white-space: nowrap; }
-      .m-verified-tick { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; display: inline-block; }
+      .m-verified { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.ink}; background: ${C.paper}; border: 1px solid ${C.rule}; padding: var(--s-1) var(--s-2); border-radius: 999px; white-space: nowrap; }
+      .m-verified-tick { width: 6px; height: 6px; border-radius: 50%; background: ${C.red}; display: inline-block; }
       .m-depart { position: relative; display: inline-block; width: 0; height: 0; overflow: visible; }
       .m-depart-card { position: absolute; left: 0; bottom: 0; width: 44px; height: 56px; border-radius: 6px; background: ${C.card}; border: 1px solid ${C.ruleDark}; box-shadow: 0 8px 20px rgba(15,15,16,0.14); display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-2) var(--s-2); pointer-events: none; opacity: 0; }
       .m-depart-line { display: block; height: 3px; border-radius: 2px; background: ${C.rule}; }
@@ -107,7 +107,7 @@ export function MotionStyles() {
       .m-swipe-under { position: absolute; inset: 0; display: flex; align-items: center; padding: var(--card-pad); border-radius: var(--card-radius); opacity: 0; pointer-events: none; background: ${C.paperDeep}; color: ${C.ink}; }
       .m-swipe-under.left { justify-content: flex-start; }
       .m-swipe-under.right { justify-content: flex-end; }
-      .m-swipe-under.good { background: ${C.greenTint}; color: ${C.green}; }
+      .m-swipe-under.good { background: ${C.ink}; color: ${C.paper}; }
       .m-swipe-label { font-size: var(--t-body-2); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; padding: var(--s-2) var(--s-3); border: 1px solid currentColor; border-radius: 999px; transform: scale(0.92); }
       .m-swipe-under.armed .m-swipe-label { transform: scale(1.06); }
       /* g. the open applicant card: the body enters on the enter curve; section chevrons turn. */

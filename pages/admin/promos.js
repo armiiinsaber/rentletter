@@ -74,7 +74,7 @@ export default function Promos() {
                   <span className="pr-code ad-mono">{c.code}</span>
                   <span className="pr-label">{c.label || c.recipient_name || <span style={{ color: C.instMute }}>No label</span>}</span>
                   <span className="pr-meta">
-                    <span className={`ad-pill ${c.grant_type === 'lifetime' ? 'green' : 'amber'}`}>{grantText(c)}</span>
+                    <span className={`ad-pill ${c.grant_type === 'lifetime' ? 'on' : 'trial'}`}>{grantText(c)}</span>
                     <span className="ad-num pr-count">{c.redemption_count} / {c.max_redemptions}</span>
                     {!c.active ? <span className="ad-pill quiet">Revoked</span> : spent ? <span className="ad-pill quiet">Used up</span> : <span className="ad-pill red">Live</span>}
                     <span className="ad-quiet ad-num pr-date">{fmt(c.created_at)}</span>
@@ -167,7 +167,7 @@ function CreateSheet({ cap, lifetimeActive, post, onClose, onCreated }) {
         <label className="ad-f span"><span className="ad-f-l">Label (what you see)</span><input className="ad-input" value={f.label} onChange={set('label')} placeholder="Alex Moreau, Right at Home" autoCapitalize="words" autoComplete="off" /></label>
         <label className="ad-f span"><span className="ad-f-l">Code</span>
           <input className="ad-input ad-mono" style={{ fontSize: 16 }} value={code} onChange={(e) => { setCodeTouched(true); setF((x) => ({ ...x, code: e.target.value.toLowerCase() })); }} placeholder="rentletter-alex" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" inputMode="url" />
-          <span className="pr-check" style={{ color: check.state === 'free' ? C.instGreen : check.state === 'taken' || check.state === 'bad' ? C.instDangerText : C.instMute }}>{checkText}</span>
+          <span className="pr-check" style={{ color: check.state === 'free' ? C.instText : check.state === 'taken' || check.state === 'bad' ? C.instDangerText : C.instMute }}>{checkText}</span>
         </label>
         <div className="ad-f span">
           <span className="ad-f-l">Grant</span>

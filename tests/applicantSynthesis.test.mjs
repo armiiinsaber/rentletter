@@ -19,9 +19,9 @@ test('documented income with a landlord reference and a ratio; verified once the
   assert.equal(synthesisFacts(a).incomeVerified, true);
 });
 
-test('unverified: stated income, no documents, no reference', () => {
+test('stated: stated income, no documents, no reference', () => {
   const a = applicant({ annual_income: 60000, rent_to_income_ratio: 40 });
-  assert.equal(synthesisLine(a), 'Stated income at 2.5x rent, unverified, no reference yet');
+  assert.equal(synthesisLine(a), 'Stated income at 2.5x rent, no documents yet, no reference yet');
 });
 
 test('documents that differ on income say so, never verified, never documented', () => {
@@ -60,7 +60,7 @@ test('high and low ratio are stated as multiples, never judged', () => {
 
 test('missing data produces a truthful line, never a confident one', () => {
   assert.equal(synthesisLine(applicant({})), 'Income not stated, no reference yet');
-  assert.equal(synthesisLine(applicant({ annual_income: 50000 })), 'Stated income, unverified, no reference yet');
+  assert.equal(synthesisLine(applicant({ annual_income: 50000 })), 'Stated income, no documents yet, no reference yet');
   assert.equal(synthesisLine(applicant({}, [verifiedReport({ comparisons: [] })])), 'Income not stated, documents on file, no reference yet');
   assert.equal(synthesisLine(null), 'Income not stated, no reference yet');
   assert.equal(synthesisLine(applicant({ annual_income: 'abc', rent_to_income_ratio: 0 })), 'Income not stated, no reference yet');

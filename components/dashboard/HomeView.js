@@ -514,9 +514,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         }
         /* ── Listing invite-link status chip (real data) ── */
         .dash-lchip { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 600; color: ${C.inkMute}; }
-        .dash-lchip-on { color: ${C.green}; }
-        .dash-lchip-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.green}; flex-shrink: 0; }
-        .dash-lchip-dot-off { background: #cabfa8; }
+        .dash-lchip-on { color: ${C.ink}; }
+        .dash-lchip-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.ink}; flex-shrink: 0; }
+        .dash-lchip-dot-off { background: ${C.ruleDark}; }
 
         /* ── Section head + ghost button ── */
         .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin: var(--gap-section) 0 var(--s-4); }

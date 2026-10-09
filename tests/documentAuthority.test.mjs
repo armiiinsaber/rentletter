@@ -150,7 +150,7 @@ test('finalize recomputes every row from the staged documents; per file rows are
   assert.deepEqual(row(run, 'Employer').alsoSeen, [`credit report lists ${B} (historical)`]);
   assert.equal(row(run, 'Income').status, 'match'); assert.equal(run.nameMatch, 'match');
   assert.equal(run.crossReference.find((c) => c.field === 'Employer').status, 'consistent');
-  assert.match(run.overallSummary, /Employer, Job title, Income verified against the application/);
+  assert.match(run.overallSummary, /Employer, Job title, Income match the application/);
   const legacy = buildCombinedRun(items, 'Test Person', 85000);
   assert.equal(row(legacy, 'Income').status, 'match'); assert.equal(row(legacy, 'Employer').status, 'not_found', 'a bare number carries no stated employer');
 });

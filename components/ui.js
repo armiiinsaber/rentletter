@@ -119,6 +119,10 @@ export const GlobalStyle = () => (
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; transition: none; animation: none; }
     .rl-pill.rl-pill-action { background: ${C.inst}; border-color: ${C.inst}; color: ${C.paper}; }
     .rl-pills.rl-pills-ink .rl-pill { background: transparent; border-color: rgba(250, 248, 243, 0.24); color: ${C.paper}; }
+    /* The same pill at the type scale of a scaled mockup (components/mockups, components/film), where
+       body text is 9 to 13px: half its text size in height, as on the live card. */
+    .rl-pills.rl-pills-mock { gap: 4px; }
+    .rl-pills.rl-pills-mock .rl-pill { height: 16px; padding: 0 7px; font-size: 9px; font-weight: 600; }
     .rl-ctrl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--gap-card); }
     .rl-ctrl-row > * { min-height: 44px; flex: 0 1 auto; }
     @media (max-width: 420px) { .rl-ctrl-row > * { flex: 1 1 100%; width: 100%; } }

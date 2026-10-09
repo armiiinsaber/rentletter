@@ -14,12 +14,10 @@ export const C = {
   instRule: '#2a2a2e',   // hairline on an instrument panel
   instText: '#e8e4d9',   // primary text on instrument (warm, not pure white)
   instMute: '#8f8b81',   // secondary text on instrument
-  // Status on instrument surfaces — the paper status colours don't reach contrast on ink
-  // (green #2d7d4a on #101012 is ~3.4:1), so each has a lifted twin here. Brand signal on
-  // instrument stays redBright; DANGER on instrument is a distinct, cooler red (fill + text)
-  // so "overdue"/"delete" never reads as the brand mark.
-  instGreen: '#5fbf85',
-  instAmber: '#e0a84a',
+  // Status on instrument surfaces: ink tones and the red tick only, no green or amber anywhere
+  // (tests/noGreenAmber.test.mjs). Brand signal on instrument stays redBright; DANGER on
+  // instrument is a distinct, cooler red (fill + text) so "overdue"/"delete" never reads as the
+  // brand mark.
   instDanger: '#ad2229',     // fill (instText on it ≈ 5.4:1)
   instDangerText: '#ff8a8f', // small text / borders on instrument (≈ 7.5:1 on inst)
   // Ink
@@ -39,13 +37,8 @@ export const C = {
   // "send report" and "delete listing" never carry the same color.
   danger: '#a8161c',
   dangerTint: '#fdf0ef',
-  // Status
-  green: '#2d7d4a',
-  greenTint: '#eef5f0',
-  verified: '#2d7d4a',   // alias with intent · document-verification UI uses this name
-  amber: '#b07818',
-  amberTint: '#fdf6e9',
-  gold: '#b08d57',       // premium notice accent (AI studio gates/limits)
+  // Status: no green, amber or gold token exists. A done state is ink or the red tick, a
+  // notice is a paper well (info below), an error is danger.
   // Info/notice wells (policy boxes, preference blocks) — paper-toned, no off-brand blue
   info: '#f2eee3',       // = paperDeep
   infoBorder: '#e3ddd0', // = rule

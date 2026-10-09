@@ -9,7 +9,7 @@ import { Icon } from '../ui';
 import { STAGES, STAGE, cardDate, leadStatus, initials } from './model';
 import useDrag from './useDrag';
 
-const TONE = { danger: C.instDangerText, red: C.redBright, green: C.instGreen, mute: C.instMute, ink: C.instText };
+const TONE = { danger: C.instDangerText, red: C.redBright, on: C.instText, mute: C.instMute, ink: C.instText };
 
 export function StageMenu({ current, onPick, onClose }) {
   const ref = useRef(null);

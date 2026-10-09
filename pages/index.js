@@ -749,18 +749,18 @@ export default function Home() {
             {/* ── DEV TEST BAR (will be removed before public launch) ── */}
             <div style={{
               marginBottom: 32, padding: '14px 18px',
-              background: '#fff8e1', border: `1px solid #f5d77a`, borderRadius: R.ctrl,
+              background: C.info, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
               display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
               fontSize: 12,
             }}>
-              <span style={{ color: '#7a5d12', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 10 }}>
+              <span style={{ color: C.ink, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 10 }}>
                 Dev mode
               </span>
               <button onClick={fillTestData} className="rl-btn"
-                style={{ background: '#7a5d12', color: '#fff8e1', border: 'none', borderRadius: 'var(--btn-radius)', padding: '6px var(--gap-card)', fontSize: 11, fontWeight: 600 }}>
+                style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '6px var(--gap-card)', fontSize: 11, fontWeight: 600 }}>
                 Fill random sample
               </button>
-              <span style={{ fontSize: 11, color: '#7a5d12', opacity: 0.75 }}>
+              <span style={{ fontSize: 11, color: C.inkSoft }}>
                 Fills the form with sample data. Remove this block before launch.
               </span>
             </div>
@@ -896,7 +896,7 @@ export default function Home() {
               <div className="rl-card" style={{ marginTop: 48, padding: '28px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
                   <span style={{ fontSize: 15, color: C.inkSoft }}>Your professional rental application</span>
-                  <span style={{ fontSize: 13, color: C.green, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Free</span>
+                  <span style={{ fontSize: 13, color: C.ink, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Free</span>
                 </div>
                 <div style={{ marginTop: 16, fontSize: 14, color: C.inkSoft, lineHeight: 1.6 }}>
                   Submit your application and get a unique Rentletter number to share with realtors and landlords. No payment required.
@@ -1038,11 +1038,11 @@ export default function Home() {
             {/* Email status */}
             {form.email && (
               <div style={{
-                background: emailSent ? C.greenTint : C.amberTint,
-                border: `1px solid ${emailSent ? '#c8d8cc' : '#e0d5a8'}`,
+                background: C.info,
+                border: `1px solid ${C.infoBorder}`,
                 borderRadius: R.ctrl,
                 padding: '14px 18px', marginBottom: 24, fontSize: 14,
-                color: emailSent ? '#2d5a3f' : '#665a1f',
+                color: C.ink,
               }}>
                 {emailSending ? `Delivering to ${form.email}...` : emailSent ? `Sent to ${form.email}` : `Will email to ${form.email}`}
                 {!emailSent && !emailSending && (

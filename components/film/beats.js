@@ -5,7 +5,7 @@
 // wide, and ProductFilm scales them into the devices. transform/opacity only — nothing here
 // changes layout over time.
 import { C, R, SH } from '../theme';
-import { Icon, TickMeter, Wordmark } from '../ui';
+import { Icon, TickMeter, Wordmark, StatusPills } from '../ui';
 import { CAST, Avatar, Eyebrow, money } from '../mockups/scenes';
 
 const fade = (k, dy = 6) => ({ opacity: k, transform: `translate(0, ${(1 - k) * dy}px)` });
@@ -59,7 +59,7 @@ export function ListingScreen({ b }) {
           </div>
           <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 8, ...fade(b.sent, 6) }}>
             <span style={{ display: 'inline-flex' }}>{CAST.map((a, i) => <span key={a.name} style={{ marginLeft: i ? -6 : 0, border: `2px solid ${C.card}`, borderRadius: '50%', display: 'inline-flex' }}><Avatar a={a} size={20} /></span>)}</span>
-            <span style={{ fontSize: 10.5, color: C.green, fontWeight: 700 }}>Sent to 12 people</span>
+            <span style={{ fontSize: 10.5, color: C.ink, fontWeight: 700 }}>Sent to 12 people</span>
           </div>
         </div>
       </div>
@@ -71,7 +71,7 @@ export function ListingScreen({ b }) {
 export function ApplyScreen({ b }) {
   const F = ({ label, value, k }) => (
     <div style={{ paddingBottom: 6, borderBottom: `1px solid ${C.rule}` }}>
-      <div style={{ fontSize: 9.5, color: C.inkSoft, marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>{label}<span style={{ color: C.green, opacity: k }}>✓</span></div>
+      <div style={{ fontSize: 9.5, color: C.inkSoft, marginBottom: 2, display: 'flex', justifyContent: 'space-between' }}>{label}<span style={{ color: C.red, opacity: k }}>✓</span></div>
       <div style={{ position: 'relative', height: 16, fontSize: 13 }}>
         <span style={{ position: 'absolute', left: 0, top: 0, color: C.inkMute, opacity: 1 - k }}>Tap to fill</span>
         <span style={{ position: 'absolute', left: 0, top: 0, color: C.ink, fontWeight: 500, ...fade(k, 5) }}>{value}</span>
@@ -116,7 +116,7 @@ export function RankedScreen({ b }) {
       <Chrome />
       <div style={{ padding: '10px 18px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Eyebrow>{b.sort > 0.5 ? 'Ranked · top 5' : '88 Harbour St · applications'}</Eyebrow>
-        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: b.sort > 0.5 ? C.green : C.inkMute, border: `1px solid ${b.sort > 0.5 ? C.green : C.rule}`, borderRadius: R.pill, padding: '1px 7px' }}>{b.sort > 0.5 ? 'Ranked' : `${Math.round(b.arrive.reduce((s, k) => s + k, 0))} of 12 in`}</span>
+        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: b.sort > 0.5 ? C.ink : C.inkMute, border: `1px solid ${b.sort > 0.5 ? C.ink : C.rule}`, borderRadius: R.pill, padding: '1px 7px' }}>{b.sort > 0.5 ? 'Ranked' : `${Math.round(b.arrive.reduce((s, k) => s + k, 0))} of 12 in`}</span>
       </div>
       <div style={{ position: 'absolute', left: 18, right: 18, top: top + 16, height: rowH * 5 }}>
         {CAST.map((a) => {
@@ -144,14 +144,14 @@ export function RankedScreen({ b }) {
         <span style={{ fontSize: 10.5, color: C.inkSoft, flex: 1 }}>Priya Nair · selected</span>
         <div style={{ position: 'relative', height: 32, minWidth: 200 }}>
           <div style={{ position: 'absolute', inset: 0, background: C.ink, color: C.paper, borderRadius: R.ctrl, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11.5, fontWeight: 700, opacity: 1 - b.asked, transform: `scale(${1 - 0.04 * b.press})` }}><Icon name="doc" size={13} color={C.paper} /> Request documents</div>
-          <div style={{ position: 'absolute', inset: 0, border: `1px solid ${C.green}`, color: C.green, borderRadius: R.ctrl, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 700, ...fade(b.asked, 6) }}><Icon name="check" size={13} color={C.green} strokeWidth={2.5} /> Secure link sent to Priya</div>
+          <div style={{ position: 'absolute', inset: 0, border: `1px solid ${C.ink}`, color: C.ink, borderRadius: R.ctrl, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, fontWeight: 700, ...fade(b.asked, 6) }}><Icon name="check" size={13} color={C.red} strokeWidth={2.5} /> Secure link sent to Priya</div>
         </div>
       </div>
     </Screen>
   );
 }
 
-// 4 ── Verification: rows resolve, then the files are deleted ─────────────────────────────
+// 4 ── What the documents say: rows resolve, then the files are deleted ────────────────────
 export function VerifyScreen({ b }) {
   const rows = [['Income', '$115,000', '$114,600 (T4)'], ['Employer', 'CIBC', 'CIBC World Markets'], ['Job title', 'Senior UX', 'Senior UX Designer'], ['Pay frequency', 'not set', 'Semi-monthly']];
   // Short names on purpose: the exact filename carries no meaning, and short leaves headroom
@@ -160,11 +160,12 @@ export function VerifyScreen({ b }) {
   return (
     <Screen dark>
       <div style={{ padding: pad, display: 'flex', flexDirection: 'column', gap: 9, position: 'absolute', inset: 0 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><Eyebrow color="#ff4d55">Document verification</Eyebrow><span style={{ fontSize: 9, color: '#9a958a' }}>3 documents · held 14 days</span></div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><Eyebrow color="#ff4d55">What the documents say</Eyebrow><span style={{ fontSize: 9, color: '#9a958a' }}>3 documents · held 14 days</span></div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <Avatar a={CAST[0]} size={30} />
           <div style={{ minWidth: 0 }}><div style={{ fontSize: 14, fontWeight: 800 }}>Priya Nair</div><div style={{ fontSize: 10, color: '#9a958a' }}>Name on documents matches the applicant</div></div>
-          <span style={{ marginLeft: 'auto', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', color: '#101012', background: '#5fbf85', padding: '3px 8px', borderRadius: 999, ...fade(b.badge, 4) }}>VERIFIED</span>
+          {/* The product's label for this state, as the live card's status pill (components/ui.js). */}
+          <StatusPills tone="ink" className="rl-pills-mock" label="Document status" items={['docs match']} style={{ marginLeft: 'auto', ...fade(b.badge, 4) }} />
         </div>
         <div style={{ border: '1px solid #2a2a2e', borderRadius: R.ctrl, overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 86px', gap: 8, padding: '5px 10px', fontSize: 8.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9a958a', background: '#161618' }}><span>Field</span><span>Applicant said</span><span>Documents show</span><span /></div>
@@ -174,7 +175,7 @@ export function VerifyScreen({ b }) {
               <span style={{ fontWeight: 600, position: 'relative', height: 14 }}><span style={{ position: 'absolute', left: 0, opacity: 1 - k, color: '#6f6b63' }}>Reading…</span><span style={{ position: 'absolute', left: 0, ...fade(k, 4) }}>{doc}</span></span>
               <span style={{ position: 'relative', height: 18 }}>
                 <span style={{ position: 'absolute', right: 0, fontSize: 9, color: '#6f6b63', opacity: 1 - k, padding: '2px 0' }}>pending</span>
-                <span style={{ position: 'absolute', right: 0, fontSize: 9, fontWeight: 800, color: i === 3 ? '#c8c2b3' : C.green, background: i === 3 ? '#1c1c1e' : 'rgba(95,191,133,0.14)', padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap', ...fade(k, 3) }}>{i === 3 ? 'Found' : '✓ Verified'}</span>
+                <span style={{ position: 'absolute', right: 0, fontSize: 9, fontWeight: 800, color: C.instText, background: C.instRaise, padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap', ...fade(k, 3) }}>{i === 3 ? 'Found' : <><span style={{ color: C.redBright }}>✓</span> Matches</>}</span>
               </span>
             </div>
           ); })}
@@ -239,25 +240,25 @@ export function ReportScreen({ b, brand = null, logo = 0 }) {
           <div style={{ fontSize: 9.5, color: C.inkMute }}>Ranked on ability, truth, conduct · Aug 20, 2026</div>
         </div>
         {top.map((a, i) => (
-          <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${i === 0 ? accent : C.rule}`, borderRadius: R.ctrl, ...fade(b.rows[i], 10) }}>
+          <div key={a.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 12px', background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${i === 0 ? accent : C.rule}`, borderRadius: R.ctrl, ...fade(b.rows[i], 10) }}>
             <span style={{ fontSize: 11, fontWeight: 800, color: i === 0 ? accent : C.inkMute, width: 12 }}>{i + 1}</span>
             <Avatar a={a} size={24} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700 }}>{a.name}{i === 0 && <span style={{ color: accent, fontWeight: 600 }}> · Top pick</span>}</div>
               <div style={{ fontSize: 9.5, color: C.inkMute }}>{a.role} · {money(a.income)}/yr · {a.rent}% rent to income</div>
-              <div style={{ fontSize: 9.5, color: C.green }}>✓ Documents verified · income & employer matched</div>
+              <StatusPills className="rl-pills-mock" label="Document status" items={['docs match', 'Aug 18']} style={{ marginTop: 2 }} />
             </div>
             <TickMeter value={a.score} size={10} />
           </div>
         ))}
-        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: min income $75k ✓ · 12-month lease ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.</div>
+        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: rent share under 40% ✓ · 12 month lease ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.</div>
       </div>
     </Screen>
   );
 }
 
 // 6 ── The brand studio: colours, concepts, a logo, fonts ─────────────────────────────────
-export const SWATCHES = ['#1f3a5f', '#2d7d4a', '#b07818', '#6b4a8a', '#d72027'];
+export const SWATCHES = ['#1f3a5f', '#3a6ea5', '#8a2b4a', '#6b4a8a', '#d72027'];
 export const FONTS = [['Fraunces', "'Fraunces', Georgia, serif", 600, false], ['Inter', "'Inter', sans-serif", 800, false], ['Fraunces Italic', "'Fraunces', Georgia, serif", 500, true]]; // [name, family, weight, italic]
 // What the studio ends on, read from the SAME beat values the studio renders from — so the final
 // report wears exactly the colour, mark and font the viewer just watched being chosen.

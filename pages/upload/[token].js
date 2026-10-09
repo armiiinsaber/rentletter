@@ -92,7 +92,7 @@ export default function UploadPage() {
 
           {status === 'received' && (
             <div className="rl-card" style={{ padding: 'clamp(28px, 6vw, 44px)', textAlign: 'center' }}>
-              <div style={{ display: 'inline-flex', marginBottom: 12, color: C.green }}><Icon name="check" size={30} color={C.green} strokeWidth={2.5} /></div>
+              <div style={{ display: 'inline-flex', marginBottom: 12, color: C.red }}><Icon name="check" size={30} color={C.red} strokeWidth={2.5} /></div>
               <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10 }}>Documents already received</h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, maxWidth: 460, margin: '0 auto' }}>
                 Your documents were submitted{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ''}. There’s nothing more to do, if the listing realtor needs anything else, they’ll send a new request.
@@ -102,8 +102,8 @@ export default function UploadPage() {
 
           {status === 'done' && (
             <div className="rl-card" style={{ padding: 'clamp(28px, 6vw, 44px)' }}>
-              <div style={{ fontSize: 11, color: C.green, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                <Icon name="check" size={15} color={C.green} strokeWidth={2.5} /> Documents received
+              <div style={{ fontSize: 11, color: C.ink, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12, display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                <Icon name="check" size={15} color={C.red} strokeWidth={2.5} /> Documents received
               </div>
               <h1 style={{ fontSize: 'clamp(24px, 5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 4, textWrap: 'balance' }}>
                 Thanks{firstName ? `, ${firstName}` : ''}.

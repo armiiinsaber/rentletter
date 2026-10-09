@@ -131,8 +131,8 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         .ad-link { background: transparent; border: none; color: ${C.redBright}; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
         /* ── pills ── */
         .ad-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: ${R.pill}px; white-space: nowrap; border: 1px solid transparent; }
-        .ad-pill.green { color: ${C.instGreen}; background: rgba(95,191,133,0.12); border-color: rgba(95,191,133,0.35); }
-        .ad-pill.amber { color: ${C.instAmber}; background: rgba(224,168,74,0.12); border-color: rgba(224,168,74,0.35); }
+        .ad-pill.on { color: ${C.instText}; background: ${C.instRaise}; border-color: ${C.instMute}; }
+        .ad-pill.trial { color: ${C.instText}; border-color: ${C.instRule}; }
         .ad-pill.danger { color: ${C.instText}; background: ${C.instDanger}; }
         .ad-pill.quiet { color: ${C.instMute}; border-color: ${C.instRule}; }
         .ad-pill.red { color: ${C.redBright}; border-color: rgba(255,90,95,0.4); }

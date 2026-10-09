@@ -1,5 +1,5 @@
 // /api/applicants/verify-confirm-text
-// Realtor-authenticated. Stage-2 SINGLE-APPLICANT verification confirmation as paste-ready
+// Realtor authenticated. Stage 2 SINGLE APPLICANT document summary as paste ready
 // plain text for the landlord. Owner-only + strict two-key (linkId + applicationId). Reads the
 // applicant's OWN doc_verifications (no re-analysis); deterministic text (no AI). Shows verified
 // facts or the not-verified reason line. owner_token never exposed.
@@ -41,6 +41,6 @@ export default async function handler(req, res) {
     return res.status(200).json({ text });
   } catch (e) {
     console.error('[verify-confirm-text] error:', e?.message || e);
-    return res.status(500).json({ error: 'Could not generate the verification text.' });
+    return res.status(500).json({ error: 'Could not generate the document summary text.' });
   }
 }

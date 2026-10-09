@@ -10,7 +10,7 @@ Effective date: ____________, 2026
 These Terms of Service ("Terms") are a binding agreement between you and 1001557180 Ontario Inc., operating as Rentletter ("we," "us," "our," or "Rentletter"). They govern your access to and use of the rentletter.ca website and the Rentletter application (together, the "Service"). By creating an account or using the Service, you agree to these Terms. If you do not agree, do not use the Service.
 
 ## 1. The Service
-Rentletter provides software that helps real estate professionals ("Realtors") collect standardized rental applications, organize and rank applicants against a landlord's stated criteria, verify applicant-provided documents, generate factual insights, and produce reports for landlord clients. Rentletter is a software tool that organizes and surfaces information. It is not a party to any tenancy, does not make rental decisions, and does not provide legal, financial, or professional advice.
+Rentletter provides software that helps real estate professionals ("Realtors") collect standardized rental applications, organize and rank applicants against a landlord's stated criteria, read the documents an applicant provides and compare them with the application, generate factual insights, and produce reports for landlord clients. Rentletter is a software tool that organizes and surfaces information. It is not a party to any tenancy, does not make rental decisions, and does not provide legal, financial, or professional advice.
 
 ## 2. Eligibility and accounts
 - You must be at least the age of majority in your province and, where you use the Service as a real estate professional, hold any licences or registrations required for your work.
@@ -28,7 +28,7 @@ As a Realtor using the Service, you agree that:
 Individuals who submit rental application information ("Applicants") do so to have their application assessed by the relevant Realtor and landlord. Applicant information is handled in accordance with our Privacy Policy. Applicants are responsible for the accuracy of the information they provide.
 
 ## 5. AI features, no guarantee of accuracy
-The Service uses automated and artificial-intelligence features to read documents, extract and compare information, and produce report text. These features are provided to assist you and **may contain errors or omissions**. Rentletter does not warrant that any extracted data, verification result, ranking, or insight is accurate, complete, or current. You are responsible for independently verifying any information before relying on it or acting on it. Automated output is not a background check, credit check, or guarantee of an applicant's suitability, identity, income, or truthfulness.
+The Service uses automated and artificial-intelligence features to read documents, extract and compare information, and produce report text. These features are provided to assist you and **may contain errors or omissions**. Rentletter does not warrant that any extracted data, comparison result, ranking, or insight is accurate, complete, or current. You are responsible for independently verifying any information before relying on it or acting on it. Automated output is not a background check, credit check, or guarantee of an applicant's suitability, identity, income, or truthfulness.
 
 ## 6. Acceptable use
 You agree not to:

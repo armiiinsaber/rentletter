@@ -98,11 +98,12 @@ function ColorField({ label, value, onChange, disabled }) {
 
 function StepChip({ n, label, state }) {
   const done = state === 'done', active = state === 'active';
-  const bg = done ? C.green : active ? C.ink : C.paperDeep;
-  const fg = done || active ? C.paper : C.inkMute;
+  // Done: the red tick on paper; active: filled ink; the rest: a paper well. No status colour.
+  const bg = done ? C.paper : active ? C.ink : C.paperDeep;
+  const fg = done ? C.red : active ? C.paper : C.inkMute;
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, opacity: state === 'locked' ? 0.55 : 1 }}>
-      <span style={{ width: 20, height: 20, borderRadius: '50%', background: bg, color: fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: `1px solid ${done ? C.green : active ? C.ink : C.ruleDark}` }}>{done ? '✓' : n}</span>
+      <span style={{ width: 20, height: 20, borderRadius: '50%', background: bg, color: fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: `1px solid ${done ? C.ink : active ? C.ink : C.ruleDark}` }}>{done ? '✓' : n}</span>
       <span style={{ fontSize: 11.5, fontWeight: active ? 700 : 600, color: active ? C.ink : C.inkSoft }}>{label}</span>
     </div>
   );
@@ -275,7 +276,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           Unlocks live as the realtor types (props are the live form); the save is flushed
           automatically before generation, so there's no save-and-come-back trip. */}
       {!refineMode && !profileReady && (
-        <div role="status" style={{ padding: '12px 14px', marginBottom: 12, background: C.amberTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
+        <div role="status" style={{ padding: '12px 14px', marginBottom: 12, background: C.info, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ink}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
           <div style={{ fontWeight: 800, marginBottom: 2 }}>Locked until we have {missing.join(' and ')}</div>
           <div style={{ color: C.inkSoft, marginBottom: 8 }}>The wordmark is built from your real name and brokerage, they’re the fields at the top of this form. Unlocks as soon as both are filled; no need to save first.</div>
           <button type="button" onClick={onJumpToDetails}
@@ -286,7 +287,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       )}
 
       {limitMsg && (
-        <div style={{ padding: '10px 14px', marginBottom: 12, background: C.amberTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.gold}`, fontSize: 13, color: C.ink }}>{limitMsg}</div>
+        <div style={{ padding: '10px 14px', marginBottom: 12, background: C.info, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ink}`, fontSize: 13, color: C.ink }}>{limitMsg}</div>
       )}
 
       {!limitMsg && !refineMode && (
@@ -365,10 +366,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               const key = `${roundIdx}-${i}`;
               const isSaved = savedKey === key;
               return (
-              <div key={i} style={{ border: `1px solid ${isSaved ? C.green : C.rule}`, borderRadius: R.ctrl, padding: 12, background: isSaved ? '#f0f7f3' : C.paper, boxShadow: isSaved ? `0 0 0 1px ${C.green}` : 'none' }}>
+              <div key={i} style={{ border: `1px solid ${isSaved ? C.ink : C.rule}`, borderRadius: R.ctrl, padding: 12, background: isSaved ? C.paperDeep : C.paper, boxShadow: isSaved ? `0 0 0 1px ${C.ink}` : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{v.label}</span>
-                  {isSaved && <span style={{ fontSize: 11, fontWeight: 800, color: C.paper, background: C.green, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.04em' }}>✓ SAVED</span>}
+                  {isSaved && <span style={{ fontSize: 11, fontWeight: 800, color: C.paper, background: C.ink, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.04em' }}>✓ SAVED</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   <Swatch svg={v.svg} bg="#ffffff" label="On light" idKey={`r${roundIdx}v${i}l`} />
@@ -376,7 +377,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
-                    style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    style={{ background: isSaved ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                     {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved as your logo' : 'Use this logo'}
                   </button>
                   <button onClick={() => startRefine(v)} disabled={busy || usingKey !== null}
@@ -384,7 +385,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                     Refine this →
                   </button>
                 </div>
-                {isSaved && <div style={{ fontSize: 12, color: C.green, fontWeight: 600, marginTop: 8 }}>This is now your branding, it appears on your reports.</div>}
+                {isSaved && <div style={{ fontSize: 12, color: C.ink, fontWeight: 600, marginTop: 8 }}>This is now your branding, it appears on your reports.</div>}
               </div>
               );
             })}
@@ -423,10 +424,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             </div>
             <div style={{ marginTop: 12 }}>
               <button onClick={() => saveLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy}
-                style={{ background: savedKey === 'refine-cur' ? C.green : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== 'refine-cur' ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                style={{ background: savedKey === 'refine-cur' ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== 'refine-cur' ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {usingKey === 'refine-cur' ? 'Saving…' : savedKey === 'refine-cur' ? '✓ Saved as your logo' : 'Use this version'}
               </button>
-              {savedKey === 'refine-cur' && <span style={{ fontSize: 12, color: C.green, fontWeight: 600, marginLeft: 10 }}>This is now your branding.</span>}
+              {savedKey === 'refine-cur' && <span style={{ fontSize: 12, color: C.ink, fontWeight: 600, marginLeft: 10 }}>This is now your branding.</span>}
             </div>
           </div>
 
@@ -453,7 +454,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                   const key = `refine-res-${i}`;
                   const isSaved = savedKey === key;
                   return (
-                  <div key={i} style={{ border: `1px solid ${isSaved ? C.green : C.rule}`, borderRadius: R.ctrl, padding: 12, background: isSaved ? '#f0f7f3' : C.paper, boxShadow: isSaved ? `0 0 0 1px ${C.green}` : 'none' }}>
+                  <div key={i} style={{ border: `1px solid ${isSaved ? C.ink : C.rule}`, borderRadius: R.ctrl, padding: 12, background: isSaved ? C.paperDeep : C.paper, boxShadow: isSaved ? `0 0 0 1px ${C.ink}` : 'none' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{v.label}</div>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                       <Swatch svg={v.svg} bg="#ffffff" label="On light" idKey={`res${i}l-${refineHistory.length}`} />
@@ -461,7 +462,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
-                        style={{ background: isSaved ? C.green : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1 }}>
+                        style={{ background: isSaved ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1 }}>
                         {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved' : 'Use this'}
                       </button>
                       <button onClick={() => refineFurther(v)} disabled={busy || usingKey !== null}
@@ -481,7 +482,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       {/* Toast, fixed to the viewport so it's visible no matter which card was saved or how far down the realtor scrolled */}
       {toast && (
         <div role="status" data-tap="" onClick={() => setToast('')}
-          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, background: C.green, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: '0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
+          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, background: C.ink, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: '0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
           <span style={{ fontSize: 15 }}>✓</span> {toast}
         </div>
       )}

@@ -13,14 +13,14 @@ export default function StatusBadge({ profile }) {
   if (s.status === 'founding' || s.status === 'unknown' || s.status === 'none') return null;
   let bg = C.paperDeep, fg = C.inkSoft, border = C.rule, label = 'not set';
   if (s.status === 'paid') {
-    bg = C.greenTint; fg = C.green; border = C.green; label = 'Subscribed';
+    bg = C.paper; fg = C.ink; border = C.rule; label = 'Subscribed';
   } else if (s.status === 'trialing') {
-    bg = C.amberTint; fg = C.amber; border = C.amber;
+    bg = C.paper; fg = C.ink; border = C.rule;
     label = `Trial · ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} left`;
   } else if (s.status === 'trial_expired') {
     bg = C.redTint; fg = C.red; border = C.red; label = 'Trial ended';
   } else if (s.status === 'past_due') {
-    bg = C.amberTint; fg = C.amber; border = C.amber; label = 'Payment past due';
+    bg = C.dangerTint; fg = C.danger; border = C.danger; label = 'Payment past due';
   }
   return (
     <span style={{

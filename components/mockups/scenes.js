@@ -8,15 +8,15 @@
 //
 // Imported ONLY by /admin/mockups — never by the landing page (keeps the hero bundle light).
 import { C, R } from '../theme';
-import { Icon, TickMeter, Wordmark } from '../ui';
+import { Icon, TickMeter, Wordmark, StatusPills } from '../ui';
 import HeroDemo from './HeroDemo';
 import { DocsFirstScene } from './DocsFirst';
 
 export const CAST = [
-  { initials: 'PN', color: '#2d7d4a', name: 'Priya Nair', role: 'Senior UX · CIBC', income: 115000, net: 84400, score: 4.6, basis: 'Rent paid on time, 5 yrs', rent: 31 },
+  { initials: 'PN', color: C.ink, name: 'Priya Nair', role: 'Senior UX · CIBC', income: 115000, net: 84400, score: 4.6, basis: 'Rent paid on time, 5 yrs', rent: 31 },
   { initials: 'JO', color: '#3a6ea5', name: 'James Okafor', role: 'Software Eng · Shopify', income: 95000, net: 70300, score: 4.2, basis: 'Conduct not assessed', rent: 37 },
   { initials: 'MT', color: '#1f7a8c', name: 'Mei Tanaka', role: 'Marketing Mgr · Loblaw', income: 87000, net: 64900, score: 3.9, basis: 'Rent paid on time, 3 yrs', rent: 41 },
-  { initials: 'DT', color: '#8a5a2b', name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: 78000, net: 59100, score: 3.6, basis: 'Rent paid on time, 4 yrs', rent: 45 },
+  { initials: 'DT', color: C.inkSoft, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: 78000, net: 59100, score: 3.6, basis: 'Rent paid on time, 4 yrs', rent: 45 },
   { initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB', income: 71000, net: 54500, score: 3.3, basis: 'Rent paid on time, 8 mo', rent: 49 },
 ];
 export const money = (n) => `$${Number(n).toLocaleString('en-CA')}`;
@@ -52,35 +52,36 @@ export function LandlordReportScene() {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 'clamp(11px, 2.8vw, 13px)', fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}{i === 0 && <span style={{ color: C.red, fontWeight: 600 }}> · Top pick</span>}</div>
               <div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr before tax · {a.rent}% rent to income</div>
-              <div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: C.green, marginTop: 2 }}>✓ Documents verified Aug 18 · income & employer matched</div>
+              <StatusPills className="rl-pills-mock" label="Document status" items={['docs match', 'Aug 18']} style={{ marginTop: 2 }} />
             </div>
             <TickMeter value={a.score} size={11} />
           </div>
         ))}
         <div style={{ marginTop: 'auto', padding: 'clamp(7px, 2%, 10px) clamp(9px, 2.4%, 13px)', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 'clamp(8.5px, 2vw, 10px)', color: C.inkSoft, lineHeight: 1.45 }}>
-          Fit against your stated preferences: min income $75k ✓ · non smoker ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.
+          Fit against your stated preferences: rent share under 40% ✓ · non smoker ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.
         </div>
       </div>
     </div>
   );
 }
 
-// 3 ── Document verification result (the AI / instrument surface) ──────────────────────────
+// 3 ── What the documents say (the AI / instrument surface) ────────────────────────────────
 export function VerificationScene({ phone = false }) {
   const rows = [
     ['Income', '$115,000', '$114,600 (T4)', 'match'], ['Employer', 'CIBC', 'CIBC World Markets', 'match'], ['Job title', 'Senior UX', 'Senior UX Designer', 'match'], ['Pay frequency', 'not set', 'Semi-monthly', 'found'],
   ];
-  const tone = { match: [C.green, C.greenTint, '✓ Verified'], found: [C.inkSoft, C.paperDeep, 'Found'], close: [C.amber, C.amberTint, '≈ Close'] };
+  // Each row's status in the product's words: the red tick for a match, no status colour.
+  const status = { match: 'Matches', found: 'Found', close: 'Close' };
   return (
     <div style={{ position: 'absolute', inset: 0, background: '#101012', color: '#e8e4d9', overflow: 'hidden', padding: pad, display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.6%, 10px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-        <Eyebrow color="#ff4d55">Document verification</Eyebrow>
+        <Eyebrow color="#ff4d55">What the documents say</Eyebrow>
         <span style={{ fontSize: 9, color: '#9a958a', whiteSpace: 'nowrap' }}>3 documents · held 14 days</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Avatar a={CAST[0]} size={30} />
         <div style={{ minWidth: 0 }}><div style={{ fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: 800 }}>Priya Nair</div><div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: '#9a958a' }}>Name on documents matches the applicant · high confidence</div></div>
-        <span style={{ marginLeft: 'auto', fontSize: 9.5, fontWeight: 800, letterSpacing: '0.06em', color: '#101012', background: '#5fbf85', padding: '3px 8px', borderRadius: 999, whiteSpace: 'nowrap' }}>VERIFIED</span>
+        <StatusPills tone="ink" className="rl-pills-mock" label="Document status" items={['docs match']} style={{ marginLeft: 'auto' }} />
       </div>
       <div style={{ border: '1px solid #2a2a2e', borderRadius: R.ctrl, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1.2fr auto' : '1fr 1fr 1.2fr auto', gap: 8, padding: '6px 10px', fontSize: 8.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9a958a', background: '#161618' }}>
@@ -89,7 +90,7 @@ export function VerificationScene({ phone = false }) {
         {rows.map(([f, said, doc, st]) => (
           <div key={f} style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1.2fr auto' : '1fr 1fr 1.2fr auto', gap: 8, padding: 'clamp(6px, 1.8%, 9px) 10px', borderTop: '1px solid #2a2a2e', fontSize: 'clamp(9.5px, 2.4vw, 11.5px)', alignItems: 'center' }}>
             <span style={{ color: '#c8c2b3' }}>{f}</span>{!phone && <span>{said}</span>}<span style={{ fontWeight: 600 }}>{doc}</span>
-            <span style={{ fontSize: 9, fontWeight: 800, color: tone[st][0] === C.inkSoft ? '#c8c2b3' : tone[st][0], background: st === 'match' ? 'rgba(95,191,133,0.14)' : '#1c1c1e', padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap' }}>{tone[st][2]}</span>
+            <span style={{ fontSize: 9, fontWeight: 800, color: C.instText, background: C.instRaise, padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap' }}>{st === 'match' ? <><span style={{ color: C.redBright }}>✓</span> {status[st]}</> : status[st]}</span>
           </div>
         ))}
       </div>
@@ -107,7 +108,7 @@ export function VerificationScene({ phone = false }) {
 export function TenantApplyScene() {
   const F = ({ label, value, done }) => (
     <div style={{ paddingBottom: 6, borderBottom: `1px solid ${C.rule}` }}>
-      <div style={{ fontSize: 9.5, color: C.inkSoft, fontWeight: 500, marginBottom: 2 }}>{label}{done && <span style={{ color: C.green, marginLeft: 6 }}>✓</span>}</div>
+      <div style={{ fontSize: 9.5, color: C.inkSoft, fontWeight: 500, marginBottom: 2 }}>{label}{done && <span style={{ color: C.red, marginLeft: 6 }}>✓</span>}</div>
       <div style={{ fontSize: 'clamp(11px, 3vw, 13px)', color: value ? C.ink : C.inkMute, fontWeight: value ? 500 : 400 }}>{value || 'Tap to fill'}</div>
     </div>
   );
@@ -141,8 +142,8 @@ export function TenantUploadScene() {
   const Doc = ({ name, state }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
       <span style={{ width: 26, height: 26, borderRadius: 6, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>📄</span>
-      <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div><div style={{ fontSize: 9.5, color: state === 'done' ? C.green : C.inkMute }}>{state === 'done' ? 'Read · held 14 days for review' : 'Reading…'}</div></div>
-      {state === 'done' ? <Icon name="check" size={14} color={C.green} strokeWidth={2.5} /> : <span style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${C.rule}`, borderTopColor: C.red, display: 'inline-block' }} />}
+      <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 11.5, fontWeight: 600, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{name}</div><div style={{ fontSize: 9.5, color: state === 'done' ? C.inkSoft : C.inkMute }}>{state === 'done' ? 'Read · held 14 days for review' : 'Reading…'}</div></div>
+      {state === 'done' ? <Icon name="check" size={14} color={C.red} strokeWidth={2.5} /> : <span style={{ width: 14, height: 14, borderRadius: '50%', border: `2px solid ${C.rule}`, borderTopColor: C.red, display: 'inline-block' }} />}
     </div>
   );
   return (
@@ -200,7 +201,7 @@ export const SCENES = [
   { key: 'film', title: 'Product film', blurb: 'The 43-second camera move through the product, synced to the narration timeline. Hover for the scrubber.', film: true, animated: true },
   { key: 'ranked', title: 'Ranked applicants', blurb: 'The live hero, applicants ranked, top pick rises, send to landlord.', device: 'laptop', url: 'rentletter.ca/dashboard', Scene: RankedListScene, aspect: '4 / 3', animated: true, stillStep: 3 },
   { key: 'report', title: 'Branded landlord report', blurb: 'What the landlord receives, co branded, top 3 of 12, fit against their preferences.', device: 'laptop', url: 'rentletter.ca/r/…', Scene: LandlordReportScene, aspect: '4 / 3' },
-  { key: 'verify', title: 'Document verification', blurb: 'The instrument surface: documents read, facts matched, an OHRC safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
+  { key: 'verify', title: 'What the documents say', blurb: 'The instrument surface: documents read, facts matched, an OHRC safe insight.', device: 'laptop', url: 'rentletter.ca/dashboard/88-harbour', Scene: VerificationScene, aspect: '4 / 3', dark: true },
   { key: 'docsfirst', title: 'Documents first', blurb: 'A tappable prototype: the tenant photographs their documents first, they are read and fill the form, the tenant confirms. Fake data, nothing live changes.', device: 'phone', prototype: true, Scene: DocsFirstScene },
   { key: 'apply', title: 'Tenant application', blurb: 'How simple it is to apply, one step at a time, no account.', device: 'phone', Scene: TenantApplyScene },
   { key: 'upload', title: 'Secure document upload', blurb: 'The tenant’s secure link experience: read, held 14 days, deleted.', device: 'phone', Scene: TenantUploadScene },

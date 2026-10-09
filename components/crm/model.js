@@ -53,7 +53,7 @@ export function leadStatus(lead, now = new Date()) {
 // The one date line a card shows, by stage. Returns { label, text, tone } or null.
 export function cardDate(lead, now = new Date()) {
   const s = leadStatus(lead, now);
-  if (lead.stage === 'client') return { label: 'Client since', text: fmtDay(dateOfTs(lead.stage_changed_at) || today()), tone: 'green' };
+  if (lead.stage === 'client') return { label: 'Client since', text: fmtDay(dateOfTs(lead.stage_changed_at) || today()), tone: 'on' };
   if (lead.stage === 'set_aside') return { label: 'Set aside', text: fmtDay(dateOfTs(lead.stage_changed_at) || today()), tone: 'mute' };
   if (lead.stage === 'demo_booked' && lead.demo_at) return { label: s.demoOverdue ? 'Overdue · demo was' : 'Demo', text: `${relDay(s.demoDay)} · ${fmtTime(lead.demo_at)}`, tone: s.demoOverdue ? 'danger' : s.demoToday ? 'red' : 'ink' };
   if (s.fu) return { label: s.fuOverdue ? 'Overdue · follow-up' : 'Follow up', text: relDay(s.fu), tone: s.fuOverdue ? 'danger' : s.fuToday ? 'red' : 'ink' };
