@@ -1,14 +1,14 @@
-// The criteria are honest and the report shows the math: a null cap reads 40, the derived minimum
-// is information only, a stored minimum that restates the cap is ignored, and the landlord report
-// carries one row per rule in force plus the one Fit line.
+// The criteria are honest and the report shows the math: a null cap reads 40, no income floor
+// exists anywhere (a stored one on a listing older than db/010 is read by nothing), and the
+// landlord report carries one row per rule in force plus the one Fit line.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 register('./helpers/loader.mjs', import.meta.url);
 import { fakeSupabase } from './helpers/fakeSupabase.mjs';
 
-const { computeFit, capOf, effectiveMinIncome } = await import('../lib/fitScore.js');
-const { DEFAULT_RENT_SHARE_CAP, derivedMinIncome, sameAsCap, derivedLine, affordabilityPayload, CAP_HELPER, SAME_AS_CAP_NOTE } = await import('../lib/listingForm.js');
+const { computeFit, capOf } = await import('../lib/fitScore.js');
+const { DEFAULT_RENT_SHARE_CAP, affordabilityPayload, CAP_HELPER } = await import('../lib/listingForm.js');
 const { buildSnapshot, criteriaRows, criteriaLine, FIT_LINE } = await import('../lib/reportSnapshot.js');
 const { reportLines } = await import('../lib/landlordReportPdf.js');
 const { reportText } = await import('../lib/reportText.js');
@@ -31,43 +31,31 @@ test('the null cap reads 40: Fit, the report footer, the snapshot and the helper
   assert.deepEqual([share.rule, share.value, share.status], [40, 35, 'met']);
   assert.match(criteriaLine({ monthly_rent: 2600 }), /^max 40% rent share/);
   assert.equal(buildSnapshot({ listing: { monthly_rent: 2600 }, applicants: [], profile: PROFILE }).listing.criteria.maxRentSharePct, 40);
-  assert.doesNotMatch(CAP_HELPER + SAME_AS_CAP_NOTE + FIT_LINE, /[—–]/);
+  assert.doesNotMatch(CAP_HELPER + FIT_LINE, /[\u2014\u2013]/);
 });
 
-test('the derived minimum is information only: not stored unless typed, the same as cap note within 2%', async () => {
-  assert.equal(derivedMinIncome(2600, 40), 78000); assert.equal(derivedMinIncome(2600, 30), 104000); assert.equal(derivedMinIncome(0, 40), null);
-  assert.equal(derivedLine(40, 2600), 'At 40% and $2,600, that is about $78,000 a year.');
-  assert.deepEqual(affordabilityPayload({ pref_rent_to_income_max_pct: '40', pref_min_annual_income: '' }), { pref_rent_to_income_max_pct: 40, pref_min_annual_income: null }, 'nothing derived, nothing stored');
-  assert.deepEqual(affordabilityPayload({ pref_rent_to_income_max_pct: 40, pref_min_annual_income: '104000' }), { pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 }, 'a typed minimum is stored');
-  assert.deepEqual(affordabilityPayload({ pref_rent_to_income_max_pct: 40, pref_min_annual_income: '78000' }), { pref_rent_to_income_max_pct: 40, pref_min_annual_income: 78000 }, 'stored even when it equals the cap, if they insist');
-  assert.equal(sameAsCap(78000, 78000), true); assert.equal(sameAsCap(79000, 78000), true, 'within 2%'); assert.equal(sameAsCap(80000, 78000), false); assert.equal(sameAsCap(null, 78000), false);
+test('the payload carries the cap alone: nothing derived, no floor stored, the create route defaults to 40', async () => {
+  assert.deepEqual(affordabilityPayload({ pref_rent_to_income_max_pct: '40' }), { pref_rent_to_income_max_pct: 40 });
+  assert.deepEqual(affordabilityPayload({ pref_rent_to_income_max_pct: 35, pref_min_annual_income: '104000' }), { pref_rent_to_income_max_pct: 35 }, 'a floor typed into an old form is dropped');
   // the create route: a listing created without a cap gets 40 in code; the column default stays 30
   const admin = fakeSupabase({ listings: [], events: [] });
-  const r = await createListing({ admin, userId: 'me', invalidate: () => {} }, { address: '1 Test St', monthly_rent: 2600 });
-  assert.equal(r.status, 200); assert.equal(r.body.listing.pref_rent_to_income_max_pct, 40); assert.equal(r.body.listing.pref_min_annual_income, undefined);
+  const r = await createListing({ admin, userId: 'me', invalidate: () => {} }, { address: '1 Test St', monthly_rent: 2600, pref_min_annual_income: 90000 });
+  assert.equal(r.status, 200); assert.equal(r.body.listing.pref_rent_to_income_max_pct, 40); assert.equal('pref_min_annual_income' in r.body.listing, false, 'the floor is never written');
   const kept = await createListing({ admin, userId: 'me', invalidate: () => {} }, { address: '2 Test St', monthly_rent: 2600, pref_rent_to_income_max_pct: 35 });
   assert.equal(kept.body.listing.pref_rent_to_income_max_pct, 35);
 });
 
-test('a stored minimum equal to rent × 12 / cap within 2% is no minimum: $2,600 at 30% with $104,000', () => {
-  const restated = { monthly_rent: 2600, pref_rent_to_income_max_pct: 30, pref_min_annual_income: 104000 };
-  assert.equal(effectiveMinIncome(restated), 0);
-  assert.equal(effectiveMinIncome({ ...restated, pref_min_annual_income: 106000 }), 0, '1.9% off still restates the cap');
-  assert.equal(effectiveMinIncome({ ...restated, pref_min_annual_income: 110000 }), 110000, '5.8% off is its own rule');
-  assert.equal(effectiveMinIncome({ monthly_rent: 2600, pref_min_annual_income: 78000 }), 0, 'a null cap reads 40, so 78,000 restates it');
-  const withMin = computeFit({ application: APP, listing: restated, verification: null, confirmations: {} });
-  const without = computeFit({ application: APP, listing: { ...restated, pref_min_annual_income: null }, verification: null, confirmations: {} });
-  assert.equal(withMin.score, without.score); assert.equal(withMin.A, without.A); assert.equal(withMin.evidence.incomeCapped, false);
-  assert.equal(withMin.criteria.some((c) => c.key === 'pref_min_annual_income'), false, 'no second criterion');
-  assert.equal(criteriaLine(restated), 'max 30% rent share');
-  const real = computeFit({ application: APP, listing: { monthly_rent: 2600, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 }, verification: null, confirmations: {} });
-  // Fit v2: a minimum is a criterion row the landlord reads, never a cap on the number (docs/fit-v2.md).
-  const plain40 = computeFit({ application: APP, listing: { monthly_rent: 2600, pref_rent_to_income_max_pct: 40 }, verification: null, confirmations: {} });
-  assert.equal(real.A, plain40.A); assert.equal(real.evidence.incomeCapped, false, 'at 40% the same $104,000 is a real second rule, shown as a row');
-  assert.equal(real.criteria.find((c) => c.key === 'pref_min_annual_income').status, 'missed');
+test('a stored income floor on a listing older than db/010 is read by nothing: identical Fit, no row, no line', () => {
+  const floored = { monthly_rent: 2600, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 };
+  const withMin = computeFit({ application: APP, listing: floored, verification: null, confirmations: {} });
+  const without = computeFit({ application: APP, listing: { monthly_rent: 2600, pref_rent_to_income_max_pct: 40 }, verification: null, confirmations: {} });
+  assert.equal(JSON.stringify(withMin), JSON.stringify(without));
+  assert.equal(withMin.criteria.some((c) => /min/i.test(c.key + c.label)), false, 'no floor criterion');
+  assert.equal(criteriaLine(floored), 'max 40% rent share');
+  assert.equal(buildSnapshot({ listing: floored, applicants: [], profile: PROFILE }).listing.criteria.minAnnualIncome, undefined);
 });
 
-test('the rows on the payload: $2,600, $90,000, 35%, with and without the $104,000 minimum', () => {
+test('the rows on the payload: $2,600, $90,000, 35%, with and without a stored floor', () => {
   const plain = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40 });
   assert.deepEqual(plain.rows, [
     { key: 'rentShare', status: 'met', text: 'Rent share 35% · your max 40%' },
@@ -75,8 +63,7 @@ test('the rows on the payload: $2,600, $90,000, 35%, with and without the $104,0
     { key: 'employer', status: 'unverified', text: 'Employer · not verified' },
   ]);
   const withMin = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 });
-  assert.deepEqual(withMin.rows[1], { key: 'minIncome', status: 'missed', text: 'Income $90,000 · your min $104,000' });
-  assert.equal(withMin.rows.length, 4);
+  assert.deepEqual(withMin.rows, plain.rows, 'a stored floor adds no row');
   const confirmed = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40 }, { employer: { at: '2026-09-06T00:00:00Z', by: 'Sarah Chen' } });
   assert.deepEqual(confirmed.rows.at(-1), { key: 'employer', status: 'met', text: 'Employer · confirmed by Sarah Chen' });
   // A stored pref_min_years_at_job (a listing older than db/009) is read by nothing: no row, no cap.
@@ -88,17 +75,17 @@ test('the rows on the payload: $2,600, $90,000, 35%, with and without the $104,0
   assert.deepEqual(criteriaRows(matched, { ...BASE, pref_rent_to_income_max_pct: 40 }, {}, 'Sarah Chen').at(-1), { key: 'employer', status: 'met', text: 'Employer · matched on documents' });
   assert.equal(plain.payload.listing.fitLine, FIT_LINE);
   assert.equal(FIT_LINE, 'Fit out of 5, over what was assessed: ability to pay this rent now, how far each fact is confirmed, and what a previous landlord reported. What is missing is left out, never counted against.');
-  for (const r of [...plain.rows, ...withMin.rows]) assert.doesNotMatch(r.text, /[—–]/);
+  for (const r of [...plain.rows, ...withMin.rows]) assert.doesNotMatch(r.text, /[\u2014\u2013]/);
 });
 
 test('the PDF lines and the text report carry the rows and the one line', () => {
-  const { payload } = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 104000 });
+  const { payload } = rowsFor({ ...BASE, pref_rent_to_income_max_pct: 40 });
   const lines = reportLines(payload);
-  assert.deepEqual(lines.blocks[0].criteria, [['met', 'Rent share 35% · your max 40%'], ['missed', 'Income $90,000 · your min $104,000'], ['met', 'Landlord reference · on file'], ['unverified', 'Employer · not verified']]);
+  assert.deepEqual(lines.blocks[0].criteria, [['met', 'Rent share 35% · your max 40%'], ['met', 'Landlord reference · on file'], ['unverified', 'Employer · not verified']]);
   assert.equal(lines.footer.fitLine, FIT_LINE);
-  assert.match(lines.footer.criteria, /min \$104k · max 40% rent share/);
+  assert.match(lines.footer.criteria, /criteria: max 40% rent share · landlord reference · employer verification\./);
   const text = reportText(payload, { pageUrl: 'https://rentletter.ca/r/t' });
-  assert.match(text, /\n   ✓ Rent share 35% · your max 40%\n   • Income \$90,000 · your min \$104,000\n   ✓ Landlord reference · on file\n     Employer · not verified\n/);
+  assert.match(text, /\n   ✓ Rent share 35% · your max 40%\n   ✓ Landlord reference · on file\n     Employer · not verified\n/);
   assert.match(text, new RegExp(FIT_LINE.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.doesNotMatch(text, /[—–]/);
+  assert.doesNotMatch(text, /[\u2014\u2013]/);
 });

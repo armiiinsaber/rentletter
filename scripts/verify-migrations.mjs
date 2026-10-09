@@ -11,10 +11,10 @@
 // what the editor sends. A failure rolls the transaction back and stops the path.
 //
 //   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again, then every combination
-//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, each twice
+//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, each twice
 //   Path B  upgrade       baseline, the OLD 001 (git show b11f1f8, four income kinds), 002, 003,
 //                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
-//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, each twice
+//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, each twice
 //   Path C  rollback      after path B: 999, 999 again
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
@@ -41,6 +41,7 @@ const FILES = {
   credit: 'db/credit-shared.sql',
   parties: 'db/008-application-parties-invites.sql',
   m009: 'db/009-drop-min-years-at-job.sql',
+  m010: 'db/010-drop-min-annual-income.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -361,6 +362,27 @@ async function run009(db, tag) {
   check((await one(db, 'SELECT count(*)::int FROM public.listings')) === count, `${tag}2: no listing row was touched`);
 }
 
+// ── db/010-drop-min-annual-income.sql ───────────────────────────────────────────
+// The income floor's column and any index on it are gone, the columns beside it are untouched, a
+// listing still inserts, and a second run changes nothing.
+async function check010(db, label) {
+  check((await hasColumn(db, 'listings', 'pref_min_annual_income')) === false, `${label}: listings.pref_min_annual_income is gone`);
+  check((await one(db, "SELECT to_regclass('public.listings_pref_min_annual_income_idx') IS NULL")) === true, `${label}: the index on it is gone`);
+  for (const c of ['pref_rent_to_income_max_pct', 'pref_requires_landlord_reference', 'pref_requires_employer_verification', 'pref_ask_credit_report', 'pref_guarantor_accepted']) check((await hasColumn(db, 'listings', c)) === true, `${label}: listings.${c} is still there`);
+  const fresh = await one(db, "INSERT INTO public.listings (profile_id, name, monthly_rent) VALUES ($1, 'After 010', 2000) RETURNING id", [ID.me]);
+  check(!!fresh, `${label}: a listing inserts without the column`);
+  await db.query("DELETE FROM public.listings WHERE name = 'After 010'");
+}
+async function run010(db, tag) {
+  await db.query('CREATE INDEX IF NOT EXISTS listings_pref_min_annual_income_idx ON public.listings (pref_min_annual_income)');
+  await db.query('UPDATE public.listings SET pref_min_annual_income = 75000 WHERE id = $1', [ID.live]);
+  check((await hasColumn(db, 'listings', 'pref_min_annual_income')) === true && (await one(db, "SELECT to_regclass('public.listings_pref_min_annual_income_idx') IS NOT NULL")) === true, `${tag}: before 010, the column, a value in it and an index on it exist`);
+  const count = await one(db, 'SELECT count(*)::int FROM public.listings');
+  await step(db, `${tag}1`, FILES.m010); await check010(db, `${tag}1`);
+  await step(db, `${tag}2 (010 again)`, FILES.m010); await check010(db, `${tag}2`);
+  check((await one(db, 'SELECT count(*)::int FROM public.listings')) === count, `${tag}2: no listing row was touched`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -454,6 +476,7 @@ async function pathA() {
   await runCredit(db, 'A2');
   await runParties(db, 'A3');
   await run009(db, 'A4');
+  await run010(db, 'A5');
   await db.close();
 }
 
@@ -487,6 +510,7 @@ async function pathB() {
   await runCredit(db, 'B9');
   await runParties(db, 'B10');
   await run009(db, 'B11');
+  await run010(db, 'B12');
   return { db, before };
 }
 

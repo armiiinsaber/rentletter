@@ -16,7 +16,7 @@ const { latestSnapshots, attachLandlordAnswers, insertSnapshot } = await import(
 const { landlordAnsweredItem } = await import('../lib/actionsLandlord.js');
 const { demoSnapshot } = await import('../lib/demoReport.js');
 
-const listing = { id: 'L1', address: '210 Carlaw Ave, Unit 4, Toronto', name: '210 Carlaw Ave, Unit 4', monthly_rent: 2600, bedrooms: '2', pref_min_annual_income: 75000, pref_rent_to_income_max_pct: 40, pref_requires_landlord_reference: true, pref_requires_employer_verification: false, landlord_name: 'Marco Rossi', landlord_email: 'marco@example.com' };
+const listing = { id: 'L1', address: '210 Carlaw Ave, Unit 4, Toronto', name: '210 Carlaw Ave, Unit 4', monthly_rent: 2600, bedrooms: '2', pref_rent_to_income_max_pct: 40, pref_requires_landlord_reference: true, pref_requires_employer_verification: false, landlord_name: 'Marco Rossi', landlord_email: 'marco@example.com' };
 const profile = { id: 'P1', full_name: 'Sarah Chen', brokerage: 'Demo Realty', phone: '416 555 0100', email: 'sarah@example.com', logo_url: 'https://x/logo.png' };
 // A v2 shaped Fit (lib/fitScore.js): the three pillars, each assessed, the basis and the coverage.
 const fit = (score, label, ratio, over = {}) => { const A = over.A ?? 5, E = over.E ?? 5, R = over.R ?? 5; const p = (name, l, value) => ({ name, label: l, assessed: true, value, facts: [] }); return { score, scoreExact: score, label, model: 'fit-v2', ratio, incomeUsed: 92000, assessed: 3, of: 3, notAssessed: [], basis: over.basis || 'Stated income.', incomplete: null, flags: [], pillars: [p('ability', 'Ability', A), p('truth', 'Truth', E), p('conduct', 'Conduct', R)], parts: { landlordRef: over.landlordRef !== false, recentMonths: 0 }, evidence: over.evidence || {}, A, E, R }; };
@@ -45,7 +45,7 @@ test('the payload: active only in score order, the applicant keys, and none of t
   for (const [, k] of keys) assert.equal(banned.includes(k), false, `payload carries ${k}`);
   assert.equal(JSON.stringify(p.applicants).includes('SECRET'), false);
   assert.equal(p.counts.verified, 1); assert.equal(p.counts.applicants, 2);
-  assert.equal(p.listing.criteriaLine, 'min $75k · max 40% rent share · landlord reference');
+  assert.equal(p.listing.criteriaLine, 'max 40% rent share · landlord reference');
   assert.equal(p.realtor.signature, 'Sarah Chen · Demo Realty · 416 555 0100');
   const page = forLandlordPage(p);
   assert.equal(JSON.stringify(page).includes('linkId'), false, 'the page never sees the realtor side mapping');

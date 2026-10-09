@@ -9,7 +9,7 @@ export function bigFixture({ listings = 12, perListing = 3, profileId = 'p-1' } 
   let n = 0;
   for (let i = 0; i < listings; i++) {
     const lid = `L${i + 1}`;
-    L.push({ id: lid, profile_id: profileId, name: `${100 + i} Main St, Unit ${i + 1}`, address: `${100 + i} Main St, Toronto`, monthly_rent: 2000 + i * 100, landlord_email: i % 2 ? `ll${i}@example.com` : null, landlord_name: i % 2 ? `Landlord ${i}` : null, pref_rent_to_income_max_pct: 40, pref_min_annual_income: 60000, pref_requires_landlord_reference: false, pref_requires_employer_verification: false, created_at: t(30 - i) });
+    L.push({ id: lid, profile_id: profileId, name: `${100 + i} Main St, Unit ${i + 1}`, address: `${100 + i} Main St, Toronto`, monthly_rent: 2000 + i * 100, landlord_email: i % 2 ? `ll${i}@example.com` : null, landlord_name: i % 2 ? `Landlord ${i}` : null, pref_rent_to_income_max_pct: 40, pref_requires_landlord_reference: false, pref_requires_employer_verification: false, created_at: t(30 - i) });
     for (let k = 0; k < perListing; k++) {
       n++;
       const aid = `A${n}`, jid = `J${n}`;

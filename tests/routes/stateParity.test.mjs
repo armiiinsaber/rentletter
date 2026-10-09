@@ -70,7 +70,7 @@ test('renting over a standing deal: the one who held it fell through, and nobody
 test('not selected and set aside: a shortlisted applicant who is set aside is submitted again, and restored is shortlisted again', async () => {
   const s = up();
   assert.equal((await call(decision, { linkId: 'J1', priority: 'top' })).code, 200); assert.equal(row(s, 'J1').state, A.SHORTLISTED); agree(s, 'after the mark');
-  let r = await call(decision, { linkId: 'J1', status: 'reject', reasonCode: 'income_below_min' });
+  let r = await call(decision, { linkId: 'J1', status: 'reject', reasonCode: 'rent_to_income_high' });
   assert.equal(r.code, 200, JSON.stringify(r.body)); assert.equal(r.body.state, A.SUBMITTED);
   assert.deepEqual([row(s, 'J1').state, row(s, 'J1').decision_status, row(s, 'J1').decision_priority], [A.SUBMITTED, 'reject', 'top']); agree(s, 'after set aside');
   r = await call(decision, { linkId: 'J1', status: 'none', reasonCode: null });

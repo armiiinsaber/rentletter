@@ -42,12 +42,13 @@ const events = (admin) => admin.tables.events.map((e) => [e.type, e.listing_id, 
 
 test('decision: 404 unknown, 403 another realtor, set aside records the event, clears the cache and the set; restore and finalist record theirs', async () => {
   const admin = db(); const d = deps(admin);
-  assert.equal((await W.decideApplicant(d, { linkId: 'nope', status: 'reject', reasonCode: 'income_below_min' })).status, 404);
-  assert.equal((await W.decideApplicant(d, { linkId: 'J2', status: 'reject', reasonCode: 'income_below_min' })).status, 403);
+  assert.equal((await W.decideApplicant(d, { linkId: 'nope', status: 'reject', reasonCode: 'rent_to_income_high' })).status, 404);
+  assert.equal((await W.decideApplicant(d, { linkId: 'J2', status: 'reject', reasonCode: 'rent_to_income_high' })).status, 403);
   assert.equal((await W.decideApplicant(d, { linkId: 'J1', status: 'reject' })).status, 400, 'set aside needs a screenable reason');
-  const r = await W.decideApplicant(d, { linkId: 'J1', status: 'reject', reasonCode: 'income_below_min', notes: 'x' });
-  assert.equal(r.status, 200); assert.equal(admin.tables.listing_applicants[0].decision_status, 'reject'); assert.equal(admin.tables.listing_applicants[0].decision_reason_code, 'income_below_min');
-  assert.deepEqual(events(admin).map((e) => e[0]), ['applicant_set_aside']); assert.equal(events(admin)[0][2].reason, 'Income below the stated minimum');
+  assert.equal((await W.decideApplicant(d, { linkId: 'J1', status: 'reject', reasonCode: 'income_below_min' })).status, 400, 'the income floor reason is no longer offered (docs/fit-v2.md)');
+  const r = await W.decideApplicant(d, { linkId: 'J1', status: 'reject', reasonCode: 'rent_to_income_high', notes: 'x' });
+  assert.equal(r.status, 200); assert.equal(admin.tables.listing_applicants[0].decision_status, 'reject'); assert.equal(admin.tables.listing_applicants[0].decision_reason_code, 'rent_to_income_high');
+  assert.deepEqual(events(admin).map((e) => e[0]), ['applicant_set_aside']); assert.equal(events(admin)[0][2].reason, 'Rent to income above the stated maximum');
   assert.deepEqual(d.invalidated, ['me']); assert.deepEqual(d.sremmed, ['J1']);
   const r2 = await W.decideApplicant(d, { linkId: 'J3', status: 'none', reasonCode: null });
   assert.equal(r2.status, 200); assert.equal(events(admin).at(-1)[0], 'applicant_restored');

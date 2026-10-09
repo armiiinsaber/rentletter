@@ -143,7 +143,7 @@ test('decision: the finalist mark moves in play to shortlisted and back, audited
   r = await call(decision, { linkId: 'J2', priority: 'top' });
   assert.equal(row(s, 'J2').state, A.SHORTLISTED, 'docs_pending is in play too');
   // Set aside and restore: the working sort, no move, no audit row.
-  r = await call(decision, { linkId: 'J4', status: 'reject', reasonCode: 'income_below_min' });
+  r = await call(decision, { linkId: 'J4', status: 'reject', reasonCode: 'rent_to_income_high' });
   assert.equal(r.code, 200); assert.equal(row(s, 'J4').decision_status, 'reject'); assert.equal(row(s, 'J4').state, undefined); assert.deepEqual(audit(s, 'J4'), []);
   // Someone else's applicant: refused before anything.
   assert.equal((await call(decision, { linkId: 'J9', priority: 'top' })).code, 403);

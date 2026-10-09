@@ -22,6 +22,7 @@ const FORBIDDEN = [
   ['years at job', /years_at_job|yearsAtJob|job_tenure|jobTenure|tenure|min_years/i], ['student status', /student|enrol/i],
   ['absence of credit history', /credit_?history|creditHistory|no_?credit|noCredit|thin_?file/i], ['credit report field', /credit(?!Kind\b|Shared\.js)/i],
   ['a party\'s income', /co_?applicant|coIncome|parties|party|guarantor|income_sources|application_parties|joint/i],
+  ['an income floor', /pref_min_annual_income|min_?annual_?income|minAnnualIncome|minimum income|minIncome|income_below_min|effectiveMinIncome|derivedMinIncome/i],
 ];
 
 test('the files the scan covers are the Fit files', () => {
@@ -40,6 +41,14 @@ for (const file of FILES) {
     }
   });
 }
+
+test('no component, page or lib file names the income floor at all', () => {
+  const all = ['lib/', 'components/', 'pages/'].flatMap((d) => walk(d));
+  const hits = [];
+  for (const file of all) { const text = readFileSync(new URL(file, ROOT), 'utf8'); const m = text.match(/pref_min_annual_income|minimum income|minimum annual income|min_annual_income|minAnnualIncome/i); if (m) hits.push(`${file}: ${m[0]}`); }
+  assert.deepEqual(hits, []);
+  assert.ok(all.length > 100, `${all.length} files scanned`);
+});
 
 test('the kind of income is refused even where the old scan would not look', () => {
   const text = stripComments(readFileSync(new URL('lib/fitScore.js', ROOT), 'utf8')).replace(/isCreditKind/g, '');

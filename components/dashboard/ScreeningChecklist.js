@@ -32,7 +32,6 @@ const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { mo
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
 // The one line of guidance under the rows a realtor phones: the number must be the realtor's own.
 const GUIDANCE = 'Use a number you find yourself, not one the applicant gave.';
-const kShort = (n) => (Number(n) >= 1000 ? `$${Math.round(Number(n) / 1000)}k` : `$${Number(n)}`);
 
 export default function ScreeningChecklist({ applicant, listing, profile, onChange, onReference, heldDocuments, onViewDocument }) {
   const adapter = useAdapter();
@@ -82,8 +81,6 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   // report's employer line is historical and never compared, lib/documentAuthority.js).
   const employerFact = !hasDocs ? 'none' : `${v.employerMatched ? 'matched' : 'not matched'}${v.employerSince ? ` · ${v.employerSince}` : ''}`;
   const alsoSeen = hasDocs && Array.isArray(v.employerAlsoSeen) ? v.employerAlsoSeen : [];
-  const minIncome = Number(listing?.pref_min_annual_income) > 0 ? Number(listing.pref_min_annual_income) : null;
-  const incomeMiss = fit && minIncome && fit.incomeUsed != null && fit.incomeUsed < minIncome ? ` · your min ${kShort(minIncome)}` : '';
   const maxPct = Number(listing?.pref_rent_to_income_max_pct) > 0 ? Number(listing.pref_rent_to_income_max_pct) : 40;
   const refs = Array.isArray(app.references) ? app.references.filter((r) => r && (r.name || r.contact || r.phone || r.email)).length : 0;
   const said = (parts) => parts.map((p) => String(p || '').trim()).filter(Boolean).join(', ');
@@ -111,7 +108,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
 
   const rows = [
     { key: 'id', title: 'Identity', said: app.full_name || 'no name given', docs: nameFact, verb: 'Saw ID' },
-    { key: 'employer', title: 'Income', said: app.annual_income ? `${money(householdIncomeOf(app))} a year${incomeIsJoint(app) ? ' (joint)' : ''}` : 'no income given', docs: incomeFact + incomeMiss, verb: 'Called employer' },
+    { key: 'employer', title: 'Income', said: app.annual_income ? `${money(householdIncomeOf(app))} a year${incomeIsJoint(app) ? ' (joint)' : ''}` : 'no income given', docs: incomeFact, verb: 'Called employer' },
     { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true, also: alsoSeen, note: GUIDANCE },
     { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' , note: GUIDANCE },
     { key: 'reference', title: 'References', said: refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },

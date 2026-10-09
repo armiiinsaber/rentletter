@@ -46,6 +46,10 @@ from named facts: "Current income confirmed. Rent paid on time, last 8 months."
    complete it (documents, a confirmation, or a landlord reference).
 2. A guarantor is the listing's setting (listings.pref_guarantor_accepted, the same for every
    applicant). No per applicant guarantor prompt exists and Fit never reads one.
+3. No income floor exists anywhere in the product: a fixed minimum income on a listing is the rent
+   to income cutoff the OHRC's rental housing policy calls illegal outside subsidized housing, and
+   Ontario Regulation 290/98 says income is never the sole reason, so the criterion, its column
+   (db/010-drop-min-annual-income.sql) and every row, line and reason derived from it are gone.
 
 ## Credit and parties stay outside
 

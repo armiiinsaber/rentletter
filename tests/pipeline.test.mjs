@@ -20,7 +20,7 @@ const app = (id, over = {}) => ({ id, email: `${id}@example.com`, full_name: `Pe
 const fixture = () => {
   const listings = [
     { id: 'L-active', profile_id: 'me', name: '210 Carlaw Ave, Unit 4', address: '210 Carlaw Ave, Unit 4, Toronto', monthly_rent: 2600, bedrooms: '2', status: 'active', invite_token: 'abcdefabcdefabcdefab', pref_rent_to_income_max_pct: 40, created_at: days(-1) },
-    { id: 'L-two', profile_id: 'me', name: '88 Harbour St', monthly_rent: 3100, status: 'active', invite_token: 'abcdefabcdefabcdef00', pref_min_annual_income: 120000, created_at: days(-30) },
+    { id: 'L-two', profile_id: 'me', name: '88 Harbour St', monthly_rent: 3100, status: 'active', invite_token: 'abcdefabcdefabcdef00', created_at: days(-30) },
     { id: 'L-rented', profile_id: 'me', name: '15 Logan Ave', monthly_rent: 2400, status: 'rented', created_at: days(-40) },
     { id: 'L-other', profile_id: 'them', name: 'Other realtor', monthly_rent: 2000, status: 'active', created_at: days(-2) },
   ];

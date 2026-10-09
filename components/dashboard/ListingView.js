@@ -716,11 +716,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
   const l = listing;
   const inviteShareUrl = fullInviteUrl(); // complete URL shown + copied
-  // Criteria Fit reads, set ones only, in Fit's order: income floor, rent share cap,
-  // landlord reference, employer verification.
-  const moneyK = (n) => `$${Math.round(Number(n) / 1000)}k`;
+  // Criteria Fit reads, set ones only, in Fit's order: rent share cap, landlord reference,
+  // employer verification. No income floor exists (docs/fit-v2.md).
   const criteria = [
-    Number(l.pref_min_annual_income) > 0 ? `min ${moneyK(l.pref_min_annual_income)}` : null,
     `max ${capOf(l)}% rent share`, // a null cap reads 40 (lib/fitScore.js capOf)
     l.pref_requires_landlord_reference ? 'landlord reference' : null,
     l.pref_requires_employer_verification ? 'employer verification' : null,
@@ -1272,7 +1270,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Row label="Pets allowed" value={l.allows_pets === 'yes' ? 'Yes' : l.allows_pets === 'no' ? 'No' : 'not set'} />
                   <Row label="Smoking" value={l.allows_smoking === 'yes' ? 'Allowed' : l.allows_smoking === 'outdoor' ? 'Outdoor only' : 'Not allowed'} />
                   <Row label="Parking" value={l.parking_included === 'yes' ? 'Included' : 'Not included'} />
-                  <Row label="Min annual income" value={l.pref_min_annual_income ? `$${Number(l.pref_min_annual_income).toLocaleString()}` : 'not set'} />
                   <Row label="Max rent to income" value={`${capOf(l)}%`} />
                   <Row label="Landlord reference req." value={yn(l.pref_requires_landlord_reference)} />
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
@@ -1328,9 +1325,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     ) : (
                       <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
                     )}
-                    <div style={{ display: 'flex', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-1)' }}>
-                      {inviteShareUrl && listingOpen(l) && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
-                      <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
+                    {/* The two text links share one row and, on a phone, one width (R2, components/ui.js rl-ctrl-row). */}
+                    <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-1)' }}>
+                      {inviteShareUrl && listingOpen(l) && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textAlign: 'left', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
+                      <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textAlign: 'left', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
                     </div>
                     {addOpen && (
                       <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
@@ -1537,7 +1535,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 Note {setAsideCode === 'other_screenable' ? '(required)' : '(optional)'}
               </label>
               <textarea value={setAsideNote} onChange={(e) => setSetAsideNote(e.target.value)} rows={3}
-                placeholder="e.g. stated income $42k vs $60k minimum"
+                placeholder="e.g. rent share 55% against your 40% cap"
                 style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit', marginBottom: 'var(--s-2)' }} />
               <p style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-4)' }}>
                 Use only screenable facts (income, references, tenancy, occupancy). Never protected grounds.

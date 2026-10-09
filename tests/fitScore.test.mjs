@@ -89,10 +89,10 @@ test('parseYears and recencyWeight', () => {
   assert.equal(recencyWeight('2026-09-01T00:00:00Z', NOW), 1); assert.equal(recencyWeight('2025-03-01T00:00:00Z', NOW), 0.5); assert.equal(recencyWeight('2024-03-01T00:00:00Z', NOW), 0); assert.equal(recencyWeight(null, NOW), 1);
 });
 
-test('criteria: the rows the landlord reads; none moves the number; no tenure row', () => {
+test('criteria: the rows the landlord reads; none moves the number; no tenure row, no income floor', () => {
+  // A stored income floor on a listing older than db/010 is read by nothing: no row, no cap, identical output.
   const min = fit(90000, 2500, { pref_min_annual_income: 100000 }), free = fit(90000, 2500);
-  assert.equal(min.scoreExact, free.scoreExact, 'a minimum is a row, never a cap');
-  const c = min.criteria.find((k) => k.key === 'pref_min_annual_income'); assert.equal(c.status, 'missed'); assert.equal(c.detail, 'Below your $100k minimum');
+  assert.equal(JSON.stringify(min), JSON.stringify(free), 'no income floor exists');
   const ref = fit(90000, 2500, { pref_requires_landlord_reference: true }, null, { prev_landlord_name: null });
   assert.equal(ref.criteria.find((k) => k.key === 'pref_requires_landlord_reference').detail, 'No landlord reference');
   const emp = fit(90000, 2500, { pref_requires_employer_verification: true }, report({ employer: false }));
