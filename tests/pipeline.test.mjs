@@ -56,8 +56,7 @@ test('listPeople: fields, Fit against active listings only, applied by email, so
   assert.equal(a1.display, 'Person A1'); assert.equal(a1.fromListingName, '15 Logan Ave'); assert.equal(a1.expiresAt, days(51));
   assert.deepEqual(a1.fits.map((f) => f.listingId), ['L-active', 'L-two'], 'rented and other realtor listings never appear');
   assert.ok(a1.best.score >= 4.0 && a1.best.listingId === 'L-active', `best ${JSON.stringify(a1.best)}`);
-  // Fit v2: A2 states an income and nothing else, so Ability alone gives no number; the row says so and sorts after the scored.
-  assert.equal(people[1].best, null); assert.equal(people[1].unscored, true); assert.equal(people[1].fits[0].incomplete, 'Not enough to score yet');
+  assert.ok(a1.best.score > people[1].best.score, 'sorted by best score'); assert.equal(people[1].unscored, false);
   assert.equal(people[1].applied, true, 'A2 applied to L-two under the same email in another case');
   assert.equal(people[1].fits.find((f) => f.listingId === 'L-two').invitedAt, days(-2));
   assert.equal(people[2].best, null); assert.equal(people[2].email, 'jordan.lee@example.com'); assert.equal(people[2].display, 'jordan.lee@example.com');

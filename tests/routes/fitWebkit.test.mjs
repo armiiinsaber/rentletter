@@ -3,11 +3,11 @@
 // (tests/helpers/fakeNextServer.mjs on 3165):
 //   1. The realtor's card: the number with its coverage ("on 3 of 3"), the label, and the Fit
 //      section in the expansion with three pillars, each assessed or not, each fact dated.
-//   2. The guardrail: an applicant with a stated income and nothing else shows "Not enough to score
-//      yet" and the one thing that would complete it; no number renders anywhere on that card.
+//   2. The exclusion: an applicant with a stated income and no rental history reads "on 2 of 3",
+//      Truth at its lowest level (stated), Conduct not assessed and named as such.
 //   3. The checklist carries the same Fit line and coverage.
-//   4. The landlord page carries the coverage line and the basis under the number, and the
-//      incomplete applicant's state in words.
+//   4. The landlord page carries the coverage line and the basis under the number, the not
+//      assessed pillar named.
 // Screenshots at 390 to /tmp/fitv2/. A WebKit walk fails, never skips, when the binary is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -73,7 +73,7 @@ async function walk(type, opts, tag) {
     const header1 = page.locator('#applicant-J1 [role=button][aria-controls$="-body"]').first();
     await header1.waitFor({ timeout: 60000 }); await page.waitForTimeout(600);
     const h1 = plain(await header1.innerText());
-    assert.match(h1, /4\.5/); assert.match(h1, /on 3 of 3/i); assert.match(h1, /verified/i);
+    assert.match(h1, /4\.6/); assert.match(h1, /on 3 of 3/i); assert.match(h1, /verified/i);
     assert.equal(await page.locator('#applicant-J1 [data-fit-number]').count(), 1);
     const card1 = await openCard(page, 'J1');
     const section = card1.locator('[data-fit-section]');
@@ -84,31 +84,32 @@ async function walk(type, opts, tag) {
     assert.match(sectionText, /Current income confirmed\. Tenancy of 2 years stated\./, 'the basis line from named facts');
     assert.match(sectionText, /Income confirmed by you, \w{3} 2026/, 'a dated fact');
     assert.match(sectionText, /Tenancy of 2 years stated, \w{3} 2026/);
+    assert.doesNotMatch(sectionText, /Identity matches documents/, 'a document adds nothing to a confirmed Truth');
     const titles = plain(await card1.locator('button[aria-controls$="-fit"]').innerText());
-    assert.match(titles, /Fit 4\.5 on 3 of 3/i, 'the section title is the Fit line');
+    assert.match(titles, /Fit 4\.6 on 3 of 3/i, 'the section title is the Fit line');
     if (tag === 'wk') { await card1.locator('[data-fit-section]').scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -140)); await shot(page, 'card-expanded-390'); }
     // 3. The checklist carries the same line.
     walkStep('the checklist');
     const checklistFit = plain(await page.locator('#checklist-J1 [data-checklist-fit]').innerText());
-    assert.match(checklistFit, /^Fit 4\.5 on 3 of 3/);
+    assert.match(checklistFit, /^Fit 4\.6 on 3 of 3/);
     if (tag === 'wk') { await page.locator('#checklist-J1').evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' })); await page.waitForTimeout(400); await shot(page, 'checklist-390'); }
-    // 2. The guardrail: Applicant B2B2 shows no number at all.
-    walkStep('not enough to score yet');
+    // 2. The exclusion: Applicant B2B2, stated income and no history, reads on 2 of 3 with Conduct named.
+    walkStep('two of three, Conduct not assessed');
     const header2 = page.locator('#applicant-J2 [role=button][aria-controls$="-body"]').first();
     await header2.waitFor({ timeout: 60000 });
     const h2 = plain(await header2.innerText());
-    assert.match(h2, /not enough to score yet/i);
-    assert.doesNotMatch(h2, /\d\.\d/, 'no number in the header');
-    assert.equal(await page.locator('#applicant-J2 [data-fit-number]').count(), 0, 'the number never renders');
-    assert.equal(await page.locator('#applicant-J2 [data-fit-incomplete]').count(), 1);
-    assert.match(plain(await page.locator('#applicant-J2 [data-fit-coverage]').innerText()), /^Documents or a confirmation would complete it, or a landlord reference\./);
-    if (tag === 'wk') { await header2.scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -120)); await page.waitForTimeout(200); await shot(page, 'not-enough-to-score-390'); }
+    assert.match(h2, /3\.9/); assert.match(h2, /on 2 of 3/i); assert.match(h2, /stated/i);
+    assert.doesNotMatch(h2, /not enough to score yet/i, 'Truth is assessed at stated, so Ability is never alone');
+    assert.equal(await page.locator('#applicant-J2 [data-fit-number]').count(), 1);
+    assert.equal(await page.locator('#applicant-J2 [data-fit-incomplete]').count(), 0);
+    assert.match(plain(await page.locator('#applicant-J2 [data-fit-coverage]').innerText()), /^Conduct not assessed: no reference outcome or tenancy yet\./);
+    if (tag === 'wk') { await header2.scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -120)); await page.waitForTimeout(200); await shot(page, 'two-of-three-390'); }
     const card2 = await openCard(page, 'J2');
     const section2 = card2.locator('[data-fit-section]'); await section2.waitFor({ timeout: 30000 });
-    assert.deepEqual(await section2.locator('[data-fit-pillar]').evaluateAll((els) => els.map((e) => [e.dataset.fitPillar, e.dataset.fitAssessed])), [['ability', 'yes'], ['truth', 'no'], ['conduct', 'no']]);
-    assert.equal(await card2.locator('[data-fit-number]').count(), 0);
-    assert.match(plain(await page.locator('#checklist-J2 [data-checklist-fit]').innerText()), /^Not enough to score yet\. Documents or a confirmation/);
-    // 4. The landlord page: two lines under the number; the incomplete one in words.
+    assert.deepEqual(await section2.locator('[data-fit-pillar]').evaluateAll((els) => els.map((e) => [e.dataset.fitPillar, e.dataset.fitAssessed])), [['ability', 'yes'], ['truth', 'yes'], ['conduct', 'no']]);
+    assert.match(plain(await section2.innerText()), /TRUTH\n2\.0\nIncome stated, \w{3} 2026\nEmployer stated, \w{3} 2026/i);
+    assert.match(plain(await page.locator('#checklist-J2 [data-checklist-fit]').innerText()), /^Fit 3\.9 on 2 of 3\. Conduct not assessed: no reference outcome or tenancy yet\./);
+    // 4. The landlord page: two lines under the number; the not assessed pillar named.
     walkStep('the landlord page');
     const sent = await page.evaluate(async () => { const r = await fetch('/api/listings/send-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: 'L1' }) }); return { status: r.status, body: await r.json().catch(() => null) }; });
     assert.equal(sent.status, 200, JSON.stringify(sent.body));
@@ -116,19 +117,17 @@ async function walk(type, opts, tag) {
     await page.locator('[data-fit-line]').first().waitFor({ timeout: 60000 });
     const first = page.locator('section.rl-card').nth(1);
     const firstText = plain(await first.innerText());
-    assert.match(firstText, /Applicant A1A1/); assert.match(firstText, /4\.5\s*verified/i);
-    assert.match(firstText, /Fit 4\.5 on 3 of 3\nCurrent income confirmed\. Tenancy of 2 years stated\./);
-    const bodyText = plain(await page.locator('body').innerText());
-    assert.match(bodyText, /Applicant B2B2[\s\S]*Not enough to score yet/i);
-    const b2 = page.locator('section.rl-card', { hasText: 'Applicant B2B2' }).first();
-    assert.doesNotMatch(plain(await b2.locator('div').first().innerText()), /\d\.\d/, 'no number for the incomplete applicant');
+    assert.match(firstText, /Applicant A1A1/); assert.match(firstText, /4\.6\s*verified/i);
+    assert.match(firstText, /Fit 4\.6 on 3 of 3\nCurrent income confirmed\. Tenancy of 2 years stated\./);
+    const b2 = plain(await page.locator('section.rl-card', { hasText: 'Applicant B2B2' }).first().innerText());
+    assert.match(b2, /3\.9\s*stated/i); assert.match(b2, /Fit 3\.9 on 2 of 3, Conduct not assessed\nStated income\./);
     if (tag === 'wk') { await first.scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -60)); await shot(page, 'landlord-report-390'); }
     assert.deepEqual(errors, []);
     await ctx.close();
   } finally { await browser.close(); }
 }
 
-test('Fit v2: the card, the pillars, the guardrail, the checklist and the landlord page, in WebKit at 390', { timeout: 900000 }, async () => {
+test('Fit v2: the card, the pillars, the exclusion, the checklist and the landlord page, in WebKit at 390', { timeout: 900000 }, async () => {
   requireWebkit();
   await walk(pw.webkit, {}, 'wk');
 });

@@ -45,7 +45,7 @@ test('the send freezes the snapshot, mails the PDF with every active applicant, 
     assert.ok(row, 'one snapshot row'); assert.equal(row.token.length, 32); assert.equal(r.body.snapshot.token, row.token); assert.equal(r.body.pageUrl, `https://rentletter.ca/r/${row.token}`);
     const expiresIn = (Date.parse(row.expires_at) - t0) / DAY;
     assert.ok(expiresIn > 89.9 && expiresIn < 90.1, `90 day expiry, got ${expiresIn}`);
-    assert.deepEqual(row.payload.applicants.map((a) => a.name), ['Applicant B2B2', 'Applicant A1A1', 'Applicant D4D4'], 'active only, best fit first (Fit v2: B2B2 stated on 2 of 3 above A1A1 verified on 3 of 3), the duplicate folded, the set aside one left out');
+    assert.deepEqual(row.payload.applicants.map((a) => a.name), ['Applicant A1A1', 'Applicant B2B2', 'Applicant D4D4'], 'active only, best fit first, the duplicate folded, the set aside one left out');
     // the email and its PDF
     assert.equal(s.resend.sent.length, 1);
     const mail = s.resend.sent[0];
@@ -67,7 +67,7 @@ test('the send freezes the snapshot, mails the PDF with every active applicant, 
 
     // the landlord opens the page
     const open1 = await page.getServerSideProps(fakeCtx({ params: { token: row.token } }));
-    assert.equal(open1.props.state, 'ok'); assert.deepEqual(open1.props.payload.applicants.map((a) => a.name), ['Applicant B2B2', 'Applicant A1A1', 'Applicant D4D4']);
+    assert.equal(open1.props.state, 'ok'); assert.deepEqual(open1.props.payload.applicants.map((a) => a.name), ['Applicant A1A1', 'Applicant B2B2', 'Applicant D4D4']);
     assert.equal('linkId' in open1.props.payload.applicants[0], false, 'the page copy never carries the realtor side link id');
     assert.equal(s.db.tables.report_snapshots[0].opened_count, 1);
     assert.equal(s.db.tables.events.filter((e) => e.type === 'report_opened').length, 1);
@@ -83,12 +83,12 @@ test('the send freezes the snapshot, mails the PDF with every active applicant, 
     const updated = s.db.tables.report_snapshots[0];
     assert.equal(updated.answers['1'].answer, 'meet'); assert.ok(updated.answers['1'].at);
     const ans = s.db.tables.events.filter((e) => e.type === 'landlord_answered');
-    assert.equal(ans.length, 1); assert.equal(ans[0].payload.rank, 1); assert.equal(ans[0].payload.applicantName, 'Applicant B2B2');
+    assert.equal(ans.length, 1); assert.equal(ans[0].payload.rank, 1); assert.equal(ans[0].payload.applicantName, 'Applicant A1A1');
     assert.equal(getCachedSignals(USER.id), null);
     // the realtor's side reads the answer
     const applicants = await fetchListingApplicants(s.db, 'L1');
     await attachLandlordAnswers(s.db, ['L1'], applicants);
-    const j1 = applicants.find((x) => x.linkId === 'J2'); // rank 1 is Applicant B2B2 under Fit v2
+    const j1 = applicants.find((x) => x.linkId === 'J1');
     assert.deepEqual([j1.landlordAnswer.answer, j1.landlordAnswer.rank], ['meet', 1]); assert.equal(answerLine('meet'), 'wants to meet');
     const item = landlordAnsweredItem(s.db.tables.listings.find((l) => l.id === 'L1'), applicants);
     assert.equal(item.title, 'Landlord answered'); assert.match(item.detail, /1 wants to meet/);

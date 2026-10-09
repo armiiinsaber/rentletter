@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 register('./helpers/loader.mjs', import.meta.url);
 
-const { computeFit, fitLine, fitLines, INCOMPLETE_LINE, PILLARS } = await import('../lib/fitScore.js');
+const { computeFit, fitLine, fitLines, compareFit, INCOMPLETE_LINE, PILLARS } = await import('../lib/fitScore.js');
 const { SOURCE_LABELS } = await import('../lib/stateLabels.js');
 const { buildSnapshot, forLandlordPage } = await import('../lib/reportSnapshot.js');
 const { reportLines } = await import('../lib/landlordReportPdf.js');
@@ -61,14 +61,19 @@ test('now over then: late payments 30 months ago beside 8 recent clean months sc
   // every dated Ability and Conduct fact carries a date; a stale pay stub halves the income fact
   for (const f of [clean, withOld]) for (const n of ['ability', 'conduct']) for (const x of pillar(f, n).facts) assert.ok(x.at && x.date, `${n}: ${x.text}`);
   const fresh = fit({}, {}, docs), stale = fit({}, {}, { ...docs, documents: [{ documentType: 'pay stub', extracted: { payDate: monthsAgo(18).slice(0, 10) } }] });
-  assert.ok(stale.A < fresh.A && stale.A > 3, `${stale.A} between 3 and ${fresh.A}`);
+  assert.equal(stale.A, fresh.A, 'a document never makes a current statement older: the income fact is dated by the newest source');
 });
 
-test('guardrail: Ability alone is never a number, on the card, the checklist, the report, the PDF and the text', () => {
-  const only = fit({ prev_landlord_name: null });
-  assert.equal(only.score, null); assert.equal(only.scoreExact, null); assert.equal(only.A, 5.0);
-  assert.equal(only.incomplete.line, INCOMPLETE_LINE); assert.equal(INCOMPLETE_LINE, 'Not enough to score yet');
-  assert.match(only.incomplete.next, /^Documents or a confirmation would complete it/);
+test('guardrail: Ability alone is never a number; Truth is assessed whenever Ability is, so the state cannot arise, and every surface still refuses a number for it', () => {
+  // Truth is always assessed once an income is stated (stated is its lowest level), so Ability is never alone.
+  for (const a of [fit({ prev_landlord_name: null }), fit({ annual_income: 48000 }, {}, null, { monthly_rent: 4000 }), fit({ annual_income: 300000, prev_landlord_name: null }, {}, null, { monthly_rent: 900 })]) {
+    assert.equal(pillar(a, 'truth').assessed, true); assert.equal(a.E, 2.0); assert.equal(a.incomplete, null); assert.ok(a.score != null);
+  }
+  const stated = fit({ prev_landlord_name: null });
+  assert.equal(stated.assessed, 2); assert.deepEqual(stated.notAssessed, ['Conduct']); assert.equal(fitLine(stated), `Fit ${stated.score.toFixed(1)} on 2 of 3`);
+  // The surfaces, on the shape computeFit would hand them if Ability ever stood alone.
+  const only = { ...stated, score: null, scoreExact: null, assessed: 1, notAssessed: ['Truth', 'Conduct'], incomplete: { line: INCOMPLETE_LINE, next: 'Documents or a confirmation would complete it, or a landlord reference.' }, pillars: stated.pillars.map((p) => (p.name === 'ability' ? p : { ...p, assessed: false, value: null })) };
+  assert.equal(INCOMPLETE_LINE, 'Not enough to score yet');
   assert.equal(fitLine(only), 'Not enough to score yet'); assert.deepEqual(fitLines(only), ['Not enough to score yet']);
   const payload = buildSnapshot({ listing: { ...listing, address: '1 Test St, Toronto' }, applicants: [{ linkId: 'J1', decisionStatus: 'none', withdrawnAt: null, confirmations: {}, application: { ...base, id: 'A1', fit: only } }], profile: { id: 'P1', full_name: 'Sarah Chen' }, now: new Date(NOW) });
   const frozen = payload.applicants[0].fit;
@@ -145,6 +150,44 @@ test('a report already sent keeps the Fit it froze; only a new render uses v2', 
   const page = src('pages/r/[token].js');
   assert.match(page, /forLandlordPage\(row\.payload\)/); assert.doesNotMatch(page, /computeFit|fitFor\(/);
   assert.doesNotMatch(src('lib/reportSnapshotStore.js'), /computeFit/);
+});
+
+test('documents that match what was stated never lower Fit, for any applicant', () => {
+  // A grid of applicants: incomes against rents, histories, the realtor's confirmations, and the
+  // document's age. The documents repeat the stated income and employer. Fit never goes down.
+  let count = 0, lowered = [];
+  const histories = [{ prev_landlord_name: null }, { prev_landlord_name: 'A. Patel', years_at_previous: '4' }, { prev_landlord_name: 'A. Patel', years_at_previous: '1' }];
+  const refs = [null, ref(), ref({ rentOnTime: 'often_late', damage: 'significant', again: 'no' })];
+  const confs = [{}, { landlord: { at: monthsAgo(0.5), by: 'You' } }, { employer: { at: monthsAgo(0.5), by: 'You' } }, { id: { at: monthsAgo(0.5), by: 'You' } }];
+  for (const income of [48000, 60000, 90000, 170000]) for (const rent of [1000, 2000, 2600, 4700]) for (const h of histories) for (const r of refs) for (const c of confs) for (const age of [1, 18, 30]) {
+    const confirmations = { ...c, ...(r ? { landlord_reference: r } : {}) };
+    const application = { ...h, annual_income: income, employer: 'Acme Ltd', created_at: monthsAgo(1) };
+    const matching = { analyzedAt: monthsAgo(age), nameMatch: 'match', documents: [{ documentType: 'pay stub', extracted: { payDate: monthsAgo(age).slice(0, 10) } }], comparisons: [{ field: 'Income', stated: `$${income}`, found: `$${income}`, annual: income, status: 'match' }, { field: 'Employer', stated: 'Acme Ltd', found: 'Acme Ltd', status: 'match' }] };
+    const without = fit(application, confirmations, null, { monthly_rent: rent }), withDocs = fit(application, confirmations, matching, { monthly_rent: rent });
+    count++;
+    if (!(withDocs.scoreExact >= without.scoreExact)) lowered.push(`${income} at ${rent}, ${JSON.stringify(h)}, ref ${r ? r.rentOnTime : 'none'}, conf ${Object.keys(c).join('+') || 'none'}, ${age} months: ${without.scoreExact} to ${withDocs.scoreExact}`);
+  }
+  console.log(`  ${count} applicants, documents added to each`);
+  assert.deepEqual(lowered, []);
+});
+
+test('the same applicant with matching documents always ranks above their stated only version', () => {
+  let count = 0, ties = [];
+  const histories = [{ prev_landlord_name: null }, { prev_landlord_name: 'A. Patel', years_at_previous: '4' }];
+  const refs = [null, ref(), ref({ rentOnTime: 'often_late', damage: 'significant', again: 'no' })];
+  for (const income of [48000, 60000, 90000, 170000]) for (const rent of [1000, 2000, 2600, 4700]) for (const h of histories) for (const r of refs) for (const age of [1, 18, 30]) {
+    const confirmations = r ? { landlord_reference: r } : {};
+    const application = { ...h, annual_income: income, employer: 'Acme Ltd', created_at: monthsAgo(1) };
+    const matching = { analyzedAt: monthsAgo(age), nameMatch: 'match', documents: [{ documentType: 'employment letter', extracted: { documentDate: monthsAgo(age).slice(0, 10) } }], comparisons: [{ field: 'Income', stated: `$${income}`, found: `$${income}`, annual: income, status: 'match' }, { field: 'Employer', stated: 'Acme Ltd', found: 'Acme Ltd', status: 'match' }] };
+    const statedOnly = fit(application, confirmations, null, { monthly_rent: rent }), withDocs = fit(application, confirmations, matching, { monthly_rent: rent });
+    assert.equal(statedOnly.label, 'stated'); assert.equal(withDocs.label, 'docs match');
+    count++;
+    if (!(withDocs.scoreExact > statedOnly.scoreExact)) ties.push(`${income} at ${rent}: ${statedOnly.scoreExact} vs ${withDocs.scoreExact}`);
+    const order = [{ application: { created_at: '2026-09-01', fit: statedOnly } }, { application: { created_at: '2026-08-01', fit: withDocs } }].sort(compareFit);
+    assert.equal(order[0].application.fit, withDocs, 'compareFit puts the documented version first, before the earlier applicant tie break');
+  }
+  console.log(`  ${count} applicants, each above their stated only version`);
+  assert.deepEqual(ties, []);
 });
 
 test('credit and parties stay outside: the byte identical tests compare against v2 and the pillars name neither', () => {

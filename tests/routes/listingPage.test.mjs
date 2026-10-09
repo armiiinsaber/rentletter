@@ -29,8 +29,7 @@ test('the owner\'s listing: the applicants with Fit, the snapshot meta, the refe
     assert.equal(initialProfile.id, USER.id); assert.equal(initialListing.id, 'L1');
     assert.deepEqual(initialApplicants.map((a) => a.linkId), ['J1', 'J2', 'J3', 'J4', 'J5'], 'the loader returns creation order; the view sorts with compareFit');
     const sorted = [...initialApplicants].sort(compareFit);
-    // Fit v2 (docs/fit-v2.md): J2 is stated with a wider margin on 2 of 3; J1 is verified on 3 of 3 and reads lower.
-    assert.equal(sorted.at(-1).linkId, 'J4', 'null Fit last'); assert.equal(sorted[0].linkId, 'J2'); assert.equal(sorted[0].application.fit.assessed, 2);
+    assert.equal(sorted.at(-1).linkId, 'J4', 'null Fit last'); assert.equal(sorted[0].linkId, 'J1');
     for (let i = 1; i < sorted.length - 1; i++) assert.ok(sorted[i - 1].application.fit.scoreExact >= sorted[i].application.fit.scoreExact, 'descending scoreExact');
     const by = Object.fromEntries(initialApplicants.map((a) => [a.linkId, a]));
     assert.equal(by.J1.application.fit.label, 'verified'); assert.equal(by.J1.application.fit.assessed, 3); assert.equal(by.J4.application.fit, null);

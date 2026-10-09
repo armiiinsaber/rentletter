@@ -22,13 +22,13 @@ test('Ability: the rent share curve on the primary income, scored over the pilla
   const f1 = fit(170000, 4700), f2 = fit(170000, 1000), f3 = fit(60000, 2000), f4 = fit(60000, 2600);
   say('170000 @ 4700', f1); say('170000 @ 1000', f2); say('60000 @ 2000', f3); say('60000 @ 2600', f4);
   assert.equal(f1.ratio, 33); assert.equal(f1.A, 4.7); assert.equal(f2.A, 5.0); assert.equal(f3.A, 4.0); assert.equal(f4.A, 2.3);
-  assert.equal(f1.model, 'fit-v2'); assert.equal(f1.of, 3); assert.equal(f1.assessed, 2, 'Ability and Conduct, no document yet');
-  assert.deepEqual(f1.notAssessed, ['Truth']); assert.equal(f1.E, null); assert.equal(f1.R, 4.5, 'four years at the previous address, stated last month');
-  // the mean over the pillars present, weighted 0.5 and 0.2
-  assert.equal(f1.scoreExact, (PILLAR_WEIGHT.ability * 4.7 + PILLAR_WEIGHT.conduct * 4.5) / (PILLAR_WEIGHT.ability + PILLAR_WEIGHT.conduct));
-  assert.deepEqual([f1.score, f2.score, f3.score, f4.score], [4.6, 4.9, 4.1, 2.9]);
-  assert.equal(fitLine(f1), 'Fit 4.6 on 2 of 3'); assert.equal(f1.basis, 'Stated income. Tenancy of 4 years stated.');
-  assert.equal(f1.notAssessedLine, 'Truth not assessed: no document or confirmation yet.');
+  assert.equal(f1.model, 'fit-v2'); assert.equal(f1.of, 3); assert.equal(f1.assessed, 3, 'Truth is assessed at its lowest level, stated');
+  assert.deepEqual(f1.notAssessed, []); assert.equal(f1.E, 2.0); assert.equal(f1.R, 4.5, 'four years at the previous address, stated last month');
+  // the weighted mean over the three pillars
+  assert.equal(f1.scoreExact, ((PILLAR_WEIGHT.ability * 4.7 + PILLAR_WEIGHT.truth * 2) + PILLAR_WEIGHT.conduct * 4.5) / ((PILLAR_WEIGHT.ability + PILLAR_WEIGHT.truth) + PILLAR_WEIGHT.conduct));
+  assert.deepEqual([f1.score, f2.score, f3.score, f4.score], [3.9, 4.0, 3.5, 2.7]);
+  assert.equal(fitLine(f1), 'Fit 3.9 on 3 of 3'); assert.equal(f1.basis, 'Stated income. Tenancy of 4 years stated.');
+  assert.equal(f1.notAssessedLine, null);
 });
 
 test('Ability: absolute income beyond this rent never enters, and nobody else\'s income does', () => {
@@ -39,10 +39,10 @@ test('Ability: absolute income beyond this rent never enters, and nobody else\'s
   assert.equal(solo.incomeUsed, 90000); assert.equal('incomeJoint' in solo, false, 'no joint figure exists on the number');
 });
 
-test('Truth: stated alone is not assessed; documents read 4.0 and docs match; the realtor\'s confirmation reads 5.0 and verified', () => {
+test('Truth: stated alone reads 2.0 and is assessed; documents read 4.0 and docs match; the realtor\'s confirmation reads 5.0 and verified', () => {
   const s = fit(90000, 2500), d = fit(90000, 2500, {}, report()), c = fit(90000, 2500, {}, null, {}, { employer: { at: '2026-09-20T00:00:00Z', by: 'Armin' } });
   say('stated', s); say('documents matched', d); say('employer confirmed, no documents', c);
-  assert.equal(pillar(s, 'truth').assessed, false); assert.equal(s.label, 'stated');
+  assert.equal(pillar(s, 'truth').assessed, true); assert.equal(s.E, 2.0); assert.equal(s.label, 'stated');
   assert.equal(d.E, 4.0); assert.equal(d.label, 'docs match', 'documents matching is not verification'); assert.equal(d.incomeSource, 'verified'); assert.equal(d.incomeUsed, 90000);
   assert.equal(d.assessed, 3); assert.equal(d.score, 4.5); assert.equal(d.basis, 'Current income matches documents. Tenancy of 4 years stated.');
   assert.equal(c.E, 5.0); assert.equal(c.label, 'verified'); assert.equal(c.score, 4.8); assert.equal(c.basis, 'Current income confirmed. Tenancy of 4 years stated.');
@@ -56,7 +56,7 @@ test('Truth: a contradiction reads check docs and the documents confirm nothing;
   const employer = fit(90000, 2500, {}, report({ employer: false }));
   say('name mismatch', name); say('income mismatch', income); say('employer mismatch', employer);
   for (const f of [name, income, employer]) assert.equal(f.label, 'check docs');
-  assert.equal(pillar(name, 'truth').assessed, false); assert.equal(name.score, fit(90000, 2500).score, 'the number is the stated one, nothing subtracted');
+  assert.equal(name.E, 2.0, 'the documents confirm nothing: Truth stays at stated'); assert.equal(name.score, fit(90000, 2500).score, 'the number is the stated one, nothing subtracted');
   assert.deepEqual(name.flags.map((x) => x.key), ['identity']); assert.deepEqual(income.flags.map((x) => x.key), ['income_mismatch']); assert.deepEqual(employer.flags.map((x) => x.key), ['employer_mismatch']);
   const withId = fit(90000, 2500, {}, report({ nameMatch: 'mismatch' }), {}, { id: { at: '2026-09-21T00:00:00Z', by: 'Armin' } });
   assert.equal(withId.label, 'docs match'); assert.equal(withId.E, 4.3, 'income 4 twice, employer 4, identity 5');
@@ -67,7 +67,7 @@ test('Truth: a contradiction reads check docs and the documents confirm nothing;
   assert.equal(close.label, 'docs match'); assert.equal(close.incomeSource, 'stated'); assert.equal(close.evidence.contradicted, false);
   const nothing = fit(90000, 2500, {}, { analyzedAt: '2026-09-01T00:00:00Z', nameMatch: 'match', documents: [{ documentType: 'government ID' }], comparisons: [] });
   assert.equal(nothing.label, 'stated', 'a report that compared nothing leaves the label on stated facts');
-  assert.equal(nothing.E, 4.0, 'the identity on the document is a Truth fact on its own');
+  assert.equal(nothing.E, 2.5, 'the identity on the document is one docs level fact beside the stated ones');
 });
 
 test('Conduct: the previous landlord\'s outcome by month, the calls, the stated tenancy; nothing from the job', () => {
@@ -118,9 +118,9 @@ test('edited after documents: the documents confirm nothing and the label reads 
   const confirmedAfter = fit(90000, 2500, {}, rep, { profile_updated_at: '2026-08-20T00:00:00Z' }, { employer: { at: '2026-08-25T00:00:00Z', by: 'A' } });
   const confirmedBefore = fit(90000, 2500, {}, rep, { profile_updated_at: '2026-08-20T00:00:00Z' }, { employer: { at: '2026-08-15T00:00:00Z', by: 'A' } });
   assert.equal(matched.E, 4.0); assert.equal(matched.label, 'docs match');
-  assert.equal(edited.E, null); assert.equal(edited.label, 'check docs'); assert.equal(edited.evidence.edited, true); assert.deepEqual(edited.flags.map((f) => f.key), ['edited']);
-  assert.equal(confirmedAfter.E, 4.8, 'income and employer confirmed, identity on the documents'); assert.equal(confirmedAfter.label, 'verified');
-  assert.equal(confirmedBefore.E, null); assert.equal(confirmedBefore.label, 'check docs');
+  assert.equal(edited.E, 2.0); assert.equal(edited.label, 'check docs'); assert.equal(edited.evidence.edited, true); assert.deepEqual(edited.flags.map((f) => f.key), ['edited']);
+  assert.equal(confirmedAfter.E, 5.0, 'income and employer confirmed; the identity on the documents adds nothing to a confirmed Truth'); assert.equal(confirmedAfter.label, 'verified');
+  assert.equal(confirmedBefore.E, 2.0); assert.equal(confirmedBefore.label, 'check docs');
   assert.equal(fitReason(edited, matched), 'Profile edited after documents');
 });
 
@@ -140,6 +140,6 @@ test('fitReason: at most eight words from the pillars, omitted within 0.02 or wi
   assert.equal(fitReason(fit(90000, 2500, {}, null, { prev_landlord_name: null, years_at_previous: null }, { employer: { at: '2026-09-20T00:00:00Z', by: 'A' } }), fit(90000, 2500, {}, null, {}, { employer: { at: '2026-09-20T00:00:00Z', by: 'A' } })), 'No reference outcome yet');
   assert.equal(fitReason(stated, stated), null);
   assert.equal(fitReason(stated, { ...stated, scoreExact: stated.scoreExact + 0.01 }), null);
-  assert.equal(fitReason(fit(90000, 2500, {}, null, { prev_landlord_name: null, years_at_previous: null }), docs), null, 'a lower side with no number gives no line');
-  for (const r of ['No documents yet', 'Documents did not match', 'Higher rent share', 'No reference outcome yet', 'Fewer months on time']) { assert.ok(r.split(/\s+/).length <= 8); assert.ok(!/\$|income level/.test(r)); }
+  assert.equal(fitReason(fit(90000, 2500, {}, null, { prev_landlord_name: null, years_at_previous: null }), docs), 'No documents yet · no reference outcome yet');
+  for (const r of ['No documents yet', 'Documents did not match', 'Higher rent share', 'No reference outcome yet', 'Fewer months on time', 'No documents yet · no reference outcome yet']) { assert.ok(r.split(/\s+/).length <= 8); assert.ok(!/\$|income level/.test(r)); }
 });

@@ -37,7 +37,7 @@ test('loadSignals: 12 listings, 3 applicants each, measured', async () => {
   console.log('  digest', JSON.stringify(digest));
   // The contract, taken from the load as it ran before the single query refactor (commit 1893b78
   // on this fixture): the same applicants, states, Fit, action items and feed.
-  assert.deepEqual(digest, { states: { set_aside: 12, requested: 12, matched: 12 }, fitSum: 96.982, actionKinds: { verify: 12, waiting: 12 }, feed: 40, unread: 25, requested: 12, withReports: 12, held: 12 });
+  assert.deepEqual(digest, { states: { set_aside: 12, requested: 12, matched: 12 }, fitSum: 128.788, actionKinds: { verify: 12, waiting: 12 }, feed: 40, unread: 25, requested: 12, withReports: 12, held: 12 });
   // The budget: under 10 Supabase queries, 3 KV calls, a sequential depth of 3 or less.
   const m = String(trace).match(/supabase=(\d+) kv=(\d+) depth=(\d+)/);
   assert.ok(m, 'trace line present'); assert.ok(Number(m[1]) < 10, `supabase ${m[1]}`); assert.ok(Number(m[2]) <= 3, `kv ${m[2]}`); assert.ok(Number(m[3]) <= 3, `depth ${m[3]}`);

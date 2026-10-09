@@ -11,7 +11,7 @@ Tests: tests/fitScore.test.mjs, tests/fitV2.test.mjs, tests/fitForbidden.test.mj
 | Pillar | What it reads | Not assessed when |
 | --- | --- | --- |
 | Ability (weight 0.5) | this unit's rent against the primary applicant's current income (stated, matched on documents, or confirmed), plus liquid savings as months of rent when a bank statement printed a closing balance | no rent, no income, or no income fact inside 24 months |
-| Truth (weight 0.3) | how far each fact is confirmed: stated 2.0, matches documents 4.0, confirmed at the source 4.5 (reserved, feeds nothing yet), confirmed by the realtor 5.0; income counts twice, employer and identity once | nothing is confirmed beyond what was stated |
+| Truth (weight 0.3) | how far each fact is confirmed: stated 2.0, matches documents 4.0, confirmed at the source 4.5 (reserved, feeds nothing yet), confirmed by the realtor 5.0; income counts twice, employer and identity once | never: every applicant has a confirmation level, and stated is its lowest value |
 | Conduct (weight 0.2) | the previous landlord's answers the product already captures (rent on time, damage, would rent again), read one month at a time across the tenancy they describe; the realtor's own calls; the length of a stated tenancy when a landlord is named | no reference outcome, no call and no tenancy inside 24 months |
 
 Absolute income beyond this unit's rent never enters: $170,000 and $900,000 at the same rent are
@@ -23,7 +23,10 @@ each with a date. The card's expansion, the checklist, the landlord report and t
 
 ## Missing is not scored
 
-A pillar with no data is excluded. The score is the weighted mean over the pillars present, and
+Truth is always assessed: stated is its lowest value, never not assessed, because documents are
+something every applicant can provide. The exclusion applies to Ability (no income at all) and
+Conduct (no tenancy or reference history), the things a newcomer may genuinely not have. A pillar
+with no data is excluded. The score is the weighted mean over the pillars present, and
 every surface says so: "Fit 4.4 on 2 of 3" with one line naming what was not assessed. Absence is
 never a zero and never a lower number: an applicant with no rental history and strong ability
 scores at least as high as the same applicant with a good history (tests/fitV2.test.mjs).
