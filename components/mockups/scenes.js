@@ -51,14 +51,14 @@ export function LandlordReportScene() {
             <Avatar a={a} size={26} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 'clamp(11px, 2.8vw, 13px)', fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}{i === 0 && <span style={{ color: C.red, fontWeight: 600 }}> · Top pick</span>}</div>
-              <div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr before tax · {a.rent}% rent to income</div>
+              <div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: C.inkMute, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.role} · {money(a.income)}/yr before tax</div>
               <StatusPills className="rl-pills-mock" label="Document status" items={['docs match', 'Aug 18']} style={{ marginTop: 2 }} />
             </div>
             <TickMeter value={a.score} size={11} />
           </div>
         ))}
         <div style={{ marginTop: 'auto', padding: 'clamp(7px, 2%, 10px) clamp(9px, 2.4%, 13px)', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 'clamp(8.5px, 2vw, 10px)', color: C.inkSoft, lineHeight: 1.45 }}>
-          Fit against your stated preferences: rent share under 40% ✓ · non smoker ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.
+          Fit against your stated preferences: landlord reference ✓ · non smoker ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.
         </div>
       </div>
     </div>

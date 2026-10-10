@@ -45,9 +45,29 @@ for (const file of FILES) {
 test('no component, page or lib file names the income floor at all', () => {
   const all = ['lib/', 'components/', 'pages/'].flatMap((d) => walk(d));
   const hits = [];
-  for (const file of all) { const text = readFileSync(new URL(file, ROOT), 'utf8'); const m = text.match(/pref_min_annual_income|minimum income|minimum annual income|min_annual_income|minAnnualIncome/i); if (m) hits.push(`${file}: ${m[0]}`); }
+  for (const file of all) { const text = readFileSync(new URL(file, ROOT), 'utf8'); const m = text.match(/pref_min_annual_income|min(?:imum)?\.?[\s_]*(?:annual[\s_]*)?income|minAnnualIncome/i); if (m) hits.push(`${file}: ${m[0]}`); }
   assert.deepEqual(hits, []);
   assert.ok(all.length > 100, `${all.length} files scanned`);
+});
+
+// The film and the mockups depict the product to realtors and landlords. A rent to income cutoff is
+// illegal outside subsidized housing (OHRC Policy on Human Rights and Rental Housing) and income is
+// never the sole reason to refuse (Ontario Regulation 290/98), so no depiction states one: no rent
+// share, no rent to income, no percentage of income or rent, no threshold a percentage clears.
+test('the film and the mockups state no income cutoff: no rent share, no percentage of income', () => {
+  const files = ['components/film/', 'components/mockups/'].flatMap((d) => walk(d));
+  const CUTOFF = [
+    /rent share/i,
+    /rent[\s-]*to[\s-]*income/i, // words a reader sees; the rent_to_income_ratio column a prototype passes to lib is data
+    /\d{1,3}\s?%\s*(?:of\s+)?(?:(?:gross|net|monthly|annual|household|the)\s+)?(?:income|rent|salary|pay)\b/i,
+    /\b(?:income|salary|pay)\b[^'"`\n]{0,40}\d{1,3}\s?%/i,
+    /\b(?:under|below|over|above|max(?:imum)?|min(?:imum)?|at most|at least|less than|more than|clears?|meets?|within)\s+\d{1,3}\s?%/i,
+    /\d+(?:\.\d+)?\s?[x\u00d7]\s+(?:the\s+)?rent/i,
+  ];
+  const hits = [];
+  for (const file of files) readFileSync(new URL(file, ROOT), 'utf8').split('\n').forEach((line, i) => { for (const re of CUTOFF) { const m = line.match(re); if (m) hits.push(`${file}:${i + 1} "${m[0]}"`); } });
+  assert.deepEqual(hits, []);
+  assert.ok(files.includes('components/film/beats.js') && files.includes('components/mockups/scenes.js') && files.includes('components/mockups/HeroDemo.js'));
 });
 
 test('the kind of income is refused even where the old scan would not look', () => {

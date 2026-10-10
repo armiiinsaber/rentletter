@@ -16,11 +16,11 @@ import { Icon } from '../ui';
 // Colour: ink tones only, the red tick motif for the fit ticks, and the one red score pill
 // (no green or amber status colours, the house rule).
 const HERO_APPLICANTS = [
-  { id: 'mei', initials: 'MT', color: C.instRule, name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Income 30% of rent', true], ['Non-smoker', true]] },
+  { id: 'mei', initials: 'MT', color: C.instRule, name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Landlord reference', true], ['Non-smoker', true]] },
   { id: 'james', initials: 'JO', color: C.inkSoft, name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income comfortably clears', true], ['Conduct not assessed', false]] },
   { id: 'priya', initials: 'PN', color: C.ink, name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income comfortably clears', true], ['Rent paid on time, 5 yrs', true]] },
-  { id: 'david', initials: 'DT', color: C.instRaise, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Income clears 30%', true], ['Rent paid on time, 4 yrs', true]] },
-  { id: 'amara', initials: 'AO', color: C.inkSoft, name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['Income clears 40%', true], ['New to the city', false]] },
+  { id: 'david', initials: 'DT', color: C.instRaise, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Docs match', true], ['Rent paid on time, 4 yrs', true]] },
+  { id: 'amara', initials: 'AO', color: C.inkSoft, name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['References on file', true], ['New to the city', false]] },
 ];
 // Both scenes are ordered by score, desc — the mockup must show what the product does: the
 // emphasized applicant is the highest scorer. (Sorted from HERO_APPLICANTS, never hand-typed.)

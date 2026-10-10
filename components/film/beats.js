@@ -41,7 +41,7 @@ export function ListingScreen({ b }) {
           <div className="rl-serif" style={{ fontSize: 22, letterSpacing: '-0.02em', lineHeight: 1.05, marginBottom: 4 }}>88 Harbour St, Unit 2104</div>
           <div style={{ fontSize: 11, color: C.inkSoft, marginBottom: 12 }}>$2,600/mo · 2 bed · Toronto</div>
           <div style={{ background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: '10px 12px', display: 'grid', gap: 6 }}>
-            {[['Min annual income', '$75,000'], ['Max rent to income', '40%'], ['Min lease term', '12 mo'], ['Landlord reference', 'Required']].map(([k, v]) => (
+            {[['Landlord reference', 'Required'], ['Employer verification', 'Required'], ['Guarantor', 'Accepted'], ['Min lease term', '12 mo']].map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, borderBottom: `1px solid ${C.rule}`, paddingBottom: 5 }}><span style={{ color: C.inkMute }}>{k}</span><span style={{ fontWeight: 700 }}>{v}</span></div>
             ))}
             <div style={{ fontSize: 9.5, color: C.inkMute }}>Landlord client · Marco Rossi</div>
@@ -245,13 +245,13 @@ export function ReportScreen({ b, brand = null, logo = 0 }) {
             <Avatar a={a} size={24} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 12, fontWeight: 700 }}>{a.name}{i === 0 && <span style={{ color: accent, fontWeight: 600 }}> · Top pick</span>}</div>
-              <div style={{ fontSize: 9.5, color: C.inkMute }}>{a.role} · {money(a.income)}/yr · {a.rent}% rent to income</div>
+              <div style={{ fontSize: 9.5, color: C.inkMute }}>{a.role} · {money(a.income)}/yr</div>
               <StatusPills className="rl-pills-mock" label="Document status" items={['docs match', 'Aug 18']} style={{ marginTop: 2 }} />
             </div>
             <TickMeter value={a.score} size={10} />
           </div>
         ))}
-        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: rent share under 40% ✓ · 12 month lease ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.</div>
+        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: landlord reference ✓ · 12 month lease ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.</div>
       </div>
     </Screen>
   );
