@@ -70,6 +70,19 @@ test('the film and the mockups state no income cutoff: no rent share, no percent
   assert.ok(files.includes('components/film/beats.js') && files.includes('components/mockups/scenes.js') && files.includes('components/mockups/HeroDemo.js'));
 });
 
+// Being new to a city or to Canada is a place of origin proxy under the OHRC, and a first tenancy
+// is an absence of history; neither may ever count against anyone, so no user facing string in
+// components, pages or lib names them. Comments are stripped first: the code may explain the rule.
+test('no user facing string names a newcomer or a first tenancy', () => {
+  const files = ['components/', 'pages/', 'lib/'].flatMap((d) => walk(d));
+  const NEWCOMER = /new to (?:the )?city|new to canada|newcomers?|recently (?:arrived|moved)|first[\s-]?time renters?|no canadian/i;
+  const hits = [];
+  for (const file of files) stripComments(readFileSync(new URL(file, ROOT), 'utf8')).split('\n').forEach((line, i) => { const m = line.match(NEWCOMER); if (m) hits.push(`${file}:${i + 1} "${m[0]}"`); });
+  assert.deepEqual(hits, []);
+  for (const s of ['New to the city', 'new to Canada', 'Newcomer', 'recently arrived', 'Recently moved', 'first-time renter', 'First time renters', 'No Canadian credit']) assert.match(s, NEWCOMER, s);
+  assert.ok(files.length > 300, `${files.length} files scanned`);
+});
+
 test('the kind of income is refused even where the old scan would not look', () => {
   const text = stripComments(readFileSync(new URL('lib/fitScore.js', ROOT), 'utf8')).replace(/isCreditKind/g, '');
   assert.doesNotMatch(text, /kind/i);
