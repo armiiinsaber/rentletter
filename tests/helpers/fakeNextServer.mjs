@@ -81,6 +81,24 @@ http.createServer(async (req, res) => {
   }
   // The Fit walk (tests/routes/fitWebkit.test.mjs): GET /__fake/history?link=J2&clear=1 clears that
   // applicant's rental history on the fixture row, so a stated income is all Fit has to read.
+  // The document checks walk (tests/routes/integrityWebkit.test.mjs): GET /__fake/integrity?link=J1
+  // holds one pay stub for that applicant (a stored object, so View document opens it) and puts one
+  // check docs finding on their active report (lib/documentIntegrity.js), the way a finalize writes it.
+  if (req.url.startsWith('/__fake/integrity')) {
+    const link = String(new URL(req.url, 'http://localhost').searchParams.get('link') || '');
+    const j = (t.listing_applicants || []).find((x) => x.id === link);
+    if (!j) { res.statusCode = 404; res.end('{}'); return; }
+    const id = `DI-${link}`;
+    if (!(t.applicant_documents || []).some((d) => d.id === id)) {
+      const path = `${USER.id}/${link}/${id}.pdf`;
+      await stack.db.storage.from('applicant-documents').upload(path, Buffer.from('%PDF-1.4 a held pay stub for the document checks walk'), { contentType: 'application/pdf' });
+      const now = new Date();
+      t.applicant_documents.push({ id, listing_applicant_id: link, profile_id: USER.id, storage_path: path, kind: 'pay stub', mime: 'application/pdf', bytes: 2048, uploaded_by: 'tenant', uploaded_at: now.toISOString(), expires_at: new Date(now.getTime() + 14 * 86400000).toISOString(), deleted_at: null, deleted_by: null, opened_count: 0, last_opened_at: null, content_hash: 'walk' });
+      const dv = j.doc_verifications && j.doc_verifications.active ? j.doc_verifications : { active: { analyzedAt: now.toISOString(), nameMatch: 'match', documents: [], comparisons: [] }, archived: [] };
+      j.doc_verifications = { ...dv, active: { ...dv.active, integrity: [{ type: 'pay_arithmetic', documentId: id, sentence: 'The net pay on the September 18 stub does not equal gross less deductions ($312 apart).', at: now.toISOString() }] } };
+    }
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ documentId: id })); return;
+  }
   if (req.url.startsWith('/__fake/history')) {
     const q = new URL(req.url, 'http://localhost').searchParams; const link = String(q.get('link') || '');
     const j = (t.listing_applicants || []).find((x) => x.id === link); const a = j && (t.applications || []).find((x) => x.id === j.application_id);

@@ -83,6 +83,17 @@ test('no user facing string names a newcomer or a first tenancy', () => {
   assert.ok(files.length > 300, `${files.length} files scanned`);
 });
 
+// Income that "clears" something states a threshold was passed: an income cutoff by another name.
+// No user facing string in components, pages or lib puts the two words together.
+test('no user facing string says income clears anything', () => {
+  const files = ['components/', 'pages/', 'lib/'].flatMap((d) => walk(d));
+  const CLEARS = /\bincome\b[^'"`\n]{0,40}\bclear(?:s|ed|ing)?\b|\bclear(?:s|ed|ing)?\b[^'"`\n]{0,40}\bincome\b/i;
+  const hits = [];
+  for (const file of files) stripComments(readFileSync(new URL(file, ROOT), 'utf8')).split('\n').forEach((line, i) => { const m = line.match(CLEARS); if (m) hits.push(`${file}:${i + 1} "${m[0]}"`); });
+  assert.deepEqual(hits, []);
+  for (const s of ['Income comfortably clears', 'Income clears 40%', 'clears the income bar']) assert.match(s, CLEARS, s);
+});
+
 test('the kind of income is refused even where the old scan would not look', () => {
   const text = stripComments(readFileSync(new URL('lib/fitScore.js', ROOT), 'utf8')).replace(/isCreditKind/g, '');
   assert.doesNotMatch(text, /kind/i);

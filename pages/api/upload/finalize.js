@@ -17,6 +17,8 @@ import { verificationFacts } from '../../../lib/applicantSynthesis';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { buildCombinedRun } from '../../../lib/uploadCombine';
+import { sameFileFindings, applyMirrors } from '../../../lib/documentIntegrityStore';
+import { storedFindings } from '../../../lib/documentIntegrity';
 import { screenableFacts } from '../../../lib/applicantAnalysis';
 import { withActiveReport } from '../../../lib/docVerifications';
 import { APPLICATION_STATE, ACTOR_TYPE } from '../../../lib/application-state';
@@ -79,7 +81,11 @@ export default async function handler(req, res) {
         delete application.cover_letter;
         const { data: listing } = await admin.from('listings').select('*').eq('id', rec.listingId).maybeSingle();
 
-        const run = buildCombinedRun(items, application.full_name || '', screenableFacts(application, listing));
+        const run = buildCombinedRun(items, application.full_name || '', screenableFacts(application, listing), { now: receivedAt });
+        // Check g: the same file from another applicant on this realtor's listings, per realtor only
+        // (lib/documentIntegrityStore.js). A party's documents are read the same way.
+        const same = listing && listing.profile_id ? await sameFileFindings(admin, { profileId: listing.profile_id, linkId: rec.linkId, applicationId: junction.application_id, application, documentIds: items.map((it) => it.documentId), at: receivedAt }) : { findings: [], mirrors: [] };
+        if (same.findings.length) run.integrity = storedFindings([...(run.integrity || []), ...same.findings]);
 
         // Persist the combined result — tagged as a tenant self-upload — as the ACTIVE report,
         // preserving any archived history. Same column, row, and shape as the realtor path.
@@ -99,6 +105,7 @@ export default async function handler(req, res) {
         else if (!(upRows || []).length) { console.error('[upload/finalize] persist affected 0 rows'); persistFailed = true; }
         else {
           verified = true;
+          await applyMirrors(admin, same.mirrors);
           {
             const facts = verificationFacts({ active: { ...run, source: 'tenant' }, archived: [] });
             const outcome = facts.incomeVerified || facts.employmentVerified ? 'verification_completed' : 'verification_failed';

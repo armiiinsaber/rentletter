@@ -15,6 +15,7 @@ import { ApplicantSkeletons, useSkeletonWatch, LoadFailed } from '../nav/RouteSk
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
+import { IntegrityLine } from '../../components/dashboard/IntegrityChecks';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import { computeFit, compareFit, capOf, fitLine } from '../../lib/fitScore';
 import { incomeIsJoint, householdIncomeOf } from '../../lib/jointIncome';
@@ -950,6 +951,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
           {fit && (fit.incomplete || fit.notAssessedLine) ? <div data-fit-coverage="" style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{noWidow(fit.incomplete ? fit.incomplete.next : fit.notAssessedLine)}</div> : null}
+          {/* The document checks (lib/documentIntegrity.js): the pill and the first sentence; the checklist holds the rest. */}
+          <IntegrityLine report={a.docVerifications?.[0] || null} style={{ marginTop: 'var(--s-2)', paddingLeft: tracking ? 18 : 0 }} />
           {docSt === 'matched' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
             {missed.length > 0 && pills(missed)}

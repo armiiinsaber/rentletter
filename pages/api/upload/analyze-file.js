@@ -26,6 +26,7 @@ import { kvIncr, kvExpire } from '../../../lib/kv';
 import { storeAnalyzedDocuments, kindOf } from '../../../lib/documentStore';
 import { creditRejection, CREDIT_KIND } from '../../../lib/creditShared';
 import { recordForListing } from '../../../lib/events';
+import { fileFacts } from '../../../lib/documentFile';
 
 // One document per request → a single base64 file (client-capped at ~3MB raw ≈ 4MB base64, under
 // Vercel's 4.5MB body cap). ONE Claude vision call: allow a modest duration for multi-page PDFs.
@@ -137,9 +138,12 @@ export default async function handler(req, res) {
   // a submission replaces the applicant's previously held files. A storage failure is logged and
   // the analysis result still returns. Skipped when the token could not be bound to an applicant.
   let documentId = null; // the held row, so the tenant can remove this file before they submit (remove-file.js)
+  // Two facts from the bytes while this request holds them (lib/documentFile.js): the content hash
+  // kept on the held row, and whether a PDF was saved in a general purpose editor after it was made.
+  const facts = await fileFacts(Buffer.from(data, 'base64'), mime);
   if (admin && application && listing && listing.profile_id) {
     const firstOfSubmission = Object.keys(staging.items).length === 0;
-    const stored = await storeAnalyzedDocuments(admin, { profileId: listing.profile_id, listingId: rec.listingId, linkId: rec.linkId, applicationId: application.id || rec.applicationId || null, applicantName: application.full_name || null, uploadedBy: 'tenant', replace: firstOfSubmission, partyId: rec.partyId || null, files: [{ mime, bytes: Buffer.from(data, 'base64'), kind: kindOf(run.documents[0]) }] });
+    const stored = await storeAnalyzedDocuments(admin, { profileId: listing.profile_id, listingId: rec.listingId, linkId: rec.linkId, applicationId: application.id || rec.applicationId || null, applicantName: application.full_name || null, uploadedBy: 'tenant', replace: firstOfSubmission, partyId: rec.partyId || null, files: [{ mime, bytes: Buffer.from(data, 'base64'), kind: kindOf(run.documents[0]), hash: facts.hash }] });
     documentId = stored && Array.isArray(stored.ids) ? stored.ids[0] || null : null;
   }
 
@@ -153,6 +157,7 @@ export default async function handler(req, res) {
     documentName: (run.documentNames && run.documentNames[0]) || null,
     confidence: run.confidence || 'medium',
     documentId,
+    fileEdited: facts.editedAfterCreation === true,
   };
   staging.items[fkey] = perFile;
   staging.total = Number.isFinite(total) ? total : Math.max(Object.keys(staging.items).length, staging.total || 0);

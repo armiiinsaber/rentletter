@@ -46,7 +46,7 @@ export default function DemoSandbox() {
       </Head>
       <div className="rl-sandbox-bar" role="note">
         <span className="rl-sandbox-dot" aria-hidden="true" />
-        <span style={{ textWrap: 'pretty' }}><strong>Sample workspace.</strong> Everything here is fake data for {adapter?.getState().profile.full_name || 'a sample realtor'}, click anything; nothing is saved or sent.</span>
+        <span style={{ textWrap: 'pretty' }}><strong>Sample workspace.</strong> Everything here is sample data for {adapter?.getState().profile.full_name || 'a sample realtor'}, click anything; nothing is saved or sent.</span>
         <span className="rl-sandbox-actions">
           {adapter && <button type="button" onClick={reset}>Reset sample</button>}
           <a href="/signin">Use it for real →</a>

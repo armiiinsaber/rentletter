@@ -11,10 +11,10 @@
 // what the editor sends. A failure rolls the transaction back and stops the path.
 //
 //   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again, then every combination
-//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, each twice
+//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, each twice
 //   Path B  upgrade       baseline, the OLD 001 (git show b11f1f8, four income kinds), 002, 003,
 //                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
-//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, each twice
+//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, each twice
 //   Path C  rollback      after path B: 999, 999 again
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
@@ -42,6 +42,7 @@ const FILES = {
   parties: 'db/008-application-parties-invites.sql',
   m009: 'db/009-drop-min-years-at-job.sql',
   m010: 'db/010-drop-min-annual-income.sql',
+  m011: 'db/011-document-content-hash.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -383,6 +384,31 @@ async function run010(db, tag) {
   check((await one(db, 'SELECT count(*)::int FROM public.listings')) === count, `${tag}2: no listing row was touched`);
 }
 
+// ── db/011-document-content-hash.sql ────────────────────────────────────────────
+// The hash column and its partial index exist, a held row keeps every other column, a deleted row
+// that carried a hash is cleared, a live one keeps it, and a second run changes nothing.
+async function check011(db, label) {
+  check((await hasColumn(db, 'applicant_documents', 'content_hash')) === true, `${label}: applicant_documents.content_hash exists`);
+  check((await one(db, "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'applicant_documents' AND column_name = 'content_hash'")) === 'text', `${label}: it is text, nullable`);
+  check((await one(db, "SELECT to_regclass('public.applicant_documents_hash_idx') IS NOT NULL")) === true, `${label}: the per realtor hash index exists`);
+  check(/WHERE \(\(deleted_at IS NULL\) AND \(content_hash IS NOT NULL\)\)/.test(await one(db, "SELECT pg_get_indexdef('public.applicant_documents_hash_idx'::regclass)")), `${label}: the index covers live rows with a hash only`);
+  check((await one(db, 'SELECT count(*)::int FROM public.applicant_documents WHERE deleted_at IS NOT NULL AND content_hash IS NOT NULL')) === 0, `${label}: no deleted row carries a hash`);
+}
+async function run011(db, tag) {
+  const before = await rows(db, 'SELECT id, listing_applicant_id, profile_id, storage_path, kind, mime, bytes, uploaded_by, expires_at::text AS expires_at, deleted_at FROM public.applicant_documents ORDER BY id');
+  await step(db, `${tag}1`, FILES.m011); await check011(db, `${tag}1`);
+  // A live row with a hash, and a deleted one that still carries one (as if written before the clearing paths).
+  const gone = 'ddddddd1-0000-4000-8000-000000000011';
+  await db.query("INSERT INTO public.applicant_documents (id, listing_applicant_id, profile_id, storage_path, kind, mime, bytes, uploaded_by, expires_at, deleted_at, deleted_by, content_hash) VALUES ($1, $2, $3, $4, 'pay stub', 'application/pdf', 10, 'tenant', '2026-09-20T00:00:00Z', '2026-09-21T00:00:00Z', 'expired', 'abc')", [gone, link(1), ID.me, `${ID.me}/${link(1)}/gone.pdf`]);
+  await db.query("UPDATE public.applicant_documents SET content_hash = 'live-hash' WHERE id = $1", [DOC]);
+  await step(db, `${tag}2 (011 again)`, FILES.m011); await check011(db, `${tag}2`);
+  check((await one(db, 'SELECT content_hash FROM public.applicant_documents WHERE id = $1', [gone])) === null, `${tag}2: the deleted row's hash is cleared`);
+  check((await one(db, 'SELECT content_hash FROM public.applicant_documents WHERE id = $1', [DOC])) === 'live-hash', `${tag}2: the live row keeps its hash`);
+  await db.query('DELETE FROM public.applicant_documents WHERE id = $1', [gone]);
+  await db.query('UPDATE public.applicant_documents SET content_hash = NULL WHERE id = $1', [DOC]);
+  check(same(await rows(db, 'SELECT id, listing_applicant_id, profile_id, storage_path, kind, mime, bytes, uploaded_by, expires_at::text AS expires_at, deleted_at FROM public.applicant_documents ORDER BY id'), before), `${tag}2: every other column of every held row is what it was`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -477,6 +503,7 @@ async function pathA() {
   await runParties(db, 'A3');
   await run009(db, 'A4');
   await run010(db, 'A5');
+  await run011(db, 'A6');
   await db.close();
 }
 
@@ -511,6 +538,7 @@ async function pathB() {
   await runParties(db, 'B10');
   await run009(db, 'B11');
   await run010(db, 'B12');
+  await run011(db, 'B13');
   return { db, before };
 }
 

@@ -19,8 +19,8 @@ import { Icon } from '../ui';
 // never a protected ground or a proxy for one, and never an absence of history.
 const HERO_APPLICANTS = [
   { id: 'mei', initials: 'MT', color: C.instRule, name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Landlord reference', true], ['Non-smoker', true]] },
-  { id: 'james', initials: 'JO', color: C.inkSoft, name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income comfortably clears', true], ['Employer not confirmed', false]] },
-  { id: 'priya', initials: 'PN', color: C.ink, name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income comfortably clears', true], ['Rent paid on time, 5 yrs', true]] },
+  { id: 'james', initials: 'JO', color: C.inkSoft, name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income matches documents', true], ['Employer not confirmed', false]] },
+  { id: 'priya', initials: 'PN', color: C.ink, name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income matches documents', true], ['Rent paid on time, 5 yrs', true]] },
   { id: 'david', initials: 'DT', color: C.instRaise, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Docs match', true], ['Rent paid on time, 4 yrs', true]] },
   { id: 'amara', initials: 'AO', color: C.inkSoft, name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['References on file', true], ['Docs requested', false]] },
 ];

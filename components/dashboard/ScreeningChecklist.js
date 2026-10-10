@@ -27,6 +27,8 @@ import { isIdKind } from '../../lib/documentRetention';
 import { answerSummary, emailIn, RESEND_AFTER_DAYS } from '../../lib/referenceQuestions';
 import { creditLines } from '../../lib/creditShared';
 import { partyConfirmKey, partyFacts } from '../../lib/parties';
+import IntegrityChecks from './IntegrityChecks';
+import { integrityOf } from '../../lib/documentIntegrity';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
@@ -115,6 +117,9 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
     // Credit: the applicant's own report, read and shown, never scored (lib/creditShared.js).
     { key: null, title: 'Credit', credit: creditLines(report) },
+    // Document checks: whether the documents agree with themselves (lib/documentIntegrity.js), each a
+    // check docs item with its document and one tap for a new copy. Shown only when there is one.
+    ...((() => { const ic = integrityOf(report); return ic.flags.length || ic.notes.length ? [{ key: null, title: 'Document checks', integrity: true }] : []; })()),
     // One row per party (lib/parties.js): what they stated, what their documents said, and the
     // realtor's own call to their employer, the one way a party reads verified.
     ...(Array.isArray(applicant.parties) ? applicant.parties.map((p) => {
@@ -151,7 +156,9 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
                 <div data-credit-row={row.credit ? (row.credit.shared ? 'shared' : 'none') : undefined} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
-                  {row.credit
+                  {row.integrity
+                    ? <IntegrityChecks applicant={applicant} listingId={listing?.id} heldDocuments={heldDocuments} onViewDocument={onViewDocument} />
+                    : row.credit
                     ? <StackedLines parts={[row.credit.label, ...row.credit.lines]} />
                     : <StackedLines parts={[labelled('Said', row.said).join(', '), row.docs != null ? labelled('Docs', row.docs).join(', ') : null]} />}
                 </div>
