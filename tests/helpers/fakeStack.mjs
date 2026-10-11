@@ -153,8 +153,11 @@ export function fakeResend() {
 // extractionFor(filename) -> one document object; the fake returns the STRICT JSON the prompt asks for.
 // The name on the document is "Test Person" unless the file name carries one in parentheses:
 // "credit (Applicant D4D4).pdf". A credit report's date is ten days ago, or 120 days ago when the
-// file name says stale; "extra" in the name returns fields the product must never keep.
+// file name says stale; "extra" in the name returns fields the product must never keep. A pay stub
+// named netoff is recent and its net pay is $312 more than gross less deductions (check a,
+// lib/documentIntegrity.js).
 const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+const longDaysAgo = (n) => new Date(Date.now() - n * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 export const defaultExtraction = (filename) => {
   const f = String(filename || '').toLowerCase();
   const named = String(filename || '').match(/\(([^)]+)\)/);
@@ -165,6 +168,7 @@ export const defaultExtraction = (filename) => {
     if (/extra/.test(f)) Object.assign(extracted, { accountNumbers: ['4520 1234 5678 9012'], balances: [{ account: 'Visa', balance: 1200 }], previousAddresses: ['1 Old Rd'], employerHistory: ['Old Harbour Logistics'], inquiries: 3, employer: 'Old Harbour Logistics', scoreBand: 'Good' });
     return { filename, documentType: 'credit report', unrecognized: false, extracted, notes: '' };
   }
+  if (/netoff/.test(f)) return { filename, documentType: 'pay stub', unrecognized: false, extracted: { applicantName, employer: 'Northwind Sample Clinic Inc.', periodStart: longDaysAgo(22), periodEnd: longDaysAgo(8), payDate: longDaysAgo(5), grossForPeriod: 3541.67, deductionsForPeriod: 941.67, netForPeriod: 2912.0, payFrequency: 'semi-monthly', documentDate: longDaysAgo(5) }, notes: '' };
   return { filename, documentType: 'pay stub', unrecognized: false, extracted: { applicantName, employer: 'Northwind Sample Clinic Inc.', periodStart: 'July 1, 2026', periodEnd: 'July 15, 2026', payDate: 'July 20, 2026', grossForPeriod: 3541.67, regularRate: 40.86, hours: 86.67, payFrequency: null, documentDate: 'July 20, 2026' }, notes: 'No frequency word printed.' };
 };
 export function fakeAnthropic(extractionFor = defaultExtraction) {

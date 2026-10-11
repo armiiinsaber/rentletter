@@ -192,6 +192,61 @@ test('the same file twice: another applicant on the same realtor\'s listings, ne
   assert.match(store, /\.eq\('profile_id', profileId\)/, 'every hash read is filtered by the realtor');
 });
 
+// A co applicant's or guarantor's file is compared like any other: the person is the party, the
+// mirror lands on the party's own report, and one application's files are never compared together.
+const partyTables = () => ({
+  applicant_documents: [
+    { id: 'D-pat', listing_applicant_id: 'J5', application_party_id: 'P5', profile_id: 'me', kind: 'pay stub', content_hash: 'h5', deleted_at: null },
+    { id: 'D-nora', listing_applicant_id: 'J5', application_party_id: null, profile_id: 'me', kind: 'bank statement', content_hash: 'h6', deleted_at: null },
+    { id: 'D-quinn', listing_applicant_id: 'J2', application_party_id: 'P2', profile_id: 'me', kind: 'pay stub', content_hash: 'h5', deleted_at: null },
+    { id: 'D-joint', listing_applicant_id: 'J5', application_party_id: 'P6', profile_id: 'me', kind: 'bank statement', content_hash: 'h6', deleted_at: null },
+    { id: 'D-again', listing_applicant_id: 'J7', application_party_id: 'P7', profile_id: 'me', kind: 'pay stub', content_hash: 'h5', deleted_at: null },
+    { id: 'D-prim', listing_applicant_id: 'J8', application_party_id: null, profile_id: 'me', kind: 'pay stub', content_hash: 'h5', deleted_at: null },
+  ],
+  listing_applicants: [
+    { id: 'J2', listing_id: 'L2', application_id: 'A2', doc_verifications: null },
+    { id: 'J5', listing_id: 'L1', application_id: 'A5', doc_verifications: null },
+    { id: 'J7', listing_id: 'L1', application_id: 'A7', doc_verifications: null },
+    { id: 'J8', listing_id: 'L2', application_id: 'A8', doc_verifications: null },
+  ],
+  applications: [
+    { id: 'A2', full_name: 'Priya Sharma', email: 'priya@example.com' },
+    { id: 'A5', full_name: 'Nora Lindqvist', email: 'nora@example.com' },
+    { id: 'A7', full_name: 'Sam Okafor', email: 'sam@example.com' },
+    { id: 'A8', full_name: 'Lee Park', email: 'lee@example.com' },
+  ],
+  application_parties: [
+    { id: 'P5', application_id: 'A5', role: 'guarantor', full_name: 'Pat Guarantor', email: 'pat@example.com', doc_verifications: { active: { documents: [], integrity: [] }, archived: [] } },
+    { id: 'P6', application_id: 'A5', role: 'co_applicant', full_name: 'Ola Lindqvist', email: 'ola@example.com', doc_verifications: null },
+    { id: 'P2', application_id: 'A2', role: 'guarantor', full_name: 'Quinn Moss', email: 'quinn@example.com', doc_verifications: null },
+    { id: 'P7', application_id: 'A7', role: 'guarantor', full_name: 'Pat Guarantor', email: 'pat@example.com', doc_verifications: null },
+  ],
+  listings: [
+    { id: 'L1', profile_id: 'me', name: '210 Carlaw Ave', unit: '4' },
+    { id: 'L2', profile_id: 'me', name: '88 Harbour St', unit: '2104' },
+  ],
+});
+test('a co applicant\'s or guarantor\'s file is compared like any other, within the same realtor, and never within one application', async () => {
+  // Quinn, a guarantor on A2, sends the pay stub that Pat (a guarantor on A5 and on A7) and Lee (the
+  // primary on A8) sent: a finding for each, and a mirror on each sender's own report.
+  const t = partyTables(); const admin = fakeSupabase(t);
+  const quinn = await sameFileFindings(admin, { profileId: 'me', linkId: 'J2', applicationId: 'A2', application: { full_name: 'Quinn Moss', email: 'quinn@example.com' }, documentIds: ['D-quinn'], at: UPLOADED_AT });
+  assert.deepEqual(quinn.findings.map((f) => [f.type, f.documentId]), [['same_file', 'D-quinn'], ['same_file', 'D-quinn'], ['same_file', 'D-quinn']], 'Pat on A5, Pat on A7 and Lee on A8');
+  assert.deepEqual(quinn.mirrors.map((m) => [m.linkId, m.partyId, m.finding.documentId]).sort(), [['J5', 'P5', 'D-pat'], ['J7', 'P7', 'D-again'], ['J8', null, 'D-prim']].sort());
+  await applyMirrors(admin, quinn.mirrors); await applyMirrors(admin, quinn.mirrors);
+  assert.deepEqual(t.application_parties[0].doc_verifications.active.integrity.map((f) => [f.type, f.documentId]), [['same_file', 'D-pat']], 'the guarantor who sent it first gets it once, on their own report');
+  assert.equal(t.application_parties[0].doc_verifications.active.integrity[0].sentence, 'This pay stub is the same file another applicant submitted on 88 Harbour St, Unit 2104.');
+  assert.equal(t.application_parties[3].doc_verifications, null, 'no report, no mirror');
+  // Pat on A7: the match on A5 is Pat again (same email), the other two are other people.
+  const pat = await sameFileFindings(fakeSupabase(partyTables()), { profileId: 'me', linkId: 'J7', applicationId: 'A7', application: { full_name: 'Pat Guarantor', email: 'pat@example.com' }, documentIds: ['D-again'], at: UPLOADED_AT });
+  assert.deepEqual(pat.mirrors.map((m) => m.linkId).sort(), ['J2', 'J8']);
+  // One household: Ola's joint bank statement is the same file Nora (the primary on A5) sent.
+  const ola = await sameFileFindings(fakeSupabase(partyTables()), { profileId: 'me', linkId: 'J5', applicationId: 'A5', application: { full_name: 'Ola Lindqvist', email: 'ola@example.com' }, documentIds: ['D-joint'], at: UPLOADED_AT });
+  assert.deepEqual(ola, { findings: [], mirrors: [] });
+  // Another realtor never sees a party's file.
+  assert.deepEqual(await sameFileFindings(fakeSupabase(partyTables()), { profileId: 'them', linkId: 'J2', applicationId: 'A2', application: {}, documentIds: ['D-quinn'], at: UPLOADED_AT }), { findings: [], mirrors: [] });
+});
+
 // A chainable mock of the store's client: records every write.
 function mockAdmin(respond) {
   const calls = [];
@@ -227,6 +282,12 @@ test('the replacement request is the existing route, behind the session, the ent
   assert.match(route, /supabase\.auth\.getUser\(\)/); assert.match(route, /requireEntitlement\(req, res, supabase, user\)/); assert.match(route, /String\(ctx\.listing\.profile_id\) !== String\(user\.id\)/);
   assert.match(src('components/dashboard/ScreeningChecklist.js'), /title: 'Document checks', integrity: true/);
   assert.match(src('components/dashboard/ListingView.js'), /<IntegrityLine report=/);
+  // A party's checks: under the party, in the party's checklist row, and the request to that party.
+  assert.match(ui, /\.\.\.\(party \? \{ partyId: party\.id \} : \{\}\)/);
+  assert.match(route, /from\('application_parties'\)\.select\('\*'\)\.eq\('id', String\(partyId\)\)\.eq\('application_id', ctx\.junction\.application_id\)/, 'the party must be on this exact application');
+  assert.match(route, /tenantEmail: party \? null/, 'a party\'s email never comes back');
+  assert.match(src('components/dashboard/ListingView.js'), /<IntegrityLine report=\{p\.docVerifications\?\.\[0\] \|\| null\}/);
+  assert.match(src('components/dashboard/ScreeningChecklist.js'), /<IntegrityChecks applicant=\{applicant\} party=\{row\.partyChecks\}/);
 });
 
 // None of these words on any surface a realtor or tenant can see: comments are stripped first.

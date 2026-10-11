@@ -773,7 +773,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
   const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
   // A labelled, collapsible section inside the open card. Only the chevron moves (transform).
-  const renderSection = (a, key, title, defOpen, body) => {
+  // under: shown beneath the header whether or not the section is open (a party's check docs line).
+  const renderSection = (a, key, title, defOpen, body, under = null) => {
     const on = sectionOpen(a.linkId, key, defOpen);
     return (
       <div key={key} style={{ borderTop: `1px solid ${C.rule}`, marginTop: 'var(--s-2)' }}>
@@ -782,6 +783,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{noWidow(title)}</span>
           <span className={`m-chev ${on ? 'open' : ''}`} aria-hidden="true"><Icon name="chevronD" size={16} /></span>
         </button>
+        {under}
         {on && <div id={`applicant-${a.linkId}-${key}`} style={{ paddingBottom: 'var(--s-3)' }}>{body}</div>}
       </div>
     );
@@ -1066,13 +1068,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   </div>
                 );
                 // Commas, not separators: a wrapped title never starts or ends a line on a dot.
-                return <div key={p.id} data-party-row={p.status}>{renderSection(a, `party-${p.id}`, `${p.name}, ${String(p.roleLabel).toLowerCase()}, ${String(p.statusLabel).toLowerCase()}`, false, body)}</div>;
+                // That party's document checks, the same line as the primary's, under their own name.
+                const checks = p.status === 'submitted' ? <IntegrityLine report={p.docVerifications?.[0] || null} style={{ paddingBottom: 'var(--s-2)' }} /> : null;
+                return <div key={p.id} data-party-row={p.status} data-party={p.id}>{renderSection(a, `party-${p.id}`, `${p.name}, ${String(p.roleLabel).toLowerCase()}, ${String(p.statusLabel).toLowerCase()}`, false, body, checks)}</div>;
               })}
               <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(INVITE_CARD.householdLine)}</div>
             </div>
           )}
 
-          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} onReference={(resp) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, referenceResponse: resp } : x)))} heldDocuments={(a.storedDocuments || []).filter((d) => !d.partyId)} onViewDocument={viewDocument} />
+          <ScreeningChecklist applicant={a} listing={listing} profile={profile} onChange={(conf) => patchConfirmations(a.linkId, conf)} onReference={(resp) => setApplicants((prev) => prev.map((x) => (x.linkId === a.linkId ? { ...x, referenceResponse: resp } : x)))} heldDocuments={(a.storedDocuments || []).filter((d) => !d.partyId)} partyDocuments={(a.storedDocuments || []).filter((d) => d && d.partyId && !d.deletedAt)} onViewDocument={viewDocument} />
 
           <ApplicantDocIntel
             listingId={listing.id}

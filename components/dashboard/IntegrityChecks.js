@@ -4,8 +4,10 @@
 // new copy through the existing request (POST /api/applicants/request-documents, renewed and
 // emailed, behind the session, the entitlement and the ownership check). Notes (an employment
 // letter older than 90 days) sit under them, never as a check docs item. Nothing here moves Fit.
+// A co applicant's or guarantor's checks (party) read that party's own report, and the request goes
+// to that party alone (partyId on the same route), never to the primary.
 //   <IntegrityLine report />            the collapsed card's line: the pill and the first sentence
-//   <IntegrityChecks applicant listingId heldDocuments onViewDocument />   the checklist row's body
+//   <IntegrityChecks applicant party? listingId heldDocuments onViewDocument />   the checklist's body
 import { useState } from 'react';
 import { C } from '../theme';
 import { StatusPills } from '../ui';
@@ -17,6 +19,9 @@ export const CHECK_DOCS = 'check docs';
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const textBtn = { minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'left' };
 const outlineBtn = { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}` };
+// A month and its day stay on one line ("October 6"), the way noWidow keeps the last two words.
+const MONTH_DAY = /\b(January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2})\b/g;
+const say = (s) => noWidow(String(s || '').replace(MONTH_DAY, '$1\u00a0$2'));
 const line = { fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, overflowWrap: 'anywhere', textWrap: 'pretty' };
 
 export function IntegrityLine({ report, style }) {
@@ -25,14 +30,15 @@ export function IntegrityLine({ report, style }) {
   return (
     <div data-integrity-line="" style={style}>
       <StatusPills label="Document checks" items={[CHECK_DOCS, flags.length > 1 ? `${flags.length - 1} more` : null]} />
-      <p style={{ ...line, color: C.inkSoft, marginTop: 'var(--s-1)' }}>{noWidow(flags[0].sentence)}</p>
+      <p style={{ ...line, color: C.inkSoft, marginTop: 'var(--s-1)' }}>{say(flags[0].sentence)}</p>
     </div>
   );
 }
 
-export default function IntegrityChecks({ applicant, listingId, heldDocuments, onViewDocument }) {
+export default function IntegrityChecks({ applicant, party = null, listingId, heldDocuments, onViewDocument }) {
   const adapter = useAdapter();
-  const { flags, notes } = integrityOf(applicant && applicant.docVerifications ? applicant.docVerifications[0] : null);
+  const owner = party || applicant;
+  const { flags, notes } = integrityOf(owner && Array.isArray(owner.docVerifications) ? owner.docVerifications[0] : null);
   const [busy, setBusy] = useState(false);
   const [viewing, setViewing] = useState(null);
   const [requested, setRequested] = useState(null); // { at, emailed, note }
@@ -44,21 +50,21 @@ export default function IntegrityChecks({ applicant, listingId, heldDocuments, o
     if (busy) return;
     setBusy(true); setError('');
     try {
-      const r = await adapter.fetch('/api/applicants/request-documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId, linkId: applicant.linkId, applicationId: applicant.application?.id ?? null, sendEmail: true, renew: true }) });
+      const r = await adapter.fetch('/api/applicants/request-documents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId, linkId: applicant.linkId, applicationId: applicant.application?.id ?? null, sendEmail: true, renew: true, ...(party ? { partyId: party.id } : {}) }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j.error || 'Could not send the request.');
-      setRequested({ at: j.requestedAt || new Date().toISOString(), emailed: !!j.emailed, note: j.emailed ? `Emailed to ${j.tenantEmail || 'the tenant'}` : (j.emailError || 'The link is on file to share.') });
+      setRequested({ at: j.requestedAt || new Date().toISOString(), emailed: !!j.emailed, note: j.emailed ? `Emailed to ${party ? (j.sentToName || party.name) : (j.tenantEmail || 'the tenant')}` : (j.emailError || 'The link is on file to share.') });
     } catch (e) { setError(e?.message || 'Could not send the request.'); }
     finally { setBusy(false); }
   };
   return (
-    <div data-integrity="">
+    <div {...(party ? { 'data-integrity-party': party.id } : { 'data-integrity': '' })}>
       {flags.map((f, i) => {
         const doc = held(f.documentId);
         return (
           <div key={`${f.type}:${f.documentId}:${i}`} data-integrity-flag={f.type} style={{ marginTop: i ? 'var(--s-3)' : 0 }}>
             <StatusPills label="Document check" items={[CHECK_DOCS]} />
-            <p style={{ ...line, marginTop: 'var(--s-1)' }}>{noWidow(f.sentence)}</p>
+            <p style={{ ...line, marginTop: 'var(--s-1)' }}>{say(f.sentence)}</p>
             {doc
               ? <button type="button" onClick={() => view(doc)} disabled={viewing === doc.id} aria-label={`View the ${doc.kind || 'document'} this came from`} style={{ ...textBtn, opacity: viewing === doc.id ? 0.7 : 1 }}>View document</button>
               : <p style={{ ...line, color: C.inkMute, marginTop: 'var(--s-1)' }}>The document is no longer held.</p>}
@@ -75,7 +81,7 @@ export default function IntegrityChecks({ applicant, listingId, heldDocuments, o
               <button type="button" onClick={requestCopy} disabled={busy} style={{ ...outlineBtn, opacity: busy ? 0.7 : 1 }}>{busy ? 'Sending' : 'Request a new copy'}</button>
             </div>
       ) : null}
-      {notes.map((n, i) => <p key={`note:${n.documentId}:${i}`} data-integrity-note="" style={{ ...line, color: C.inkMute, marginTop: 'var(--s-2)' }}>{noWidow(n.sentence)}</p>)}
+      {notes.map((n, i) => <p key={`note:${n.documentId}:${i}`} data-integrity-note="" style={{ ...line, color: C.inkMute, marginTop: 'var(--s-2)' }}>{say(n.sentence)}</p>)}
       {error ? <p role="alert" style={{ ...line, color: C.danger, marginTop: 'var(--s-1)' }}>{noWidow(error)}</p> : null}
     </div>
   );

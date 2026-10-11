@@ -7,6 +7,10 @@
 // application binding). Stored in KV as docreq:{token} (+ a per-applicant reverse pointer). The
 // realtor may optionally email the link to the tenant via Resend (uses the tenant's application
 // email; never exposes owner_token or internal ids to the tenant). PRIVACY: no raw files here.
+// partyId: the request is for one co applicant or guarantor on this application (lib/parties.js),
+// minted as that party's own request (lib/docRequest.js partyMember) and emailed to that party,
+// never to the primary. The party's email never comes back to the realtor's browser.
+import { PARTY_STATUS } from '../../../lib/parties';
 import { Resend } from 'resend';
 import { SET_SENTENCE_LOWER } from '../../../lib/documentSet';
 import { invalidateSignals } from '../../../lib/signalsCache';
@@ -37,7 +41,7 @@ export default async function handler(req, res) {
   // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
   if (!(await requireEntitlement(req, res, supabase, user))) return;
 
-  const { listingId, linkId, applicationId, sendEmail, renew } = req.body || {};
+  const { listingId, linkId, applicationId, sendEmail, renew, partyId } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant reference.' });
 
   // Authorize: realtor owns the listing (RLS) AND this link is on it.
@@ -57,8 +61,16 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'Applicant reference mismatch, please reload and try again.' });
   }
 
-  const tenantName = String(ctx.application?.full_name || '').slice(0, 120);
-  const tenantEmail = String(ctx.application?.email || '').trim().toLowerCase();
+  // A party's request: the party must be on this exact application and have sent their form.
+  let party = null;
+  if (partyId != null && partyId !== '') {
+    const { data: p, error: pErr } = await getSupabaseAdminClient().from('application_parties').select('*').eq('id', String(partyId)).eq('application_id', ctx.junction.application_id).maybeSingle();
+    if (pErr || !p) return res.status(404).json({ error: 'That person is not on this application.' });
+    if (p.status !== PARTY_STATUS.SUBMITTED) return res.status(409).json({ error: [PARTY_STATUS.INVITED, PARTY_STATUS.IN_PROGRESS].includes(p.status) ? 'That person has not sent their form yet.' : 'That person is no longer on this application.' });
+    party = p;
+  }
+  const tenantName = String((party ? party.full_name : ctx.application?.full_name) || '').slice(0, 120);
+  const tenantEmail = String((party ? party.email : ctx.application?.email) || '').trim().toLowerCase();
   const listingName = String(displayLabel(ctx.listing, 'your rental')).slice(0, 120);
   const address = String(ctx.listing?.address || '').slice(0, 160);
 
@@ -71,7 +83,7 @@ export default async function handler(req, res) {
     // One mint for both paths (lib/docRequest.js mintRequest): reuses a live request so the link
     // stays stable, unless the realtor renews ("Request again") after a prior submission, in which
     // case a brand new token is minted and the old link answers "already received".
-    const minted = await mintRequest({ listingId, linkId, applicationId: ctx.junction.application_id, tenantName, listingName, address, realtorName, brokerage, askCreditReport: !!ctx.listing?.pref_ask_credit_report }, { renew: !!renew });
+    const minted = await mintRequest({ listingId, linkId, applicationId: ctx.junction.application_id, tenantName, listingName, address, realtorName, brokerage, askCreditReport: !!ctx.listing?.pref_ask_credit_report, partyId: party ? party.id : null }, { renew: !!renew });
     const { token, status, requestedAt } = minted;
 
     const url = uploadUrl(token);
@@ -91,7 +103,7 @@ export default async function handler(req, res) {
       <tr><td style="background:#ffffff;padding:22px 26px 28px;border:1px solid #ece5d6;border-top:none;">
         <p style="margin:0 0 12px;font-size:15px;color:#0f0f10;line-height:1.55;">Hi ${escapeHtml(tenantName || 'there')},</p>
         <p style="margin:0 0 18px;font-size:15px;color:#3a3a3c;line-height:1.6;">
-          ${escapeHtml(realtorName)} has requested a few documents to finalize your rental application${address ? ` for <strong style="color:#0f0f10;">${escapeHtml(address)}</strong>` : ''}: ${SET_SENTENCE_LOWER}. You can upload them securely here:
+          ${escapeHtml(realtorName)} has requested a few documents ${party ? 'for the rental application you joined' : 'to finalize your rental application'}${address ? ` for <strong style="color:#0f0f10;">${escapeHtml(address)}</strong>` : ''}: ${SET_SENTENCE_LOWER}. You can upload them securely here:
         </p>
         <p style="margin:0 0 20px;"><a href="${url}" style="display:inline-block;background:#d72027;color:#fff;text-decoration:none;font-weight:700;font-size:15px;padding:13px 22px;border-radius:12px;">Upload your documents</a></p>
         <p style="margin:0 0 6px;font-size:13px;color:#86868b;line-height:1.6;">Your documents are read to match income and employer to the application; a credit report is never scored. Your realtor can view them for 14 days, then they are deleted. Only the listing realtor sees them. Do not send anything showing your SIN.</p>
@@ -120,8 +132,9 @@ export default async function handler(req, res) {
     // further along stays where they are. Never fails the request: the link is already minted.
     try { await transitionApplicationIfAllowed(getSupabaseAdminClient(), { junction: ctx.junction, listing: ctx.listing, to: APPLICATION_STATE.DOCS_PENDING, onlyFrom: [APPLICATION_STATE.SUBMITTED], actor: user.id, actorType: ACTOR_TYPE.REALTOR, reason: renew ? 'documents_requested_again' : 'documents_requested' }); }
     catch (e) { console.error('[request-documents] state:', e?.message || e); }
-    await recordForListing(getSupabaseAdminClient(), listingId, 'documents_requested', { applicationId: ctx.junction.application_id, linkId, payload: { renewed: !!renew, emailed } });
-    invalidateSignals(user.id); return res.status(200).json({ ok: true, token, url, status, requestedAt, tenantEmail: tenantEmail || null, emailed, emailError });
+    await recordForListing(getSupabaseAdminClient(), listingId, 'documents_requested', { applicationId: ctx.junction.application_id, linkId, payload: { renewed: !!renew, emailed, ...(party ? { partyId: party.id } : {}) } });
+    // A party's email stays on the server: the realtor sees who it went to by name.
+    invalidateSignals(user.id); return res.status(200).json({ ok: true, token, url, status, requestedAt, tenantEmail: party ? null : (tenantEmail || null), sentToName: party ? tenantName : null, emailed, emailError });
   } catch (e) {
     console.error('[request-documents] error:', e?.message || e);
     return res.status(500).json({ error: 'Could not create the document request.' });

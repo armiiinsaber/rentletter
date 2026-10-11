@@ -35,7 +35,7 @@ const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${
 // The one line of guidance under the rows a realtor phones: the number must be the realtor's own.
 const GUIDANCE = 'Use a number you find yourself, not one the applicant gave.';
 
-export default function ScreeningChecklist({ applicant, listing, profile, onChange, onReference, heldDocuments, onViewDocument }) {
+export default function ScreeningChecklist({ applicant, listing, profile, onChange, onReference, heldDocuments, partyDocuments, onViewDocument }) {
   const adapter = useAdapter();
   const app = applicant.application || {};
   const fit = app.fit || null;
@@ -126,7 +126,9 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
       const pv = readVerification(p.docVerifications && p.docVerifications[0] ? p.docVerifications[0] : null);
       const pDocs = pv.state === 'none' ? 'none' : pv.state !== 'ok' ? 'name did not match' : pv.incomeMatched ? `${pv.incomeExplanation || 'income'} matches` : pv.incomeClose ? `${pv.incomeExplanation}, close to stated` : pv.incomeMismatch ? 'did not match' : 'nothing matched';
       const notIn = p.status !== 'submitted';
-      return { key: notIn ? null : partyConfirmKey(p.id), title: `${p.roleLabel}: ${p.name}`, said: notIn ? (p.status === 'declined' ? 'declined' : p.status === 'withdrawn' ? 'withdrew' : 'form not in yet') : (partyFacts(p, conf).slice(0, 3).join(', ') || 'no income given'), docs: notIn ? null : pDocs, verb: 'Called employer', party: p.id };
+      // That party's document checks, the same as the primary's, read from the party's own report.
+      const pic = notIn ? { flags: [], notes: [] } : integrityOf(p.docVerifications && p.docVerifications[0] ? p.docVerifications[0] : null);
+      return { key: notIn ? null : partyConfirmKey(p.id), title: `${p.roleLabel}: ${p.name}`, said: notIn ? (p.status === 'declined' ? 'declined' : p.status === 'withdrawn' ? 'withdrew' : 'form not in yet') : (partyFacts(p, conf).slice(0, 3).join(', ') || 'no income given'), docs: notIn ? null : pDocs, verb: 'Called employer', party: p.id, partyChecks: pic.flags.length || pic.notes.length ? p : null };
     }) : []),
   ];
 
@@ -205,6 +207,14 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                   style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
                   {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}
                 </button>
+              ) : null}
+              {row.partyChecks ? (
+                <div data-party-checks={row.partyChecks.id} style={{ flex: '1 1 100%', minWidth: 0, marginTop: 'var(--s-1)' }}>
+                  <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>Document checks</div>
+                  <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+                    <IntegrityChecks applicant={applicant} party={row.partyChecks} listingId={listing?.id} heldDocuments={(Array.isArray(partyDocuments) ? partyDocuments : []).filter((d) => d && String(d.partyId || '') === String(row.partyChecks.id))} onViewDocument={onViewDocument} />
+                  </div>
+                </div>
               ) : null}
             </div>
           );

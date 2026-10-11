@@ -75,7 +75,7 @@ export default async function handler(req, res) {
         let party = null;
         if (rec.partyId) { const { data: p } = await admin.from('application_parties').select('*').eq('id', rec.partyId).eq('application_id', junction.application_id).maybeSingle(); party = p || null; }
         const application = party
-          ? { id: junction.application_id, full_name: party.full_name, annual_income: party.annual_income, employer: party.employer || party.business_name, job_title: party.job_title, years_at_job: party.years_at_job }
+          ? { id: junction.application_id, full_name: party.full_name, email: party.email, annual_income: party.annual_income, employer: party.employer || party.business_name, job_title: party.job_title, years_at_job: party.years_at_job }
           : { ...(junction.application || {}) };
         delete application.owner_token;
         delete application.cover_letter;
