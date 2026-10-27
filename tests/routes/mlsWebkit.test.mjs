@@ -90,9 +90,8 @@ async function fillBoard(sheet, page) {
   await sheet.getByLabel('Parking spaces').fill(BOARD.parking);
   await sheet.getByLabel('Locker').fill(BOARD.locker);
   await sheet.getByLabel('Furnished').selectOption('no');
-  // The checkbox rows carry a 44px hit area (lib/motion.js): the tap lands on the label, as a thumb does.
-  for (const u of ['Heat', 'Water']) { await sheet.locator('label', { hasText: new RegExp(`^${u}$`) }).click(); }
-  for (const u of ['Heat', 'Water']) { if (!(await sheet.getByLabel(u).isChecked())) throw new Error(`${u} did not check`); }
+  // Three states each: Heat and Water included, Hydro not included, through the selects.
+  await sheet.getByLabel('Heat').selectOption('yes'); await sheet.getByLabel('Hydro').selectOption('no'); await sheet.getByLabel('Water').selectOption('yes');
   await sheet.getByLabel('Last month’s rent deposit (CAD)').fill(BOARD.lastMonth);
   await sheet.getByLabel('Key deposit (CAD)').fill(BOARD.key);
   const text = plain(await sheet.locator('[data-board-details]').innerText());
@@ -129,7 +128,7 @@ async function walk(type, opts, tag) {
     await page.waitForURL(/\/listing\//, { timeout: 60000 }); await page.waitForTimeout(600);
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
     const rows = plain(await page.locator('[data-board-rows]').innerText());
-    for (const line of ['MLS number', 'C1234567', 'Demo Realty, 8 Sample Ave, Toronto, 416 555 0100', 'Other Realty', 'Half a month’s rent plus HST', 'December 1, 2026', '12 months', 'Heat, Water', 'B12', '$2,600', '$50']) assert.ok(rows.includes(line), `the Details fold shows ${line}: ${rows}`);
+    for (const line of ['MLS number', 'C1234567', 'Demo Realty, 8 Sample Ave, Toronto, 416 555 0100', 'Other Realty', 'Half a month’s rent plus HST', 'December 1, 2026', '12 months', 'Heat included, Hydro not included, Water included', 'B12', '$2,600', '$50']) assert.ok(rows.includes(line), `the Details fold shows ${line}: ${rows}`);
     // 2. The profile: the brokerage address and the board.
     walkStep('the profile fields');
     await page.goto('/profile', { waitUntil: 'load', timeout: 120000 });

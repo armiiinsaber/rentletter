@@ -84,8 +84,10 @@ The guarantor whose form is in, if any. Never their income, employer or document
 
 ### Utilities and inclusions
 - Heat, Hydro, Water: listings.utilities_heat, utilities_hydro, utilities_water, each "Included"
-  or "Not included"
-- Furnished: listings.furnished, Yes or No
+  or "Not included" when the realtor set it, and "Not entered" (skipped by every copy) when they
+  did not: the columns are nullable with no default, so an untouched listing never reads
+  "Not included"
+- Furnished: listings.furnished, Yes or No, the same three states
 
 ### Brokerages and commission
 - Listing brokerage: listings.listing_brokerage_name, prefilled from profiles.brokerage

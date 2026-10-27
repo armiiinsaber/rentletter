@@ -38,7 +38,7 @@ const EMPTY = {
   // on the realtor's province; the write clears the ones the province does not allow.
   mls_number: '', listing_brokerage_name: '', listing_brokerage_address: '', listing_brokerage_phone: '',
   coop_brokerage_name: '', coop_commission: '', possession_date: '', lease_term_months: '',
-  utilities_heat: false, utilities_hydro: false, utilities_water: false,
+  utilities_heat: '', utilities_hydro: '', utilities_water: '',
   parking_spaces: '', locker: '', furnished: '',
   deposit_last_month: '', deposit_key: '', deposit_security: '', deposit_pet: '',
 };
@@ -81,6 +81,8 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   }
   // Numbers and the furnished answer as the inputs hold them (strings); the brokerage from the profile.
   for (const k of ['lease_term_months', 'parking_spaces', 'deposit_last_month', 'deposit_key', 'deposit_security', 'deposit_pet']) seed[k] = seed[k] == null || seed[k] === '' ? '' : String(seed[k]);
+  // Three states each, as the select holds them: included, not included, or not set.
+  for (const k of ['utilities_heat', 'utilities_hydro', 'utilities_water']) seed[k] = seed[k] === true ? 'yes' : seed[k] === false ? 'no' : '';
   seed.furnished = seed.furnished === true ? 'yes' : seed.furnished === false ? 'no' : '';
   seed.possession_date = seed.possession_date ? String(seed.possession_date).slice(0, 10) : '';
   for (const k of BOARD_PREFILL) if (!String(seed[k] || '').trim() && prefill && prefill[k]) seed[k] = String(prefill[k]);
@@ -307,11 +309,15 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
                     <option value="">Not entered</option><option value="yes">Yes</option><option value="no">No</option>
                   </select></label>
               </div>
-              <div style={{ ...sectionLabel, marginTop: 14, marginBottom: 6 }}>Utilities included</div>
-              <div style={{ display: 'grid', rowGap: 20 }}>
-                <Check k="utilities_heat" label="Heat" />
-                <Check k="utilities_hydro" label="Hydro" />
-                <Check k="utilities_water" label="Water" />
+              {/* Three states each: an untouched utility stays not set and reads Not entered in Form data. */}
+              <div style={{ ...sectionLabel, marginTop: 14, marginBottom: 6 }}>Utilities</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                {[['utilities_heat', 'Heat'], ['utilities_hydro', 'Hydro'], ['utilities_water', 'Water']].map(([k, label]) => (
+                  <label key={k}><span style={fieldLabel}>{label}</span>
+                    <select value={form[k]} onChange={(e) => set({ [k]: e.target.value })} style={inputStyle}>
+                      <option value="">Not entered</option><option value="yes">Included</option><option value="no">Not included</option>
+                    </select></label>
+                ))}
               </div>
               {/* The province's deposits alone (lib/boardDetails.js depositRules), each against the rent typed above. */}
               <div style={{ ...sectionLabel, marginTop: 18, marginBottom: 6 }}>Deposits</div>

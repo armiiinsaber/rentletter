@@ -16,7 +16,8 @@
 --                              usually written ("half a month's rent plus HST")
 --   possession_date            the start of the term
 --   lease_term_months          the length of the term
---   utilities_heat, utilities_hydro, utilities_water   included or not, each on its own
+--   utilities_heat, utilities_hydro, utilities_water   included, not included, or not set (null):
+--                              an untouched listing reads Not entered, never Not included
 --   parking_spaces, locker, furnished
 --   deposit_last_month, deposit_key          Ontario: a rent deposit of at most one month's rent,
 --                                            applied to the last month, and a refundable key deposit
@@ -39,9 +40,9 @@ ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS coop_brokerage_name text;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS coop_commission text;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS possession_date date;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS lease_term_months integer;
-ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS utilities_heat boolean NOT NULL DEFAULT false;
-ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS utilities_hydro boolean NOT NULL DEFAULT false;
-ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS utilities_water boolean NOT NULL DEFAULT false;
+ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS utilities_heat boolean;
+ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS utilities_hydro boolean;
+ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS utilities_water boolean;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS parking_spaces integer;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS locker text;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS furnished boolean;
@@ -53,6 +54,7 @@ ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS deposit_pet integer;
 COMMENT ON COLUMN public.listings.mls_number IS 'The board''s listing number. Board details (lib/boardDetails.js): optional, never a criterion, never read by Fit, never shown to a tenant.';
 COMMENT ON COLUMN public.listings.coop_commission IS 'The commission to the cooperating brokerage as it is usually written, free text.';
 COMMENT ON COLUMN public.listings.possession_date IS 'The start of the term, as entered. Nothing is derived from it.';
+COMMENT ON COLUMN public.listings.utilities_heat IS 'Heat: true included, false not included, null not set. The same for utilities_hydro and utilities_water.';
 COMMENT ON COLUMN public.listings.deposit_last_month IS 'Ontario: a rent deposit of at most one month''s rent, applied to the last month (lib/boardDetails.js depositRules).';
 COMMENT ON COLUMN public.listings.deposit_key IS 'Ontario: a refundable key deposit.';
 COMMENT ON COLUMN public.listings.deposit_security IS 'British Columbia: a security deposit of at most half a month''s rent.';

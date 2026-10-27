@@ -41,6 +41,30 @@ test('empty values read null, are skipped by every copy, and an empty group is l
   assert.deepEqual(buildFormData({ listing: {}, profile: {}, application: {}, parties: [] }).groups[6].items.map((it) => it.value), [null, null, null, null]);
 });
 
+test('a listing with no utilities set produces no utility lines in Copy all, and a set one reads as set', () => {
+  // The columns are nullable with no default (db/012): untouched, every utility and furnished read
+  // null, show Not entered, and are skipped by every copy; nothing reads Not included on its own.
+  const untouched = buildFormData({ listing: { ...LISTING, utilities_heat: null, utilities_hydro: null, utilities_water: null, furnished: null }, profile: PROFILE, application: APPLICATION, parties: PARTIES });
+  const utilities = untouched.groups.find((g) => g.key === 'utilities');
+  assert.deepEqual(utilities.items.map((it) => it.value), [null, null, null, null]);
+  assert.equal(groupText(utilities), '');
+  const all = formDataText(untouched.groups);
+  assert.doesNotMatch(all, /Heat|Hydro|Water|Furnished|Utilities and inclusions|Not included/);
+  // A row the migration has not reached yet reads the same way.
+  const noColumns = buildFormData({ listing: { address: '5 New St' }, profile: {}, application: {}, parties: [] });
+  assert.equal(groupText(noColumns.groups.find((g) => g.key === 'utilities')), '');
+  // Set, each state reads as set: included, not included, and not set side by side.
+  const mixed = buildFormData({ listing: { utilities_heat: true, utilities_hydro: false, utilities_water: null, furnished: false }, profile: {}, application: {}, parties: [] });
+  assert.equal(groupText(mixed.groups.find((g) => g.key === 'utilities')), 'Utilities and inclusions\nHeat: Included\nHydro: Not included\nFurnished: No');
+  // The normalizer keeps the three states: yes, no and nothing.
+  assert.deepEqual(B.normalizeBoardDetails({ utilities_heat: 'yes', utilities_hydro: 'no', utilities_water: '', furnished: 'yes' }, {}).values, { utilities_heat: true, utilities_hydro: false, utilities_water: null, furnished: true });
+  assert.deepEqual(B.boardRows({ utilities_heat: true, utilities_hydro: false }, 'ON'), [['Utilities', 'Heat included, Hydro not included']]);
+  assert.deepEqual(B.boardRows({ utilities_heat: null }, 'ON'), []);
+  const sql = src('db/012-board-details.sql');
+  for (const c of ['utilities_heat', 'utilities_hydro', 'utilities_water', 'furnished']) assert.match(sql, new RegExp(`ADD COLUMN IF NOT EXISTS ${c} boolean;`), `${c} is a nullable boolean with no default`);
+  assert.doesNotMatch(src('components/listings/ListingSetupModal.js'), /<Check k="utilities_/, 'the sheet offers three states, not a checkbox');
+});
+
 test('the province picks the deposits: Ontario last month and key, British Columbia security and pet at most half a month, and the write refuses more', () => {
   const on = buildFormData({ listing: { ...LISTING, deposit_security: 900, deposit_pet: 900 }, profile: PROFILE, application: APPLICATION, parties: [] });
   assert.deepEqual(on.groups[5].items.map((it) => it.label), ['Monthly rent', 'Last month’s rent deposit', 'Key deposit']);
@@ -60,7 +84,7 @@ test('the province picks the deposits: Ontario last month and key, British Colum
   const v = B.normalizeBoardDetails({ mls_number: '  C1 ', possession_date: 'December 1', lease_term_months: '12', utilities_heat: 'yes', utilities_hydro: false, furnished: 'no', parking_spaces: '-1', locker: '' }, { province: 'ON', monthlyRent: 2600 }).values;
   assert.deepEqual(v, { mls_number: 'C1', possession_date: null, lease_term_months: 12, utilities_heat: true, utilities_hydro: false, furnished: false, parking_spaces: null, locker: null });
   assert.equal(B.normalizeBoardDetails({ furnished: '' }, {}).values.furnished, null);
-  assert.deepEqual(B.boardRows(LISTING, 'ON').map(([k]) => k), ['MLS number', 'Listing brokerage', 'Cooperating brokerage', 'Commission', 'Possession', 'Lease term', 'Utilities included', 'Parking spaces', 'Locker', 'Furnished', 'Last month’s rent deposit', 'Key deposit']);
+  assert.deepEqual(B.boardRows(LISTING, 'ON').map(([k]) => k), ['MLS number', 'Listing brokerage', 'Cooperating brokerage', 'Commission', 'Possession', 'Lease term', 'Utilities', 'Parking spaces', 'Locker', 'Furnished', 'Last month’s rent deposit', 'Key deposit']);
   assert.deepEqual(B.boardRows({}, 'ON'), []);
   assert.equal(B.longDate('2026-12-01'), 'December 1, 2026'); assert.equal(B.longDate(null), null);
 });

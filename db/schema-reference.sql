@@ -108,9 +108,8 @@
 --     coop_brokerage_name, coop_commission   text
 --     possession_date                        date
 --     lease_term_months, parking_spaces, deposit_last_month, deposit_key, deposit_security, deposit_pet   integer
---     utilities_heat, utilities_hydro, utilities_water   boolean not null default false
+--     utilities_heat, utilities_hydro, utilities_water, furnished   boolean, null when not set
 --     locker                                 text
---     furnished                              boolean
 --
 -- public.listing_applicants
 --   id                    uuid        not null  default gen_random_uuid()  primary key

@@ -423,14 +423,14 @@ const BOARD_COLUMNS = [
 ];
 async function check012(db, label) {
   for (const [c, type] of BOARD_COLUMNS) check((await one(db, "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = $1", [c])) === type, `${label}: listings.${c} is ${type}`);
-  for (const c of ['utilities_heat', 'utilities_hydro', 'utilities_water']) {
+  for (const c of ['utilities_heat', 'utilities_hydro', 'utilities_water', 'furnished']) {
     const col = (await rows(db, "SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = $1", [c]))[0];
-    check(col.is_nullable === 'NO' && /false/.test(col.column_default), `${label}: ${c} is NOT NULL, default false`, JSON.stringify(col));
+    check(col.is_nullable === 'YES' && col.column_default === null, `${label}: ${c} is nullable with no default`, JSON.stringify(col));
   }
   for (const c of ['brokerage_address', 'board']) check((await one(db, "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = $1", [c])) === 'text', `${label}: profiles.${c} is text`);
   check((await constraintCount(db, 'profiles_board_check')) === 1, `${label}: the board check exists once`);
   const fresh = await rows(db, "INSERT INTO public.listings (profile_id, name, monthly_rent) VALUES ($1, 'Board probe', 2000) RETURNING mls_number, utilities_heat, furnished, deposit_key", [ID.me]);
-  check(fresh[0].mls_number === null && fresh[0].utilities_heat === false && fresh[0].furnished === null && fresh[0].deposit_key === null, `${label}: a listing inserts without the columns and reads them empty`);
+  check(fresh[0].mls_number === null && fresh[0].utilities_heat === null && fresh[0].furnished === null && fresh[0].deposit_key === null, `${label}: a listing inserts without the columns and reads them empty, the utilities not set`);
   await db.query("DELETE FROM public.listings WHERE name = 'Board probe'");
   check(/profiles_board_check/.test(await refused(db, "UPDATE public.profiles SET board = 'elsewhere' WHERE id = $1", [ID.me])), `${label}: a board off the list is refused`);
   await db.query("UPDATE public.profiles SET board = 'trreb', brokerage_address = '1 Sample St' WHERE id = $1", [ID.me]);
@@ -446,7 +446,7 @@ async function run012(db, tag) {
   await step(db, `${tag}2 (012 again)`, FILES.m012); await check012(db, `${tag}2`);
   const kept = (await rows(db, 'SELECT mls_number, utilities_heat, lease_term_months, deposit_last_month FROM public.listings WHERE id = $1', [ID.live]))[0];
   check(kept.mls_number === 'C1234567' && kept.utilities_heat === true && kept.lease_term_months === 12 && kept.deposit_last_month === 2600, `${tag}2: a second run leaves the typed values where they were`);
-  await db.query('UPDATE public.listings SET mls_number = NULL, utilities_heat = false, lease_term_months = NULL, deposit_last_month = NULL WHERE id = $1', [ID.live]);
+  await db.query('UPDATE public.listings SET mls_number = NULL, utilities_heat = NULL, lease_term_months = NULL, deposit_last_month = NULL WHERE id = $1', [ID.live]);
   const after = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
   const strip = (list) => list.map((r) => { const o = { ...r }; for (const [c] of BOARD_COLUMNS) delete o[c]; return o; });
   check(same(strip(after), strip(before)), `${tag}2: every other column of every listing is what it was`);
