@@ -25,6 +25,12 @@
 --   The write refuses a deposit above the province's cap and clears the deposits the province does
 --   not allow (lib/boardDetails.js normalizeBoardDetails); the columns themselves hold any integer.
 --
+-- An earlier version of this file created utilities_heat, utilities_hydro and utilities_water as
+-- boolean NOT NULL DEFAULT false. Where it ran, ADD COLUMN IF NOT EXISTS leaves that shape in place,
+-- so this file also relaxes the three columns: a guarded block drops NOT NULL and the default from
+-- each one, and only where they are present. No row is changed: a false stored by the old default
+-- cannot be told apart from a chosen Not included, so the data stays as it is.
+--
 -- profiles: beside brokerage and license_number (the RECO registration number), which exist.
 --   brokerage_address          prefills the listing's brokerage address
 --   board                      trreb, mississauga, hamilton, ottawa, greater_vancouver,
@@ -50,6 +56,22 @@ ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS deposit_last_month integer;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS deposit_key integer;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS deposit_security integer;
 ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS deposit_pet integer;
+
+-- The three utility columns where an earlier version of this file made them NOT NULL DEFAULT false.
+-- Guarded: NOT NULL is dropped only where it is set, the default only where one exists, so a fresh
+-- database or a second run changes nothing. No row is updated.
+DO $$
+DECLARE col text;
+BEGIN
+  FOREACH col IN ARRAY ARRAY['utilities_heat', 'utilities_hydro', 'utilities_water'] LOOP
+    IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'public.listings'::regclass AND attname = col AND NOT attisdropped AND attnotnull) THEN
+      EXECUTE format('ALTER TABLE public.listings ALTER COLUMN %I DROP NOT NULL', col);
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_attribute WHERE attrelid = 'public.listings'::regclass AND attname = col AND NOT attisdropped AND atthasdef) THEN
+      EXECUTE format('ALTER TABLE public.listings ALTER COLUMN %I DROP DEFAULT', col);
+    END IF;
+  END LOOP;
+END $$;
 
 COMMENT ON COLUMN public.listings.mls_number IS 'The board''s listing number. Board details (lib/boardDetails.js): optional, never a criterion, never read by Fit, never shown to a tenant.';
 COMMENT ON COLUMN public.listings.coop_commission IS 'The commission to the cooperating brokerage as it is usually written, free text.';

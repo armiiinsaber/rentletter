@@ -5,7 +5,7 @@
 // knows a Supabase URL. Every path starts from an empty database and throws it away.
 //
 // Every file is run the way the SQL editor runs a script: as ONE transaction, BEGIN to COMMIT.
-// All three paths run twice. First with the statements sent one at a time inside that
+// Every path runs twice. First with the statements sent one at a time inside that
 // transaction, so a failure names the file and the line of the statement that caused it. Then
 // with the whole file sent as one query string, BEGIN and COMMIT included, which is exactly
 // what the editor sends. A failure rolls the transaction back and stops the path.
@@ -16,6 +16,8 @@
 //                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
 //                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, 012, each twice
 //   Path C  rollback      after path B: 999, 999 again
+//   Path D  old 012       baseline, the three utility columns as the earlier 012 made them (boolean
+//                         NOT NULL DEFAULT false, git show 555c286) on listings that hold rows, 012, 012 again
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -421,6 +423,8 @@ const BOARD_COLUMNS = [
   ['utilities_heat', 'boolean'], ['utilities_hydro', 'boolean'], ['utilities_water', 'boolean'], ['parking_spaces', 'integer'],
   ['locker', 'text'], ['furnished', 'boolean'], ['deposit_last_month', 'integer'], ['deposit_key', 'integer'], ['deposit_security', 'integer'], ['deposit_pet', 'integer'],
 ];
+// Every column of listings as the catalog holds it: name, type, NOT NULL, and the default expression.
+const listingsCatalog = (db) => rows(db, "SELECT a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, a.atthasdef, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE a.attrelid = 'public.listings'::regclass AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum");
 async function check012(db, label) {
   for (const [c, type] of BOARD_COLUMNS) check((await one(db, "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = $1", [c])) === type, `${label}: listings.${c} is ${type}`);
   for (const c of ['utilities_heat', 'utilities_hydro', 'utilities_water', 'furnished']) {
@@ -443,7 +447,9 @@ async function run012(db, tag) {
   const before = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
   await step(db, `${tag}1`, FILES.m012); await check012(db, `${tag}1`);
   await db.query("UPDATE public.listings SET mls_number = 'C1234567', utilities_heat = true, lease_term_months = 12, deposit_last_month = 2600 WHERE id = $1", [ID.live]);
+  const shape = await listingsCatalog(db);
   await step(db, `${tag}2 (012 again)`, FILES.m012); await check012(db, `${tag}2`);
+  check(same(await listingsCatalog(db), shape), `${tag}2: a second run leaves every listings column, its type, NOT NULL and default as they were`);
   const kept = (await rows(db, 'SELECT mls_number, utilities_heat, lease_term_months, deposit_last_month FROM public.listings WHERE id = $1', [ID.live]))[0];
   check(kept.mls_number === 'C1234567' && kept.utilities_heat === true && kept.lease_term_months === 12 && kept.deposit_last_month === 2600, `${tag}2: a second run leaves the typed values where they were`);
   await db.query('UPDATE public.listings SET mls_number = NULL, utilities_heat = NULL, lease_term_months = NULL, deposit_last_month = NULL WHERE id = $1', [ID.live]);
@@ -604,6 +610,48 @@ async function pathC({ db, before }) {
   await db.close();
 }
 
+// The earlier db/012 (git show 555c286) created the three utility columns boolean NOT NULL DEFAULT
+// false, and ADD COLUMN IF NOT EXISTS leaves that shape alone. 012 relaxes them in a guarded block:
+// after it each one is nullable with no default, every stored value is kept (a false the old
+// default wrote stays false), and a bare insert reads them as not set. 012 again changes nothing.
+const OLD_012_COMMIT = '555c286';
+const UTILITIES = ['utilities_heat', 'utilities_hydro', 'utilities_water'];
+const OLD_UTILITIES_SQL = UTILITIES.map((c) => `ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS ${c} boolean NOT NULL DEFAULT false;`).join('\n');
+const utilityShape = async (db) => Object.fromEntries((await rows(db, "SELECT column_name, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = ANY($1) ORDER BY column_name", [UTILITIES])).map((r) => [r.column_name, `${r.is_nullable} ${r.column_default}`]));
+const utilityRows = (db) => rows(db, 'SELECT id, utilities_heat, utilities_hydro, utilities_water FROM public.listings ORDER BY id');
+async function pathD() {
+  say('\nPATH D  upgrade from the earlier 012: the utility columns NOT NULL DEFAULT false');
+  const db = new PGlite();
+  const old012 = execFileSync('git', ['show', `${OLD_012_COMMIT}:${FILES.m012}`], { cwd: ROOT, encoding: 'utf8' });
+  check(OLD_UTILITIES_SQL.split('\n').every((line) => old012.includes(line)), `git show ${OLD_012_COMMIT}:${FILES.m012} created the three utility columns boolean NOT NULL DEFAULT false, the shape built here`);
+  await baseline(db);
+  const listingCount = await one(db, 'SELECT count(*)::int FROM public.listings');
+  check(listingCount > 0, `before the old shape, listings already holds ${listingCount} rows`);
+  await step(db, 'D1 (the old utility columns)', `the three ADD COLUMN lines of ${OLD_012_COMMIT}:${FILES.m012}`, OLD_UTILITIES_SQL);
+  check(same(await utilityShape(db), Object.fromEntries(UTILITIES.map((c) => [c, 'NO false']))), 'D1: all three are NOT NULL with the default false', JSON.stringify(await utilityShape(db)));
+  // Rows written under the old shape: the ones that were there read the default, one row set by
+  // hand per column, and one inserted afterward that took the default.
+  await db.query('UPDATE public.listings SET utilities_heat = true WHERE id = $1', [ID.live]);
+  await db.query('UPDATE public.listings SET utilities_hydro = true, utilities_water = true WHERE id = $1', [ID.rented]);
+  await db.query("INSERT INTO public.listings (id, profile_id, name, monthly_rent) VALUES ('aaaaaaa1-0000-4000-8000-000000000005', $1, 'Saved under the old shape', 2200)", [ID.me]);
+  const held = await utilityRows(db);
+  check(held.length === listingCount + 1 && held.every((r) => UTILITIES.every((c) => typeof r[c] === 'boolean')) && held.flatMap((r) => UTILITIES.map((c) => r[c])).filter(Boolean).length === 3, `D1: ${held.length} rows hold a boolean in every utility column, three of them true, the rest false from the default`);
+  const before = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
+  await step(db, 'D2', FILES.m012); await check012(db, 'D2');
+  check(same(await utilityShape(db), Object.fromEntries(UTILITIES.map((c) => [c, 'YES null']))), 'D2: all three are nullable with no default', JSON.stringify(await utilityShape(db)));
+  check(same(await utilityRows(db), held), 'D2: every row keeps the value it held, every false still false and every true still true, none turned null');
+  const strip = (list) => list.map((r) => { const o = { ...r }; for (const [c] of BOARD_COLUMNS) if (!UTILITIES.includes(c)) delete o[c]; return o; });
+  check(same(strip(await rows(db, 'SELECT * FROM public.listings ORDER BY id')), strip(before)), 'D2: no listing row was changed');
+  const bare = (await rows(db, "INSERT INTO public.listings (profile_id, name, monthly_rent) VALUES ($1, 'Bare insert', 2000) RETURNING utilities_heat, utilities_hydro, utilities_water", [ID.me]))[0];
+  check(UTILITIES.every((c) => bare[c] === null), 'D2: a bare insert afterward reads all three as not set', JSON.stringify(bare));
+  await db.query("DELETE FROM public.listings WHERE name = 'Bare insert'");
+  const shape = await listingsCatalog(db);
+  await step(db, 'D3 (012 again)', FILES.m012); await check012(db, 'D3');
+  check(same(await listingsCatalog(db), shape), 'D3: a second run leaves every listings column, its type, NOT NULL and default as they were');
+  check(same(await utilityRows(db), held), 'D3: and every row still holds the value it held under the old shape');
+  await db.close();
+}
+
 // Before trusting a pass: a statement that fails must be reported with its file and its line,
 // and must leave nothing behind.
 async function selfCheck() {
@@ -627,7 +675,7 @@ async function main() {
     WHOLE = whole;
     say(`\n════ ${whole ? 'SECOND PASS: each file sent as one query string, BEGIN to COMMIT' : 'FIRST PASS: each file one transaction, statements sent one at a time'} ════`);
     let carried = null;
-    for (const [name, fn] of [['A', pathA], ['B', async () => { carried = await pathB(); }], ['C', async () => { if (!carried) throw new StepError('path B did not finish, so there is nothing to roll back'); await pathC(carried); }]]) {
+    for (const [name, fn] of [['A', pathA], ['B', async () => { carried = await pathB(); }], ['C', async () => { if (!carried) throw new StepError('path B did not finish, so there is nothing to roll back'); await pathC(carried); }], ['D', pathD]]) {
       const tag = `${name}${whole ? ' (one query)' : ''}`;
       try { await fn(); results.push([tag, 'pass']); }
       catch (e) { if (!(e instanceof StepError)) throw e; results.push([tag, e.message]); say(`  FAILED: ${e.message}`); }

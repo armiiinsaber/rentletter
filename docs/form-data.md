@@ -88,6 +88,7 @@ The guarantor whose form is in, if any. Never their income, employer or document
   did not: the columns are nullable with no default, so an untouched listing never reads
   "Not included"
 - Furnished: listings.furnished, Yes or No, the same three states
+- Listings saved before this change may show "Not included" where nothing was chosen (an earlier db/012 stored false by default); the realtor can reset the field to Not entered in Board details.
 
 ### Brokerages and commission
 - Listing brokerage: listings.listing_brokerage_name, prefilled from profiles.brokerage
