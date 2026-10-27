@@ -43,7 +43,9 @@ import { statePills } from '../../lib/listingStateLine.js';
 import { noWidow } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
 import { listingOpen } from '../../lib/listingState.js';
-import { LEGACY_LISTING_STATUS, APPLICATION_STATE, RECONSIDER_REASONS, listingStanding, applicantStanding, canTransition, withLocalDecision, withLocalListingStatus, carriedListingColumns, reconsideredLocalColumns } from '../../lib/application-state.js';
+import { LEGACY_LISTING_STATUS, APPLICATION_STATE, RECONSIDER_REASONS, listingStanding, applicantStanding, canTransition, withLocalDecision, withLocalListingStatus, carriedListingColumns, reconsideredLocalColumns, holdsListing } from '../../lib/application-state.js';
+import { boardRows } from '../../lib/boardDetails';
+import FormDataSheet from './FormDataSheet';
 import { sentPills, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
@@ -716,6 +718,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   };
 
   const l = listing;
+  // Form data (docs/form-data.md): offered once an applicant holds the listing (accepted or further).
+  const [formDataOpen, setFormDataOpen] = useState(false);
+  const tenantHeld = applicants.some((a) => holdsListing(applicantStanding(a, listing).state));
   const inviteShareUrl = fullInviteUrl(); // complete URL shown + copied
   // Criteria Fit reads, set ones only, in Fit's order: rent share cap, landlord reference,
   // employer verification. No income floor exists (docs/fit-v2.md).
@@ -1282,6 +1287,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
                   <Row label="Credit report asked" value={yn(l.pref_ask_credit_report)} />
                   <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted !== false)} />
+                  {/* BOARD DETAILS (lib/boardDetails.js): the entered values, the province's deposits alone. */}
+                  <div data-board-rows="" style={{ marginTop: 'var(--s-4)' }}>
+                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Board details</div>
+                    {boardRows(l, profile?.province).length
+                      ? boardRows(l, profile?.province).map(([label, value]) => <Row key={label} label={label} value={value} />)
+                      : <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>Not entered. Edit listing adds them.</div>}
+                  </div>
                   {l.pref_notes && (
                     <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
                       <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
@@ -1346,6 +1358,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       </div>
                     )}
                   </div>
+                  {/* FORM DATA (docs/form-data.md): once an applicant holds the listing, every value an agreement
+                      to lease asks for, ready to copy. Absent until then. */}
+                  {tenantHeld && (
+                    <div data-form-data-row="" style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                      <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Form data</div>
+                      <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow('The accepted tenant, the premises, the term, the rent and deposits, the brokerages, each ready to copy.')}</div>
+                      <button type="button" onClick={() => setFormDataOpen(true)} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Form data</button>
+                    </div>
+                  )}
                   {/* Mark as rented (or Reopen): ink outlined, 44px, above Delete. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                     {listingOpen(l) ? (
@@ -1513,7 +1534,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           )}
         </div>}
 
-        <ListingSetupModal open={editOpen} mode="edit" initial={listing} activeApplicants={active.length} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
+        <ListingSetupModal open={editOpen} mode="edit" initial={listing} activeApplicants={active.length} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
+        <FormDataSheet open={formDataOpen} listingId={listing.id} onClose={() => setFormDataOpen(false)} />
 
         {referralsEnabled() && (
         <ReferModal open={!!referFor} listingId={listing.id} applicant={referFor} onClose={() => setReferFor(null)}

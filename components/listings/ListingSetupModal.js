@@ -15,6 +15,8 @@ import { UNIT_TYPE_OPTIONS, formatUnit } from '../../lib/unitType';
 import { needsRentConfirm, RENT_WARNING } from '../../lib/listingEditWarning';
 import { PROVINCE_OPTIONS } from '../../lib/provinces';
 import { CREDIT_ASK_LABEL } from '../../lib/creditShared';
+import { BOARD_FIELDS, depositRules, depositCap, normalizeBoardDetails } from '../../lib/boardDetails';
+import { Icon } from '../ui';
 
 // The form: six unit facts, the five criteria Fit reads, notes, the landlord client. The
 // employment type, move in window, lease term, occupants, guarantor, parking spots, pets policy,
@@ -31,7 +33,16 @@ const EMPTY = {
   pref_ask_credit_report: false, // the upload step shows the credit row first; never required (lib/creditShared.js)
   pref_guarantor_accepted: true, // a guarantor may be invited on this listing, the same for every applicant (lib/parties.js)
   pref_notes: '',
+  // BOARD DETAILS (lib/boardDetails.js, docs/form-data.md): what the board's forms ask for, typed
+  // once here, every one optional, none a criterion, none read by Fit. The deposits shown depend
+  // on the realtor's province; the write clears the ones the province does not allow.
+  mls_number: '', listing_brokerage_name: '', listing_brokerage_address: '', listing_brokerage_phone: '',
+  coop_brokerage_name: '', coop_commission: '', possession_date: '', lease_term_months: '',
+  utilities_heat: false, utilities_hydro: false, utilities_water: false,
+  parking_spaces: '', locker: '', furnished: '',
+  deposit_last_month: '', deposit_key: '', deposit_security: '', deposit_pet: '',
 };
+const BOARD_PREFILL = ['listing_brokerage_name', 'listing_brokerage_address', 'listing_brokerage_phone'];
 
 const inputStyle = {
   width: '100%', padding: '11px 12px', fontSize: 16, borderRadius: R.ctrl,
@@ -55,7 +66,10 @@ function numOrNull(v) {
 // is exactly one create listing form in the product. Otherwise it is a bottom sheet
 // (components/Sheet.js) that stays mounted so it can slide away; each time it opens, the form
 // starts fresh, and once anything is typed a tap on the dimmed page asks before discarding.
-export default function ListingSetupModal({ open = true, mode = 'create', initial = null, activeApplicants = 0, askProvince = false, onCancel, onSave, saving = false, inline = false }) {
+// realtorProvince: the profile's province, which picks the deposits the Board details offer.
+// prefill: { listing_brokerage_name, listing_brokerage_address, listing_brokerage_phone } from the
+// profile, used where the listing has nothing of its own.
+export default function ListingSetupModal({ open = true, mode = 'create', initial = null, activeApplicants = 0, askProvince = false, realtorProvince = null, prefill = null, onCancel, onSave, saving = false, inline = false }) {
   // The realtor's province, asked once, at the first listing (lib/justInTime.js), written to the profile.
   const [province, setProvince] = useState('');
   const seed = { ...EMPTY };
@@ -65,14 +79,21 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
     }
     // Existing listings keep whatever they stored; a null cap shows the 40 it reads as.
   }
+  // Numbers and the furnished answer as the inputs hold them (strings); the brokerage from the profile.
+  for (const k of ['lease_term_months', 'parking_spaces', 'deposit_last_month', 'deposit_key', 'deposit_security', 'deposit_pet']) seed[k] = seed[k] == null || seed[k] === '' ? '' : String(seed[k]);
+  seed.furnished = seed.furnished === true ? 'yes' : seed.furnished === false ? 'no' : '';
+  seed.possession_date = seed.possession_date ? String(seed.possession_date).slice(0, 10) : '';
+  for (const k of BOARD_PREFILL) if (!String(seed[k] || '').trim() && prefill && prefill[k]) seed[k] = String(prefill[k]);
   const [form, setForm] = useState(seed);
   const [confirming, setConfirming] = useState(false); // create-time "are you sure" step
   const [triedSave, setTriedSave] = useState(false);
+  // Board details: collapsed on every open; open while any of its fields holds a value.
+  const [boardOpen, setBoardOpen] = useState(false);
   const seedRef = useRef(JSON.stringify(seed));
   useEffect(() => {
     if (!open || inline) return;
     seedRef.current = JSON.stringify(seed);
-    setForm(seed); setConfirming(false); setTriedSave(false); setProvince('');
+    setForm(seed); setConfirming(false); setTriedSave(false); setProvince(''); setBoardOpen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   const dirty = JSON.stringify(form) !== seedRef.current || !!province;
@@ -93,14 +114,19 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
     landlord_email: emailValid,
   };
   const provinceOk = !askProvince || !!province;
-  const allValid = Object.values(req).every(Boolean) && provinceOk;
+  // The deposits the province allows and their caps against the rent being typed (lib/boardDetails.js).
+  const depositProvince = askProvince && province ? province : realtorProvince;
+  const rules = depositRules(depositProvince);
+  const boardCheck = normalizeBoardDetails(form, { province: depositProvince, monthlyRent: rentNum });
+  const depositError = (key) => { const f = rules.fields.find((x) => x.key === key); const cap = f ? depositCap(f.cap, rentNum) : null; const n = parseInt(String(form[key] || '').replace(/[^\d]/g, ''), 10); return f && cap != null && Number.isFinite(n) && n > cap ? `At most $${cap.toLocaleString('en-CA')} on this rent.` : ''; };
+  const allValid = Object.values(req).every(Boolean) && provinceOk && !boardCheck.error;
   const canSave = allValid && !saving;
   const emailError = (triedSave || String(form.landlord_email).trim())
     ? (!String(form.landlord_email).trim() ? 'Landlord email is required.' : (!emailValid ? 'Enter a valid email (name@example.com).' : ''))
     : '';
 
   const REQ_LABELS = { province: 'Province', address: 'Address', monthly_rent: 'Monthly rent', bedrooms: 'Bedrooms', landlord_name: 'Landlord name', landlord_email: 'Valid landlord email' };
-  const missing = Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]);
+  const missing = [...Object.keys(req).filter((k) => !req[k]).map((k) => REQ_LABELS[k]), ...(boardCheck.error ? ['A deposit within the province\u2019s cap'] : [])];
 
   const buildPayload = () => {
     const name = String(form.address).trim().slice(0, 80) || 'New listing';
@@ -124,6 +150,8 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
       pref_ask_credit_report: !!form.pref_ask_credit_report,
       pref_guarantor_accepted: !!form.pref_guarantor_accepted,
       pref_notes: String(form.pref_notes).trim() || null,
+      // BOARD DETAILS: cleaned the way the route cleans them, the province's deposits alone.
+      ...normalizeBoardDetails(Object.fromEntries(BOARD_FIELDS.map((k) => [k, form[k]])), { province: depositProvince, monthlyRent: rentNum }).values,
     };
   };
 
@@ -241,6 +269,63 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           <div style={{ fontSize: 11, color: C.red, marginTop: 6, lineHeight: 1.5 }}>
             Reminder: do NOT include preferences about gender, age, family status, race, religion, disability, or income source. These can trigger HRTO complaints.
           </div>
+
+          {/* BOARD DETAILS (lib/boardDetails.js): one 44px toggle row, collapsed on every open. What the
+              board's forms ask for, typed once here and read by Form data once a tenant is accepted.
+              Nothing here is required, a criterion, or read by Fit. */}
+          <button type="button" onClick={() => setBoardOpen((o) => !o)} aria-expanded={boardOpen} aria-controls="listing-board-details"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minHeight: 44, marginTop: 18, padding: 0, background: 'transparent', border: 'none', borderTop: `1px solid ${C.rule}`, cursor: 'pointer', font: 'inherit', color: C.ink, textAlign: 'left' }}>
+            <span style={{ ...sectionLabel, marginTop: 0, marginBottom: 0 }}>Board details (optional)</span>
+            <span className={`m-chev ${boardOpen ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0, display: 'inline-flex' }}><Icon name="chevronD" size={16} /></span>
+          </button>
+          {boardOpen && (
+            <div id="listing-board-details" data-board-details="">
+              <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: '0 0 10px', textWrap: 'pretty' }}>What the board’s forms ask for, typed once. Form data lays it out to copy once a tenant is accepted.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                <label><span style={fieldLabel}>MLS number</span>
+                  <input type="text" value={form.mls_number} onChange={(e) => set({ mls_number: e.target.value })} placeholder="C1234567" autoComplete="off" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Listing brokerage</span>
+                  <input type="text" value={form.listing_brokerage_name} onChange={(e) => set({ listing_brokerage_name: e.target.value })} placeholder="Royal LePage Signature Realty" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Brokerage address</span>
+                  <input type="text" value={form.listing_brokerage_address} onChange={(e) => set({ listing_brokerage_address: e.target.value })} placeholder="8 Sample Ave, Toronto" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Brokerage phone</span>
+                  <input type="text" inputMode="tel" value={form.listing_brokerage_phone} onChange={(e) => set({ listing_brokerage_phone: e.target.value })} placeholder="(416) 555 0100" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Cooperating brokerage</span>
+                  <input type="text" value={form.coop_brokerage_name} onChange={(e) => set({ coop_brokerage_name: e.target.value })} placeholder="Their brokerage" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Commission to the cooperating brokerage</span>
+                  <input type="text" value={form.coop_commission} onChange={(e) => set({ coop_commission: e.target.value })} placeholder="Half a month’s rent plus HST" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Possession date</span>
+                  <input type="date" value={form.possession_date} onChange={(e) => set({ possession_date: e.target.value })} style={{ ...inputStyle, minHeight: 44 }} /></label>
+                <label><span style={fieldLabel}>Lease term (months)</span>
+                  <input type="text" inputMode="numeric" value={form.lease_term_months} onChange={(e) => set({ lease_term_months: e.target.value.replace(/[^\d]/g, '') })} placeholder="12" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Parking spaces</span>
+                  <input type="text" inputMode="numeric" value={form.parking_spaces} onChange={(e) => set({ parking_spaces: e.target.value.replace(/[^\d]/g, '') })} placeholder="1" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Locker</span>
+                  <input type="text" value={form.locker} onChange={(e) => set({ locker: e.target.value })} placeholder="B12" style={inputStyle} /></label>
+                <label><span style={fieldLabel}>Furnished</span>
+                  <select value={form.furnished} onChange={(e) => set({ furnished: e.target.value })} style={inputStyle}>
+                    <option value="">Not entered</option><option value="yes">Yes</option><option value="no">No</option>
+                  </select></label>
+              </div>
+              <div style={{ ...sectionLabel, marginTop: 14, marginBottom: 6 }}>Utilities included</div>
+              <div style={{ display: 'grid', rowGap: 20 }}>
+                <Check k="utilities_heat" label="Heat" />
+                <Check k="utilities_hydro" label="Hydro" />
+                <Check k="utilities_water" label="Water" />
+              </div>
+              {/* The province's deposits alone (lib/boardDetails.js depositRules), each against the rent typed above. */}
+              <div style={{ ...sectionLabel, marginTop: 18, marginBottom: 6 }}>Deposits</div>
+              <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: '0 0 10px', textWrap: 'pretty' }}>{rules.line}</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                {rules.fields.map((f) => (
+                  <label key={f.key}><span style={fieldLabel}>{f.label} (CAD)</span>
+                    <input type="text" inputMode="numeric" value={form[f.key]} onChange={(e) => set({ [f.key]: e.target.value.replace(/[^\d]/g, '') })} placeholder={f.cap === 'half' && rentNum ? String(Math.floor(rentNum / 2)) : f.cap === 'month' && rentNum ? String(rentNum) : '0'}
+                      style={{ ...inputStyle, borderColor: depositError(f.key) ? C.red : C.rule }} />
+                    <span style={{ display: 'block', fontSize: 12, color: depositError(f.key) ? C.red : C.inkMute, lineHeight: 1.5, marginTop: 4, textWrap: 'pretty' }}>{depositError(f.key) || f.note}</span></label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* LANDLORD CLIENT, last: who the shortlist goes to. */}
           <div style={sectionLabel}>Landlord client</div>

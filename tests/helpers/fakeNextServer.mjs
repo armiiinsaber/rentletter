@@ -99,6 +99,21 @@ http.createServer(async (req, res) => {
     }
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ documentId: id })); return;
   }
+  // The form data walk (tests/routes/mlsWebkit.test.mjs): GET /__fake/seed-parties?link=J1 puts a
+  // submitted co applicant and a submitted guarantor on that applicant's application, the rows the
+  // party form writes (lib/parties.js), with an income on each so the walk can prove none shows.
+  if (req.url.startsWith('/__fake/seed-parties')) {
+    const link = String(new URL(req.url, 'http://localhost').searchParams.get('link') || '');
+    const j = (t.listing_applicants || []).find((x) => x.id === link);
+    if (!j) { res.statusCode = 404; res.end('{}'); return; }
+    t.application_parties = (t.application_parties || []).filter((p) => p.application_id !== j.application_id);
+    const now = new Date().toISOString();
+    t.application_parties.push(
+      { id: `P-co-${link}`, application_id: j.application_id, role: 'co_applicant', status: 'submitted', full_name: 'Jordan Lee', email: 'jordan@example.com', phone: '416 555 0142', address: null, employer: 'Northwind Sample Clinic Inc.', job_title: 'Analyst', annual_income: 64000, invited_at: now, submitted_at: now, consented_at: now, doc_verifications: null },
+      { id: `P-g-${link}`, application_id: j.application_id, role: 'guarantor', status: 'submitted', full_name: 'Pat Guarantor', email: 'pat@example.com', phone: '416 555 0199', address: '14 Sample Cres, Toronto', employer: 'Northwind Sample Clinic Inc.', job_title: 'Clinic Coordinator', annual_income: 85000, invited_at: now, submitted_at: now, consented_at: now, doc_verifications: null },
+    );
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ ok: true, applicationId: j.application_id })); return;
+  }
   if (req.url.startsWith('/__fake/history')) {
     const q = new URL(req.url, 'http://localhost').searchParams; const link = String(q.get('link') || '');
     const j = (t.listing_applicants || []).find((x) => x.id === link); const a = j && (t.applications || []).find((x) => x.id === j.application_id);

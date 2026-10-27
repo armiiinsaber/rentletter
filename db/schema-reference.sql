@@ -48,7 +48,7 @@
 --     'referral_accepted', 'invite_link_created', 'profile_edited_after_verification',
 --     'listing_created', 'listing_updated', 'branding_updated',
 --     'pipeline_invited', 'pipeline_renewal_sent', 'pipeline_removed',
---     'reference_requested', 'reference_answered'))
+--     'reference_requested', 'reference_answered', 'form_data_opened'))
 --   The single source of truth in code is lib/eventTypes.js (EVENT_TYPES). tests/events.test.mjs
 --   reads db/events.sql and fails when the two lists differ.
 --   Append only: service role inserts (lib/events.js recordEvent); realtors SELECT their own rows
@@ -103,6 +103,14 @@
 --   updated_at                          timestamptz           default now()      INFERRED
 --   status, closed_at, rented_link_id   added by db/listing-status.sql (not in the export)
 --   state                               listing_state (draft, live, paused, rented, withdrawn), db/002-application-state-tables.sql
+--   board details (db/012-board-details.sql, lib/boardDetails.js), every one nullable, none read by Fit:
+--     mls_number, listing_brokerage_name, listing_brokerage_address, listing_brokerage_phone,
+--     coop_brokerage_name, coop_commission   text
+--     possession_date                        date
+--     lease_term_months, parking_spaces, deposit_last_month, deposit_key, deposit_security, deposit_pet   integer
+--     utilities_heat, utilities_hydro, utilities_water   boolean not null default false
+--     locker                                 text
+--     furnished                              boolean
 --
 -- public.listing_applicants
 --   id                    uuid        not null  default gen_random_uuid()  primary key

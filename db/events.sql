@@ -61,7 +61,8 @@ DO $$ BEGIN
       'pipeline_renewal_sent',
       'pipeline_removed',
       'reference_requested',
-      'reference_answered'
+      'reference_answered',
+      'form_data_opened'
     ));
   END IF;
 END $$;

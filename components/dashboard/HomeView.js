@@ -424,7 +424,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           </>}
         </div>}
 
-        <ListingSetupModal open={modalOpen} mode="create" askProvince={needsProvince(profile)} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
+        <ListingSetupModal open={modalOpen} mode="create" askProvince={needsProvince(profile)} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
       </div>
 
       <style jsx>{`

@@ -11,10 +11,10 @@
 // what the editor sends. A failure rolls the transaction back and stops the path.
 //
 //   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again, then every combination
-//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, each twice
+//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, 012, each twice
 //   Path B  upgrade       baseline, the OLD 001 (git show b11f1f8, four income kinds), 002, 003,
 //                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
-//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, each twice
+//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, 012, each twice
 //   Path C  rollback      after path B: 999, 999 again
 import { PGlite } from '@electric-sql/pglite';
 import { readFileSync } from 'node:fs';
@@ -43,6 +43,7 @@ const FILES = {
   m009: 'db/009-drop-min-years-at-job.sql',
   m010: 'db/010-drop-min-annual-income.sql',
   m011: 'db/011-document-content-hash.sql',
+  m012: 'db/012-board-details.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -409,6 +410,48 @@ async function run011(db, tag) {
   check(same(await rows(db, 'SELECT id, listing_applicant_id, profile_id, storage_path, kind, mime, bytes, uploaded_by, expires_at::text AS expires_at, deleted_at FROM public.applicant_documents ORDER BY id'), before), `${tag}2: every other column of every held row is what it was`);
 }
 
+// ── db/012-board-details.sql ────────────────────────────────────────────────────
+// Every board column exists with its type and default, a listing and a profile insert without
+// them, the board check refuses a word off the list, a value set before a second run survives it,
+// no other column of any listing moves, and the events constraint accepts form_data_opened where
+// the events table exists (the baseline has none, so the guarded block returns).
+const BOARD_COLUMNS = [
+  ['mls_number', 'text'], ['listing_brokerage_name', 'text'], ['listing_brokerage_address', 'text'], ['listing_brokerage_phone', 'text'],
+  ['coop_brokerage_name', 'text'], ['coop_commission', 'text'], ['possession_date', 'date'], ['lease_term_months', 'integer'],
+  ['utilities_heat', 'boolean'], ['utilities_hydro', 'boolean'], ['utilities_water', 'boolean'], ['parking_spaces', 'integer'],
+  ['locker', 'text'], ['furnished', 'boolean'], ['deposit_last_month', 'integer'], ['deposit_key', 'integer'], ['deposit_security', 'integer'], ['deposit_pet', 'integer'],
+];
+async function check012(db, label) {
+  for (const [c, type] of BOARD_COLUMNS) check((await one(db, "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = $1", [c])) === type, `${label}: listings.${c} is ${type}`);
+  for (const c of ['utilities_heat', 'utilities_hydro', 'utilities_water']) {
+    const col = (await rows(db, "SELECT is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = $1", [c]))[0];
+    check(col.is_nullable === 'NO' && /false/.test(col.column_default), `${label}: ${c} is NOT NULL, default false`, JSON.stringify(col));
+  }
+  for (const c of ['brokerage_address', 'board']) check((await one(db, "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = $1", [c])) === 'text', `${label}: profiles.${c} is text`);
+  check((await constraintCount(db, 'profiles_board_check')) === 1, `${label}: the board check exists once`);
+  const fresh = await rows(db, "INSERT INTO public.listings (profile_id, name, monthly_rent) VALUES ($1, 'Board probe', 2000) RETURNING mls_number, utilities_heat, furnished, deposit_key", [ID.me]);
+  check(fresh[0].mls_number === null && fresh[0].utilities_heat === false && fresh[0].furnished === null && fresh[0].deposit_key === null, `${label}: a listing inserts without the columns and reads them empty`);
+  await db.query("DELETE FROM public.listings WHERE name = 'Board probe'");
+  check(/profiles_board_check/.test(await refused(db, "UPDATE public.profiles SET board = 'elsewhere' WHERE id = $1", [ID.me])), `${label}: a board off the list is refused`);
+  await db.query("UPDATE public.profiles SET board = 'trreb', brokerage_address = '1 Sample St' WHERE id = $1", [ID.me]);
+  check((await one(db, 'SELECT board FROM public.profiles WHERE id = $1', [ID.me])) === 'trreb', `${label}: a board on the list is kept`);
+  await db.query('UPDATE public.profiles SET board = NULL, brokerage_address = NULL WHERE id = $1', [ID.me]);
+  if (await hasTable(db, 'events')) check(/form_data_opened/.test(await one(db, "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'events_type_check'")), `${label}: events.type accepts form_data_opened`);
+  else check(true, `${label}: no events table here, the guarded block returned`);
+}
+async function run012(db, tag) {
+  const before = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
+  await step(db, `${tag}1`, FILES.m012); await check012(db, `${tag}1`);
+  await db.query("UPDATE public.listings SET mls_number = 'C1234567', utilities_heat = true, lease_term_months = 12, deposit_last_month = 2600 WHERE id = $1", [ID.live]);
+  await step(db, `${tag}2 (012 again)`, FILES.m012); await check012(db, `${tag}2`);
+  const kept = (await rows(db, 'SELECT mls_number, utilities_heat, lease_term_months, deposit_last_month FROM public.listings WHERE id = $1', [ID.live]))[0];
+  check(kept.mls_number === 'C1234567' && kept.utilities_heat === true && kept.lease_term_months === 12 && kept.deposit_last_month === 2600, `${tag}2: a second run leaves the typed values where they were`);
+  await db.query('UPDATE public.listings SET mls_number = NULL, utilities_heat = false, lease_term_months = NULL, deposit_last_month = NULL WHERE id = $1', [ID.live]);
+  const after = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
+  const strip = (list) => list.map((r) => { const o = { ...r }; for (const [c] of BOARD_COLUMNS) delete o[c]; return o; });
+  check(same(strip(after), strip(before)), `${tag}2: every other column of every listing is what it was`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -504,6 +547,7 @@ async function pathA() {
   await run009(db, 'A4');
   await run010(db, 'A5');
   await run011(db, 'A6');
+  await run012(db, 'A7');
   await db.close();
 }
 
@@ -539,6 +583,7 @@ async function pathB() {
   await run009(db, 'B11');
   await run010(db, 'B12');
   await run011(db, 'B13');
+  await run012(db, 'B14');
   return { db, before };
 }
 

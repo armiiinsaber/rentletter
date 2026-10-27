@@ -22,6 +22,7 @@ import { useAdapter } from '../../lib/dashboardAdapter';
 import { buildPalette, PALETTE_ORDER, readableText } from '../../lib/brandPalette';
 import { FONT_PAIRINGS, GOOGLE_FONTS_HREF, suggestPairingId } from '../../lib/brandFonts';
 import { PROVINCE_OPTIONS, normalizeProvince } from '../../lib/provinces';
+import { BOARD_OPTIONS } from '../../lib/boardDetails';
 import LogoStudio from './LogoStudio';
 import { Crossfade, MotionStyles } from '../motion';
 
@@ -46,19 +47,25 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
   const [form, setForm] = useState({
     full_name: profile?.full_name || '',
     brokerage: profile?.brokerage || '',
+    brokerage_address: profile?.brokerage_address || '',
     phone: profile?.phone || '',
     license_number: profile?.license_number || '',
+    board: profile?.board || '',
     province: normalizeProvince(profile?.province),
   });
   // Snapshot of the last-saved detail values. "Dirty" = form differs from this. Updated on Save.
   const [savedForm, setSavedForm] = useState({
     full_name: profile?.full_name || '',
     brokerage: profile?.brokerage || '',
+    brokerage_address: profile?.brokerage_address || '',
     phone: profile?.phone || '',
     license_number: profile?.license_number || '',
+    board: profile?.board || '',
     province: normalizeProvince(profile?.province),
   });
-  const DETAIL_KEYS = ['full_name', 'brokerage', 'phone', 'license_number', 'province'];
+  // The board details (lib/boardDetails.js): the brokerage address and the board sit beside the
+  // brokerage and the RECO registration number, and prefill a new listing's brokerage fields.
+  const DETAIL_KEYS = ['full_name', 'brokerage', 'brokerage_address', 'phone', 'license_number', 'board', 'province'];
   const savedFormRef = useRef(savedForm); savedFormRef.current = savedForm;
   const [brandColor, setBrandColor] = useState(profile?.brand_color || '');
   const [brandColorSecondary, setBrandColorSecondary] = useState(profile?.brand_color_secondary || '');
@@ -171,8 +178,10 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       const details = await postJson('/api/profile/update', {
         full_name: f.full_name.trim() || null,
         brokerage: f.brokerage.trim() || null,
+        brokerage_address: f.brokerage_address.trim() || null,
         phone: f.phone.trim() || null,
         license_number: f.license_number.trim() || null,
+        board: f.board || null,
         province: normalizeProvince(f.province),
       });
       if (!details.ok) { setError(details.error || 'Could not save.'); setSaveState('error'); return false; }
@@ -237,8 +246,9 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
   const fields = [
     { k: 'full_name', label: 'Your full name', ph: 'Sarah Chen', ac: 'name' },
     { k: 'brokerage', label: 'Brokerage', ph: 'Royal LePage Signature Realty', ac: 'organization' },
+    { k: 'brokerage_address', label: 'Brokerage address (optional)', ph: '8 Sample Ave, Toronto', ac: 'street-address' },
     { k: 'phone', label: 'Phone', ph: '(416) 555-0199', ac: 'tel' },
-    { k: 'license_number', label: 'RECO license number (optional)', ph: 'RECO 1234567', ac: 'off' },
+    { k: 'license_number', label: 'RECO registration number (optional)', ph: 'RECO 1234567', ac: 'off' },
   ];
 
   const hexOk = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
@@ -307,6 +317,14 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
           {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
         <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>The province you operate in. Sets rules like the tenant age of majority (Ontario 18, BC 19).</div>
+      </div>
+      {/* The board (lib/boardDetails.js): kept for the realtor's own reference, in no report and no group. */}
+      <div style={{ marginBottom: 16 }}>
+        <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Board (optional){flash.board && <span role="status" style={{ marginLeft: 8, color: C.inkMute, fontWeight: 500, letterSpacing: 0, textTransform: 'none' }}>Saved</span>}</label>
+        <select id="profile-field-board" value={form.board} onChange={(e) => { set('board', e.target.value); autosave(); }} onBlur={autosave} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
+          <option value="">Not entered</option>
+          {BOARD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
       </div>
       <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 26 }}>
         These appear on PDF exports and email summaries you send to landlord clients. Saved automatically when you leave a field.
