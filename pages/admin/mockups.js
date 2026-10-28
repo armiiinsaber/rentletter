@@ -7,6 +7,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { C, R } from '../../components/theme';
 import AdminShell from '../../components/admin/AdminShell';
 import BrandKit from '../../components/admin/BrandKit';
+import DoorLab from '../../components/admin/DoorLab';
 import { Wordmark, StatusPills } from '../../components/ui';
 import DeviceFrame, { DEFAULT_ASPECT } from '../../components/DeviceFrame';
 import { SCENES, TenantApplyScene } from '../../components/mockups/scenes';
@@ -288,6 +289,9 @@ export default function Mockups() {
 
           {/* The brand kit: every logo, mark, colour and type file, built by npm run brand:kit. */}
           <BrandKit />
+
+          {/* The door mark: the bar beside the R swings like a door. A prototype, shown only here. */}
+          <DoorLab />
 
           {/* Controls: sticky so they travel with you down the page */}
           <div className="mk-controls">
