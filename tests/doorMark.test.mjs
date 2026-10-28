@@ -2,8 +2,13 @@
 //   1. The motion lives in lib/motion.js DOOR: three named curves and the defaults, the knob included.
 //   2. The geometry is the official vector source, and the hinge is the bar's edge nearest the R.
 //   3. One shape: at every open width, knob size and resting state, every frame of the swing is one
-//      convex quadrilateral, its hinge edge on the hinge line, its far edge shorter by perspective,
-//      left of the hinge and clear of the R; the knob stays inside it and is gone at the thin bar.
+//      convex quadrilateral, its hinge edge on the hinge line, its far edge shorter by perspective
+//      once it has eased out of rest, left of the hinge and clear of the R; the knob stays inside it
+//      and is gone at the thin bar.
+//   4a. Straight at rest: resting as the bar, the door is the static logo's bar from the vector
+//      source exactly (the same box, the same rounded corners, the same outline); resting as the
+//      panel, the same straight rectangle at the open width. It eases into the perspective panel
+//      over DOOR.straighten of the travel and back.
 //   4. One curve: frame to frame no corner jumps; the timeline rests, swings out, back, then pauses.
 //   5. One fill: the bar's own token, with ink mixed in only while it turns. No CSS 3D anywhere.
 //   6. Reduced motion only breathes. Copy settings writes the values as JSON. The door shows on the
@@ -35,6 +40,7 @@ test('the motion lives in lib/motion.js DOOR: three named curves and the default
   for (const c of Object.values(DOOR.curves)) assert.match(c, /^cubic-bezier\((-?\d*\.?\d+, ){3}-?\d*\.?\d+\)$/);
   assert.deepEqual({ ...DOOR.defaults }, { rest: 'bar', open: 0.6, knob: 0.18, swingMs: 700, pauseMs: 900, easing: 'soft', play: 'loop' });
   assert.equal(DOOR.breath, 0.6);
+  assert.equal(DOOR.straighten, 0.3);
   for (const f of FILES) assert.doesNotMatch(src(f), /cubic-bezier\(/, `${f}: curves come from lib/motion.js`);
 });
 
@@ -66,7 +72,9 @@ test('one shape: every frame one convex quadrilateral, hinged on the hinge line,
       if (g.radius !== null) assert.ok(q.every(([x]) => x >= 0), `${where}: on the icon's ground`);
       const near = q[1][1] - q[0][1]; const far = q[2][1] - q[3][1];
       assert.ok(far <= near + 1e-9, `${where}: the far edge is never longer than the near edge`);
-      if (f.deg < 89.9) assert.ok(far < near, `${where}: turned, the far edge is shorter by perspective`);
+      if (f.deg < 89.9 && travel >= DOOR.straighten) assert.ok(far < near, `${where}: turned, the far edge is shorter by perspective`);
+      assert.ok(f.round >= 0 && f.round <= g.bar.rx + 1e-9, `${where}: the corners no rounder than the bar's`);
+      if (travel >= DOOR.straighten) assert.equal(f.d, `M${q.map(([x, y]) => `${G.r3(x)} ${G.r3(y)}`).join('L')}Z`, `${where}: eased in, the projected panel with square corners`);
       if (f.knob) for (let k = 0; k < 36; k++) { const a = (k / 36) * 2 * Math.PI; assert.ok(inside(q, [f.knob.cx + f.knob.rx * Math.cos(a), f.knob.cy + f.knob.ry * Math.sin(a)]), `${where}: the knob inside the panel`); }
     }
     // The ends: the thin bar projects exactly the bar's width, with no knob; face on, the panel is
@@ -76,6 +84,43 @@ test('one shape: every frame one convex quadrilateral, hinged on the hinge line,
     assert.ok(Math.abs(p.hx - full.quad[3][0] - p.W) < 1e-6 && full.knob && Math.abs(full.knob.rx * 2 - knob * p.W) < 1e-6, `${kind} ${open}: the open panel and its knob at full size`);
   }
   assert.ok(frames >= 18000, `${frames} frames checked`);
+});
+
+// The static bar, as the vector source draws it everywhere else (scripts/brand/draw.mjs, the
+// brand kit, components/ui.js): a rect with rx, its outline written out corner by corner.
+const rectOutline = ({ x, y, w, h, rx }) => {
+  const n = (a, b) => `${G.r3(a)} ${G.r3(b)}`; const arc = `A${G.r3(rx)} ${G.r3(rx)} 0 0 1 `;
+  return `M${n(x + w, y + rx)}L${n(x + w, y + h - rx)}${arc}${n(x + w - rx, y + h)}L${n(x + rx, y + h)}${arc}${n(x, y + h - rx)}L${n(x, y + rx)}${arc}${n(x + rx, y)}L${n(x + w - rx, y)}${arc}${n(x + w, y + rx)}Z`;
+};
+test('straight at rest: the static bar from the vector source exactly; the panel at rest straight too', () => {
+  for (const kind of KINDS) for (const open of range(G.DOOR_OPEN_RANGE)) {
+    const s = { ...DOOR.defaults, open }; const g = G.doorGeometry(kind, 100, open); const p = G.doorParts(g, open);
+    // The static bar in this mark's frame: the logo's bar beside the letters (moved with them on the
+    // wordmark), the mark's own bar on the app icons, the bar as the letters' frame scales it on the
+    // loading icons.
+    const [tx, ty, sc] = g.letters ? [...g.letters.matchAll(/-?\d*\.?\d+/g)].map((m) => Number(m[0])).concat([1]) : [0, 0, 1];
+    const src0 = kind === 'wordmark' ? LOGO.bar : MARK.any.bar;
+    const want = kind === 'paper' || kind === 'ink' ? g.bar : { x: tx + src0.x * sc, y: ty + src0.y * sc, w: src0.w * sc, h: src0.h * sc, rx: src0.rx * sc };
+    const at = (rest) => G.doorFrame(g, { ...s, rest }, 0);
+    const bar = at('bar'); const panel = at('panel');
+    const box = (b) => [[b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h], [b.x, b.y]];
+    const near = (a, b) => a.every((pt, i) => Math.abs(pt[0] - b[i][0]) < 1e-9 && Math.abs(pt[1] - b[i][1]) < 1e-9);
+    assert.ok(near(bar.quad, box(want)), `${kind} ${open}: resting as the bar, the static bar's box`);
+    assert.ok(Math.abs(bar.round - want.rx) < 1e-9, `${kind} ${open}: the static bar's corners`);
+    assert.equal(bar.d, rectOutline(want), `${kind} ${open}: the static bar's outline`);
+    assert.equal(bar.knob, null, `${kind} ${open}: no knob at rest`);
+    assert.equal(bar.shade, 0, `${kind} ${open}: the bar's own colour`);
+    const wide = { x: p.hx - p.W, y: p.top, w: p.W, h: p.bottom - p.top, rx: g.bar.rx };
+    assert.ok(near(panel.quad, box(wide)), `${kind} ${open}: resting as the panel, straight at the open width`);
+    assert.equal(panel.d, rectOutline(wide), `${kind} ${open}: the panel's outline, straight, the bar's corners`);
+    // Out of rest and back: the blend is smooth (no step at either end) and done by DOOR.straighten.
+    assert.equal(G.straightenAt(0), 0); assert.equal(G.straightenAt(DOOR.straighten), 1); assert.equal(G.straightenAt(1), 1);
+    assert.ok(G.straightenAt(0.001) < 1e-4 && 1 - G.straightenAt(DOOR.straighten - 0.001) < 1e-4, 'it eases in and out of the blend');
+    const tiny = G.doorFrame(g, s, 1e-6);
+    assert.ok(tiny.quad.every((pt, i) => Math.hypot(pt[0] - bar.quad[i][0], pt[1] - bar.quad[i][1]) < 1e-3) && Math.abs(tiny.round - bar.round) < 1e-3, `${kind} ${open}: no jump leaving rest`);
+  }
+  const icon = G.doorGeometry('realtor', 512, 0.6);
+  assert.deepEqual(G.doorFrame(icon, DOOR.defaults, 0).quad.map((pt) => pt.map(G.r3)), [[144, 132], [144, 380], [118, 380], [118, 132]], 'the app icon\'s bar, 118 to 144 by 132 to 380');
 });
 
 test('one curve: the timeline, and no corner jumps from one frame to the next', () => {
@@ -102,12 +147,17 @@ test('one fill: the bar token, with ink mixed in only while it turns; no CSS 3D 
   assert.equal(G.doorFill(C.red, 0.12), `color-mix(in srgb, ${C.red} 88%, ${C.ink})`, 'turning, the same token with a little ink');
   for (const f of FILES) assert.doesNotMatch(src(f), /perspective\(|rotateY|rotateX|preserve-3d|matrix3d|translateZ|backface/i, `${f}: no CSS 3D`);
   assert.match(src('components/brand/DoorMark.js'), /requestAnimationFrame\(tick\)/, 'one requestAnimationFrame loop');
-  assert.equal((src('components/brand/DoorMark.js').match(/<polygon /g) || []).length, 1, 'one polygon');
+  const mark = src('components/brand/DoorMark.js');
+  assert.equal((mark.match(/data-door-panel=/g) || []).length, 1, 'one shape for the door');
+  assert.match(mark, /<path ref=\{panel\} data-door-panel="" d=\{rest\.d\}/, 'drawn as one path');
+  assert.doesNotMatch(mark, /<polygon|<rect[^>]*data-door-panel/, 'no second shape type for the door');
 });
 
 test('reduced motion: the door holds still with no knob, and only its opacity breathes', () => {
   const s = { ...DOOR.defaults, rest: 'panel' }; const g = G.doorGeometry('wordmark', 40, s.open);
   assert.equal(G.doorFrame(g, s, 0, { reduced: true }).knob, null, 'the knob is hidden');
+  const bar = G.doorFrame(g, { ...s, rest: 'bar' }, 0, { reduced: true });
+  assert.equal(bar.round, LOGO.bar.rx, 'reduced, resting as the bar, it is the straight bar');
   const auto = G.breathCss('c', 'n', s); const reduced = G.breathCss('c', 'n', s, 'reduced');
   assert.ok(auto.includes(`@media ${REDUCED_QUERY} {`) && !reduced.includes('@media'));
   for (const css of [auto, reduced]) {

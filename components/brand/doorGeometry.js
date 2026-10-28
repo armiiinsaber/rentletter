@@ -7,9 +7,15 @@
 // The door is one flat rectangle, the bar's height tall and the open width wide, hinged on its
 // edge nearest the R and turning about that vertical edge. Every frame its four corners are placed
 // in 3D and projected through one camera centred on the mark, and the quadrilateral they make is
-// drawn as one polygon with one fill. Angle 0 points the door straight into the screen, 90 lays it
-// face on, left of the hinge. It rests as the thin bar at the angle where it projects exactly the
-// bar's width, or as the panel, face on.
+// drawn as one path with one fill. Angle 0 points the door straight into the screen, 90 lays it
+// face on, left of the hinge. It turns between the angle where it projects exactly the bar's width
+// and face on.
+//
+// At rest it is straight: resting as the bar, it is the static logo's bar exactly (the same box and
+// the same rounded corners, lib/brand/logoPaths.js); resting as the panel, the same rectangle at
+// the open width. Over the first part of the swing it eases from that straight shape into the
+// projected panel, and back over the last part (lib/motion.js DOOR.straighten), so the taper and
+// the tilt exist only in motion.
 import { LOGO, MARK } from '../../lib/brand/logoPaths';
 import { DOOR, REDUCED_QUERY } from '../../lib/motion';
 import { C } from '../theme';
@@ -135,14 +141,28 @@ export function angleFor(s, p, travel) {
 export const cycleTime = (s, elapsed) => { const { cycle } = doorTimeline(s); return s.play === 'once' ? Math.min(elapsed, cycle) : ((elapsed % cycle) + cycle) % cycle; };
 
 // ── one frame ───────────────────────────────────────────────────────────────────────────────────
-// Everything one frame draws: the quadrilateral, its fill (the bar's colour with a little ink at
-// mid swing), and the knob. The knob sits on the panel near its free edge, vertically centred; its
-// diameter is knob times the open width, scaled by how far the panel shows past the bar, so it
-// grows in as the door opens and is gone at the thin bar. It is projected with the panel: an ellipse
-// spanning the projected chord, as tall as the circle at the knob's depth.
+// How far the door has eased from its straight resting shape into the projected panel: 0 at rest,
+// 1 once the travel passes DOOR.straighten, smooth at both ends (no jump as it leaves or lands).
+export function straightenAt(travel) {
+  const x = Math.max(0, Math.min(1, travel / DOOR.straighten));
+  return x * x * (3 - 2 * x);
+}
+// Everything one frame draws: the quadrilateral, the radius of its corners, its outline, its fill
+// (the bar's colour with a little ink at mid swing), and the knob.
+//   The shape: the projected panel at this angle, eased from the straight rectangle of the same
+//   width (the hinge edge and the free edge each the bar's full height), with the bar's own corner
+//   radius at rest, sharpening to square as it eases in. The hinge edge projects to the hinge line
+//   at every angle, so only the free edge's ends and the corners move in the blend.
+//   The knob sits on the panel near its free edge, vertically centred; its diameter is knob times
+//   the open width, scaled by how far the panel shows past the bar, so it grows in as the door
+//   opens and is gone at the thin bar. It is projected with the panel: an ellipse spanning the
+//   projected chord, as tall as the circle at the knob's depth. The straight shape holds the
+//   projected panel inside it (the camera's height is within the bar), so the knob stays inside.
 export function doorFrame(g, s, travel, { reduced = false } = {}) {
   const p = doorParts(g, s.open); const deg = angleFor(s, p, travel);
-  const quad = doorQuad(p, deg);
+  const panel = doorQuad(p, deg); const b = straightenAt(travel);
+  const quad = [panel[0], panel[1], [panel[2][0], p.bottom + (panel[2][1] - p.bottom) * b], [panel[3][0], p.top + (panel[3][1] - p.top) * b]];
+  const round = g.bar.rx * (1 - b);
   const shade = r3(DOOR_SHADE * 4 * travel * (1 - travel));
   const shown = Math.max(0, Math.min(1, (projectedWidth(p, deg) - p.t) / (p.W - p.t)));
   const rMax = (s.knob * p.W) / 2; const r = reduced ? 0 : rMax * shown;
@@ -152,9 +172,25 @@ export function doorFrame(g, s, travel, { reduced = false } = {}) {
     const [xa] = projectPoint(p, deg, uc - r, yc); const [xb] = projectPoint(p, deg, uc + r, yc); const [, yk, sk] = projectPoint(p, deg, uc, yc);
     knob = { cx: (xa + xb) / 2, cy: yk, rx: Math.abs(xa - xb) / 2, ry: r * sk };
   }
-  return { travel, deg, quad, shade, knob };
+  return { travel, deg, quad, round, d: doorPath(quad, round), shade, knob };
 }
-export const quadPoints = (quad) => quad.map(([x, y]) => `${r3(x)},${r3(y)}`).join(' ');
+// The outline of a convex quadrilateral (clockwise on screen, as doorQuad orders it) with each
+// corner rounded to radius round: a circular arc tangent to both sides, as an SVG rect's rx draws
+// it on a square corner. A side never gives more than half its length to a corner. With no radius,
+// the plain four sided outline.
+export function doorPath(quad, round) {
+  const n = (pt) => `${r3(pt[0])} ${r3(pt[1])}`;
+  if (!(round > 1e-6)) return `M${quad.map(n).join('L')}Z`;
+  const corners = quad.map((q, i) => {
+    const a = quad[(i + 3) % 4]; const c = quad[(i + 1) % 4];
+    const la = Math.hypot(a[0] - q[0], a[1] - q[1]); const lc = Math.hypot(c[0] - q[0], c[1] - q[1]);
+    const ua = [(a[0] - q[0]) / la, (a[1] - q[1]) / la]; const uc = [(c[0] - q[0]) / lc, (c[1] - q[1]) / lc];
+    const half = Math.acos(Math.max(-1, Math.min(1, ua[0] * uc[0] + ua[1] * uc[1]))) / 2;
+    const cut = Math.min(round / Math.tan(half), la / 2, lc / 2);
+    return { from: [q[0] + ua[0] * cut, q[1] + ua[1] * cut], to: [q[0] + uc[0] * cut, q[1] + uc[1] * cut], r: cut * Math.tan(half) };
+  });
+  return `M${n(corners[0].to)}${[1, 2, 3, 0].map((i) => `L${n(corners[i].from)}A${r3(corners[i].r)} ${r3(corners[i].r)} 0 0 1 ${n(corners[i].to)}`).join('')}Z`;
+}
 // The fill: the bar's own token, with ink mixed in while it turns. One colour, one fill.
 export const doorFill = (bar, shade) => (shade > 0 ? `color-mix(in srgb, ${bar} ${r3(100 - shade * 100)}%, ${C.ink})` : bar);
 

@@ -4,17 +4,19 @@
 // Drawn from the official vector source (lib/brand/logoPaths.js): the R and the letters come from
 // the paths, the door from the bar's box (components/brand/doorGeometry.js).
 //
-// One shape: the door is one SVG polygon, the projection of one flat rectangle turning about its
+// One shape: the door is one SVG path, the projection of one flat rectangle turning about its
 // hinge edge, recomputed every frame, with one fill and a knob projected with it. No CSS 3D, no
 // second face, no stacked layers, so on every engine it reads as one object turning in space. The
 // same SVG serves the page, email and GIF export.
+// At rest the path is the static logo's straight bar exactly (the same box, the same rounded
+// corners); the taper and the tilt grow in only while it swings (components/brand/doorGeometry.js).
 // One clock: a single requestAnimationFrame loop drives every mark on the page; each frame is one
 // eased angle on one curve (lib/motion.js DOOR). Under reduced motion the door does not turn: it
 // holds still, the knob is hidden, and its opacity breathes between DOOR.breath and 1 (CSS).
 // The resting pose is the server rendered markup, so the mark reads without JavaScript.
 import { useEffect, useId, useRef, useState } from 'react';
 import { DOOR, REDUCED_QUERY } from '../../lib/motion';
-import { DOOR_GROUNDS, doorGeometry, doorFrame, quadPoints, doorFill, breathCss, travelAt, cycleTime, doorTimeline, bezier, hash, r3 } from './doorGeometry';
+import { DOOR_GROUNDS, doorGeometry, doorFrame, doorFill, breathCss, travelAt, cycleTime, doorTimeline, bezier, hash, r3 } from './doorGeometry';
 
 // ── the clock ───────────────────────────────────────────────────────────────────────────────────
 // One loop for every mark. frozen: a time the tests set (window.__rlDoor.at), at which every mark
@@ -65,10 +67,10 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
   const root = useRef(null); const panel = useRef(null); const knob = useRef(null);
   const live = useRef({ g, s }); live.current = { g, s };
 
-  // Draw one frame into the polygon and the knob, without a render.
+  // Draw one frame into the path and the knob, without a render.
   const paint = (frame) => {
     const el = panel.current; const k = knob.current; if (!el || !k) return;
-    el.setAttribute('points', quadPoints(frame.quad));
+    el.setAttribute('d', frame.d);
     el.style.fill = doorFill(colours.bar, frame.shade);
     if (frame.knob) { k.setAttribute('cx', r3(frame.knob.cx)); k.setAttribute('cy', r3(frame.knob.cy)); k.setAttribute('rx', r3(frame.knob.rx)); k.setAttribute('ry', r3(frame.knob.ry)); k.style.display = ''; }
     else k.style.display = 'none';
@@ -105,7 +107,7 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
         {g.restPath ? <path d={g.restPath} fill={colours.letter} /> : null}
       </g>
       <g data-door-leaf="">
-        <polygon ref={panel} data-door-panel="" points={quadPoints(rest.quad)} style={{ fill: colours.bar }} />
+        <path ref={panel} data-door-panel="" d={rest.d} style={{ fill: colours.bar }} />
         <ellipse ref={knob} data-door-knob="" fill={colours.knob} cx={rest.knob ? r3(rest.knob.cx) : 0} cy={rest.knob ? r3(rest.knob.cy) : 0}
           rx={rest.knob ? r3(rest.knob.rx) : 0} ry={rest.knob ? r3(rest.knob.ry) : 0} style={{ display: rest.knob ? undefined : 'none' }} />
       </g>

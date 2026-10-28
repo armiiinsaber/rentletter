@@ -4,12 +4,16 @@
 //   1. The defaults: rest as the thin bar, open to 0.6 of the R, knob 0.18 of the panel, 700ms a
 //      swing, 900ms pause, soft, loop; Copy settings writes them as JSON; every control is at least
 //      44px, at 1280 and at 390; one clock drives every mark in step.
-//   2. One shape: 120 frames of one swing at the widest setting, resting as the bar and as the
+//   2. Straight at rest: resting as the bar, the door's outline is the static bar's outline from the
+//      vector source (lib/brand/logoPaths.js, a rect with rx) within REST_PX, on the wordmark and
+//      both app icons; resting as the panel, the same straight rectangle at the open width.
+//   3. One shape: 120 frames of one swing at the widest setting, resting as the bar and as the
 //      panel, on the wordmark, both app icons and the loading icons. In every frame exactly one
-//      panel is drawn; its outline is one convex quadrilateral; the knob stays inside it; the door
-//      never overlaps the R; and from one frame to the next no corner moves more than STEP px.
-//   3. Once plays one swing and Replay starts it over.
-//   4. Reduced motion, previewed and from the system setting: the door holds still with no knob,
+//      panel is drawn; its outline is one convex quadrilateral (four straight sides, with rounded
+//      corners only as it leaves and nears rest); the knob stays inside it; the door never overlaps
+//      the R; and from one frame to the next no corner moves more than STEP px.
+//   4. Once plays one swing and Replay starts it over.
+//   5. Reduced motion, previewed and from the system setting: the door holds still with no knob,
 //      and its opacity breathes between 0.6 and 1.
 // A WebKit walk fails, never skips, when the binary is missing (tests/helpers/browsers.mjs).
 import { test, before, after } from 'node:test';
@@ -20,7 +24,8 @@ import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } fr
 import { STOP_TIMEOUT } from '../helpers/devServer.mjs';
 register('../helpers/loader.mjs', import.meta.url);
 const { DOOR } = await import('../../lib/motion.js');
-const { DOOR_OPEN_RANGE, doorSettingsJson } = await import('../../components/brand/doorGeometry.js');
+const { DOOR_OPEN_RANGE, doorSettingsJson, R_BOX } = await import('../../components/brand/doorGeometry.js');
+const { LOGO, MARK } = await import('../../lib/brand/logoPaths.js');
 
 const admin = adminServer(3168);
 before(async () => { if (haveWebkit || haveChrome) await admin.start(); }, { timeout: ADMIN_START_TIMEOUT });
@@ -28,6 +33,11 @@ after(async () => { await admin.stop(); }, { timeout: STOP_TIMEOUT });
 
 const FRAMES = 120;
 const STEP = 2; // px: the most any corner of the panel may move from one frame to the next
+const REST_PX = 0.5; // px: the most the resting door's outline may stray from the static bar's
+// The same match in the vector source's own units, tight enough that square corners in place of the
+// bar's rounded ones fail it at any size (they stray 0.41 of rx: 1.4 units on the wordmark, 2.1 on
+// the icons), with room for the engines' arc arithmetic.
+const REST_UNITS = 0.05;
 
 async function open(browser, { width = 1280, reduced = false } = {}) {
   const ctx = await browser.newContext({ baseURL: admin.base, viewport: { width, height: 1000 }, deviceScaleFactor: 1, reducedMotion: reduced ? 'reduce' : 'no-preference' });
@@ -60,10 +70,27 @@ async function targets(page, tag) {
 // One swing of every mark, FRAMES frames from 0 to the swing's end, drawn at each moment through the
 // page's own clock (window.__rlDoor.at); the panel read back from the page.
 const sample = (page, swingMs) => page.evaluate(({ FRAMES, swingMs }) => {
+  // The door's drawn outline, read from its path: the straight sides, the arcs between them, and
+  // the corners where the sides' lines meet (the corners themselves when the outline is sharp).
+  const outline = (el) => {
+    const t = el.getAttribute('d').match(/[MLAZ]|-?\d*\.?\d+(?:e-?\d+)?/g); let i = 0; const num = () => Number(t[i++]);
+    let cur = null; let start = null; const sides = []; const arcs = []; let bad = 0;
+    while (i < t.length) {
+      const c = t[i++];
+      if (c === 'M') { cur = [num(), num()]; start = cur; }
+      else if (c === 'L') { const to = [num(), num()]; sides.push([cur, to]); cur = to; }
+      else if (c === 'A') { const r = num(); num(); num(); const large = num(); const sweep = num(); const to = [num(), num()]; arcs.push({ r, large, sweep }); cur = to; }
+      else if (c === 'Z') { if (Math.hypot(cur[0] - start[0], cur[1] - start[1]) > 1e-6) sides.push([cur, start]); cur = start; }
+      else bad++;
+    }
+    const meet = (a, b) => { const [p, q] = a; const [r, s] = b; const d1 = [q[0] - p[0], q[1] - p[1]]; const d2 = [s[0] - r[0], s[1] - r[1]]; const den = d1[0] * d2[1] - d1[1] * d2[0]; const u = ((r[0] - p[0]) * d2[1] - (r[1] - p[1]) * d2[0]) / den; return [p[0] + u * d1[0], p[1] + u * d1[1]]; };
+    const corners = sides.length === 4 ? sides.map((sd, k) => meet(sd, sides[(k + 1) % 4])) : [];
+    return { sides: sides.length, arcs, bad, corners };
+  };
   const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
   const inside = (q, pt) => { const c = q.map((p, i) => cross(p, q[(i + 1) % 4], pt)); return c.every((v) => v >= -1e-6) || c.every((v) => v <= 1e-6); };
   const roots = [...document.querySelectorAll('[data-door-section] [data-door]')];
-  const res = roots.map((root) => ({ kind: root.dataset.door, frames: 0, panels: [], others: 0, notFour: 0, notConvex: 0, knobShown: 0, knobOut: 0, overlaps: 0, minGap: Infinity, maxStep: 0, minW: Infinity, maxW: 0, rW: root.querySelector('[data-door-r]').getBoundingClientRect().width, css3d: 0 }));
+  const res = roots.map((root) => ({ kind: root.dataset.door, frames: 0, panels: [], others: 0, notFour: 0, notConvex: 0, rounded: 0, knobShown: 0, knobOut: 0, overlaps: 0, minGap: Infinity, maxStep: 0, minW: Infinity, maxW: 0, rW: root.querySelector('[data-door-r]').getBoundingClientRect().width, css3d: 0 }));
   const prev = roots.map(() => null);
   for (let i = 0; i < FRAMES; i++) {
     window.__rlDoor.at((i * swingMs) / (FRAMES - 1));
@@ -74,15 +101,18 @@ const sample = (page, swingMs) => page.evaluate(({ FRAMES, swingMs }) => {
       r.others = Math.max(r.others, root.querySelector('[data-door-leaf]').querySelectorAll(':not([data-door-panel]):not([data-door-knob])').length);
       const poly = panels[0];
       if (getComputedStyle(poly).transform !== 'none' || getComputedStyle(root).transform !== 'none') r.css3d++;
-      const pts = [...poly.points].map((p) => [p.x, p.y]);
-      if (pts.length !== 4) { r.notFour++; return; }
+      // Four straight sides, and either no arcs or one arc per corner, all turning the same way.
+      const o = outline(poly); const pts = o.corners;
+      if (o.bad || o.sides !== 4 || !(o.arcs.length === 0 || (o.arcs.length === 4 && o.arcs.every((a) => a.large === 0 && a.sweep === 1)))) { r.notFour++; return; }
+      if (o.arcs.length) r.rounded++;
       const c = pts.map((p, k) => cross(p, pts[(k + 1) % 4], pts[(k + 2) % 4]));
       if (!(c.every((v) => v > 1e-9) || c.every((v) => v < -1e-9))) r.notConvex++;
       const knob = root.querySelector('[data-door-knob]');
       if (getComputedStyle(knob).display !== 'none') {
         r.knobShown++;
         const kx = knob.cx.baseVal.value; const ky = knob.cy.baseVal.value; const rx = knob.rx.baseVal.value; const ry = knob.ry.baseVal.value;
-        for (let k = 0; k < 36; k++) { const a = (k / 36) * 2 * Math.PI; if (!inside(pts, [kx + rx * Math.cos(a), ky + ry * Math.sin(a)])) { r.knobOut++; break; } }
+        // Inside the corners' outline and inside the path as the engine fills it.
+        for (let k = 0; k < 36; k++) { const a = (k / 36) * 2 * Math.PI; const pt = [kx + rx * Math.cos(a), ky + ry * Math.sin(a)]; if (!inside(pts, pt) || !poly.isPointInFill(new DOMPoint(pt[0], pt[1]))) { r.knobOut++; break; } }
       }
       const ctm = poly.getScreenCTM();
       const scr = pts.map(([x, y]) => { const q = new DOMPoint(x, y).matrixTransform(ctm); return [q.x, q.y]; });
@@ -97,6 +127,69 @@ const sample = (page, swingMs) => page.evaluate(({ FRAMES, swingMs }) => {
   window.__rlDoor.release();
   return res;
 }, { FRAMES, swingMs });
+
+// The resting frame against the static bar: the door's outline as the engine measures it (800
+// points along the path), and the static bar's outline drawn from the vector source (a rect with
+// rx in the letters' own frame: LOGO.bar beside the wordmark's letters, MARK.any.bar on the icons),
+// both in screen px. The match is the larger of the two one way distances (outline to outline).
+// rest: 'bar' compares with the static bar; 'panel' with the same rectangle at the open width.
+const restMatch = (page, rest, open) => page.evaluate(({ rest, open, bars, rW }) => {
+  window.__rlDoor.at(0);
+  const N = 800; const out = [];
+  const sdf = (b, x, y) => { const qx = Math.abs(x - (b.x + b.w / 2)) - (b.w / 2 - b.rx); const qy = Math.abs(y - (b.y + b.h / 2)) - (b.h / 2 - b.rx); return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - b.rx; };
+  const rim = (b) => { // the static outline, walked evenly: four sides and four quarter circles
+    const pts = []; const per = 2 * (b.w + b.h - 4 * b.rx) + 2 * Math.PI * b.rx;
+    for (let i = 0; i < N; i++) {
+      let d = (i / N) * per; const sides = [b.w - 2 * b.rx, b.h - 2 * b.rx, b.w - 2 * b.rx, b.h - 2 * b.rx]; const arc = (Math.PI / 2) * b.rx;
+      const starts = [[b.x + b.rx, b.y, 1, 0], [b.x + b.w, b.y + b.rx, 0, 1], [b.x + b.w - b.rx, b.y + b.h, -1, 0], [b.x, b.y + b.h - b.rx, 0, -1]];
+      const centres = [[b.x + b.w - b.rx, b.y + b.rx, -Math.PI / 2], [b.x + b.w - b.rx, b.y + b.h - b.rx, 0], [b.x + b.rx, b.y + b.h - b.rx, Math.PI / 2], [b.x + b.rx, b.y + b.rx, Math.PI]];
+      for (let k = 0; k < 4; k++) {
+        if (d <= sides[k]) { const [x, y, dx, dy] = starts[k]; pts.push([x + dx * d, y + dy * d]); break; }
+        d -= sides[k];
+        if (d <= arc) { const [cx, cy, a0] = centres[k]; const a = a0 + d / b.rx; pts.push([cx + b.rx * Math.cos(a), cy + b.rx * Math.sin(a)]); break; }
+        d -= arc;
+      }
+    }
+    return pts;
+  };
+  const toSeg = (p, a, b) => { const dx = b[0] - a[0]; const dy = b[1] - a[1]; const u = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(p[0] - a[0] - u * dx, p[1] - a[1] - u * dy); };
+  for (const kind of ['wordmark', 'realtor', 'admin']) {
+    const root = document.querySelector(`[data-door-section] [data-door="${kind}"]`);
+    const path = root.querySelector('[data-door-panel]'); const R = root.querySelector('[data-door-r]');
+    const m = R.getScreenCTM(); const inv = m.inverse(); const scale = Math.hypot(m.a, m.b);
+    const b0 = bars[kind]; const b = rest === 'bar' ? b0 : { ...b0, x: b0.x + b0.w - open * rW[kind], w: open * rW[kind] };
+    const len = path.getTotalLength(); const pm = path.getScreenCTM();
+    const door = []; for (let i = 0; i < N; i++) { const q = path.getPointAtLength((i * len) / N).matrixTransform(pm); door.push([q.x, q.y]); }
+    // door to static: each point of the drawn outline, its distance from the static outline
+    let a = 0; for (const [x, y] of door) { const q = new DOMPoint(x, y).matrixTransform(inv); a = Math.max(a, Math.abs(sdf(b, q.x, q.y)) * scale); }
+    // static to door: each point of the static outline, its distance from the drawn outline
+    let c = 0; for (const p of rim(b)) { const q = new DOMPoint(p[0], p[1]).matrixTransform(m); let best = Infinity; for (let i = 0; i < N; i++) best = Math.min(best, toSeg([q.x, q.y], door[i], door[(i + 1) % N])); c = Math.max(c, best); }
+    const knob = getComputedStyle(root.querySelector('[data-door-knob]')).display !== 'none';
+    out.push({ kind, px: Math.max(a, c), units: Math.max(a, c) / scale, barPx: b.h * scale, knob, fill: path.style.fill });
+  }
+  window.__rlDoor.release();
+  return out;
+}, { rest, open, bars: { wordmark: LOGO.bar, realtor: MARK.any.bar, admin: MARK.any.bar }, rW: { wordmark: R_BOX.wordmark.w, realtor: R_BOX.mark.w, admin: R_BOX.mark.w } });
+
+async function straightAtRest(page, tag) {
+  const open = (await settings(page)).open; const worst = {};
+  for (const rest of ['bar', 'panel']) {
+    await control(page, `rest-${rest}`).click(); await settle(page);
+    const rows = await restMatch(page, rest, open);
+    assert.equal(rows.length, 3);
+    for (const r of rows) {
+      const where = `${tag} rest ${rest} ${r.kind}`;
+      assert.ok(r.barPx > 20, `${where}: drawn at a size worth measuring (${r.barPx.toFixed(1)}px tall)`);
+      assert.ok(r.px <= REST_PX, `${where}: the resting outline within ${REST_PX}px of the ${rest === 'bar' ? 'static bar' : 'straight panel'} (${r.px.toFixed(3)}px)`);
+      assert.ok(r.units <= REST_UNITS, `${where}: and within ${REST_UNITS} of the vector source's units (${r.units.toFixed(4)})`);
+      assert.ok(!r.fill.includes('color-mix'), `${where}: at rest, the bar's own colour`);
+      if (rest === 'bar') assert.equal(r.knob, false, `${where}: no knob at rest`);
+    }
+    worst[rest] = { px: Math.max(...rows.map((r) => r.px)), units: Math.max(...rows.map((r) => r.units)) };
+  }
+  console.log(`  ${tag} at rest: the bar's outline within ${worst.bar.px.toFixed(3)}px (${worst.bar.units.toFixed(4)} units) of the static bar from the vector source on the wordmark and both icons; the panel within ${worst.panel.px.toFixed(3)}px (${worst.panel.units.toFixed(4)} units) of the straight panel (limits ${REST_PX}px, ${REST_UNITS} units)`);
+  await control(page, 'rest-bar').click(); await settle(page);
+}
 
 async function defaults(page, tag) {
   assert.deepEqual(await settings(page), { ...DOOR.defaults }, `${tag}: the defaults`);
@@ -132,6 +225,7 @@ async function oneShape(page, tag) {
       assert.equal(r.others, 0, `${where}: nothing else drawn for the door but its knob`);
       assert.equal(r.css3d, 0, `${where}: no CSS transform on the door`);
       assert.equal(r.notFour + r.notConvex, 0, `${where}: one convex quadrilateral every frame (${r.notFour} not four sided, ${r.notConvex} not convex)`);
+      assert.ok(r.rounded > 0 && r.rounded < FRAMES / 2, `${where}: rounded corners only near rest (${r.rounded} frames)`);
       assert.ok(r.knobShown > FRAMES / 4, `${where}: the knob shows on the open panel (${r.knobShown} frames)`);
       assert.equal(r.knobOut, 0, `${where}: the knob inside the panel every frame`);
       assert.equal(r.overlaps, 0, `${where}: the door never overlaps the R`);
@@ -166,7 +260,7 @@ async function breathes(page, tag) {
   const still = await page.evaluate(() => {
     const roots = [...document.querySelectorAll('[data-door-section] [data-door]')];
     const seen = roots.map(() => new Set()); const knobs = roots.map(() => 0);
-    for (const ms of [0, 175, 350, 525, 700]) { window.__rlDoor.at(ms); roots.forEach((r, j) => { seen[j].add(r.querySelector('[data-door-panel]').getAttribute('points')); if (getComputedStyle(r.querySelector('[data-door-knob]')).display !== 'none') knobs[j]++; }); }
+    for (const ms of [0, 175, 350, 525, 700]) { window.__rlDoor.at(ms); roots.forEach((r, j) => { seen[j].add(r.querySelector('[data-door-panel]').getAttribute('d')); if (getComputedStyle(r.querySelector('[data-door-knob]')).display !== 'none') knobs[j]++; }); }
     window.__rlDoor.release();
     return roots.map((r, j) => ({ kind: r.dataset.door, poses: seen[j].size, knobs: knobs[j] }));
   });
@@ -197,6 +291,7 @@ async function walk(browserType, launch, tag) {
     const { ctx, page, errors } = await open(browser);
     await defaults(page, tag);
     await targets(page, `${tag} 1280`);
+    await straightAtRest(page, tag);
     await oneShape(page, tag);
     await once(page, tag);
     await control(page, 'reduced-on').click(); await settle(page);
