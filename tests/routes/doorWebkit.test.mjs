@@ -1,14 +1,16 @@
 // The door mark on /admin/mockups (components/admin/DoorLab.js, components/brand/DoorMark.js), in
 // WebKit (Safari's engine) and in Chrome, on the walks' admin dev server (tests/helpers/
 // adminServer.mjs: a made up password, an in memory store):
-//   1. The defaults: rest as the thin bar, open to 0.6 of the R, 700ms a swing, 900ms pause, soft,
-//      loop; Copy settings writes them as JSON; every control is at least 44px, at 1280 and at 390.
-//   2. The door never overlaps the R: at the widest setting, 60 frames of one swing sampled from
-//      the running animations, the door's box against the R's, on the wordmark, both app icons and
-//      the six loading icons, resting as the bar and as the panel, in the 3D and the SVG versions.
+//   1. The defaults: rest as the thin bar, open to 0.6 of the R, knob 0.18 of the panel, 700ms a
+//      swing, 900ms pause, soft, loop; Copy settings writes them as JSON; every control is at least
+//      44px, at 1280 and at 390; one clock drives every mark in step.
+//   2. One shape: 120 frames of one swing at the widest setting, resting as the bar and as the
+//      panel, on the wordmark, both app icons and the loading icons. In every frame exactly one
+//      panel is drawn; its outline is one convex quadrilateral; the knob stays inside it; the door
+//      never overlaps the R; and from one frame to the next no corner moves more than STEP px.
 //   3. Once plays one swing and Replay starts it over.
-//   4. Reduced motion, previewed and from the system setting: the door does not turn, its opacity
-//      breathes between 0.6 and 1.
+//   4. Reduced motion, previewed and from the system setting: the door holds still with no knob,
+//      and its opacity breathes between 0.6 and 1.
 // A WebKit walk fails, never skips, when the binary is missing (tests/helpers/browsers.mjs).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,8 +26,8 @@ const admin = adminServer(3168);
 before(async () => { if (haveWebkit || haveChrome) await admin.start(); }, { timeout: ADMIN_START_TIMEOUT });
 after(async () => { await admin.stop(); }, { timeout: STOP_TIMEOUT });
 
-const FRAMES = 60;
-const KINDS = ['wordmark', 'realtor', 'admin', 'paper', 'ink'];
+const FRAMES = 120;
+const STEP = 2; // px: the most any corner of the panel may move from one frame to the next
 
 async function open(browser, { width = 1280, reduced = false } = {}) {
   const ctx = await browser.newContext({ baseURL: admin.base, viewport: { width, height: 1000 }, deviceScaleFactor: 1, reducedMotion: reduced ? 'reduce' : 'no-preference' });
@@ -36,7 +38,7 @@ async function open(browser, { width = 1280, reduced = false } = {}) {
   const errors = []; page.on('pageerror', (e) => { if (!/ResizeObserver loop/.test(e.message)) errors.push(e.message); });
   await page.goto('/admin/mockups', { waitUntil: 'networkidle', timeout: 240000 });
   await page.locator('[data-door-section] [data-door="wordmark"]').waitFor({ timeout: 60000 });
-  await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; document.querySelector('[data-door-section]').scrollIntoView({ behavior: 'instant' }); });
+  await page.evaluate(() => { document.documentElement.style.scrollBehavior = 'auto'; document.getElementById('door-grounds').scrollIntoView({ behavior: 'instant' }); });
   return { ctx, page, errors };
 }
 const settings = async (page) => JSON.parse(await page.locator('[data-door-section]').getAttribute('data-door-settings'));
@@ -50,120 +52,143 @@ async function targets(page, tag) {
     count: document.querySelectorAll('[data-door-section] button, [data-door-section] input').length,
     scroll: document.documentElement.scrollWidth, vw: innerWidth,
   }));
-  assert.ok(r.count >= 16, `${tag}: the controls are there (${r.count})`);
+  assert.ok(r.count >= 15, `${tag}: the controls are there (${r.count})`);
   assert.deepEqual(r.small, [], `${tag}: every control at least 44px tall`);
   assert.equal(r.scroll, r.vw, `${tag}: no sideways scroll`);
 }
 
-// One swing of every mark, FRAMES frames from 0 to the swing's end, set on its own running
-// animations; the door's box (its faces, as the browser projects them) against the R's box.
+// One swing of every mark, FRAMES frames from 0 to the swing's end, drawn at each moment through the
+// page's own clock (window.__rlDoor.at); the panel read back from the page.
 const sample = (page, swingMs) => page.evaluate(({ FRAMES, swingMs }) => {
-  const out = [];
-  for (const root of document.querySelectorAll('[data-door-section] [data-door]')) {
-    const anims = root.getAnimations({ subtree: true });
-    anims.forEach((a) => a.pause());
-    const R = root.querySelector('[data-door-r]').getBoundingClientRect();
-    const res = { kind: root.dataset.door, version: root.dataset.doorVersion, anims: anims.length, overlaps: 0, minGap: Infinity, minW: Infinity, maxW: 0, rW: R.width };
-    for (let i = 0; i < FRAMES; i++) {
-      const t = (i * swingMs) / (FRAMES - 1);
-      anims.forEach((a) => { a.currentTime = t; });
-      const faces = [...root.querySelectorAll('[data-door-face]')].map((f) => f.getBoundingClientRect()).filter((r) => r.width > 0.01 && r.height > 0);
-      const box = { left: Math.min(...faces.map((r) => r.left)), right: Math.max(...faces.map((r) => r.right)), top: Math.min(...faces.map((r) => r.top)), bottom: Math.max(...faces.map((r) => r.bottom)) };
-      if (box.left < R.right && box.right > R.left && box.top < R.bottom && box.bottom > R.top) res.overlaps++;
-      res.minGap = Math.min(res.minGap, R.left - box.right);
-      res.minW = Math.min(res.minW, box.right - box.left); res.maxW = Math.max(res.maxW, box.right - box.left);
-    }
-    anims.forEach((a) => a.play());
-    out.push(res);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const inside = (q, pt) => { const c = q.map((p, i) => cross(p, q[(i + 1) % 4], pt)); return c.every((v) => v >= -1e-6) || c.every((v) => v <= 1e-6); };
+  const roots = [...document.querySelectorAll('[data-door-section] [data-door]')];
+  const res = roots.map((root) => ({ kind: root.dataset.door, frames: 0, panels: [], others: 0, notFour: 0, notConvex: 0, knobShown: 0, knobOut: 0, overlaps: 0, minGap: Infinity, maxStep: 0, minW: Infinity, maxW: 0, rW: root.querySelector('[data-door-r]').getBoundingClientRect().width, css3d: 0 }));
+  const prev = roots.map(() => null);
+  for (let i = 0; i < FRAMES; i++) {
+    window.__rlDoor.at((i * swingMs) / (FRAMES - 1));
+    roots.forEach((root, j) => {
+      const r = res[j]; r.frames++;
+      const panels = root.querySelectorAll('[data-door-panel]');
+      if (!r.panels.includes(panels.length)) r.panels.push(panels.length);
+      r.others = Math.max(r.others, root.querySelector('[data-door-leaf]').querySelectorAll(':not([data-door-panel]):not([data-door-knob])').length);
+      const poly = panels[0];
+      if (getComputedStyle(poly).transform !== 'none' || getComputedStyle(root).transform !== 'none') r.css3d++;
+      const pts = [...poly.points].map((p) => [p.x, p.y]);
+      if (pts.length !== 4) { r.notFour++; return; }
+      const c = pts.map((p, k) => cross(p, pts[(k + 1) % 4], pts[(k + 2) % 4]));
+      if (!(c.every((v) => v > 1e-9) || c.every((v) => v < -1e-9))) r.notConvex++;
+      const knob = root.querySelector('[data-door-knob]');
+      if (getComputedStyle(knob).display !== 'none') {
+        r.knobShown++;
+        const kx = knob.cx.baseVal.value; const ky = knob.cy.baseVal.value; const rx = knob.rx.baseVal.value; const ry = knob.ry.baseVal.value;
+        for (let k = 0; k < 36; k++) { const a = (k / 36) * 2 * Math.PI; if (!inside(pts, [kx + rx * Math.cos(a), ky + ry * Math.sin(a)])) { r.knobOut++; break; } }
+      }
+      const ctm = poly.getScreenCTM();
+      const scr = pts.map(([x, y]) => { const q = new DOMPoint(x, y).matrixTransform(ctm); return [q.x, q.y]; });
+      const R = root.querySelector('[data-door-r]').getBoundingClientRect();
+      const right = Math.max(...scr.map((p) => p[0])); const left = Math.min(...scr.map((p) => p[0]));
+      if (right > R.left) r.overlaps++;
+      r.minGap = Math.min(r.minGap, R.left - right); r.minW = Math.min(r.minW, right - left); r.maxW = Math.max(r.maxW, right - left);
+      if (prev[j]) r.maxStep = Math.max(r.maxStep, ...scr.map((p, k) => Math.hypot(p[0] - prev[j][k][0], p[1] - prev[j][k][1])));
+      prev[j] = scr;
+    });
   }
-  return out;
+  window.__rlDoor.release();
+  return res;
 }, { FRAMES, swingMs });
 
 async function defaults(page, tag) {
   assert.deepEqual(await settings(page), { ...DOOR.defaults }, `${tag}: the defaults`);
   assert.equal((await page.locator('[data-door-value="open"]').innerText()).trim(), '0.60 of the R');
+  assert.equal((await page.locator('[data-door-value="knob"]').innerText()).trim(), '0.18 of the panel');
   assert.equal((await page.locator('[data-door-value="swing"]').innerText()).trim(), '700 ms');
   assert.equal((await page.locator('[data-door-value="pause"]').innerText()).trim(), '900 ms');
-  for (const k of ['rest-bar', 'easing-soft', 'play-loop', 'version-3d', 'reduced-off']) assert.equal(await control(page, k).getAttribute('aria-pressed'), 'true', `${tag}: ${k} chosen`);
+  for (const k of ['rest-bar', 'easing-soft', 'play-loop', 'reduced-off']) assert.equal(await control(page, k).getAttribute('aria-pressed'), 'true', `${tag}: ${k} chosen`);
   const kinds = await page.locator('[data-door-section] [data-door]').evaluateAll((els) => els.map((el) => el.dataset.door));
   assert.deepEqual(kinds, ['wordmark', 'realtor', 'admin', 'paper', 'paper', 'paper', 'ink', 'ink', 'ink'], `${tag}: three grounds and six loading icons`);
-  const looping = await page.locator('[data-door-section] [data-door]').evaluateAll((els) => els.map((el) => el.getAnimations({ subtree: true }).filter((a) => a.effect.getTiming().iterations === Infinity).length));
-  assert.ok(looping.every((n) => n === 6), `${tag}: every mark loops its swing, its faces and their shades (${looping})`);
-  // Every mark swings in step, the wordmark included after it settles its size to its tile.
-  await page.waitForTimeout(400);
-  const times = await page.locator('[data-door-section] [data-door]').evaluateAll((els) => els.map((el) => el.getAnimations({ subtree: true })[0].currentTime % 1600));
-  assert.ok(Math.max(...times) - Math.min(...times) < 50, `${tag}: every mark in step (${times.map((t) => Math.round(t)).join(', ')})`);
-  // The loading icon at the default settings, as drawn: the bar at rest and the panel open.
-  const loading = (await sample(page, DOOR.defaults.swingMs)).filter((r) => r.kind === 'paper');
-  console.log(`  ${tag} loading at the defaults: ${loading.map((r, i) => `${[20, 28, 44][i]}px bar ${r.minW.toFixed(2)}px open ${r.maxW.toFixed(2)}px`).join(', ')}`);
+  // One clock: the marks move, and every mark is at the same point of its swing.
+  const travels = async () => page.locator('[data-door-section] [data-door]').evaluateAll((els) => els.map((el) => Number(el.getAttribute('data-door-travel'))));
+  let moved = false;
+  for (let i = 0; i < 40 && !moved; i++) { await page.waitForTimeout(50); const t = await travels(); moved = t[0] > 0.05; if (moved) assert.ok(Math.max(...t) - Math.min(...t) < 0.02, `${tag}: every mark in step (${t})`); }
+  assert.ok(moved, `${tag}: the door swings`);
   await control(page, 'copy').click();
   await page.waitForFunction(() => window.__copied !== null, null, { timeout: 3000 });
   assert.equal(await page.evaluate(() => window.__copied), doorSettingsJson(DOOR.defaults), `${tag}: Copy settings writes the values as JSON`);
   assert.equal((await control(page, 'copy').innerText()).trim(), 'Copied');
 }
 
-async function neverOverlaps(page, tag) {
+async function oneShape(page, tag) {
   await control(page, 'open').focus(); await page.keyboard.press('End');
   assert.equal((await settings(page)).open, DOOR_OPEN_RANGE.max, `${tag}: the open width at its widest`);
-  assert.equal((await page.locator('[data-door-value="open"]').innerText()).trim(), `${DOOR_OPEN_RANGE.max.toFixed(2)} of the R`);
-  for (const version of ['3d', 'svg']) {
-    await control(page, `version-${version}`).click();
-    for (const rest of ['bar', 'panel']) {
-      await control(page, `rest-${rest}`).click(); await settle(page);
-      const rows = await sample(page, DOOR.defaults.swingMs);
-      assert.equal(rows.length, 9);
-      for (const r of rows) {
-        const where = `${tag} ${version} rest ${rest} ${r.kind}`;
-        assert.equal(r.version, version);
-        assert.ok(r.anims >= 2, `${where}: its animations ran (${r.anims})`);
-        assert.equal(r.overlaps, 0, `${where}: the door never overlaps the R in ${FRAMES} frames`);
-        assert.ok(r.minGap > 0, `${where}: the nearest the door came to the R, ${r.minGap.toFixed(2)}px, is a gap`);
-        // The frames span the whole swing: the bar and the panel at the widest setting both appear.
-        const want = DOOR_OPEN_RANGE.max * r.rW;
-        assert.ok(Math.abs(r.maxW - want) < want * 0.03, `${where}: at its widest the door is ${r.maxW.toFixed(1)}px, ${DOOR_OPEN_RANGE.max} of the R's ${r.rW.toFixed(1)}px`);
-        assert.ok(r.minW < r.maxW / 2.5, `${where}: and it narrows to the bar (${r.minW.toFixed(1)}px)`);
-      }
-      console.log(`  ${tag} ${version} rest ${rest}: ${rows.length} marks, ${FRAMES} frames each, 0 overlaps, nearest gap ${Math.min(...rows.map((r) => r.minGap)).toFixed(2)}px`);
+  for (const rest of ['bar', 'panel']) {
+    await control(page, `rest-${rest}`).click(); await settle(page);
+    const rows = await sample(page, DOOR.defaults.swingMs);
+    assert.equal(rows.length, 9);
+    for (const r of rows) {
+      const where = `${tag} rest ${rest} ${r.kind}`;
+      assert.equal(r.frames, FRAMES);
+      assert.deepEqual(r.panels, [1], `${where}: exactly one panel drawn in every frame`);
+      assert.equal(r.others, 0, `${where}: nothing else drawn for the door but its knob`);
+      assert.equal(r.css3d, 0, `${where}: no CSS transform on the door`);
+      assert.equal(r.notFour + r.notConvex, 0, `${where}: one convex quadrilateral every frame (${r.notFour} not four sided, ${r.notConvex} not convex)`);
+      assert.ok(r.knobShown > FRAMES / 4, `${where}: the knob shows on the open panel (${r.knobShown} frames)`);
+      assert.equal(r.knobOut, 0, `${where}: the knob inside the panel every frame`);
+      assert.equal(r.overlaps, 0, `${where}: the door never overlaps the R`);
+      assert.ok(r.minGap > 0, `${where}: nearest gap to the R ${r.minGap.toFixed(2)}px`);
+      assert.ok(r.maxStep <= STEP, `${where}: no corner moves more than ${STEP}px between frames (${r.maxStep.toFixed(2)}px)`);
+      const want = DOOR_OPEN_RANGE.max * r.rW;
+      assert.ok(Math.abs(r.maxW - want) < want * 0.03 && r.minW < r.maxW / 2.5, `${where}: the frames span the swing, ${r.minW.toFixed(1)}px to ${r.maxW.toFixed(1)}px`);
     }
+    const named = rows.filter((r) => ['wordmark', 'realtor', 'admin'].includes(r.kind));
+    console.log(`  ${tag} rest ${rest}: ${FRAMES} frames on ${rows.length} marks; one panel in every frame; 0 not convex; knob inside in all ${named.reduce((n, r) => n + r.knobShown, 0)} knob frames on the wordmark and icons; 0 overlaps, nearest gap ${Math.min(...rows.map((r) => r.minGap)).toFixed(2)}px; largest corner step ${Math.max(...rows.map((r) => r.maxStep)).toFixed(2)}px (limit ${STEP}px)`);
   }
-  await control(page, 'rest-bar').click(); await control(page, 'version-3d').click();
+  await control(page, 'rest-bar').click();
 }
 
 async function once(page, tag) {
+  const angle = () => page.locator('[data-door-section] [data-door="wordmark"]').getAttribute('data-door-angle');
   await control(page, 'play-once').click(); await settle(page);
-  const it = await page.locator('[data-door-section] [data-door="wordmark"]').evaluate((el) => el.getAnimations({ subtree: true }).map((a) => a.effect.getTiming().iterations));
-  assert.ok(it.length === 6 && it.every((n) => n === 1), `${tag}: once plays one swing (${it})`);
-  await page.waitForTimeout(DOOR.defaults.swingMs + 200);
-  assert.ok(await page.locator('[data-door-section] [data-door="wordmark"]').evaluate((el) => el.getAnimations({ subtree: true }).every((a) => a.playState === 'finished')), `${tag}: and stops`);
-  await control(page, 'replay').click(); await settle(page);
-  assert.ok(await page.locator('[data-door-section] [data-door="wordmark"]').evaluate((el) => el.getAnimations({ subtree: true }).every((a) => a.playState === 'running' && a.currentTime < 400)), `${tag}: Replay starts it over`);
+  const rest = await page.evaluate(() => document.querySelector('[data-door-section] [data-door="wordmark"]').getAttribute('data-door-angle'));
+  await page.waitForTimeout(DOOR.defaults.swingMs + 300);
+  const after1 = await angle(); await page.waitForTimeout(300);
+  assert.equal(await angle(), after1, `${tag}: once plays one swing and stops`);
+  assert.equal(Number(await page.locator('[data-door-section] [data-door="wordmark"]').getAttribute('data-door-travel')), 0, `${tag}: at rest`);
+  await control(page, 'replay').click();
+  let moved = false;
+  for (let i = 0; i < 20 && !moved; i++) { await page.waitForTimeout(25); moved = Number(await page.locator('[data-door-section] [data-door="wordmark"]').getAttribute('data-door-travel')) > 0.05; }
+  assert.ok(moved, `${tag}: Replay starts it over (from ${rest})`);
   await control(page, 'play-loop').click();
 }
 
-// Reduced: no transform animates, the faces hold still, the door's opacity breathes 0.6 to 1.
+// Reduced: the door holds still with no knob; only the opacity of the door breathes, 0.6 to 1.
 async function breathes(page, tag) {
-  for (const version of ['3d', 'svg']) {
-    await control(page, `version-${version}`).click(); await settle(page);
+  const still = await page.evaluate(() => {
+    const roots = [...document.querySelectorAll('[data-door-section] [data-door]')];
+    const seen = roots.map(() => new Set()); const knobs = roots.map(() => 0);
+    for (const ms of [0, 175, 350, 525, 700]) { window.__rlDoor.at(ms); roots.forEach((r, j) => { seen[j].add(r.querySelector('[data-door-panel]').getAttribute('points')); if (getComputedStyle(r.querySelector('[data-door-knob]')).display !== 'none') knobs[j]++; }); }
+    window.__rlDoor.release();
+    return roots.map((r, j) => ({ kind: r.dataset.door, poses: seen[j].size, knobs: knobs[j] }));
+  });
+  for (const r of still) { assert.equal(r.poses, 1, `${tag} ${r.kind}: the door holds still`); assert.equal(r.knobs, 0, `${tag} ${r.kind}: no knob`); }
+  for (const rest of ['bar', 'panel']) {
+    await control(page, `rest-${rest}`).click(); await settle(page);
     const rows = await page.evaluate(() => [...document.querySelectorAll('[data-door-section] [data-door]')].map((root) => {
-      const anims = root.getAnimations({ subtree: true });
-      const leaf = root.querySelector('[data-door-leaf]');
-      const face = root.querySelector('[data-door-face]');
-      const cycle = anims.length ? anims[0].effect.getTiming().duration : 0;
-      anims.forEach((a) => a.pause());
-      const ops = []; const boxes = new Set();
-      for (let i = 0; i <= 40; i++) { anims.forEach((a) => { a.currentTime = (i * cycle) / 40; }); ops.push(Number(getComputedStyle(leaf).opacity)); const b = face.getBoundingClientRect(); boxes.add(`${b.left.toFixed(2)},${b.width.toFixed(2)}`); }
+      const leaf = root.querySelector('[data-door-leaf]'); const anims = root.getAnimations({ subtree: true });
+      const cycle = anims.length ? anims[0].effect.getTiming().duration : 0; anims.forEach((a) => a.pause());
+      const ops = []; for (let i = 0; i <= 40; i++) { anims.forEach((a) => { a.currentTime = (i * cycle) / 40; }); ops.push(Number(getComputedStyle(leaf).opacity)); }
       anims.forEach((a) => a.play());
-      return { kind: root.dataset.door, anims: anims.map((a) => a.animationName.replace(/^.*-/, '')), targets: anims.map((a) => a.effect.target === leaf), min: Math.min(...ops), max: Math.max(...ops), still: boxes.size === 1 };
+      return { kind: root.dataset.door, anims: anims.map((a) => a.animationName.replace(/^.*-/, '')), onLeaf: anims.every((a) => a.effect.target === leaf), min: Math.min(...ops), max: Math.max(...ops), knob: getComputedStyle(root.querySelector('[data-door-knob]')).display };
     }));
     for (const r of rows) {
-      const where = `${tag} ${version} ${r.kind}`;
-      assert.deepEqual(r.anims, ['breath'], `${where}: only the breath runs, nothing turns`);
-      assert.deepEqual(r.targets, [true], `${where}: on the door itself`);
+      const where = `${tag} rest ${rest} ${r.kind}`;
+      assert.deepEqual(r.anims, ['breath'], `${where}: only the breath runs`);
+      assert.ok(r.onLeaf, `${where}: on the door itself`);
       assert.ok(Math.abs(r.min - DOOR.breath) < 0.02 && r.max === 1, `${where}: opacity between ${r.min.toFixed(2)} and ${r.max}`);
-      assert.ok(r.still, `${where}: the door holds still`);
+      assert.equal(r.knob, 'none', `${where}: the knob hidden`);
     }
   }
-  await control(page, 'version-3d').click();
+  await control(page, 'rest-bar').click();
 }
 
 async function walk(browserType, launch, tag) {
@@ -172,9 +197,9 @@ async function walk(browserType, launch, tag) {
     const { ctx, page, errors } = await open(browser);
     await defaults(page, tag);
     await targets(page, `${tag} 1280`);
-    await neverOverlaps(page, tag);
+    await oneShape(page, tag);
     await once(page, tag);
-    await control(page, 'reduced-on').click();
+    await control(page, 'reduced-on').click(); await settle(page);
     assert.equal(await page.locator('[data-door-section]').getAttribute('data-door-motion'), 'reduced');
     await breathes(page, `${tag} previewed`);
     assert.deepEqual(errors, []);

@@ -2,87 +2,113 @@
 // The door mark: the bar beside the R is a door seen from the side. It swings on a hinge on the
 // bar's edge nearest the R, so the panel widens away from the R and never crosses into it.
 // Drawn from the official vector source (lib/brand/logoPaths.js): the R and the letters come from
-// the paths, the door from the bar's own box. Timing and curves come from lib/motion.js DOOR.
+// the paths, the door from the bar's box (components/brand/doorGeometry.js).
 //
-// Two versions on one geometry:
-//   3d   The door is two HTML faces, each turned by CSS perspective and rotateY around the hinge
-//        edge (each face's transform origin). The edge face is the bar itself; the panel face is
-//        folded back behind the hinge, seen edge on at rest. The vanishing point sits on the hinge
-//        line, so every projected point stays on the door's side of the hinge.
-//        Each face carries an ink shade whose opacity rises as the face turns away: depth.
-//   svg  One SVG with no 3D transform, for email and GIF export: the bar is scaled from the hinge
-//        to the width the 3D door projects to, with a subtle skew at mid swing, sampled from the
-//        same timing.
-// Under reduced motion the door does not turn: it holds still and its opacity breathes between
-// DOOR.breath and 1. The resting pose is the server rendered markup, so the mark reads without
-// JavaScript and without animation.
-import { useId } from 'react';
-import { DOOR } from '../../lib/motion';
-import { C } from '../theme';
-import { DOOR_GROUNDS, doorGeometry, doorParts, door3dCss, doorFlatCss, flatPose, turn3d, restAngle, shadeEdge, shadePanel, hash, r3, faceRestOpacity } from './doorGeometry';
+// One shape: the door is one SVG polygon, the projection of one flat rectangle turning about its
+// hinge edge, recomputed every frame, with one fill and a knob projected with it. No CSS 3D, no
+// second face, no stacked layers, so on every engine it reads as one object turning in space. The
+// same SVG serves the page, email and GIF export.
+// One clock: a single requestAnimationFrame loop drives every mark on the page; each frame is one
+// eased angle on one curve (lib/motion.js DOOR). Under reduced motion the door does not turn: it
+// holds still, the knob is hidden, and its opacity breathes between DOOR.breath and 1 (CSS).
+// The resting pose is the server rendered markup, so the mark reads without JavaScript.
+import { useEffect, useId, useRef, useState } from 'react';
+import { DOOR, REDUCED_QUERY } from '../../lib/motion';
+import { DOOR_GROUNDS, doorGeometry, doorFrame, quadPoints, doorFill, breathCss, travelAt, cycleTime, doorTimeline, bezier, hash, r3 } from './doorGeometry';
 
-// ── the component ───────────────────────────────────────────────────────────────────────────────
+// ── the clock ───────────────────────────────────────────────────────────────────────────────────
+// One loop for every mark. frozen: a time the tests set (window.__rlDoor.at), at which every mark
+// draws that moment of its cycle and the loop stops until released.
+const clock = { subs: new Set(), raf: 0, frozen: null };
+function tick(now) {
+  clock.raf = 0;
+  for (const draw of clock.subs) draw(now);
+  if (clock.subs.size && clock.frozen === null) clock.raf = requestAnimationFrame(tick);
+}
+function subscribe(draw) {
+  clock.subs.add(draw);
+  if (!clock.raf && clock.frozen === null) clock.raf = requestAnimationFrame(tick);
+  return () => { clock.subs.delete(draw); if (!clock.subs.size && clock.raf) { cancelAnimationFrame(clock.raf); clock.raf = 0; } };
+}
+if (typeof window !== 'undefined') {
+  window.__rlDoor = {
+    at(ms) { clock.frozen = ms; if (clock.raf) { cancelAnimationFrame(clock.raf); clock.raf = 0; } for (const draw of clock.subs) draw(null); },
+    release() { clock.frozen = null; if (!clock.raf && clock.subs.size) clock.raf = requestAnimationFrame(tick); },
+  };
+}
+
+function useReducedMotion(motion) {
+  const [system, setSystem] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return undefined;
+    const mq = window.matchMedia(REDUCED_QUERY);
+    const read = () => setSystem(mq.matches);
+    read(); mq.addEventListener?.('change', read);
+    return () => mq.removeEventListener?.('change', read);
+  }, []);
+  return motion === 'reduced' || system;
+}
+
 // kind: wordmark | realtor | admin | paper | ink. size: the cap height (wordmark) or the side (the
-// rest), in px. settings: DOOR.defaults' shape. version: '3d' or 'svg'. motion: 'auto' or
-// 'reduced'. run: change it to play again.
-export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR.defaults, version = '3d', motion = 'auto', run = 0 }) {
+// rest), in px. settings: DOOR.defaults' shape. motion: 'auto' or 'reduced'. run: change it to play
+// again.
+export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR.defaults, motion = 'auto', run = 0 }) {
   const cls = `rd${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const s = { ...DOOR.defaults, ...settings };
   const g = doorGeometry(kind, size, s.open);
   const colours = DOOR_GROUNDS[kind] || DOOR_GROUNDS.wordmark;
-  // The animation's name changes with the settings and nothing else: every mark restarts together.
-  const name = `${cls}${hash([version, motion, run, s.rest, s.open, s.swingMs, s.pauseMs, s.easing, s.play].join('|'))}`;
+  const reduced = useReducedMotion(motion);
+  const key = [motion, run, s.rest, s.open, s.knob, s.swingMs, s.pauseMs, s.easing, s.play].join('|');
+  const name = `${cls}${hash(key)}`;
   const icon = g.radius !== null;
-  const letters = (
-    <g transform={g.letters || undefined}>
-      <path data-door-r="" d={g.rPath} fill={colours.letter} />
-      {g.restPath ? <path d={g.restPath} fill={colours.letter} /> : null}
-    </g>
-  );
-  const ground = icon ? <rect width={g.w} height={g.h} rx={g.radius || undefined} fill={colours.ground} /> : null;
-  const A0 = restAngle(s);
+  const rest = doorFrame(g, s, 0, { reduced });
+  const root = useRef(null); const panel = useRef(null); const knob = useRef(null);
+  const live = useRef({ g, s }); live.current = { g, s };
 
-  if (version === 'svg') {
-    const parts = doorParts(g, s.open);
-    const pose = flatPose(A0, parts);
-    return (
-      <svg className={cls} data-door={kind} data-door-version="svg" width={r3(g.w * g.k)} height={r3(g.h * g.k)} viewBox={`0 0 ${g.w} ${g.h}`}
-        role="img" aria-label="Rentletter" focusable="false" style={{ display: 'block', flexShrink: 0, overflow: 'visible', background: icon ? undefined : colours.ground }}>
-        <style dangerouslySetInnerHTML={{ __html: doorFlatCss({ cls, name, parts, s, motion }) }} />
-        {ground}{letters}
-        <g data-door-leaf="">
-          <g data-door-flat="" style={{ transform: pose.transform }}>
-            <rect data-door-face="flat" x={g.bar.x} y={g.bar.y} width={g.bar.w} height={g.bar.h} rx={g.bar.rx} fill={colours.bar} />
-            <rect data-door-shade="flat" x={g.bar.x} y={g.bar.y} width={g.bar.w} height={g.bar.h} rx={g.bar.rx} fill={C.ink} style={{ opacity: pose.shade }} />
-          </g>
-        </g>
-      </svg>
-    );
-  }
+  // Draw one frame into the polygon and the knob, without a render.
+  const paint = (frame) => {
+    const el = panel.current; const k = knob.current; if (!el || !k) return;
+    el.setAttribute('points', quadPoints(frame.quad));
+    el.style.fill = doorFill(colours.bar, frame.shade);
+    if (frame.knob) { k.setAttribute('cx', r3(frame.knob.cx)); k.setAttribute('cy', r3(frame.knob.cy)); k.setAttribute('rx', r3(frame.knob.rx)); k.setAttribute('ry', r3(frame.knob.ry)); k.style.display = ''; }
+    else k.style.display = 'none';
+    root.current?.setAttribute('data-door-angle', r3(frame.deg)); root.current?.setAttribute('data-door-travel', r3(frame.travel));
+  };
 
-  const px = doorParts(g, s.open, g.k);
-  // Each face is its own flat element turned on the hinge line (its right edge, the transform
-  // origin and so the vanishing point), with no nested 3D context: WebKit flattens a
-  // preserve-3d context and the folded panel would never show. The panel is drawn first, the edge
-  // over it: the edge is always the nearer face.
-  const face = { position: 'absolute', top: r3(px.hy), height: r3(px.h), fontSize: r3(px.h), borderRadius: r3(px.rx), background: colours.bar, transformOrigin: '100% 50%' };
-  const shade = { position: 'absolute', inset: 0, borderRadius: 'inherit', background: C.ink };
+  // The swing, from one shared clock. A new key (new settings, Replay) starts the cycle over; a new
+  // size does not, so a mark that settles its size after mounting stays in step with the rest.
+  useEffect(() => {
+    if (reduced) { paint(doorFrame(live.current.g, live.current.s, 0, { reduced: true })); return undefined; }
+    const epoch = performance.now(); const ease = bezier(DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing]);
+    let unsubscribe = () => {};
+    const draw = (now) => {
+      const cur = live.current; const elapsed = now === null ? clock.frozen : now - epoch;
+      paint(doorFrame(cur.g, cur.s, travelAt(cur.s, cycleTime(cur.s, elapsed), ease)));
+      if (cur.s.play === 'once' && now !== null && elapsed >= doorTimeline(cur.s).cycle) unsubscribe();
+    };
+    unsubscribe = subscribe(draw);
+    return () => unsubscribe();
+  }, [key, reduced]); // eslint-disable-line react-hooks/exhaustive-deps
+  // A new size while the clock is frozen, or while still: repaint the pose at once.
+  useEffect(() => {
+    if (reduced) paint(doorFrame(g, s, 0, { reduced: true }));
+    else if (clock.frozen !== null) paint(doorFrame(g, s, travelAt(s, cycleTime(s, clock.frozen))));
+  }, [size]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
-    <div className={cls} data-door={kind} data-door-version="3d" role="img" aria-label="Rentletter"
-      style={{ position: 'relative', width: r3(g.w * g.k), height: r3(g.h * g.k), flexShrink: 0, background: icon ? undefined : colours.ground }}>
-      <style dangerouslySetInnerHTML={{ __html: door3dCss({ cls, name, s, motion }) }} />
-      <svg width={r3(g.w * g.k)} height={r3(g.h * g.k)} viewBox={`0 0 ${g.w} ${g.h}`} aria-hidden="true" focusable="false"
-        style={{ position: 'absolute', left: 0, top: 0, display: 'block', overflow: 'visible' }}>
-        {ground}{letters}
-      </svg>
-      <div data-door-leaf="" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
-        <div data-door-face="panel" style={{ ...face, left: r3(px.hx - px.W), width: r3(px.W), transform: turn3d(A0 - 90), opacity: faceRestOpacity(s, 'panel') }}>
-          <div data-door-shade="panel" style={{ ...shade, opacity: shadePanel(A0) }} />
-        </div>
-        <div data-door-face="edge" style={{ ...face, left: r3(px.hx - px.t), width: r3(px.t), transform: turn3d(A0), opacity: faceRestOpacity(s, 'edge') }}>
-          <div data-door-shade="edge" style={{ ...shade, opacity: shadeEdge(A0) }} />
-        </div>
-      </div>
-    </div>
+    <svg ref={root} className={cls} data-door={kind} data-door-angle={r3(rest.deg)} width={r3(g.w * g.k)} height={r3(g.h * g.k)} viewBox={`0 0 ${g.w} ${g.h}`}
+      role="img" aria-label="Rentletter" focusable="false" style={{ display: 'block', flexShrink: 0, overflow: 'visible', background: icon ? undefined : colours.ground }}>
+      <style dangerouslySetInnerHTML={{ __html: breathCss(cls, name, s, motion) }} />
+      {icon ? <rect width={g.w} height={g.h} rx={g.radius || undefined} fill={colours.ground} /> : null}
+      <g transform={g.letters || undefined}>
+        <path data-door-r="" d={g.rPath} fill={colours.letter} />
+        {g.restPath ? <path d={g.restPath} fill={colours.letter} /> : null}
+      </g>
+      <g data-door-leaf="">
+        <polygon ref={panel} data-door-panel="" points={quadPoints(rest.quad)} style={{ fill: colours.bar }} />
+        <ellipse ref={knob} data-door-knob="" fill={colours.knob} cx={rest.knob ? r3(rest.knob.cx) : 0} cy={rest.knob ? r3(rest.knob.cy) : 0}
+          rx={rest.knob ? r3(rest.knob.rx) : 0} ry={rest.knob ? r3(rest.knob.ry) : 0} style={{ display: rest.knob ? undefined : 'none' }} />
+      </g>
+    </svg>
   );
 }

@@ -1,20 +1,27 @@
 // components/brand/doorGeometry.js
-// The door mark's geometry, timing and CSS (components/brand/DoorMark.js draws it). Plain
+// The door mark's geometry, timing and projection (components/brand/DoorMark.js draws it). Plain
 // JavaScript with no JSX, so the unit tests read the same numbers the page draws with. Everything
 // comes from the official vector source (lib/brand/logoPaths.js), the tokens (components/theme.js)
 // and the motion vocabulary (lib/motion.js DOOR).
+//
+// The door is one flat rectangle, the bar's height tall and the open width wide, hinged on its
+// edge nearest the R and turning about that vertical edge. Every frame its four corners are placed
+// in 3D and projected through one camera centred on the mark, and the quadrilateral they make is
+// drawn as one polygon with one fill. Angle 0 points the door straight into the screen, 90 lays it
+// face on, left of the hinge. It rests as the thin bar at the angle where it projects exactly the
+// bar's width, or as the panel, face on.
 import { LOGO, MARK } from '../../lib/brand/logoPaths';
-import { DOOR, MOTION_QUERY, REDUCED_QUERY } from '../../lib/motion';
+import { DOOR, REDUCED_QUERY } from '../../lib/motion';
 import { C } from '../theme';
 
 // The widest the controls go, as a fraction of the R's width: at this setting the open panel of
 // the app icons reaches the edge of the icon's ground, and no further.
 export const DOOR_OPEN_RANGE = Object.freeze({ min: 0.2, max: 0.75, step: 0.05 });
-export const DOOR_SHADE = 0.18;    // the most ink laid over a face turned away from the viewer
-export const DOOR_SKEW = 3;        // the svg version's skew at mid swing, in degrees
+// The knob's diameter on the open panel, as a fraction of the panel's width.
+export const DOOR_KNOB_RANGE = Object.freeze({ min: 0.05, max: 0.35, step: 0.01 });
+export const DOOR_SHADE = 0.12;    // the most ink mixed into the fill, at mid swing
+export const PERSPECTIVE = 6;      // the camera's distance from the screen, in bar heights
 const IOS_RADIUS = 0.2237;         // the home screen corner, as scripts/brand/draw.mjs IOS_RADIUS
-const PERSPECTIVE = 4;             // the viewing distance, in bar heights
-const SAMPLES = 24;                // svg version: samples per leg of the swing
 
 // ── geometry ────────────────────────────────────────────────────────────────────────────────────
 // The box of a path made of absolute M, L, Q and Z commands (the generated paths use nothing else).
@@ -31,16 +38,18 @@ const LOGO_REST = subpaths(LOGO.text).slice(2).join('');
 export const R_BOX = Object.freeze({ wordmark: pathBox(LOGO_R), mark: pathBox(MARK.any.r) });
 
 // The grounds, from the tokens: the wordmark on paper, the two app icons as scripts/brand/draw.mjs
-// PALETTES draws them, and the loading icon on paper and on ink.
+// PALETTES draws them, and the loading icon on paper and on ink. knob: ink on a red door, the brand
+// red on an ink door.
 export const DOOR_GROUNDS = Object.freeze({
-  wordmark: { ground: C.paper, bar: C.red, letter: C.ink },
-  realtor: { ground: C.red, bar: C.inst, letter: C.card },
-  admin: { ground: C.inst, bar: C.red, letter: C.instText },
-  paper: { ground: C.paper, bar: C.red, letter: C.ink },
-  ink: { ground: C.ink, bar: C.red, letter: C.paper },
+  wordmark: { ground: C.paper, bar: C.red, letter: C.ink, knob: C.ink },
+  realtor: { ground: C.red, bar: C.inst, letter: C.card, knob: C.red },
+  admin: { ground: C.inst, bar: C.red, letter: C.instText, knob: C.ink },
+  paper: { ground: C.paper, bar: C.red, letter: C.ink, knob: C.ink },
+  ink: { ground: C.ink, bar: C.red, letter: C.paper, knob: C.ink },
 });
 
-// Everything in box units (a viewBox from 0 0), and k, the pixels per unit at this size.
+// Everything in box units (a viewBox from 0 0), k the pixels per unit at this size, and cam the
+// point the camera is centred on: the middle of the mark.
 //   wordmark  size is the cap height in px; room is left of the bar for the widest open panel.
 //   realtor, admin  size is the icon's side in px, the mark as the home screen icon draws it.
 //   paper, ink  the loading icon: the stripe and the R with the door at its widest for this
@@ -49,30 +58,44 @@ export function doorGeometry(kind, size, open) {
   if (kind === 'wordmark') {
     const R = R_BOX.wordmark; const b = LOGO.bar;
     const ox = Math.ceil(DOOR_OPEN_RANGE.max * R.w - b.w) + 4;
-    const k = size / 100;
-    return { k, w: ox + LOGO.w, h: LOGO.h, letters: `translate(${ox} 0)`, rPath: LOGO_R, restPath: LOGO_REST,
-      bar: { x: ox + b.x, y: b.y, w: b.w, h: b.h, rx: b.rx }, rW: R.w, radius: null };
+    return { k: size / 100, w: ox + LOGO.w, h: LOGO.h, letters: `translate(${ox} 0)`, rPath: LOGO_R, restPath: LOGO_REST,
+      bar: { x: ox + b.x, y: b.y, w: b.w, h: b.h, rx: b.rx }, rW: R.w, rLeft: ox + R.x0, radius: null, cam: { x: ox + LOGO.w / 2, y: LOGO.h / 2 } };
   }
-  const m = MARK.any; const R = R_BOX.mark; const b = m.bar; const k = size / MARK.size;
+  const m = MARK.any; const R = R_BOX.mark; const b = m.bar; const k = size / MARK.size; const cam = { x: MARK.size / 2, y: MARK.size / 2 };
   if (kind === 'realtor' || kind === 'admin') {
-    return { k, w: MARK.size, h: MARK.size, letters: null, rPath: m.r, restPath: null, bar: { ...b }, rW: R.w, radius: MARK.size * IOS_RADIUS };
+    return { k, w: MARK.size, h: MARK.size, letters: null, rPath: m.r, restPath: null, bar: { ...b }, rW: R.w, rLeft: R.x0, radius: MARK.size * IOS_RADIUS, cam };
   }
   const x0 = b.x + b.w - open * R.w; const x1 = R.x1; const y0 = Math.min(b.y, R.y0); const y1 = Math.max(b.y + b.h, R.y1);
   const inner = MARK.size * 0.75; const s = Math.min(inner / (x1 - x0), inner / (y1 - y0));
   const tx = (MARK.size - (x1 - x0) * s) / 2 - x0 * s; const ty = (MARK.size - (y1 - y0) * s) / 2 - y0 * s;
   return { k, w: MARK.size, h: MARK.size, letters: `translate(${r3(tx)} ${r3(ty)}) scale(${r3(s)})`, rPath: m.r, restPath: null,
-    bar: { x: tx + b.x * s, y: ty + b.y * s, w: b.w * s, h: b.h * s, rx: b.rx * s }, rW: R.w * s, radius: 0 };
+    bar: { x: tx + b.x * s, y: ty + b.y * s, w: b.w * s, h: b.h * s, rx: b.rx * s }, rW: R.w * s, rLeft: tx + R.x0 * s, radius: 0, cam };
 }
-// The door in the units given: the hinge line, the bar's thickness, the panel's width, the corner,
-// and the viewing distance.
-export const doorParts = (g, open, unit = 1) => ({
-  hx: (g.bar.x + g.bar.w) * unit, hy: g.bar.y * unit, h: g.bar.h * unit, t: g.bar.w * unit,
-  W: open * g.rW * unit, rx: g.bar.rx * unit, P: PERSPECTIVE * g.bar.h * unit,
-});
 
-// What Copy settings writes (components/admin/DoorLab.js): the values, and the easing's curve
-// beside its name, to be fixed in lib/motion.js DOOR.
-export const doorSettingsJson = (s) => JSON.stringify({ rest: s.rest, openWidthOfR: s.open, swingMs: s.swingMs, pauseMs: s.pauseMs, easing: s.easing, curve: DOOR.curves[s.easing], play: s.play }, null, 2);
+// The door: the hinge line, the top and bottom, the bar's width, the open width, the camera.
+export function doorParts(g, open) {
+  return { hx: g.bar.x + g.bar.w, top: g.bar.y, bottom: g.bar.y + g.bar.h, t: g.bar.w, W: open * g.rW, cx: g.cam.x, cy: g.cam.y, P: PERSPECTIVE * g.bar.h };
+}
+// One point of the door plane, u along the door from the hinge (0) to the free edge (W), at height y,
+// with the door at deg, projected through the camera.
+export function projectPoint(p, deg, u, y) {
+  const a = (deg * Math.PI) / 180;
+  const x = p.hx - u * Math.sin(a); const z = -u * Math.cos(a);
+  const s = p.P / (p.P - z);
+  return [p.cx + (x - p.cx) * s, p.cy + (y - p.cy) * s, s];
+}
+// The four corners, in order: hinge top, hinge bottom, free bottom, free top.
+export function doorQuad(p, deg) {
+  return [projectPoint(p, deg, 0, p.top), projectPoint(p, deg, 0, p.bottom), projectPoint(p, deg, p.W, p.bottom), projectPoint(p, deg, p.W, p.top)].map(([x, y]) => [x, y]);
+}
+// How wide the door projects left of the hinge at deg (negative when it shows to the right).
+export const projectedWidth = (p, deg) => p.hx - projectPoint(p, deg, p.W, p.top)[0];
+const solve = (f, target, lo, hi) => { for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (f(m) < target) lo = m; else hi = m; } return (lo + hi) / 2; };
+// Edge on to the camera: the angle at which the door projects to a line on the hinge. The camera is
+// off to the side of the bar, so this is a few degrees past 0.
+export const edgeOnAngle = (p) => solve((d) => projectedWidth(p, d), 0, 0, 90);
+// Resting as the thin bar: the angle at which the door projects exactly the bar's width.
+export const restBarAngle = (p) => solve((d) => projectedWidth(p, d), p.t, edgeOnAngle(p), 90);
 
 // ── timing ──────────────────────────────────────────────────────────────────────────────────────
 // A cubic bezier as CSS evaluates it: progress in time to progress in value.
@@ -94,105 +117,60 @@ export function bezier(curve) {
 // One cycle: the swing (out, then back, each leg half the swing), then the pause at rest. Played
 // once, the cycle is the swing alone.
 export function doorTimeline(s) {
-  const cycle = s.play === 'once' ? s.swingMs : s.swingMs + s.pauseMs;
-  return { cycle, a: s.swingMs / 2 / cycle, b: s.swingMs / cycle };
+  return { cycle: s.play === 'once' ? s.swingMs : s.swingMs + s.pauseMs, half: s.swingMs / 2 };
 }
 const curveOf = (s) => DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing];
-export const restAngle = (s) => (s.rest === 'panel' ? 90 : 0);
-// The door's angle in degrees at ms into a cycle: 0 is the bar seen edge on, 90 the panel face on.
-export function angleAt(s, ms) {
-  const ease = bezier(curveOf(s)); const half = s.swingMs / 2;
-  const t = Math.max(0, Math.min(ms, doorTimeline(s).cycle));
-  const p = t < half ? ease(t / half) : t < s.swingMs ? 1 - ease((t - half) / half) : 0;
-  return s.rest === 'panel' ? 90 * (1 - p) : 90 * p;
+// How far the door is from rest at ms into the cycle: 0 at rest, 1 at the far end of the swing.
+// One eased value on one curve, out then back.
+export function travelAt(s, ms, ease = bezier(curveOf(s))) {
+  const t = Math.max(0, Math.min(ms, doorTimeline(s).cycle)); const half = s.swingMs / 2;
+  return t < half ? ease(t / half) : t < s.swingMs ? 1 - ease((t - half) / half) : 0;
 }
-// How wide the turning door projects, left of the hinge: the edge face narrowing, the panel face
-// widening as its far edge comes forward from behind the hinge.
-export function projectedWidth(deg, { t, W, P }) {
-  const a = (deg * Math.PI) / 180;
-  const edge = (t * Math.cos(a) * P) / (P - t * Math.sin(a));
-  const panel = (W * Math.sin(a) * P) / (P + W * Math.cos(a));
-  return Math.max(edge, panel);
+// The door's angle for a travel: from its resting angle to the other end of the swing.
+export function angleFor(s, p, travel) {
+  const bar = restBarAngle(p);
+  return s.rest === 'panel' ? 90 - (90 - bar) * travel : bar + (90 - bar) * travel;
 }
-export const shadeEdge = (deg) => r3((DOOR_SHADE * deg) / 90);
-export const shadePanel = (deg) => r3(DOOR_SHADE * (1 - deg / 90));
+// Elapsed time into the cycle, looping or played once.
+export const cycleTime = (s, elapsed) => { const { cycle } = doorTimeline(s); return s.play === 'once' ? Math.min(elapsed, cycle) : ((elapsed % cycle) + cycle) % cycle; };
+
+// ── one frame ───────────────────────────────────────────────────────────────────────────────────
+// Everything one frame draws: the quadrilateral, its fill (the bar's colour with a little ink at
+// mid swing), and the knob. The knob sits on the panel near its free edge, vertically centred; its
+// diameter is knob times the open width, scaled by how far the panel shows past the bar, so it
+// grows in as the door opens and is gone at the thin bar. It is projected with the panel: an ellipse
+// spanning the projected chord, as tall as the circle at the knob's depth.
+export function doorFrame(g, s, travel, { reduced = false } = {}) {
+  const p = doorParts(g, s.open); const deg = angleFor(s, p, travel);
+  const quad = doorQuad(p, deg);
+  const shade = r3(DOOR_SHADE * 4 * travel * (1 - travel));
+  const shown = Math.max(0, Math.min(1, (projectedWidth(p, deg) - p.t) / (p.W - p.t)));
+  const rMax = (s.knob * p.W) / 2; const r = reduced ? 0 : rMax * shown;
+  let knob = null;
+  if (r > 1e-6) {
+    const uc = p.W - 1.5 * rMax; const yc = (p.top + p.bottom) / 2;
+    const [xa] = projectPoint(p, deg, uc - r, yc); const [xb] = projectPoint(p, deg, uc + r, yc); const [, yk, sk] = projectPoint(p, deg, uc, yc);
+    knob = { cx: (xa + xb) / 2, cy: yk, rx: Math.abs(xa - xb) / 2, ry: r * sk };
+  }
+  return { travel, deg, quad, shade, knob };
+}
+export const quadPoints = (quad) => quad.map(([x, y]) => `${r3(x)},${r3(y)}`).join(' ');
+// The fill: the bar's own token, with ink mixed in while it turns. One colour, one fill.
+export const doorFill = (bar, shade) => (shade > 0 ? `color-mix(in srgb, ${bar} ${r3(100 - shade * 100)}%, ${C.ink})` : bar);
+
+// Under reduced motion the door does not turn: it holds still and its opacity breathes between
+// DOOR.breath and 1, over one swing and its pause. motion: 'auto' follows the system setting,
+// 'reduced' previews the reduced state.
+export function breathCss(cls, name, s, motion = 'auto') {
+  const { cycle } = doorTimeline(s); const E = curveOf(s); const count = s.play === 'once' ? 1 : 'infinite';
+  const rule = `.${cls} [data-door-leaf] { animation: ${name}-breath ${cycle}ms linear ${count} both; }`;
+  return `@keyframes ${name}-breath { 0% { opacity: 1; animation-timing-function: ${E}; } 50% { opacity: ${DOOR.breath}; animation-timing-function: ${E}; } 100% { opacity: 1; } }
+${motion === 'reduced' ? rule : `@media ${REDUCED_QUERY} { ${rule} }`}`;
+}
+
+// What Copy settings writes (components/admin/DoorLab.js): the values, and the easing's curve
+// beside its name, to be fixed in lib/motion.js DOOR.
+export const doorSettingsJson = (s) => JSON.stringify({ rest: s.rest, openWidthOfR: s.open, knobOfOpen: s.knob, swingMs: s.swingMs, pauseMs: s.pauseMs, easing: s.easing, curve: DOOR.curves[s.easing], play: s.play }, null, 2);
 
 export const r3 = (n) => Math.round(n * 1000) / 1000;
-
-// ── css ─────────────────────────────────────────────────────────────────────────────────────────
-const pct = (f) => `${r3(f * 100)}%`;
 export const hash = (str) => { let h = 5381; for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0; return h.toString(36); };
-// Keyframes for a property that follows the angle: rest, the far end, rest, then the pause.
-function swingFrames(s, prop) {
-  const { a, b } = doorTimeline(s); const E = curveOf(s); const A0 = restAngle(s); const A1 = 90 - A0;
-  return `0% { ${prop(A0)}; animation-timing-function: ${E}; } ${pct(a)} { ${prop(A1)}; animation-timing-function: ${E}; } ${pct(b)} { ${prop(A0)}; }${b < 1 ? ` 100% { ${prop(A0)}; }` : ''}`;
-}
-function breathCss(cls, name, s) {
-  const { cycle } = doorTimeline(s); const E = curveOf(s); const count = s.play === 'once' ? 1 : 'infinite';
-  return `@keyframes ${name}-breath { 0% { opacity: 1; animation-timing-function: ${E}; } 50% { opacity: ${DOOR.breath}; animation-timing-function: ${E}; } 100% { opacity: 1; } }
-.${cls} [data-door-leaf] { animation: ${name}-breath ${cycle}ms linear ${count} both; }`;
-}
-// motion: 'auto' follows the system setting; 'reduced' previews the reduced state.
-const withMotion = (motion, swing, run, breath) => (motion === 'reduced' ? breath : `${swing}\n@media ${MOTION_QUERY} { ${run} }\n@media ${REDUCED_QUERY} { ${breath} }`);
-
-// The viewing distance in em, on faces whose font size is the bar's height: the keyframes are the
-// same at every size, so a mark that settles its size after mounting stays in step with the rest.
-export const turn3d = (deg) => `perspective(${PERSPECTIVE}em) rotateY(${r3(deg)}deg)`;
-// The 3d version: the edge face turns by the door's angle, the panel face by the angle less 90
-// degrees (folded back behind the hinge at rest), both on the hinge line; each carries a shade.
-// A face within EDGE_ON degrees of edge on is not drawn: WebKit paints a face turned exactly side
-// on as a sliver beside the bar, and the true width there is under half a pixel at every size.
-export const EDGE_ON = 1;
-const inverse = (f, y) => { let lo = 0; let hi = 1; for (let i = 0; i < 50; i++) { const m = (lo + hi) / 2; if (f(m) < y) lo = m; else hi = m; } return (lo + hi) / 2; };
-// When each face shows, as stepped opacity keyframes. The face that is edge on at rest (the panel
-// resting as the bar, the edge resting as the panel) shows once the door has turned past EDGE_ON;
-// the other is hidden while the door is within EDGE_ON of the far end.
-export function faceShows(s) {
-  const { a, b } = doorTimeline(s); const ease = bezier(curveOf(s)); const e = EDGE_ON / 90;
-  const step = 'animation-timing-function: steps(1, end)';
-  const end = (v) => (b < 1 ? ` 100% { opacity: ${v}; }` : '');
-  const out = a * inverse(ease, 1 - e); const back = a + (b - a) * inverse(ease, e);
-  const leave = a * inverse(ease, e); const home = a + (b - a) * inverse(ease, 1 - e);
-  const atRest = `0% { opacity: 0; ${step}; } ${pct(leave)} { opacity: 1; ${step}; } ${pct(home)} { opacity: 0; }${end(0)}`;
-  const atFar = `0% { opacity: 1; ${step}; } ${pct(out)} { opacity: 0; ${step}; } ${pct(back)} { opacity: 1; }${end(1)}`;
-  return s.rest === 'panel' ? { edge: atRest, panel: atFar } : { edge: atFar, panel: atRest };
-}
-// Resting, the face turned side on is not drawn.
-export const faceRestOpacity = (s, face) => ((s.rest === 'panel') === (face === 'edge') ? 0 : 1);
-export function door3dCss({ cls, name, s, motion = 'auto' }) {
-  const { cycle } = doorTimeline(s); const count = s.play === 'once' ? 1 : 'infinite';
-  const shows = faceShows(s); const t = `${cycle}ms linear ${count} both`;
-  const swing = `@keyframes ${name}-edge { ${swingFrames(s, (d) => `transform: ${turn3d(d)}`)} }
-@keyframes ${name}-panel { ${swingFrames(s, (d) => `transform: ${turn3d(d - 90)}`)} }
-@keyframes ${name}-edgeshow { ${shows.edge} }
-@keyframes ${name}-panelshow { ${shows.panel} }
-@keyframes ${name}-edgeshade { ${swingFrames(s, (d) => `opacity: ${shadeEdge(d)}`)} }
-@keyframes ${name}-panelshade { ${swingFrames(s, (d) => `opacity: ${shadePanel(d)}`)} }`;
-  const run = `.${cls} [data-door-face="edge"] { animation: ${name}-edge ${t}, ${name}-edgeshow ${t}; }
-.${cls} [data-door-face="panel"] { animation: ${name}-panel ${t}, ${name}-panelshow ${t}; }
-.${cls} [data-door-shade="edge"] { animation: ${name}-edgeshade ${t}; }
-.${cls} [data-door-shade="panel"] { animation: ${name}-panelshade ${t}; }`;
-  return withMotion(motion, swing, run, breathCss(cls, name, s));
-}
-
-// The svg version's pose at an angle: scaled from the hinge to the projected width, skewed a
-// little at mid swing (the far edge lifts), shaded as the face that shows.
-export function flatPose(deg, parts) {
-  const { hx, t, W, P } = parts; const a = (deg * Math.PI) / 180;
-  const sx = projectedWidth(deg, parts) / t; const skew = DOOR_SKEW * Math.sin(2 * a);
-  const panelShows = W * Math.sin(a) * P / (P + W * Math.cos(a)) >= t * Math.cos(a) * P / (P - t * Math.sin(a));
-  return { transform: `translate(${r3(hx)}px, 0px) skewY(${r3(skew)}deg) scale(${r3(sx)}, 1) translate(${r3(-hx)}px, 0px)`, shade: panelShows ? shadePanel(deg) : shadeEdge(deg) };
-}
-export function doorFlatCss({ cls, name, parts, s, motion = 'auto' }) {
-  const { cycle, a, b } = doorTimeline(s); const count = s.play === 'once' ? 1 : 'infinite'; const ease = bezier(curveOf(s));
-  const marks = [];
-  for (let i = 0; i <= SAMPLES; i++) marks.push([a * (i / SAMPLES), ease(i / SAMPLES)]);
-  for (let i = 1; i <= SAMPLES; i++) marks.push([a + (b - a) * (i / SAMPLES), 1 - ease(i / SAMPLES)]);
-  if (b < 1) marks.push([1, 0]);
-  const at = (p) => flatPose(s.rest === 'panel' ? 90 * (1 - p) : 90 * p, parts);
-  const swing = `@keyframes ${name}-flat { ${marks.map(([f, p]) => `${pct(f)} { transform: ${at(p).transform}; }`).join(' ')} }
-@keyframes ${name}-shade { ${marks.map(([f, p]) => `${pct(f)} { opacity: ${at(p).shade}; }`).join(' ')} }`;
-  const run = `.${cls} [data-door-flat] { animation: ${name}-flat ${cycle}ms linear ${count} both; }
-.${cls} [data-door-shade="flat"] { animation: ${name}-shade ${cycle}ms linear ${count} both; }`;
-  return withMotion(motion, swing, run, breathCss(cls, name, s));
-}

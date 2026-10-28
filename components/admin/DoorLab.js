@@ -6,7 +6,7 @@
 // JSON, to be fixed in lib/motion.js DOOR next. Nothing here ships to a realtor, tenant or landlord.
 import { useEffect, useRef, useState } from 'react';
 import DoorMark from '../brand/DoorMark';
-import { DOOR_OPEN_RANGE, doorGeometry, doorSettingsJson } from '../brand/doorGeometry';
+import { DOOR_OPEN_RANGE, DOOR_KNOB_RANGE, doorGeometry, doorSettingsJson } from '../brand/doorGeometry';
 import { DOOR } from '../../lib/motion';
 import { noWidow } from '../../lib/typeset';
 import { C, R, FONT } from '../theme';
@@ -65,7 +65,6 @@ function Slider({ label, value, shown, range, onPick, name }) {
 
 export default function DoorLab() {
   const [s, setS] = useState({ ...DOOR.defaults });
-  const [version, setVersion] = useState('3d');
   const [reduced, setReduced] = useState(false);
   const [run, setRun] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -75,7 +74,7 @@ export default function DoorLab() {
   useEffect(() => () => clearTimeout(timer.current), []);
   const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
   const motion = reduced ? 'reduced' : 'auto';
-  const mark = { settings: s, version, motion, run };
+  const mark = { settings: s, motion, run };
   const copy = async () => {
     const ok = await writeClipboard(doorSettingsJson(s));
     setCopied(ok); clearTimeout(timer.current); timer.current = setTimeout(() => setCopied(false), 2000);
@@ -89,12 +88,12 @@ export default function DoorLab() {
       <div className="dr-controls">
         <Chips label="Resting state" name="rest" value={s.rest} onPick={(v) => set('rest', v)} options={[['bar', 'Thin bar'], ['panel', 'Panel']]} />
         <Slider label="Open width" name="open" value={s.open} shown={`${s.open.toFixed(2)} of the R`} range={DOOR_OPEN_RANGE} onPick={(v) => set('open', v)} />
+        <Slider label="Knob size" name="knob" value={s.knob} shown={`${s.knob.toFixed(2)} of the panel`} range={DOOR_KNOB_RANGE} onPick={(v) => set('knob', v)} />
         <Slider label="One swing" name="swing" value={s.swingMs} shown={`${s.swingMs} ms`} range={DOOR_SWING_RANGE} onPick={(v) => set('swingMs', v)} />
         <Slider label="Pause between swings" name="pause" value={s.pauseMs} shown={`${s.pauseMs} ms`} range={DOOR_PAUSE_RANGE} onPick={(v) => set('pauseMs', v)} />
         <Chips label="Easing" name="easing" value={s.easing} onPick={(v) => set('easing', v)} options={EASINGS} />
         <Chips label="Play" name="play" value={s.play} onPick={(v) => { set('play', v); setRun((n) => n + 1); }} options={[['once', 'Once'], ['loop', 'Loop']]}
           extra={<button type="button" className="dr-chip" data-door-control="replay" onClick={() => setRun((n) => n + 1)}>Replay</button>} />
-        <Chips label="Version" name="version" value={version} onPick={setVersion} options={[['3d', '3D'], ['svg', 'SVG only']]} />
         <Chips label="Reduced motion" name="reduced" value={reduced ? 'on' : 'off'} onPick={(v) => setReduced(v === 'on')} options={[['off', 'Off'], ['on', 'Preview']]} />
         <div className="dr-field dr-copyrow">
           <button type="button" className="dr-copy" data-door-control="copy" onClick={copy}>{copied ? 'Copied' : 'Copy settings'}</button>
