@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { isValidEmail } from '../lib/validation';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
+import { Pending } from '../components/brand/Loader';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -76,7 +77,7 @@ export default function ForgotPassword() {
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Enter a valid email address.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
-          {loading ? 'Sending…' : 'Send reset link →'}
+          <Pending busy={loading} label="Sending your reset link">Send reset link →</Pending>
         </button>
       </form>
     </AuthShell>

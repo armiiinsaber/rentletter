@@ -3,23 +3,26 @@
  "sources": {
   "lib/brand/logoPaths.js": "fc82eeb8b8f52bd9082cf40e26ead8aa71a68b667587db7e9c5192ae1c624994",
   "components/theme.js": "dc8e92a948f493f7ff9bd9d9009e134c24950b1629667099f9b94bc77bfe0377",
+  "components/brand/DoorMark.js": "c71d60abac5581936f16b3f72d38666880d8a2ef3e4726b5aab098138b65acda",
+  "components/brand/doorGeometry.js": "18ac14c71de5605b2b7e080535ed944835b9c465d8024ecfff2bf8e6690d76e2",
   "public/fonts/fraunces-latin.woff2": "48282a415ec22e31beaf0a0666e6fae0c8cbddcd0b1f6e729f27c3ade8a64e43",
   "public/fonts/inter-latin.woff2": "c940764593d0fe5d596be327ca7558855e018039fb78509aa21921fd3644c3e4",
   "public/fonts/licenses/Fraunces-OFL.txt": "bdf4c22802eaf804f998195871c6b8938aac2ac14b2d78a8bd66a6f1eced833b",
   "public/fonts/licenses/Inter-OFL.txt": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
-  "components/ui.js type scale": "8ce4d700d5feb7fd7a543502c1ba03885ce3574408987e8ea1469c2e7642c7bb"
+  "components/ui.js type scale": "8ce4d700d5feb7fd7a543502c1ba03885ce3574408987e8ea1469c2e7642c7bb",
+  "lib/motion.js DOOR": "f77bee5d30e20b072f9b3b7aed1ebee1636c34b176d3845e8453a13069ca979f"
  },
  "folder": "Rentletter-Brand-Kit",
  "zip": {
   "path": "Rentletter-Brand-Kit.zip",
-  "size": 2112302,
-  "sha256": "fc23b4115df591f1756f235b41545361e7c3de76560a4a6c301fc34a0f7e1166"
+  "size": 3902970,
+  "sha256": "d31d6dd514b64aad4e6f560201de803675eb96557f54a50f7c172d3f39e48c0b"
  },
  "files": [
   {
    "path": "README.txt",
-   "size": 745,
-   "sha256": "c6cc4ff1809bc6424f24843f8f4767e5ee12d147593c443a12a3bcb76bb8ddfb"
+   "size": 949,
+   "sha256": "d38662d602feaff8ef23b44a4eea1428ac9e8ced5bb28cff7c7fa0e17719274a"
   },
   {
    "path": "colour/rentletter-palette.pdf",
@@ -545,6 +548,81 @@
    "path": "mark/square/rentletter-mark-realtor-square.svg",
    "size": 1732,
    "sha256": "04c28ef5765420bc2b75fa5d61302db928049f5ab45cba7e79fdedf041987891"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-ink-1024.gif",
+   "size": 57323,
+   "sha256": "ffeab2cd29f0786992c909ce65ee0c7f0f4d662a4f413c3f0a9475878527e528"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-ink-1024.mp4",
+   "size": 165395,
+   "sha256": "770df1b860c5e5e25df906ec50ee3856e67663df56f957f5f7f1fc1d8d253f74"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-ink-512.gif",
+   "size": 27585,
+   "sha256": "59f0c20a59a3f766a8c1862dd84655260956f0f3aa96bbf9a9f8d626c74a1d8c"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-ink-512.mp4",
+   "size": 96809,
+   "sha256": "debdb0a4960e4d66bd87a8dc1f1bfecfd9494d762b012a29cbd4dbd82992a2ad"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-paper-1024.gif",
+   "size": 57218,
+   "sha256": "b1bd623dcc72e508b3666e595eb3a2fd66c2b65869a0c52a37a1721837a33420"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-paper-1024.mp4",
+   "size": 181305,
+   "sha256": "56fa81060c0b602c92aa2ad74d86be3cfc94065472e807fbb591fd6098d33aa6"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-paper-512.gif",
+   "size": 27539,
+   "sha256": "520751bda79f3f9233ae3e6521d9be11f61dcdb6d3e709e74a1df561e98301e7"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-paper-512.mp4",
+   "size": 114350,
+   "sha256": "bd00c2233ce238df7975032bb89b85e64f73942247d9626054463e450c108e2a"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-red-1024.gif",
+   "size": 52287,
+   "sha256": "58ca81d306650091209369358b8dc044a65a278cd1071e681e7372a128ae864f"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-red-1024.mp4",
+   "size": 158246,
+   "sha256": "308827c7d83a66ba2ac3ce9e010e34d635915c3c2e28b90a434d6a1c681b71d5"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-red-512.gif",
+   "size": 23959,
+   "sha256": "53e1e871d18ae35d354352a434c46cbc3b98749b1e3d335655adddcfebcb3aed"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-red-512.mp4",
+   "size": 92893,
+   "sha256": "b7a64580448bc2aed5962a258a75670bc27d9e7a96ea282fc2ce0715e99a9bc9"
+  },
+  {
+   "path": "motion/rentletter-mark-loop-transparent-1024.webm",
+   "size": 1109685,
+   "sha256": "c52430d8e07c6a8d7fee35eb4b5b777faea8d6fab7c9bc56068ea4a1774a6d2c"
+  },
+  {
+   "path": "motion/rentletter-wordmark-swing-1200.gif",
+   "size": 22517,
+   "sha256": "851bcfb53bb9adb2542eba3205a9f9a54d20cc0029ebc9cdde84840ca65d2b4b"
+  },
+  {
+   "path": "motion/rentletter-wordmark-swing-1200.mp4",
+   "size": 49578,
+   "sha256": "8936587f19e1f51673ac63b2f183dfed412bee34d57c5b77a7e4a97f130e5ff5"
   },
   {
    "path": "social/rentletter-email-signature-264x52.png",
@@ -1469,6 +1547,185 @@
          "path": "mark/bare/rentletter-mark-bare-paper-16.png",
          "file": "rentletter-mark-bare-paper-16.png",
          "size": 299
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "key": "motion",
+   "title": "Motion",
+   "items": [
+    {
+     "key": "mark-paper",
+     "title": "Mark, on paper",
+     "note": "Red door, ink R. One swing and its pause, looping.",
+     "ground": "paper",
+     "preview": "../previews/motion-mark-paper.png",
+     "rows": [
+      {
+       "label": "1024 px",
+       "formats": [
+        {
+         "label": "MP4",
+         "path": "motion/rentletter-mark-loop-paper-1024.mp4",
+         "file": "rentletter-mark-loop-paper-1024.mp4",
+         "size": 181305
+        },
+        {
+         "label": "GIF",
+         "path": "motion/rentletter-mark-loop-paper-1024.gif",
+         "file": "rentletter-mark-loop-paper-1024.gif",
+         "size": 57218
+        }
+       ]
+      },
+      {
+       "label": "512 px",
+       "formats": [
+        {
+         "label": "MP4",
+         "path": "motion/rentletter-mark-loop-paper-512.mp4",
+         "file": "rentletter-mark-loop-paper-512.mp4",
+         "size": 114350
+        },
+        {
+         "label": "GIF",
+         "path": "motion/rentletter-mark-loop-paper-512.gif",
+         "file": "rentletter-mark-loop-paper-512.gif",
+         "size": 27539
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "key": "mark-red",
+     "title": "Mark, on red",
+     "note": "The realtor icon: ink door, white R. One swing and its pause, looping.",
+     "ground": "paper",
+     "preview": "../previews/motion-mark-red.png",
+     "rows": [
+      {
+       "label": "1024 px",
+       "formats": [
+        {
+         "label": "MP4",
+         "path": "motion/rentletter-mark-loop-red-1024.mp4",
+         "file": "rentletter-mark-loop-red-1024.mp4",
+         "size": 158246
+        },
+        {
+         "label": "GIF",
+         "path": "motion/rentletter-mark-loop-red-1024.gif",
+         "file": "rentletter-mark-loop-red-1024.gif",
+         "size": 52287
+        }
+       ]
+      },
+      {
+       "label": "512 px",
+       "formats": [
+        {
+         "label": "MP4",
+         "path": "motion/rentletter-mark-loop-red-512.mp4",
+         "file": "rentletter-mark-loop-red-512.mp4",
+         "size": 92893
+        },
+        {
+         "label": "GIF",
+         "path": "motion/rentletter-mark-loop-red-512.gif",
+         "file": "rentletter-mark-loop-red-512.gif",
+         "size": 23959
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "key": "mark-ink",
+     "title": "Mark, on ink",
+     "note": "The admin icon: red door, paper R. One swing and its pause, looping.",
+     "ground": "ink",
+     "preview": "../previews/motion-mark-ink.png",
+     "rows": [
+      {
+       "label": "1024 px",
+       "formats": [
+        {
+         "label": "MP4",
+         "path": "motion/rentletter-mark-loop-ink-1024.mp4",
+         "file": "rentletter-mark-loop-ink-1024.mp4",
+         "size": 165395
+        },
+        {
+         "label": "GIF",
+         "path": "motion/rentletter-mark-loop-ink-1024.gif",
+         "file": "rentletter-mark-loop-ink-1024.gif",
+         "size": 57323
+        }
+       ]
+      },
+      {
+       "label": "512 px",
+       "formats": [
+        {
+         "label": "MP4",
+         "path": "motion/rentletter-mark-loop-ink-512.mp4",
+         "file": "rentletter-mark-loop-ink-512.mp4",
+         "size": 96809
+        },
+        {
+         "label": "GIF",
+         "path": "motion/rentletter-mark-loop-ink-512.gif",
+         "file": "rentletter-mark-loop-ink-512.gif",
+         "size": 27585
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "key": "mark-transparent",
+     "title": "Mark, transparent",
+     "note": "Red door, ink R, no ground: for video editors and the web. One swing and its pause, looping.",
+     "ground": "white",
+     "preview": "../previews/motion-mark-transparent.png",
+     "rows": [
+      {
+       "formats": [
+        {
+         "label": "WebM",
+         "path": "motion/rentletter-mark-loop-transparent-1024.webm",
+         "file": "rentletter-mark-loop-transparent-1024.webm",
+         "size": 1109685
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "key": "wordmark-swing",
+     "title": "Wordmark, one swing",
+     "note": "On paper, 1200 wide: the door swings once, open and shut, then rests.",
+     "ground": "paper",
+     "preview": "../previews/motion-wordmark.png",
+     "rows": [
+      {
+       "formats": [
+        {
+         "label": "MP4",
+         "path": "motion/rentletter-wordmark-swing-1200.mp4",
+         "file": "rentletter-wordmark-swing-1200.mp4",
+         "size": 49578
+        },
+        {
+         "label": "GIF",
+         "path": "motion/rentletter-wordmark-swing-1200.gif",
+         "file": "rentletter-wordmark-swing-1200.gif",
+         "size": 22517
         }
        ]
       }

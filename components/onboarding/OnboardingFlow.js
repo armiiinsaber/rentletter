@@ -5,6 +5,7 @@
 // (lib/justInTime.js), never here.
 import { useEffect, useRef, useState } from 'react';
 import { C, R, FONT } from '../theme';
+import { Pending } from '../brand/Loader';
 
 const NAME_MAX = 80;
 const input = { width: '100%', padding: '13px 14px', fontSize: 17, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 52 };
@@ -34,7 +35,7 @@ export function IdentityStep({ profile, onSave }) {
       <form onSubmit={submit} className="ob-form">
         <div><label style={label} htmlFor="ob-name">Name on reports</label><input ref={ref} id="ob-name" style={input} value={name} onChange={(e) => setName(e.target.value)} maxLength={NAME_MAX} autoCapitalize="words" autoComplete="name" enterKeyHint="next" placeholder="Jordan Lee" /></div>
         {err && <p role="alert" className="ob-err">{err}</p>}
-        <Primary disabled={!ok || busy}>{busy ? 'Saving' : 'Open my dashboard'}</Primary>
+        <Primary disabled={!ok || busy}><Pending busy={busy} label="Opening your dashboard">Open my dashboard</Pending></Primary>
       </form>
     </Shell>
   );

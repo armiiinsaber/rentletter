@@ -14,6 +14,7 @@ import { StatusPills } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { integrityOf } from '../../lib/documentIntegrity';
 import { noWidow } from '../../lib/typeset';
+import { Pending } from '../brand/Loader';
 
 export const CHECK_DOCS = 'check docs';
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
@@ -78,7 +79,7 @@ export default function IntegrityChecks({ applicant, party = null, listingId, he
               <p style={{ ...line, color: C.inkSoft, marginTop: 'var(--s-1)' }}>{noWidow(requested.note)}</p>
             </div>
           : <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-2)' }}>
-              <button type="button" onClick={requestCopy} disabled={busy} style={{ ...outlineBtn, opacity: busy ? 0.7 : 1 }}>{busy ? 'Sending' : 'Request a new copy'}</button>
+              <button type="button" onClick={requestCopy} disabled={busy} style={{ ...outlineBtn, opacity: busy ? 0.7 : 1 }}><Pending busy={busy} label="Requesting a new copy">Request a new copy</Pending></button>
             </div>
       ) : null}
       {notes.map((n, i) => <p key={`note:${n.documentId}:${i}`} data-integrity-note="" style={{ ...line, color: C.inkMute, marginTop: 'var(--s-2)' }}>{say(n.sentence)}</p>)}

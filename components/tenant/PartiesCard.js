@@ -11,6 +11,7 @@ import { Eyebrow, noWidow } from './ProfileFacts';
 import { StatusPills } from '../ui';
 import { INVITE_CARD, PARTY_STATUS } from '../../lib/parties';
 import { PARTY_ROLE } from '../../lib/application-state';
+import { Pending } from '../brand/Loader';
 
 export default function PartiesCard({ applicationNumber, ownerToken, acceptsGuarantor: acceptsFromInvite = null }) {
   const [state, setState] = useState({ phase: 'loading', parties: [], acceptsGuarantor: acceptsFromInvite !== false, canInvite: {} });
@@ -74,7 +75,7 @@ export default function PartiesCard({ applicationNumber, ownerToken, acceptsGuar
           <Field label={INVITE_CARD.emailLabel} value={email} onChange={setEmail} placeholder="alex@email.com" type="email" inputMode="email" />
           {error && <p role="alert" className="mp-alert">{noWidow(error)}</p>}
           <div className="rl-ctrl-row">
-            <button type="button" onClick={send} disabled={busy} className="mp-btn mp-btn-red">{busy ? 'Sending' : INVITE_CARD.send}</button>
+            <button type="button" onClick={send} disabled={busy} className="mp-btn mp-btn-red"><Pending busy={busy} label="Sending the invite" tone="red">{INVITE_CARD.send}</Pending></button>
             <button type="button" onClick={() => { setRole(null); setError(''); }} disabled={busy} className="mp-btn">{INVITE_CARD.cancel}</button>
           </div>
         </div>

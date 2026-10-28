@@ -22,6 +22,7 @@ import { DURATION, CURVE } from '../../lib/motion';
 import { navigateToAction } from './actionNav';
 import { go } from '../nav/routes';
 import { referralsEnabled } from '../../lib/features';
+import { Pending } from '../brand/Loader';
 
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' });
 const TABS = [['next', 'Next'], ['history', 'History']];
@@ -144,7 +145,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
               </ul>
             </div>
           ))}
-          {nextBefore && <button type="button" onClick={more} disabled={loading} style={{ width: '100%', minHeight: 44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' }}>{loading ? 'Loading' : 'Show earlier'}</button>}
+          {nextBefore && <button type="button" onClick={more} disabled={loading} style={{ width: '100%', minHeight: 44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' }}><Pending busy={loading} label="Loading earlier events">Show earlier</Pending></button>}
         </section>
       )}
       <style jsx global>{`

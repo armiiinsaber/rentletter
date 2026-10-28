@@ -18,6 +18,7 @@ import { C } from '../components/theme';
 import { GlobalStyle, Wordmark, StatusPills } from '../components/ui';
 import { ProfileStyles, FactSections, Eyebrow, Lines, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
+import { Pending } from '../components/brand/Loader';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -184,7 +185,7 @@ export default function MyProfile() {
                   <input id="tp-email" className="mp-input" style={{ marginTop: 'var(--gap-line)' }} type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" />
                 </div>
                 {entryErr && <p role="alert" className="mp-alert">{noWidow(entryErr)}</p>}
-                <button type="submit" className="mp-btn" disabled={sending || !EMAIL_RE.test(email)}>{sending ? 'Sending' : 'Email me a link'}</button>
+                <button type="submit" className="mp-btn" disabled={sending || !EMAIL_RE.test(email)}><Pending busy={sending} label="Sending your link">Email me a link</Pending></button>
               </form>
             </>
           )}
@@ -295,7 +296,7 @@ export default function MyProfile() {
         ) : (
           <form onSubmit={requestEmailChange} className="mp-form">
             <input className="mp-input" type="email" inputMode="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="new@example.com" aria-label="New email" />
-            <button type="submit" disabled={emailBusy || !EMAIL_RE.test(newEmail)} className="mp-btn">{emailBusy ? 'Sending' : 'Change email'}</button>
+            <button type="submit" disabled={emailBusy || !EMAIL_RE.test(newEmail)} className="mp-btn"><Pending busy={emailBusy} label="Changing your email">Change email</Pending></button>
           </form>
         )}
         {emailMsg && <p role="status" className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(emailMsg)}</p>}

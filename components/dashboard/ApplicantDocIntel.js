@@ -14,6 +14,7 @@ import DocIntelReport from './DocIntelReport';
 import { editedAfterVerification, fmtShort } from '../../lib/profileEdits';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { RETENTION_DAYS, daysUntil } from '../../lib/documentRetention';
+import { Pending } from '../brand/Loader';
 
 const MAX = 6;
 const OK_MIME = ['image/jpeg', 'image/png', 'application/pdf'];
@@ -66,7 +67,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
               <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3, overflowWrap: 'anywhere' }}>{cap(d.kind)}</div>
               <StatusPills label="Document" items={[d.uploadedBy === 'tenant' ? 'from tenant' : 'you', fmt(d.uploadedAt), goes(d)]} style={{ marginTop: 'var(--s-1)' }} />
             </div>
-            <button type="button" onClick={() => view(d)} disabled={!!busy} aria-label={`View ${d.kind}`} style={{ ...btn44, minWidth: 64, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, opacity: busy === d.id ? 0.6 : 1 }}>{busy === d.id ? 'Opening' : 'View'}</button>
+            <button type="button" onClick={() => view(d)} disabled={!!busy} aria-label={`View ${d.kind}`} style={{ ...btn44, minWidth: 64, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, opacity: busy === d.id ? 0.6 : 1 }}><Pending busy={busy === d.id} label={`Opening ${d.kind}`}>View</Pending></button>
           </div>
         ))}
       </div>
@@ -75,7 +76,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
       ) : (
         <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
           <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
-          <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.ink, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}>{busy === 'delete' ? 'Deleting' : 'Delete'}</button>
+          <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.ink, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}><Pending busy={busy === 'delete'} label="Deleting the documents" tone="ink">Delete</Pending></button>
           <button type="button" onClick={() => setConfirm(false)} disabled={busy === 'delete'} style={{ ...btn44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}` }}>Cancel</button>
         </div>
       )}
@@ -275,7 +276,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
           <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)' }}>{docLine.split(' · ')[0]}</div>
           <StatusPills label="Documents" items={docLine.split(' · ').slice(1)} style={{ marginTop: 'var(--s-2)' }} />
         </div>
-        {canSendAgain && <button type="button" onClick={sendAgain} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}>{sending ? 'Sending' : 'Send again'}</button>}
+        {canSendAgain && <button type="button" onClick={sendAgain} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}><Pending busy={sending} label="Sending the request again">Send again</Pending></button>}
       </div>
       {sentNote ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{sentNote}</div> : null}
       {edited.edited && (
@@ -346,8 +347,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
           <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
             <button onClick={analyze} disabled={!files.length || analyzing}
               style={{ minHeight: 44, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, fontFamily: 'inherit', cursor: !files.length || analyzing ? 'default' : 'pointer', opacity: !files.length || analyzing ? 0.55 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-              {analyzing && <span className="rl-dispin" aria-hidden="true" />}
-              {analyzing ? `Reading ${files.length} document${files.length === 1 ? '' : 's'}…` : hasReport ? 'Analyze again' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}
+              <Pending busy={analyzing} label={`Reading ${files.length} document${files.length === 1 ? '' : 's'}`}>{hasReport ? 'Analyze again' : `Analyze ${files.length || ''} document${files.length === 1 ? '' : 's'}`.trim()}</Pending>
             </button>
             <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute }}>Held for your review. Deleted in {RETENTION_DAYS} days or when you delete them.</span>
           </div>
@@ -365,11 +365,11 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                 <div className="rl-ctrl-row">
                   <button onClick={downloadConfirmPdf} disabled={pdfBusy}
                     style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                    {pdfBusy && <span className="rl-dispin" aria-hidden="true" />}{pdfBusy ? 'Preparing…' : 'Download PDF'}
+                    <Pending busy={pdfBusy} label="Preparing the PDF" tone="ink">Download PDF</Pending>
                   </button>
                   <button onClick={copyConfirmText} disabled={textBusy}
                     style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: textBusy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
-                    {copied ? '✓ Copied' : textBusy ? 'Preparing…' : 'Copy text'}
+                    {copied ? '✓ Copied' : <Pending busy={textBusy} label="Preparing the text">Copy text</Pending>}
                   </button>
                 </div>
               </div>
@@ -379,7 +379,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                 {!confirmDelete ? (
                   <div className="rl-ctrl-row">
                     <button onClick={archiveActive} disabled={!!managing} style={{ ...secondaryBtn, opacity: managing ? 0.6 : 1 }}>
-                      {managing === 'archive' && <span className="rl-dispin rl-dispin--dark" aria-hidden="true" />}{managing === 'archive' ? 'Archiving…' : 'Archive'}
+                      <Pending busy={managing === 'archive'} label="Archiving the analysis">Archive</Pending>
                     </button>
                     <button data-destructive="" onClick={() => { setConfirmDelete(true); setError(''); }} disabled={!!managing} style={{ ...destOutlineBtn, opacity: managing ? 0.6 : 1 }}>
                       Delete
@@ -390,7 +390,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                   <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5 }}>Delete this analysis? This can’t be undone.</span>
                     <button onClick={deleteActive} disabled={managing === 'delete'} style={destSolidBtn}>
-                      {managing === 'delete' && <span className="rl-dispin" aria-hidden="true" />}{managing === 'delete' ? 'Deleting…' : 'Delete'}
+                      <Pending busy={managing === 'delete'} label="Deleting the analysis" tone="ink">Delete</Pending>
                     </button>
                     <button onClick={() => setConfirmDelete(false)} disabled={!!managing} style={{ ...ghostBtn }}>
                       Cancel
@@ -418,7 +418,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                       {confirmArchId === entry.id ? (
                         <span style={{ display: 'inline-flex', gap: 'var(--s-1)', alignItems: 'center' }}>
                           <button data-destructive="" onClick={() => deleteArchivedEntry(entry.id)} disabled={managing === 'delete-archived'} style={{ ...destSolidBtn, padding: 'var(--s-1) var(--s-3)' }}>
-                            {managing === 'delete-archived' && <span className="rl-dispin" aria-hidden="true" />}Delete
+                            <Pending busy={managing === 'delete-archived'} label="Deleting the archived report" tone="ink">Delete</Pending>
                           </button>
                           <button onClick={() => setConfirmArchId('')} style={{ ...ghostBtn, padding: 'var(--s-1) var(--s-3)' }}>Cancel</button>
                         </span>
@@ -434,14 +434,6 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
         </div>
       )}
 
-      <style jsx>{`
-        .rl-dispin { width: 15px; height: 15px; flex-shrink: 0; border-radius: 50%; border: 2.5px solid rgba(15,15,16,0.2); border-top-color: #0f0f10; display: inline-block; }
-        .rl-dispin--dark { border-color: rgba(15,15,16,0.2); border-top-color: ${C.ink}; }
-        @media (prefers-reduced-motion: no-preference) {
-          .rl-dispin { animation: rl-dispin 0.7s linear infinite; }
-        }
-        @keyframes rl-dispin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

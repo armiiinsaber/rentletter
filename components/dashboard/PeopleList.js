@@ -19,6 +19,7 @@ import { C, R } from '../theme';
 import { ConfirmSheet, StatusPills } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { shortDate } from '../../lib/pipelineState';
+import { Pending } from '../brand/Loader';
 
 const fitText = (f) => (f.score != null ? `${Number(f.score).toFixed(1)} ${f.label}` : 'No Fit yet');
 // Inside the card these keep their own action and never open or close it.
@@ -134,7 +135,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
                             // These two are statuses drawn as controls: a tap on them is a tap on the row.
                             : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, ...quiet, cursor: 'default', pointerEvents: 'none' }}>Invite</button>
                             : f.invitedAt ? <button type="button" disabled style={{ ...ctrl, ...quiet, cursor: 'default', pointerEvents: 'none' }}>Invited {shortDate(f.invitedAt)}</button>
-                            : <button type="button" onClick={() => invite(p, f)} disabled={busy === `${p.id}:${f.listingId}`} style={{ ...ctrl, opacity: busy === `${p.id}:${f.listingId}` ? 0.6 : 1 }}>{busy === `${p.id}:${f.listingId}` ? 'Sending' : 'Invite'}</button>}
+                            : <button type="button" onClick={() => invite(p, f)} disabled={busy === `${p.id}:${f.listingId}`} style={{ ...ctrl, opacity: busy === `${p.id}:${f.listingId}` ? 0.6 : 1 }}><Pending busy={busy === `${p.id}:${f.listingId}`} label="Sending the invite" tone="ink">Invite</Pending></button>}
                         </div>
                       ))}
                       <button type="button" data-destructive="" onClick={() => setConfirm(p)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, minWidth: 44, padding: 0, background: 'transparent', border: 'none', color: C.instMute, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Remove</button>
@@ -146,7 +147,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
           })}
         </ul>
       )}
-      <ConfirmSheet open={!!confirm} title={`Remove ${confirm?.display || ''}?`} body="They leave Pipeline. Their application, if any, stays where it was." confirmLabel="Remove" danger busy={busy === `remove:${confirm?.id}`} onConfirm={() => confirm && remove(confirm)} onCancel={() => setConfirm(null)} />
+      <ConfirmSheet open={!!confirm} title={`Remove ${confirm?.display || ''}?`} body="They leave Pipeline. Their application, if any, stays where it was." confirmLabel="Remove" danger busy={busy === `remove:${confirm?.id}`} busyLabel="Removing" onConfirm={() => confirm && remove(confirm)} onCancel={() => setConfirm(null)} />
     </section>
   );
 }

@@ -17,6 +17,7 @@ import DocumentUploader from '../../components/tenant/DocumentUploader';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { PARTY_STATUS, GUARANTOR_SENTENCE, PARTY_CONSENT_LINE, DECLINE_LINE, WITHDRAW_LINE, INCOME_KIND_LABEL, partyFormErrors, STATUS_LABEL } from '../../lib/parties';
 import { PARTY_ROLE, INCOME_KIND } from '../../lib/application-state';
+import Loader, { Pending } from '../../components/brand/Loader';
 
 const STEPS = [{ id: 'you', title: 'About you' }, { id: 'work', title: 'Employment and income' }, { id: 'review', title: 'Review and consent' }];
 const EMPTY = { fullName: '', phone: '', address: '', employmentType: 'full-time', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '', incomeKind: INCOME_KIND.EMPLOYMENT };
@@ -109,7 +110,7 @@ export default function PartyPage() {
     </>
   );
 
-  if (phase === 'loading') return shell(<div className="rl-card mp-card"><p className="mp-p">Loading</p></div>);
+  if (phase === 'loading') return shell(<div className="rl-card mp-card" style={{ display: 'flex', justifyContent: 'center' }}><Loader label="Loading your form" /></div>);
   if (phase === 'invalid') return shell(
     <div className="rl-card mp-card">
       <Eyebrow>Invite</Eyebrow>
@@ -142,7 +143,7 @@ export default function PartyPage() {
       <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(DECLINE_LINE)}</p>
       {error && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(error)}</p>}
       <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
-        <button type="button" onClick={() => leave('decline')} disabled={busy} className="mp-btn mp-btn-red">{busy ? 'Declining' : 'Decline'}</button>
+        <button type="button" onClick={() => leave('decline')} disabled={busy} className="mp-btn mp-btn-red"><Pending busy={busy} label="Declining" tone="red">Decline</Pending></button>
         <a href={`/party/${encodeURIComponent(token)}`} className="mp-btn">Fill the form instead</a>
       </div>
     </div>
@@ -180,7 +181,7 @@ export default function PartyPage() {
       {error && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(error)}</p>}
       {confirmLeave ? (
         <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
-          <button data-destructive="" type="button" onClick={() => leave('withdraw')} disabled={busy} className="mp-btn mp-btn-red">{busy ? 'Withdrawing' : 'Withdraw'}</button>
+          <button data-destructive="" type="button" onClick={() => leave('withdraw')} disabled={busy} className="mp-btn mp-btn-red"><Pending busy={busy} label="Withdrawing" tone="red">Withdraw</Pending></button>
           <button type="button" onClick={() => setConfirmLeave(false)} disabled={busy} className="mp-btn">Keep my part</button>
         </div>
       ) : <button data-destructive="" type="button" onClick={() => setConfirmLeave(true)} className="mp-btn mp-btn-auto" style={{ marginTop: 'var(--gap-card)' }}>Withdraw from this application</button>}
@@ -226,7 +227,7 @@ export default function PartyPage() {
       <div className="mp-actions">
         {step < STEPS.length
           ? <button type="button" onClick={next} className="mp-btn">Continue</button>
-          : <button type="button" onClick={submit} disabled={busy} className="mp-btn mp-btn-red">{busy ? 'Sending' : 'Send my form'}</button>}
+          : <button type="button" onClick={submit} disabled={busy} className="mp-btn mp-btn-red"><Pending busy={busy} label="Sending your form" tone="red">Send my form</Pending></button>}
         {step > 1 && <button type="button" onClick={() => { setError(''); setStep(step - 1); }} disabled={busy} className="mp-link">Back</button>}
         {step === 1 && <a href={`/party/${encodeURIComponent(token)}?decline=1`} className="mp-link">Decline</a>}
       </div>

@@ -116,7 +116,7 @@ export default function DoorLab() {
           </figure>
         </div>
         <div className="dr-loading" data-door-loading="">
-          <h3 className="dr-h3">Loading icon</h3>
+          <h3 className="dr-h3">The loader</h3>
           <p className="dr-note dr-note-sm">{noWidow('The same mark at the sizes a loading indicator takes, looping.')}</p>
           {['paper', 'ink'].map((ground) => (
             <div key={ground} className="dr-loadrow">

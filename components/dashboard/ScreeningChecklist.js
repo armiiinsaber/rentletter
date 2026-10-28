@@ -29,6 +29,7 @@ import { creditLines } from '../../lib/creditShared';
 import { partyConfirmKey, partyFacts } from '../../lib/parties';
 import IntegrityChecks from './IntegrityChecks';
 import { integrityOf } from '../../lib/documentIntegrity';
+import { Pending } from '../brand/Loader';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
@@ -142,7 +143,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     <div id={`checklist-${applicant.linkId}`} style={{ marginTop: 'var(--s-4)', scrollMarginTop: 72 }}>
       <div style={{ marginBottom: 'var(--s-2)' }}>
         <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute }}>Screening checklist</div>
-        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)' }}>You verify. Documents only match.</div>
+        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>You verify. Documents only match.</div>
         {/* Fit v2 (docs/fit-v2.md): the number over what was assessed, the one coverage line, and the
             check docs items, which are shown here and never subtracted. */}
         {fit ? <div data-checklist-fit="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{fitLine(fit)}{fit.incomplete ? `. ${fit.incomplete.next}` : fit.notAssessedLine ? `. ${fit.notAssessedLine}` : ''}</div> : null}
@@ -177,7 +178,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                   <div style={{ marginTop: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', background: C.paperDeep, borderRadius: R.ctrl }}>
                     <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}>Six closed questions go to <span style={{ fontWeight: 700 }}>{landlordEmail}</span>. Nothing goes to {String(app.full_name || 'the applicant').split(/\s+/)[0]}.</div>
                     <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
-                      <button type="button" onClick={sendAsk} disabled={sending} style={{ ...btn(false), minWidth: 0, opacity: sending ? 0.7 : 1 }}>{sending ? 'Sending' : 'Send'}</button>
+                      <button type="button" onClick={sendAsk} disabled={sending} style={{ ...btn(false), minWidth: 0, opacity: sending ? 0.7 : 1 }}><Pending busy={sending} label="Sending the questions">Send</Pending></button>
                       <button type="button" onClick={() => setAsking(false)} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                     </div>
                   </div>
@@ -198,7 +199,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                     <button type="button" onClick={() => setAsking(true)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Send again</button>
                   ) : null}
                   {row.key === 'id' && idDoc ? (
-                    <button type="button" onClick={viewId} disabled={viewBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: viewBusy ? 0.6 : 1 }}>{viewBusy ? 'Opening' : 'View ID'}</button>
+                    <button type="button" onClick={viewId} disabled={viewBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: viewBusy ? 0.6 : 1 }}><Pending busy={viewBusy} label="Opening the ID">View ID</Pending></button>
                   ) : null}
                 </div>
               ) : row.key && shared ? (

@@ -11,8 +11,9 @@
 //      over DOOR.straighten of the travel and back.
 //   4. One curve: frame to frame no corner jumps; the timeline rests, swings out, back, then pauses.
 //   5. One fill: the bar's own token, with ink mixed in only while it turns. No CSS 3D anywhere.
-//   6. Reduced motion only breathes. Copy settings writes the values as JSON. The door shows on the
-//      admin mockups page alone, in tokens alone, with no dash used as punctuation.
+//   6. Reduced motion only breathes. Copy settings writes the values as JSON. The door reaches the
+//      product only through DoorMark (the Loader, the homepage header, app start, the Door lab), in
+//      tokens alone, with no dash used as punctuation.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -28,8 +29,8 @@ const { LOGO, MARK } = await import('../lib/brand/logoPaths.js');
 const { C } = await import('../components/theme.js');
 const G = await import('../components/brand/doorGeometry.js');
 
-const FILES = ['components/brand/DoorMark.js', 'components/brand/doorGeometry.js', 'components/admin/DoorLab.js'];
-const KINDS = ['wordmark', 'realtor', 'admin', 'paper', 'ink'];
+const FILES = ['components/brand/DoorMark.js', 'components/brand/doorGeometry.js', 'components/admin/DoorLab.js', 'components/brand/Loader.js', 'components/brand/HomeDoor.js', 'components/brand/AppStart.js'];
+const KINDS = ['wordmark', 'logo', 'logoInk', 'realtor', 'admin', 'mark', 'paper', 'ink', 'red'];
 const range = ({ min, max, step }) => { const out = []; for (let v = min; v <= max + 1e-9; v += step) out.push(Math.round(v * 100) / 100); return out; };
 const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
 const convex = (q) => { const c = q.map((p, i) => cross(p, q[(i + 1) % 4], q[(i + 2) % 4])); return c.every((v) => v > 1e-9) || c.every((v) => v < -1e-9); };
@@ -38,7 +39,9 @@ const inside = (q, pt) => { const c = q.map((p, i) => cross(p, q[(i + 1) % 4], p
 test('the motion lives in lib/motion.js DOOR: three named curves and the defaults, the knob included', () => {
   assert.deepEqual(Object.keys(DOOR.curves), ['soft', 'crisp', 'weighted']);
   for (const c of Object.values(DOOR.curves)) assert.match(c, /^cubic-bezier\((-?\d*\.?\d+, ){3}-?\d*\.?\d+\)$/);
-  assert.deepEqual({ ...DOOR.defaults }, { rest: 'bar', open: 0.6, knob: 0.18, swingMs: 700, pauseMs: 900, easing: 'soft', play: 'loop' });
+  assert.deepEqual({ ...DOOR.defaults }, { rest: 'bar', open: 0.6, knob: 0.21, swingMs: 700, pauseMs: 800, easing: 'weighted', play: 'loop' });
+  assert.equal(DOOR.curves.weighted, 'cubic-bezier(0.7, 0, 0.3, 1)');
+  assert.equal(DOOR.homeDelayMs, 400);
   assert.equal(DOOR.breath, 0.6);
   assert.equal(DOOR.straighten, 0.3);
   for (const f of FILES) assert.doesNotMatch(src(f), /cubic-bezier\(/, `${f}: curves come from lib/motion.js`);
@@ -99,8 +102,8 @@ test('straight at rest: the static bar from the vector source exactly; the panel
     // wordmark), the mark's own bar on the app icons, the bar as the letters' frame scales it on the
     // loading icons.
     const [tx, ty, sc] = g.letters ? [...g.letters.matchAll(/-?\d*\.?\d+/g)].map((m) => Number(m[0])).concat([1]) : [0, 0, 1];
-    const src0 = kind === 'wordmark' ? LOGO.bar : MARK.any.bar;
-    const want = kind === 'paper' || kind === 'ink' ? g.bar : { x: tx + src0.x * sc, y: ty + src0.y * sc, w: src0.w * sc, h: src0.h * sc, rx: src0.rx * sc };
+    const src0 = ['wordmark', 'logo', 'logoInk'].includes(kind) ? LOGO.bar : MARK.any.bar;
+    const want = ['paper', 'ink', 'red'].includes(kind) ? g.bar : { x: tx + src0.x * sc, y: ty + src0.y * sc, w: src0.w * sc, h: src0.h * sc, rx: src0.rx * sc };
     const at = (rest) => G.doorFrame(g, { ...s, rest }, 0);
     const bar = at('bar'); const panel = at('panel');
     const box = (b) => [[b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h], [b.x, b.y]];
@@ -125,9 +128,9 @@ test('straight at rest: the static bar from the vector source exactly; the panel
 
 test('one curve: the timeline, and no corner jumps from one frame to the next', () => {
   const s = { ...DOOR.defaults };
-  assert.deepEqual(G.doorTimeline(s), { cycle: 1600, half: 350 });
+  assert.deepEqual(G.doorTimeline(s), { cycle: 1500, half: 350 });
   assert.equal(G.travelAt(s, 0), 0); assert.equal(G.travelAt(s, 350), 1); assert.equal(G.travelAt(s, 700), 0); assert.equal(G.travelAt(s, 1200), 0);
-  assert.equal(G.cycleTime(s, 1700), 100); assert.equal(G.cycleTime({ ...s, play: 'once' }, 1700), 700);
+  assert.equal(G.cycleTime(s, 1700), 200); assert.equal(G.cycleTime({ ...s, play: 'once' }, 1700), 700);
   for (const c of Object.values(DOOR.curves)) { const f = G.bezier(c); let last = -1; for (let x = 0; x <= 1.0001; x += 0.01) { const y = f(x); assert.ok(y >= last - 1e-9); last = y; } }
   // 1000 frames of one swing at the widest setting: the largest step any corner takes stays under a
   // hundredth of the door's travel.
@@ -144,7 +147,10 @@ test('one fill: the bar token, with ink mixed in only while it turns; no CSS 3D 
   assert.equal(G.doorFrame(g, s, 0).shade, 0); assert.equal(G.doorFrame(g, s, 1).shade, 0);
   assert.equal(G.doorFrame(g, s, 0.5).shade, G.DOOR_SHADE);
   assert.equal(G.doorFill(C.red, 0), C.red, 'at rest the fill is the token itself');
-  assert.equal(G.doorFill(C.red, 0.12), `color-mix(in srgb, ${C.red} 88%, ${C.ink})`, 'turning, the same token with a little ink');
+  // Turning, the same token with a little ink, worked out as CSS color-mix(in srgb) would.
+  const mix = (a, b, t) => `#${[1, 3, 5].map((i) => Math.round(parseInt(a.slice(i, i + 2), 16) * (1 - t) + parseInt(b.slice(i, i + 2), 16) * t).toString(16).padStart(2, '0')).join('')}`;
+  assert.equal(G.doorFill(C.red, 0.12), mix(C.red, C.ink, 0.12), 'turning, the same token with a little ink');
+  assert.match(G.doorFill(C.inst, 0.05), /^#[0-9a-f]{6}$/, 'one plain colour every engine and the kit draw alike');
   for (const f of FILES) assert.doesNotMatch(src(f), /perspective\(|rotateY|rotateX|preserve-3d|matrix3d|translateZ|backface/i, `${f}: no CSS 3D`);
   assert.match(src('components/brand/DoorMark.js'), /requestAnimationFrame\(tick\)/, 'one requestAnimationFrame loop');
   const mark = src('components/brand/DoorMark.js');
@@ -168,11 +174,11 @@ test('reduced motion: the door holds still with no knob, and only its opacity br
 
 const walk = (dir, out = []) => { for (const f of readdirSync(dir)) { const p = join(dir, f); if (statSync(p).isDirectory()) { if (!/node_modules|\.next/.test(p)) walk(p, out); } else if (/\.js$/.test(p)) out.push(p); } return out; };
 
-test('Copy settings writes the values as JSON; the door shows on the admin mockups page alone, in tokens', () => {
-  assert.deepEqual(JSON.parse(G.doorSettingsJson(DOOR.defaults)), { rest: 'bar', openWidthOfR: 0.6, knobOfOpen: 0.18, swingMs: 700, pauseMs: 900, easing: 'soft', curve: DOOR.curves.soft, play: 'loop' });
+test('Copy settings writes the values as JSON; the door reaches the product only through DoorMark, in tokens', () => {
+  assert.deepEqual(JSON.parse(G.doorSettingsJson(DOOR.defaults)), { rest: 'bar', openWidthOfR: 0.6, knobOfOpen: 0.21, swingMs: 700, pauseMs: 800, easing: 'weighted', curve: DOOR.curves.weighted, play: 'loop' });
   const users = (name) => [...walk(join(ROOT, 'pages')), ...walk(join(ROOT, 'components'))].filter((p) => new RegExp(`import [^;]*from '[./]*[^']*/${name}'`).test(readFileSync(p, 'utf8'))).map((p) => relative(ROOT, p)).sort();
   assert.deepEqual(users('DoorLab'), ['pages/admin/mockups.js']);
-  assert.deepEqual(users('DoorMark'), ['components/admin/DoorLab.js']);
+  assert.deepEqual(users('DoorMark'), ['components/admin/DoorLab.js', 'components/brand/AppStart.js', 'components/brand/HomeDoor.js', 'components/brand/Loader.js']);
   assert.deepEqual(users('doorGeometry'), ['components/admin/DoorLab.js', 'components/brand/DoorMark.js']);
   for (const [kind, c] of Object.entries(G.DOOR_GROUNDS)) assert.equal(c.knob, c.bar === C.red ? C.ink : C.red, `${kind}: an ink knob on a red door, a red knob on an ink door`);
   for (const f of FILES) {

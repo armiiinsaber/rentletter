@@ -3,7 +3,8 @@
 // a zip, then a card per asset, grouped as the kit's folders are, each on the ground it is made
 // for, with a pill per format that downloads that one file. Everything comes from the kit's
 // manifest (public/brand/kit/manifest.json, written by npm run brand:kit), so the page never lists
-// a file the kit does not have.
+// a file the kit does not have. The Motion group's cards show a still of the door mid swing (the
+// kit's previews), so nothing on the page plays by itself.
 // Downloads: in a browser tab every pill is a link with the download attribute, and the file
 // saves. In the installed admin app (standalone, no browser chrome) a download would open in the
 // app window with no way back (the trap fixed for the report PDF, components/dashboard/
@@ -17,7 +18,7 @@ import { isStandalone } from '../../lib/standalone';
 
 const BASE = '/brand/kit';
 const urlOf = (p) => (p.startsWith('../') ? `${BASE}/${p.slice(3)}` : `${BASE}/${KIT.folder}/${p}`);
-const TYPES = { svg: 'image/svg+xml', png: 'image/png', pdf: 'application/pdf', zip: 'application/zip', json: 'application/json', css: 'text/css', txt: 'text/plain', ttf: 'font/ttf', woff2: 'font/woff2' };
+const TYPES = { svg: 'image/svg+xml', png: 'image/png', pdf: 'application/pdf', zip: 'application/zip', json: 'application/json', css: 'text/css', txt: 'text/plain', ttf: 'font/ttf', woff2: 'font/woff2', mp4: 'video/mp4', gif: 'image/gif', webm: 'video/webm' };
 const typeOf = (name) => TYPES[name.split('.').pop()] || 'application/octet-stream';
 export const sizeLabel = (bytes) => (bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1e3))} KB`);
 const GROUND = { paper: C.paper, ink: C.inst, white: C.card };
@@ -59,7 +60,7 @@ export default function BrandKit() {
   return (
     <section className="bk" aria-labelledby="bk-title" id="brand-kit">
       <div className="ad-eyebrow">Brand kit</div>
-      <h2 id="bk-title" className="bk-h2">Logos, marks, colour and type.</h2>
+      <h2 id="bk-title" className="bk-h2">Logos, marks, motion, colour and type.</h2>
       <div className="bk-main">
         <a className="bk-primary" href={zipUrl} download={KIT.zip.path} onClick={(e) => deliver(e, zipUrl, KIT.zip.path)} aria-label={`Download brand kit, ${sizeLabel(KIT.zip.size)}`} data-kit-zip="">
           {label(zipUrl, 'Download brand kit')}

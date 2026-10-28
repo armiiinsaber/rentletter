@@ -11,7 +11,8 @@
 //                               the mark contrast pairs and the source hashes (scripts/brand/kitSources.mjs)
 //   previews/                   small previews for the admin page, not part of the kit
 // Needs python3 with fontTools and brotli (scripts/brand/font-instance.py) for the font files and
-// the text on the sheets.
+// the text on the sheets, and Google Chrome for the motion videos (scripts/brand/motion.mjs records
+// the door from components/brand/DoorMark.js; scripts/brand/motionEncode.mjs encodes).
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -461,6 +462,17 @@ export async function buildKit() {
   }
   groups.push(markGroup);
 
+  // Motion: the door, recorded from components/brand/DoorMark.js with the production values
+  // (scripts/brand/motion.mjs), the videos encoded in headless Chrome, the GIFs here.
+  const { motionFiles, motionPoster } = await import('./motion.mjs');
+  const { encodeGif, withChrome } = await import('./motionEncode.mjs');
+  let motion = null;
+  await withChrome(async (enc) => { motion = await motionFiles({ encode: { gif: encodeGif, mp4: (o) => enc.mp4(o), webm: (o) => enc.webmAlpha(o) } }); });
+  for (const [p, data] of motion.files) put(p, data);
+  const posters = [];
+  for (const it of motion.group.items) { posters.push([it.preview.replace('../previews/', ''), await motionPoster(it.poster)]); delete it.poster; }
+  groups.push(motion.group);
+
   // Social.
   const social = { key: 'social', title: 'Social', items: [] };
   for (const [key, palette, title] of [['realtor', PALETTES.realtor, 'Profile, realtor'], ['admin', PALETTES.admin, 'Profile, admin']]) {
@@ -527,6 +539,9 @@ colour      The palette sheet, tokens.json and tokens.css.
             CMYK values are approximate.
 type        Fraunces and Inter with their licenses, and the type specimen.
 guidelines  How to use all of the above.
+motion      The door swinging: the mark looping as MP4 and GIF at 1024
+            and 512 on paper, red and ink, a transparent WebM, and the
+            wordmark swinging once as MP4 and GIF, 1200 wide.
 
 Built from the product's own source with npm run brand:kit.
 `);
@@ -541,6 +556,7 @@ Built from the product's own source with npm run brand:kit.
   writeFileSync(join(OUT, 'previews/palette.png'), png(sceneSvg(pal), PW));
   writeFileSync(join(OUT, 'previews/specimen.png'), png(sceneSvg(specimen), PW));
   writeFileSync(join(OUT, 'previews/guidelines.png'), png(sceneSvg(pages[0]), PW));
+  for (const [file, data] of posters) writeFileSync(join(OUT, 'previews', file), data);
   const strip = ['paper', 'card', 'rule', 'ink', 'inkMute', 'red', 'inst'];
   writeFileSync(join(OUT, 'previews/tokens.svg'), `<svg xmlns="http://www.w3.org/2000/svg" width="420" height="120" viewBox="0 0 420 120">${strip.map((k, i) => `<rect x="${i * 60}" y="0" width="60" height="120" fill="${C[k]}"/>`).join('')}</svg>`);
   for (const [fam, key] of [['fraunces', 'f72'], ['inter', 'i500']]) writeFileSync(join(OUT, `previews/${fam}.svg`), sceneSvg({ w: 240, h: 120, items: [T(120, 86, 'Aa', key, 72, C.ink, { anchor: 'middle' })] }));

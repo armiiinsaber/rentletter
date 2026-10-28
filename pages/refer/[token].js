@@ -9,6 +9,7 @@ import { useRouter } from 'next/router';
 import { C, R } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { referralsEnabled } from '../../lib/features';
+import Loader, { Pending } from '../../components/brand/Loader';
 
 const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return ''; } };
 
@@ -66,7 +67,7 @@ export default function ReferralConsent() {
           <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>Referral consent</span>
         </header>
         <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(28px, 5vw, 48px) clamp(16px, 4vw, 32px) 72px' }}>
-          {phase === 'loading' && <p style={{ color: C.inkSoft }}>Loading…</p>}
+          {phase === 'loading' && <Loader label="Loading the referral" />}
 
           {phase === 'paused' && (
             <div className="rl-card" style={{ padding: 'clamp(22px, 5vw, 32px)' }}>
@@ -147,7 +148,7 @@ export default function ReferralConsent() {
                 </button>
                 <button type="button" onClick={() => decide('approve')} disabled={busy} className="rl-btn"
                   style={{ background: C.ink, color: C.paper, border: `2px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
-                  {busy ? 'Working…' : `Approve, share with ${data.to?.name?.split(' ')[0] || 'them'}`}
+                  <Pending busy={busy} label="Sharing your application" tone="ink">{`Approve, share with ${data.to?.name?.split(' ')[0] || 'them'}`}</Pending>
                 </button>
               </div>
               <p style={{ marginTop: 14, fontSize: 12, color: C.inkMute, lineHeight: 1.5, textAlign: 'center' }}>This link works once{data.expiresAt ? ` and expires ${dateLong(data.expiresAt)}` : ''}.</p>

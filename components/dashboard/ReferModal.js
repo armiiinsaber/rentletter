@@ -6,6 +6,7 @@ import Sheet from '../Sheet';
 import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { Pending } from '../brand/Loader';
 
 // A bottom sheet (components/Sheet.js). It stays mounted so it can slide away, starts empty each
 // time it opens, and asks before dropping a name, an email or a note already typed.
@@ -57,7 +58,7 @@ export default function ReferModal({ open = true, listingId, applicant: given, o
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button type="button" onClick={onClose} disabled={busy} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42 }}>Cancel</button>
           <button type="submit" disabled={!valid || busy} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: !valid || busy ? 'not-allowed' : 'pointer', opacity: !valid || busy ? 0.5 : 1, minHeight: 42, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            {busy ? 'Sending…' : <>Ask the applicant <Icon name="send" size={14} /></>}
+            <Pending busy={busy} label="Sending the request" tone="red">Ask the applicant <Icon name="send" size={14} /></Pending>
           </button>
         </div>
       </form>

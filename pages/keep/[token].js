@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../lib/supabase/admin';
 import { readConsent } from '../../lib/listingStatus';
 import { readRenewal } from '../../lib/pipeline';
+import { Pending } from '../../components/brand/Loader';
 
 export async function getServerSideProps(ctx) {
   const token = String(ctx.params?.token || '');
@@ -79,14 +80,14 @@ export default function KeepPage({ token, state, realtorName }) {
               <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)' }}>{who} asks:</div>
               <p style={{ fontSize: 'var(--t-body)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'balance' }}>{view === 'renew' ? 'Keep your application in mind for another 60 days?' : 'Keep your application in mind for similar units for 60 days?'}</p>
               {error && <div role="alert" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-4)' }}>
+              <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-4)' }}>
                 <button type="button" onClick={() => answer('yes')} disabled={!!busy}
                   style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                  {busy === 'yes' ? 'Saving' : 'Yes, keep me in mind'}
+                  <Pending busy={busy === 'yes'} label="Saving your answer">Yes, keep me in mind</Pending>
                 </button>
                 <button type="button" onClick={() => answer('no')} disabled={!!busy}
                   style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: busy ? 'default' : 'pointer', fontFamily: 'inherit' }}>
-                  {busy === 'no' ? 'Saving' : 'No thanks'}
+                  <Pending busy={busy === 'no'} label="Saving your answer">No thanks</Pending>
                 </button>
               </div>
             </>

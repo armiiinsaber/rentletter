@@ -7,6 +7,7 @@ import DeviceFrame, { DEVICE_BREAKPOINT } from '../components/DeviceFrame';
 import { cardTap } from '../lib/motion';
 import { noWidow } from '../lib/typeset';
 import HeroDemo from '../components/mockups/HeroDemo';
+import HomeDoor from '../components/brand/HomeDoor';
 
 
 // ─── THE PAGE ──────────────────────────────────────────────────────────────────────────────
@@ -374,9 +375,10 @@ export default function Home() {
 
           {/* ── HEADER, balanced 3-zone: wordmark left · nav center · CTA right ── */}
           <ScrollHeader>
-            {/* LEFT, wordmark (drifts left + fades on scroll) */}
+            {/* LEFT, wordmark (drifts left + fades on scroll). Its door swings once after the page
+                loads (components/brand/HomeDoor.js), never on scroll. */}
             <div className="lh-left">
-              <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
+              <a href="/" className="rl-mark" aria-label="Rentletter home"><HomeDoor /></a>
             </div>
             {/* CENTER, secondary nav; collapses to the footer on small screens so the bar stays a
                 single tidy row (wordmark + CTA) with no wrap/overflow at 360/390 */}
@@ -471,7 +473,7 @@ export default function Home() {
                     </DeviceFrame>
                   </div>
                 </div>
-                <div style={{ margin: 'auto 0', padding: 'var(--gap-card) 0', fontSize: 12, color: C.inkMute }}>
+                <div style={{ margin: 'auto 0', padding: 'var(--gap-card) 0', fontSize: 12, color: C.inkMute, textWrap: 'balance' }}>
                   The Rentletter dashboard, one workspace per listing.
                 </div>
               </div>

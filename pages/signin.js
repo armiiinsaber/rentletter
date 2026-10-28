@@ -8,6 +8,7 @@ import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { isValidEmail } from '../lib/validation';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
+import { Pending } from '../components/brand/Loader';
 
 export default function SignIn() {
   const router = useRouter();
@@ -79,7 +80,7 @@ export default function SignIn() {
           <a href="/forgot-password" style={{ fontSize: 13, color: C.inkSoft, textDecoration: 'underline' }}>Forgot your password?</a>
         </div>
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
-          {loading ? 'Signing in…' : 'Sign in →'}
+          <Pending busy={loading} label="Signing in">Sign in →</Pending>
         </button>
       </form>
     </AuthShell>

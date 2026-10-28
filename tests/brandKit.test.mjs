@@ -1,7 +1,11 @@
 // The brand kit (public/brand/kit, built by npm run brand:kit from scripts/brand/kit.mjs):
 //   Every file the kit promises is there, matches its manifest entry, and is in the zip.
-//   The kit is not older than what it is drawn from: the logo paths, the tokens, the type scale
-//   and the fonts (scripts/brand/kitSources.mjs). The build stops on a stale kit too.
+//   The kit is not older than what it is drawn from: the logo paths, the tokens, the type scale,
+//   the fonts, and for the motion files the door's code and its settings (scripts/brand/
+//   kitSources.mjs). The build stops on a stale kit too: an edit to the door or to lib/motion.js
+//   DOOR after the kit was built stops it, a comment edit does not.
+//   The motion files are what they say: GIF, MP4 and WebM at their sizes, the looping ones loop,
+//   the wordmark plays once, the GIFs hold the exact token colours, the WebM carries its alpha.
 //   No PNG drifts from the tokens: solid colours are exactly the token values, edges stay within
 //   two levels, and the palette sheet's swatches are the token colours.
 //   Every mark pair reads at 3 to 1 or better, or the mark is left out.
@@ -13,6 +17,9 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { crc32, inflateRawSync } from 'node:zlib';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { register } from 'node:module';
 import { readPng, interiorColours } from './helpers/png.mjs';
@@ -44,6 +51,7 @@ const MARKS = {
 };
 const BARE = { 'bare-ink': [C.ink, C.paper], 'bare-paper': [C.paper, C.inst] };
 const SIZES = [1024, 512, 180, 64, 32, 16];
+const MOTION_GROUNDS = ['paper', 'red', 'ink'];
 
 function expectedFiles() {
   const out = ['README.txt'];
@@ -57,6 +65,8 @@ function expectedFiles() {
   out.push('colour/rentletter-palette.png', 'colour/rentletter-palette.pdf', 'colour/tokens.json', 'colour/tokens.css');
   for (const fam of ['Fraunces', 'Inter']) out.push(`type/${fam}/${fam}-Variable.ttf`, `type/${fam}/${fam}-Variable.woff2`, `type/${fam}/OFL.txt`);
   out.push('type/rentletter-type-specimen.png', 'type/rentletter-type-specimen.pdf', 'guidelines/rentletter-brand-guidelines.pdf');
+  for (const g of MOTION_GROUNDS) for (const px of [1024, 512]) out.push(`motion/rentletter-mark-loop-${g}-${px}.mp4`, `motion/rentletter-mark-loop-${g}-${px}.gif`);
+  out.push('motion/rentletter-mark-loop-transparent-1024.webm', 'motion/rentletter-wordmark-swing-1200.mp4', 'motion/rentletter-wordmark-swing-1200.gif');
   return out.sort();
 }
 
@@ -85,13 +95,38 @@ test('every kit file is there, matches the manifest and is in the zip', () => {
   assert.deepEqual(seen.sort(), want.map((p) => `${manifest.folder}/${p}`));
 });
 
-test('the kit is not older than the logo paths, the tokens, the type scale or the fonts', async () => {
+test('the kit is not older than the logo paths, the tokens, the type scale, the fonts or the door', async () => {
   const { kitSources } = await import('../scripts/brand/kitSources.mjs');
   const now = kitSources(ROOT);
   for (const [source, hash] of Object.entries(now)) assert.equal(manifest.sources[source], hash, `${source} changed after the kit was built: run npm run brand:kit`);
   // The build check says the same, and stops the build when it is not so.
   const r = spawnSync(process.execPath, ['scripts/brand/check-kit.mjs'], { cwd: ROOT, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
+  // The motion files' sources are in the hashes: the door's two files and the DOOR settings.
+  for (const k of ['components/brand/DoorMark.js', 'components/brand/doorGeometry.js', 'lib/motion.js DOOR']) assert.ok(manifest.sources[k], `${k} is a kit source`);
+  // In a copy of the sources (the kit itself linked in): an edit to the door's code or to its
+  // settings after the kit was built stops the build, naming what changed; a comment does not.
+  const { SOURCE_FILES } = await import('../scripts/brand/kitSources.mjs');
+  const check = (edit) => {
+    const dir = mkdtempSync(join(tmpdir(), 'rl-kit-stale-'));
+    try {
+      symlinkSync(join(ROOT, 'public'), join(dir, 'public'));
+      for (const p of [...SOURCE_FILES.map(([f]) => f).filter((f) => !f.startsWith('public/')), 'components/ui.js', 'lib/motion.js', 'scripts/brand/check-kit.mjs', 'scripts/brand/kitSources.mjs']) {
+        mkdirSync(dirname(join(dir, p)), { recursive: true }); writeFileSync(join(dir, p), readFileSync(join(ROOT, p)));
+      }
+      edit(dir);
+      return spawnSync(process.execPath, ['scripts/brand/check-kit.mjs'], { cwd: dir, encoding: 'utf8' });
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  };
+  const change = (dir, p, a, b) => { const f = join(dir, p); const t = readFileSync(f, 'utf8'); assert.ok(t.includes(a), `${p} holds ${a}`); writeFileSync(f, t.replace(a, b)); };
+  const door = check((d) => change(d, 'components/brand/DoorMark.js', 'const PLAYER_STEP = 1000 / 30;', 'const PLAYER_STEP = 1000 / 24;'));
+  assert.equal(door.status, 1); assert.match(door.stderr, /components\/brand\/DoorMark\.js changed after the kit was built/);
+  const geometry = check((d) => change(d, 'components/brand/doorGeometry.js', 'export const PERSPECTIVE = 6;', 'export const PERSPECTIVE = 7;'));
+  assert.equal(geometry.status, 1); assert.match(geometry.stderr, /components\/brand\/doorGeometry\.js changed after the kit was built/);
+  const settings = check((d) => change(d, 'lib/motion.js', 'pauseMs: 800,', 'pauseMs: 900,'));
+  assert.equal(settings.status, 1); assert.match(settings.stderr, /lib\/motion\.js DOOR changed after the kit was built/);
+  const comment = check((d) => change(d, 'components/brand/DoorMark.js', '// components/brand/DoorMark.js', '// components/brand/DoorMark.js (a comment edit)'));
+  assert.equal(comment.status, 0, comment.stderr);
   assert.match(readFileSync(join(ROOT, 'package.json'), 'utf8'), /"build": "node scripts\/brand\/check-kit\.mjs && next build"/);
   // The builder's own colour constants are the tokens.
   const draw = await import('../scripts/brand/draw.mjs');
@@ -202,4 +237,48 @@ test('each font folder carries its project license, byte for byte as published u
     assert.ok(inKit.equals(vendored), `type/${fam}/OFL.txt is copied byte for byte`);
     assert.equal(inKit.toString('utf8').split('\n')[0], up.first, `${fam}: the upstream copyright line`);
   }
+});
+
+// The motion files, read from their bytes.
+const gifInfo = (b) => {
+  assert.equal(b.toString('latin1', 0, 6), 'GIF89a');
+  const flags = b[10]; const size = flags & 0x80 ? 3 * 2 ** ((flags & 7) + 1) : 0;
+  const table = new Set(); for (let i = 0; i < size; i += 3) table.add(`#${[b[13 + i], b[14 + i], b[15 + i]].map((v) => v.toString(16).padStart(2, '0')).join('')}`);
+  let frames = 0; for (let i = 13 + size; i < b.length - 1; i++) if (b[i] === 0x21 && b[i + 1] === 0xf9 && b[i + 2] === 4) frames++;
+  return { w: b.readUInt16LE(6), h: b.readUInt16LE(8), table, loops: b.includes(Buffer.from('NETSCAPE2.0')), frames };
+};
+const box = (b, type) => { const i = b.indexOf(Buffer.from(type)); assert.ok(i > 4, `${type} box`); return { at: i - 4, size: b.readUInt32BE(i - 4) }; };
+const mp4Info = (b) => {
+  assert.equal(b.toString('latin1', 4, 8), 'ftyp');
+  const t = box(b, 'tkhd'); const m = box(b, 'mvhd'); const v = b[m.at + 8];
+  const scale = b.readUInt32BE(m.at + (v ? 28 : 20)); const dur = v ? Number(b.readBigUInt64BE(m.at + 32)) : b.readUInt32BE(m.at + 24);
+  return { w: b.readUInt32BE(t.at + t.size - 8) >>> 16, h: b.readUInt32BE(t.at + t.size - 4) >>> 16, seconds: dur / scale, avc: b.includes(Buffer.from('avc1')) };
+};
+
+test('the motion files: GIF, MP4 and WebM, recorded from the door at their sizes', async () => {
+  const { DOOR } = await import('../lib/motion.js');
+  const cycle = (DOOR.defaults.swingMs + DOOR.defaults.pauseMs) / 1000;
+  const COLOURS = { paper: [C.paper, C.red, C.ink], red: [C.red, C.inst, C.card], ink: [C.inst, C.red, C.instText] };
+  for (const g of MOTION_GROUNDS) for (const px of [1024, 512]) {
+    const gif = gifInfo(file(`motion/rentletter-mark-loop-${g}-${px}.gif`));
+    assert.deepEqual([gif.w, gif.h], [px, px]); assert.ok(gif.loops, `${g} ${px}: the GIF loops`); assert.ok(gif.frames >= 20, `${g} ${px}: ${gif.frames} frames`);
+    for (const c of COLOURS[g]) assert.ok(gif.table.has(c.toLowerCase()), `${g} ${px}: ${c} exact in the GIF's colours`);
+    const mp4 = mp4Info(file(`motion/rentletter-mark-loop-${g}-${px}.mp4`));
+    assert.deepEqual([mp4.w, mp4.h], [px, px]); assert.ok(mp4.avc, 'H.264');
+    assert.ok(Math.abs(mp4.seconds - 4 * cycle) < 0.05, `${g} ${px}: four cycles (${mp4.seconds}s)`);
+  }
+  const word = gifInfo(file('motion/rentletter-wordmark-swing-1200.gif'));
+  assert.deepEqual([word.w, word.h], [1200, 400]); assert.equal(word.loops, false, 'the wordmark GIF plays once');
+  for (const c of [C.paper, C.red, C.ink]) assert.ok(word.table.has(c.toLowerCase()), `the wordmark GIF holds ${c} exact`);
+  const wordMp4 = mp4Info(file('motion/rentletter-wordmark-swing-1200.mp4'));
+  assert.deepEqual([wordMp4.w, wordMp4.h], [1200, 400]);
+  assert.ok(Math.abs(wordMp4.seconds - (DOOR.homeDelayMs + DOOR.defaults.swingMs + 900) / 1000) < 0.05, `the wordmark: a beat, one swing, a rest (${wordMp4.seconds}s)`);
+  const webm = file('motion/rentletter-mark-loop-transparent-1024.webm');
+  assert.equal(webm.readUInt32BE(0), 0x1a45dfa3, 'EBML'); assert.ok(webm.includes(Buffer.from('webm')) && webm.includes(Buffer.from('V_VP9')), 'a VP9 WebM');
+  assert.ok(webm.includes(Buffer.from([0x53, 0xc0, 0x81, 0x01])), 'AlphaMode 1: the alpha travels with it');
+  assert.ok(webm.includes(Buffer.from([0x75, 0xa1])), 'BlockAdditions hold the alpha frames');
+  const motion = manifest.groups.find((x) => x.key === 'motion');
+  assert.deepEqual(motion.items.map((i) => i.key), ['mark-paper', 'mark-red', 'mark-ink', 'mark-transparent', 'wordmark-swing']);
+  assert.equal(manifest.groups.map((x) => x.key).indexOf('motion'), manifest.groups.map((x) => x.key).indexOf('mark') + 1, 'Motion follows Mark');
+  for (const it of motion.items) assert.ok(existsSync(join(KIT, it.preview.replace('../', ''))), `${it.key}: its still preview`);
 });

@@ -15,6 +15,7 @@ import Calendar from '../../components/crm/Calendar';
 import Agenda from '../../components/crm/Agenda';
 import { QuickAdd, LeadDrawer, BrokerageDrawer } from '../../components/crm/Drawers';
 import { STAGE, leadStatus, moveTsToDay, addDays, today, fmtDay, CLOSED } from '../../components/crm/model';
+import Loader from '../../components/brand/Loader';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -103,7 +104,7 @@ export default function Crm() {
           </div>
         </div>
 
-        {state === 'loading' && <p className="ad-quiet">Loading…</p>}
+        {state === 'loading' && <Loader label="Loading the CRM" tone="ink" />}
         {state === 'signedout' && <div className="ad-card crm-state"><div className="ad-eyebrow">Signed out</div><p>Your admin session ended.</p><a className="ad-btn primary" href="/admin?next=/admin/crm">Sign in again</a></div>}
         {state === 'error' && <div className="ad-card crm-state" role="alert"><div className="ad-eyebrow" style={{ color: C.instDangerText }}>Couldn’t load</div><p>{err}</p><button type="button" className="ad-btn secondary" onClick={load}>Try again</button></div>}
         {state === 'migration' && (

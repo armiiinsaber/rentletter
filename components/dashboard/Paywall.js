@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { C, R } from '../theme';
 import { PLANS, money, annualSaving } from '../../lib/billingConfig';
+import { Pending } from '../brand/Loader';
 
 const COPY = {
   trial_expired: { title: 'Your trial has ended.', body: 'Your listings and applicants are exactly where you left them. Pick a plan to keep going.' },
@@ -41,13 +42,13 @@ export function PlanPicker({ hasCustomer, showPortal = true, compact = false }) 
             <div className="pw-price"><span className="pw-amt">{money(p.amount)}</span><span className="pw-per"> / {p.per}</span></div>
             <div className="pw-sub">{annual ? 'Covers the slow season.' : 'Cancel any time.'}</div>
             {annual && <div className="pw-sub" style={{ color: C.inkMute }}>Saves {money(saving)} a year.</div>}
-            <button type="button" className="pw-btn" disabled={!!busy} onClick={() => go(p.key)}>{busy === p.key ? 'Opening checkout…' : annual ? 'Choose annual' : 'Choose monthly'}</button>
+            <button type="button" className="pw-btn" disabled={!!busy} onClick={() => go(p.key)}><Pending busy={busy === p.key} label="Opening checkout" tone="ink">{annual ? 'Choose annual' : 'Choose monthly'}</Pending></button>
           </div>
         ); })}
       </div>
       {err && <p role="alert" className="pw-err">{err}</p>}
       <p className="pw-fine">{PLANS.month.per === 'month' ? 'Prices in Canadian dollars, tax added at checkout. ' : ''}Payments are handled by Stripe.</p>
-      {showPortal && hasCustomer && <p className="pw-fine"><button type="button" className="pw-link" disabled={!!busy} onClick={portal}>{busy === 'portal' ? 'Opening…' : 'Open the billing portal'}</button> to update your card, see invoices or cancel.</p>}
+      {showPortal && hasCustomer && <p className="pw-fine"><button type="button" className="pw-link" disabled={!!busy} onClick={portal}><Pending busy={busy === 'portal'} label="Opening the billing portal">Open the billing portal</Pending></button> to update your card, see invoices or cancel.</p>}
       <style jsx global>{`
         .pw-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: ${compact ? 8 : 10}px; }
         .pw-plan { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: ${R.card}px; padding: clamp(14px, 3.5vw, 22px) clamp(12px, 3vw, 20px); display: flex; flex-direction: column; gap: 6px; min-width: 0; }

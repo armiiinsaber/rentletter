@@ -11,6 +11,7 @@ import { isValidEmail } from '../lib/validation';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
 import { referralsEnabled } from '../lib/features';
+import { Pending } from '../components/brand/Loader';
 
 export default function SignUp() {
   const [email, setEmail] = useState('');
@@ -202,7 +203,7 @@ export default function SignUp() {
             aria-label="I agree to the Terms of Service and Privacy Policy"
             style={{ width: 18, height: 18, marginTop: 1, flexShrink: 0, accentColor: C.red, cursor: 'pointer' }}
           />
-          <span>
+          <span style={{ textWrap: 'balance' }}>
             I agree to the{' '}
             <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: C.red, fontWeight: 700, textDecoration: 'underline' }}>Terms of Service</a>{' '}
             and{' '}
@@ -213,7 +214,7 @@ export default function SignUp() {
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>You must agree to the Terms of Service and Privacy Policy to continue.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
-          {loading ? 'Creating account…' : 'Create account →'}
+          <Pending busy={loading} label="Creating your account">Create account →</Pending>
         </button>
       </form>
     </AuthShell>

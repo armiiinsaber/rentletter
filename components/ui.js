@@ -9,6 +9,7 @@ import { noWidow } from '../lib/typeset';
 import { LOGO } from '../lib/brand/logoPaths';
 import { PRESS_CSS, NAV_CSS, HIT_CSS } from '../lib/motion';
 import Sheet, { SHEET_PAGE_CSS } from './Sheet';
+import { Pending } from './brand/Loader';
 
 // ─── GLOBAL STYLE + MOTION LANGUAGE ──────────────────────────
 // One stylesheet. All motion guarded by prefers-reduced-motion so the page
@@ -179,6 +180,10 @@ export const GlobalStyle = () => (
       .rl-dot { animation: rl-pulse 1.3s ease-in-out infinite; }
     }
 
+    /* A pending button (components/brand/Loader.js Pending) is working, not unavailable: it keeps
+       its full colour while the door turns in it. */
+    button:has([data-pending="busy"]) { opacity: 1 !important; cursor: progress !important; }
+
     /* Focus ring for keyboard users on links and buttons, always on. The outline follows each
        control's own radius, so a pill stays a pill. */
     a:focus-visible, button:focus-visible {
@@ -336,9 +341,10 @@ export const TickMeter = ({ value, max = 5, size = 14, showValue = true, onDark 
 // action verb, never "OK"; destructive actions use the danger red, not brand red. Escape, a
 // drag down or a tap on the dimmed page cancels, never while busy.
 // footer renders under the buttons (a line about the action just refused sits under it).
+// busy: the confirm button turns pending (components/brand/Loader.js), named by busyLabel.
 export const ConfirmSheet = ({
   open, title, body, footer = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
-  danger = false, busy = false, onConfirm, onCancel,
+  danger = false, busy = false, busyLabel = null, onConfirm, onCancel,
 }) => {
   const accent = danger ? C.danger : C.red;
   return (
@@ -356,7 +362,7 @@ export const ConfirmSheet = ({
               borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 15, fontWeight: 700,
               cursor: busy ? 'wait' : 'pointer', minHeight: 48,
             }}>
-            {busy ? 'Working…' : confirmLabel}
+            <Pending busy={busy} label={busyLabel || confirmLabel}>{confirmLabel}</Pending>
           </button>
           <button onClick={onCancel} disabled={busy}
             style={{

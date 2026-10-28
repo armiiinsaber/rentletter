@@ -25,6 +25,7 @@ import { PROVINCE_OPTIONS, normalizeProvince } from '../../lib/provinces';
 import { BOARD_OPTIONS } from '../../lib/boardDetails';
 import LogoStudio from './LogoStudio';
 import { Crossfade, MotionStyles } from '../motion';
+import { Pending } from '../brand/Loader';
 
 const inputStyle = {
   width: '100%', padding: '12px 14px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)',
@@ -306,7 +307,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {!logoOnly && <>
       {fields.map((f) => (
         <div key={f.k} style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>{f.label}{flash[f.k] && <span role="status" style={{ marginLeft: 8, color: C.inkMute, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Saved</span>}</label>
+          <label style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6, textWrap: 'balance' }}>{f.label}{flash[f.k] && <span role="status" style={{ marginLeft: 8, color: C.inkMute, fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>Saved</span>}</label>
           <input id={`profile-field-${f.k}`} type="text" autoComplete={f.ac} value={form[f.k]} onChange={(e) => set(f.k, e.target.value)} onBlur={autosave} placeholder={f.ph} style={inputStyle} />
         </div>
       ))}
@@ -316,7 +317,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         <select value={form.province} onChange={(e) => { set('province', e.target.value); autosave(); }} onBlur={autosave} style={{ ...inputStyle, appearance: 'none', cursor: 'pointer' }}>
           {PROVINCE_OPTIONS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
-        <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5 }}>The province you operate in. Sets rules like the tenant age of majority (Ontario 18, BC 19).</div>
+        <div style={{ fontSize: 12, color: C.inkMute, marginTop: 6, lineHeight: 1.5, textWrap: 'balance' }}>The province you operate in. Sets rules like the tenant age of majority (Ontario 18, BC 19).</div>
       </div>
       {/* The board (lib/boardDetails.js): kept for the realtor's own reference, in no report and no group. */}
       <div style={{ marginBottom: 16 }}>
@@ -326,7 +327,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
           {BOARD_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
       </div>
-      <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 26 }}>
+      <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 26, textWrap: 'balance' }}>
         These appear on PDF exports and email summaries you send to landlord clients. Saved automatically when you leave a field.
       </p>
       </>}
@@ -359,7 +360,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       <div className="rl-ctrl-row" style={{ marginBottom: 14 }}>
         <button onClick={() => fileRef.current?.click()} disabled={logoBusy}
           style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: logoBusy ? 'wait' : 'pointer' }}>
-          {logoBusy ? 'Working…' : 'Replace with upload'}
+          <Pending busy={logoBusy} label="Uploading your logo" tone="ink">Replace with upload</Pending>
         </button>
         <button onClick={() => setStudioOpen((o) => !o)}
           style={{ background: studioOpen ? C.card : C.red, color: studioOpen ? C.ink : C.paper, border: studioOpen ? `1px solid ${C.ruleDark}` : 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
@@ -420,7 +421,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {/* ── FONT PAIRING ── */}
       <div style={{ marginBottom: 24 }}>
         <label style={{ ...sectionLabel, marginBottom: 4 }}>Font pairing</label>
-        <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>
+        <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12, textWrap: 'balance' }}>
           Pick a heading + body pairing. Every pairing here is embedded in your landlord reports, the heading sets your name, the body sets everything else. Script headings style your name only; report text stays in the clean body face.
           {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> Saving.</span>}
           {fontState === 'saved' && <span role="status" style={{ color: C.inkMute, fontWeight: 600 }}> Saved.</span>}
@@ -439,8 +440,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
                 </div>
                 <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{String(fp.mood).split(' · ').join(', ')}</div>
                 <div style={{ fontFamily: fp.heading.css, fontWeight: fp.heading.weight, letterSpacing: fp.heading.letterSpacing, fontSize: 22, color: C.ink, lineHeight: 1.1 }}>Aa Heading</div>
-                <div style={{ fontFamily: fp.body.css, fontWeight: fp.body.weight, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginTop: 4 }}>{noWidow('The quick brown fox jumps over the lazy dog.')}</div>
-                <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 8, lineHeight: 1.4 }}>
+                <div style={{ fontFamily: fp.body.css, fontWeight: fp.body.weight, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.5, marginTop: 4, textWrap: 'balance' }}>{noWidow('The quick brown fox jumps over the lazy dog.')}</div>
+                <div style={{ fontSize: 10.5, color: C.inkMute, marginTop: 8, lineHeight: 1.4, textWrap: 'balance' }}>
                   {noWidow(`In reports: ${fp.heading.script ? `your name in ${fp.heading.family}` : `headings in ${fp.heading.family}`}, text in ${fp.body.family}.`)}
                 </div>
               </button>
@@ -453,7 +454,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {onClose && <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
         <button onClick={save} disabled={saving}
           style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(215, 32, 39, 0.25)' : 'none' }}>
-          {saving ? 'Saving…' : (dirty ? 'Save changes' : 'Save')}
+          <Pending busy={saving} label="Saving your profile" tone="red">{dirty ? 'Save changes' : 'Save'}</Pending>
         </button>
         {!saving && dirty && (
           <span style={{ fontSize: 13, color: C.red, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -462,16 +463,6 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
           </span>
         )}
       </div>}
-      <style jsx>{`
-        .rl-savespin {
-          width: 12px; height: 12px; flex-shrink: 0; border-radius: 50%; display: inline-block;
-          border: 2px solid ${C.rule}; border-top-color: ${C.ink};
-        }
-        @media (prefers-reduced-motion: no-preference) {
-          .rl-savespin { animation: rl-savespin 0.7s linear infinite; }
-        }
-        @keyframes rl-savespin { to { transform: rotate(360deg); } }
-      `}</style>
       </>}
     </div>
   );

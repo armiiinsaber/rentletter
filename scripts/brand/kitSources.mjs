@@ -4,6 +4,9 @@
 // (tests/brandKit.test.mjs) compute them again, and a difference means the kit is older than its
 // source. Code files are hashed without their comments and spacing, so a comment edit does not
 // make the kit stale; the type scale is read from the one line that sets it in components/ui.js.
+// The motion files are recorded from the door (components/brand/DoorMark.js and doorGeometry.js)
+// with its settings (lib/motion.js DOOR, read from the one block that sets them), so a change to
+// any of them makes the kit stale too.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -22,15 +25,26 @@ export function typeScale(root) {
 export const SOURCE_FILES = Object.freeze([
   ['lib/brand/logoPaths.js', 'code'],
   ['components/theme.js', 'code'],
+  ['components/brand/DoorMark.js', 'code'],
+  ['components/brand/doorGeometry.js', 'code'],
   ['public/fonts/fraunces-latin.woff2', 'bytes'],
   ['public/fonts/inter-latin.woff2', 'bytes'],
   ['public/fonts/licenses/Fraunces-OFL.txt', 'bytes'],
   ['public/fonts/licenses/Inter-OFL.txt', 'bytes'],
 ]);
 
+// The door's settings: the DOOR block in lib/motion.js, from its first line to its closing line.
+export function doorSettings(root) {
+  const src = readFileSync(join(root, 'lib/motion.js'), 'utf8');
+  const start = src.indexOf('export const DOOR = Object.freeze({'); const end = src.indexOf('\n});', start);
+  if (start < 0 || end < 0) throw new Error('The DOOR block is missing from lib/motion.js.');
+  return codeOnly(src.slice(start, end + 4));
+}
+
 export function kitSources(root) {
   const out = {};
   for (const [p, kind] of SOURCE_FILES) { const b = readFileSync(join(root, p)); out[p] = sha(kind === 'code' ? codeOnly(b.toString('utf8')) : b); }
   out['components/ui.js type scale'] = sha(JSON.stringify(typeScale(root)));
+  out['lib/motion.js DOOR'] = sha(doorSettings(root));
   return out;
 }

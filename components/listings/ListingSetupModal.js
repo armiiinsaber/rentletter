@@ -17,6 +17,7 @@ import { PROVINCE_OPTIONS } from '../../lib/provinces';
 import { CREDIT_ASK_LABEL } from '../../lib/creditShared';
 import { BOARD_FIELDS, depositRules, depositCap, normalizeBoardDetails } from '../../lib/boardDetails';
 import { Icon } from '../ui';
+import { Pending } from '../brand/Loader';
 
 // The form: six unit facts, the five criteria Fit reads, notes, the landlord client. The
 // employment type, move in window, lease term, occupants, guarantor, parking spots, pets policy,
@@ -191,7 +192,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
             Unit basics and landlord{'\u00a0'}preferences
           </h3>
           {creating && (
-            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8 }}>
+            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginTop: 8, textWrap: 'balance' }}>
               Fields marked <span style={{ color: C.red, fontWeight: 700 }}>*</span> are required: {askProvince ? 'your province (asked once, here), ' : ''}address, monthly rent, bedrooms, and your landlord client's name and email. Everything else can be set now or edited{'\u00a0'}later.
             </p>
           )}
@@ -351,7 +352,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
         {/* Footer */}
         <div style={{ padding: inline ? 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px)' : 'clamp(16px, 3vw, 22px) clamp(20px, 4vw, 28px) calc(clamp(16px, 3vw, 22px) + env(safe-area-inset-bottom, 0px))', borderTop: `1px solid ${C.rule}`, display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', position: 'sticky', bottom: 0, background: C.paper }}>
           {!allValid && (
-            <span style={{ flex: '1 1 100%', minWidth: 0, fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, order: -1 }}>
+            <span style={{ flex: '1 1 100%', minWidth: 0, fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, order: -1, textWrap: 'balance' }}>
               Still needed: <span style={{ color: C.inkSoft, fontWeight: 600 }}>{missing.join(', ')}</span>.
             </span>
           )}
@@ -363,7 +364,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           <button onClick={handleSaveClick} disabled={!canSave}
             title={canSave ? '' : 'Complete the required fields first'}
             style={{ minHeight: 44, background: canSave ? C.red : C.ruleDark, color: C.paper, border: '1px solid transparent', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: canSave ? 'pointer' : 'not-allowed', opacity: canSave ? 1 : 0.7 }}>
-            {saving ? 'Saving…' : creating ? 'Create listing' : 'Save changes'}
+            <Pending busy={saving} label={creating ? 'Creating your listing' : 'Saving your changes'}>{creating ? 'Create listing' : 'Save changes'}</Pending>
           </button>
         </div>
     </>
@@ -397,7 +398,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
               </button>
               <button onClick={confirmCreate} disabled={saving}
                 style={{ background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-                {saving ? (creating ? 'Creating…' : 'Saving…') : creating ? 'Confirm & create' : 'Save changes'}
+                <Pending busy={saving} label={creating ? 'Creating your listing' : 'Saving your changes'} tone="red">{creating ? 'Confirm & create' : 'Save changes'}</Pending>
               </button>
             </div>
       </div>

@@ -8,6 +8,7 @@ import { Icon, ConfirmSheet } from '../../components/ui';
 import { isAdmin } from '../../lib/adminAuth';
 import { adminFetch } from '../../components/admin/adminFetch';
 import AdminShell, { Sheet } from '../../components/admin/AdminShell';
+import Loader from '../../components/brand/Loader';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -61,7 +62,7 @@ export default function Promos() {
           {state === 'ready' && <span className="ad-quiet ad-num">{codes.length} code{codes.length === 1 ? '' : 's'} · {codes.reduce((n, c) => n + c.redemption_count, 0)} redeemed</span>}
         </div>
 
-        {state === 'loading' && <p className="ad-quiet">Loading…</p>}
+        {state === 'loading' && <Loader label="Loading promo codes" tone="ink" />}
         {state === 'signedout' && <div className="ad-card pr-state"><div className="ad-eyebrow">Signed out</div><p>Your admin session ended.</p><a className="ad-btn primary" href="/admin?next=/admin/promos">Sign in again</a></div>}
         {state === 'error' && <div className="ad-card pr-state" role="alert"><div className="ad-eyebrow" style={{ color: C.instDangerText }}>Couldn’t load</div><p>{err}</p><button type="button" className="ad-btn secondary" onClick={load}>Try again</button></div>}
         {state === 'migration' && <div className="ad-card pr-state"><div className="ad-eyebrow">One step first</div><h2 className="ad-h2" style={{ marginBottom: 8 }}>The promo tables don’t exist yet.</h2><p>Run <code>db/billing-and-promos.sql</code> in the Supabase SQL editor once, then reload.</p><button type="button" className="ad-btn secondary" onClick={load}>I ran it — reload</button></div>}

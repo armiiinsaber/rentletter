@@ -15,6 +15,7 @@ import { ProfileStyles, FactSections, Eyebrow, Chevron, noWidow, dateLong } from
 import { TENANT_LINES } from '../../lib/applicantState';
 import { APPLICATION_STATE } from '../../lib/application-state';
 import PartiesCard from '../../components/tenant/PartiesCard';
+import { Pending } from '../../components/brand/Loader';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -214,7 +215,7 @@ export default function ApplicationPage() {
             </div>
             <p className="mp-p" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(revoked ? 'The realtor sees a revoked notice instead of your details. Reactivate to restore their access and your editing.' : 'Anyone with this application number can view it. Revoking affects only this application, not your profile or other applications.')}</p>
             <button data-destructive="" type="button" onClick={() => performAction(revoked ? 'unrevoke' : 'revoke')} disabled={actionLoading || !!editing} className={`mp-btn${revoked ? '' : ' mp-btn-red'}`} style={{ marginTop: 'var(--gap-card)' }}>
-              {actionLoading ? 'Working' : revoked ? 'Reactivate application' : 'Revoke application'}
+              <Pending busy={actionLoading} label={revoked ? 'Reactivating your application' : 'Revoking your application'} tone={revoked ? 'paper' : 'red'}>{revoked ? 'Reactivate application' : 'Revoke application'}</Pending>
             </button>
             <button type="button" onClick={() => setShowLog((v) => !v)} aria-expanded={showLog} className="mp-fold">
               <span className="num">{`Lookup history (${Number(data.lookupCount) || 0})`}</span><Chevron open={showLog} />

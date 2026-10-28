@@ -14,6 +14,12 @@
 // eased angle on one curve (lib/motion.js DOOR). Under reduced motion the door does not turn: it
 // holds still, the knob is hidden, and its opacity breathes between DOOR.breath and 1 (CSS).
 // The resting pose is the server rendered markup, so the mark reads without JavaScript.
+// still: a moment of the cycle in ms, drawn once with no clock and no style, so the brand kit
+// (scripts/brand/motion.mjs) records its frames from this component on the server.
+// prehydrate: the server also writes one swing's frames (this component's own doorFrame, 30 a
+// second) into data-door-frames, and DOOR_PLAYER, an inline script placed right after the mark,
+// steps through them from first paint until React takes over in step (components/brand/
+// AppStart.js), so the door turns while the page is still loading its code.
 import { useEffect, useId, useRef, useState } from 'react';
 import { DOOR, REDUCED_QUERY } from '../../lib/motion';
 import { DOOR_GROUNDS, doorGeometry, doorFrame, doorFill, breathCss, travelAt, cycleTime, doorTimeline, bezier, hash, r3 } from './doorGeometry';
@@ -51,19 +57,43 @@ function useReducedMotion(motion) {
   return motion === 'reduced' || system;
 }
 
-// kind: wordmark | realtor | admin | paper | ink. size: the cap height (wordmark) or the side (the
-// rest), in px. settings: DOOR.defaults' shape. motion: 'auto' or 'reduced'. run: change it to play
-// again.
-export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR.defaults, motion = 'auto', run = 0 }) {
+// ── before React ──────────────────────────────────────────────────────────────────────────────
+// One swing at 30 frames a second, each [outline, fill, knob or 0], then the cycle's length: what
+// DOOR_PLAYER needs to turn the door from first paint. Drawn by doorFrame, the same as the clock.
+const PLAYER_STEP = 1000 / 30;
+function playerFrames(g, s, bar) {
+  const ease = bezier(DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing]); const out = [];
+  for (let t = 0; t < s.swingMs; t += PLAYER_STEP) {
+    const f = doorFrame(g, s, travelAt(s, t, ease));
+    out.push([f.d, doorFill(bar, f.shade), f.knob ? [r3(f.knob.cx), r3(f.knob.cy), r3(f.knob.rx), r3(f.knob.ry)] : 0]);
+  }
+  return JSON.stringify({ step: r3(PLAYER_STEP), swing: s.swingMs, cycle: doorTimeline(s).cycle, frames: out });
+}
+// The inline player, placed right after the element that holds a prehydrate mark. It runs only
+// while the mark is on screen and motion is allowed, steps through data-door-frames on
+// requestAnimationFrame, and stops for good once DoorMark's effect marks the svg live (or the mark
+// leaves the page). It records its start on the svg, so the clock continues the same cycle. A
+// frame stamped before the player started counts as its start.
+export const DOOR_PLAYER = `(function(){var c=document.currentScript,h=c&&c.previousElementSibling,v=h&&h.querySelector('svg[data-door-frames]');if(!v||!window.requestAnimationFrame||!v.getBoundingClientRect().width)return;if(window.matchMedia&&window.matchMedia('${REDUCED_QUERY}').matches)return;var F=JSON.parse(v.getAttribute('data-door-frames')),p=v.querySelector('[data-door-panel]'),k=v.querySelector('[data-door-knob]'),t0=performance.now();v.__rlDoorT0=t0;function f(n){if(v.getAttribute('data-door-live')||!v.isConnected)return;var t=Math.max(0,n-t0)%F.cycle,x=F.frames[t<F.swing?Math.min(F.frames.length-1,Math.floor(t/F.step)):0];p.setAttribute('d',x[0]);p.style.fill=x[1];if(x[2]){k.setAttribute('cx',x[2][0]);k.setAttribute('cy',x[2][1]);k.setAttribute('rx',x[2][2]);k.setAttribute('ry',x[2][3]);k.style.display='';}else{k.style.display='none';}v.setAttribute('data-door-travel',t<F.swing?'1':'0');requestAnimationFrame(f);}requestAnimationFrame(f);})();`;
+
+// kind: wordmark | logo | logoInk | realtor | admin | mark | paper | ink (components/brand/
+// doorGeometry.js). size: the cap height (wordmark, logo) or the side (the rest), in px. settings:
+// DOOR.defaults' shape. motion: 'auto' or 'reduced'. run: change it to play again. label: the
+// accessible name, or null when something around the mark names it (the Loader's status), which
+// hides the svg from assistive technology. ground: false leaves the ground out, so the mark sits on
+// the surface under it. square: the app icons full bleed. paused: held at rest, no clock. delay:
+// the swing (or the breath) starts this many ms after it is unpaused. still: see above.
+export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR.defaults, motion = 'auto', run = 0, label = 'Rentletter', ground = true, square = false, paused = false, delay = 0, still = null, prehydrate = false }) {
   const cls = `rd${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const s = { ...DOOR.defaults, ...settings };
-  const g = doorGeometry(kind, size, s.open);
+  const g = doorGeometry(kind, size, s.open, { square });
   const colours = DOOR_GROUNDS[kind] || DOOR_GROUNDS.wordmark;
   const reduced = useReducedMotion(motion);
-  const key = [motion, run, s.rest, s.open, s.knob, s.swingMs, s.pauseMs, s.easing, s.play].join('|');
+  const key = [motion, run, paused, delay, s.rest, s.open, s.knob, s.swingMs, s.pauseMs, s.easing, s.play].join('|');
   const name = `${cls}${hash(key)}`;
   const icon = g.radius !== null;
-  const rest = doorFrame(g, s, 0, { reduced });
+  const isStill = typeof still === 'number';
+  const rest = isStill ? doorFrame(g, s, travelAt(s, cycleTime(s, still))) : doorFrame(g, s, 0, { reduced });
   const root = useRef(null); const panel = useRef(null); const knob = useRef(null);
   const live = useRef({ g, s }); live.current = { g, s };
 
@@ -79,13 +109,20 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
 
   // The swing, from one shared clock. A new key (new settings, Replay) starts the cycle over; a new
   // size does not, so a mark that settles its size after mounting stays in step with the rest.
+  // Before the delay has run (and while paused) the door is at rest; a loop starts its first cycle
+  // at the end of the delay.
+  const travelFor = (cur, elapsed, ease) => (elapsed < 0 ? 0 : travelAt(cur.s, cycleTime(cur.s, elapsed), ease));
   useEffect(() => {
-    if (reduced) { paint(doorFrame(live.current.g, live.current.s, 0, { reduced: true })); return undefined; }
-    const epoch = performance.now(); const ease = bezier(DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing]);
+    if (isStill) return undefined;
+    root.current?.setAttribute('data-door-live', '1'); // the inline player (DOOR_PLAYER) stops here
+    if (reduced || paused) { paint(doorFrame(live.current.g, live.current.s, 0, { reduced })); return undefined; }
+    // A door the inline player started keeps its phase: the clock counts from the player's start.
+    const started = root.current && typeof root.current.__rlDoorT0 === 'number' ? root.current.__rlDoorT0 : null;
+    const epoch = (started ?? performance.now()) + delay; const ease = bezier(DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing]);
     let unsubscribe = () => {};
     const draw = (now) => {
       const cur = live.current; const elapsed = now === null ? clock.frozen : now - epoch;
-      paint(doorFrame(cur.g, cur.s, travelAt(cur.s, cycleTime(cur.s, elapsed), ease)));
+      paint(doorFrame(cur.g, cur.s, travelFor(cur, elapsed, ease)));
       if (cur.s.play === 'once' && now !== null && elapsed >= doorTimeline(cur.s).cycle) unsubscribe();
     };
     unsubscribe = subscribe(draw);
@@ -93,21 +130,27 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
   }, [key, reduced]); // eslint-disable-line react-hooks/exhaustive-deps
   // A new size while the clock is frozen, or while still: repaint the pose at once.
   useEffect(() => {
-    if (reduced) paint(doorFrame(g, s, 0, { reduced: true }));
+    if (isStill) return;
+    if (reduced || paused) paint(doorFrame(g, s, 0, { reduced }));
     else if (clock.frozen !== null) paint(doorFrame(g, s, travelAt(s, cycleTime(s, clock.frozen))));
   }, [size]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const named = label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': 'true' };
+  const frames = prehydrate && !isStill && !paused ? playerFrames(g, s, colours.bar) : undefined;
+  // The logo kinds take the static Wordmark's own rounding (components/ui.js), so swapping one for
+  // the other moves nothing on the page.
+  const dim = (v) => (kind === 'logo' || kind === 'logoInk' ? Math.round(v * 10) / 10 : r3(v));
   return (
-    <svg ref={root} className={cls} data-door={kind} data-door-angle={r3(rest.deg)} width={r3(g.w * g.k)} height={r3(g.h * g.k)} viewBox={`0 0 ${g.w} ${g.h}`}
-      role="img" aria-label="Rentletter" focusable="false" style={{ display: 'block', flexShrink: 0, overflow: 'visible', background: icon ? undefined : colours.ground }}>
-      <style dangerouslySetInnerHTML={{ __html: breathCss(cls, name, s, motion) }} />
-      {icon ? <rect width={g.w} height={g.h} rx={g.radius || undefined} fill={colours.ground} /> : null}
+    <svg ref={root} className={cls} data-door={kind} data-door-angle={r3(rest.deg)} width={dim(g.w * g.k)} height={dim(g.h * g.k)} viewBox={`0 0 ${g.w} ${g.h}`}
+      {...named} data-door-frames={frames} focusable="false" style={{ display: 'block', flexShrink: 0, overflow: 'visible', background: icon || !ground || kind !== 'wordmark' ? undefined : colours.ground }}>
+      {isStill || paused ? null : <style dangerouslySetInnerHTML={{ __html: breathCss(cls, name, s, motion, delay) }} />}
+      {icon && ground ? <rect width={g.w} height={g.h} rx={g.radius || undefined} fill={colours.ground} /> : null}
       <g transform={g.letters || undefined}>
         <path data-door-r="" d={g.rPath} fill={colours.letter} />
         {g.restPath ? <path d={g.restPath} fill={colours.letter} /> : null}
       </g>
       <g data-door-leaf="">
-        <path ref={panel} data-door-panel="" d={rest.d} style={{ fill: colours.bar }} />
+        <path ref={panel} data-door-panel="" d={rest.d} style={{ fill: doorFill(colours.bar, rest.shade) }} />
         <ellipse ref={knob} data-door-knob="" fill={colours.knob} cx={rest.knob ? r3(rest.knob.cx) : 0} cy={rest.knob ? r3(rest.knob.cy) : 0}
           rx={rest.knob ? r3(rest.knob.rx) : 0} ry={rest.knob ? r3(rest.knob.ry) : 0} style={{ display: rest.knob ? undefined : 'none' }} />
       </g>

@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { C, R } from '../theme';
 import ColorWheel from './ColorWheel';
+import Loader, { Pending } from '../brand/Loader';
 
 const isHex = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
 
@@ -331,9 +332,9 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           {/* Loading state, generation takes several seconds */}
           {busy && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
-              <span className="rl-lspin" aria-hidden="true" />
+              <Loader label="Designing your logos" />
               <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>Designing your logos…</div>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>Designing your logos</div>
                 <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>This takes about 10 to 15 seconds. Please don’t refresh.</div>
               </div>
             </div>
@@ -342,11 +343,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       )}
 
       {error && <div role="alert" style={{ marginTop: 12, padding: '10px 14px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{error}</div>}
-      {usingKey !== null && (
-        <div style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 9, fontSize: 13, color: C.inkSoft }}>
-          <span className="rl-lspin" aria-hidden="true" /> Saving your logo…
-        </div>
-      )}
+      {/* Saving a logo: the pressed button turns pending, the door in its pill (Pending below). */}
 
       {/* ALL CONCEPTS, the 3-up grid (hidden while refining a single concept) */}
       {!refineMode && round && (
@@ -378,7 +375,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
                     style={{ background: isSaved ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved as your logo' : 'Use this logo'}
+                    {isSaved ? '✓ Saved as your logo' : <Pending busy={usingKey === key} label="Saving your logo" tone="red">Use this logo</Pending>}
                   </button>
                   <button onClick={() => startRefine(v)} disabled={busy || usingKey !== null}
                     style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -425,7 +422,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             <div style={{ marginTop: 12 }}>
               <button onClick={() => saveLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy}
                 style={{ background: savedKey === 'refine-cur' ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== 'refine-cur' ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {usingKey === 'refine-cur' ? 'Saving…' : savedKey === 'refine-cur' ? '✓ Saved as your logo' : 'Use this version'}
+                {savedKey === 'refine-cur' ? '✓ Saved as your logo' : <Pending busy={usingKey === 'refine-cur'} label="Saving your logo" tone="red">Use this version</Pending>}
               </button>
               {savedKey === 'refine-cur' && <span style={{ fontSize: 12, color: C.ink, fontWeight: 600, marginLeft: 10 }}>This is now your branding.</span>}
             </div>
@@ -440,8 +437,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               style={{ width: '100%', padding: '11px 13px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink }} />
             <button onClick={doRefine} disabled={busy}
               style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              {busy && <span className="rl-lspin" aria-hidden="true" />}
-              {busy ? 'Refining…' : 'Refine this concept'}
+              <Pending busy={busy} label="Refining your logo" tone="ink">Refine this concept</Pending>
             </button>
           </div>
 
@@ -463,7 +459,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
                         style={{ background: isSaved ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1 }}>
-                        {usingKey === key ? 'Saving…' : isSaved ? '✓ Saved' : 'Use this'}
+                        {isSaved ? '✓ Saved' : <Pending busy={usingKey === key} label="Saving your logo" tone="red">Use this</Pending>}
                       </button>
                       <button onClick={() => refineFurther(v)} disabled={busy || usingKey !== null}
                         style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
@@ -487,17 +483,6 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </div>
       )}
 
-      <style jsx>{`
-        .rl-lspin {
-          width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%;
-          border: 2.5px solid ${C.rule}; border-top-color: ${C.red};
-          display: inline-block;
-        }
-        @media (prefers-reduced-motion: no-preference) {
-          .rl-lspin { animation: rl-lspin 0.7s linear infinite; }
-        }
-        @keyframes rl-lspin { to { transform: rotate(360deg); } }
-      `}</style>
     </div>
   );
 }

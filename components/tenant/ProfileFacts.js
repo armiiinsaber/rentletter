@@ -12,6 +12,7 @@ import { serializePets } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { NBSP, noWidow, dateLong, money, moneyYr, moneyMo, count } from '../../lib/typeset';
 import { DURATION, CURVE, MOTION_QUERY } from '../../lib/motion';
+import { Pending } from '../brand/Loader';
 
 export { money, dateLong, noWidow };
 export const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
@@ -67,7 +68,7 @@ export function Section({ id, title, rows, editing, onEdit, onCancel, onSave, sa
           <div className="mp-form">{children}</div>
           {footer}
           <div className="mp-actions">
-            <button type="button" onClick={onSave} disabled={saving} className="mp-btn">{saving ? 'Saving' : saveLabel}</button>
+            <button type="button" onClick={onSave} disabled={saving} className="mp-btn"><Pending busy={saving} label="Saving">{saveLabel}</Pending></button>
             <button type="button" onClick={onCancel} disabled={saving} className="mp-link">Cancel</button>
           </div>
         </div>

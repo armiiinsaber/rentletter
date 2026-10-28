@@ -1,8 +1,8 @@
 // The door mark on /admin/mockups (components/admin/DoorLab.js, components/brand/DoorMark.js), in
 // WebKit (Safari's engine) and in Chrome, on the walks' admin dev server (tests/helpers/
 // adminServer.mjs: a made up password, an in memory store):
-//   1. The defaults: rest as the thin bar, open to 0.6 of the R, knob 0.18 of the panel, 700ms a
-//      swing, 900ms pause, soft, loop; Copy settings writes them as JSON; every control is at least
+//   1. The defaults (the production values): rest as the thin bar, open to 0.6 of the R, knob 0.21
+//      of the panel, 700ms a swing, 800ms pause, weighted, loop; Copy settings writes them as JSON; every control is at least
 //      44px, at 1280 and at 390; one clock drives every mark in step.
 //   2. Straight at rest: resting as the bar, the door's outline is the static bar's outline from the
 //      vector source (lib/brand/logoPaths.js, a rect with rx) within REST_PX, on the wordmark and
@@ -194,10 +194,10 @@ async function straightAtRest(page, tag) {
 async function defaults(page, tag) {
   assert.deepEqual(await settings(page), { ...DOOR.defaults }, `${tag}: the defaults`);
   assert.equal((await page.locator('[data-door-value="open"]').innerText()).trim(), '0.60 of the R');
-  assert.equal((await page.locator('[data-door-value="knob"]').innerText()).trim(), '0.18 of the panel');
+  assert.equal((await page.locator('[data-door-value="knob"]').innerText()).trim(), '0.21 of the panel');
   assert.equal((await page.locator('[data-door-value="swing"]').innerText()).trim(), '700 ms');
-  assert.equal((await page.locator('[data-door-value="pause"]').innerText()).trim(), '900 ms');
-  for (const k of ['rest-bar', 'easing-soft', 'play-loop', 'reduced-off']) assert.equal(await control(page, k).getAttribute('aria-pressed'), 'true', `${tag}: ${k} chosen`);
+  assert.equal((await page.locator('[data-door-value="pause"]').innerText()).trim(), '800 ms');
+  for (const k of ['rest-bar', 'easing-weighted', 'play-loop', 'reduced-off']) assert.equal(await control(page, k).getAttribute('aria-pressed'), 'true', `${tag}: ${k} chosen`);
   const kinds = await page.locator('[data-door-section] [data-door]').evaluateAll((els) => els.map((el) => el.dataset.door));
   assert.deepEqual(kinds, ['wordmark', 'realtor', 'admin', 'paper', 'paper', 'paper', 'ink', 'ink', 'ink'], `${tag}: three grounds and six loading icons`);
   // One clock: the marks move, and every mark is at the same point of its swing.

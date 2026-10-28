@@ -25,6 +25,7 @@ import { C, R } from '../theme';
 import { Icon } from '../ui';
 import { setStatus } from '../../lib/documentSet';
 import { CREDIT_KIND, CREDIT_CONSENT_LINE } from '../../lib/creditShared';
+import Loader, { Pending, LOADER_MIN } from '../brand/Loader';
 
 export const MAX_FILES = 6; // the same cap the routes enforce (lib/applicantAnalysis.js MAX_DOCS)
 export const MAX_FILE = 3 * 1024 * 1024;
@@ -157,7 +158,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
     }
   };
 
-  const submitLabel = finalizing ? 'Finalizing…' : finalizePending ? 'Finish submitting' : `Submit ${done.length} document${done.length === 1 ? '' : 's'}`;
+  const submitLabel = finalizePending ? 'Finish submitting' : `Submit ${done.length} document${done.length === 1 ? '' : 's'}`;
 
   // The set: an empty circle per row that becomes the red tick as files of that type are recognised.
   // The credit row carries its one line note, its own Add pill (44px) while the uploader is open and
@@ -176,7 +177,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           {withControls && it.key === 'credit' && !it.met ? (
             <button type="button" onClick={() => creditInputRef.current?.click()} disabled={creditBusy} aria-label="Add your credit report"
               style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 14, fontWeight: 700, cursor: creditBusy ? 'wait' : 'pointer', fontFamily: 'inherit', flexShrink: 0, opacity: creditBusy ? 0.6 : 1 }}>
-              {creditBusy ? 'Reading' : 'Add'}
+              <Pending busy={creditBusy} label="Reading your credit report">Add</Pending>
             </button>
           ) : null}
         </div>
@@ -188,8 +189,8 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
 
   const fileRow = (f, bg, removable) => (
     <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, background: bg, border: `1px solid ${f.status === 'failed' ? C.danger : C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', minHeight: 44 }}>
-      <span style={{ display: 'inline-flex', flexShrink: 0, width: 15, justifyContent: 'center' }}>
-        {f.status === 'analyzing' || f.status === 'removing' ? <span className="rl-spin" aria-hidden="true" />
+      <span style={{ display: 'inline-flex', flexShrink: 0, width: LOADER_MIN, justifyContent: 'center' }}>
+        {f.status === 'analyzing' || f.status === 'removing' ? <Loader label={f.status === 'analyzing' ? `Reading ${f.file.name}` : `Removing ${f.file.name}`} />
           : f.status === 'done' ? <Icon name="check" size={15} color={C.red} strokeWidth={2.5} />
             : f.status === 'failed' ? <span aria-hidden="true" style={{ color: C.danger, fontWeight: 800 }}>!</span>
               : <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', border: `1.5px solid ${C.ruleDark}` }} />}
@@ -197,7 +198,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
       <span style={{ flex: 1, minWidth: 0 }}>
         <span style={{ display: 'block', fontSize: 13, color: C.ink, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.file.name}</span>
         <span style={{ display: 'block', fontSize: 11.5, color: f.status === 'failed' ? C.danger : C.inkMute, lineHeight: 1.4 }}>
-          {f.status === 'done' ? typeLabel(f.documentType) : f.status === 'analyzing' ? 'Reading…' : f.status === 'removing' ? 'Removing…' : f.status === 'failed' ? (f.message || 'Could not read this file.') : 'Waiting'}
+          {f.status === 'done' ? typeLabel(f.documentType) : f.status === 'analyzing' || f.status === 'removing' ? '\u00a0' : f.status === 'failed' ? (f.message || 'Could not read this file.') : 'Waiting'}
         </span>
       </span>
       <span style={{ fontSize: 11, color: C.inkMute, flexShrink: 0 }}>{(f.file.size / 1024 / 1024).toFixed(1)}MB</span>
@@ -208,13 +209,6 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
 
   return (
     <div className="rl-uploader">
-      <style jsx>{`
-        .rl-uploader :global(.rl-spin) { display: inline-block; width: 14px; height: 14px; border-radius: 50%; border: 2px solid ${C.rule}; border-top-color: ${C.red}; flex-shrink: 0; }
-        @media (prefers-reduced-motion: no-preference) {
-          .rl-uploader :global(.rl-spin) { animation: rl-rotate 0.8s linear infinite; }
-        }
-        @keyframes rl-rotate { to { transform: rotate(360deg); } }
-      `}</style>
       {!reviewing ? (
         <>
           <input ref={creditInputRef} type="file" accept={OK_ACCEPT} style={{ display: 'none' }} onChange={(e) => { addFiles(e.target.files, CREDIT_KIND); e.target.value = ''; }} />
@@ -254,14 +248,12 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           {disclosure && <div style={{ marginBottom: 16 }}>{disclosure}</div>}
           {error && <div role="alert" style={{ marginBottom: 12, fontSize: 13, color: C.danger }}>{error}</div>}
           {submitting && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, fontSize: 11.5, color: C.inkMute }}>
-              <span className="rl-spin" aria-hidden="true" /> Sending to your realtor, please keep this page open.
-            </div>
+            <div style={{ marginBottom: 14, fontSize: 11.5, lineHeight: 1.5, color: C.inkMute, textWrap: 'pretty' }}>Sending to your realtor, please keep this page open.</div>
           )}
           {setLine}
           <button type="button" onClick={runSubmit} disabled={submitting} aria-live="polite"
             style={{ width: '100%', minHeight: 48, background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.85 : 1, marginBottom: 10, fontFamily: 'inherit' }}>
-            {submitLabel}
+            <Pending busy={submitting} label={finalizing ? 'Finishing your submission' : 'Sending your documents'} tone="red">{submitLabel}</Pending>
           </button>
           <button type="button" onClick={() => setReviewing(false)} disabled={submitting}
             style={{ width: '100%', minHeight: 44, background: 'transparent', color: submitting ? C.inkMute : C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 14, fontWeight: 600, cursor: submitting ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>

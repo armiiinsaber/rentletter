@@ -5,6 +5,7 @@
 // whether the code exists.
 import { useState } from 'react';
 import { C, R } from '../theme';
+import { Pending } from '../brand/Loader';
 
 export default function PromoEntry({ compact = false }) {
   const [open, setOpen] = useState(false);
@@ -29,7 +30,7 @@ export default function PromoEntry({ compact = false }) {
       <div style={{ display: 'flex', gap: 8 }}>
         <input id="promo-code" value={code} onChange={(e) => setCode(e.target.value.toLowerCase())} placeholder="rentletter-yourname" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="off" inputMode="url"
           style={{ flex: 1, minWidth: 0, padding: '11px 12px', fontSize: 16, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 46 }} />
-        <button type="submit" disabled={busy || !code.trim()} style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', minHeight: 46, opacity: busy || !code.trim() ? 0.6 : 1 }}>{busy ? 'Checking…' : 'Apply'}</button>
+        <button type="submit" disabled={busy || !code.trim()} style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', minHeight: 46, opacity: busy || !code.trim() ? 0.6 : 1 }}><Pending busy={busy} label="Checking the code" tone="ink">Apply</Pending></button>
       </div>
       {msg && <p role={msg.ok ? 'status' : 'alert'} style={{ fontSize: 13.5, color: msg.ok ? C.ink : C.inkSoft, lineHeight: 1.5, margin: 0, textWrap: 'balance' }}>{msg.text}</p>}
     </form>

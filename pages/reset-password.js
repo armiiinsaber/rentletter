@@ -14,6 +14,7 @@ import { useRouter } from 'next/router';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
+import { Pending } from '../components/brand/Loader';
 
 // The link's parameters, wherever they ride: the query string or the fragment.
 export function linkParams(search, hash) {
@@ -163,7 +164,7 @@ export default function ResetPassword() {
           <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don't match.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
-          {loading ? 'Saving…' : 'Save new password →'}
+          <Pending busy={loading} label="Saving your new password">Save new password →</Pending>
         </button>
       </form>
     </AuthShell>

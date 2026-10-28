@@ -44,32 +44,44 @@ const LOGO_REST = subpaths(LOGO.text).slice(2).join('');
 export const R_BOX = Object.freeze({ wordmark: pathBox(LOGO_R), mark: pathBox(MARK.any.r) });
 
 // The grounds, from the tokens: the wordmark on paper, the two app icons as scripts/brand/draw.mjs
-// PALETTES draws them, and the loading icon on paper and on ink. knob: ink on a red door, the brand
-// red on an ink door.
+// PALETTES draws them, the loading icon on paper, on ink and on red (the realtor icon's colours),
+// the logo in the page (on paper, and on ink for the admin app) and the mark on paper. knob: ink on
+// a red door, the brand red on an ink door.
 export const DOOR_GROUNDS = Object.freeze({
   wordmark: { ground: C.paper, bar: C.red, letter: C.ink, knob: C.ink },
   realtor: { ground: C.red, bar: C.inst, letter: C.card, knob: C.red },
   admin: { ground: C.inst, bar: C.red, letter: C.instText, knob: C.ink },
   paper: { ground: C.paper, bar: C.red, letter: C.ink, knob: C.ink },
   ink: { ground: C.ink, bar: C.red, letter: C.paper, knob: C.ink },
+  logo: { ground: C.paper, bar: C.red, letter: C.ink, knob: C.ink },
+  logoInk: { ground: C.inst, bar: C.red, letter: C.instText, knob: C.ink },
+  mark: { ground: C.paper, bar: C.red, letter: C.ink, knob: C.ink },
+  red: { ground: C.red, bar: C.inst, letter: C.card, knob: C.red },
 });
+const LOGO_KINDS = ['wordmark', 'logo', 'logoInk'];
+const ICON_KINDS = ['realtor', 'admin', 'mark'];
 
 // Everything in box units (a viewBox from 0 0), k the pixels per unit at this size, and cam the
 // point the camera is centred on: the middle of the mark.
 //   wordmark  size is the cap height in px; room is left of the bar for the widest open panel.
-//   realtor, admin  size is the icon's side in px, the mark as the home screen icon draws it.
-//   paper, ink  the loading icon: the stripe and the R with the door at its widest for this
+//   logo, logoInk  the static logo's own box (components/ui.js Wordmark), size the cap height in px:
+//               the door swings out past the box's left edge, so the page keeps its layout (the
+//               svg shows its overflow).
+//   realtor, admin  size is the icon's side in px, the mark as the home screen icon draws it, with
+//               the iOS corner, or full bleed when square.
+//   mark       the same square mark on paper, for the brand kit.
+//   paper, ink, red  the loading icon: the stripe and the R with the door at its widest for this
 //               setting, centred in the square inside a margin of one eighth, so nothing leaves it.
-export function doorGeometry(kind, size, open) {
-  if (kind === 'wordmark') {
+export function doorGeometry(kind, size, open, { square = false } = {}) {
+  if (LOGO_KINDS.includes(kind)) {
     const R = R_BOX.wordmark; const b = LOGO.bar;
-    const ox = Math.ceil(DOOR_OPEN_RANGE.max * R.w - b.w) + 4;
-    return { k: size / 100, w: ox + LOGO.w, h: LOGO.h, letters: `translate(${ox} 0)`, rPath: LOGO_R, restPath: LOGO_REST,
+    const ox = kind === 'wordmark' ? Math.ceil(DOOR_OPEN_RANGE.max * R.w - b.w) + 4 : 0;
+    return { k: size / 100, w: ox + LOGO.w, h: LOGO.h, letters: ox ? `translate(${ox} 0)` : null, rPath: LOGO_R, restPath: LOGO_REST,
       bar: { x: ox + b.x, y: b.y, w: b.w, h: b.h, rx: b.rx }, rW: R.w, rLeft: ox + R.x0, radius: null, cam: { x: ox + LOGO.w / 2, y: LOGO.h / 2 } };
   }
   const m = MARK.any; const R = R_BOX.mark; const b = m.bar; const k = size / MARK.size; const cam = { x: MARK.size / 2, y: MARK.size / 2 };
-  if (kind === 'realtor' || kind === 'admin') {
-    return { k, w: MARK.size, h: MARK.size, letters: null, rPath: m.r, restPath: null, bar: { ...b }, rW: R.w, rLeft: R.x0, radius: MARK.size * IOS_RADIUS, cam };
+  if (ICON_KINDS.includes(kind)) {
+    return { k, w: MARK.size, h: MARK.size, letters: null, rPath: m.r, restPath: null, bar: { ...b }, rW: R.w, rLeft: R.x0, radius: square || kind === 'mark' ? 0 : MARK.size * IOS_RADIUS, cam };
   }
   const x0 = b.x + b.w - open * R.w; const x1 = R.x1; const y0 = Math.min(b.y, R.y0); const y1 = Math.max(b.y + b.h, R.y1);
   const inner = MARK.size * 0.75; const s = Math.min(inner / (x1 - x0), inner / (y1 - y0));
@@ -191,15 +203,21 @@ export function doorPath(quad, round) {
   });
   return `M${n(corners[0].to)}${[1, 2, 3, 0].map((i) => `L${n(corners[i].from)}A${r3(corners[i].r)} ${r3(corners[i].r)} 0 0 1 ${n(corners[i].to)}`).join('')}Z`;
 }
-// The fill: the bar's own token, with ink mixed in while it turns. One colour, one fill.
-export const doorFill = (bar, shade) => (shade > 0 ? `color-mix(in srgb, ${bar} ${r3(100 - shade * 100)}%, ${C.ink})` : bar);
+// The fill: the bar's own token, with ink mixed in while it turns, worked out here as one plain
+// colour (the same as CSS color-mix in srgb), so every engine and the kit's renderer draw it alike.
+const rgbOf = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+export const doorFill = (bar, shade) => {
+  if (!(shade > 0)) return bar;
+  const a = rgbOf(bar); const b = rgbOf(C.ink);
+  return `#${a.map((v, i) => Math.round(v * (1 - shade) + b[i] * shade).toString(16).padStart(2, '0')).join('')}`;
+};
 
 // Under reduced motion the door does not turn: it holds still and its opacity breathes between
 // DOOR.breath and 1, over one swing and its pause. motion: 'auto' follows the system setting,
-// 'reduced' previews the reduced state.
-export function breathCss(cls, name, s, motion = 'auto') {
+// 'reduced' previews the reduced state. delay: the breath waits as long as the swing would.
+export function breathCss(cls, name, s, motion = 'auto', delay = 0) {
   const { cycle } = doorTimeline(s); const E = curveOf(s); const count = s.play === 'once' ? 1 : 'infinite';
-  const rule = `.${cls} [data-door-leaf] { animation: ${name}-breath ${cycle}ms linear ${count} both; }`;
+  const rule = `.${cls} [data-door-leaf] { animation: ${name}-breath ${cycle}ms linear ${delay > 0 ? `${Math.round(delay)}ms ` : ''}${count} both; }`;
   return `@keyframes ${name}-breath { 0% { opacity: 1; animation-timing-function: ${E}; } 50% { opacity: ${DOOR.breath}; animation-timing-function: ${E}; } 100% { opacity: 1; } }
 ${motion === 'reduced' ? rule : `@media ${REDUCED_QUERY} { ${rule} }`}`;
 }

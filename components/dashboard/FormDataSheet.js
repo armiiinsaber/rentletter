@@ -11,6 +11,7 @@ import { C } from '../theme';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { formDataText, groupText } from '../../lib/formData';
 import { noWidow } from '../../lib/typeset';
+import Loader from '../brand/Loader';
 
 export const NOT_ENTERED = 'Not entered';
 const copyBtn = (on) => ({ minHeight: 44, minWidth: 84, padding: '0 var(--gap-card)', background: 'transparent', color: on ? C.ink : C.inkMute, border: `1.5px solid ${on ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: on ? 'pointer' : 'default', fontFamily: 'inherit', flexShrink: 0 });
@@ -59,7 +60,7 @@ export default function FormDataSheet({ open, listingId, onClose }) {
         <div data-sheet-drag="" style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Form data</div>
         <h3 data-sheet-drag="" style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 'var(--s-2)', textWrap: 'balance' }}>{state.data ? noWidow(state.data.listingName || 'This listing') : 'This listing'}</h3>
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-4)', textWrap: 'pretty' }}>{noWidow('Every value an agreement to lease asks for, in its order. Copy and paste into the forms tool you already use.')}</p>
-        {state.loading ? <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute }}>Loading</p> : null}
+        {state.loading ? <Loader label="Loading the form data" /> : null}
         {state.error ? <p role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, lineHeight: 'var(--lh-body)' }}>{noWidow(state.error)}</p> : null}
         {state.data ? (
           <>

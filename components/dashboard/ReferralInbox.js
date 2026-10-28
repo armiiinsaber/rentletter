@@ -9,6 +9,7 @@ import ReferralCaution from './ReferralCaution';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { linkProps } from '../nav/routes';
 import { displayLabel } from '../../lib/listingAddress';
+import { Pending } from '../brand/Loader';
 
 const money = (n) => (n ? `$${Number(n).toLocaleString('en-CA')}` : null);
 const EMP = { 'full-time': 'Full-time', 'part-time': 'Part-time', contract: 'Contract', 'self-employed': 'Self-employed' };
@@ -86,7 +87,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                       </select>
                       <button type="button" onClick={() => assign(ref)} disabled={!choice[ref.id] || busy === ref.id}
                         style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !choice[ref.id] ? 'not-allowed' : 'pointer', opacity: !choice[ref.id] ? 0.5 : 1, minHeight: 42 }}>
-                        {busy === ref.id ? 'Assigning…' : 'Assign & rank'}
+                        <Pending busy={busy === ref.id} label="Assigning the applicant" tone="ink">Assign &amp; rank</Pending>
                       </button>
                       {listings.length === 0 && <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute }}>Create a listing first.</span>}
                     </div>

@@ -19,6 +19,7 @@ import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { noWidow } from '../../lib/typeset.js';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
+import Loader from '../../components/brand/Loader';
 
 // The set the card asks for is lib/documentSet.js, rendered by the uploader itself.
 // The line above the button while the set is incomplete: this link closes once documents are
@@ -78,7 +79,7 @@ export default function UploadPage() {
         <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(24px, 6vw, 56px) clamp(16px, 4vw, 32px) 80px' }}>
 
           {status === 'loading' && (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: C.inkSoft, fontSize: 15 }}>Loading…</div>
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}><Loader label="Loading your upload page" /></div>
           )}
 
           {status === 'invalid' && (

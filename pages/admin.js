@@ -10,6 +10,7 @@ import { Icon } from '../components/ui';
 import { isAdmin } from '../lib/adminAuth';
 import { adminFetch, waitForAdminSession } from '../components/admin/adminFetch';
 import AdminShell, { Sheet, Info } from '../components/admin/AdminShell';
+import Loader from '../components/brand/Loader';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -151,7 +152,7 @@ export default function Admin({ authed: initialAuthed }) {
             <h1 className="ad-h1">{c ? <>{c.realtors} signed up, <span className="ad-num">{c.activeRealtors}</span> active.</> : 'Realtors.'}</h1>
           </div>
           <div className="ad-quiet" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {data ? `As of ${new Date(data.generatedAt).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })}` : 'Loading…'}
+            {data ? `As of ${new Date(data.generatedAt).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' })}` : <Loader label="Loading realtors" tone="ink" />}
             <button type="button" className="ad-link" onClick={load}>Refresh</button>
           </div>
         </div>
@@ -223,7 +224,7 @@ export default function Admin({ authed: initialAuthed }) {
                 <div className="ad-mono" style={{ color: C.instText, fontSize: 13.5, overflowWrap: 'anywhere' }}>{r.email || '—'}</div>
                 <div style={{ fontSize: 14, fontWeight: 700, overflowWrap: 'anywhere' }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>No name</span>}{r.brokerage ? <span style={{ color: C.instMute, fontWeight: 500 }}> · {r.brokerage}</span> : ''}</div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}><StatusPill r={r} /><FounderPill r={r} /></div>
-                <div className="ad-quiet ad-num" style={{ fontSize: 12.5 }}>{r.listings} listing{r.listings === 1 ? '' : 's'} · {r.applications} app{r.applications === 1 ? '' : 's'} · joined {fmtDate(r.signupAt)} · seen {ago(r.lastActivity)}</div>
+                <div className="ad-quiet ad-num" style={{ fontSize: 12.5, textWrap: 'balance' }}>{`${r.listings}\u00a0listing${r.listings === 1 ? '' : 's'}\u00a0·\u00a0${r.applications}\u00a0app${r.applications === 1 ? '' : 's'}\u00a0·\u00a0joined ${fmtDate(r.signupAt)}\u00a0·\u00a0seen\u00a0${ago(r.lastActivity)}`}</div>
               </div>
             </label>
           ))}

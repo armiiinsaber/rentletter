@@ -55,11 +55,12 @@ import { displayAddress, displayLabel } from '../../lib/listingAddress';
 import { creditLines } from '../../lib/creditShared';
 import { CREDIT_ONLY_LINE } from '../../lib/stateLabels';
 import { partyFacts, INVITE_CARD } from '../../lib/parties';
+import { Pending } from '../brand/Loader';
 
 const Row = ({ label, value }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-4)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
     <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, fontWeight: 600, minWidth: 0 }}>{label}</span>
-    <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{value}</span>
+    <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{value}</span>
   </div>
 );
 
@@ -819,12 +820,14 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       ) : null}
     </div>
   );
+  // Two columns, or one where half the width is under 120px (a 320 screen), so no value breaks a
+  // word at a time.
   const renderRows = (rows) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(120px, calc((100% - var(--s-4)) / 2)), 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
         <div key={label} data-fact={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{noWidow(label)}</div>
-          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{typeof value === 'string' ? <StackedLines text={value} /> : value}</div>
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'balance' }}>{typeof value === 'string' ? <StackedLines text={value} /> : value}</div>
         </div>
       ))}
     </div>
@@ -1192,7 +1195,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
                 </>
               ) : (
-                <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+                <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={inviteLoading} label="Creating your invite link">Get invite link</Pending></button>
               )}
             </div>
             {error && (
@@ -1306,7 +1309,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <div style={{ display: 'flex', gap: 'var(--s-2)', alignItems: 'center', flexWrap: 'wrap' }}>
                         <input value={sigDraft} onChange={(e) => setSigDraft(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Signing name on reports" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); saveSignature(); } if (e.key === 'Escape') setSigEditing(false); }}
                           style={{ flex: '1 1 200px', minWidth: 0, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, minHeight: 44 }} />
-                        <button type="button" onClick={saveSignature} disabled={sigBusy} style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>{sigBusy ? 'Saving' : 'Save'}</button>
+                        <button type="button" onClick={saveSignature} disabled={sigBusy} style={{ background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}><Pending busy={sigBusy} label="Saving your signature">Save</Pending></button>
                         <button type="button" onClick={() => setSigEditing(false)} disabled={sigBusy} style={{ background: 'transparent', border: 'none', padding: '0 var(--s-2)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer', minHeight: 44, fontFamily: 'inherit' }}>Cancel</button>
                       </div>
                     ) : (
@@ -1342,11 +1345,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
                       </div>
                     ) : (
-                      <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Creating' : 'Get invite link'}</button>
+                      <button onClick={() => getInvite(false)} disabled={inviteLoading} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={inviteLoading} label="Creating your invite link">Get invite link</Pending></button>
                     )}
                     {/* The two text links share one row and, on a phone, one width (R2, components/ui.js rl-ctrl-row). */}
                     <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-1)' }}>
-                      {inviteShareUrl && listingOpen(l) && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textAlign: 'left', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>{inviteLoading ? 'Working' : 'Regenerate link'}</button>}
+                      {inviteShareUrl && listingOpen(l) && <button onClick={() => getInvite(true)} disabled={inviteLoading} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textAlign: 'left', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={inviteLoading} label="Making a new link">Regenerate link</Pending></button>}
                       <button type="button" onClick={() => setAddOpen((o) => !o)} aria-expanded={addOpen} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textAlign: 'left', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Add by application number</button>
                     </div>
                     {addOpen && (
@@ -1354,7 +1357,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
                           onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
                           style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink }} />
-                        <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}>{addLoading ? 'Adding' : 'Add'}</button>
+                        <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}><Pending busy={addLoading} label="Adding the applicant">Add</Pending></button>
                       </div>
                     )}
                   </div>
@@ -1374,7 +1377,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Mark as rented</button>
                     ) : (
                       <button type="button" onClick={() => setStatus(LEGACY_LISTING_STATUS.ACTIVE)} disabled={statusBusy}
-                        style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{statusBusy ? 'Working' : 'Reopen listing'}</button>
+                        style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={statusBusy} label="Reopening the listing">Reopen listing</Pending></button>
                     )}
                   </div>
                   {/* Delete, last and alone, in the danger colour; the confirm sheet below asks first. */}
@@ -1387,9 +1390,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </section>
 
           {/* WHO GOT IT: the existing bottom sheet; the radio list is its body. Confirm is the one red button on it. */}
-          <ConfirmSheet open={sigSheet} title="Sign the report as" confirmLabel="Send" cancelLabel="Cancel" busy={sigBusy || sending} onConfirm={signAndSend} onCancel={() => setSigSheet(false)}
+          <ConfirmSheet open={sigSheet} title="Sign the report as" confirmLabel="Send" cancelLabel="Cancel" busy={sigBusy || sending} busyLabel="Sending the report" onConfirm={signAndSend} onCancel={() => setSigSheet(false)}
             body={<input value={sigValue} onChange={(e) => setSigValue(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Sign the report as" style={{ width: '100%', minHeight: 44, padding: '0 var(--s-3)', fontSize: 16, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, fontFamily: 'inherit' }} />} />
-          <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} onConfirm={confirmRented} onCancel={() => { setRentedOpen(false); setDeadEnd(null); }}
+          <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} busyLabel="Marking the listing rented" onConfirm={confirmRented} onCancel={() => { setRentedOpen(false); setDeadEnd(null); }}
             footer={deadEnd && deadEnd.linkId === rentedPick ? (() => {
               const who = applicants.find((x) => x.linkId === deadEnd.linkId);
               return (
@@ -1428,13 +1431,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )} />
 
           {/* DELETE and WITHDRAW: the confirm sheet, destructive wording, the danger red on the action. */}
-          <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} onConfirm={remove} onCancel={() => setDeleteOpen(false)}
+          <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} busyLabel="Deleting the listing" onConfirm={remove} onCancel={() => setDeleteOpen(false)}
             body="Every applicant on it is removed with it, and the invite link stops working. This cannot be undone." />
           <ConfirmSheet open={!!withdrawFor} danger title={`Mark ${withdrawFor?.application?.full_name || 'this applicant'} as withdrawn?`} confirmLabel="Mark withdrawn" cancelLabel="Cancel" onConfirm={confirmWithdraw} onCancel={() => setWithdrawFor(null)}
             body="Only when the tenant told you they withdrew. It removes them from your ranked list." />
 
           {/* WHY LOOK AGAIN: three screenable, factual reasons about the deal, never about the person. */}
-          <ConfirmSheet open={!!reconsiderFor} cardRadius title={RECONSIDER_COPY.sheetTitle} confirmLabel={RECONSIDER_COPY.confirm} cancelLabel="Cancel" busy={reconsiderBusy} onConfirm={confirmReconsider} onCancel={() => setReconsiderFor(null)}
+          <ConfirmSheet open={!!reconsiderFor} cardRadius title={RECONSIDER_COPY.sheetTitle} confirmLabel={RECONSIDER_COPY.confirm} cancelLabel="Cancel" busy={reconsiderBusy} busyLabel="Saving" onConfirm={confirmReconsider} onCancel={() => setReconsiderFor(null)}
             body={(
               <span role="radiogroup" aria-label={RECONSIDER_COPY.sheetTitle} style={{ display: 'block' }}>
                 {RECONSIDER_REASONS.map((code) => (
@@ -1471,7 +1474,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             ) : (
               <>
                 {hintText && (
-                  <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)' }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
+                  <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
                 )}
                 <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
                   {active.map((a, idx) => (
@@ -1508,7 +1511,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <div className="rl-ctrl-row">
                 <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
                   style={{ flex: '1 1 100%', minHeight: 44, background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-                  {sending ? 'Sending' : l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
+                  <Pending busy={sending} label="Sending the report">{l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}</Pending>
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
@@ -1521,8 +1524,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               )}
               {/* From the latest snapshot once one exists; the live preview before any send. */}
               <div className="rl-ctrl-row">
-                <button type="button" onClick={downloadPdf} disabled={pdfBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: pdfBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>{pdfBusy ? 'Preparing' : 'Download PDF'}</button>
-                <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}>{textBusy ? 'Composing' : textCopied ? 'Copied' : 'Copy text'}</button>
+                <button type="button" onClick={downloadPdf} disabled={pdfBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: pdfBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={pdfBusy} label="Building the report PDF">Download PDF</Pending></button>
+                <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={textBusy} label="Writing the report text">{textCopied ? 'Copied' : 'Copy text'}</Pending></button>
               </div>
               {brandHint && needsBrandingHint(profile) && (
                 <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'pretty' }}>{BRANDING_HINT} <a {...linkProps(adapter.paths.profile)} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>

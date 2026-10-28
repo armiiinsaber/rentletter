@@ -27,6 +27,7 @@ import PartiesCard from '../../components/tenant/PartiesCard';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
 import { runSubmitChain, SAVING_COPY } from '../../lib/submitChain';
+import Loader, { Pending } from '../../components/brand/Loader';
 
 // ?from={prefillToken}: the invite from Pipeline (pages/api/pipeline/invite.js). Resolved on the
 // server through the service role (lib/pipeline.js readPrefill): the token maps to an application
@@ -611,7 +612,7 @@ export default function ApplyPage({ invited = null }) {
         {error && n === step && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(error)}</p>}
         {last ? (
           <div className="mp-actions">
-            <button type="button" onClick={submitFromReview} disabled={submitting} className="mp-btn mp-btn-red">{submitting ? 'Submitting' : 'Submit'}</button>
+            <button type="button" onClick={submitFromReview} disabled={submitting} className="mp-btn mp-btn-red"><Pending busy={submitting} label="Submitting your application" tone="red">Submit</Pending></button>
             <button type="button" onClick={goBack} disabled={submitting} className="mp-link">Back</button>
           </div>
         ) : (
@@ -641,7 +642,7 @@ export default function ApplyPage({ invited = null }) {
         </header>
 
         <div className="mp-wrap mp-sections">
-          {status === 'loading' && <div className="rl-card mp-card"><p className="mp-p">Loading your application</p></div>}
+          {status === 'loading' && <div className="rl-card mp-card" style={{ display: 'flex', justifyContent: 'center' }}><Loader label="Loading your application" /></div>}
 
           {status === 'rented' && (
             <div className="rl-card mp-card">
@@ -666,7 +667,7 @@ export default function ApplyPage({ invited = null }) {
                     <input id="keep-email" type="email" inputMode="email" autoComplete="email" value={keepEmail} onChange={(e) => setKeepEmail(e.target.value)} placeholder="you@example.com" className="mp-input" style={{ marginTop: 'var(--gap-line)' }} />
                   </div>
                   {keep.state === 'error' && <p role="alert" className="mp-alert">{noWidow(keep.message)}</p>}
-                  <button type="submit" disabled={keep.state === 'busy'} className="mp-btn">{keep.state === 'busy' ? 'Saving' : 'Yes, keep me in mind'}</button>
+                  <button type="submit" disabled={keep.state === 'busy'} className="mp-btn"><Pending busy={keep.state === 'busy'} label="Saving your answer">Yes, keep me in mind</Pending></button>
                   <p className="mp-note">{noWidow('No account is created. Once you confirm from your email, it is kept for 60 days for this purpose only.')}</p>
                 </form>
               )}
@@ -692,7 +693,9 @@ export default function ApplyPage({ invited = null }) {
                   <div className="mp-value num">{generated.current.applicationNumber}</div>
                 </div>
               )}
-              {saveHeld && <button type="button" onClick={saveToListing} className="mp-btn mp-btn-red" style={{ marginTop: 'var(--gap-card)' }}>{SAVING_COPY.tryAgain}</button>}
+              {saveHeld
+                ? <button type="button" onClick={saveToListing} className="mp-btn mp-btn-red" style={{ marginTop: 'var(--gap-card)' }}>{SAVING_COPY.tryAgain}</button>
+                : <Loader label="Saving your application" style={{ marginTop: 'var(--gap-card)' }} />}
             </div>
           )}
 
@@ -787,7 +790,7 @@ export default function ApplyPage({ invited = null }) {
                       <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(prefill.error)} {/revoked/i.test(prefill.error) && <a href="/my-application" style={{ color: C.ink, fontWeight: 700 }}>Open my profile</a>}</p>
                     )}
                     <div className="mp-actions">
-                      <button type="button" onClick={applySavedProfile} disabled={prefill.state === 'loading'} className="mp-btn">{prefill.state === 'loading' ? 'Loading your profile' : 'Use my saved profile'}</button>
+                      <button type="button" onClick={applySavedProfile} disabled={prefill.state === 'loading'} className="mp-btn"><Pending busy={prefill.state === 'loading'} label="Loading your profile">Use my saved profile</Pending></button>
                       <button type="button" onClick={() => setPrefill((p) => ({ ...p, dismissed: true }))} className="mp-link">Start fresh</button>
                     </div>
                   </div>

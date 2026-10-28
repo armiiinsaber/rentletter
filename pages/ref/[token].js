@@ -13,6 +13,7 @@ import { isSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient } from '../../lib/supabase/admin';
 import { readRequest } from '../../lib/referenceStore';
 import { QUESTIONS, MONTHS, PNS, visibleQuestions } from '../../lib/referenceQuestions';
+import { Pending } from '../../components/brand/Loader';
 
 export async function getServerSideProps(ctx) {
   const token = String(ctx.params?.token || '');
@@ -83,7 +84,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
               <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-4)', textWrap: 'pretty' }}>One tap each. Every question has Prefer not to say. Nothing else is asked.</p>
               {shown.map((q, i) => (
                 <div key={q.key} style={{ borderTop: `1px solid ${C.rule}`, padding: 'var(--s-3) 0' }}>
-                  <div style={{ fontSize: 'var(--t-body)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{i + 1}</span>{q.text(first)}</div>
+                  <div style={{ fontSize: 'var(--t-body)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'balance' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{i + 1}</span>{q.text(first)}</div>
                   {q.kind === 'range' && answers.when !== PNS && (
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr', gap: 'var(--gap-card)', alignItems: 'center', marginBottom: 'var(--gap-card)' }}>
                       <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft }}>From</span>
@@ -104,7 +105,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
               {error && <div role="alert" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
               <button type="button" onClick={submit} disabled={busy || !complete}
                 style={{ marginTop: 'var(--s-4)', minHeight: 44, width: '100%', padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: busy || !complete ? 'default' : 'pointer', opacity: busy || !complete ? 0.5 : 1, fontFamily: 'inherit' }}>
-                {busy ? 'Sending' : 'Submit'}
+                <Pending busy={busy} label="Sending your reference">Submit</Pending>
               </button>
             </>
           ) : (
