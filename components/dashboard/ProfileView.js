@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { GlobalStyle, Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
-import { linkProps, rememberProfile } from '../nav/routes';
+import { linkProps, rememberProfile, rememberScreenView } from '../nav/routes';
 import { C, R } from '../theme';
 import DashboardHeader from './DashboardHeader';
 import ProfileEditorBody from './ProfileEditorBody';
@@ -17,6 +17,8 @@ export default function ProfileView({ initialProfile }) {
   useEffect(() => { rememberProfile(profile); }, [profile]);
   const router = useRouter();
   const adapter = useAdapter();
+  // This screen as it stands, for a return to it within the session (components/nav/routes.js).
+  useEffect(() => { if (adapter.kind === 'real') rememberScreenView('/profile', { initialProfile: profile }); }, [adapter.kind, profile]);
   // Sign out lives here (the header's identity circle opens this page).
   const signOut = async () => { try { await adapter.supabase().auth.signOut(); } catch (e) { /* the redirect still lands on sign in */ } router.replace(adapter.paths.signin); };
 

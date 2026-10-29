@@ -13,6 +13,7 @@ import { C, R } from '../../components/theme';
 import { isReportToken } from '../../lib/applicationIds';
 import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot';
 import { fitLines } from '../../lib/fitScore';
+import { Pending } from '../../components/brand/Loader';
 
 
 export async function getServerSideProps(ctx) {
@@ -55,6 +56,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
   const [answers, setAnswers] = useState(initial || {});
   const [editing, setEditing] = useState({});
   const [busy, setBusy] = useState(null);
+  const [answering, setAnswering] = useState(null); // which answer is on its way, for its door
   const [error, setError] = useState('');
   // Sandbox: answers and opens live in this browser so the realtor's sandbox can read them.
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
   }, [sandbox, token]);
 
   const answer = async (rank, a, name) => {
-    setBusy(rank); setError('');
+    setBusy(rank); setAnswering(a); setError('');
     try {
       const r = await fetch('/api/report/answer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, rank, answer: a }) });
       const j = await r.json().catch(() => ({}));
@@ -129,8 +131,9 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
         const n = a.numbers || {};
         return (
           <section key={a.rank} className="rl-card" style={card} aria-label={`${a.rank}. ${a.name}`}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 'var(--s-3)' }}>
-              <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{noWidow(a.name)}</div>
+            {/* The name takes the whole line when the score beside it would squeeze it into a lone last word. */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--s-1) var(--s-3)' }}>
+              <div className="t-d3" style={{ color: C.ink, minWidth: 0, flex: '1 1 12em', overflowWrap: 'anywhere', textWrap: 'balance' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{noWidow(a.name)}</div>
               {a.fit && a.fit.score != null ? (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', flexShrink: 0 }}>
                   <span className="t-d3 num" style={{ color: C.ink }}>{Number(a.fit.score).toFixed(1)}</span>
@@ -185,7 +188,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
               </ul>
             ) : null}
             {/* The answer: two controls, or the given answer as an ink pill with the red tick, tap to change. */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-4)', flexWrap: 'wrap', marginTop: 'var(--s-4)' }}>
+            <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-4)' }}>
               {given && !isEditing ? (
                 <button type="button" data-answer={given.answer} onClick={() => setEditing((e) => ({ ...e, [a.rank]: true }))} aria-label={`You answered ${answerLine(given.answer)}. Tap to change.`}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, padding: '0 var(--gap-card)', background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
@@ -194,9 +197,9 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
               ) : (
                 <>
                   <button type="button" onClick={() => answer(a.rank, 'meet', a.name)} disabled={busy === a.rank}
-                    style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>I'd like to meet them</button>
+                    style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={busy === a.rank && answering === 'meet'} label="Saving your answer">I'd like to meet them</Pending></button>
                   <button type="button" onClick={() => answer(a.rank, 'pass', a.name)} disabled={busy === a.rank}
-                    style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Not for me</button>
+                    style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={busy === a.rank && answering === 'pass'} label="Saving your answer">Not for me</Pending></button>
                 </>
               )}
             </div>

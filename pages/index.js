@@ -932,39 +932,6 @@ export default function Home() {
 
 
   // ════════════════════════════════════════════════════════════
-  // GENERATING
-  // ════════════════════════════════════════════════════════════
-  if (step === 'generating') {
-    return (
-      <>
-        <Head><title>Submitting · Rentletter</title></Head>
-        <GlobalStyle />
-        <div style={{ minHeight: '100vh', background: C.paper, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-          <div style={{ textAlign: 'center', maxWidth: 440 }}>
-            <div style={{ display: 'inline-flex', gap: 6, marginBottom: 36 }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.ink, animation: 'pulse 1.4s ease-in-out infinite' }} />
-              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.ink, animation: 'pulse 1.4s ease-in-out 0.2s infinite' }} />
-              <span style={{ display: 'inline-block', width: 8, height: 8, background: C.red, animation: 'pulse 1.4s ease-in-out 0.4s infinite' }} />
-            </div>
-            <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 5vw, 40px)', lineHeight: 1.05, color: C.ink, letterSpacing: '-0.025em', marginBottom: 16 }}>
-              Submitting your application
-            </h2>
-            <p style={{ color: C.inkSoft, fontSize: 15, lineHeight: 1.55 }}>
-              A few seconds. Don't refresh.
-            </p>
-          </div>
-          <style jsx>{`
-            @keyframes pulse {
-              0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
-              40% { opacity: 1; transform: scale(1); }
-            }
-          `}</style>
-        </div>
-      </>
-    );
-  }
-
-  // ════════════════════════════════════════════════════════════
   // RESULT
   // ════════════════════════════════════════════════════════════
   if (step === 'result') {

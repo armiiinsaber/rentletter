@@ -8,6 +8,7 @@ import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabas
 import { getSupabaseAdminClient } from '../../lib/supabase/admin';
 import { fetchListingApplicants, attachDocVerifications } from '../../lib/supabaseBridge';
 import ListingView from '../../components/dashboard/ListingView';
+import { registerScreenView } from '../../components/nav/routes';
 import { logServerError } from '../../lib/serverLog';
 import { latestSnapshots } from '../../lib/reportSnapshotStore';
 
@@ -75,5 +76,8 @@ export async function getServerSideProps(ctx) {
   }
   return { props: { initialProfile: profile || { id: user.id, email: user.email }, initialListing: JSON.parse(JSON.stringify(listing)), initialApplicants } };
 }
+
+// The view a return to this screen draws at once (components/nav/routes.js).
+registerScreenView('listing', ListingView);
 
 export default function ListingPage(props) { return <ListingView {...props} />; }

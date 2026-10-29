@@ -7,8 +7,10 @@
 //   2. Every Loader and every Pending is named for what is loading; a Loader renders role status
 //      with that name, the same words inside for screen readers, the door hidden from assistive
 //      technology, at 28px or more. A pending button keeps its resting label in place, unseen.
-//   3. Every use goes through DoorMark: the homepage header (HomeDoor), app start in the realtor
-//      app (AppHead) and the admin app (AdminShell), the head script in pages/_document.js.
+//   3. Every use goes through DoorMark: the homepage header (HomeDoor), the opening screen in the
+//      frame (RouteFrame, ink in the admin app), held from sign in, the head script in
+//      pages/_document.js.
+//   4. No skeleton and no shimmer remains: the screens wait behind one door each.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -35,13 +37,23 @@ test('no spinner and no Loading text remains in components or pages', () => {
     if (/@keyframes\s+[\w-]*spin/i.test(c) || /className=["'`{][^"'`}]*\b[\w-]*spin\b/i.test(c) || /\bspinner\b/i.test(c)) found.push(`${f}: a spinner`);
     for (const m of c.matchAll(/\bLoading\b/g)) {
       const before = c.slice(Math.max(0, m.index - 60), m.index);
-      if (!/\blabel=(?:"|\{`|\{')[^"`'}]*$/.test(before)) found.push(`${f}: "${c.slice(m.index, m.index + 40).split('\n')[0]}"`);
+      if (!/\blabel(?:=|:\s*)(?:"|'|`|\{`|\{')[^"`'}]*$/.test(before)) found.push(`${f}: "${c.slice(m.index, m.index + 40).split('\n')[0]}"`);
     }
     if (PRODUCT(f)) {
       for (const m of c.matchAll(/'[A-Z][a-z]+ing(?:…|\.\.\.)'|\?\s*'[A-Z][a-z]+ing'\s*:/g)) found.push(`${f}: pending label ${m[0]}`);
     }
   }
   assert.deepEqual(found, []);
+});
+
+test('no skeleton and no shimmer remains in components or pages', () => {
+  // Code only: a comment may say what was replaced.
+  const found = FILES.filter((f) => /skeleton|shimmer/i.test(code(src(f))));
+  assert.deepEqual(found, []);
+  // The screens wait behind the door, one reveal each (components/brand/Loader.js Reveal).
+  assert.match(src('components/dashboard/HomeView.js'), /<Reveal ready=\{ready\} label="Loading your workspace"/);
+  assert.match(src('components/dashboard/ListingView.js'), /<Reveal ready=\{applicantsLoaded\} label="Loading the listing"/);
+  assert.match(src('components/nav/RouteLoader.js'), /<ScreenLoader label=\{f\.label\} \/>/);
 });
 
 // Each <Loader> and <Pending> tag, with its attributes, read with braces and quotes in mind.
@@ -65,11 +77,11 @@ test('every Loader and Pending is named for what is loading', async () => {
   for (const f of FILES) {
     if (f === 'components/brand/Loader.js') continue;
     const c = code(src(f));
-    for (const t of tags(c, 'Loader')) { loaders++; if (!/\blabel=(?:"[^"]{3,}"|\{)/.test(t)) unnamed.push(`${f}: ${t}`); }
+    for (const t of [...tags(c, 'Loader'), ...tags(c, 'ScreenLoader')]) { loaders++; if (!/\blabel=(?:"[^"]{3,}"|\{)/.test(t)) unnamed.push(`${f}: ${t}`); }
     for (const t of tags(c, 'Pending')) { pendings++; if (!/\blabel=(?:"[^"]{3,}"|\{)/.test(t)) unnamed.push(`${f}: ${t}`); }
   }
   assert.deepEqual(unnamed, []);
-  assert.ok(loaders >= 10 && pendings >= 50, `${loaders} loaders and ${pendings} pending buttons`);
+  assert.ok(loaders >= 14 && pendings >= 60, `${loaders} loaders and ${pendings} pending buttons`);
   // Rendered: role status, the name, the words inside, the door hidden, 28px or more.
   const React = await import('react');
   const { renderToStaticMarkup } = await import('react-dom/server');
@@ -88,10 +100,12 @@ test('every Loader and Pending is named for what is loading', async () => {
 
 test('every use goes through DoorMark: the header, app start, the head script', () => {
   assert.match(src('pages/index.js'), /<a href="\/" className="rl-mark" aria-label="Rentletter home"><HomeDoor \/><\/a>/);
-  assert.match(src('components/AppHead.js'), /<AppStart \/>/);
-  assert.match(src('components/admin/AdminShell.js'), /<AppStart tone="ink" \/>/);
+  // The opening screen lives in the frame, so it outlives a navigation: paper, ink in the admin app.
+  assert.match(src('components/nav/RouteFrame.js'), /<AppStart tone=\{\/\^\\\/admin\(\\\/\|\$\)\/\.test\(pathname \|\| ''\) \? 'ink' : 'paper'\} \/>/);
+  assert.match(src('pages/signin.js'), /holdOpening\(\);\s*\n\s*router\.replace\(next\);/, 'sign in hands its door to the next screen');
   assert.match(src('pages/_document.js'), /<script dangerouslySetInnerHTML=\{\{ __html: APP_START_HEAD \}\} \/>/);
   for (const f of ['components/brand/Loader.js', 'components/brand/HomeDoor.js', 'components/brand/AppStart.js']) assert.match(src(f), /import DoorMark/);
+  assert.doesNotMatch(src('components/AppHead.js'), /<AppStart/); assert.doesNotMatch(src('components/admin/AdminShell.js'), /<AppStart/);
   // No other file draws the door or the bar's swing itself.
   const drawers = FILES.filter((f) => /doorFrame|doorQuad|data-door-panel/.test(code(src(f))));
   assert.deepEqual(drawers, ['components/brand/DoorMark.js', 'components/brand/doorGeometry.js']);

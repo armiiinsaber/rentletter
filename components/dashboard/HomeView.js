@@ -19,8 +19,9 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
-import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL } from '../nav/routes';
-import { useSkeletonWatch, LoadFailed } from '../nav/RouteSkeleton';
+import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode } from '../nav/routes';
+import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
+import { Reveal } from '../brand/Loader';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
 import { referralsEnabled } from '../../lib/features';
@@ -125,7 +126,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     }
   };
 
-  // Each retry of the first screen's loads (the skeleton watch below) is a new round: a live request,
+  // Each retry of the first screen's loads (the load watch below) is a new round: a live request,
   // never the one that did not land.
   const [loadRound, setLoadRound] = useState(0);
   const listingsLoaded = Array.isArray(listings);
@@ -133,7 +134,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const openListings = listings.filter((l) => listingOpen(l));
   const closedListings = listings.filter((l) => !listingOpen(l));
   // Client retry when the server-side listings query failed (an expired access token being
-  // refreshed under RLS is the usual reason). Until it resolves the page shows a skeleton,
+  // refreshed under RLS is the usual reason). Until it resolves the page shows the door Loader,
   // never the empty state.
   useEffect(() => {
     if (listingsLoaded) return undefined;
@@ -154,7 +155,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // notifications feed, referrals. Normally these arrive WITH the page (pages/dashboard.js loads
   // them server side as initialSignals) so the dashboard commits in one paint. Without them
   // (demo workspace, or a server side failure) they are fetched here and the page holds its
-  // skeleton until they land, so nothing ever appears after the rest. No AI involved.
+  // Loader until they land, so nothing ever appears after the rest. No AI involved.
   // After a tap inside the app the page comes without them (pages/dashboard.js): the signals seen
   // earlier this session show at once and the fetch below refreshes them.
   const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : (seenSignals() || { applicantsByListing: {}, people: [], notifications: [], referralsInbox: [], referralsSent: [], loaded: false })));
@@ -194,10 +195,28 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   }, [listings, loadRound]);
   // The first screen commits as one piece: listings known AND the assistant inputs in hand.
   const ready = listingsLoaded && signals.loaded;
-  // Never an endless skeleton: a load that has not landed is retried once after 4 seconds, then the
-  // line and the pill take the skeleton's place (components/nav/RouteSkeleton.js). A page back from
+  // Never an endless wait: a load that has not landed is retried once after 4 seconds, then the
+  // line and the pill take the Loader's place (components/nav/RouteLoader.js). A page back from
   // the browser's cache, its reads cut off when it was hidden, is retried the same way.
-  const skeletonWatch = useSkeletonWatch(!ready && !listingsError, () => setLoadRound((n) => n + 1));
+  const loadWatch = useLoadWatch(!ready && !listingsError, () => setLoadRound((n) => n + 1));
+  // This screen as it stands, so a return to it within the session shows at once
+  // (components/nav/routes.js rememberScreenView). The app only: the sandbox draws its own views.
+  useEffect(() => {
+    if (adapter.kind !== 'real' || !ready) return;
+    rememberScreenView('/dashboard', { userId, userEmail, initialProfile: profile, initialListings: listings, listingsError: null, entitlement: initialEntitlement, initialSignals: signals });
+  }, [adapter.kind, ready, profile, listings, signals, initialEntitlement, userId, userEmail]);
+  // Once on view: the code of the screens one tap away (a listing, the profile), when idle.
+  const firstListing = listings && listings[0] ? listings[0].id : null;
+  useEffect(() => { if (adapter.kind === 'real' && ready) prefetchCode([...(firstListing ? [`/listing/${encodeURIComponent(firstListing)}`] : []), '/profile']); }, [adapter.kind, ready, firstListing]);
+  // The listings could not be read: said in the door's place, with a way to try again.
+  const listingsFailed = (
+    <section className="dash-card dash-block" style={{ padding: 'var(--s-4)' }} role="alert">
+      <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your listings</div>
+      <h2 className="dash-h2" style={{ marginBottom: 'var(--s-1)' }}>We couldn’t load your listings.</h2>
+      <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
+      <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
+    </section>
+  );
   // Derived, presentation-only summaries from data that already exists (no fabrication,
   // no new API calls — everything below comes from the listings/profile already loaded).
   const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
@@ -260,7 +279,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // Logo-derived accent for the brand card only; product red when absent/too light.
   const logoAccent = useLogoAccent(profile?.logo_url || '');
   const brandAccent = logoAccent || C.red;
-  // Reveal major sections on load / scroll (subtle, matches the header language).
 
   // Header note: the dashboard header is a plain in-flow element (position: static, see .dash-bg
   // override) that scrolls away with the page. Because nothing is fixed/sticky, there is no floating
@@ -303,15 +321,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           paddingBottom: 'max(var(--s-6), env(safe-area-inset-bottom, 0px))',
         }}>
 
-          {!ready && !listingsError && skeletonWatch.failed && <LoadFailed onRetry={skeletonWatch.again} />}
-          {!ready && !listingsError && !skeletonWatch.failed && (
-            <div aria-busy="true" aria-label="Loading your workspace">
-              <div className="dash-skel" style={{ minHeight: 0, padding: 'var(--s-2) 0' }}><span className="dash-skel-line" style={{ width: '58%', height: 22 }} /><span className="dash-skel-line" style={{ width: '100%', height: 44, borderRadius: 12 }} /></div>
-              <div className="dash-block dash-section-head"><span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}><span className="dash-dash" style={{ height: 15 }} /><h2 className="dash-h2">Your listings</h2></span></div>
-              <div className="dash-grid">{[0, 1].map((i) => <div key={i} className="dash-card dash-skel"><span className="dash-skel-line" style={{ width: '70%', height: 18 }} /><span className="dash-skel-line" style={{ width: '45%' }} /><span className="dash-skel-line" style={{ width: '38%' }} /><span className="dash-skel-line" style={{ width: '30%', marginTop: 'auto' }} /></div>)}</div>
-            </div>
-          )}
-          {ready && <>
+          {/* One screen, shown in one step (components/brand/Loader.js Reveal): the door until the
+              listings and the signals are both in hand, then everything at once. */}
+          <Reveal ready={ready} label="Loading your workspace" failed={listingsError && !listingsLoaded ? listingsFailed : loadWatch.failed ? <LoadFailed onRetry={loadWatch.again} /> : null}>
           {/* 1. THE INK CARD: the greeting (the hour from the client, lib/greeting.js) over one line of
               standing, counted from the loaded signals. No rows, no verbs, no links: what is next lives
               in the bell. Then the one red action on the page: New listing. */}
@@ -340,14 +352,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             <div className="dash-block" style={{ padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>
               {error}
             </div>
-          )}
-          {listingsError && !listingsLoaded && (
-            <section className="dash-card dash-block" style={{ padding: 'var(--s-4)' }} role="alert">
-              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your listings</div>
-              <h2 className="dash-h2" style={{ marginBottom: 'var(--s-1)' }}>We couldn’t load your listings.</h2>
-              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
-              <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
-            </section>
           )}
           {hasListings && (
             <div className="dash-block">
@@ -421,7 +425,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             </a>
           )}
 
-          </>}
+          </Reveal>
         </div>}
 
         <ListingSetupModal open={modalOpen} mode="create" askProvince={needsProvince(profile)} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
@@ -505,13 +509,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-block { margin-top: var(--gap-card); }
         .dash-note { font-size: var(--t-body-2); color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: var(--s-2) var(--s-1) 0; }
         .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s-4); }
-        /* Skeleton: the listing card's shape (title, rent line, chip, footer), no spinner. */
-        .dash-skel { padding: var(--s-4); display: flex; flex-direction: column; gap: var(--s-3); min-height: 172px; }
-        .dash-skel-line { display: block; height: 12px; border-radius: 6px; background: ${C.paperDeep}; }
-        @media (prefers-reduced-motion: no-preference) {
-          .dash-skel-line { background: linear-gradient(90deg, ${C.paperDeep} 0%, #ebe5d8 50%, ${C.paperDeep} 100%); background-size: 200% 100%; animation: dash-shimmer 1.4s ease-in-out infinite; }
-          @keyframes dash-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
-        }
         /* ── Listing invite-link status chip (real data) ── */
         .dash-lchip { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 600; color: ${C.inkMute}; }
         .dash-lchip-on { color: ${C.ink}; }

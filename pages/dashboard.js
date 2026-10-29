@@ -5,6 +5,7 @@
 // listing opens its detail view (/listing/[id]). Stage 1: no KV workspace.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import HomeView from '../components/dashboard/HomeView';
+import { registerScreenView } from '../components/nav/routes';
 import { getEntitlement } from '../lib/entitlements';
 import { readPromoCookie, redeemPromoFromCookie } from '../lib/promoCookie';
 import { needsOnboarding } from '../lib/onboarding';
@@ -90,5 +91,8 @@ export async function getServerSideProps(ctx) {
     },
   };
 }
+
+// The view a return to this screen draws at once (components/nav/routes.js).
+registerScreenView('dashboard', HomeView);
 
 export default function LandlordPage(props) { return <HomeView {...props} />; }

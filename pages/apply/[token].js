@@ -27,7 +27,7 @@ import PartiesCard from '../../components/tenant/PartiesCard';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
 import { runSubmitChain, SAVING_COPY } from '../../lib/submitChain';
-import Loader, { Pending } from '../../components/brand/Loader';
+import Loader, { Pending, ScreenLoader } from '../../components/brand/Loader';
 
 // ?from={prefillToken}: the invite from Pipeline (pages/api/pipeline/invite.js). Resolved on the
 // server through the service role (lib/pipeline.js readPrefill): the token maps to an application
@@ -642,7 +642,7 @@ export default function ApplyPage({ invited = null }) {
         </header>
 
         <div className="mp-wrap mp-sections">
-          {status === 'loading' && <div className="rl-card mp-card" style={{ display: 'flex', justifyContent: 'center' }}><Loader label="Loading your application" /></div>}
+          {status === 'loading' && <ScreenLoader label="Loading your application" />}
 
           {status === 'rented' && (
             <div className="rl-card mp-card">
@@ -742,7 +742,8 @@ export default function ApplyPage({ invited = null }) {
                       ) : (
                         <>
                           <p className="mp-note">{noWidow(`Held for ${invite?.realtorName || 'the realtor'}'s review for ${RETENTION_DAYS} days, then deleted. Do not upload anything showing your SIN.`)}</p>
-                          <p className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Preparing your upload link. If it does not appear, the link is in your confirmation email.')}</p>
+                          <ScreenLoader label="Preparing your upload link" fill={false} />
+                          <p className="mp-note">{noWidow('The upload link is also in your confirmation email.')}</p>
                         </>
                       )}
                     </div>

@@ -82,8 +82,11 @@ export const DOOR_PLAYER = `(function(){var c=document.currentScript,h=c&&c.prev
 // accessible name, or null when something around the mark names it (the Loader's status), which
 // hides the svg from assistive technology. ground: false leaves the ground out, so the mark sits on
 // the surface under it. square: the app icons full bleed. paused: held at rest, no clock. delay:
-// the swing (or the breath) starts this many ms after it is unpaused. still: see above.
-export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR.defaults, motion = 'auto', run = 0, label = 'Rentletter', ground = true, square = false, paused = false, delay = 0, still = null, prehydrate = false }) {
+// the swing (or the breath) starts this many ms after it is unpaused. still: see above. epoch: the
+// moment (performance.now) the cycle counts from, or a function that answers it when the door
+// starts, so doors shown one after another, or side by side, turn as one (components/brand/
+// Loader.js doorEpoch).
+export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR.defaults, motion = 'auto', run = 0, label = 'Rentletter', ground = true, square = false, paused = false, delay = 0, still = null, prehydrate = false, epoch = null }) {
   const cls = `rd${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const s = { ...DOOR.defaults, ...settings };
   const g = doorGeometry(kind, size, s.open, { square });
@@ -117,11 +120,12 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
     root.current?.setAttribute('data-door-live', '1'); // the inline player (DOOR_PLAYER) stops here
     if (reduced || paused) { paint(doorFrame(live.current.g, live.current.s, 0, { reduced })); return undefined; }
     // A door the inline player started keeps its phase: the clock counts from the player's start.
-    const started = root.current && typeof root.current.__rlDoorT0 === 'number' ? root.current.__rlDoorT0 : null;
-    const epoch = (started ?? performance.now()) + delay; const ease = bezier(DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing]);
+    const given = typeof epoch === 'function' ? epoch() : epoch;
+    const started = root.current && typeof root.current.__rlDoorT0 === 'number' ? root.current.__rlDoorT0 : typeof given === 'number' ? given : null;
+    const zero = (started ?? performance.now()) + delay; const ease = bezier(DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing]);
     let unsubscribe = () => {};
     const draw = (now) => {
-      const cur = live.current; const elapsed = now === null ? clock.frozen : now - epoch;
+      const cur = live.current; const elapsed = now === null ? clock.frozen : now - zero;
       paint(doorFrame(cur.g, cur.s, travelFor(cur, elapsed, ease)));
       if (cur.s.play === 'once' && now !== null && elapsed >= doorTimeline(cur.s).cycle) unsubscribe();
     };

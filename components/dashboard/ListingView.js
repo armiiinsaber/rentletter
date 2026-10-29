@@ -10,8 +10,9 @@ import { isStandalone } from '../../lib/standalone';
 import { C, R, SH } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import Sheet from '../Sheet';
-import { go, linkProps, takeWarm, forgetWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants } from '../nav/routes';
-import { ApplicantSkeletons, useSkeletonWatch, LoadFailed } from '../nav/RouteSkeleton';
+import { go, linkProps, takeWarm, forgetWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants, rememberScreenView, prefetchCode } from '../nav/routes';
+import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
+import { Reveal } from '../brand/Loader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
@@ -80,16 +81,16 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // Billing off (lib/billingOff.js): never locked.
   const entitlement = getEntitlement(profile); const locked = !billingOff() && !entitlement.canUseProduct;
   const [listing, setListing] = useState(initialListing);
-  // What this screen shows, kept for the next screen's skeleton (components/nav/routes.js).
+  // What this screen shows, kept for the screens that follow (components/nav/routes.js).
   useEffect(() => { rememberProfile(profile); }, [profile]);
   useEffect(() => { if (listing) rememberListings([listing]); }, [listing]);
   // initialApplicants null: the page came by a tap inside the app (pages/listing/[id].js), so the
   // applicants load here, through the same read the page refreshes with, usually already started
   // on the touch (components/nav/routes.js). Applicants seen earlier this session show at once
-  // and are refreshed behind; otherwise skeleton cards hold their place.
+  // and are refreshed behind; otherwise the whole screen waits behind the door Loader (Reveal).
   const [applicants, setApplicants] = useState(() => initialApplicants || seenApplicants(initialListing?.id) || []);
   const [applicantsLoaded, setApplicantsLoaded] = useState(() => initialApplicants != null || seenApplicants(initialListing?.id) != null);
-  // Each retry (the skeleton watch below) is a new round: a live request, never the one that did not land.
+  // Each retry (the load watch below) is a new round: a live request, never the one that did not land.
   const [applicantsRound, setApplicantsRound] = useState(0);
   useEffect(() => {
     if (initialApplicants != null || !initialListing?.id) return undefined;
@@ -110,10 +111,18 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applicantsRound]);
-  // Never an endless skeleton: applicants that have not landed are asked for once more after 4
-  // seconds, then the line and the pill take the skeleton cards' place (components/nav/RouteSkeleton.js).
-  const applicantsWatch = useSkeletonWatch(!applicantsLoaded, () => setApplicantsRound((n) => n + 1));
+  // Never an endless wait: applicants that have not landed are asked for once more after 4 seconds,
+  // then the line and the pill take the Loader's place (components/nav/RouteLoader.js).
+  const applicantsWatch = useLoadWatch(!applicantsLoaded, () => setApplicantsRound((n) => n + 1));
   useEffect(() => { if (applicantsLoaded) rememberApplicants(initialListing?.id, applicants); }, [applicantsLoaded, applicants, initialListing?.id]);
+  // This screen as it stands, so a return to it within the session shows at once
+  // (components/nav/routes.js rememberScreenView). The app only: the sandbox draws its own views.
+  useEffect(() => {
+    if (adapter.kind !== 'real' || !applicantsLoaded || !listing) return;
+    rememberScreenView(`/listing/${encodeURIComponent(listing.id)}`, { initialProfile: profile, initialListing: listing, initialApplicants: applicants });
+  }, [adapter.kind, applicantsLoaded, listing, profile, applicants]);
+  // Once on view: the code of the screens one tap away, when idle.
+  useEffect(() => { if (adapter.kind === 'real' && applicantsLoaded) prefetchCode(['/dashboard', '/profile']); }, [adapter.kind, applicantsLoaded]);
   // Realtor→realtor handoff: referrals this realtor has sent for applicants on this listing
   // (keyed by linkId) + the applicant being referred right now.
   const [referrals, setReferrals] = useState({});
@@ -308,8 +317,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   };
   const noteRecent = (linkId, kind, prev) => { setRecent({ linkId, kind, prev }); clearTimeout(recentTimer.current); recentTimer.current = setTimeout(() => setRecent(null), 7000); };
   useEffect(() => () => clearTimeout(recentTimer.current), []);
-  // Reveal sections on load + as they scroll into view. Re-run when the applicant set changes
-  // so newly-rendered cards get observed.
 
   const saveEdit = async (values) => {
     setSaving(true);
@@ -1161,6 +1168,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
+          {/* One screen, shown in one step (components/brand/Loader.js Reveal): the door until the
+              applicants are in hand, then the listing and its applicants at once. */}
+          <Reveal ready={applicantsLoaded} label="Loading the listing" failed={applicantsWatch.failed ? <LoadFailed onRetry={applicantsWatch.again} /> : null}>
 
           {/* THE HEADER CARD: the listing as one paper card above the applicants. Address with
               Edit, the listing's facts and its criteria as pills, the invite link row, then the Details
@@ -1455,13 +1465,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <section className="rl-card" style={{ padding: 'var(--s-4)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
               <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
-              {applicantsLoaded ? <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span> : null}
+              <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
             </div>
             {statePills(active).length > 0 && <StatusPills label="Applicants by state" items={statePills(active)} style={{ marginBottom: 'var(--s-3)' }} />}
 
-            {!applicantsLoaded ? (
-              applicantsWatch.failed ? <LoadFailed onRetry={applicantsWatch.again} /> : <ApplicantSkeletons />
-            ) : totalApplicants === 0 ? (
+            {totalApplicants === 0 ? (
               <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
                 <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>
                 <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, marginBottom: 'var(--s-1)' }}>No applicants yet</div>
@@ -1535,6 +1543,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               )}
             </section>
           )}
+          </Reveal>
         </div>}
 
         <ListingSetupModal open={editOpen} mode="edit" initial={listing} activeApplicants={active.length} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />

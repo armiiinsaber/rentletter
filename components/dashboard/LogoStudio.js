@@ -9,7 +9,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { C, R } from '../theme';
 import ColorWheel from './ColorWheel';
-import Loader, { Pending } from '../brand/Loader';
+import { Pending, ScreenLoader } from '../brand/Loader';
 
 const isHex = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
 
@@ -262,7 +262,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
   return (
     <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'clamp(14px,3vw,18px)', background: C.paperDeep }}>
       <div style={{ fontSize: 13, fontWeight: 800, color: C.ink, marginBottom: 2 }}>{refineMode ? 'Refine your logo' : 'Generate a logo with AI'}</div>
-      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 12 }}>{refineMode ? 'Zeroing in on your chosen concept, make one change at a time.' : 'Three steps. We design 3 concepts from your name, brokerage, and colours.'}</div>
+      <div style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 12, textWrap: 'balance' }}>{refineMode ? 'Zeroing in on your chosen concept, make one change at a time.' : 'Three steps. We design 3 concepts from your name, brokerage, and colours.'}</div>
 
       {/* Step progress, hidden while refining a chosen concept */}
       {!refineMode && (
@@ -306,7 +306,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                 <span style={{ width: 28, height: 18, background: isHex(primary) ? primary : C.paperDeep }} />
                 <span style={{ width: 28, height: 18, background: isHex(secondary) ? secondary : C.paperDeep }} />
               </span>
-              {!colorsReady && profileReady && <span style={{ fontSize: 11.5, color: C.inkMute }}>Pick both to continue →</span>}
+              {!colorsReady && profileReady && <span style={{ fontSize: 11.5, color: C.inkMute, whiteSpace: 'nowrap' }}>Pick both to continue{'\u00a0'}→</span>}
             </div>
           </div>
 
@@ -329,14 +329,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             </button>
           )}
 
-          {/* Loading state, generation takes several seconds */}
+          {/* While the concepts are drawn (10 to 15 seconds): the door in the middle of their place. */}
           {busy && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 16px', background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
-              <Loader label="Designing your logos" />
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: C.ink }}>Designing your logos</div>
-                <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>This takes about 10 to 15 seconds. Please don’t refresh.</div>
-              </div>
+            <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl }}>
+              <ScreenLoader label="Designing your logos, about 15 seconds" fill={false} />
             </div>
           )}
         </>

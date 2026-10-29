@@ -2,7 +2,7 @@
 // iPhone user agent, on the real pages over the fake stack in a production build
 // (tests/helpers/fakeNextServer.mjs). Standalone is emulated as iOS sets it (navigator.standalone).
 //   1. From a listing, a drag from the edge past a third goes back: the page follows the finger 1:1
-//      and the dashboard as it was left is drawn beneath (its picture, not a skeleton); then the
+//      and the dashboard as it was left is drawn beneath (its picture, not a Loader); then the
 //      dashboard's real content shows, in the same document.
 //   2. A short slow drag settles back: same screen, nothing moved, nothing beneath.
 //   3. A vertical drag from the edge is left to the page: no swipe (and in Chrome, with real touches,
@@ -59,7 +59,7 @@ const STATE = () => {
   const el = document.getElementById('__next'); const m = el ? getComputedStyle(el).transform : 'none';
   return {
     path: location.pathname,
-    routeSkeleton: !!document.querySelector('[data-skeleton-route]'),
+    routeLoading: !!document.querySelector('[data-route-loading], [data-screen-loading]'),
     failed: !!document.querySelector('[data-load-failed]'),
     beneath: !!document.querySelector('[data-edge-beneath]'),
     snapshot: !!document.querySelector('#__next [data-snapshot]'),
@@ -73,10 +73,10 @@ const STATE = () => {
     same: window.__sameDocument === 'yes',
   };
 };
-// A real screen: no skeleton, no picture, no transition, nothing moved, and the screen's own content
+// A real screen: no Loader, no picture, no transition, nothing moved, and the screen's own content
 // for its URL (the URL changes with the tap, before the screen arrives).
 const content = (s) => (s.path === '/dashboard' ? s.cards > 0 : /^\/listing\//.test(s.path) ? s.applicants > 0 && s.cards === 0 : s.path === '/profile' ? s.fields > 0 && s.cards === 0 && s.applicants === 0 : false);
-const realScreen = (s) => !!s && /^\/(dashboard|listing\/[^/]+|profile)$/.test(s.path) && !s.routeSkeleton && !s.failed && !s.beneath && !s.snapshot && !s.busy && !s.moved && !s.nav && content(s);
+const realScreen = (s) => !!s && /^\/(dashboard|listing\/[^/]+|profile)$/.test(s.path) && !s.routeLoading && !s.failed && !s.beneath && !s.snapshot && !s.busy && !s.moved && !s.nav && content(s);
 const onDashboard = (s) => realScreen(s) && s.path === '/dashboard' && s.cards > 0;
 async function waitFor(page, ok, ms) {
   const t0 = Date.now(); let s = null;
@@ -91,7 +91,7 @@ const drag = (page, { x0 = 6, y0 = 420, dx, dy = 0, ms = 400, steps = 12 }) => p
   fire('pointerdown', x0, y0);
   for (let i = 1; i <= steps; i++) { await new Promise((r) => setTimeout(r, ms / steps)); fire('pointermove', x0 + (dx * i) / steps, y0 + (dy * i) / steps); }
   const el = document.getElementById('__next'); const beneath = document.querySelector('[data-edge-beneath]');
-  const mid = { tx: new DOMMatrix(getComputedStyle(el).transform).m41, beneath: !!beneath, picture: !!beneath && !!beneath.querySelector('[data-snapshot]'), pictureCards: beneath ? beneath.querySelectorAll('.dash-card-int').length : 0, skeleton: !!beneath && !!beneath.querySelector('[data-skeleton-route]') };
+  const mid = { tx: new DOMMatrix(getComputedStyle(el).transform).m41, beneath: !!beneath, picture: !!beneath && !!beneath.querySelector('[data-snapshot]'), pictureCards: beneath ? beneath.querySelectorAll('.dash-card-int').length : 0, loading: !!beneath && !!beneath.querySelector('[data-route-loading]') };
   fire('pointerup', x0 + dx, y0 + dy);
   return mid;
 }, { x0, y0, dx, dy, ms, steps });
@@ -115,7 +115,7 @@ async function gestures(browser, tag) {
   // 1. Past a third: the page follows the finger, the dashboard as it was left lies beneath.
   const mid = await drag(page, { dx: 200, ms: 600 });
   assert.equal(Math.round(mid.tx), 200, `${tag}: the page follows the finger 1:1`);
-  assert.ok(mid.beneath && mid.picture && mid.pictureCards > 0 && !mid.skeleton, `${tag}: the real dashboard lies beneath: ${JSON.stringify(mid)}`);
+  assert.ok(mid.beneath && mid.picture && mid.pictureCards > 0 && !mid.loading, `${tag}: the real dashboard lies beneath: ${JSON.stringify(mid)}`);
   let r = await waitFor(page, onDashboard, 3000);
   assert.ok(r.ok, `${tag}: back on the dashboard with its real content: ${JSON.stringify(r.s)}`);
   assert.equal(r.s.same, true, `${tag}: the same document, never a reload`);

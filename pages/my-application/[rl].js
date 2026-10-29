@@ -15,7 +15,7 @@ import { ProfileStyles, FactSections, Eyebrow, Chevron, noWidow, dateLong } from
 import { TENANT_LINES } from '../../lib/applicantState';
 import { APPLICATION_STATE } from '../../lib/application-state';
 import PartiesCard from '../../components/tenant/PartiesCard';
-import { Pending } from '../../components/brand/Loader';
+import { Pending, ScreenLoader } from '../../components/brand/Loader';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -147,16 +147,16 @@ export default function ApplicationPage() {
         <div className="mp-page">
           {header}
           <div className="mp-wrap">
+            {phase === 'loading' ? <ScreenLoader label={`Opening ${rl || 'your application'}`} /> : (
             <div className="rl-card mp-card">
-              {phase === 'loading' ? <p className="mp-p">{noWidow(`Opening ${rl || 'your application'}`)}</p> : (
                 <>
                   <Eyebrow>Application</Eyebrow>
                   <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('We cannot open this one without your key')}</h1>
                   <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(error || `Sign in to your profile with your email and ${rl || 'this application'} will be there, or use the link from its confirmation email.`)}</p>
                   <a href="/my-application" className="mp-btn" style={{ marginTop: 'var(--gap-card)' }}>Open my profile</a>
                 </>
-              )}
             </div>
+            )}
           </div>
         </div>
       </>

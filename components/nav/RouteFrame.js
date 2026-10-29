@@ -1,40 +1,49 @@
 // components/nav/RouteFrame.js
 // Wraps every page (pages/_app.js). On a realtor screen, a tap on a link to another realtor screen
-// (components/nav/routes.js go) shows the destination at once: its skeleton in the real layout
-// (components/nav/RouteSkeleton.js) while the server confirms the session and the ownership and
-// sends the page, then the page itself. The sandbox has its data in memory, so its next view is
-// simply drawn. Either way the screen pushes in from the right, or back from the left (lib/motion.js
-// NAV_CSS, slideIn). It also installs the one press mechanism (lib/motion.js installPress, switched
-// off on the tenant and landlord pages, where nothing animates), the 44 by 44 hit areas
-// (installHitAreas) and the tap resolver (installTapResolver), which work on every page.
+// (components/nav/routes.js go) never shows a half drawn screen (components/nav/RouteLoader.js):
+//   a screen seen recently (routes.js seenScreenView) shows at once as it was, while the server
+//   confirms the session and the ownership and sends the page, which then takes over;
+//   any other shows when its page lands if that is within DOOR.loaderDelayMs (lib/motion.js) of
+//   the tap, and otherwise the door Loader holds its place, with the header and the way back
+//   live, until the page lands. The page then shows itself in one step once its own data is in
+//   (components/brand/Loader.js Reveal).
+// The sandbox has its data in memory, so its next view is simply drawn. Either way the screen
+// pushes in from the right, or back from the left (lib/motion.js NAV_CSS, slideIn). It also
+// installs the one press mechanism (lib/motion.js installPress, switched off on the tenant and
+// landlord pages, where nothing animates), the 44 by 44 hit areas (installHitAreas) and the tap
+// resolver (installTapResolver), which work on every page, and hosts the opening screen
+// (components/brand/AppStart.js), which outlives a navigation, so sign in hands its door to the
+// dashboard with no gap.
 // Every navigation ends with the real screen:
-//   A skeleton is drawn only while its navigation is still the current one. The skeleton goes up
-//   in the view transition's update callback, a frame after the tap; a navigation that completed
-//   or was cancelled before that frame (Next answering from its own copy of the data) used to have
-//   its skeleton drawn after the fact, and nothing ever took it down.
+//   The Loader (or a seen screen) is drawn only while its navigation is still the current one. It
+//   goes up in the view transition's update callback; a navigation that completed or was cancelled
+//   before then (Next answering from its own copy of the data) used to have it drawn after the
+//   fact, and nothing ever took it down.
 //   A navigation that ends without arriving forgets Next's copy of its data (routes.js forgetData),
 //   so the next visit makes a live request instead of taking a cancelled, stale one.
 //   Going back to the screen still underneath (the navigation in flight was cancelled) shows that
-//   screen at once, never a skeleton of it.
-//   A skeleton that has not given way after 4 seconds loads once more by itself, then shows the
-//   line and the pill (RouteSkeleton.js LoadFailed); the pill loads the screen again in place.
+//   screen at once, never a Loader.
+//   A Loader that has not given way after 4 seconds loads once more by itself, then shows the line
+//   and the pill (RouteLoader.js LoadFailed); the pill loads the screen again in place.
 //   A tap while a screen pushes in or goes back works: during a view transition both engines hit
 //   test only the root (the moving picture), so the tap ends the transition at once and a click
 //   that landed on the root goes to the control under the finger.
 // In the installed app a swipe from the left edge goes back (components/nav/EdgeBack.js): only on a
 // realtor screen below the dashboard with a screen of the app behind it in history, never with a
 // sheet open or while a screen is still on its way. The screen beneath is the picture of how it was
-// left (routes.js rememberScreen), else its skeleton. A completed swipe hands that picture to the
-// frame in the skeleton's place, under the same watch, until the screen itself arrives, scrolled
+// left (routes.js rememberScreen), else its Loader. A completed swipe hands that picture to the
+// frame in the Loader's place, under the same watch, until the screen itself arrives, scrolled
 // where it was left.
 import { useEffect, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
-import Router from 'next/router';
-import { routeOf, takeDirection, forgetData, settleAhead, alignAhead, trailLanded, trailFix, trailPopped, trailBack, rememberScreen, seenScreen } from './routes';
-import RouteSkeleton, { SKELETON_WAIT } from './RouteSkeleton';
+import Router, { useRouter } from 'next/router';
+import { routeOf, takeDirection, forgetData, settleAhead, alignAhead, trailLanded, trailFix, trailPopped, trailBack, rememberScreen, seenScreen, seenScreenView } from './routes';
+import RouteLoader, { LOAD_WAIT } from './RouteLoader';
 import { installEdgeBack, captureScreen, Snapshot, PARALLAX, DIM } from './EdgeBack';
+import AppStart from '../brand/AppStart';
+import { markNavStart } from '../brand/Loader';
 import { C } from '../theme';
-import { installPress, installHitAreas, installTapResolver, prefersReducedMotion, slideIn, TAP_TARGETS } from '../../lib/motion';
+import { DOOR, installPress, installHitAreas, installTapResolver, prefersReducedMotion, slideIn, TAP_TARGETS } from '../../lib/motion';
 import { isStandalone } from '../../lib/standalone';
 
 // Tenant and landlord pages: no press feedback, no motion.
@@ -42,6 +51,7 @@ export const QUIET = /^\/(apply|upload|my-application|keep|ref|refer|a|r)(\/|$)/
 const samePath = (a, b) => { const x = routeOf(a); const y = routeOf(b); return !!x && !!y && x.path === y.path; };
 
 export default function RouteFrame({ children }) {
+  const { pathname } = useRouter();
   const [pending, setPending] = useState(null);
   const [beneath, setBeneath] = useState(null); // the screen drawn beneath an edge swipe
   const beneathEls = useRef({ shift: null, dim: null });
@@ -56,24 +66,25 @@ export default function RouteFrame({ children }) {
     trailLanded(at.current);
     let landed = null; let later = null;
     let seq = 0; let active = null; // the navigation in flight: { id, url }, or null
-    let shown = null; // the URL whose skeleton (or failure line) is on screen
+    let shown = null; // the URL whose Loader (or seen screen, or failure line) is on screen
     let retrying = null; // { url, round } for the next start of that URL: a retry, not a new visit
     let watch = 0; let clearing = 0;
     let moving = null; // the view transition on screen
     let restore = null; // { url, y }: where a screen gone back to by a swipe was scrolled
     let aimed = null; // { x, y, at }: a tap that came during it
-    // The watch on a skeleton: round 1 retries once by itself, round 2 shows the line and the pill.
+    // The watch on a Loader: round 1 retries once by itself, round 2 shows the line and the pill.
     const arm = (id, url, round) => {
       clearTimeout(watch);
       watch = setTimeout(() => {
         if (!active || active.id !== id) return;
         if (round === 1) { retrying = { url, round: 2 }; Router.replace(url, undefined, { scroll: false }); return; }
         setPending((p) => (p ? { ...p, failed: true } : p));
-      }, SKELETON_WAIT);
+      }, LOAD_WAIT);
     };
     // The pill: the same screen again, in place, with the watch from the start.
     retryRoute.current = (url) => { retrying = { url, round: 1 }; Router.replace(url, undefined, { scroll: false }); };
     const start = (url, opts = {}) => {
+      markNavStart();
       const from = routeOf(at.current); const to = routeOf(url);
       if (!from || !to || QUIET.test(window.location.pathname)) return;
       trailFix();
@@ -86,29 +97,38 @@ export default function RouteFrame({ children }) {
       const dir = takeDirection() || (to.depth < from.depth ? 'back' : 'push');
       // Back to the screen still underneath: that screen, at once.
       const underneath = samePath(url, at.current);
-      const skeleton = to.kind !== 'demo' && !opts.shallow && !underneath;
+      const holds = to.kind !== 'demo' && !opts.shallow && !underneath; // the frame holds this screen's place until its page lands
+      // A screen seen recently: itself, at once (never on a retry, which wants a live answer).
+      const cached = holds && !again ? seenScreenView(url) : null;
       const show = () => {
         if (!active || active.id !== id) return; // this navigation already ended: never draw it afterwards
-        if (!skeleton) { shown = null; if (underneath) flushSync(() => setPending(null)); return; }
+        if (!holds) { shown = null; if (underneath) flushSync(() => setPending(null)); return; }
         const fresh = !shown || !samePath(shown, url);
         shown = url;
-        // A swipe's picture of this screen stays in the skeleton's place until the screen arrives.
-        flushSync(() => setPending((p) => (p && p.shot && samePath(p.url, url) ? { ...p, ...to, url, failed: false } : { ...to, url })));
+        // A swipe's picture of this screen stays in the Loader's place until the screen arrives.
+        flushSync(() => setPending((p) => (p && p.shot && samePath(p.url, url) ? { ...p, ...to, url, failed: false } : cached ? { ...to, url, cached } : { ...to, url })));
         if (fresh) window.scrollTo(0, 0);
-        arm(id, url, again ? again.round : 1);
+        // A seen screen is on view: its history entry is history, so a tap from it stacks the next
+        // screen above it (a back returns to it) instead of taking its entry.
+        if (cached) settleAhead(); else arm(id, url, again ? again.round : 1);
       };
-      // The skeleton or its line is already up (a retry, the pill): no transition, the watch again.
-      if (skeleton && shown && samePath(shown, url)) { show(); return; }
+      // The Loader or its line is already up (a retry, the pill): no transition, the watch again.
+      if (holds && shown && samePath(shown, url)) { show(); return; }
+      // Not seen recently: the page itself if it lands within DOOR.loaderDelayMs, else the Loader.
+      const brief = holds && !cached ? new Promise((res) => { landed = res; setTimeout(res, DOOR.loaderDelayMs); }) : null;
       if (typeof document.startViewTransition === 'function') {
         html.dataset.nav = prefersReducedMotion() ? 'fade' : dir;
         // The sandbox's next view lands in a frame or two; the transition waits for it (at most 600ms).
-        const ready = skeleton || underneath ? null : new Promise((res) => { landed = res; setTimeout(res, 600); });
-        const vt = document.startViewTransition(() => { show(); return ready || undefined; });
+        const ready = holds || underneath ? null : new Promise((res) => { landed = res; setTimeout(res, 600); });
+        const vt = document.startViewTransition(async () => { if (brief) await brief; show(); if (ready) await ready; });
         moving = vt;
         vt.finished.catch(() => {}).finally(() => { if (moving === vt) moving = null; delete html.dataset.nav; });
+      } else if (brief) {
+        later = dir;
+        brief.then(() => { if (!active || active.id !== id) return; later = null; show(); slideIn(document.getElementById('__next'), dir); });
       } else {
         show();
-        if (skeleton || underneath) slideIn(document.getElementById('__next'), dir); else later = dir;
+        if (holds || underneath) slideIn(document.getElementById('__next'), dir); else later = dir;
       }
     };
     const done = (url) => {
@@ -130,7 +150,7 @@ export default function RouteFrame({ children }) {
       if (url) forgetData(url);
       if (landed) { landed(); landed = null; } later = null;
       if (err && err.cancelled) {
-        if (retrying && samePath(retrying.url, url)) return; // a retry of this screen takes over the skeleton
+        if (retrying && samePath(retrying.url, url)) return; // a retry of this screen takes over the Loader
         // The next navigation usually starts in the same moment and decides what shows; if none
         // does, the screen underneath shows.
         clearing = setTimeout(() => { if (!active) { shown = null; setPending(null); } }, 0);
@@ -185,7 +205,7 @@ export default function RouteFrame({ children }) {
         swap();
         if (reduced) slideIn(page(), 'back');
       }
-      // The same watch as any skeleton, from now: never permanent, even if the back never began.
+      // The same watch as any Loader, from now: never permanent, even if the back never began.
       const id = ++seq; active = { id, url: prev.url }; arm(id, prev.url, 1);
       window.history.back();
     };
@@ -220,17 +240,19 @@ export default function RouteFrame({ children }) {
       clearTimeout(watch); clearTimeout(clearing); uninstallEdge();
     };
   }, []);
-  const view = pending ? <RouteSkeleton route={pending} onRetry={() => retryRoute.current(pending.url)} /> : children;
+  const view = pending ? <RouteLoader route={pending} onRetry={() => retryRoute.current(pending.url)} /> : children;
+  // The opening screen, on every page but the tenant and landlord ones: ink in the admin app.
   // The screen beneath an edge swipe: fixed under the page, never interactive. Its slide and dim are
   // set by the gesture as the finger moves (EdgeBack.js), never here. The tree keeps one shape, so
   // the page is never mounted again when the swipe begins or ends.
   return (
     <>
       {view}
+      {QUIET.test(pathname || '') ? null : <AppStart tone={/^\/admin(\/|$)/.test(pathname || '') ? 'ink' : 'paper'} />}
       {beneath && createPortal(
         <div data-edge-beneath="" aria-hidden="true" inert style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', background: 'var(--paper)', pointerEvents: 'none' }}>
           <div ref={(el) => { beneathEls.current.shift = el; }} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            {beneath.shot ? <Snapshot shot={beneath.shot} fixed /> : <RouteSkeleton route={beneath.route} />}
+            {beneath.shot ? <Snapshot shot={beneath.shot} fixed /> : <RouteLoader route={beneath.route} />}
           </div>
           <div ref={(el) => { beneathEls.current.dim = el; }} style={{ position: 'absolute', inset: 0, background: C.ink }} />
         </div>,

@@ -37,7 +37,7 @@ const warm = () => Promise.all(['/', '/signin', '/forgot-password', '/my-applica
 const WATCH = () => {
   const w = { lifted: null, faded: null, busyGone: null, hadBusy: false, travel: [], shown: false };
   window.__rlWatch = w;
-  const busy = () => [...document.querySelectorAll('[aria-busy="true"], [data-skeleton-route], [data-skeleton], [data-loader]')].filter((el) => !el.closest('[data-app-start]')).length;
+  const busy = () => [...document.querySelectorAll('[aria-busy="true"], [data-route-loading], [data-screen-loading], [data-loader]:not([data-leaving])')].filter((el) => !el.closest('[data-app-start]')).length;
   const tick = () => {
     const now = performance.now();
     const ov = document.querySelector('[data-app-start]');

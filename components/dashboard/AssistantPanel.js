@@ -22,7 +22,7 @@ import { DURATION, CURVE } from '../../lib/motion';
 import { navigateToAction } from './actionNav';
 import { go } from '../nav/routes';
 import { referralsEnabled } from '../../lib/features';
-import { Pending } from '../brand/Loader';
+import { Pending, ScreenLoader } from '../brand/Loader';
 
 const timeOf = (iso) => new Date(iso).toLocaleTimeString('en-CA', { hour: 'numeric', minute: '2-digit' });
 const TABS = [['next', 'Next'], ['history', 'History']];
@@ -126,6 +126,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
       )}
       {tab === 'history' && (
         <section role="tabpanel" aria-label="History" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch', padding: '14px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
+          {!events.length && loading && <ScreenLoader label="Loading your history" fill={false} />}
           {!events.length && !loading && <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5 }}>Nothing yet. From here on, what happens on your listings is recorded here.</p>}
           {groups.map((g) => (
             <div key={g.key} style={{ marginBottom: 'var(--s-3)' }}>

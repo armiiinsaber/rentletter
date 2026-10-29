@@ -190,7 +190,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                   <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                     aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                     style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                    {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}
+                    <Pending busy={busy === row.key} label={`Saving ${row.verb}`}>{on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}</Pending>
                   </button>
                   {row.key === 'landlord' && landlordEmail && !asking && (!refResp || refResp.status !== 'pending') ? (
                     <button type="button" onClick={() => setAsking(true)} style={{ ...btn(false), minWidth: 0 }}>Ask by email</button>
@@ -206,7 +206,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                   aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                   style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                  {on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}
+                  <Pending busy={busy === row.key} label={`Saving ${row.verb}`}>{on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}</Pending>
                 </button>
               ) : null}
               {row.partyChecks ? (

@@ -25,7 +25,7 @@ import { PROVINCE_OPTIONS, normalizeProvince } from '../../lib/provinces';
 import { BOARD_OPTIONS } from '../../lib/boardDetails';
 import LogoStudio from './LogoStudio';
 import { Crossfade, MotionStyles } from '../motion';
-import { Pending } from '../brand/Loader';
+import Loader, { Pending } from '../brand/Loader';
 
 const inputStyle = {
   width: '100%', padding: '12px 14px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)',
@@ -388,7 +388,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
             onEnsureProfileSaved={ensureDetailsSaved}
             onJumpToDetails={jumpToDetails}
           />
-          <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, margin: '10px 0 26px' }}>
+          <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, margin: '10px 0 26px', textWrap: 'balance' }}>
             Your brand colours save automatically, feed the AI generator, and tint the landlord report accent.
           </p>
         </div>
@@ -420,11 +420,13 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
 
       {/* ── FONT PAIRING ── */}
       <div style={{ marginBottom: 24 }}>
-        <label style={{ ...sectionLabel, marginBottom: 4 }}>Font pairing</label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 28, marginBottom: 4 }}>
+          <label style={{ ...sectionLabel, marginBottom: 0 }}>Font pairing</label>
+          {fontState === 'saving' ? <Loader label="Saving your fonts" /> : null}
+          {fontState === 'saved' ? <span role="status" style={{ fontSize: 11.5, color: C.inkMute, fontWeight: 600 }}>Saved.</span> : null}
+        </div>
         <p style={{ fontSize: 11.5, color: C.inkMute, lineHeight: 1.5, marginBottom: 12, textWrap: 'balance' }}>
           Pick a heading + body pairing. Every pairing here is embedded in your landlord reports, the heading sets your name, the body sets everything else. Script headings style your name only; report text stays in the clean body face.
-          {fontState === 'saving' && <span style={{ color: C.inkSoft, fontWeight: 600 }}> Saving.</span>}
-          {fontState === 'saved' && <span role="status" style={{ color: C.inkMute, fontWeight: 600 }}> Saved.</span>}
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--gap-card)', alignItems: 'stretch', gridAutoRows: '1fr' }}>
           {FONT_PAIRINGS.map((fp) => {

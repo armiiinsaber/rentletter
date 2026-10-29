@@ -10,7 +10,6 @@ import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import { C, R, SH, FONT } from '../theme';
 import { GlobalStyle, Wordmark, Icon } from '../ui';
-import AppStart from '../brand/AppStart';
 
 export const NAV = [
   { key: 'realtors', href: '/admin', label: 'Realtors' },
@@ -47,7 +46,6 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         <link rel="apple-touch-icon" href="/admin-icon-180.png" />
       </Head>
       <GlobalStyle />
-      <AppStart tone="ink" />
       <div className="ad-shell">
         <header className="ad-top">
           <div className="ad-top-row">

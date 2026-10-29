@@ -89,11 +89,11 @@ export function installEdgeBack({ allowed, open, commit, close }) {
 }
 
 // ── A picture of a screen as it was left ─────────────────────────────────────────────────────
-// Taken the moment a navigation leaves a real screen (never a skeleton): a copy of the page's
+// Taken the moment a navigation leaves a real screen (never one still waiting): a copy of the page's
 // elements, the styles in force then (a page's own styles leave with it), and where it was scrolled.
 export function captureScreen() {
   const root = typeof document === 'undefined' ? null : document.getElementById('__next');
-  if (!root || root.querySelector('[data-skeleton-route], [data-load-failed], [aria-busy="true"], [data-snapshot]')) return null;
+  if (!root || root.querySelector('[data-route-loading], [data-screen-loading], [data-load-failed], [aria-busy="true"], [data-snapshot]')) return null;
   const holder = document.createElement('div');
   for (const n of root.childNodes) holder.appendChild(n.cloneNode(true));
   for (const el of holder.querySelectorAll('[id]')) el.removeAttribute('id'); // the live page keeps its ids

@@ -139,7 +139,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
   const set = setStatus(done.map((f) => ({ documentType: f.documentType })), { creditFirst });
   const creditBusy = files.some((f) => f.expect === CREDIT_KIND && (f.status === 'queued' || f.status === 'analyzing'));
   const ready = done.length > 0 && !analyzing && !removing && failed.length === 0;
-  const analyzingLabel = analyzing ? `Analyzing document ${files.indexOf(analyzing) + 1} of ${files.length}…` : null;
+  const analyzingLabel = analyzing ? `Reading document ${files.indexOf(analyzing) + 1} of ${files.length}` : null;
 
   const runSubmit = async () => {
     if (!done.length || submitting) return;
@@ -234,7 +234,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           {setLine}
           <button type="button" onClick={() => { if (ready) { setError(''); setReviewing(true); } }} disabled={!ready} aria-live="polite"
             style={{ width: '100%', minHeight: 48, background: ready ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
-            {analyzingLabel || `Review ${done.length ? `${done.length} file${done.length === 1 ? '' : 's'}` : ''} & submit`}
+            <Pending busy={!!analyzingLabel} label={analyzingLabel || ''}>{`Review ${done.length ? `${done.length} file${done.length === 1 ? '' : 's'}` : ''} & submit`}</Pending>
           </button>
         </>
       ) : (
@@ -248,7 +248,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           {disclosure && <div style={{ marginBottom: 16 }}>{disclosure}</div>}
           {error && <div role="alert" style={{ marginBottom: 12, fontSize: 13, color: C.danger }}>{error}</div>}
           {submitting && (
-            <div style={{ marginBottom: 14, fontSize: 11.5, lineHeight: 1.5, color: C.inkMute, textWrap: 'pretty' }}>Sending to your realtor, please keep this page open.</div>
+            <div style={{ marginBottom: 14, fontSize: 11.5, lineHeight: 1.5, color: C.inkMute, textWrap: 'balance' }}>Keep this page open until your documents reach your realtor.</div>
           )}
           {setLine}
           <button type="button" onClick={runSubmit} disabled={submitting} aria-live="polite"

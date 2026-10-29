@@ -17,7 +17,7 @@ import DocumentUploader from '../../components/tenant/DocumentUploader';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { PARTY_STATUS, GUARANTOR_SENTENCE, PARTY_CONSENT_LINE, DECLINE_LINE, WITHDRAW_LINE, INCOME_KIND_LABEL, partyFormErrors, STATUS_LABEL } from '../../lib/parties';
 import { PARTY_ROLE, INCOME_KIND } from '../../lib/application-state';
-import Loader, { Pending } from '../../components/brand/Loader';
+import { Pending, ScreenLoader } from '../../components/brand/Loader';
 
 const STEPS = [{ id: 'you', title: 'About you' }, { id: 'work', title: 'Employment and income' }, { id: 'review', title: 'Review and consent' }];
 const EMPTY = { fullName: '', phone: '', address: '', employmentType: 'full-time', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '', incomeKind: INCOME_KIND.EMPLOYMENT };
@@ -110,7 +110,7 @@ export default function PartyPage() {
     </>
   );
 
-  if (phase === 'loading') return shell(<div className="rl-card mp-card" style={{ display: 'flex', justifyContent: 'center' }}><Loader label="Loading your form" /></div>);
+  if (phase === 'loading') return shell(<ScreenLoader label="Loading your form" />);
   if (phase === 'invalid') return shell(
     <div className="rl-card mp-card">
       <Eyebrow>Invite</Eyebrow>

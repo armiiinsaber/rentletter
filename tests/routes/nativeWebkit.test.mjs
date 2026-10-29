@@ -14,7 +14,8 @@
 //      first when something was typed. The confirm sheet, the set aside sheet and the Next panel
 //      are the same sheet.
 // On the real pages over the fake stack (tests/helpers/fakeNextServer.mjs, its own dev server):
-//   5. A tap on a listing shows its skeleton at once, the applicants start loading on the touch,
+//   5. A tap on a listing shows the destination at once (its Loader, or the listing itself when it
+//      lands within DOOR.loaderDelayMs), the applicants start loading on the touch,
 //      the page's own data comes without them, and the ownership check still redirects.
 //   6. A quick action that fails on the server goes back and says so.
 // A WebKit walk fails, never skips, when the binary is missing (tests/helpers/browsers.mjs).
@@ -254,10 +255,10 @@ async function realPages(browser, tag) {
   const box = await card.boundingBox();
   const t0 = Date.now();
   await page.touchscreen.tap(box.x + 30, box.y + 20);
-  await page.locator('[data-skeleton-route="listing"]').waitFor({ timeout: 3000 });
-  const skeletonAt = Date.now() - t0;
+  await page.locator('[data-route-loading="listing"], [data-screen-loading="Loading the listing"], [id^="applicant-"]').first().waitFor({ timeout: 3000 });
+  const shownAt = Date.now() - t0;
   await page.locator('[id^="applicant-"]').first().waitFor({ timeout: 20000 });
-  assert.ok(skeletonAt < 1000, `${tag}: the skeleton at ${skeletonAt}ms`);
+  assert.ok(shownAt < 1000, `${tag}: the destination at ${shownAt}ms`);
   assert.equal(await page.evaluate(() => window.__same), 'yes', `${tag}: no reload`);
   const firstApplicants = seen.findIndex((u) => /api\/listings\/applicants\?listingId=L1/.test(u)); const firstData = seen.findIndex((u) => /_next\/data/.test(u));
   assert.ok(firstApplicants > -1 && firstApplicants < firstData, `${tag}: the applicants started on the touch: ${seen.join(' , ')}`);

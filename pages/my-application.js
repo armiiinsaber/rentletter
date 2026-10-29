@@ -18,7 +18,7 @@ import { C } from '../components/theme';
 import { GlobalStyle, Wordmark, StatusPills } from '../components/ui';
 import { ProfileStyles, FactSections, Eyebrow, Lines, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
-import { Pending } from '../components/brand/Loader';
+import { Pending, ScreenLoader } from '../components/brand/Loader';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -159,7 +159,7 @@ export default function MyProfile() {
     </>
   );
 
-  if (phase === 'boot') return shell('My profile · Rentletter', null, <div className="rl-card mp-card"><p className="mp-p">Opening your profile</p></div>);
+  if (phase === 'boot') return shell('My profile · Rentletter', null, <ScreenLoader label="Opening your profile" />);
 
   // ── the entry page: one card, the email, the link; the legacy pair on a second card ──
   if (phase === 'entry' || phase === 'sent') {

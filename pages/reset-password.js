@@ -14,7 +14,7 @@ import { useRouter } from 'next/router';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
-import { Pending } from '../components/brand/Loader';
+import { Pending, ScreenLoader } from '../components/brand/Loader';
 
 // The link's parameters, wherever they ride: the query string or the fragment.
 export function linkParams(search, hash) {
@@ -118,7 +118,7 @@ export default function ResetPassword() {
         heading="Set a new password."
         footer={<a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
       >
-        <div style={authNoticeStyle} role="status">Opening your reset link.</div>
+        <ScreenLoader label="Opening your reset link" fill={false} />
       </AuthShell>
     );
   }

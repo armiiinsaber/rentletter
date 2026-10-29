@@ -1,10 +1,10 @@
-// Back at any speed, and no permanent skeleton: the parts below the browser walk
+// Back at any speed, and no permanent wait: the parts below the browser walk
 // (tests/routes/backWebkit.test.mjs).
 //   forgetData: a navigation that ends without arriving takes Next's copy of its data with it, and
 //   only that route's copy, so the next visit makes a live request.
 //   warm: a read started on the touch that failed or was cut off is never handed to a page.
-//   The frame draws a skeleton only for the navigation still in flight, writes the history entry
-//   with the tap, and watches every skeleton; the skeletons' way back is live.
+//   The frame draws its Loader (or a screen seen recently) only for the navigation still in flight,
+//   writes the history entry with the tap, and watches every Loader; the way back is live in it.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -53,11 +53,14 @@ test('a read started on the touch that failed is never handed to a page', async 
   } finally { globalThis.fetch = realFetch; }
 });
 
-test('the frame: a skeleton only for the navigation in flight, its data forgotten when it ends', () => {
+test('the frame: a Loader only for the navigation in flight, its data forgotten when it ends', () => {
   const f = src('components/nav/RouteFrame.js');
   assert.match(f, /const show = \(\) => \{\s*\n\s*if \(!active \|\| active\.id !== id\) return;/, 'a navigation that already ended never draws its skeleton afterwards');
   assert.match(f, /const failed = \(err, url\) => \{\s*\n\s*clearTimeout\(watch\); active = null;\s*\n\s*if \(url\) forgetData\(url\);/, 'a cancelled or failed navigation forgets its data');
-  assert.match(f, /const underneath = samePath\(url, at\.current\);/, 'back to the screen underneath: that screen, never its skeleton');
+  assert.match(f, /const underneath = samePath\(url, at\.current\);/, 'back to the screen underneath: that screen, never a Loader');
+  assert.match(f, /const brief = holds && !cached \? new Promise\(\(res\) => \{ landed = res; setTimeout\(res, DOOR\.loaderDelayMs\); \}\) : null;/, 'the Loader only after DOOR.loaderDelayMs');
+  assert.match(f, /const cached = holds && !again \? seenScreenView\(url\) : null;/, 'a screen seen recently, at once (never on a retry)');
+  assert.match(f, /if \(cached\) settleAhead\(\); else arm\(id, url, again \? again\.round : 1\);/, 'a seen screen on view keeps its history entry, so a back returns to it');
   assert.match(f, /if \(round === 1\) \{ retrying = \{ url, round: 2 \}; Router\.replace\(url, undefined, \{ scroll: false \}\); return; \}/, 'retried once by itself');
   assert.match(f, /setPending\(\(p\) => \(p \? \{ \.\.\.p, failed: true \} : p\)\);/, 'then the line and the pill');
   assert.match(f, /Router\.events\.on\('beforeHistoryChange', alignAhead\);/);
@@ -67,13 +70,13 @@ test('the frame: a skeleton only for the navigation in flight, its data forgotte
   assert.match(r, /Router\.router\.isFirstPopStateEvent = false;/, 'Next answers every back from then on');
 });
 
-test('every skeleton is watched, and its way back is live', () => {
-  const k = src('components/nav/RouteSkeleton.js');
-  assert.match(k, /export const SKELETON_WAIT = 4000;/);
-  assert.match(k, /<a \{\.\.\.linkProps\('\/dashboard', \{ back: true \}\)\}/, 'All listings and Dashboard work in a skeleton');
+test('every Loader is watched, and its way back is live', () => {
+  const k = src('components/nav/RouteLoader.js');
+  assert.match(k, /export const LOAD_WAIT = 4000;/);
+  assert.match(k, /<a \{\.\.\.linkProps\('\/dashboard', \{ back: true \}\)\}/, 'All listings and Dashboard work while the Loader shows');
   assert.match(k, /<p [^>]*>Couldn’t load this\.<\/p>/); assert.match(k, />Try again<\/button>/);
-  assert.match(src('components/dashboard/HomeView.js'), /useSkeletonWatch\(!ready && !listingsError, \(\) => setLoadRound\(\(n\) => n \+ 1\)\)/);
-  assert.match(src('components/dashboard/ListingView.js'), /useSkeletonWatch\(!applicantsLoaded, \(\) => setApplicantsRound\(\(n\) => n \+ 1\)\)/);
+  assert.match(src('components/dashboard/HomeView.js'), /useLoadWatch\(!ready && !listingsError, \(\) => setLoadRound\(\(n\) => n \+ 1\)\)/);
+  assert.match(src('components/dashboard/ListingView.js'), /useLoadWatch\(!applicantsLoaded, \(\) => setApplicantsRound\(\(n\) => n \+ 1\)\)/);
   const f = src('components/nav/RouteFrame.js');
   assert.match(f, /try \{ moving\.skipTransition\(\); \}/, 'a tap during a push or a back ends the transition');
   assert.match(f, /window\.addEventListener\('click', clicked, true\);/, 'and goes where it was aimed');

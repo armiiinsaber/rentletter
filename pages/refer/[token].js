@@ -9,7 +9,7 @@ import { useRouter } from 'next/router';
 import { C, R } from '../../components/theme';
 import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
 import { referralsEnabled } from '../../lib/features';
-import Loader, { Pending } from '../../components/brand/Loader';
+import { Pending, ScreenLoader } from '../../components/brand/Loader';
 
 const dateLong = (iso) => { try { return new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }); } catch (e) { return ''; } };
 
@@ -20,6 +20,7 @@ export default function ReferralConsent() {
   const [phase, setPhase] = useState('loading'); // loading | ready | gone | done | paused
   const [decision, setDecision] = useState(null); // 'approve' | 'decline'
   const [busy, setBusy] = useState(false);
+  const [deciding, setDeciding] = useState(null); // which of the two is on its way, for its door
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function ReferralConsent() {
 
   const decide = async (d) => {
     if (busy) return;
-    setBusy(true); setError('');
+    setBusy(true); setDeciding(d); setError('');
     try {
       const r = await fetch('/api/referrals/consent', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ t: token, decision: d }) });
       const j = await r.json().catch(() => ({}));
@@ -67,7 +68,7 @@ export default function ReferralConsent() {
           <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>Referral consent</span>
         </header>
         <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(28px, 5vw, 48px) clamp(16px, 4vw, 32px) 72px' }}>
-          {phase === 'loading' && <Loader label="Loading the referral" />}
+          {phase === 'loading' && <ScreenLoader label="Loading the referral" />}
 
           {phase === 'paused' && (
             <div className="rl-card" style={{ padding: 'clamp(22px, 5vw, 32px)' }}>
@@ -144,11 +145,11 @@ export default function ReferralConsent() {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                 <button data-destructive="" type="button" onClick={() => decide('decline')} disabled={busy} className="rl-btn"
                   style={{ background: C.paper, color: C.ink, border: `2px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
-                  Decline, don’t share
+                  <Pending busy={busy && deciding === 'decline'} label="Declining">Decline, don’t share</Pending>
                 </button>
                 <button type="button" onClick={() => decide('approve')} disabled={busy} className="rl-btn"
                   style={{ background: C.ink, color: C.paper, border: `2px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
-                  <Pending busy={busy} label="Sharing your application" tone="ink">{`Approve, share with ${data.to?.name?.split(' ')[0] || 'them'}`}</Pending>
+                  <Pending busy={busy && deciding === 'approve'} label="Sharing your application" tone="ink">{`Approve, share with ${data.to?.name?.split(' ')[0] || 'them'}`}</Pending>
                 </button>
               </div>
               <p style={{ marginTop: 14, fontSize: 12, color: C.inkMute, lineHeight: 1.5, textAlign: 'center' }}>This link works once{data.expiresAt ? ` and expires ${dateLong(data.expiresAt)}` : ''}.</p>

@@ -4,6 +4,7 @@
 // sandbox mounts too. Reachable from the header's identity circle.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import ProfileView from '../components/dashboard/ProfileView';
+import { registerScreenView } from '../components/nav/routes';
 
 export async function getServerSideProps(ctx) {
   if (!isSupabaseConfigured()) {
@@ -15,5 +16,8 @@ export async function getServerSideProps(ctx) {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single();
   return { props: { initialProfile: profile || { id: user.id, email: user.email } } };
 }
+
+// The view a return to this screen draws at once (components/nav/routes.js).
+registerScreenView('profile', ProfileView);
 
 export default function ProfilePage(props) { return <ProfileView {...props} />; }

@@ -1,9 +1,10 @@
 // components/nav/routes.js  CLIENT.
 // Realtor navigation without a freeze. Every realtor link goes through the Next router (go), so
-// the app never reloads between the dashboard, a listing and the profile; the destination shows at
-// once (components/nav/RouteFrame.js draws it from what is already known, skeletons for the rest),
-// and the data starts loading on the touch that begins the tap (prefetch), so it is usually in hand
-// by the time the page opens. The session, entitlement and ownership checks stay on the server,
+// the app never reloads between the dashboard, a listing and the profile; a screen seen recently
+// shows at once from what it showed (rememberScreenView), any other after its data arrives, behind
+// the door Loader when that takes longer than a moment (components/nav/RouteFrame.js), and the
+// data starts loading on the touch that begins the tap (prefetch), so it is usually in hand by the
+// time the page opens. The session, entitlement and ownership checks stay on the server,
 // in getServerSideProps and in each API route; nothing here decides who may see what.
 import Router from 'next/router';
 
@@ -43,6 +44,26 @@ export const seenListing = (id) => (id == null ? null : seen.listings.get(String
 export const seenSignals = () => (seen.signals && Date.now() - seen.signalsAt < 300000 ? seen.signals : null);
 export const seenApplicants = (id) => (id == null ? null : seen.applicants.get(String(id)) || null);
 
+// ── The screens seen this session, as they were drawn ─────────────────────────────────────────
+// Each realtor page registers the view that draws it (pages/dashboard.js, pages/listing/[id].js,
+// pages/profile.js: registerScreenView), and each screen records the props that draw it as it is
+// now (rememberScreenView). Going back to one within SCREEN_FRESH_MS draws it at once from these
+// while the server confirms the session and sends the page; the page then takes over and
+// refreshes in the background. Nothing here grants anything: the page that follows comes through
+// the same server checks, and a redirect (a session that ended) replaces the screen.
+const SCREEN_FRESH_MS = 300000;
+const viewOf = new Map(); // route kind -> the component that draws it
+const views = new Map(); // route path -> { kind, props, at }
+export const registerScreenView = (kind, View) => { if (View) viewOf.set(kind, View); };
+export function rememberScreenView(url, props) {
+  const r = routeOf(url); if (!r || r.kind === 'demo') return;
+  views.set(r.path, { kind: r.kind, props, at: Date.now() });
+}
+export function seenScreenView(url) {
+  const r = routeOf(url); const v = r && views.get(r.path); const View = v && viewOf.get(v.kind);
+  return v && View && Date.now() - v.at < SCREEN_FRESH_MS ? { View, props: v.props } : null;
+}
+
 // ── Data started on the touch: one request per URL, kept 20 seconds for the page to take. ──────
 // A read that failed or was cut off is dropped the moment it settles, so nothing takes it later:
 // the page then makes a live request of its own.
@@ -77,6 +98,15 @@ export function prefetch(href) {
   try { Router.prefetch(r.path); } catch (e) { /* prefetch is a hint */ }
   if (r.kind === 'listing' && r.listingId) warm(applicantsUrl(r.listingId));
   if (r.kind === 'dashboard') warm(SIGNALS_URL);
+}
+
+// When the browser is idle: the code (never the data) of the screens one tap away, so the first
+// visit to each does not wait on its code. Next fetches a server rendered page's data only on the
+// visit itself, through the same checks as always.
+export function prefetchCode(hrefs) {
+  if (typeof window === 'undefined') return;
+  const run = () => { for (const href of hrefs) { const r = routeOf(href); if (r && r.kind !== 'demo') { try { Router.prefetch(r.path); } catch (e) { /* prefetch is a hint */ } } } };
+  if (typeof window.requestIdleCallback === 'function') window.requestIdleCallback(run, { timeout: 2000 }); else setTimeout(run, 200);
 }
 
 // The direction of the next navigation, set by go() and read by the frame.

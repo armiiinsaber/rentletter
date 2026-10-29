@@ -5,9 +5,9 @@
 //      back control ("All listings") and by browser history back. The dashboard's real content is
 //      on screen within 3 seconds every time, BACK_REPS times each (20 by default), all in one page
 //      without a reload, so what one round leaves behind meets the next.
-//   2. A skeleton is never permanent: the dashboard's page data request, the dashboard's own data
+//   2. A Loader is never permanent: the dashboard's page data request, the dashboard's own data
 //      and a listing's applicants each fail twice (the request never answers). The load is retried
-//      once by itself after 4 seconds, then the skeleton gives way to "Couldn’t load this." and a
+//      once by itself after 4 seconds, then the Loader gives way to "Couldn’t load this." and a
 //      Try again pill, which loads the data again (the same page, no reload) and the content shows.
 // The data requests wait 600ms each, as on a phone. A WebKit walk fails, never skips, when the
 // binary is missing (tests/helpers/browsers.mjs).
@@ -63,14 +63,14 @@ const slowNetwork = (ctx, stall = () => false) => ctx.route(/\/_next\/data\/|\/a
 });
 const STATE = () => ({
   path: location.pathname,
-  routeSkeleton: document.querySelector('[data-skeleton-route]')?.getAttribute('data-skeleton-route') || null,
-  homeSkeleton: !!document.querySelector('[aria-label="Loading your workspace"]'),
+  routeLoading: document.querySelector('[data-route-loading]')?.getAttribute('data-route-loading') || null,
+  homeLoading: !!document.querySelector('[data-screen-loading="Loading your workspace"]'),
   cards: document.querySelectorAll('.dash-card-int').length,
   failed: !!document.querySelector('[data-load-failed]'),
-  applicantSkeleton: !!document.querySelector('[data-skeleton="applicants"]'),
+  listingLoading: !!document.querySelector('[data-screen-loading="Loading the listing"]'),
   applicants: document.querySelectorAll('[id^="applicant-"]').length,
 });
-const dashboardReal = (s) => !!s && s.path === '/dashboard' && !s.routeSkeleton && !s.homeSkeleton && !s.failed && s.cards > 0;
+const dashboardReal = (s) => !!s && s.path === '/dashboard' && !s.routeLoading && !s.homeLoading && !s.failed && s.cards > 0;
 async function waitFor(page, ok, ms) {
   const t0 = Date.now(); let s = null;
   while (Date.now() - t0 < ms) { s = await page.evaluate(STATE).catch(() => null); if (ok(s)) return { ok: true, ms: Date.now() - t0, s }; await page.waitForTimeout(40); }
@@ -97,7 +97,7 @@ async function backAtAnySpeed(browser, tag) {
         await tapBox(page, card);
         await page.waitForTimeout(ms);
         if (how === 'app') {
-          // Whatever shows "All listings" now: the skeleton's or the page's.
+          // Whatever shows "All listings" now: the Loader's or the page's.
           const box = await page.getByText('All listings', { exact: true }).first().boundingBox({ timeout: 2000 }).catch(() => null);
           if (box) await tapBox(page, box);
         } else {
@@ -114,7 +114,7 @@ async function backAtAnySpeed(browser, tag) {
   return rounds;
 }
 
-// ── 2. A skeleton is never permanent ─────────────────────────────────────────────────────────
+// ── 2. A Loader is never permanent ───────────────────────────────────────────────────────────
 // From the moment the starting page has loaded, the first two requests matching `re` never answer;
 // the third goes through. (The starting page's own reads, the header's included, are left alone.)
 async function failTwice(browser, tag, { name, re, from, go, real }) {
@@ -133,7 +133,7 @@ async function failTwice(browser, tag, { name, re, from, go, real }) {
   assert.equal(seen - before, 2, `${tag} ${name}: the load ran twice, the retry by itself`);
   const failed = page.locator('[data-load-failed]');
   assert.match(await failed.innerText(), /Couldn’t load this\.\s*Try again/);
-  assert.equal(await page.locator('[data-skeleton-route], [aria-busy="true"]').count(), 0, `${tag} ${name}: the line replaces the skeleton`);
+  assert.equal(await page.locator('[data-route-loading], [data-screen-loading], [aria-busy="true"]').count(), 0, `${tag} ${name}: the line replaces the Loader`);
   const same = await page.evaluate(() => { window.__sameDocument = 'yes'; return true; });
   assert.ok(same);
   await tapBox(page, await failed.getByRole('button', { name: 'Try again' }).boundingBox());
@@ -145,7 +145,7 @@ async function failTwice(browser, tag, { name, re, from, go, real }) {
   await ctx.close();
 }
 const toDashboard = async (page) => tapBox(page, await page.getByText('All listings', { exact: true }).first().boundingBox());
-const applicantsReal = (s) => !!s && s.path === '/listing/L2' && !s.routeSkeleton && !s.applicantSkeleton && !s.failed && s.applicants > 0;
+const applicantsReal = (s) => !!s && s.path === '/listing/L2' && !s.routeLoading && !s.listingLoading && !s.failed && s.applicants > 0;
 async function neverPermanent(browser, tag) {
   // The dashboard's page data request (the route).
   await failTwice(browser, tag, { name: 'dashboard page data', re: /\/_next\/data\/[^/]+\/dashboard\.json/, from: '/listing/L1', go: toDashboard, real: dashboardReal });
@@ -168,7 +168,7 @@ async function walk(browserType, launch, tag) {
   } finally { await browser.close(); }
 }
 
-test('back at any speed, and no permanent skeleton, in WebKit at 390', { timeout: 3600000 }, async (t) => {
+test('back at any speed, and no permanent Loader, in WebKit at 390', { timeout: 3600000 }, async (t) => {
   requireWebkit(); // fails with the install line when the binary is missing, never skips
   t.diagnostic(`${await walk(pw.webkit, {}, 'wk')} backs`);
 });

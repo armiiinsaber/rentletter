@@ -2,13 +2,15 @@
 // Realtor sign in (email + password) via Supabase Auth. Replaces the old custom
 // magic-link sign-in UI. On success, the session is stored in cookies and the
 // realtor is sent to the dashboard.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { getSupabaseBrowserClient } from '../lib/supabase/client';
 import { isValidEmail } from '../lib/validation';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
 import { Pending } from '../components/brand/Loader';
+import { holdOpening } from '../components/brand/AppStart';
+import { prefetchCode } from '../components/nav/routes';
 
 export default function SignIn() {
   const router = useRouter();
@@ -18,6 +20,8 @@ export default function SignIn() {
   const [error, setError] = useState(typeof router.query.error === 'string' ? router.query.error : '');
   const [loading, setLoading] = useState(false);
 
+  // The dashboard's code, while the realtor types (never its data, which comes through the checks).
+  useEffect(() => { prefetchCode(['/dashboard']); }, []);
   const emailValid = isValidEmail(email);
   const canSubmit = emailValid && password.length > 0 && !loading;
 
@@ -45,6 +49,9 @@ export default function SignIn() {
       }
       const next = typeof router.query.next === 'string' && router.query.next.startsWith('/')
         ? router.query.next : '/dashboard';
+      // The opening screen carries the button's door on until the next screen is ready
+      // (components/brand/AppStart.js holdOpening): one door from the tap to the finished screen.
+      holdOpening();
       router.replace(next);
     } catch (err) {
       setError('Something went wrong. Please try again.');
