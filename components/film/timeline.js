@@ -64,7 +64,7 @@ function introCamera(t, track, from = INTRO.from) {
 // protection comes from zoom: the laptop screen's text (≈ 582 world wide) at z 1.2 spans
 // 15–85% of the width, so it clears the right-hand control column while the bezel is free to
 // sit in the margin; the phone at z 2.5 spans 21–79% × 22–78%; the end card frames laptop +
-// wordmark + tagline as one centred group (laptop at ~44% height, the words right beneath,
+// wordmark as one centred group (laptop at ~44% height, the wordmark right beneath,
 // group bottom ≈ 70%). Visible world = (1000/z) × (1778/z). Same shot times as CAM.
 const STORY = {
   x: [[0, 500], [3, 500], [6.6, 500], [7.6, 866], [11, 866], [12.2, 500], [39, 500], [41, 500]],
@@ -104,7 +104,6 @@ export function overlays(t) {
   return {
     wordmarkIntro: Math.min(P(t, 2.3, 2.6), 1 - P(t, 2.6, 3.4)),   // subtle, bottom-left; in only once the pull-back has cleared the list (by 2.3 s that corner is off the screen); identical to before from 2.6 s on
     endWordmark: P(t, 39.6, 40.8),
-    endTagline: P(t, 40.6, 41.8),
   };
 }
 

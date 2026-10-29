@@ -14,8 +14,9 @@ import HomeDoor from '../components/brand/HomeDoor';
 // Short declarative lines about what the product does. Nothing here says who the reader is. Every
 // sentence below is one the product backs today; the claims list, with the file that makes each
 // one true, is in the commit.
-const HERO_HEADLINE = ['Handled by AI.', 'Approved by you.'];
-const META_DESCRIPTION = 'Rentletter reads every rental application and document, ranks applicants against your listing, and leaves the decision to you. Ontario and BC.';
+const HERO_HEADLINE = ['The rental application,', 'rebuilt for realtors.'];
+const META_TITLE = 'Rentletter: the rental application, rebuilt for realtors';
+const META_DESCRIPTION = 'Tenants apply from one link and Rentletter reads every document before you open it, ranked against your listing. For realtors in Ontario and BC.';
 const OG_IMAGE = 'https://rentletter.ca/brand/kit/Rentletter-Brand-Kit/social/rentletter-og-1200x630.png'; // the brand kit's (scripts/brand/kit.mjs)
 const DEMO_MAIL = `mailto:info@rentletter.ca?subject=${encodeURIComponent('Rentletter demo request')}&body=${encodeURIComponent('Hi Rentletter team,\n\nI would like to book a 15 minute demo of Rentletter.\n\nMy brokerage: \nMy preferred time: \n\nThanks!')}`;
 const BLOCKS = [
@@ -357,11 +358,11 @@ export default function Home() {
     return (
       <>
         <Head>
-          <title>Rentletter: handled by AI, approved by you.</title>
+          <title>{META_TITLE}</title>
           <meta name="description" content={META_DESCRIPTION} />
           <meta property="og:type" content="website" />
           <meta property="og:site_name" content="Rentletter" />
-          <meta property="og:title" content="Handled by AI. Approved by you." />
+          <meta property="og:title" content={META_TITLE} />
           <meta property="og:description" content={META_DESCRIPTION} />
           <meta property="og:image" content={OG_IMAGE} />
           <meta property="og:image:width" content="1200" />
@@ -391,7 +392,7 @@ export default function Home() {
             </div>
           </ScrollHeader>
 
-          {/* ── HERO: handled by AI, approved by you. ─────────────────────────────── */}
+          {/* ── HERO: the rental application, rebuilt for realtors. ──────────────── */}
           <section style={{ padding: 'clamp(44px, 7vw, 96px) clamp(20px, 4vw, 32px) clamp(48px, 7vw, 80px)', maxWidth: 1200, margin: '0 auto' }}>
             <div style={{
               display: 'grid',
@@ -415,11 +416,10 @@ export default function Home() {
                   color: C.ink,
                   marginBottom: 20,
                 }}>
-                  {HERO_HEADLINE.map((line, i) => <span key={line} style={{ display: 'block', color: i === HERO_HEADLINE.length - 1 ? C.red : C.ink }}>{noWidow(line)}</span>)}
+                  {HERO_HEADLINE.map((line, i) => <span key={line} style={{ display: 'block', whiteSpace: 'nowrap', color: i === HERO_HEADLINE.length - 1 ? C.red : C.ink }}>{line}</span>)}
                 </h1>
-                <p style={{ fontSize: 'clamp(17px, 1.8vw, 20px)', lineHeight: 1.45, color: C.inkSoft, margin: '0 0 var(--gap-line)', maxWidth: 520, textWrap: 'pretty' }}>
-                  <span className="lp-sentence">{noWidow('Every rental application, read and ranked.')}</span>{' '}
-                  <span className="lp-sentence">{noWidow('The decision stays yours.')}</span>
+                <p style={{ fontSize: 'clamp(17px, 1.8vw, 20px)', lineHeight: 1.45, color: C.inkSoft, margin: '0 0 var(--gap-line)', maxWidth: 520, textWrap: 'balance' }}>
+                  <span className="lp-sentence">{noWidow('Tenants apply from one link and every document is read before you open it.')}</span>
                 </p>
                 <p style={{ fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)', color: C.inkMute, margin: '0 0 30px' }}>
                   {noWidow('Free to join. Pay only when a rental lands.')}
@@ -654,14 +654,16 @@ export default function Home() {
            canvas pass and read as a strip between the bezel and the mockup's gutter. The phone
            keeps the screen it has. */
         @media (min-width: ${DEVICE_BREAKPOINT}px) { .lp-laptop .df-screen, .lp-laptop .df-content { background: ${C.paperDeep}; } }
-        /* Each headline line holds on one line: the longer ("Approved by you.") runs 7.8 times the type
-           size, so at 11% of the text column it fills 86% of it (the hero switches to two columns by
-           width, not at a breakpoint). */
+        /* Each headline line holds on one line. Fraunces sets wider at small sizes: the longer line
+           ("The rental application,") runs 10.3 times the type size at 26px and 10 times at 50px, so
+           at 9.2% of the text column it fills at most 95% of it at every width (the hero switches to
+           two columns by width, not at a breakpoint). Without container units the size is 8% of the
+           viewport, at most 40px, which still fits a 420px column. */
         .lp-hero-text { container-type: inline-size; }
         /* From 700px each sentence of the subline keeps to its own line when both do not fit on one. */
         @media (min-width: 700px) { .lp-sentence { display: inline-block; } }
-        .lp-h1 { font-size: clamp(34px, 9.4vw, 60px); }
-        @supports (font-size: 1cqi) { .lp-h1 { font-size: clamp(34px, 11cqi, 64px); } }
+        .lp-h1 { font-size: clamp(24px, 8vw, 40px); }
+        @supports (font-size: 1cqi) { .lp-h1 { font-size: clamp(24px, 9.2cqi, 64px); } }
         /* The four blocks: one column at 390, two from 700px, four from 1100px; one gap. */
         .lp-blocks { display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(28px, 4vw, 40px); }
         @media (min-width: 700px) { .lp-blocks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
