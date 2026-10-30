@@ -9,6 +9,11 @@
 //      and a listing's applicants each fail twice (the request never answers). The load is retried
 //      once by itself after 4 seconds, then the Loader gives way to "Couldn’t load this." and a
 //      Try again pill, which loads the data again (the same page, no reload) and the content shows.
+//   3. The page taking over a seen screen keeps it: the walk's own call never finds the first card
+//      missing while the dashboard's page lands, no card is drawn again, and the dashboard and a
+//      listing then show what the server sent.
+//   4. A view transition ended before it animates (a tap while a screen is on its way) is never a
+//      page error.
 // The data requests wait 600ms each, as on a phone. A WebKit walk fails, never skips, when the
 // binary is missing (tests/helpers/browsers.mjs).
 import { test, before, after } from 'node:test';
@@ -16,6 +21,7 @@ import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
 import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
+import { reap } from '../helpers/reap.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const PORT = 3157; const BASE = process.env.BACK_BASE || `http://localhost:${PORT}`;
@@ -36,7 +42,7 @@ before(async () => {
   for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
   // Its own production build, in its own folder (next.config.js distDir): never the walks' .next.
   await run(process.execPath, [`${ROOT}node_modules/next/dist/bin/next`, 'build'], { NEXT_DIST_DIR: `.next-fake-${PORT}`, FAKE_STACK_BUILD: '1' });
-  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '3'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true });
+  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '3'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
   await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('the fake stack server did not start')), 180000); fake.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } }); });
   for (const u of ['/dashboard', '/listing/L1', '/profile']) await fetch(`${BASE}${u}`).catch(() => null);
 }, { timeout: START_TIMEOUT + 600000 });
@@ -159,11 +165,122 @@ async function neverPermanent(browser, tag) {
   });
 }
 
+// ── 3. The page taking over a seen screen keeps it ───────────────────────────────────────────
+// A return to a screen seen recently draws it at once from what it showed, and when its page lands
+// the page takes over that same screen (components/nav/RouteFrame.js): nothing on it is drawn
+// again, so a card found or touched in that moment is still there, and what the server sent
+// replaces what the screen showed. Part 1's rounds 48 to 50 once found no card: the history back
+// after 1000ms leaves a seen dashboard, the in app back after 50ms returns to it, and its page lands
+// about 600ms later. Here the walk's own call looks for the first card throughout that landing.
+const listingReal = (s) => !!s && s.path.startsWith('/listing/') && !s.routeLoading && !s.listingLoading && !s.failed && s.applicants > 0;
+async function takeOver(browser, tag) {
+  const { ctx, page, errors } = await phone(browser);
+  // The phone's network (600ms), and from `change` on the reads behind the screens answer with no
+  // applicants, so a screen that takes the server's answers shows it.
+  let change = false;
+  await ctx.route(/\/_next\/data\/|\/api\/assistant\/signals|\/api\/listings\/applicants/, async (r) => {
+    let resp = null; try { resp = await r.fetch(); } catch (e) { return r.abort().catch(() => {}); }
+    let body = await resp.body().catch(() => Buffer.alloc(0));
+    if (change && /\/api\//.test(r.request().url())) {
+      const j = JSON.parse(body.toString() || '{}');
+      if (j.signals && j.signals.applicantsByListing) for (const k of Object.keys(j.signals.applicantsByListing)) j.signals.applicantsByListing[k] = [];
+      if (Array.isArray(j.applicants)) j.applicants = [];
+      body = Buffer.from(JSON.stringify(j));
+    }
+    await new Promise((res) => setTimeout(res, NETWORK_MS));
+    await r.fulfill({ response: resp, body }).catch(() => {});
+  });
+  // Every card taken off the page, counted.
+  await ctx.addInitScript(() => { window.__gone = 0; new MutationObserver((ms) => { for (const m of ms) for (const n of m.removedNodes) if (n.nodeType === 1 && (n.matches?.('.dash-card-int') || n.querySelector?.('.dash-card-int'))) window.__gone++; }).observe(document, { childList: true, subtree: true }); });
+  const landed = []; page.on('response', (r) => { if (/\/_next\/data\/[^/]+\/dashboard\.json/.test(r.url())) landed.push(Date.now()); });
+  const card = () => page.locator('.dash-card-int').first();
+  const tapOn = async (loc) => tapBox(page, await loc.boundingBox({ timeout: 5000 }));
+  const gone = () => page.evaluate(() => window.__gone);
+  await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  await tapOn(card()); assert.ok((await waitFor(page, listingReal, 5000)).ok, `${tag}: the listing`);
+  await tapOn(page.getByText('All listings', { exact: true }).first()); assert.ok((await waitFor(page, dashboardReal, 5000)).ok, `${tag}: the dashboard`);
+  await page.waitForTimeout(1500);
+  for (let i = 0; i < 3; i++) {
+    await tapOn(card()); await page.waitForTimeout(1000); await page.evaluate(() => history.back());
+    await page.waitForTimeout(60);
+    await tapOn(card()); await page.waitForTimeout(50); await tapOn(page.getByText('All listings', { exact: true }).first());
+    const from = Date.now(); const was = await gone(); let none = 0; let calls = 0;
+    while (Date.now() - from < 1500) { calls++; if (!(await card().boundingBox({ timeout: 5000 }).catch(() => null))) none++; }
+    assert.ok(landed.some((t) => t > from && t < Date.now()), `${tag}: the dashboard's page landed while the card was looked for (try ${i + 1})`);
+    assert.equal(none, 0, `${tag}: ${none} of ${calls} looks found no card while the page took over (try ${i + 1})`);
+    assert.equal(await gone() - was, 0, `${tag}: no card was drawn again when the page took over (try ${i + 1})`);
+    assert.ok((await waitFor(page, dashboardReal, 3000)).ok);
+    await page.waitForTimeout(1500);
+  }
+  // The dashboard takes the server's signals: its first card's status says what the read said. From
+  // a full load, so the read on the return is a new one (a touch's read serves 20 seconds).
+  await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  assert.ok((await waitFor(page, dashboardReal, 5000)).ok);
+  const status = () => card().locator('[aria-label="Listing status"]').innerText().catch(() => '');
+  const before = await status();
+  const listingData = page.waitForResponse(/\/_next\/data\/[^/]+\/listing\//);
+  await tapOn(card()); await listingData; assert.ok((await waitFor(page, listingReal, 5000)).ok);
+  change = true;
+  await tapOn(page.getByText('All listings', { exact: true }).first());
+  await page.waitForTimeout(150);
+  assert.equal(await status(), before, `${tag}: the seen dashboard at once, as it was`);
+  const was = await gone();
+  await page.waitForFunction(() => /no applicants/.test(document.querySelector('#__next .dash-card-int [aria-label="Listing status"]')?.innerText || ''), null, { timeout: 5000 });
+  assert.equal(await gone() - was, 0, `${tag}: the dashboard took the server's answers without drawing a card again`);
+  // A listing takes the server's applicants: seen from a full load (no read started yet), then a tap.
+  change = false;
+  await page.goto('/listing/L2', { waitUntil: 'networkidle' });
+  assert.ok((await waitFor(page, listingReal, 5000)).ok);
+  await tapOn(page.getByText('All listings', { exact: true }).first()); assert.ok((await waitFor(page, dashboardReal, 8000)).ok);
+  change = true;
+  await tapOn(page.locator('.dash-card-int').filter({ hasText: '88 Harbour' }).first());
+  await page.waitForTimeout(150);
+  assert.ok(await page.locator('#__next [id^="applicant-"]').count() > 0, `${tag}: the seen listing at once, with its applicants`);
+  await page.evaluate(() => { document.querySelector('#__next h1').__seen = true; });
+  await page.waitForFunction(() => document.querySelectorAll('#__next [id^="applicant-"]').length === 0, null, { timeout: 5000 });
+  assert.equal(await page.evaluate(() => document.querySelector('#__next h1')?.__seen === true), true, `${tag}: the listing took the server's applicants on the same screen`);
+  assert.deepEqual(errors, []);
+  await ctx.close();
+}
+
+// ── 4. A view transition skipped before it animates is no page error ─────────────────────────
+// A tap while a screen is on its way ends the transition (components/nav/RouteFrame.js). Before it
+// animates, ending it rejects the transition's ready promise, which the frame handles, every time:
+// here each transition is ended the moment it starts, and then, as a finger does, by a second tap
+// 20ms after the tap on a card, while the push still waits for its page.
+async function skippedTransitions(browser, tag) {
+  const { ctx, page, errors } = await phone(browser);
+  await slowNetwork(ctx);
+  await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  if (!(await page.evaluate(() => typeof document.startViewTransition === 'function'))) { await ctx.close(); return; }
+  await page.evaluate(() => { window.__ended = 0; const start = document.startViewTransition.bind(document); document.startViewTransition = (cb) => { const vt = start(cb); vt.skipTransition(); window.__ended++; return vt; }; });
+  for (let i = 0; i < 3; i++) {
+    await tapBox(page, await page.locator('.dash-card-int').first().boundingBox({ timeout: 5000 }));
+    assert.ok((await waitFor(page, listingReal, 5000)).ok, `${tag}: the listing, its transition ended at once`);
+    await tapBox(page, await page.getByText('All listings', { exact: true }).first().boundingBox({ timeout: 5000 }));
+    assert.ok((await waitFor(page, dashboardReal, 5000)).ok, `${tag}: the dashboard, its transition ended at once`);
+  }
+  assert.ok(await page.evaluate(() => window.__ended) >= 6, `${tag}: every transition was ended as it started`);
+  // The seen dashboard counts as real before its page lands: let that land before leaving the page.
+  await page.waitForTimeout(1500);
+  for (let i = 0; i < 5; i++) {
+    await page.goto('/dashboard', { waitUntil: 'networkidle' });
+    await tapBox(page, await page.locator('.dash-card-int').first().boundingBox({ timeout: 5000 }));
+    await page.waitForTimeout(20);
+    await page.touchscreen.tap(195, 800);
+    await page.waitForTimeout(1500);
+  }
+  assert.deepEqual(errors, [], `${tag}: a view transition ended before it animated is no page error`);
+  await ctx.close();
+}
+
 async function walk(browserType, launch, tag) {
   const browser = await browserType.launch(launch);
   try {
     const rounds = await backAtAnySpeed(browser, tag);
     await neverPermanent(browser, tag);
+    await takeOver(browser, tag);
+    await skippedTransitions(browser, tag);
     return rounds;
   } finally { await browser.close(); }
 }

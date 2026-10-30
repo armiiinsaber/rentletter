@@ -18,6 +18,7 @@ import { spawn, execSync } from 'node:child_process';
 import { mkdirSync, openSync, closeSync, writeFileSync, unlinkSync, readdirSync, existsSync, rmSync, readFileSync, statSync } from 'node:fs';
 import { relative } from 'node:path';
 import { beforeEach, afterEach } from 'node:test';
+import { reap } from './reap.mjs';
 
 export const PORT = 3123;
 export const BASE = `http://localhost:${PORT}`;
@@ -100,7 +101,7 @@ export function devServer(probeUrl) {
       if (await up()) return;
       try { closeSync(openSync(LOCK, 'wx')); owner = true; } catch (e) { owner = false; }
       if (owner) {
-        child = spawn('npx', ['next', 'dev', '-p', String(PORT)], { cwd: new URL('../..', import.meta.url).pathname, stdio: 'ignore', detached: true });
+        child = spawn('npx', ['next', 'dev', '-p', String(PORT)], { cwd: new URL('../..', import.meta.url).pathname, stdio: 'ignore', detached: true }); reap(child, 'the dev server');
         onStuck(() => { try { process.kill(-child.pid); } catch (e) { /* gone */ } for (const pid of listeners()) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } try { unlinkSync(LOCK); } catch (e) { /* gone */ } });
       }
       onStuck(() => { try { unlinkSync(me); } catch (e) { /* gone */ } });

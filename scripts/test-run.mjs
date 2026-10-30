@@ -2,6 +2,7 @@
 // group of its own. Past the ceiling (20 minutes; TEST_CEILING_MS overrides) the whole run is killed,
 // the test files still running are named, the walks' servers and the walk turn are cleared
 // (tests/helpers/devServer.mjs), and the run fails. A run that ends in time exits with its own code.
+// However the run ends, every server one of its walks started and that is still up is taken down.
 // TEST_RUN_CLEAR=none leaves the walks' servers and turn alone (a test of this script, inside a run).
 // --no-walks leaves out the browser walks (tests/routes/*Webkit.test.mjs): npm test is the unit and
 // route tests; the walks run as npm run test:webkit and npm run test:chrome, each under its own ceiling.
@@ -11,6 +12,7 @@ import { spawn, execSync } from 'node:child_process';
 import { rmSync, globSync } from 'node:fs';
 import { relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { reapRun } from '../tests/helpers/reap.mjs';
 
 export const CEILING = Number(process.env.TEST_CEILING_MS || 20 * 60 * 1000);
 // The ports the walks' servers listen on (devServer, adminServer, the fake stack servers).
@@ -37,8 +39,12 @@ let args = process.argv.slice(2);
 if (args.includes('--no-walks')) {
   args = args.filter((a) => a !== '--no-walks').flatMap((a) => (a.startsWith('-') ? [a] : (a.includes('*') ? globSync(a) : [a]).filter((f) => !isWalk(f)).sort()));
 }
-const child = spawn(process.execPath, ['--test', ...args], { stdio: 'inherit', detached: true, env: { ...process.env, TEST_CEILING_MS: String(CEILING) } });
-const end = (code) => { try { process.kill(-child.pid, 'SIGKILL'); } catch (e) { /* gone */ } if (process.env.TEST_RUN_CLEAR !== 'none') clear(); process.exit(code); };
+// Every server a walk of this run starts is written down under the run's name (tests/helpers/reap.mjs),
+// and whatever is still written there when the run ends, however it ends, is taken down: a walk
+// killed outright never runs its own after hook. Another run's servers are never touched.
+const RUN = `run-${process.pid}`;
+const child = spawn(process.execPath, ['--test', ...args], { stdio: 'inherit', detached: true, env: { ...process.env, TEST_CEILING_MS: String(CEILING), RENTLETTER_RUN: RUN } });
+const end = (code) => { try { process.kill(-child.pid, 'SIGKILL'); } catch (e) { /* gone */ } reapRun(RUN); if (process.env.TEST_RUN_CLEAR !== 'none') clear(); process.exit(code); };
 const span = CEILING >= 60000 ? `${Math.round(CEILING / 60000)} minute` : `${Math.round(CEILING / 1000)} second`;
 const timer = setTimeout(() => {
   const files = filesUnder(child.pid);
@@ -46,4 +52,4 @@ const timer = setTimeout(() => {
   end(1);
 }, CEILING);
 for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => { clearTimeout(timer); end(130); });
-child.on('exit', (code, signal) => { clearTimeout(timer); process.exit(code ?? (signal ? 1 : 0)); });
+child.on('exit', (code, signal) => { clearTimeout(timer); reapRun(RUN); process.exit(code ?? (signal ? 1 : 0)); });

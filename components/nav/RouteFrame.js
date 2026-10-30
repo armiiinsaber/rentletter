@@ -2,7 +2,8 @@
 // Wraps every page (pages/_app.js). On a realtor screen, a tap on a link to another realtor screen
 // (components/nav/routes.js go) never shows a half drawn screen (components/nav/RouteLoader.js):
 //   a screen seen recently (routes.js seenScreenView) shows at once as it was, while the server
-//   confirms the session and the ownership and sends the page, which then takes over;
+//   confirms the session and the ownership and sends the page, which then takes over the same
+//   screen: it is drawn as that page, in the page's place, so nothing on it is drawn again;
 //   any other shows when its page lands if that is within DOOR.loaderDelayMs (lib/motion.js) of
 //   the tap, and otherwise the door Loader holds its place, with the header and the way back
 //   live, until the page lands. The page then shows itself in one step once its own data is in
@@ -49,6 +50,11 @@ import { isStandalone } from '../../lib/standalone';
 // Tenant and landlord pages: no press feedback, no motion.
 export const QUIET = /^\/(apply|upload|my-application|keep|ref|refer|a|r)(\/|$)/;
 const samePath = (a, b) => { const x = routeOf(a); const y = routeOf(b); return !!x && !!y && x.path === y.path; };
+// Every view transition goes through here. Its ready promise rejects when it is skipped before it
+// animates (a tap during it, or the next navigation's transition), and its finished promise when
+// its update fails: neither is an error of the page, so both are handled, and `after` runs once it
+// is over. A failure inside the update itself still surfaces, through updateCallbackDone.
+const settled = (vt, after) => { vt.ready.catch(() => {}); vt.finished.catch(() => {}).finally(after); };
 
 export default function RouteFrame({ children }) {
   const { pathname } = useRouter();
@@ -122,7 +128,7 @@ export default function RouteFrame({ children }) {
         const ready = holds || underneath ? null : new Promise((res) => { landed = res; setTimeout(res, 600); });
         const vt = document.startViewTransition(async () => { if (brief) await brief; show(); if (ready) await ready; });
         moving = vt;
-        vt.finished.catch(() => {}).finally(() => { if (moving === vt) moving = null; delete html.dataset.nav; });
+        settled(vt, () => { if (moving === vt) moving = null; delete html.dataset.nav; });
       } else if (brief) {
         later = dir;
         brief.then(() => { if (!active || active.id !== id) return; later = null; show(); slideIn(document.getElementById('__next'), dir); });
@@ -200,7 +206,7 @@ export default function RouteFrame({ children }) {
       if (reduced && typeof document.startViewTransition === 'function') {
         html.dataset.nav = 'fade';
         const vt = document.startViewTransition(swap); moving = vt;
-        vt.finished.catch(() => {}).finally(() => { if (moving === vt) moving = null; delete html.dataset.nav; });
+        settled(vt, () => { if (moving === vt) moving = null; delete html.dataset.nav; });
       } else {
         swap();
         if (reduced) slideIn(page(), 'back');
@@ -240,7 +246,11 @@ export default function RouteFrame({ children }) {
       clearTimeout(watch); clearTimeout(clearing); uninstallEdge();
     };
   }, []);
-  const view = pending ? <RouteLoader route={pending} onRetry={() => retryRoute.current(pending.url)} /> : children;
+  // A screen seen recently is its page itself (components/nav/routes.js registerScreenView), drawn in
+  // the page's place from what it showed: when the page lands React keeps every node on screen, so
+  // a tap in that moment lands on what it was aimed at, and the page only hands the screen its props.
+  const seen = pending && pending.cached && !pending.shot && !pending.failed ? pending.cached : null;
+  const view = seen ? <seen.View {...seen.props} /> : pending ? <RouteLoader route={pending} onRetry={() => retryRoute.current(pending.url)} /> : children;
   // The opening screen, on every page but the tenant and landlord ones: ink in the admin app.
   // The screen beneath an edge swipe: fixed under the page, never interactive. Its slide and dim are
   // set by the gesture as the finger moves (EdgeBack.js), never here. The tree keeps one shape, so

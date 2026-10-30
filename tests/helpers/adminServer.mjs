@@ -9,6 +9,7 @@ import { spawn, execSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fakeKvStore } from './fakeStack.mjs';
 import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep } from './devServer.mjs';
+import { reap } from './reap.mjs';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
@@ -32,7 +33,7 @@ export function adminServer(port) {
       await new Promise((r) => kv.listen(0, '127.0.0.1', r));
       for (const pid of listeners(port)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
       const env = { ...process.env, NEXT_DIST_DIR: `.next-walk-${port}`, ADMIN_PASSWORD: password, KV_REST_API_URL: `http://127.0.0.1:${kv.address().port}`, KV_REST_API_TOKEN: 'walk', KV_REST_API_READ_ONLY_TOKEN: 'walk' };
-      child = spawn('npx', ['next', 'dev', '-p', String(port)], { cwd: new URL('../..', import.meta.url).pathname, env, stdio: 'ignore', detached: true });
+      child = spawn('npx', ['next', 'dev', '-p', String(port)], { cwd: new URL('../..', import.meta.url).pathname, env, stdio: 'ignore', detached: true }); reap(child, 'the dev server');
       // Stuck past the walk limit (devServer.mjs): the server and the store go with the file.
       onStuck(() => { try { process.kill(-child.pid); } catch (e) { /* gone */ } for (const pid of listeners(port)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } try { kv.close(); } catch (e) { /* gone */ } });
       const t0 = Date.now();

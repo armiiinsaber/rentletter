@@ -19,7 +19,7 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
-import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode } from '../nav/routes';
+import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
 import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
 import { Reveal } from '../brand/Loader';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -160,6 +160,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // earlier this session show at once and the fetch below refreshes them.
   const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : (seenSignals() || { applicantsByListing: {}, people: [], notifications: [], referralsInbox: [], referralsSent: [], loaded: false })));
   useEffect(() => { rememberSignals(signals); }, [signals]);
+  // The page taking over this screen as it was seen (components/nav/RouteFrame.js keeps the screen):
+  // what the server just sent replaces what it showed. New listings also run the signals read below
+  // again, which refreshes them when the page came without them (a tap inside the app).
+  useTakeOver([initialProfile, initialListings, initialSignals], () => {
+    if (initialProfile) setProfile(initialProfile);
+    if (Array.isArray(initialListings)) { setListingsError(null); setListings(initialListings); }
+    if (initialSignals && initialSignals.loaded) setSignals(initialSignals);
+  });
   useEffect(() => {
     if (signals.loaded && initialSignals) return undefined; // came with the page
     let cancelled = false;

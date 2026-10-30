@@ -77,7 +77,8 @@ export async function getServerSideProps(ctx) {
   return { props: { initialProfile: profile || { id: user.id, email: user.email }, initialListing: JSON.parse(JSON.stringify(listing)), initialApplicants } };
 }
 
-// The view a return to this screen draws at once (components/nav/routes.js).
-registerScreenView('listing', ListingView);
-
 export default function ListingPage(props) { return <ListingView {...props} />; }
+
+// A return to this screen draws this page at once, in its own place, from what it showed
+// (components/nav/routes.js): when the page lands it takes over the same screen, nothing drawn again.
+registerScreenView('listing', ListingPage);

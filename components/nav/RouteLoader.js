@@ -1,9 +1,9 @@
 // components/nav/RouteLoader.js
 // What a realtor screen shows between the tap and its page (components/nav/RouteFrame.js), never a
 // half drawn screen:
-//   a screen seen recently: that screen itself, at once, drawn from what it showed
-//   (components/nav/routes.js seenScreenView), while the server confirms the session and sends
-//   the page, which then takes over and refreshes it in the background;
+//   a screen seen recently: not here, the frame draws that page itself, at once, from what it
+//   showed (components/nav/routes.js seenScreenView), while the server confirms the session and
+//   sends the page, which then takes over the same screen and refreshes it in the background;
 //   any other: the header and the way back where the screen has them, and below them the door
 //   Loader in the middle of the paper (components/brand/Loader.js ScreenLoader), the bottom safe
 //   area kept, so nothing moves when the screen appears;
@@ -84,8 +84,6 @@ const titleOf = (route) => {
 export default function RouteLoader({ route, onRetry }) {
   // An edge swipe's picture of the screen, until the screen itself arrives (components/nav/RouteFrame.js).
   if (route.shot && !route.failed) return <Snapshot shot={route.shot} />;
-  // A screen seen recently: itself, at once.
-  if (route.cached && !route.failed) { const { View, props } = route.cached; return <View {...props} />; }
   const f = FRAMES[route.kind] || FRAMES.page;
   return (
     <Page label={route.failed ? 'failed' : route.kind} waiting={!route.failed} maxWidth={f.maxWidth} padding={f.padding}>

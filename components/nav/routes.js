@@ -6,6 +6,7 @@
 // data starts loading on the touch that begins the tap (prefetch), so it is usually in hand by the
 // time the page opens. The session, entitlement and ownership checks stay on the server,
 // in getServerSideProps and in each API route; nothing here decides who may see what.
+import { useEffect, useRef } from 'react';
 import Router from 'next/router';
 
 // The realtor routes, the live app and the sandbox, with how deep each sits (a push goes deeper,
@@ -45,16 +46,29 @@ export const seenSignals = () => (seen.signals && Date.now() - seen.signalsAt < 
 export const seenApplicants = (id) => (id == null ? null : seen.applicants.get(String(id)) || null);
 
 // ── The screens seen this session, as they were drawn ─────────────────────────────────────────
-// Each realtor page registers the view that draws it (pages/dashboard.js, pages/listing/[id].js,
-// pages/profile.js: registerScreenView), and each screen records the props that draw it as it is
-// now (rememberScreenView). Going back to one within SCREEN_FRESH_MS draws it at once from these
-// while the server confirms the session and sends the page; the page then takes over and
-// refreshes in the background. Nothing here grants anything: the page that follows comes through
-// the same server checks, and a redirect (a session that ended) replaces the screen.
+// Each realtor page registers itself (pages/dashboard.js, pages/listing/[id].js, pages/profile.js:
+// registerScreenView), and each screen records the props that draw it as it is now
+// (rememberScreenView). Going back to one within SCREEN_FRESH_MS draws that page at once from these
+// (components/nav/RouteFrame.js), in the place the page itself takes, while the server confirms the
+// session and sends the page; the page then takes over the same screen, which keeps every node and
+// adopts the page's props (useTakeOver), and refreshes in the background. Nothing here
+// grants anything: the page that follows comes through the same server checks, and a redirect (a
+// session that ended) replaces the screen.
 const SCREEN_FRESH_MS = 300000;
-const viewOf = new Map(); // route kind -> the component that draws it
+const viewOf = new Map(); // route kind -> the page that draws it
 const views = new Map(); // route path -> { kind, props, at }
 export const registerScreenView = (kind, View) => { if (View) viewOf.set(kind, View); };
+// The page taking over its seen screen hands the same view new props, where it used to be drawn
+// again from them. `adopt` runs after any draw in which one of `sent` differs from the draw
+// before, never on the first: there the view takes what the server sent, as a fresh draw would.
+export function useTakeOver(sent, adopt) {
+  const last = useRef(sent);
+  useEffect(() => {
+    const was = last.current; last.current = sent;
+    if (was.length === sent.length && was.every((v, i) => v === sent[i])) return;
+    adopt();
+  });
+}
 export function rememberScreenView(url, props) {
   const r = routeOf(url); if (!r || r.kind === 'demo') return;
   views.set(r.path, { kind: r.kind, props, at: Date.now() });

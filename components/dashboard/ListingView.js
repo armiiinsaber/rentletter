@@ -10,7 +10,7 @@ import { isStandalone } from '../../lib/standalone';
 import { C, R, SH } from '../../components/theme';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import Sheet from '../Sheet';
-import { go, linkProps, takeWarm, forgetWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants, rememberScreenView, prefetchCode } from '../nav/routes';
+import { go, linkProps, takeWarm, forgetWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
 import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
 import { Reveal } from '../brand/Loader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
@@ -92,6 +92,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [applicantsLoaded, setApplicantsLoaded] = useState(() => initialApplicants != null || seenApplicants(initialListing?.id) != null);
   // Each retry (the load watch below) is a new round: a live request, never the one that did not land.
   const [applicantsRound, setApplicantsRound] = useState(0);
+  // The page taking over this screen as it was seen (components/nav/RouteFrame.js keeps the screen):
+  // what the server just sent replaces what it showed, and when the page came without applicants
+  // (a tap inside the app) they are read again behind, as a fresh draw would (`sent` below).
+  const [sent, setSent] = useState(0);
+  useTakeOver([initialProfile, initialListing, initialApplicants], () => {
+    if (initialProfile) setProfile(initialProfile);
+    if (initialListing) setListing(initialListing);
+    if (initialApplicants) { setApplicants(initialApplicants); setApplicantsLoaded(true); } else setSent((n) => n + 1);
+  });
   useEffect(() => {
     if (initialApplicants != null || !initialListing?.id) return undefined;
     let cancelled = false;
@@ -110,7 +119,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applicantsRound]);
+  }, [applicantsRound, sent]);
   // Never an endless wait: applicants that have not landed are asked for once more after 4 seconds,
   // then the line and the pill take the Loader's place (components/nav/RouteLoader.js).
   const applicantsWatch = useLoadWatch(!applicantsLoaded, () => setApplicantsRound((n) => n + 1));

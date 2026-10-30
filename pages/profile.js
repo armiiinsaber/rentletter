@@ -17,7 +17,8 @@ export async function getServerSideProps(ctx) {
   return { props: { initialProfile: profile || { id: user.id, email: user.email } } };
 }
 
-// The view a return to this screen draws at once (components/nav/routes.js).
-registerScreenView('profile', ProfileView);
-
 export default function ProfilePage(props) { return <ProfileView {...props} />; }
+
+// A return to this screen draws this page at once, in its own place, from what it showed
+// (components/nav/routes.js): when the page lands it takes over the same screen, nothing drawn again.
+registerScreenView('profile', ProfilePage);

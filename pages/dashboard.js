@@ -92,7 +92,8 @@ export async function getServerSideProps(ctx) {
   };
 }
 
-// The view a return to this screen draws at once (components/nav/routes.js).
-registerScreenView('dashboard', HomeView);
-
 export default function LandlordPage(props) { return <HomeView {...props} />; }
+
+// A return to this screen draws this page at once, in its own place, from what it showed
+// (components/nav/routes.js): when the page lands it takes over the same screen, nothing drawn again.
+registerScreenView('dashboard', LandlordPage);

@@ -7,7 +7,7 @@ import { useRouter } from 'next/router';
 import Head from 'next/head';
 import { GlobalStyle, Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
-import { linkProps, rememberProfile, rememberScreenView } from '../nav/routes';
+import { linkProps, rememberProfile, rememberScreenView, useTakeOver } from '../nav/routes';
 import { C, R } from '../theme';
 import DashboardHeader from './DashboardHeader';
 import ProfileEditorBody from './ProfileEditorBody';
@@ -15,6 +15,9 @@ import ProfileEditorBody from './ProfileEditorBody';
 export default function ProfileView({ initialProfile }) {
   const [profile, setProfile] = useState(initialProfile);
   useEffect(() => { rememberProfile(profile); }, [profile]);
+  // The page taking over this screen as it was seen (components/nav/RouteFrame.js keeps the screen):
+  // the profile the server just sent replaces the one it showed.
+  useTakeOver([initialProfile], () => { if (initialProfile) setProfile(initialProfile); });
   const router = useRouter();
   const adapter = useAdapter();
   // This screen as it stands, for a return to it within the session (components/nav/routes.js).

@@ -13,6 +13,7 @@ import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
 import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
+import { reap } from '../helpers/reap.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -27,7 +28,7 @@ const down = () => {
   }
 };
 const start = (s) => new Promise((res, rej) => {
-  s.proc = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(s.port), 'dev', '3'], { cwd: ROOT, env: { ...process.env, BILLING_OFF: s.value, FAKE_PROFILE: 'lapsed' }, stdio: ['ignore', 'pipe', 'ignore'], detached: true });
+  s.proc = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(s.port), 'dev', '3'], { cwd: ROOT, env: { ...process.env, BILLING_OFF: s.value, FAKE_PROFILE: 'lapsed' }, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(s.proc, 'the fake stack server');
   const t = setTimeout(() => rej(new Error(`the fake stack server on ${s.port} did not start`)), 180000);
   s.proc.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } });
   s.proc.on('exit', (code) => { clearTimeout(t); rej(new Error(`the fake stack server on ${s.port} exited ${code}`)); });
