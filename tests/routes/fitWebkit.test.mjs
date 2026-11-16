@@ -11,7 +11,9 @@
 //   5. The listing page's wrapped text at 390 and at 320 (tests/helpers/textLines.mjs): the set aside
 //      note, the post kit texts (the link whole on its own line, the words around it balanced), the
 //      Fit pillars and the checklist note; no line of one word, none short beside its block's longest.
-// Screenshots at 390 to /tmp/fitv2/, the wrapped text at 390 and 320 too. A WebKit walk fails, never skips, when the binary is missing.
+//      Every post kit link is measured again with the widest code, WWWWWWW, whole inside its block.
+// Screenshots at 390 to /tmp/fitv2/; the wrapped text at 390 and 320 in both engines too
+// (typeset-<region>-<width>-<engine>.png), and the post kit with the widest code. A WebKit walk fails, never skips, when the binary is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
@@ -66,8 +68,11 @@ async function openCard(page, link) {
 
 // The four wrapped texts of /listing/L1 with an applicant card and the post kit open, at 390 and at
 // 320: a, the set aside note; b, each block of the post kit texts (the words before the link, the
-// link, the words after it); c, every line of the Fit pillars; d, the checklist note under its eyebrow. Both widths are measured (WebKit saves each region to
-// /tmp/fitv2/typeset-<a|b|c|d>-<width>.png) before anything is asserted.
+// link, the words after it); c, every line of the Fit pillars; d, the checklist note under its
+// eyebrow. Then every post kit link with the widest code the alphabet allows (lib/applicationIds.js),
+// WWWWWWW, set in and measured, and the drawn code put back. Both widths are measured, each region
+// saved to /tmp/fitv2/typeset-<a|b|c|d>-<width>-<engine>.png, and each widest link width printed,
+// before anything is asserted.
 const REGIONS = {
   a: (page) => page.locator('p', { hasText: 'Set aside for the screenable reasons' }),
   b: (page) => page.locator('#listing-post-kit [data-kit-text] > *'),
@@ -86,23 +91,33 @@ async function regionShot(page, loc, path) {
   await page.screenshot({ path, clip: { x: 0, y: top, width, height: Math.min(box.height + 24, TALL - top) } });
   await page.setViewportSize({ width, height: 844 }); await page.waitForTimeout(250);
 }
+const ENGINE = { wk: 'webkit', cr: 'chrome' };
+const WIDEST = 'WWWWWWW';
 async function typesetAt(page, tag) {
   const seen = [];
   for (const width of [390, 320]) {
     await page.setViewportSize({ width, height: 844 }); await page.waitForTimeout(400);
     const blocks = {};
     for (const [k, loc] of Object.entries(REGIONS)) blocks[k] = await readLines(loc(page));
-    seen.push({ width, blocks });
-    if (tag === 'wk') for (const k of Object.keys(AROUND)) await regionShot(page, AROUND[k](page).first(), `/tmp/fitv2/typeset-${k}-${width}.png`);
+    for (const k of Object.keys(AROUND)) await regionShot(page, AROUND[k](page).first(), `/tmp/fitv2/typeset-${k}-${width}-${ENGINE[tag]}.png`);
+    const links = page.locator('#listing-post-kit [data-kit-link]');
+    const drawn = await links.evaluateAll((els, code) => els.map((el) => { const t = el.textContent; el.textContent = t.replace(/\/a\/\w+/, `/a/${code}`); return t; }), WIDEST);
+    const widest = await readLines(links);
+    await regionShot(page, AROUND.b(page).first(), `/tmp/fitv2/typeset-b-${WIDEST}-${width}-${ENGINE[tag]}.png`);
+    await links.evaluateAll((els, texts) => els.forEach((el, i) => { el.textContent = texts[i]; }), drawn);
+    console.log(`  ${tag} at ${width}: ${WIDEST} links ${widest.map((x) => { const w = x.lines[0] ? x.lines[0].right - x.lines[0].left : 0; return `${w.toFixed(1)}px in ${(x.box.right - x.box.left).toFixed(1)}px, ${(x.box.right - (x.lines[0] ? x.lines[0].right : x.box.left)).toFixed(1)}px to spare`; }).join('; ')}`);
+    seen.push({ width, blocks, widest });
   }
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
-  for (const { width, blocks } of seen) {
+  for (const { width, blocks, widest } of seen) {
     const at = `${tag}: at ${width}`;
     assert.equal(blocks.a.length, 1, `${at}: the set aside note`);
     assert.equal(blocks.b.filter((x) => x.data.kitLink !== undefined).length, 4, `${at}: four post kit texts, each with its link`);
     assert.ok(blocks.c.length >= 6, `${at}: an open card's three pillars`); assert.ok(blocks.d.length >= 1, `${at}: an open card's checklist note`);
     assert.ok(blocks.b.filter((x) => x.data.kitLink !== undefined).every((x) => /^https:\/\/rentletter\.ca\/a\/\w+\.?$/.test(x.text)), `${at}: each link block is the short link alone`);
     for (const [k, list] of Object.entries(blocks)) list.forEach((x, i) => assertBalanced(x, `${at}: ${k}${list.length > 1 ? ` ${i + 1}` : ''}`, { link: x.data.kitLink !== undefined }));
+    assert.equal(widest.length, 4, `${at}: four links measured with ${WIDEST}`);
+    widest.forEach((x, i) => { assert.match(x.text, new RegExp(`^https://rentletter\\.ca/a/${WIDEST}\\.?$`), `${at}: link ${i + 1} carries ${WIDEST}`); assertBalanced(x, `${at}: link ${i + 1} with ${WIDEST}`, { link: true }); });
   }
 }
 

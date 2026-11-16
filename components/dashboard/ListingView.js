@@ -71,9 +71,10 @@ const Row = ({ label, value }) => (
 const yn = (b) => (b ? 'Yes' : 'No');
 // A post kit text as shown: the link on a line of its own, never broken inside itself, and the words
 // before and after it each a balanced block, so no word is left alone beside the link at any width.
-// Display only; the copy stays plain.
+// Below 345px wide the link line takes the 14px body size (lv-kit-link, below), so the widest code
+// the alphabet allows still fits. Display only; the copy stays plain.
 const kitDisplay = (text) => String(text).split(/(https?:\/\/\S+)/).filter((part) => part.trim()).map((part, i) => (/^https?:\/\//.test(part)
-  ? <span key={i} data-kit-link="" style={{ display: 'block', whiteSpace: 'nowrap' }}>{part}</span>
+  ? <span key={i} className="lv-kit-link" data-kit-link="" style={{ display: 'block', whiteSpace: 'nowrap' }}>{part}</span>
   : <span key={i} style={{ display: 'block', textWrap: 'balance' }}>{part.trim()}</span>));
 
 function initialsOf(name) {
@@ -1632,6 +1633,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           :global(.lv-pillar-value) { margin-top: 0; text-align: right; }
           :global(.lv-pillar > :nth-child(n + 3)) { grid-column: 1 / -1; }
         }
+        @media (max-width: 344.98px) { :global(.lv-kit-link) { font-size: var(--t-body-2); } }
       `}</style>
     </>
   );
