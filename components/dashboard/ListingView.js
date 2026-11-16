@@ -1309,12 +1309,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <Row label="Employer verification req." value={yn(l.pref_requires_employer_verification)} />
                   <Row label="Credit report asked" value={yn(l.pref_ask_credit_report)} />
                   <Row label="Guarantor accepted" value={yn(l.pref_guarantor_accepted !== false)} />
-                  {/* BOARD DETAILS (lib/boardDetails.js): the entered values, the province's deposits alone. */}
+                  {/* BOARD DETAILS: the rows lib/boardDetails.js returns, as returned (the entered
+                      values, Heat, Hydro and Water always, the province's deposits alone). */}
                   <div data-board-rows="" style={{ marginTop: 'var(--s-4)' }}>
                     <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Board details</div>
-                    {boardRows(l, profile?.province).length
-                      ? boardRows(l, profile?.province).map(([label, value]) => <Row key={label} label={label} value={value} />)
-                      : <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>Not entered. Edit listing adds them.</div>}
+                    {boardRows(l, profile?.province).map(([label, value]) => <Row key={label} label={label} value={value} />)}
                   </div>
                   {l.pref_notes && (
                     <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>

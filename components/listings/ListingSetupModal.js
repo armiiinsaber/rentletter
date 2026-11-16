@@ -310,7 +310,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
                     <option value="">Not entered</option><option value="yes">Yes</option><option value="no">No</option>
                   </select></label>
               </div>
-              {/* Three states each: an untouched utility stays not set and reads Not entered in Form data. */}
+              {/* Three states each: an untouched utility stays not set and reads Not entered on the listing page and in Form data. */}
               <div style={{ ...sectionLabel, marginTop: 14, marginBottom: 6 }}>Utilities</div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                 {[['utilities_heat', 'Heat'], ['utilities_hydro', 'Hydro'], ['utilities_water', 'Water']].map(([k, label]) => (

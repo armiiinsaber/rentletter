@@ -58,11 +58,36 @@ test('a listing with no utilities set produces no utility lines in Copy all, and
   assert.equal(groupText(mixed.groups.find((g) => g.key === 'utilities')), 'Utilities and inclusions\nHeat: Included\nHydro: Not included\nFurnished: No');
   // The normalizer keeps the three states: yes, no and nothing.
   assert.deepEqual(B.normalizeBoardDetails({ utilities_heat: 'yes', utilities_hydro: 'no', utilities_water: '', furnished: 'yes' }, {}).values, { utilities_heat: true, utilities_hydro: false, utilities_water: null, furnished: true });
-  assert.deepEqual(B.boardRows({ utilities_heat: true, utilities_hydro: false }, 'ON'), [['Utilities', 'Heat included, Hydro not included']]);
-  assert.deepEqual(B.boardRows({ utilities_heat: null }, 'ON'), []);
+  assert.deepEqual(B.boardRows({ utilities_heat: true, utilities_hydro: false }, 'ON'), [['Heat', 'Included'], ['Hydro', 'Not included'], ['Water', 'Not entered']]);
+  assert.deepEqual(B.boardRows({ utilities_heat: null }, 'ON'), [['Heat', 'Not entered'], ['Hydro', 'Not entered'], ['Water', 'Not entered']]);
   const sql = src('db/012-board-details.sql');
   for (const c of ['utilities_heat', 'utilities_hydro', 'utilities_water', 'furnished']) assert.match(sql, new RegExp(`ADD COLUMN IF NOT EXISTS ${c} boolean;`), `${c} is a nullable boolean with no default`);
   assert.doesNotMatch(src('components/listings/ListingSetupModal.js'), /<Check k="utilities_/, 'the sheet offers three states, not a checkbox');
+});
+
+test('the listing page shows Heat, Hydro and Water always, each Included, Not included or Not entered, and null is never Not included', () => {
+  // All three null.
+  assert.deepEqual(B.boardRows({ utilities_heat: null, utilities_hydro: null, utilities_water: null }, 'ON'), [['Heat', 'Not entered'], ['Hydro', 'Not entered'], ['Water', 'Not entered']]);
+  // Heat true, Hydro null, Water false.
+  assert.deepEqual(B.boardRows({ utilities_heat: true, utilities_hydro: null, utilities_water: false }, 'ON'), [['Heat', 'Included'], ['Hydro', 'Not entered'], ['Water', 'Not included']]);
+  // All three set.
+  assert.deepEqual(B.boardRows({ utilities_heat: true, utilities_hydro: false, utilities_water: true }, 'ON'), [['Heat', 'Included'], ['Hydro', 'Not included'], ['Water', 'Included']]);
+  // Only true and false are set: a row from before db/012 (no column) reads Not entered too.
+  for (const v of [null, undefined, '', 'yes', 0]) assert.equal(B.utilityValue(v), 'Not entered', `${JSON.stringify(v)} is not entered`);
+  // The Form data view reads the same words for the same listing: its null shows NOT_ENTERED.
+  const listing = { utilities_heat: true, utilities_hydro: null, utilities_water: false };
+  const formWords = buildFormData({ listing, profile: {}, application: {}, parties: [] }).groups.find((g) => g.key === 'utilities').items.slice(0, 3).map((it) => [it.label, it.value == null ? B.NOT_ENTERED : it.value]);
+  assert.deepEqual(formWords, B.boardRows(listing, 'ON'));
+  // One text, one place: lib/boardDetails.js holds it, the Form data sheet imports it, the listing
+  // page renders the rows as returned and carries no copy of its own.
+  assert.equal(B.NOT_ENTERED, 'Not entered');
+  assert.equal((src('lib/boardDetails.js').match(/'Not entered'/g) || []).length, 1);
+  const sheet = src('components/dashboard/FormDataSheet.js');
+  assert.match(sheet, /import \{ NOT_ENTERED \} from '\.\.\/\.\.\/lib\/boardDetails';/);
+  assert.doesNotMatch(sheet, /'Not entered'|const NOT_ENTERED/);
+  const view = src('components/dashboard/ListingView.js');
+  assert.match(view, /\{boardRows\(l, profile\?\.province\)\.map\(\(\[label, value\]\) => <Row key=\{label\} label=\{label\} value=\{value\} \/>\)\}/);
+  assert.doesNotMatch(view, /Not entered/);
 });
 
 test('the province picks the deposits: Ontario last month and key, British Columbia security and pet at most half a month, and the write refuses more', () => {
@@ -84,8 +109,8 @@ test('the province picks the deposits: Ontario last month and key, British Colum
   const v = B.normalizeBoardDetails({ mls_number: '  C1 ', possession_date: 'December 1', lease_term_months: '12', utilities_heat: 'yes', utilities_hydro: false, furnished: 'no', parking_spaces: '-1', locker: '' }, { province: 'ON', monthlyRent: 2600 }).values;
   assert.deepEqual(v, { mls_number: 'C1', possession_date: null, lease_term_months: 12, utilities_heat: true, utilities_hydro: false, furnished: false, parking_spaces: null, locker: null });
   assert.equal(B.normalizeBoardDetails({ furnished: '' }, {}).values.furnished, null);
-  assert.deepEqual(B.boardRows(LISTING, 'ON').map(([k]) => k), ['MLS number', 'Listing brokerage', 'Cooperating brokerage', 'Commission', 'Possession', 'Lease term', 'Utilities', 'Parking spaces', 'Locker', 'Furnished', 'Last month’s rent deposit', 'Key deposit']);
-  assert.deepEqual(B.boardRows({}, 'ON'), []);
+  assert.deepEqual(B.boardRows(LISTING, 'ON').map(([k]) => k), ['MLS number', 'Listing brokerage', 'Cooperating brokerage', 'Commission', 'Possession', 'Lease term', 'Heat', 'Hydro', 'Water', 'Parking spaces', 'Locker', 'Furnished', 'Last month’s rent deposit', 'Key deposit']);
+  assert.deepEqual(B.boardRows({}, 'ON'), [['Heat', 'Not entered'], ['Hydro', 'Not entered'], ['Water', 'Not entered']], 'an untouched listing: the three utilities alone, each Not entered');
   assert.equal(B.longDate('2026-12-01'), 'December 1, 2026'); assert.equal(B.longDate(null), null);
 });
 

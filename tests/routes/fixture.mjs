@@ -43,6 +43,8 @@ export function tables({ plan = 'founding', profileOver = {} } = {}) {
     income_sources: [],
     report_snapshots: [],
     reference_responses: [{ id: 'RR1', listing_applicant_id: 'J1', profile_id: USER.id, token: 'r'.repeat(32), status: 'answered', answers: { stillRent: 'no', paidOnTime: 'always', damage: 'none', complaints: 'no', rentAgain: 'yes' }, sent_to: 'a.owner@example.com', sent_at: ago(4), answered_at: ago(3), created_at: ago(4) }],
-    pipeline_consents: [{ id: 'PC1', profile_id: USER.id, listing_id: 'L2', application_id: 'A6', email: 'a6@example.com', status: 'consented', consented_at: ago(9), expires_at: new Date(NOW + 51 * DAY).toISOString(), invites: [] }],
+    // The Pipeline reads a consent's expiry against the real clock (lib/dashboardSignals.js passes
+    // no now to peopleRows), so it runs 30 days past the moment the test runs, never past NOW.
+    pipeline_consents: [{ id: 'PC1', profile_id: USER.id, listing_id: 'L2', application_id: 'A6', email: 'a6@example.com', status: 'consented', consented_at: ago(9), expires_at: new Date(Date.now() + 30 * DAY).toISOString(), invites: [] }],
   };
 }

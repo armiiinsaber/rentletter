@@ -12,8 +12,8 @@ import { useAdapter } from '../../lib/dashboardAdapter';
 import { formDataText, groupText } from '../../lib/formData';
 import { noWidow } from '../../lib/typeset';
 import Loader from '../brand/Loader';
+import { NOT_ENTERED } from '../../lib/boardDetails'; // the one text an unset value reads, the listing page's too
 
-export const NOT_ENTERED = 'Not entered';
 const copyBtn = (on) => ({ minHeight: 44, minWidth: 84, padding: '0 var(--gap-card)', background: 'transparent', color: on ? C.ink : C.inkMute, border: `1.5px solid ${on ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: on ? 'pointer' : 'default', fontFamily: 'inherit', flexShrink: 0 });
 
 // The clipboard, with the one fallback every browser still has.

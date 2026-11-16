@@ -2,13 +2,15 @@
 // Chrome, at 390 by 844 with an iPhone user agent, on the real pages over the fake stack in a
 // production build (tests/helpers/fakeNextServer.mjs on 3167):
 //   1. New listing: Board details is a collapsed section; opened and filled, the listing is created
-//      and its Details fold shows the board rows.
+//      and its Details fold shows the board rows. Heat, Hydro and Water always show, each Included,
+//      Not included or Not entered, as entered, edited to three states and untouched, each lined up
+//      as label and value on one line at 390 and at 320.
 //   2. The profile holds the brokerage address and the board.
 //   3. On a listing nobody holds, Form data is absent. The tenant accepted through Mark rented,
 //      with a co applicant and a guarantor on the application, Form data is present; Copy all
 //      writes the expected text; the guarantor's income appears nowhere; one event is recorded.
 //   4. Another realtor's listing answers 403.
-// Screenshots at 390 to /tmp/mls/. A WebKit walk fails, never skips, when the binary is missing.
+// Screenshots at 390 to /tmp/mls/, the utilities at 390 and 320 too. A WebKit walk fails, never skips, when the binary is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
@@ -54,6 +56,36 @@ async function phone(browser) {
   return { ctx, page, errors };
 }
 const shot = (page, name) => page.screenshot({ path: `/tmp/mls/${name}.png` });
+// The three utility rows of the listing page's Details fold at 390 and at 320: the exact words; each
+// label and its value on one line, side by side; the labels on one left edge and the values on one
+// right edge inside the screen; no value wrapping, so no word is left alone on a line. WebKit saves
+// each width to /tmp/mls/utilities-<state>-<width>.png.
+async function utilitiesAt(page, tag, state, want) {
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 }); await page.waitForTimeout(300);
+    await page.locator('[data-board-rows]').evaluate((el) => { const heat = [...el.children].find((r) => r.children[0] && r.children[0].textContent === 'Heat'); (heat || el).scrollIntoView({ block: 'center', behavior: 'instant' }); });
+    await page.waitForTimeout(200);
+    const rows = await page.locator('[data-board-rows]').evaluate((box) => {
+      const lines = (el) => { const r = document.createRange(); r.selectNodeContents(el); return [...r.getClientRects()].filter((q) => q.width > 0); };
+      return [...box.children].filter((row) => row.children.length === 2 && ['Heat', 'Hydro', 'Water'].includes(row.children[0].textContent)).map((row) => {
+        const [k, v] = row.children; const kl = lines(k); const vl = lines(v);
+        return { label: k.textContent, value: v.textContent, labelLines: new Set(kl.map((q) => Math.round(q.top))).size, valueLines: new Set(vl.map((q) => Math.round(q.top))).size, labelTop: kl[0] ? kl[0].top : null, valueTop: vl[0] ? vl[0].top : null, labelLeft: k.getBoundingClientRect().left, valueRight: vl.length ? Math.max(...vl.map((q) => q.right)) : null, rowRight: row.getBoundingClientRect().right, screen: window.innerWidth };
+      });
+    });
+    const at = `${tag}: ${state} utilities at ${width}`;
+    assert.deepEqual(rows.map((r) => [r.label, r.value]), want, `${at}: the three rows`);
+    for (const r of rows) {
+      assert.equal(r.labelLines, 1, `${at}: ${r.label} on one line`);
+      assert.equal(r.valueLines, 1, `${at}: ${r.label} reads ${r.value} on one line, no word alone`);
+      assert.ok(Math.abs(r.labelTop - r.valueTop) <= 1, `${at}: ${r.label} and its value side by side (${r.labelTop}, ${r.valueTop})`);
+      assert.ok(Math.abs(r.valueRight - r.rowRight) <= 1 && r.rowRight <= r.screen, `${at}: ${r.label}'s value on the row's right edge, inside the screen (${r.valueRight}, ${r.rowRight}, ${r.screen})`);
+    }
+    assert.ok(rows.every((r) => Math.abs(r.labelLeft - rows[0].labelLeft) <= 0.5), `${at}: the labels share one left edge`);
+    assert.ok(rows.every((r) => Math.abs(r.valueRight - rows[0].valueRight) <= 0.5), `${at}: the values share one right edge`);
+    if (tag === 'wk') await shot(page, `utilities-${state}-${width}`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
+}
 const api = (page, path, body) => page.evaluate(async ([p, b]) => { const r = await fetch(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return { status: r.status, body: await r.json().catch(() => null) }; }, [path, body]);
 
 // The board details as the walk types them, and the Copy all text they produce with the fixture's
@@ -129,7 +161,23 @@ async function walk(type, opts, tag) {
     await page.waitForURL(/\/listing\//, { timeout: 60000 }); await page.waitForTimeout(600);
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
     const rows = plain(await page.locator('[data-board-rows]').innerText());
-    for (const line of ['MLS number', 'C1234567', 'Demo Realty, 8 Sample Ave, Toronto, 416 555 0100', 'Other Realty', 'Half a month’s rent plus HST', 'December 1, 2026', '12 months', 'Heat included, Hydro not included, Water included', 'B12', '$2,600', '$50']) assert.ok(rows.includes(line), `the Details fold shows ${line}: ${rows}`);
+    for (const line of ['MLS number', 'C1234567', 'Demo Realty, 8 Sample Ave, Toronto, 416 555 0100', 'Other Realty', 'Half a month’s rent plus HST', 'December 1, 2026', '12 months', 'B12', '$2,600', '$50']) assert.ok(rows.includes(line), `the Details fold shows ${line}: ${rows}`);
+    await utilitiesAt(page, tag, 'set', [['Heat', 'Included'], ['Hydro', 'Not included'], ['Water', 'Included']]);
+    // Edited to Hydro not entered and Water not included: the three states side by side.
+    walkStep('the utilities in three states');
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    const again = page.locator('.rl-sh-panel').filter({ hasText: 'Listing setup' }).first();
+    await again.waitFor({ timeout: 30000 }); await page.waitForTimeout(500);
+    await again.getByRole('button', { name: 'Board details (optional)' }).click();
+    await again.locator('[data-board-details]').waitFor({ timeout: 30000 });
+    await again.getByLabel('Hydro').selectOption({ label: 'Not entered' }); await again.getByLabel('Water').selectOption({ label: 'Not included' });
+    await again.getByRole('button', { name: 'Save changes' }).click();
+    const warned = page.locator('[role=alertdialog]').getByRole('button', { name: 'Save changes' });
+    if (await warned.count()) await warned.click();
+    await again.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {}); await page.waitForTimeout(600);
+    await page.goto(page.url(), { waitUntil: 'load', timeout: 120000 });
+    await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
+    await utilitiesAt(page, tag, 'mixed', [['Heat', 'Included'], ['Hydro', 'Not entered'], ['Water', 'Not included']]);
     // 2. The profile: the brokerage address and the board.
     walkStep('the profile fields');
     await page.goto('/profile', { waitUntil: 'load', timeout: 120000 });
@@ -149,6 +197,8 @@ async function walk(type, opts, tag) {
     await page.locator(`#applicant-${run.link}`).waitFor({ timeout: 60000 });
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
     assert.equal(await page.locator('[data-form-data-row]').count(), 0, 'no Form data before an applicant is accepted');
+    // No utility entered yet: all three read Not entered, never Not included.
+    await utilitiesAt(page, tag, 'untouched', [['Heat', 'Not entered'], ['Hydro', 'Not entered'], ['Water', 'Not entered']]);
     // The board details on L1 through Listing setup, the parties on A1, the tenant accepted.
     await page.getByRole('button', { name: 'Edit', exact: true }).click();
     const edit = page.locator('.rl-sh-panel').filter({ hasText: 'Listing setup' }).first();
