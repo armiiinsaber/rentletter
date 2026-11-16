@@ -4,13 +4,15 @@
 //   1. New listing: Board details is a collapsed section; opened and filled, the listing is created
 //      and its Details fold shows the board rows. Heat, Hydro and Water always show, each Included,
 //      Not included or Not entered, as entered, edited to three states and untouched, each lined up
-//      as label and value on one line at 390 and at 320.
+//      as label and value on one line at 390 and at 320. Then long values (a long brokerage name and
+//      street address, a long listing address, a two word cooperating brokerage): every row of the
+//      Details fold at 390 and 320 has its label on one line and no value line left short or alone.
 //   2. The profile holds the brokerage address and the board.
 //   3. On a listing nobody holds, Form data is absent. The tenant accepted through Mark rented,
 //      with a co applicant and a guarantor on the application, Form data is present; Copy all
 //      writes the expected text; the guarantor's income appears nowhere; one event is recorded.
 //   4. Another realtor's listing answers 403.
-// Screenshots at 390 to /tmp/mls/, the utilities at 390 and 320 too. A WebKit walk fails, never skips, when the binary is missing.
+// Screenshots at 390 to /tmp/mls/, the utilities and the long valued Details fold at 390 and 320 too. A WebKit walk fails, never skips, when the binary is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
@@ -86,12 +88,70 @@ async function utilitiesAt(page, tag, state, want) {
   }
   await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
 }
+// Every row of the listing page's Details fold at 390 and at 320: the exact words of the rows in want;
+// each label on one line, all on one left edge; each value on the row's right edge, every line of it,
+// beside its label or on its own lines under it; a value over two lines or more holds two words or
+// more on every line, none under 60% of its longest line, and no word is split. Both widths are
+// measured (WebKit saves the fold to /tmp/mls/details-long-<width>.png) before anything is asserted.
+async function detailsAt(page, tag, want, count) {
+  const seen = [];
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 }); await page.waitForTimeout(300);
+    const m = await page.locator('#listing-details').evaluate((fold) => {
+      const lines = (el) => {
+        const ws = []; const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n;
+        while ((n = walker.nextNode())) { const re = /\S+/g; let x; while ((x = re.exec(n.data))) { const r = document.createRange(); r.setStart(n, x.index); r.setEnd(n, x.index + x[0].length); const q = [...r.getClientRects()].filter((c) => c.width > 0); if (q.length) ws.push({ w: x[0], top: Math.min(...q.map((c) => c.top)), bottom: Math.max(...q.map((c) => c.bottom)), left: Math.min(...q.map((c) => c.left)), right: Math.max(...q.map((c) => c.right)), split: new Set(q.map((c) => Math.round(c.top))).size > 1 }); } }
+        const by = [];
+        for (const w of ws) { const l = by.find((b) => Math.abs(b.top - w.top) < 2); if (l) { l.words.push(w.w); l.left = Math.min(l.left, w.left); l.right = Math.max(l.right, w.right); l.bottom = Math.max(l.bottom, w.bottom); } else by.push({ top: w.top, bottom: w.bottom, left: w.left, right: w.right, words: [w.w] }); }
+        return { lines: by.sort((a, b) => a.top - b.top), split: ws.filter((w) => w.split).map((w) => w.w) };
+      };
+      const rows = [...fold.querySelectorAll('div')].filter((d) => d.children.length === 2 && [...d.children].every((c) => c.tagName === 'SPAN'));
+      return { screen: window.innerWidth, scroll: document.documentElement.scrollWidth, rows: rows.map((row) => { const [k, v] = row.children; const r = row.getBoundingClientRect(); return { label: k.textContent, value: v.textContent, rowRight: r.right, k: lines(k), v: lines(v) }; }) };
+    });
+    seen.push({ width, ...m });
+    if (tag === 'wk') await page.locator('#listing-details').screenshot({ path: `/tmp/mls/details-long-${width}.png` });
+  }
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
+  const labels = new Set(want.map(([k]) => k));
+  for (const { width, screen, scroll, rows } of seen) {
+    const at = `${tag}: the Details fold at ${width}`;
+    assert.equal(rows.length, count, `${at}: ${count} rows`);
+    assert.deepEqual(rows.filter((r) => labels.has(r.label)).map((r) => [r.label, r.value]), want, `${at}: the rows`);
+    assert.ok(scroll <= screen, `${at}: no sideways scroll (${scroll}, ${screen})`);
+    const left = rows[0].k.lines[0].left, right = rows[0].rowRight;
+    for (const r of rows) {
+      const name = `${at}: ${r.label}`; const k = r.k.lines; const v = r.v.lines;
+      assert.equal(k.length, 1, `${name}: the label on one line (${k.map((l) => l.words.join(' ')).join(' / ')})`);
+      assert.ok(Math.abs(k[0].left - left) <= 0.5, `${name}: the labels share one left edge (${k[0].left}, ${left})`);
+      assert.ok(Math.abs(r.rowRight - right) <= 0.5 && right <= screen, `${name}: the rows share one right edge inside the screen (${r.rowRight}, ${right}, ${screen})`);
+      assert.deepEqual(r.v.split, [], `${name}: no word split across two lines`);
+      for (const l of v) assert.ok(Math.abs(l.right - r.rowRight) <= 1, `${name}: "${l.words.join(' ')}" on the row's right edge (${l.right}, ${r.rowRight})`);
+      if (Math.abs(v[0].top - k[0].top) <= 1) assert.ok(v[0].left > k[0].right, `${name}: the value beside its label, clear of it`);
+      else assert.ok(v[0].top >= k[0].bottom - 1, `${name}: the value on its own line under its label (${v[0].top}, ${k[0].bottom})`);
+      if (v.length > 1) {
+        const widest = Math.max(...v.map((l) => l.right - l.left));
+        for (const l of v) {
+          assert.ok(l.words.length >= 2, `${name}: "${l.words.join(' ')}" alone on a line (${v.map((x) => x.words.join(' ')).join(' / ')})`);
+          assert.ok(l.right - l.left >= 0.6 * widest, `${name}: "${l.words.join(' ')}" short beside the value's other lines (${Math.round(l.right - l.left)} of ${Math.round(widest)}: ${v.map((x) => x.words.join(' ')).join(' / ')})`);
+        }
+      }
+    }
+  }
+}
 const api = (page, path, body) => page.evaluate(async ([p, b]) => { const r = await fetch(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) }); return { status: r.status, body: await r.json().catch(() => null) }; }, [path, body]);
 
 // The board details as the walk types them, and the Copy all text they produce with the fixture's
 // listing, its accepted applicant and the seeded parties. WebKit walks L1 (210 Carlaw Ave, Unit 4,
 // Marco Rossi, applicant A1 through J1); Chrome walks L2 (88 Harbour St, no landlord on file,
 // applicant A6 through J6), so one server holds both runs.
+// The long values the Details fold is measured with: invented, as long as real ones run.
+const LONG = { address: '1288 Lake Shore Boulevard West, Unit 2104, Toronto', brokerage: 'Harbourview Signature Realty Inc., Brokerage', brokerageAddress: '4789 Yonge Street, Suite 1100, North York', coop: 'Lakeshore Realty' };
+const LONG_ROWS = [
+  ['Address', LONG.address],
+  ['MLS number', 'C1234567'], ['Listing brokerage', `${LONG.brokerage}, ${LONG.brokerageAddress}, 416 555 0100`], ['Cooperating brokerage', LONG.coop], ['Commission', 'Half a month’s rent plus HST'],
+  ['Possession', 'December 1, 2026'], ['Lease term', '12 months'], ['Heat', 'Included'], ['Hydro', 'Not entered'], ['Water', 'Not included'],
+  ['Parking spaces', '1'], ['Locker', 'B12'], ['Furnished', 'No'], ['Last month’s rent deposit', '$2,600'], ['Key deposit', '$50'],
+];
 const BOARD = { mls: 'C1234567', address: '8 Sample Ave, Toronto', phone: '416 555 0100', coop: 'Other Realty', commission: 'Half a month’s rent plus HST', possession: '2026-12-01', term: '12', parking: '1', locker: 'B12', lastMonth: '2600', key: '50' };
 const RUNS = {
   wk: { listing: 'L1', link: 'J1', landlord: ['Landlord', 'Name: Marco Rossi', 'Email: marco@example.com', ''], tenant: ['Tenant 1 name: Applicant A1A1', 'Tenant 1 email: aA1A1@example.com', 'Tenant 1 phone: 416 555 0111'], address: '210 Carlaw Ave, Unit 4, Toronto', rent: '$2,600', tenantName: 'Applicant A1A1' },
@@ -178,6 +238,24 @@ async function walk(type, opts, tag) {
     await page.goto(page.url(), { waitUntil: 'load', timeout: 120000 });
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
     await utilitiesAt(page, tag, 'mixed', [['Heat', 'Included'], ['Hydro', 'Not entered'], ['Water', 'Not included']]);
+    // Long values through Listing setup: every row of the Details fold at 390 and 320.
+    walkStep('the details fold with long values');
+    await page.getByRole('button', { name: 'Edit', exact: true }).click();
+    const long = page.locator('.rl-sh-panel').filter({ hasText: 'Listing setup' }).first();
+    await long.waitFor({ timeout: 30000 }); await page.waitForTimeout(500);
+    await long.getByPlaceholder('88 Bay Street').fill(LONG.address);
+    await long.getByRole('button', { name: 'Board details (optional)' }).click();
+    await long.locator('[data-board-details]').waitFor({ timeout: 30000 });
+    await long.getByLabel('Listing brokerage', { exact: true }).fill(LONG.brokerage);
+    await long.getByLabel('Brokerage address').fill(LONG.brokerageAddress);
+    await long.getByLabel('Cooperating brokerage', { exact: true }).fill(LONG.coop);
+    await long.getByRole('button', { name: 'Save changes' }).click();
+    const longWarn = page.locator('[role=alertdialog]').getByRole('button', { name: 'Save changes' });
+    if (await longWarn.count()) await longWarn.click();
+    await long.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {}); await page.waitForTimeout(600);
+    await page.goto(page.url(), { waitUntil: 'load', timeout: 120000 });
+    await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
+    await detailsAt(page, tag, LONG_ROWS, 25);
     // 2. The profile: the brokerage address and the board.
     walkStep('the profile fields');
     await page.goto('/profile', { waitUntil: 'load', timeout: 120000 });

@@ -73,11 +73,11 @@ test('listPeople: confirmations carry into Fit, documents never do', () => {
   const without = peopleRows({ consents: tables.pipeline_consents.slice(0, 1), applications: [a1], junctions: [], listings, applicantsByListing, now: NOW });
   assert.ok(with_[0].best.score >= without[0].best.score, 'the landlord confirmation never lowers the score');
   const conf = tables.listing_applicants[0].confirmations;
-  assert.ok(computeFit({ application: a1, listing: listings[0], verification: null, confirmations: conf }).scoreExact > computeFit({ application: a1, listing: listings[0], verification: null, confirmations: {} }).scoreExact, 'the landlord confirmation adds to R');
-  assert.equal(with_[0].best.score, computeFit({ application: a1, listing: listings[0], verification: null, confirmations: conf }).score, 'the list shows the same Fit');
+  assert.ok(computeFit({ application: a1, listing: listings[0], verification: null, confirmations: conf, now: NOW }).scoreExact > computeFit({ application: a1, listing: listings[0], verification: null, confirmations: {}, now: NOW }).scoreExact, 'the landlord confirmation adds to R');
+  assert.equal(with_[0].best.score, computeFit({ application: a1, listing: listings[0], verification: null, confirmations: conf, now: NOW }).score, 'the list shows the same Fit');
   assert.equal(with_[0].best.label, 'stated', 'no documents: the label is stated');
   const src = readFileSync(new URL('../lib/pipelineState.js', import.meta.url), 'utf8');
-  assert.match(src, /computeFit\(\{ application: app, listing: l, verification: null, confirmations \}\)/);
+  assert.match(src, /computeFit\(\{ application: app, listing: l, verification: null, confirmations, now: t \}\)/);
 });
 
 test('listPeople: an absent table or column reads as nobody', async () => {

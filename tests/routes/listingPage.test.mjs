@@ -4,6 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 register('../helpers/fakeStackHook.mjs', import.meta.url);
+import { clockAt } from '../helpers/clockAt.mjs';
 import { installFakeStack, fakeCtx, fakeReq, fakeRes, findKeys } from '../helpers/fakeStack.mjs';
 import { tables, USER, ago, NOW, DAY } from './fixture.mjs';
 
@@ -18,7 +19,10 @@ test('another realtor\'s listing id redirects to the index', async () => {
   try { assert.deepEqual(await page.getServerSideProps(fakeCtx({ params: { id: 'L9' } })), { redirect: { destination: '/dashboard', permanent: false } }); } finally { s.restore(); }
 });
 
-test('the owner\'s listing: the applicants with Fit, the snapshot meta, the reference answers, the document requests, the duplicate marks, no owner_token', async () => {
+test('the owner\'s listing: the applicants with Fit, the snapshot meta, the reference answers, the document requests, the duplicate marks, no owner_token', async (t) => {
+  // Fit reads each fact's age against the clock, and the page loads it from the process: moved to
+  // the fixture's NOW (tests/routes/fixture.mjs), the moment its dates describe (tests/helpers/clockAt.mjs).
+  clockAt(t, NOW);
   const s = installFakeStack({ tables: withSnapshot(), user: USER });
   s.kv.values['docreq-app:J2'] = { token: 'f'.repeat(32), status: 'requested', requestedAt: ago(2), receivedAt: null, nudgedAt: [ago(1)] };
   try {

@@ -4,6 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 import { fakeSupabase, fakeKv, bigFixture } from './helpers/fakeSupabase.mjs';
+import { clockAt } from './helpers/clockAt.mjs';
 register('./helpers/loader.mjs', import.meta.url);
 
 const { loadSignals } = await import('../lib/dashboardSignals.js');
@@ -11,7 +12,14 @@ const { summarize } = await import('../lib/queryTrace.js');
 const { applicantState } = await import('../lib/applicantState.js');
 const { buildActions } = await import('../lib/actions.js');
 
-test('loadSignals: 12 listings, 3 applicants each, measured', async () => {
+// The fixture is dated up to 2026-09-01 at noon UTC (tests/helpers/bigFixture.mjs), and Fit reads
+// each fact's age against the clock, which lib/dashboardSignals.js takes from the process. So the
+// load runs at the moment the fixture and the actions below describe, a day after it
+// (tests/helpers/clockAt.mjs).
+const AT = '2026-09-02T12:00:00Z';
+
+test('loadSignals: 12 listings, 3 applicants each, measured', async (t) => {
+  clockAt(t, AT);
   process.env.RL_QUERY_TRACE = '1';
   const { tables, kv, listings } = bigFixture();
   const { restore } = fakeKv(kv);
@@ -32,7 +40,7 @@ test('loadSignals: 12 listings, 3 applicants each, measured', async () => {
   for (const a of all) { assert.ok(!('owner_token' in a.application), 'owner_token stripped'); assert.ok(!('cover_letter' in a.application), 'cover_letter stripped'); assert.ok(a.application.fit && (a.application.fit.score != null || a.application.fit.incomplete), 'fit attached'); assert.ok(Array.isArray(a.docVerifications)); assert.ok(a.storedDocuments !== undefined); assert.ok(a.docRequest !== undefined); }
   const states = all.map((a) => applicantState({ junction: a, verification: a.docVerifications[0] || null }).state).reduce((m, s) => ({ ...m, [s]: (m[s] || 0) + 1 }), {});
   const fitSum = Math.round(all.reduce((s, a) => s + a.application.fit.scoreExact, 0) * 1000) / 1000;
-  const actions = buildActions({ listings: signals.listings, applicantsByListing: signals.applicantsByListing, now: '2026-09-02T12:00:00Z' });
+  const actions = buildActions({ listings: signals.listings, applicantsByListing: signals.applicantsByListing, now: AT });
   const digest = { states, fitSum, actionKinds: actions.map((i) => i.kind).reduce((m, k) => ({ ...m, [k]: (m[k] || 0) + 1 }), {}), feed: signals.notifications.length, unread: signals.notifications.filter((n) => n.unread).length, requested: all.filter((a) => a.docRequest).length, withReports: all.filter((a) => a.docVerifications.length).length, held: all.filter((a) => (a.storedDocuments || []).length).length };
   console.log('  digest', JSON.stringify(digest));
   // The contract, taken from the load as it ran before the single query refactor (commit 1893b78

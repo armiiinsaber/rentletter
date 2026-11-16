@@ -58,10 +58,13 @@ import { CREDIT_ONLY_LINE } from '../../lib/stateLabels';
 import { partyFacts, INVITE_CARD } from '../../lib/parties';
 import { Pending } from '../brand/Loader';
 
+// One row of the Details fold. The label holds one line on the left edge; the value holds the right
+// edge. A value that fits beside its label whole sits there; one that does not wraps (flex wrap) to
+// its own lines under the label, still on the right edge, balanced so no line is left short or alone.
 const Row = ({ label, value }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-4)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
-    <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, fontWeight: 600, minWidth: 0 }}>{label}</span>
-    <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{value}</span>
+  <div style={{ display: 'flex', flexWrap: 'wrap', columnGap: 'var(--s-4)', rowGap: 'var(--s-1)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
+    <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, fontWeight: 600, flex: 'none', whiteSpace: 'nowrap' }}>{label}</span>
+    <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, flex: '1 1 auto', textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{value}</span>
   </div>
 );
 

@@ -4,8 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 register('../helpers/fakeStackHook.mjs', import.meta.url);
+import { clockAt } from '../helpers/clockAt.mjs';
 import { installFakeStack, fakeReq, fakeRes } from '../helpers/fakeStack.mjs';
-import { tables, USER, OTHER, ago } from './fixture.mjs';
+import { tables, USER, OTHER, ago, NOW } from './fixture.mjs';
 
 const create = (await import('../../pages/api/listings/create.js')).default;
 const invite = (await import('../../pages/api/listings/invite.js')).default;
@@ -64,7 +65,10 @@ test('create inserts the row for the session\'s realtor, the invite path mints t
   assert.equal(foreign.code, 404);
 });
 
-test('update: a rent change re scores the applicants; only whitelisted fields are written', async () => {
+test('update: a rent change re scores the applicants; only whitelisted fields are written', async (t) => {
+  // Fit reads each fact's age against the clock, and the route and the loader take it from the
+  // process: moved to the fixture's NOW (tests/routes/fixture.mjs), the moment its dates describe.
+  clockAt(t, NOW);
   const s = up();
   const before = (await fetchListingApplicants(s.db, 'L1')).find((a) => a.linkId === 'J1').application.fit;
   assert.equal(before.ratio, 34);
