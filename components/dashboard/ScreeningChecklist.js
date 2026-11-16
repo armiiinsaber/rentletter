@@ -143,7 +143,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     <div id={`checklist-${applicant.linkId}`} style={{ marginTop: 'var(--s-4)', scrollMarginTop: 72 }}>
       <div style={{ marginBottom: 'var(--s-2)' }}>
         <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute }}>Screening checklist</div>
-        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>You verify. Documents only match.</div>
+        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>You verify the facts. Documents only match.</div>
         {/* Fit v2 (docs/fit-v2.md): the number over what was assessed, the one coverage line, and the
             check docs items, which are shown here and never subtracted. */}
         {fit ? <div data-checklist-fit="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{fitLine(fit)}{fit.incomplete ? `. ${fit.incomplete.next}` : fit.notAssessedLine ? `. ${fit.notAssessedLine}` : ''}</div> : null}

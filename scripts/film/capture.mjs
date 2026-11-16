@@ -333,7 +333,7 @@ async function main() {
   // ── 6. the checklist, and the tick ──
   await runBeat(BEATS[5], async () => {
     const p = await open(CHECK10, PHONE_W);
-    const head = await box(p, 'div', '^You verify. Documents only match.$') || await box(p, 'div', 'Screening checklist');
+    const head = await box(p, 'div', '^You verify the facts. Documents only match.$') || await box(p, 'div', 'Screening checklist');
     await hold(p, 'b6-head', 2.2, windowOn(head, PHONE_W, 40));
     note(6, 'Then you do the part that counts.', 'the checklist and its one line', 'phone', 'hold', 2.2);
     const emp = await box(p, '#applicant-demo-link-10-body div', '^Employer$');

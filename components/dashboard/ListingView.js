@@ -69,6 +69,12 @@ const Row = ({ label, value }) => (
 );
 
 const yn = (b) => (b ? 'Yes' : 'No');
+// A post kit text as shown: the link on a line of its own, never broken inside itself, and the words
+// before and after it each a balanced block, so no word is left alone beside the link at any width.
+// Display only; the copy stays plain.
+const kitDisplay = (text) => String(text).split(/(https?:\/\/\S+)/).filter((part) => part.trim()).map((part, i) => (/^https?:\/\//.test(part)
+  ? <span key={i} data-kit-link="" style={{ display: 'block', whiteSpace: 'nowrap' }}>{part}</span>
+  : <span key={i} style={{ display: 'block', textWrap: 'balance' }}>{part.trim()}</span>));
 
 function initialsOf(name) {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -819,13 +825,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     <div data-fit-section="">
       {fit.basis ? <div data-fit-basis="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 1.4, textWrap: 'pretty' }}>{noWidow(fit.basis)}</div> : null}
       {fit.incomplete ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{noWidow(fit.incomplete.next)}</div> : null}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 'var(--s-2) var(--s-3)', marginTop: 'var(--s-2)' }}>
+      {/* The pillars: three columns where there is room; on a phone one column, each pillar's label
+          and value on one line and its facts under them at full width (lv-pillars, below). */}
+      <div className="lv-pillars" style={{ marginTop: 'var(--s-2)' }}>
         {(fit.pillars || []).map((p) => (
-          <div key={p.name} data-fit-pillar={p.name} data-fit-assessed={p.assessed ? 'yes' : 'no'} style={{ minWidth: 0 }}>
+          <div key={p.name} className="lv-pillar" data-fit-pillar={p.name} data-fit-assessed={p.assessed ? 'yes' : 'no'} style={{ minWidth: 0 }}>
             <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{p.label}</div>
-            <div className="num" style={{ fontSize: 'var(--t-body-2)', color: p.assessed ? C.ink : C.inkMute, fontWeight: 600, marginTop: 'var(--s-1)' }}>{p.assessed ? Number(p.value).toFixed(1) : 'Not assessed'}</div>
+            <div className="num lv-pillar-value" style={{ fontSize: 'var(--t-body-2)', color: p.assessed ? C.ink : C.inkMute, fontWeight: 600 }}>{p.assessed ? Number(p.value).toFixed(1) : 'Not assessed'}</div>
             {(p.facts || []).slice(0, 4).map((f, i) => (
-              <div key={`${f.text}-${i}`} style={{ fontSize: 'var(--t-eyebrow)', color: f.weight > 0 ? C.inkSoft : C.inkMute, lineHeight: 1.4, marginTop: 2, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{noWidow([f.text, f.date].filter(Boolean).join(', ') + (f.context ? ', context' : ''))}</div>
+              <div key={`${f.text}-${i}`} style={{ fontSize: 'var(--t-eyebrow)', color: f.weight > 0 ? C.inkSoft : C.inkMute, lineHeight: 1.4, marginTop: 2, overflowWrap: 'anywhere', textWrap: 'balance' }}>{noWidow([f.text, f.date].filter(Boolean).join(', ') + (f.context ? ', context' : ''))}</div>
             ))}
             {(p.facts || []).length > 4 ? <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, marginTop: 2 }}>{`${(p.facts || []).length - 4} more`}</div> : null}
           </div>
@@ -1260,15 +1268,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         ['Instagram bio', kitTexts.instagram, 'instagram'],
                         ['Saved reply', kitTexts.reply, 'reply'],
                       ].map(([label, text, key]) => (
-                        <div key={key} data-kit-item={label} style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-3)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>{label}</div>
-                            {/* Display only: the last space is non breaking so no last word stands alone, and a colon keeps the
-                                link after it on its line (R1); the copy stays plain. */}
-                            <div data-kit-text style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{String(text).replace(/: /g, ':\u00a0').replace(/ (\S+)$/, '\u00a0$1')}</div>
-                          </div>
+                        <div key={key} data-kit-item={label} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gridTemplateAreas: '"label copy" "text text"', alignItems: 'center', gap: 'var(--s-1) var(--s-3)', padding: 'var(--s-2) 0', borderBottom: `1px solid ${C.rule}` }}>
+                          <div style={{ gridArea: 'label', fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' }}>{label}</div>
+                          {/* The text under its label and Copy, at the card's full width; the link on its own line (kitDisplay). */}
+                          <div data-kit-text style={{ gridArea: 'text', fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{kitDisplay(text)}</div>
                           <button type="button" onClick={() => kitCopy(key, kitShort ? text : '')} disabled={!kitShort} aria-label={`Copy ${label.toLowerCase()}`}
-                            style={{ minHeight: 44, minWidth: 84, padding: '0 var(--gap-card)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit', flexShrink: 0, alignSelf: 'center' }}>
+                            style={{ gridArea: 'copy', minHeight: 44, minWidth: 84, padding: '0 var(--gap-card)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit' }}>
                             {kitCopied === key ? 'Copied' : 'Copy'}
                           </button>
                         </div>
@@ -1509,7 +1514,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 {setAsideList.length > 0 && (
                   <div style={{ marginTop: 'var(--gap-section)' }}>
                     <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Set aside ({setAsideList.length})</div>
-                    <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)' }}>
+                    <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>
                       Set aside for the screenable reasons noted. Still shown to your landlord, at the bottom.
                     </p>
                     <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
@@ -1619,6 +1624,14 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         .lv-fold.lv-fold-open { grid-template-rows: 1fr; }
         .lv-fold > div { overflow: hidden; min-height: 0; }
         @media (prefers-reduced-motion: no-preference) { .lv-fold { transition: grid-template-rows ${DURATION.base}ms ${CURVE.settle}; } }
+        :global(.lv-pillars) { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-2) var(--s-3); }
+        :global(.lv-pillar-value) { margin-top: var(--s-1); }
+        @media (max-width: 640px) {
+          :global(.lv-pillars) { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+          :global(.lv-pillar) { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: var(--s-3); }
+          :global(.lv-pillar-value) { margin-top: 0; text-align: right; }
+          :global(.lv-pillar > :nth-child(n + 3)) { grid-column: 1 / -1; }
+        }
       `}</style>
     </>
   );

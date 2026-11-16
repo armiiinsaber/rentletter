@@ -4,8 +4,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { register } from 'node:module';
 register('../helpers/fakeStackHook.mjs', import.meta.url);
+import { clockAt } from '../helpers/clockAt.mjs';
 import { installFakeStack, fakeReq, fakeRes } from '../helpers/fakeStack.mjs';
-import { tables, USER, INVITE_TOKEN } from './fixture.mjs';
+import { tables, USER, INVITE_TOKEN, NOW } from './fixture.mjs';
 
 const generate = (await import('../../pages/api/generate.js')).default;
 const tag = (await import('../../pages/api/invite/tag.js')).default;
@@ -16,7 +17,11 @@ const call = async (handler, body, ip) => { const res = fakeRes(); await handler
 const until = async (fn, tries = 100) => { for (let i = 0; i < tries; i++) { const v = await fn(); if (v) return v; await new Promise((r) => setTimeout(r, 5)); } return null; };
 const FORM = { inviteToken: INVITE_TOKEN, fullName: '<b>Test</b> Person', email: 'tenant@example.com', phone: '416 555 0199', ageConfirmed: true, jobTitle: 'Nurse', employer: 'Northwind Sample Clinic Inc.', yearsAtJob: '3', annualIncome: '90000', previousAddress: '1 Old St', yearsAtPrevious: '2', previousLandlordName: 'A. Owner', currentRent: '2100', moveInDate: '2026-11-01', numberOfOccupants: '1', smoker: 'no', pets: '', reference1Name: 'R One', reference1Relationship: 'Manager', reference1Contact: '416 555 0100' };
 
-test('generate, tag, mirror, send, then a second mirror', async () => {
+test('generate, tag, mirror, send, then a second mirror', async (tc) => {
+  // The rate limit counts per clock hour (lib/rateLimit.js), and the eleven generate calls below take
+  // a few hundred milliseconds: across a top of the hour they would count in two hours. So the test
+  // runs half an hour into the fixture's hour, whatever the time of day (tests/helpers/clockAt.mjs).
+  clockAt(tc, NOW + 30 * 60 * 1000);
   const s = installFakeStack({ tables: tables(), user: null, env: { RESEND_API_KEY: 're_fake' } });
   s.kv.values[`linvite:${INVITE_TOKEN}`] = { realtorName: 'Sarah Chen', listingName: '210 Carlaw Ave, Unit 4', unit: { monthlyRent: '2500' }, submissionCount: 0 }; // the KV record says 2500; the row says 2600
   try {

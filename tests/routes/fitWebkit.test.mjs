@@ -8,7 +8,10 @@
 //   3. The checklist carries the same Fit line and coverage.
 //   4. The landlord page carries the coverage line and the basis under the number, the not
 //      assessed pillar named.
-// Screenshots at 390 to /tmp/fitv2/. A WebKit walk fails, never skips, when the binary is missing.
+//   5. The listing page's wrapped text at 390 and at 320 (tests/helpers/textLines.mjs): the set aside
+//      note, the post kit texts (the link whole on its own line, the words around it balanced), the
+//      Fit pillars and the checklist note; no line of one word, none short beside its block's longest.
+// Screenshots at 390 to /tmp/fitv2/, the wrapped text at 390 and 320 too. A WebKit walk fails, never skips, when the binary is missing.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
@@ -16,6 +19,7 @@ import { mkdirSync } from 'node:fs';
 import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { readLines, assertBalanced } from '../helpers/textLines.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const PORT = 3165; const BASE = process.env.FIT_BASE || `http://localhost:${PORT}`;
@@ -58,6 +62,48 @@ async function openCard(page, link) {
   await page.locator(`#checklist-${link}`).waitFor({ timeout: 30000 });
   await page.waitForTimeout(400);
   return card;
+}
+
+// The four wrapped texts of /listing/L1 with an applicant card and the post kit open, at 390 and at
+// 320: a, the set aside note; b, each block of the post kit texts (the words before the link, the
+// link, the words after it); c, every line of the Fit pillars; d, the checklist note under its eyebrow. Both widths are measured (WebKit saves each region to
+// /tmp/fitv2/typeset-<a|b|c|d>-<width>.png) before anything is asserted.
+const REGIONS = {
+  a: (page) => page.locator('p', { hasText: 'Set aside for the screenable reasons' }),
+  b: (page) => page.locator('#listing-post-kit [data-kit-text] > *'),
+  c: (page) => page.locator('[id^="applicant-"] [data-fit-pillar] > *'),
+  d: (page) => page.locator('[id^="checklist-"] > div:first-child > div:nth-child(2)'),
+};
+const AROUND = { a: (page) => REGIONS.a(page).locator('..'), b: (page) => page.locator('#listing-post-kit'), c: (page) => page.locator('[id^="applicant-"] [data-fit-section]'), d: (page) => page.locator('[id^="checklist-"] > div:first-child') };
+// A region at the width under test, clipped from a viewport made tall enough to hold it (the height
+// moves no line break); the viewport goes back to 844 after.
+async function regionShot(page, loc, path) {
+  const { width } = page.viewportSize(); const TALL = 1600;
+  await page.setViewportSize({ width, height: TALL }); await page.waitForTimeout(250);
+  await loc.evaluate((el) => el.scrollIntoView({ block: 'start', behavior: 'instant' }));
+  await page.evaluate(() => window.scrollBy({ top: -24, behavior: 'instant' })); await page.waitForTimeout(250);
+  const box = await loc.boundingBox(); const top = Math.max(0, box.y - 12);
+  await page.screenshot({ path, clip: { x: 0, y: top, width, height: Math.min(box.height + 24, TALL - top) } });
+  await page.setViewportSize({ width, height: 844 }); await page.waitForTimeout(250);
+}
+async function typesetAt(page, tag) {
+  const seen = [];
+  for (const width of [390, 320]) {
+    await page.setViewportSize({ width, height: 844 }); await page.waitForTimeout(400);
+    const blocks = {};
+    for (const [k, loc] of Object.entries(REGIONS)) blocks[k] = await readLines(loc(page));
+    seen.push({ width, blocks });
+    if (tag === 'wk') for (const k of Object.keys(AROUND)) await regionShot(page, AROUND[k](page).first(), `/tmp/fitv2/typeset-${k}-${width}.png`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
+  for (const { width, blocks } of seen) {
+    const at = `${tag}: at ${width}`;
+    assert.equal(blocks.a.length, 1, `${at}: the set aside note`);
+    assert.equal(blocks.b.filter((x) => x.data.kitLink !== undefined).length, 4, `${at}: four post kit texts, each with its link`);
+    assert.ok(blocks.c.length >= 6, `${at}: an open card's three pillars`); assert.ok(blocks.d.length >= 1, `${at}: an open card's checklist note`);
+    assert.ok(blocks.b.filter((x) => x.data.kitLink !== undefined).every((x) => /^https:\/\/rentletter\.ca\/a\/\w+\.?$/.test(x.text)), `${at}: each link block is the short link alone`);
+    for (const [k, list] of Object.entries(blocks)) list.forEach((x, i) => assertBalanced(x, `${at}: ${k}${list.length > 1 ? ` ${i + 1}` : ''}`, { link: x.data.kitLink !== undefined }));
+  }
 }
 
 async function walk(type, opts, tag) {
@@ -110,6 +156,11 @@ async function walk(type, opts, tag) {
     assert.deepEqual(await section2.locator('[data-fit-pillar]').evaluateAll((els) => els.map((e) => [e.dataset.fitPillar, e.dataset.fitAssessed])), [['ability', 'yes'], ['truth', 'yes'], ['conduct', 'no']]);
     assert.match(plain(await section2.innerText()), /TRUTH\n2\.0\nIncome stated, \w{3} 2026\nEmployer stated, \w{3} 2026/i);
     assert.match(plain(await page.locator('#checklist-J2 [data-checklist-fit]').innerText()), /^Fit 3\.9 on 2 of 3\. Conduct not assessed: no reference outcome or tenancy yet\./);
+    // 5. The wrapped text at 390 and 320, the J2 card open, the post kit open with its link.
+    walkStep('wrapped text at 390 and 320');
+    await page.getByRole('button', { name: /^Post kit/ }).click();
+    await page.locator('#listing-post-kit [data-kit-item="Short link"] [data-kit-text]').filter({ hasText: /rentletter\.ca\/a\// }).waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+    await typesetAt(page, tag);
     // 4. The landlord page: two lines under the number; the not assessed pillar named.
     walkStep('the landlord page');
     const sent = await page.evaluate(async () => { const r = await fetch('/api/listings/send-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: 'L1' }) }); return { status: r.status, body: await r.json().catch(() => null) }; });
