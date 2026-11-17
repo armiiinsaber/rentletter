@@ -14,6 +14,11 @@
 // realtor's applicant J9 from the start, so the open route's ownership check can be walked.
 // FAKE_PROFILE=lapsed signs in a realtor whose trial ended two days ago (the BILLING_OFF walk,
 // tests/routes/billingOffWebkit.test.mjs); unset, the fixture's founding realtor.
+// GET /__fake/kpi?seed=1 gives the founder office something to count (the office walk,
+// tests/routes/officeWebkit.test.mjs, and the wrapped text walks): realtors at a brokerage's own
+// address with listings, applications and confirmed tenants this month and last, and fourteen
+// months of public.kpi_daily rows; history=0 takes the kpi_daily table away again (the office
+// before db/013 has run). The office is opened with ADMIN_PASSWORD from the environment.
 // It builds into, or serves from, .next-fake-<port> (NEXT_DIST_DIR, next.config.js); prod needs
 // `NEXT_DIST_DIR=.next-fake-<port> FAKE_STACK_BUILD=1 next build` first. Prints "ready" when up.
 import { registerHooks, createRequire } from 'node:module';
@@ -73,6 +78,8 @@ await stack.db.storage.from('applicant-documents').upload('realtor-2/J9/d9.pdf',
 const { mintRequest, kvSetJson } = await import('../../lib/docRequest.js');
 const { newOwnerToken } = await import('../../lib/applicationIds.js');
 globalThis.__rlFakeStackFor = stack;
+// The founder office lists the auth users beside the profiles (lib/adminData.js listAuthUsers).
+stack.db.auth.admin = { listUsers: async () => ({ data: { users: t.profiles.map((p) => ({ id: p.id, email: p.email || null, created_at: p.created_at || null, last_sign_in_at: null, banned_until: null })) }, error: null }) };
 // The widest short code on the long listing's invite, the way pages/api/listings/invite.js writes
 // it (short:{code} holds the token; the record carries the code, kept on every reuse).
 if (long) {
@@ -194,6 +201,44 @@ http.createServer(async (req, res) => {
     if (q.get('listings') === '0' && !t.__stashed) { t.__stashed = t.listings.filter((l) => l.profile_id === USER.id); t.listings = t.listings.filter((l) => l.profile_id !== USER.id); }
     if (q.get('listings') === '1' && t.__stashed) { t.listings = [...t.__stashed, ...t.listings]; t.__stashed = null; }
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ plan: p.plan, trial_ends_at: p.trial_ends_at, subscription_status: p.subscription_status || null, listings: t.listings.filter((l) => l.profile_id === USER.id).length })); return;
+  }
+  if (req.url.startsWith('/__fake/kpi')) {
+    const q = new URL(req.url, 'http://localhost').searchParams;
+    const { monthOf, addMonths, torontoDate } = await import('../../lib/kpis.js');
+    const now = Date.now(); const month = monthOf(now); const last = addMonths(month, -1);
+    if (q.get('seed') === '1' && !t.__kpiSeeded) {
+      t.__kpiSeeded = true;
+      t.application_events = t.application_events || [];
+      const mid = (m, day, hour = 16) => `${m}-${String(day).padStart(2, '0')}T${String(hour).padStart(2, '0')}:00:00Z`;
+      const sources = ['apply', 'report', 'direct', 'direct', 'realtor_referral', 'direct'];
+      // 34 realtors: all active last month (52 rentals closed), 12 active this month (9 closed, one fell through).
+      for (let i = 0; i < 34; i++) {
+        const id = `kpi-realtor-${String(i).padStart(2, '0')}`;
+        const born = i < 6 ? mid(month, 1, 15 + (i % 6)) : mid(addMonths(month, -3), 4 + (i % 20));
+        t.profiles.push({ id, email: `agent${i}@harbourfrontrealty.ca`, full_name: `Agent ${i} Harbourfront`, brokerage: 'Harbourfront Residential Realty Inc., Brokerage', plan: 'founding', province: 'ON', created_at: born, signup_source: i < 6 ? sources[i] : null });
+        for (let n = 0; n < 2; n++) {
+          const listing = `kpi-L${i}-${n}`;
+          t.listings.push({ id: listing, profile_id: id, name: `${100 + i} Sample St, Unit ${n + 1}`, address: `${100 + i} Sample St, Unit ${n + 1}, Toronto`, monthly_rent: 2400, status: 'active', created_at: mid(last, 1) });
+          const add = (suffix, at, email) => { const a = `kpi-A${i}-${n}-${suffix}`; const k = `kpi-K${i}-${n}-${suffix}`; t.applications.push({ id: a, application_number: `RL-KPI-${i}-${n}-${suffix}`, full_name: 'Invented Tenant', email, created_at: at }); t.listing_applicants.push({ id: k, listing_id: listing, application_id: a, decision_status: 'none', added_via: 'invite', created_at: at, state: 'submitted' }); return k; };
+          const kLast = add('last', mid(last, 5 + (i % 20)), `tenant${i}@mail.ca`); // the same tenant on both of a realtor's listings
+          if (i * 2 + n < 52) t.application_events.push({ id: `kpi-E${i}-${n}-last`, listing_applicant_id: kLast, from_state: 'shortlisted', to_state: 'accepted', created_at: mid(last, 20) });
+          if (i < 12 && n === 0) {
+            const kNow = add('now', mid(month, 1, 15), `newtenant${i}@mail.ca`);
+            if (i < 10) t.application_events.push({ id: `kpi-E${i}-now`, listing_applicant_id: kNow, from_state: 'shortlisted', to_state: 'accepted', created_at: mid(month, 1, 16) });
+            if (i === 9) t.application_events.push({ id: 'kpi-E-fell', listing_applicant_id: kNow, from_state: 'accepted', to_state: 'fell_through', created_at: mid(month, 1, 17) });
+          }
+        }
+      }
+    }
+    if (q.get('seed') === '1' || q.get('history') === '1') {
+      // Fourteen months of snapshots: a climb to the targets, one row on the first of each month and one today.
+      const climb = [2, 3, 5, 6, 9, 11, 14, 17, 19, 23, 26, 31, 34];
+      t.kpi_daily = [];
+      for (let i = 12; i >= 1; i--) { const m = addMonths(month, -i + 1); const a = climb[13 - i]; t.kpi_daily.push({ day: `${m}-01`, active_realtors_mtd: 0, rentals_closed_mtd: 0, active_realtors_last_month: a, rentals_closed_last_month: Math.round(a * 1.55), streak_months: 0, profile_reuse: a, profile_reuse_tracked: false, signups_mtd: 0, signups_known_mtd: 0, referral_signups_mtd: 0, referral_share_mtd: null, signups_last_month: 0, signups_known_last_month: 0, referral_signups_last_month: 0, referral_share_last_month: null, days_left: 365, computed_at: new Date(now).toISOString() }); }
+      t.kpi_daily.push({ ...t.kpi_daily[t.kpi_daily.length - 1], day: torontoDate(now), active_realtors_mtd: 12, rentals_closed_mtd: 9 });
+    }
+    if (q.get('history') === '0') delete t.kpi_daily;
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ seeded: !!t.__kpiSeeded, history: Array.isArray(t.kpi_daily) ? t.kpi_daily.length : null })); return;
   }
   if (req.url.startsWith('/__fake/pipeline')) {
     const n = Number(new URL(req.url, 'http://localhost').searchParams.get('people'));

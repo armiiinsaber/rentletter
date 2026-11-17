@@ -6,6 +6,8 @@
 // tokens Supabase puts in the fragment: a fragment never reaches this server.
 import { getSupabaseServerClient, isSupabaseConfigured } from '../../lib/supabase/server';
 import { redeemPromoFromCookie } from '../../lib/promoCookie';
+import { getSupabaseAdminClient } from '../../lib/supabase/admin';
+import { signupSourceFor, recordSignupSource } from '../../lib/signupSource';
 
 export async function getServerSideProps(ctx) {
   const code = typeof ctx.query.code === 'string' ? ctx.query.code : null;
@@ -31,6 +33,11 @@ export async function getServerSideProps(ctx) {
       // Personal invitation (/join/<code> set rl_promo): grant it now that the account exists.
       // Best effort — whatever happens, the signup succeeds; a failure leaves plan = 'none'.
       await redeemPromoFromCookie(ctx.req, ctx.res, data.user.id);
+      // Where this realtor first came from (lib/signupSource.js), written once to their own new
+      // profile and never on a recovery link. Best effort: a failure leaves it unknown.
+      if (!recovery && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        try { await recordSignupSource(getSupabaseAdminClient(), data.user.id, signupSourceFor(data.user, ctx.req.headers.cookie)); } catch (e) { /* unknown */ }
+      }
     }
     if (error) {
       return {

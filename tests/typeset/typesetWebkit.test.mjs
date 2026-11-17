@@ -1,5 +1,5 @@
 // The wrapped text on every page and state a person can reach (tests/helpers/typesetStates.mjs:
-// public, realtor, billing, tenant, landlord), in WebKit (Safari's engine) and in Chrome, at 390
+// public, realtor, billing, tenant, landlord, the founder office), in WebKit (Safari's engine) and in Chrome, at 390
 // and at 320, with the long values (tests/helpers/fakeNextServer.mjs, FAKE_LONG=1), on the real
 // pages over the fake stack in two production builds: billing off on 3177, as production runs
 // today, and billing on (BILLING_OFF=false) on 3178 for the trial, paywall and billing screens.
@@ -17,6 +17,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
@@ -25,6 +26,8 @@ import { sweep, STATES } from '../helpers/typesetStates.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const ROOT = new URL('../..', import.meta.url).pathname;
+// The founder office states sign in through the real login route with a password made up for this run.
+process.env.TYPESET_ADMIN_PASSWORD = process.env.TYPESET_ADMIN_PASSWORD || randomBytes(18).toString('hex');
 const SERVERS = { off: { port: 3177, env: {} }, on: { port: 3178, env: { BILLING_OFF: 'false' } } };
 const bases = Object.fromEntries(Object.entries(SERVERS).map(([k, s]) => [k, `http://localhost:${s.port}`]));
 let turn = false; let swept = 0;
@@ -32,7 +35,7 @@ const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:L
 const down = () => { for (const s of Object.values(SERVERS)) { if (s.proc) { try { process.kill(-s.proc.pid); } catch (e) { /* gone */ } s.proc = null; } for (const pid of listeners(s.port)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } } };
 const build = (s) => new Promise((res, rej) => { const p = spawn(process.execPath, [`${ROOT}node_modules/next/dist/bin/next`, 'build'], { cwd: ROOT, env: { ...process.env, ...s.env, NEXT_DIST_DIR: `.next-fake-${s.port}`, FAKE_STACK_BUILD: '1' }, stdio: 'ignore' }); p.on('exit', (code) => (code === 0 ? res() : rej(new Error(`next build for ${s.port} exited ${code}`)))); });
 const start = (s) => new Promise((res, rej) => {
-  s.proc = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(s.port), 'prod', '3'], { cwd: ROOT, env: { ...process.env, ...s.env, FAKE_LONG: '1' }, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(s.proc, 'the fake stack server');
+  s.proc = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(s.port), 'prod', '3'], { cwd: ROOT, env: { ...process.env, ...s.env, FAKE_LONG: '1', ADMIN_PASSWORD: process.env.TYPESET_ADMIN_PASSWORD }, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(s.proc, 'the fake stack server');
   const t = setTimeout(() => rej(new Error(`the fake stack server on ${s.port} did not start`)), 120000);
   s.proc.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } });
 });

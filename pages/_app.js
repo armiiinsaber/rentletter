@@ -7,10 +7,15 @@
 // block of more than six lines, which Chrome leaves unbalanced, is evened by components/EvenLines.js.
 import Head from 'next/head';
 import RouteFrame from '../components/nav/RouteFrame';
+import { useEffect } from 'react';
 import { useEvenLines } from '../components/EvenLines';
+import { rememberFirstTouch } from '../lib/signupSource';
 
 export default function App({ Component, pageProps }) {
   useEvenLines();
+  // The first page a browser lands on is remembered as one short word (lib/signupSource.js), so a
+  // realtor who signs up later can be counted by where they first came from. Never a URL.
+  useEffect(() => { rememberFirstTouch(); }, []);
   return (
     <>
       <style jsx global>{`

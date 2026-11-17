@@ -15,6 +15,22 @@
     {
       "path": "/api/cron/pipeline",
       "schedule": "30 13 * * *"
+    },
+    {
+      "path": "/api/cron/kpi-snapshot?slot=daylight",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/kpi-snapshot?slot=standard",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/kpi-email?slot=daylight",
+      "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/kpi-email?slot=standard",
+      "schedule": "0 13 * * *"
     }
   ]
 }

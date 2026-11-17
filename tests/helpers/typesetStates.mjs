@@ -91,6 +91,18 @@ async function partyToken(p, f, role, link) {
 }
 const myApplication = async (p, f, link) => { const { applicationNumber, ownerToken } = await f(`/__fake/app?link=${link}`); await open(p, `/my-application/${applicationNumber}?token=${ownerToken}`); };
 
+// The founder office (/admin): the session cookie from the real login route, with the password the
+// walk made up for this run (TYPESET_ADMIN_PASSWORD, handed to the server as ADMIN_PASSWORD). One
+// sign in per server: a context that already holds a live session keeps it.
+async function office(p) {
+  const live = await p.request.get('/api/admin/session');
+  if (live.status() === 200) return;
+  const r = await p.request.post('/api/admin/login', { data: { password: process.env.TYPESET_ADMIN_PASSWORD } });
+  if (!r.ok()) throw new Error(`office sign in failed: ${r.status()}`);
+  const m = /rl_admin=([^;]+)/.exec(r.headers()['set-cookie'] || '');
+  if (!m) throw new Error('office sign in set no session cookie');
+  await p.context().addCookies([{ name: 'rl_admin', value: decodeURIComponent(m[1]), url: new URL(r.url()).origin, httpOnly: true, sameSite: 'Strict' }]);
+}
 export const STATES = [
   // ── public ──
   { name: 'home', kind: 'public', go: (p) => open(p, '/') },
@@ -178,6 +190,10 @@ export const STATES = [
   // ── landlord ──
   { name: 'landlord report', kind: 'landlord', phase: 'write', go: async (p) => { const t = await report(p); await open(p, `/r/${t}`); }, steps: async function* (p) { await tap(p, /meet/i); await wait(p, 400); yield 'landlord report, answered'; await tap(p, /Tap to change/); yield 'landlord report, changing an answer'; } },
   { name: 'landlord report, sandbox', kind: 'landlord', go: (p) => open(p, '/r/demo-demo-carlaw') },
+  // ── the founder office: the Commitment section first, and the poster ──
+  { name: 'office, the commitment counted', kind: 'office', phase: 'write', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await p.locator('.cm-svg').waitFor({ timeout: 15000 }); await wait(p, 400); } },
+  { name: 'office, the commitment poster', kind: 'office', phase: 'write', go: async (p) => { await office(p); await open(p, '/admin/commitment'); await p.locator('[data-poster]').waitFor({ timeout: 30000 }); await wait(p, 400); } },
+  { name: 'office, the commitment before its table exists', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?history=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?history=1'); } } },
 ];
 
 // Every state, in its phase, concurrency at a time; measure(page, name, kind) after each state

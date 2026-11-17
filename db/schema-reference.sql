@@ -179,3 +179,14 @@
 -- Confirmed in production on 2026 09 04: relrowsecurity is true for applications, listings,
 -- listing_applicants, profiles, tenant_profiles and applicant_documents, and pg_policies returns
 -- listings_all_own, listing_applicants_all_own, profiles_select_own and profiles_update_own.
+--
+-- ── public.kpi_daily and profiles.signup_source (db/013-kpi-daily.sql) ───────────────────────
+--   kpi_daily              one row per Toronto date (day date primary key): the commitment's figures
+--                          as lib/kpis.js counted them that day. RLS on, no policy, nothing granted
+--                          to anon or authenticated: service role only (lib/kpiStore.js).
+--   profiles.signup_source text, nullable   CHECK profiles_signup_source_check: null, or
+--                          direct, invite, realtor_referral, apply, report, my_application,
+--                          tenant_page, landlord_page, or ref: and a code of 1 to 32 characters
+--                          (lib/signupSource.js SIGNUP_SOURCE; tests/signupSource.test.mjs compares
+--                          the two). Written once by the server; the trigger
+--                          profiles_keep_signup_source keeps it as it was on a browser role's update.

@@ -11,6 +11,7 @@ import { isAdmin } from '../lib/adminAuth';
 import { adminFetch, waitForAdminSession } from '../components/admin/adminFetch';
 import AdminShell, { Sheet, Info } from '../components/admin/AdminShell';
 import Loader from '../components/brand/Loader';
+import Commitment from '../components/admin/Commitment';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -146,6 +147,8 @@ export default function Admin({ authed: initialAuthed }) {
   return (
     <AdminShell page="realtors" title="Realtors">
       <div className="ad-wrap">
+        {/* The commitment comes first; everything else in the office sits below it, as it was. */}
+        <Commitment />
         <div className="ad-head">
           <div style={{ minWidth: 0 }}>
             <div className="ad-eyebrow">Realtors</div>
@@ -221,7 +224,7 @@ export default function Admin({ authed: initialAuthed }) {
             <label key={r.id} className={`ad-card ad-row ${sel.has(r.id) ? 'sel' : ''}`}>
               <input type="checkbox" aria-label={`Select ${r.email || r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} />
               <div style={{ minWidth: 0, flex: 1, display: 'grid', gap: 4 }}>
-                <div className="ad-mono" style={{ color: C.instText, fontSize: 13.5, overflowWrap: 'anywhere' }}>{r.email || '—'}</div>
+                <div className="ad-mono ad-row-email" style={{ color: C.instText, fontSize: 13.5, overflowWrap: 'anywhere' }}>{r.email || '—'}</div>
                 <div style={{ fontSize: 14, fontWeight: 700, overflowWrap: 'anywhere' }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>No name</span>}{r.brokerage ? <span style={{ color: C.instMute, fontWeight: 500 }}> · {r.brokerage}</span> : ''}</div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}><StatusPill r={r} /><FounderPill r={r} /></div>
                 <div className="ad-quiet ad-num" style={{ fontSize: 12.5, textWrap: 'balance' }}>{`${r.listings}\u00a0listing${r.listings === 1 ? '' : 's'}\u00a0·\u00a0${r.applications}\u00a0app${r.applications === 1 ? '' : 's'}\u00a0·\u00a0joined ${fmtDate(r.signupAt)}\u00a0·\u00a0seen\u00a0${ago(r.lastActivity)}`}</div>
@@ -300,7 +303,9 @@ export default function Admin({ authed: initialAuthed }) {
         @media (max-width: 480px) { .ad-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         .ad-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
         .ad-chip { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid ${C.instRule}; color: ${C.instText}; border-radius: ${R.pill}px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 36px; max-width: 100%; }
-        .ad-chip > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        /* A long brokerage name wraps inside its chip, whole, beside its count: nothing is cut short. */
+        .ad-chip { text-align: left; line-height: 1.3; }
+        .ad-chip .ad-num { flex-shrink: 0; }
         .ad-chip .ad-num { color: ${C.instMute}; }
         .ad-chip.on { background: ${C.instText}; color: ${C.inst}; border-color: ${C.instText}; }
         .ad-chip.on .ad-num { color: ${C.inst}; }
@@ -317,6 +322,8 @@ export default function Admin({ authed: initialAuthed }) {
         .ad-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
         .ad-row input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; }
         .ad-row.sel { border-color: ${C.redBright}; }
+        /* Below 345px an email stays on one line: the row's own face at 13px, where the fixed width one runs out of room. */
+        @media (max-width: 345px) { .ad-row .ad-row-email { font-family: inherit; font-size: 13px !important; letter-spacing: -0.01em; } }
         @media (max-width: 719px) { .ad-table-card { display: none; } .ad-list { display: grid; } }
         .ad-bar { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 40; background: ${C.instText}; color: ${C.inst}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; box-shadow: 0 -6px 24px rgba(0,0,0,0.4); }
         .ad-bar .ad-btn.secondary { color: ${C.inst}; border-color: rgba(16,16,18,0.35); }

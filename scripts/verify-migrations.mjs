@@ -11,10 +11,10 @@
 // what the editor sends. A failure rolls the transaction back and stops the path.
 //
 //   Path A  fresh setup   baseline, 001, 002, 003, 004, 004 again, 001 again, then every combination
-//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, 012, each twice
+//                         of state and old columns, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, 012, 013, each twice
 //   Path B  upgrade       baseline, the OLD 001 (git show b11f1f8, four income kinds), 002, 003,
 //                         one income_sources row carrying the fourth kind, 004, 004 again, 001 again,
-//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, 012, each twice
+//                         three drifted rows, 005, 005 again, 006, 007, credit-shared, 008, 009, 010, 011, 012, 013, each twice
 //   Path C  rollback      after path B: 999, 999 again
 //   Path D  old 012       baseline, the three utility columns as the earlier 012 made them (boolean
 //                         NOT NULL DEFAULT false, git show 555c286) on listings that hold rows, 012, 012 again
@@ -46,6 +46,7 @@ const FILES = {
   m010: 'db/010-drop-min-annual-income.sql',
   m011: 'db/011-document-content-hash.sql',
   m012: 'db/012-board-details.sql',
+  m013: 'db/013-kpi-daily.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -458,6 +459,79 @@ async function run012(db, tag) {
   check(same(strip(after), strip(before)), `${tag}2: every other column of every listing is what it was`);
 }
 
+// ── db/013-kpi-daily.sql ────────────────────────────────────────────────────────
+// kpi_daily exists with row level security on, no policy and nothing granted to the browser
+// roles: a signed in realtor can neither read nor write it, the service role's writes land. One
+// row per day: a second insert of a date is refused, an upsert replaces it. profiles.signup_source
+// is nullable text, every existing profile stays null, the check refuses a URL and accepts every
+// word on the list, and from the browser role the column keeps the value it had while the rest of
+// the same update goes through. A second run changes no column, no constraint and no row.
+const KPI_COLUMNS = [
+  ['day', 'date'], ['active_realtors_mtd', 'integer'], ['active_realtors_last_month', 'integer'], ['rentals_closed_mtd', 'integer'], ['rentals_closed_last_month', 'integer'],
+  ['streak_months', 'integer'], ['profile_reuse', 'integer'], ['profile_reuse_tracked', 'boolean'],
+  ['signups_mtd', 'integer'], ['signups_known_mtd', 'integer'], ['referral_signups_mtd', 'integer'], ['referral_share_mtd', 'numeric'],
+  ['signups_last_month', 'integer'], ['signups_known_last_month', 'integer'], ['referral_signups_last_month', 'integer'], ['referral_share_last_month', 'numeric'],
+  ['days_left', 'integer'], ['computed_at', 'timestamp with time zone'],
+];
+const SIGNUP_SOURCES = ['direct', 'invite', 'realtor_referral', 'apply', 'report', 'my_application', 'tenant_page', 'landlord_page', 'ref:maya-k'];
+const kpiCatalog = (db) => rows(db, "SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE a.attrelid IN ('public.kpi_daily'::regclass, 'public.profiles'::regclass) AND a.attnum > 0 AND NOT a.attisdropped ORDER BY c.relname, a.attnum");
+const kpiConstraints = (db) => rows(db, "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid IN ('public.kpi_daily'::regclass, 'public.profiles'::regclass) ORDER BY conname");
+async function check013(db, label) {
+  for (const [c, type] of KPI_COLUMNS) check((await one(db, "SELECT data_type FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'kpi_daily' AND column_name = $1", [c])) === type, `${label}: kpi_daily.${c} is ${type}`);
+  check((await one(db, "SELECT count(*)::int FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'kpi_daily'")) === KPI_COLUMNS.length, `${label}: kpi_daily has those ${KPI_COLUMNS.length} columns and no other`);
+  check((await one(db, "SELECT relrowsecurity FROM pg_class WHERE oid = 'public.kpi_daily'::regclass")) === true, `${label}: kpi_daily has row level security on`);
+  check((await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = 'kpi_daily'")) === 0, `${label}: kpi_daily has no policy`);
+  for (const role of ['anon', 'authenticated']) for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) check((await one(db, 'SELECT has_table_privilege($1, $2, $3)', [role, 'public.kpi_daily', priv])) === false, `${label}: ${role} holds no ${priv} on kpi_daily`);
+  const as = async (role, fn) => { await db.exec(`SET ROLE ${role}`); try { return await fn(); } finally { await db.exec('RESET ROLE'); } };
+  for (const role of ['anon', 'authenticated']) {
+    check(/permission denied/.test(await as(role, () => refused(db, 'SELECT * FROM public.kpi_daily'))), `${label}: ${role} cannot read kpi_daily`);
+    check(/permission denied/.test(await as(role, () => refused(db, "INSERT INTO public.kpi_daily (day, days_left) VALUES ('2026-11-17', 365)"))), `${label}: ${role} cannot write kpi_daily`);
+  }
+  // The service role's path (the owner here): one row per date, replaced by an upsert.
+  await db.query("INSERT INTO public.kpi_daily (day, active_realtors_mtd, rentals_closed_mtd, referral_share_mtd, days_left) VALUES ('2026-11-17', 4, 2, 0.3333, 365)");
+  check(/kpi_daily_pkey/.test(await refused(db, "INSERT INTO public.kpi_daily (day, days_left) VALUES ('2026-11-17', 365)")), `${label}: a second row for the same date is refused`);
+  await db.query("INSERT INTO public.kpi_daily (day, active_realtors_mtd, days_left) VALUES ('2026-11-17', 5, 365) ON CONFLICT (day) DO UPDATE SET active_realtors_mtd = EXCLUDED.active_realtors_mtd");
+  check((await one(db, "SELECT active_realtors_mtd FROM public.kpi_daily WHERE day = '2026-11-17'")) === 5 && (await one(db, 'SELECT count(*)::int FROM public.kpi_daily')) === 1, `${label}: an upsert replaces that date's row`);
+  check(/check/.test(await refused(db, "INSERT INTO public.kpi_daily (day, referral_share_mtd, days_left) VALUES ('2026-11-18', 1.5, 364)")), `${label}: a share above one is refused`);
+  check(/check/.test(await refused(db, "INSERT INTO public.kpi_daily (day, active_realtors_mtd, days_left) VALUES ('2026-11-18', -1, 364)")), `${label}: a negative count is refused`);
+  await db.query('DELETE FROM public.kpi_daily');
+  // profiles.signup_source
+  const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'signup_source'"))[0];
+  check(col && col.data_type === 'text' && col.is_nullable === 'YES' && col.column_default === null, `${label}: profiles.signup_source is nullable text with no default`, JSON.stringify(col));
+  check((await constraintCount(db, 'profiles_signup_source_check')) === 1, `${label}: the signup_source check exists once`);
+  check((await one(db, "SELECT count(*)::int FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass AND tgname = 'profiles_keep_signup_source'")) === 1, `${label}: the keep trigger exists once`);
+  for (const bad of ['https://rentletter.ca/apply/token', 'apply?from=x', 'ref:', 'ref:has space', 'elsewhere', '']) check(/profiles_signup_source_check/.test(await refused(db, 'UPDATE public.profiles SET signup_source = $2 WHERE id = $1', [ID.me, bad])), `${label}: "${bad}" is refused`);
+  for (const good of SIGNUP_SOURCES) { await db.query('UPDATE public.profiles SET signup_source = $2 WHERE id = $1', [ID.me, good]); check((await one(db, 'SELECT signup_source FROM public.profiles WHERE id = $1', [ID.me])) === good, `${label}: "${good}" is kept`); }
+  // From the browser role: the realtor's own update goes through, and the first touch stays put.
+  await db.query("UPDATE public.profiles SET signup_source = 'apply', full_name = 'Before' WHERE id = $1", [ID.me]);
+  await db.exec(`SET request.jwt.claim.sub = '${ID.me}'; SET ROLE authenticated`);
+  try { await db.query("UPDATE public.profiles SET signup_source = 'direct', full_name = 'After' WHERE id = $1", [ID.me]); } finally { await db.exec('RESET ROLE; RESET request.jwt.claim.sub'); }
+  const kept = (await rows(db, 'SELECT signup_source, full_name FROM public.profiles WHERE id = $1', [ID.me]))[0];
+  check(kept.signup_source === 'apply' && kept.full_name === 'After', `${label}: from the browser role the name changes and the first touch does not`, JSON.stringify(kept));
+}
+async function run013(db, tag) {
+  const strip = (list) => list.map((r) => { const o = { ...r }; delete o.signup_source; return o; });
+  const name = await one(db, 'SELECT full_name FROM public.profiles WHERE id = $1', [ID.me]);
+  const before = await rows(db, 'SELECT * FROM public.profiles ORDER BY id');
+  await step(db, `${tag}1`, FILES.m013);
+  check((await one(db, 'SELECT count(*)::int FROM public.profiles WHERE signup_source IS NOT NULL')) === 0, `${tag}1: every existing profile reads unknown (null)`);
+  check(same(strip(await rows(db, 'SELECT * FROM public.profiles ORDER BY id')), before), `${tag}1: no other column of any profile moved`);
+  await check013(db, `${tag}1`);
+  await db.query("INSERT INTO public.kpi_daily (day, active_realtors_mtd, days_left) VALUES ('2026-11-17', 7, 365)");
+  const shape = await kpiCatalog(db); const constraints = await kpiConstraints(db);
+  const triggers = await rows(db, "SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass AND NOT tgisinternal ORDER BY 1");
+  await step(db, `${tag}2 (013 again)`, FILES.m013);
+  check(same(await kpiCatalog(db), shape), `${tag}2: a second run leaves every column of kpi_daily and profiles, its type, NOT NULL and default as they were`);
+  check(same(await kpiConstraints(db), constraints), `${tag}2: and every constraint on both tables`);
+  check(same(await rows(db, "SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass AND NOT tgisinternal ORDER BY 1"), triggers), `${tag}2: and the triggers on profiles`);
+  check((await one(db, "SELECT active_realtors_mtd FROM public.kpi_daily WHERE day = '2026-11-17'")) === 7, `${tag}2: the snapshot row written before the second run is still there`);
+  check((await one(db, 'SELECT signup_source FROM public.profiles WHERE id = $1', [ID.me])) === 'apply', `${tag}2: and the first touch a profile holds`);
+  await db.query('DELETE FROM public.kpi_daily');
+  await check013(db, `${tag}2`);
+  await db.query('UPDATE public.profiles SET signup_source = NULL, full_name = $2 WHERE id = $1', [ID.me, name]);
+  check(same(await rows(db, 'SELECT * FROM public.profiles ORDER BY id'), before.map((r) => ({ ...r, signup_source: null }))), `${tag}2: put back, every profile is what it was, with an empty first touch`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -554,6 +628,7 @@ async function pathA() {
   await run010(db, 'A5');
   await run011(db, 'A6');
   await run012(db, 'A7');
+  await run013(db, 'A8');
   await db.close();
 }
 
@@ -590,6 +665,7 @@ async function pathB() {
   await run010(db, 'B12');
   await run011(db, 'B13');
   await run012(db, 'B14');
+  await run013(db, 'B15');
   return { db, before };
 }
 

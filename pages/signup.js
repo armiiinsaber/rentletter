@@ -11,6 +11,7 @@ import { isValidEmail } from '../lib/validation';
 import AuthShell, { authInputStyle, authButtonStyle, authErrorStyle, authNoticeStyle, authLabelStyle } from '../components/auth/AuthShell';
 import { C } from '../components/theme';
 import { referralsEnabled } from '../lib/features';
+import { readFirstTouch } from '../lib/signupSource';
 import { Pending } from '../components/brand/Loader';
 
 export default function SignUp() {
@@ -100,7 +101,9 @@ export default function SignUp() {
         password,
         // The province is asked once, at the first listing (components/listings/ListingSetupModal.js
         // askProvince), never here.
-        options: { emailRedirectTo },
+        // The first touch word, when this browser has one (lib/signupSource.js): the auth callback
+        // writes it to the new profile once.
+        options: { emailRedirectTo, ...(readFirstTouch(document.cookie) ? { data: { signup_source: readFirstTouch(document.cookie) } } : {}) },
       });
       if (signUpError) {
         setError(friendlyError(signUpError)); // pass the whole error so code/status classify it
