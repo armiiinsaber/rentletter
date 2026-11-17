@@ -74,7 +74,7 @@ export default function ReferralConsent() {
             <div className="rl-card" style={{ padding: 'clamp(22px, 5vw, 32px)' }}>
               <Eyebrow color={C.inkMute}>Referral</Eyebrow>
               <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 34px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>This link is no longer active.</h1>
-              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, margin: 0, textWrap: 'pretty' }}>Referrals between realtors are paused. Nothing changes for your application.</p>
+              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, margin: 0, textWrap: 'balance' }}>Referrals between realtors are paused. Nothing changes for your application.</p>
             </div>
           )}
           {phase === 'gone' && (

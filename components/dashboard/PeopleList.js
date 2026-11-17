@@ -2,8 +2,9 @@
 // Pipeline: the ink block on the dashboard, the same surface as the greeting. Everyone who was asked when a unit went rented (pending,
 // muted, no invite yet) and everyone who said yes (consented, not ended), scored against every active listing (lib/pipelineState.js peopleRows, the same
 // Fit the listing page shows, documents excluded, confirmations carried). Each row: the name or
-// the email, then the facts as pills: the score, the address it was scored for, where they came
-// from when that is another listing, the date it lasts until, and applied or invited. The whole card
+// the email, then the facts as pills: the score, the date it lasts until, and applied or invited;
+// under them, a line each, the address it was scored for and where they came from when that is
+// another listing (a long address cut short in a pill loses the unit). The whole card
 // is one tap target (Enter and Space too): a tap anywhere opens it and a tap anywhere closes it,
 // while the controls inside keep their own action. Open, each active listing gets one row: its
 // score, its address and Applied as pills, or its one control (Invite, Invited), so the summary
@@ -67,16 +68,20 @@ export default function PeopleList({ people, onChanged, className = '', style })
   const pending = (p) => p.status === 'pending';
   // The summary. Closed: the score, the address it is for, the other listing they came from, the
   // date, applied or invited. Open: only what the listing rows below do not already show.
+  // An address is a line of text under the pills, never a pill: a pill is one 28px line, and a long
+  // address cut short there loses the unit.
+  const place = (text) => <div style={{ fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 1.35, marginTop: 'var(--s-2)', overflowWrap: 'anywhere' }}>{text}</div>;
   const line2 = (p, open) => {
     if (pending(p)) return <StatusPills tone="ink" label="Status" items={[`asked ${shortDate(p.askedAt)}`, 'no answer yet']} />;
-    const bits = [];
+    const bits = []; const places = [];
     if (!p.best) bits.push(p.unscored ? INCOMPLETE_LINE : 'Asked to hear about similar units');
-    else if (!open) bits.push(`${Number(p.best.score).toFixed(1)} ${p.best.label}`, p.best.listingName);
+    else if (!open) { bits.push(`${Number(p.best.score).toFixed(1)} ${p.best.label}`); places.push(p.best.listingName); }
     // The address once: "from" only when they came from a listing other than the one scored.
-    if (p.fromListingName && !(p.best && p.best.listingName === p.fromListingName)) bits.push(`from ${p.fromListingName}`);
+    if (p.fromListingName && !(p.best && p.best.listingName === p.fromListingName)) places.push(`from ${p.fromListingName}`);
     if (p.expiresAt) bits.push(`until ${shortDate(p.expiresAt)}`);
     if (!open) { if (p.applied) bits.push('applied'); else if (p.lastInvitedAt) bits.push(`invited ${shortDate(p.lastInvitedAt)}`); }
-    return bits.length ? <StatusPills tone="ink" label="Status" items={bits} /> : null;
+    if (!bits.length && !places.length) return null;
+    return <>{bits.length ? <StatusPills tone="ink" label="Status" items={bits} /> : null}{places.map((x) => <div key={x}>{place(x)}</div>)}</>;
   };
   const toggle = (id) => setOpenId((cur) => (cur === id ? null : id));
   const [listOpen, setListOpen] = useState(true);
@@ -110,7 +115,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
       </div>
       {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginBottom: 'var(--s-2)' }}>{note}</div> : null}
       {rows.length === 0 ? (
-        <p style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>Nobody yet. Applicants who lose out on a rented unit appear here once asked.</p>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'balance' }}>Nobody yet. Applicants who lose out on a rented unit appear here once asked.</p>
       ) : (single || listOpen) && (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
           {rows.map((p, i) => {

@@ -170,7 +170,7 @@ export default function MyProfile() {
           {phase === 'sent' ? (
             <>
               <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>Check your inbox.</h1>
-              <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>If <strong style={{ color: C.ink, overflowWrap: 'anywhere' }}>{email}</strong> {noWidow('has an application with us, we sent a link. It works once and expires in 15 minutes. Open it on whichever device you like.')}</p>
+              <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>If <strong className="mp-addr" style={{ color: C.ink, overflowWrap: 'anywhere' }}>{email}</strong> {noWidow('has an application with us, we sent a link. It works once and expires in 15 minutes. Open it on whichever device you like.')}</p>
               <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Nothing arrived? Check spam for Rentletter and make sure it is the email you applied with.')}</p>
               <button type="button" onClick={() => setPhase('entry')} className="mp-link">Try another email</button>
             </>

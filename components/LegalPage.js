@@ -9,9 +9,11 @@ import Link from 'next/link';
 import { C, R } from './theme';
 import { GlobalStyle, Wordmark, ScrollHeader, Icon } from './ui';
 
+// A hyphenated word ("third-party") never breaks at its hyphen: each one is set whole, on one line.
+const whole = (text, key) => String(text).split(/(\S*\w-\w\S*)/).map((part, i) => (i % 2 === 1 ? <span key={`${key}-${i}`} style={{ whiteSpace: 'nowrap' }}>{part}</span> : part));
 // Render inline **bold** within a line.
 function inline(text) {
-  return String(text).split('**').map((part, i) => (i % 2 === 1 ? <strong key={i} style={{ fontWeight: 700, color: C.ink }}>{part}</strong> : part));
+  return String(text).split('**').map((part, i) => (i % 2 === 1 ? <strong key={i} style={{ fontWeight: 700, color: C.ink }}>{whole(part, i)}</strong> : whole(part, i)));
 }
 
 // Parse the content string into ordered blocks.

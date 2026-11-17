@@ -51,6 +51,8 @@ export function PlanPicker({ hasCustomer, showPortal = true, compact = false }) 
       {showPortal && hasCustomer && <p className="pw-fine"><button type="button" className="pw-link" disabled={!!busy} onClick={portal}><Pending busy={busy === 'portal'} label="Opening the billing portal">Open the billing portal</Pending></button> to update your card, see invoices or cancel.</p>}
       <style jsx global>{`
         .pw-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: ${compact ? 8 : 10}px; }
+        /* Below 361px the two plans stack: half a 320 screen cannot hold "Choose monthly" on one line. */
+        @media (max-width: 360.98px) { .pw-plans { grid-template-columns: minmax(0, 1fr); } }
         .pw-plan { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: ${R.card}px; padding: clamp(14px, 3.5vw, 22px) clamp(12px, 3vw, 20px); display: flex; flex-direction: column; gap: 6px; min-width: 0; }
         .pw-plan.annual { border-color: ${C.ruleDark}; }
         .pw-plan-h { display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap; min-height: 22px; }

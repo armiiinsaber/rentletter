@@ -39,6 +39,33 @@ const { tables, USER } = await import('../routes/fixture.mjs');
 const lapsed = process.env.FAKE_PROFILE === 'lapsed';
 const t = tables(lapsed ? { plan: 'trial', profileOver: { trial_ends_at: new Date(Date.now() - 2 * 86400000).toISOString() } } : {});
 for (const a of t.applications || []) if (!('rent_to_income_ratio' in a)) a.rent_to_income_ratio = null;
+// FAKE_LONG=1: the same rows with the longest values a screen meets in practice (the wrapped text
+// walks, tests/routes/typeset*Webkit.test.mjs): long names, a long brokerage, long addresses, long
+// employers and emails, the widest short code (WWWWWWW, seeded below), a reference request still
+// open, a Pipeline person asked and not yet answered, and one sent a renewal. Invented people.
+const long = process.env.FAKE_LONG === '1';
+// Names at the long end of real ones (26 to 33 characters; three words, and one of four that wraps
+// two and two), emails of 30 to 37, the brokerage as Ontario requires it (", Brokerage").
+const LONG_NAMES = { A1: 'Oluwaseun Adebayo Fitzgerald', A2: 'Anastasia Konstantinopoulou', A3: 'Bartholomew Nakamura Whitfield', A4: 'Guadalupe Thanabalasingham', A5: 'Oluwaseun Adebayo Fitzgerald', A6: 'María Fernanda González Rodríguez' };
+const LONG_EMAILS = { A1: 'oluwaseun.fitzgerald@outlook.com', A2: 'anastasia.konstantinopoulou@gmail.com', A3: 'bartholomew.whitfield@outlook.com', A4: 'guadalupe.thanabalasingham@gmail.com', A5: 'o.fitzgerald@northwindclinic.ca', A6: 'mariafernanda.gonzalez@gmail.com' };
+if (long) {
+  Object.assign(t.profiles[0], { full_name: 'Alexandria Konstantinopoulou', brokerage: 'Harbourfront Residential Realty Inc., Brokerage', phone: '416 555 0199' });
+  const L = Object.fromEntries(t.listings.map((l) => [l.id, l]));
+  Object.assign(L.L1, { name: '2150 Lake Shore Boulevard West, Penthouse 4512', address: '2150 Lake Shore Boulevard West, Penthouse 4512, Toronto', landlord_name: 'Bartholomew Castellanos Whitfield', landlord_email: 'b.castellanos.whitfield@outlook.com' });
+  Object.assign(L.L2, { name: '1 Bloor Street East, Unit 3407', address: '1 Bloor Street East, Unit 3407, Toronto' });
+  for (const a of t.applications) {
+    const name = LONG_NAMES[a.id]; if (!name) continue;
+    Object.assign(a, { full_name: name, email: LONG_EMAILS[a.id], employer: 'Northwind Pediatric Rehabilitation Clinic Inc.', job_title: 'Senior Clinical Operations Coordinator', prev_landlord_name: 'Harbourfront Residential Holdings Ltd.', prev_address: '4100 Yonge Street, Unit 1907, North York' });
+  }
+  const j1 = t.listing_applicants.find((j) => j.id === 'J1');
+  j1.doc_verifications.active.documents[0].extracted = { ...j1.doc_verifications.active.documents[0].extracted, applicantName: LONG_NAMES.A1, employer: 'Northwind Pediatric Rehabilitation Clinic Inc.' };
+  j1.doc_verifications.active.comparisons[0].found = 'Northwind Pediatric Rehabilitation Clinic Inc.';
+  t.reference_responses.push({ id: 'RR2', listing_applicant_id: 'J2', profile_id: USER.id, token: 'p'.repeat(32), status: 'pending', answers: null, sent_to: 'leasing@harbourfrontholdings.ca', sent_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 6 * 86400000).toISOString(), answered_at: null, created_at: new Date(Date.now() - 86400000).toISOString() });
+  t.pipeline_consents.push(
+    { id: 'PC3', profile_id: USER.id, listing_id: 'L1', application_id: 'A3', email: 'bartholomew.whitfield@outlook.com', token: 'keeplongpending00000000000000001', status: 'pending', created_at: new Date(Date.now() - 2 * 86400000).toISOString(), expires_at: new Date(Date.now() + 28 * 86400000).toISOString(), invites: [] },
+    { id: 'PC4', profile_id: USER.id, listing_id: 'L1', application_id: 'A4', email: 'guadalupe.thanabalasingham@gmail.com', token: 'keeplongconsented000000000000001', renew_token: 'keeplongrenew0000000000000000001', status: 'consented', consented_at: new Date(Date.now() - 50 * 86400000).toISOString(), expires_at: new Date(Date.now() + 5 * 86400000).toISOString(), invites: [] },
+  );
+}
 // The other realtor's held credit report: owned by OTHER through L9 and J9 (tests/routes/fixture.mjs).
 t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_applicant_id: 'J9', profile_id: 'realtor-2', storage_path: 'realtor-2/J9/d9.pdf', kind: 'credit report', mime: 'application/pdf', bytes: 1200, uploaded_by: 'tenant', uploaded_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 13 * 86400000).toISOString(), deleted_at: null, deleted_by: null, opened_count: 0, last_opened_at: null }];
 const stack = installFakeStack({ tables: t, user: USER });
@@ -46,6 +73,15 @@ await stack.db.storage.from('applicant-documents').upload('realtor-2/J9/d9.pdf',
 const { mintRequest, kvSetJson } = await import('../../lib/docRequest.js');
 const { newOwnerToken } = await import('../../lib/applicationIds.js');
 globalThis.__rlFakeStackFor = stack;
+// The widest short code on the long listing's invite, the way pages/api/listings/invite.js writes
+// it (short:{code} holds the token; the record carries the code, kept on every reuse).
+if (long) {
+  const { INVITE_TOKEN } = await import('../routes/fixture.mjs');
+  const H = { Authorization: `Bearer ${process.env.KV_REST_API_TOKEN}`, 'Content-Type': 'application/json' };
+  const p = t.profiles[0]; const l1 = t.listings.find((l) => l.id === 'L1');
+  await fetch(`${process.env.KV_REST_API_URL}/set/short:WWWWWWW`, { method: 'POST', headers: H, body: JSON.stringify(INVITE_TOKEN) });
+  await fetch(`${process.env.KV_REST_API_URL}/set/linvite:${INVITE_TOKEN}`, { method: 'POST', headers: H, body: JSON.stringify({ realtorEmail: USER.email, profileId: USER.id, realtorName: p.full_name, realtorBrokerage: p.brokerage, realtorPhone: p.phone, province: 'ON', listingId: 'L1', listingName: l1.name, unit: { address: l1.address, monthlyRent: String(l1.monthly_rent), bedrooms: l1.bedrooms, allowsPets: l1.allows_pets, allowsSmoking: l1.allows_smoking, parkingIncluded: l1.parking_included }, createdAt: new Date().toISOString(), submissionCount: 0, shortCode: 'WWWWWWW' }) });
+}
 process.env.NEXT_DIST_DIR = `.next-fake-${port}`;
 if (mode === 'prod') process.env.NODE_ENV = 'production'; // one React build, the production one
 const require = createRequire(ROOT);
@@ -122,8 +158,9 @@ http.createServer(async (req, res) => {
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ id: a.id, prev_landlord_name: a.prev_landlord_name, years_at_previous: a.years_at_previous })); return;
   }
   if (req.url.startsWith('/__fake/mail')) {
-    const to = String(new URL(req.url, 'http://localhost').searchParams.get('to') || '').toLowerCase();
-    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(stack.resend.sent.filter((m) => !to || String(m.to).toLowerCase() === to).map((m) => ({ to: m.to, subject: m.subject, text: m.text })))); return;
+    const q = new URL(req.url, 'http://localhost').searchParams; const to = String(q.get('to') || '').toLowerCase();
+    // html=1 adds each message's HTML (the email template audit renders it at phone widths).
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify(stack.resend.sent.filter((m) => !to || String(m.to).toLowerCase() === to).map((m) => ({ to: m.to, subject: m.subject, text: m.text, ...(q.get('html') === '1' ? { html: m.html } : {}) })))); return;
   }
   if (req.url.startsWith('/__fake/parties')) {
     const appId = String(new URL(req.url, 'http://localhost').searchParams.get('app') || '');
@@ -136,6 +173,27 @@ http.createServer(async (req, res) => {
   if (req.url.startsWith('/__fake/events')) {
     const type = String(new URL(req.url, 'http://localhost').searchParams.get('type') || '');
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify((t.events || []).filter((e) => !type || e.type === type).map((e) => ({ type: e.type, payload: e.payload })))); return;
+  }
+  // The wrapped text walks: GET /__fake/state?plan=founding|trial|lapsed|paid|past_due&days=3 sets
+  // the signed in realtor's plan (a trial with days left, one ended two days ago, a payment past
+  // due with days of grace); listings=0 takes their listings away (the empty dashboard) and
+  // listings=1 puts them back; name=0 blanks their name (onboarding) and name=1 puts it back.
+  // Answers the profile's plan fields.
+  if (req.url.startsWith('/__fake/state')) {
+    const q = new URL(req.url, 'http://localhost').searchParams; const p = t.profiles[0]; const days = Number(q.get('days') || 3);
+    const plan = q.get('plan');
+    if (plan) {
+      for (const k of ['trial_ends_at', 'subscription_status', 'grace_ends_at']) p[k] = null;
+      if (plan === 'founding' || plan === 'paid') p.plan = plan;
+      if (plan === 'trial') Object.assign(p, { plan: 'trial', trial_ends_at: new Date(Date.now() + (days - 0.5) * 86400000).toISOString() });
+      if (plan === 'lapsed') Object.assign(p, { plan: 'trial', trial_ends_at: new Date(Date.now() - 2 * 86400000).toISOString() });
+      if (plan === 'past_due') Object.assign(p, { plan: 'paid', subscription_status: 'past_due', grace_ends_at: new Date(Date.now() + (days - 0.5) * 86400000).toISOString() });
+    }
+    if (q.get('name') === '0' && p.full_name) { t.__name = p.full_name; p.full_name = ''; } // not onboarded: /onboarding
+    if (q.get('name') === '1' && t.__name) { p.full_name = t.__name; t.__name = null; }
+    if (q.get('listings') === '0' && !t.__stashed) { t.__stashed = t.listings.filter((l) => l.profile_id === USER.id); t.listings = t.listings.filter((l) => l.profile_id !== USER.id); }
+    if (q.get('listings') === '1' && t.__stashed) { t.listings = [...t.__stashed, ...t.listings]; t.__stashed = null; }
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ plan: p.plan, trial_ends_at: p.trial_ends_at, subscription_status: p.subscription_status || null, listings: t.listings.filter((l) => l.profile_id === USER.id).length })); return;
   }
   if (req.url.startsWith('/__fake/pipeline')) {
     const n = Number(new URL(req.url, 'http://localhost').searchParams.get('people'));

@@ -109,7 +109,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
       <div role="tablist" aria-label="Next and History" style={{ display: 'flex', gap: 0, padding: '0 clamp(14px, 4vw, 24px)', borderBottom: `1px solid ${C.rule}`, flexShrink: 0 }}>
         {TABS.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-            style={{ minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.ink : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkMute, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+            style={{ minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.ink : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkMute, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
             {label}{id === 'next' && items.length ? <span aria-hidden="true" style={{ marginLeft: 'var(--s-1)', fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.ink, borderRadius: 9, padding: 'var(--s-1) var(--s-1)' }}>{items.length}</span> : null}
           </button>
         ))}
@@ -137,7 +137,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
                     <button type="button" onClick={() => goEvent(e)} style={{ width: '100%', textAlign: 'left', display: 'flex', gap: 'var(--s-2)', alignItems: 'flex-start', padding: 'var(--s-2) var(--s-1)', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.rule}`, cursor: 'pointer', minHeight: 44 }}>
                       <span aria-hidden="true" style={{ marginTop: 'var(--s-2)', width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: u ? C.red : C.rule }} />
                       <span style={{ minWidth: 0, flex: 1 }}>
-                        <span style={{ display: 'block', fontSize: 'var(--t-body)', color: C.ink, fontWeight: u ? 700 : 500, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{eventTitle(e)}</span>
+                        <span style={{ display: 'block', fontSize: 'var(--t-body)', color: C.ink, fontWeight: u ? 700 : 500, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance' }}>{eventTitle(e)}</span>
                         <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>{timeOf(e.created_at)}</span>
                       </span>
                     </button>
@@ -157,6 +157,13 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
         }
         @keyframes al-in { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: none; } }
         @media (pointer: coarse) { .al-x { display: none !important; } }
+        /* Below 345px the person and the reason take the row's width, the verb and the X the row
+           under them at the right: a long name beside the verb would leave a word on a line alone. */
+        @media (max-width: 344.98px) {
+          .al-row { flex-wrap: wrap; }
+          .al-text { flex: 1 1 100% !important; }
+          .al-verb { margin-left: auto; }
+        }
       `}</style>
     </Sheet>
   );

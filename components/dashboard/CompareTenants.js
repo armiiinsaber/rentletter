@@ -162,7 +162,8 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
       </div>
 
       {/* PHONE · one card per category, one row per tenant: the name left, the value right on the
-          same row (R3), so a value never breaks mid word in a narrow column. */}
+          same row (R3), or under the name when it does not fit there, so a value never breaks a
+          word at a time in a narrow column. */}
       <div className="cmp-mobile">
         <div style={{ display: 'grid', gap: 'var(--s-2)' }}>
           {CATEGORIES.map((c) => (
@@ -172,9 +173,10 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
                 const lead = leaders[c.key]?.has(t.id);
                 const value = valueOf(c, t);
                 return (
-                  <div key={t.id} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginTop: 'var(--s-1)' }}>
+                  <div key={t.id} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0 var(--s-3)', marginTop: 'var(--s-1)' }}>
                     <span style={{ flexShrink: 0, fontSize: 'var(--t-body-2)', color: C.inkSoft }}>{firstName(t.name)} <span className="num" style={{ color: C.inkMute }}>#{t.rank}</span></span>
-                    <span style={{ minWidth: 0, textAlign: 'right', fontSize: 'var(--t-body)', fontWeight: lead ? 800 : 600, color: C.ink, lineHeight: 'var(--lh-body)' }}>{lead ? withTick(value) : noWidow(value)}</span>
+                    {/* The value beside the name, or on its own line under it when the two do not fit (R3). */}
+                    <span style={{ minWidth: 0, marginLeft: 'auto', textAlign: 'right', fontSize: 'var(--t-body)', fontWeight: lead ? 800 : 600, color: C.ink, lineHeight: 'var(--lh-body)' }}>{lead ? withTick(value) : noWidow(value)}</span>
                   </div>
                 );
               })}

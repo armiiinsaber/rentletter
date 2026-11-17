@@ -38,7 +38,7 @@ export default function DocIntelReport({ result }) {
   const nameLine = result.nameMatch === 'mismatch' ? `Name on the documents did not match${result.applicantName ? ` ${result.applicantName}` : ''}${Array.isArray(result.documentNames) && result.documentNames.length ? `: they name ${result.documentNames.filter(Boolean).join(', ')}` : ''}.` : result.nameMatch === 'unclear' ? 'The name on the documents could not be confirmed.' : null;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-3)' }}>
-      {nameLine && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}><Mark status="mismatch" />{nameLine}</div>}
+      {nameLine && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}><Mark status="mismatch" />{nameLine}</div>}
       {rows.length > 0 && (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 'var(--s-2)' }}>
           {rows.map((r) => (
@@ -46,7 +46,7 @@ export default function DocIntelReport({ result }) {
               <span style={{ marginTop: 3 }}><Mark status={r.status} /></span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 'var(--lh-body)' }}>{r.field}</div>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}><StackedLines parts={[`Said: ${r.said}`, `Docs: ${r.docs}`]} /></div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance' }}><StackedLines parts={[`Said: ${r.said}`, `Docs: ${r.docs}`]} /></div>
                 {r.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>Also seen: {line}</div>)}
               </div>
             </li>
@@ -67,16 +67,19 @@ export default function DocIntelReport({ result }) {
                 <div key={i} style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'var(--s-3)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', marginBottom: 'var(--s-2)', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>{isUnrecognized ? 'Not a supporting document' : prettyType(type)}</span>
-                    <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0, flex: 1 }} title={d.filename}>{d.filename}</span>
+                    {/* The file name whole beside the type, or on the line under it when the two do not fit. */}
+                    <span style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontFamily: 'monospace', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' }} title={d.filename}>{d.filename}</span>
                   </div>
                   {isUnrecognized && <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{d.notes || 'This file does not read as a rental screening document. Ask the applicant to resend.'}</div>}
-                  {isCredit && (() => { const c = creditLines({ documents: [d] }); return <StatusPills label="Credit report" items={[c.label, ...c.lines, 'not used in Fit']} />; })()}
+                  {/* The credit facts are sentences, a line each (a pill is one 28px line and would cut them); the pill says it is not scored. */}
+                  {isCredit && (() => { const c = creditLines({ documents: [d] }); return <><div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)' }}><StackedLines parts={[c.label, ...c.lines]} /></div><StatusPills label="Credit report" items={['not used in Fit']} /></>; })()}
                   {rowKeys.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-1)' }}>
                       {rowKeys.map((k) => (
-                        <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--s-3)', fontSize: 'var(--t-body-2)' }}>
-                          <span style={{ color: C.inkMute, minWidth: 0 }}>{FIELD_LABEL[k] || k}</span>
-                          <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, overflowWrap: 'anywhere' }}>{String(ex[k])}</span>
+                        // The label whole at the left, the value at the right, or under the label when the two do not fit (R3).
+                        <div key={k} style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0 var(--s-3)', fontSize: 'var(--t-body-2)' }}>
+                          <span style={{ color: C.inkMute, flexShrink: 0 }}>{FIELD_LABEL[k] || k}</span>
+                          <span style={{ color: C.ink, fontWeight: 600, textAlign: 'right', minWidth: 0, marginLeft: 'auto', overflowWrap: 'anywhere' }}>{String(ex[k])}</span>
                         </div>
                       ))}
                     </div>

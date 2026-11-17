@@ -112,7 +112,7 @@ export default function UploadPage() {
               <div style={{ fontSize: 'clamp(16px, 4vw, 21px)', fontWeight: 700, color: C.inkSoft, letterSpacing: '-0.01em', marginBottom: 18 }}>
                 You’re all&nbsp;set.
               </div>
-              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22, textWrap: 'pretty' }}>
+              <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22, textWrap: 'balance' }}>
                 Your {sentCount} document{sentCount === 1 ? '' : 's'} {sentCount === 1 ? 'was' : 'were'} received and sent{req?.realtorName ? <> to <strong style={{ color: C.ink }}>{req.realtorName}</strong></> : ' to the listing realtor'} for review. You can close this page.
               </p>
               {disclosure}
@@ -136,7 +136,7 @@ export default function UploadPage() {
                 creditFirst={!!req?.askCreditReport}
                 onDone={({ received }) => { setSentCount(received); setStatus('done'); window.scrollTo(0, 0); }}
                 before={(
-                  <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 12, textWrap: 'pretty' }}>Your realtor can view these for {RETENTION_DAYS} days, then they are deleted. Do not upload anything showing your SIN.</div>
+                  <div style={{ fontSize: 13, color: C.ink, lineHeight: 1.55, marginBottom: 12, textWrap: 'balance' }}>Your realtor can view these for {RETENTION_DAYS} days, then they are deleted. Do not upload anything showing your SIN.</div>
                 )}
                 disclosure={disclosure}
               />

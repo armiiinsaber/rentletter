@@ -41,6 +41,8 @@ export const LinesText = ({ text }) => <StackedLines text={text} />;
 export const Eyebrow = ({ children, style }) => (
   <div className="mp-eyebrow" style={style}><span className="mp-dash" aria-hidden="true" />{children}</div>
 );
+// An email address is set whole, like a link (.mp-addr): one line, a size down below 345px.
+const isAddress = (v) => typeof v === 'string' && /^\S+@\S+\.\S+$/.test(v.trim());
 // One fact: the label over the value, on the line gap. Pairs sit in the two column .mp-facts grid.
 export function Row({ label, value, multiline }) {
   const empty = value === null || value === undefined || value === '';
@@ -49,7 +51,7 @@ export function Row({ label, value, multiline }) {
   return (
     <div className="mp-fact" style={wide ? { gridColumn: '1 / -1' } : undefined}>
       <div className="mp-label">{noWidow(label)}</div>
-      <div className={`mp-value${empty ? ' mp-empty' : ''}`} style={multiline ? { whiteSpace: 'pre-wrap' } : undefined}>{empty ? 'Not provided' : typeof value === 'string' ? noWidow(value) : value}</div>
+      <div className={`mp-value${empty ? ' mp-empty' : ''}${isAddress(value) ? ' mp-addr' : ''}`} style={multiline ? { whiteSpace: 'pre-wrap' } : undefined}>{empty ? 'Not provided' : typeof value === 'string' ? noWidow(value) : value}</div>
     </div>
   );
 }
@@ -91,12 +93,18 @@ export const ProfileStyles = () => (
     .mp-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; min-height: 12px; }
     .mp-dash { display: inline-block; width: 3px; height: 11px; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
     .mp-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.04em; text-transform: none; color: ${C.inkSoft}; }
+    /* An email address in a sentence stays whole on its line and the owner key on its own: below
+       345px each steps down one size so it fits a 320 screen (a code or a link may; the words may not). */
+    .mp-addr { white-space: nowrap; }
+    @media (max-width: 344.98px) { .mp-addr, .mp-value.mp-addr { font-size: 13px; } .mp-value.mp-key { font-size: 12px; } }
     .mp-h1 { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; overflow-wrap: anywhere; text-wrap: balance; }
     .mp-h2 { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; text-wrap: balance; }
     .mp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 44px; }
     .mp-saved { font-family: var(--f-body); font-size: var(--t-body-2); font-weight: 600; color: ${C.inkMute}; letter-spacing: 0; }
     .mp-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--gap-card) var(--s-4); align-items: start; margin-top: var(--gap-line); } /* the line gap under the title row (R4) */
     .mp-facts-1 { grid-template-columns: minmax(0, 1fr); }
+    /* On a phone one fact a row: half a 390 screen leaves a long employer or an email a word a line. */
+    @media (max-width: 480px) { .mp-facts { grid-template-columns: minmax(0, 1fr); } }
     /* The label and its value on one row, the value at the right; the value wraps to its own line
        only when it does not fit beside the label (R3). */
     .mp-fact { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--gap-line) var(--gap-card); }
@@ -104,11 +112,11 @@ export const ProfileStyles = () => (
     .mp-fact > .mp-value { flex: 0 1 auto; margin-top: 0; text-align: right; }
     .mp-fact > .mp-value:only-child { text-align: left; }
     .mp-label { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.inkMute}; text-wrap: balance; }
-    .mp-value { margin-top: var(--gap-line); font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.ink}; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-wrap: pretty; }
+    .mp-value { margin-top: var(--gap-line); font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.ink}; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
     .mp-empty { color: ${C.inkMute}; font-weight: 500; }
-    .mp-p { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: pretty; overflow-wrap: anywhere; margin: 0; }
-    .mp-note { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: pretty; overflow-wrap: anywhere; }
-    .mp-alert { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.danger}; font-weight: 600; text-wrap: pretty; overflow-wrap: anywhere; }
+    .mp-p { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: balance; overflow-wrap: anywhere; margin: 0; }
+    .mp-note { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: balance; overflow-wrap: anywhere; }
+    .mp-alert { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.danger}; font-weight: 600; text-wrap: balance; overflow-wrap: anywhere; }
     .mp-link { background: transparent; border: none; padding: 0; min-height: 44px; display: inline-flex; align-items: center; color: ${C.ink}; font-size: var(--t-body-2); font-weight: 700; text-decoration: underline; cursor: pointer; font-family: inherit; text-align: left; }
     .mp-link:disabled { opacity: 0.5; cursor: default; }
     .mp-btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; padding: 0 var(--gap-card); background: transparent; color: ${C.ink}; border: 1.5px solid ${C.ink}; border-radius: var(--btn-radius); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; }
@@ -124,7 +132,9 @@ export const ProfileStyles = () => (
     .mp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); margin-top: var(--gap-card); align-items: start; }
     .mp-stats > * { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--gap-line) var(--gap-card); }
     .mp-stats .mp-stat-v { margin-top: 0; }
-    .mp-stat-v { margin-top: var(--gap-line); font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-wrap: pretty; }
+    /* Below 345px the three counts stack, each label beside its value: a third of a 320 screen cannot hold "Last viewed". */
+    @media (max-width: 344.98px) { .mp-stats { grid-template-columns: minmax(0, 1fr); } }
+    .mp-stat-v { margin-top: var(--gap-line); font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-wrap: balance; }
     .mp-fold { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-top: var(--gap-card); background: transparent; border: none; border-top: 1px solid var(--rule); border-radius: 0; padding: 0; font: inherit; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; cursor: pointer; text-align: left; }
     .mp-list { list-style: none; margin: 0; padding: 0; }
     .mp-list li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); min-height: 44px; padding: var(--s-2) 0; border-top: 1px solid var(--rule); font-size: var(--t-body-2); line-height: var(--lh-body); }

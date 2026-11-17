@@ -102,7 +102,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
     return shell(
       <div className="rl-card" style={card}>
         <div style={{ marginBottom: 'var(--s-4)' }}><a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a></div>
-        <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{state === 'expired' ? 'This report has expired. Ask your realtor for a fresh one.' : state === 'reopened' ? 'This listing was reopened. Ask your realtor for a fresh report.' : 'This report is not available right now. Please try the link again in a moment.'}</p>
+        <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'balance' }}>{state === 'expired' ? 'This report has expired. Ask your realtor for a fresh one.' : state === 'reopened' ? 'This listing was reopened. Ask your realtor for a fresh report.' : 'This report is not available right now. Please try the link again in a moment.'}</p>
       </div>,
     );
   }
@@ -111,16 +111,17 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
     <>
       {/* Header card: the realtor's branding, the address in the display face. */}
       <section className="rl-card" style={card}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', marginBottom: 'var(--s-4)' }}>
+        {/* The realtor's name and brokerage beside the logo while they keep 200px; on a narrow phone, under it. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-3)', marginBottom: 'var(--s-4)' }}>
           {realtor.logoUrl ? <img src={realtor.logoUrl} alt="" style={{ height: 40, width: 'auto', maxWidth: 140, objectFit: 'contain' }} /> : null}
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: '1 1 200px' }}>
             <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, overflowWrap: 'anywhere' }}>{realtor.name}</div>
             {realtor.brokerage ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{realtor.brokerage}</div> : null}
           </div>
         </div>
         <h1 className="t-d1" style={{ color: C.ink, margin: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{listing.address}</h1>
         <StatusPills label="The unit" items={[listing.rent != null ? `${money(listing.rent)} per month` : null, listing.bedroomsLabel || null]} style={{ marginTop: 'var(--s-3)' }} />
-        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>
+        <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-2)', textWrap: 'balance' }}>
           Prepared {longDate(payload.generatedAt)}{listing.landlordName ? ` for ${listing.landlordName}` : ''}
         </div>
       </section>
@@ -131,9 +132,10 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
         const n = a.numbers || {};
         return (
           <section key={a.rank} className="rl-card" style={card} aria-label={`${a.rank}. ${a.name}`}>
-            {/* The name takes the whole line when the score beside it would squeeze it into a lone last word. */}
+            {/* The name takes the whole line when the score beside it would squeeze it: the score moves
+                under it whenever the rank and the name do not fit beside it on one line. */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--s-1) var(--s-3)' }}>
-              <div className="t-d3" style={{ color: C.ink, minWidth: 0, flex: '1 1 12em', overflowWrap: 'anywhere', textWrap: 'balance' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{noWidow(a.name)}</div>
+              <div className="t-d3" style={{ color: C.ink, minWidth: 0, flex: '1 1 auto', overflowWrap: 'anywhere', textWrap: 'balance' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{noWidow(a.name)}</div>
               {a.fit && a.fit.score != null ? (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', flexShrink: 0 }}>
                   <span className="t-d3 num" style={{ color: C.ink }}>{Number(a.fit.score).toFixed(1)}</span>
@@ -142,10 +144,10 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
               ) : a.fit && a.fit.incomplete ? null : <span style={eyebrow}>Rent share unknown</span>}
             </div>
             {/* Fit v2 (docs/fit-v2.md): what was assessed, then the facts the number rests on. A report frozen before v2 has neither. */}
-            {fitLines(a.fit).map((line) => <div key={line} data-fit-line="" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{noWidow(line)}</div>)}
-            {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{a.sentence}</p> : null}
-            {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(String(a.confirmedLine).replace(/ · (\S+ \S+)$/, ' ($1)'))}</div> : null}
-            {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(`Below the one above: ${String(a.reason.charAt(0).toLowerCase() + a.reason.slice(1)).split(' · ').join(', ')}.`)}</div> : null}
+            {fitLines(a.fit).map((line) => <div key={line} data-fit-line="" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>{noWidow(line)}</div>)}
+            {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'balance' }}>{a.sentence}</p> : null}
+            {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'balance' }}>{noWidow(String(a.confirmedLine).replace(/ · (\S+ \S+)$/, ' ($1)'))}</div> : null}
+            {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'balance' }}>{noWidow(`Below the one above: ${String(a.reason.charAt(0).toLowerCase() + a.reason.slice(1)).split(' · ').join(', ')}.`)}</div> : null}
             <div className="num rl-nums" style={{ display: 'grid', gap: 'var(--s-2)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
               {[['Income', n.annualIncome != null ? `${money(n.annualIncome)}${n.incomeJoint ? ' (joint)' : ''}` : 'not given'], ['Rent share', n.rentSharePct != null ? `${Math.round(n.rentSharePct)}%` : 'unknown'], ['At job', n.yearsAtJob ? `${n.yearsAtJob} yr${n.yearsAtJob === 1 ? '' : 's'}` : 'not given'], ['References', String(n.references || 0)]].map(([k, v]) => (
                 <div key={k} style={{ minWidth: 0 }}>
@@ -157,7 +159,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             {/* Credit: the report the applicant shared, in the checklist's words, or that none was. Plain text, never scored. */}
             <div data-credit-row={a.credit && a.credit.shared ? 'shared' : 'none'} style={{ marginTop: 'var(--s-3)', minWidth: 0 }}>
               <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>Credit</div>
-              <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance' }}>
                 {a.credit ? <>{a.credit.shared ? <span style={{ display: 'block', fontWeight: 700 }}>{a.credit.label}</span> : noWidow(a.credit.label)}{(a.credit.lines || []).map((line) => <span key={line} style={{ display: 'block' }}>{noWidow(line)}</span>)}</> : null}
               </div>
             </div>
@@ -166,7 +168,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
               <div data-parties-row="" style={{ marginTop: 'var(--s-3)', minWidth: 0 }}>
                 <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>People on this application</div>
                 {a.parties.map((p, i) => (
-                  <div key={`${p.role}-${i}`} style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty', marginTop: i ? 'var(--s-1)' : 0 }}>
+                  <div key={`${p.role}-${i}`} style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance', marginTop: i ? 'var(--s-1)' : 0 }}>
                     <span style={{ display: 'block', fontWeight: 700 }}>{noWidow(`${p.name}, ${String(p.roleLabel).toLowerCase()}, ${String(p.statusLabel).toLowerCase()}`)}</span>
                     {(p.facts || []).map((line) => <span key={line} style={{ display: 'block' }}>{noWidow(line)}</span>)}
                   </div>
@@ -182,7 +184,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
                     <span aria-hidden="true" style={{ width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {c.status === 'met' ? <Icon name="check" size={13} color={C.red} strokeWidth={2.5} /> : c.status === 'missed' ? <span style={{ width: 6, height: 6, borderRadius: '50%', background: C.ink, display: 'inline-block' }} /> : null}
                     </span>
-                    <span className="num" style={{ minWidth: 0, overflowWrap: 'anywhere', textWrap: 'pretty' }}>{noWidow(String(c.text).split(' · ').join(', '))}</span>
+                    <span className="num" style={{ minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{noWidow(String(c.text).split(' · ').join(', '))}</span>
                   </li>
                 ))}
               </ul>
@@ -211,12 +213,12 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
 
       <section className="rl-card" style={card}>
         {listing.criteriaLine ? <>
-          <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{noWidow(`Ranked against the criteria ${realtor.name} set.`)}</p>
+          <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'balance' }}>{noWidow(`Ranked against the criteria ${realtor.name} set.`)}</p>
           <StatusPills label="The criteria" items={String(listing.criteriaLine).split(' · ')} style={{ marginTop: 'var(--s-2)' }} />
         </> : null}
         {realtor.signature ? <p style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', overflowWrap: 'anywhere' }}>{String(realtor.signature).split(' · ').join(', ')}</p> : null}
-        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>Sent through Rentletter on behalf of {realtor.name}. This link is private to you.</p>
-        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'pretty' }}>{listing.fitLine || FIT_LINE}</p>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'balance' }}>Sent through Rentletter on behalf of {realtor.name}. This link is private to you.</p>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'balance' }}>{listing.fitLine || FIT_LINE}</p>
         <a href={`/api/report/pdf?token=${encodeURIComponent(token)}`} download style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, marginTop: 'var(--s-3)', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline' }}>Download PDF</a>
       </section>
       {/* The Rentletter logo at the foot, as on every page of the PDF (lib/landlordReportPdf.js). */}

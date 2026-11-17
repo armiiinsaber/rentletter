@@ -166,11 +166,12 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
   const setRows = (withControls) => (
     <div role="list" aria-label="Your document set" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 10, marginBottom: 14 }}>
       {set.items.map((it) => (
-        <div key={it.key} role="listitem" aria-label={`${it.label}${it.met ? ', added' : ''}${it.max > 1 ? `, ${Math.min(it.count, it.max)} of ${it.max}` : ''}`} style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 24 }}>
+        <div key={it.key} role="listitem" aria-label={`${it.label}${it.met ? ', added' : ''}${it.max > 1 ? `, ${Math.min(it.count, it.max)} of ${it.max}` : ''}`} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, minHeight: 24 }}>
           <span aria-hidden="true" style={{ width: 20, height: 20, borderRadius: '50%', border: `1.5px solid ${it.met ? C.red : C.ruleDark}`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             {it.met ? <Icon name="check" size={12} color={C.red} strokeWidth={3} /> : null}
           </span>
-          <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, flex: 1, minWidth: 0, textWrap: 'pretty' }}>
+          {/* The label and its note keep 180px; narrower, the count and Add move to the row below. */}
+          <span style={{ fontSize: 14, color: C.ink, lineHeight: 1.4, flex: '1 1 180px', minWidth: 0, textWrap: 'balance' }}>
             {it.label}{it.note ? <span style={{ display: 'block', fontSize: 12.5, color: C.inkMute }}>{it.note}</span> : null}
           </span>
           {it.max > 1 ? <span style={{ fontSize: 12.5, color: C.inkMute, flexShrink: 0 }}>{Math.min(it.count, it.max)} of {it.max}</span> : null}
@@ -182,10 +183,10 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           ) : null}
         </div>
       ))}
-      {withControls ? <div data-credit-consent="" style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, textWrap: 'pretty' }}>{CREDIT_CONSENT_LINE}</div> : null}
+      {withControls ? <div data-credit-consent="" style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5, textWrap: 'balance' }}>{CREDIT_CONSENT_LINE}</div> : null}
     </div>
   );
-  const setLine = <div style={{ fontSize: 13, color: set.complete ? C.ink : C.inkSoft, lineHeight: 1.5, marginBottom: 10, textWrap: 'pretty' }}>{set.complete ? COMPLETE_LINE : laterLine}</div>;
+  const setLine = <div style={{ fontSize: 13, color: set.complete ? C.ink : C.inkSoft, lineHeight: 1.5, marginBottom: 10, textWrap: 'balance' }}>{set.complete ? COMPLETE_LINE : laterLine}</div>;
 
   const fileRow = (f, bg, removable) => (
     <div key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, background: bg, border: `1px solid ${f.status === 'failed' ? C.danger : C.rule}`, borderRadius: R.ctrl, padding: '9px 12px', minHeight: 44 }}>
@@ -224,7 +225,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
             <input ref={inputRef} type="file" multiple accept={OK_ACCEPT} style={{ display: 'none' }} onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <div style={{ display: 'inline-flex', marginBottom: 8, color: C.red }}><Icon name="plus" size={22} /></div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink }}>Tap to choose files, or drop them here</div>
-            <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 4, textWrap: 'pretty' }}>PDF or image, up to {MAX_FILES} files, 3MB each</div>
+            <div style={{ fontSize: 12.5, color: C.inkMute, marginTop: 4, textWrap: 'balance' }}>PDF or image, up to {MAX_FILES} files, 3MB each</div>
           </div>
           {files.length > 0 && (
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, marginBottom: 14 }}>{files.map((f) => fileRow(f, C.card, true))}</div>
@@ -241,7 +242,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
         <>
           <div className="rl-card" style={{ padding: 'clamp(18px, 4vw, 24px)', marginBottom: 16 }}>
             <div style={{ fontSize: 12.5, fontWeight: 800, color: C.ink, marginBottom: 4 }}>Double check before you send</div>
-            <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5, marginBottom: 14, textWrap: 'pretty' }}>You are about to send {done.length} document{done.length === 1 ? '' : 's'}. Each one was read as the type shown.</div>
+            <div style={{ fontSize: 13, color: C.inkMute, lineHeight: 1.5, marginBottom: 14, textWrap: 'balance' }}>You are about to send {done.length} document{done.length === 1 ? '' : 's'}. Each one was read as the type shown.</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, marginBottom: 14 }}>{done.map((f) => fileRow(f, C.paperDeep, false))}</div>
             <div style={{ borderTop: `1px solid ${C.rule}`, paddingTop: 14 }}>{setRows(false)}</div>
           </div>

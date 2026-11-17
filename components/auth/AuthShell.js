@@ -15,16 +15,23 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
       </Head>
       <AppHead />
       <GlobalStyle />
-      <div style={{
+      {/* Below 345px the page and the card keep 12px at each side, not 16 and 24: the heading has the
+          width to sit on one line ("Forgot your password?" on a 320 screen). */}
+      <style jsx global>{`
+        .rl-auth-page { padding: clamp(20px, 5vw, 48px) clamp(16px, 4vw, 32px); }
+        .rl-auth-card { padding: clamp(24px, 5vw, 36px); }
+        @media (max-width: 344.98px) { .rl-auth-page { padding-left: 12px; padding-right: 12px; } .rl-auth-card { padding-left: 12px; padding-right: 12px; } }
+      `}</style>
+      <div className="rl-auth-page" style={{
         minHeight: '100vh', background: C.paper, color: C.ink,
         display: 'flex', flexDirection: 'column', alignItems: 'center',
-        justifyContent: 'center', padding: 'clamp(20px, 5vw, 48px) clamp(16px, 4vw, 32px)', paddingTop: 'calc(clamp(20px, 5vw, 48px) + env(safe-area-inset-top, 0px))',
+        justifyContent: 'center', paddingTop: 'calc(clamp(20px, 5vw, 48px) + env(safe-area-inset-top, 0px))',
       }}>
         <div style={{ width: '100%', maxWidth: 440 }}>
           <div style={{ marginBottom: 28, display: 'flex', justifyContent: 'center' }}>
             <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="auth" /></a>
           </div>
-          <div className="rl-card" style={{ padding: 'clamp(24px, 5vw, 36px)' }}>
+          <div className="rl-card rl-auth-card">
             {eyebrow && (
               <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
                 {eyebrow}

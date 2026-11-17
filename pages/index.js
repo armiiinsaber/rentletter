@@ -487,7 +487,7 @@ export default function Home() {
               {BLOCKS.map((b) => (
                 <div key={b.title} className="lp-block">
                   <h2 className="t-d3" style={{ margin: '0 0 var(--gap-line)', color: C.ink }}>{noWidow(b.title)}</h2>
-                  <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'pretty' }}>{noWidow(b.body)}</p>
+                  <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(b.body)}</p>
                 </div>
               ))}
             </div>
@@ -510,7 +510,7 @@ export default function Home() {
           <section style={{ padding: '0 clamp(20px, 4vw, 32px) clamp(48px, 7vw, 88px)', maxWidth: 1100, margin: '0 auto' }}>
             <div className="rl-card" style={{ padding: 'var(--card-pad)' }}>
               <h2 style={{ fontSize: 'var(--t-d3)', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em', color: C.ink, margin: '0 0 var(--gap-line)' }}>{noWidow(FEW_RENTALS.q)}</h2>
-              <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'pretty' }}>{noWidow(FEW_RENTALS.a)}</p>
+              <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(FEW_RENTALS.a)}</p>
               <a href="/faq" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, marginTop: 'var(--s-1)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>
                 More questions <Icon name="arrow" size={14} />
               </a>
@@ -547,7 +547,7 @@ export default function Home() {
                     <span className="rl-serif" style={{ fontSize: 22, color: C.rule }}>{st.n}</span>
                   </div>
                   <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 700, color: C.ink, margin: '0 0 var(--gap-line)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{noWidow(st.t)}</h3>
-                  <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'pretty' }}>{noWidow(st.d)}</p>
+                  <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(st.d)}</p>
                 </div>
               ))}
             </div>
@@ -564,7 +564,7 @@ export default function Home() {
                   <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', margin: '0 0 var(--gap-line)' }}>
                     Have an application link?
                   </h3>
-                  <p style={{ fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, margin: 0, textWrap: 'pretty' }}>
+                  <p style={{ fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, margin: 0, textWrap: 'balance' }}>
                     {noWidow('Paste it to go straight to the form. Applying is free.')}
                   </p>
                 </div>
@@ -603,7 +603,7 @@ export default function Home() {
                 <h2 className="rl-serif" style={{ fontSize: 'clamp(32px, 5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, margin: '0 0 18px', color: C.paper }}>
                   {noWidow('Ready when your next listing is.')}
                 </h2>
-                <p style={{ fontSize: 'clamp(16px, 2vw, 18px)', lineHeight: 1.6, color: C.inkInverse, margin: '0 0 32px', textWrap: 'pretty' }}>
+                <p style={{ fontSize: 'clamp(16px, 2vw, 18px)', lineHeight: 1.6, color: C.inkInverse, margin: '0 0 32px', textWrap: 'balance' }}>
                   {noWidow('Create a listing and its applicant link is ready at once.')}
                 </p>
                 <div className="rl-ctrl-row">

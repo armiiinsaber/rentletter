@@ -88,7 +88,8 @@ export default function HeroDemo({ step: controlledStep = null }) {
     transition: 'transform 480ms cubic-bezier(0.22,1,0.36,1), box-shadow 480ms ease, border-color 480ms ease, opacity 480ms ease',
   };
   const nameStyle = { fontSize: 'clamp(11px, 3vw, 13px)', fontWeight: 700, color: C.ink, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
-  const roleStyle = { fontSize: 'clamp(9px, 2.4vw, 11px)', color: C.inkMute, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
+  // The role and income wrap, balanced, rather than run under an ellipsis on a narrow phone.
+  const roleStyle = { fontSize: 'clamp(9px, 2.4vw, 11px)', color: C.inkMute, lineHeight: 1.2, overflowWrap: 'anywhere' };
   const scorePill = (active) => ({ fontSize: 'clamp(10px, 2.6vw, 12px)', fontWeight: 700, color: active ? C.paper : C.ink, background: active ? C.red : C.paperDeep, borderRadius: R.pill, padding: '2px 9px', flexShrink: 0 });
 
   return (

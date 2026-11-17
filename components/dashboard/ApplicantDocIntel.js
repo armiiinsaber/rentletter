@@ -9,7 +9,7 @@ import { useState, useRef, useEffect } from 'react';
 import { SET_SENTENCE_REALTOR } from '../../lib/documentSet';
 import { documentsLine } from '../../lib/documentsLine';
 import { C, R } from '../theme';
-import { Icon, StatusPills } from '../ui';
+import { Icon, StatusPills, StackedLines } from '../ui';
 import DocIntelReport from './DocIntelReport';
 import { editedAfterVerification, fmtShort } from '../../lib/profileEdits';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -274,13 +274,14 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
       <div className="rl-ctrl-row" style={{ minHeight: 44 }}>
         <div style={{ flex: '1 1 200px', minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)' }}>{docLine.split(' · ')[0]}</div>
-          <StatusPills label="Documents" items={docLine.split(' · ').slice(1)} style={{ marginTop: 'var(--s-2)' }} />
+          {/* What was read, a line each ("income and employer on pay stubs" is wider than a pill on a phone). */}
+          <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)' }}><StackedLines parts={docLine.split(' · ').slice(1)} /></div>
         </div>
         {canSendAgain && <button type="button" onClick={sendAgain} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit', opacity: sending ? 0.6 : 1 }}><Pending busy={sending} label="Sending the request again">Send again</Pending></button>}
       </div>
       {sentNote ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>{sentNote}</div> : null}
       {edited.edited && (
-        <div role="note" style={{ marginTop: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
+        <div role="note" style={{ marginTop: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>
           Edited after documents: {applicantName ? applicantName.split(' ')[0] : 'the applicant'} updated their profile on {fmtShort(edited.editedAt)}, after these documents were read on {fmtShort(edited.analyzedAt)}. Read them again if the change matters.
         </div>
       )}

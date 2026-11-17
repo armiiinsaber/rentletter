@@ -824,8 +824,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // not assessed and each dated fact, then the check docs items, which never moved the number.
   const renderFit = (fit) => (
     <div data-fit-section="">
-      {fit.basis ? <div data-fit-basis="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 1.4, textWrap: 'pretty' }}>{noWidow(fit.basis)}</div> : null}
-      {fit.incomplete ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{noWidow(fit.incomplete.next)}</div> : null}
+      {fit.basis ? <div data-fit-basis="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 1.4, textWrap: 'balance' }}>{noWidow(fit.basis)}</div> : null}
+      {fit.incomplete ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'balance' }}>{noWidow(fit.incomplete.next)}</div> : null}
       {/* The pillars: three columns where there is room; on a phone one column, each pillar's label
           and value on one line and its facts under them at full width (lv-pillars, below). */}
       <div className="lv-pillars" style={{ marginTop: 'var(--s-2)' }}>
@@ -843,15 +843,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       {Array.isArray(fit.flags) && fit.flags.length > 0 ? (
         <div data-fit-flags="" style={{ marginTop: 'var(--s-2)' }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Check docs</div>
-          {fit.flags.map((f) => <div key={f.key + f.text} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 2, textWrap: 'pretty' }}>{noWidow(f.text)}</div>)}
+          {fit.flags.map((f) => <div key={f.key + f.text} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 2, textWrap: 'balance' }}>{noWidow(f.text)}</div>)}
         </div>
       ) : null}
     </div>
   );
-  // Two columns, or one where half the width is under 120px (a 320 screen), so no value breaks a
-  // word at a time.
+  // Two columns, or one where half the width is under 160px (a phone), so a long value (an
+  // employer, a job title) wraps across the card's width, never a word at a time.
   const renderRows = (rows) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(120px, calc((100% - var(--s-4)) / 2)), 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(160px, calc((100% - var(--s-4)) / 2)), 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
         <div key={label} data-fact={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{noWidow(label)}</div>
@@ -886,10 +886,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const isPrimaryCard = a.linkId === primaryLinkId;
     const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: isPrimaryCard ? 'var(--action)' : 'transparent', color: isPrimaryCard ? C.paper : C.ink, border: isPrimaryCard ? 'none' : `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
     const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', color: C.ink, border: 'none', fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
-    const stateLine = { fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, paddingLeft: tracking ? 18 : 0 };
+    const stateLine = { fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, paddingLeft: tracking ? 'var(--lv-indent)' : 0 };
     // The card's state as pills (components/ui.js StatusPills): short facts, never a sentence. The
     // card's own button carries the action, so no pill here is filled.
-    const pills = (items) => <StatusPills label="Applicant status" items={items} style={{ marginTop: 'var(--s-2)', paddingLeft: tracking ? 18 : 0 }} />;
+    const pills = (items) => <StatusPills label="Applicant status" items={items} style={{ marginTop: 'var(--s-2)', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }} />;
     const facts = (label) => String(label || '').split(' · ').filter(Boolean);
     const confirmedBy = (by) => (!by || by === 'You' || by === String(profile?.full_name || '').trim() ? 'you' : by);
     const money = (n) => (n != null && n !== '' ? `$${Number(n).toLocaleString()}` : null);
@@ -952,25 +952,27 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {st.state === 'set_aside' ? (
           <div role="button" tabIndex={0} data-press-to-host="" aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
             onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
-            style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
+            style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+            {/* The name and its reason take the row; Restore and the chevron sit on the row below. */}
+            <div style={{ flex: '1 1 100%', minWidth: 0 }}>
               <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{app.full_name || 'Applicant'}</div>
-              {a.decisionReasonCode ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{noWidow(stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) }))}</div> : null}
+              {a.decisionReasonCode ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', textWrap: 'balance' }}>{noWidow(stateLabel('set_aside', 'line', { reason: reasonLabel(a.decisionReasonCode) }))}</div> : null}
             </div>
             <button type="button" onClick={stop(() => restoreApplicant(a))} style={{ ...textBtn, marginTop: 0, color: C.ink, flexShrink: 0 }}>Restore</button>
-            <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
+            <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0, marginLeft: 'auto' }}><Icon name="chevronD" size={16} /></span>
           </div>
         ) : (
         <div role="button" tabIndex={0} data-press-to-host="" aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
           onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
           style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
-          {/* Row one: the name alone, never wrapping; a name past the row truncates and carries the full name in title. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 26 }}>
-            {tracking && <span aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
-            <span title={app.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body)', fontWeight: 500, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.full_name || 'Applicant'}</span>
+          {/* Row one: the name alone; a name longer than the row wraps, balanced, never cut short. Below
+              345px the review dot sits in the card's padding (lv-dot), so the name has the row. */}
+          <div className="lv-name-row" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 26 }}>
+            {tracking && <span className="lv-dot" aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
+            <span title={app.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body)', fontWeight: 500, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3 }}>{app.full_name || 'Applicant'}</span>
           </div>
           {/* Row two: the meter, the Fit number and the label as one group at the right, the chevron at the far right. */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--s-2)', minHeight: 26, marginTop: 'var(--s-1)', paddingLeft: tracking ? 18 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--s-2)', minHeight: 26, marginTop: 'var(--s-1)', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>
             {overall != null ? (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} refill={meterMuted ? 'muted' : 'full'} renderValue={(shown, target) => (
                 <span data-fit-number="" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexShrink: 0 }} aria-label={`Fit ${Number(target).toFixed(1)} on ${fit.assessed} of ${fit.of}, ${fit.label}`}>
@@ -988,17 +990,17 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )}
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>
           </div>
-          {fit && (fit.incomplete || fit.notAssessedLine) ? <div data-fit-coverage="" style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'pretty', paddingLeft: tracking ? 18 : 0 }}>{noWidow(fit.incomplete ? fit.incomplete.next : fit.notAssessedLine)}</div> : null}
+          {fit && (fit.incomplete || fit.notAssessedLine) ? <div data-fit-coverage="" style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>{noWidow(fit.incomplete ? fit.incomplete.next : fit.notAssessedLine)}</div> : null}
           {/* The document checks (lib/documentIntegrity.js): the pill and the first sentence; the checklist holds the rest. */}
-          <IntegrityLine report={a.docVerifications?.[0] || null} style={{ marginTop: 'var(--s-2)', paddingLeft: tracking ? 18 : 0 }} />
+          <IntegrityLine report={a.docVerifications?.[0] || null} style={{ marginTop: 'var(--s-2)', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }} />
           {docSt === 'matched' && (<>
-            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>{synthesisLine(a)}</div>
             {missed.length > 0 && pills(missed)}
             {dup}
             {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
           </>)}
           {docSt === 'verified' && (<>
-            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 18 : 0 }}>{synthesisLine(a)}</div>
+            <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>{synthesisLine(a)}</div>
             {pills([stateLabel('verified', 'line', { who: confirmedBy(a.confirmations?.employer?.by) }), st.since ? shortDate(st.since) : null])}
             {dup}
           </>)}
@@ -1014,7 +1016,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {pills(facts(reconsideredLine(a.reconsiderReason)))}
             {inviteNotSent[a.linkId] && <div style={{ ...stateLine, color: C.ink }}>{RECONSIDER_COPY.emailNotSent}</div>}
             {dup}
-            {undoFor === a.linkId && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" data-no-swipe onClick={stop(() => undoReconsider(a))} style={textBtn}>{RECONSIDER_COPY.undo}</button></div>}
+            {undoFor === a.linkId && <div style={{ paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}><button type="button" data-no-swipe onClick={stop(() => undoReconsider(a))} style={textBtn}>{RECONSIDER_COPY.undo}</button></div>}
           </>)}
           {/* The landlord's answer on the latest report snapshot, one line in the collapsed state. */}
           {!open && a.landlordAnswer && a.landlordAnswer.answer && (
@@ -1028,7 +1030,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {docSt === 'requested' && (<>
             {pills([stateLabel('requested', 'line'), st.since ? shortDate(st.since) : null, (() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? `nudged ${shortDate(last)}` : null; })()])}
             {dup}
-            {!open && <div style={{ paddingLeft: tracking ? 18 : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
+            {!open && <div style={{ paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
           {docSt === 'checked' && (<>
             {pills(facts(stateLabel('checked', 'line')))}
@@ -1051,8 +1053,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {/* The open body appears at once: nothing on the card fades or scales in. */}
         {open && (<div id={`applicant-${a.linkId}-body`}>
           {/* Status line: rank and marks that only matter once you are looking at this person. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
-            <StatusPills label="This applicant" style={{ flex: 1, minWidth: 0 }} items={[
+          {/* The pills and the application number share the row; when they do not fit, the number goes under them at the right. */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-2)', marginTop: 'var(--s-3)' }}>
+            <StatusPills label="This applicant" style={{ flex: '1 1 auto', minWidth: 0 }} items={[
               rank != null && !isSetAside ? `Rank ${rank}` : null,
               isSetAside ? 'Set aside' : null,
               isFinalist(a) && !isSetAside ? 'Finalist' : null,
@@ -1108,7 +1111,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 const checks = p.status === 'submitted' ? <IntegrityLine report={p.docVerifications?.[0] || null} style={{ paddingBottom: 'var(--s-2)' }} /> : null;
                 return <div key={p.id} data-party-row={p.status} data-party={p.id}>{renderSection(a, `party-${p.id}`, `${p.name}, ${String(p.roleLabel).toLowerCase()}, ${String(p.statusLabel).toLowerCase()}`, false, body, checks)}</div>;
               })}
-              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow(INVITE_CARD.householdLine)}</div>
+              <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-2)', textWrap: 'balance' }}>{noWidow(INVITE_CARD.householdLine)}</div>
             </div>
           )}
 
@@ -1184,8 +1187,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
         <DashboardHeader profile={profile} onAssistantAction={onNoticeAction} />
 
-        {locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
-        {!locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) clamp(16px, 4vw, 32px) var(--s-7)' }}>
+        {locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 var(--page-gutter)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
+        {!locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) var(--page-gutter) var(--s-7)' }}>
           <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
@@ -1197,8 +1200,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               Edit, the listing's facts and its criteria as pills, the invite link row, then the Details
               toggle row; the Details panel opens inside this card. */}
           <section className="rl-card" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
-              <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, textWrap: 'balance' }}>
+            {/* The address and Edit share the row while the address keeps 220px; narrower (320), Edit
+                drops below it and the address takes the card's width. */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
+              <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, flex: '1 1 220px', textWrap: 'balance' }}>
                 {displayLabel(l, 'Untitled listing')}
               </h1>
               {/* Centred on the first line of the address: the line box is 28 * 1.15, the button 44. */}
@@ -1285,7 +1290,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                           dangerouslySetInnerHTML={{ __html: kitShort ? kitQrSvg().replace('<svg ', '<svg style="display:block;width:100%;height:100%" ') : '' }} />
                         <div style={{ flex: 1, minWidth: 140 }}>
                           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>QR</div>
-                          <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'pretty' }}>Opens the short link. Print it on the sign or the sheet.</div>
+                          <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'balance' }}>Opens the short link. Print it on the sign or the sheet.</div>
                           <button type="button" onClick={saveQr} disabled={!kitShort}
                             style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: kitShort ? C.ink : C.inkMute, border: `1.5px solid ${kitShort ? C.ink : C.rule}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: kitShort ? 'pointer' : 'default', fontFamily: 'inherit' }}>Save QR</button>
                         </div>
@@ -1325,7 +1330,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     {boardRows(l, profile?.province).map(([label, value]) => <Row key={label} label={label} value={value} />)}
                   </div>
                   {l.pref_notes && (
-                    <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>
+                    <div style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>
                       <strong style={{ color: C.ink }}>Notes:</strong> {l.pref_notes}
                     </div>
                   )}
@@ -1345,7 +1350,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         <button type="button" onClick={() => { setSigDraft(signingName(profile, '')); setSigEditing(true); }} style={{ background: 'transparent', border: 'none', color: C.ink, fontWeight: 700, cursor: 'pointer', fontSize: 'var(--t-body-2)', padding: 0, minHeight: 44, textDecoration: 'underline', fontFamily: 'inherit' }}>Change</button>
                       </div>
                     )}
-                    <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>The name that signs this report and every report after it.</div>
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>The name that signs this report and every report after it.</div>
                   </div>
                   {/* The landlord client: name, email, phone from the listing; Edit listing adds them. */}
                   <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
@@ -1393,7 +1398,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   {tenantHeld && (
                     <div data-form-data-row="" style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
                       <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Form data</div>
-                      <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'pretty' }}>{noWidow('The accepted tenant, the premises, the term, the rent and deposits, the brokerages, each ready to copy.')}</div>
+                      <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'balance' }}>{noWidow('The accepted tenant, the premises, the term, the rent and deposits, the brokerages, each ready to copy.')}</div>
                       <button type="button" onClick={() => setFormDataOpen(true)} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Form data</button>
                     </div>
                   )}
@@ -1440,8 +1445,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     return (
                       <label key={a.linkId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
                         <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => { setRentedPick(a.linkId); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
-                        <span title={a.application?.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.application?.full_name || 'Applicant'}</span>
-                        {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap', flexShrink: 0 }}>{fitLine(fit)} ({fit.label})</span>}
+                        {/* The name, and its Fit beside it, or under it when the two do not fit on one line. */}
+                        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0 var(--s-3)' }}>
+                          <span style={{ minWidth: 0 }}>{a.application?.full_name || 'Applicant'}</span>
+                          {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap' }}>{fitLine(fit)} ({fit.label})</span>}
+                        </span>
                       </label>
                     );
                   })}
@@ -1452,7 +1460,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </span>
                 <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-3)', minHeight: 44, marginTop: 'var(--s-2)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}`, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)' }}>
                   <input type="checkbox" checked={rentedNotify} onChange={(e) => setRentedNotify(e.target.checked)} style={{ width: 20, height: 20, margin: '1px 0 0', accentColor: C.ink, flexShrink: 0 }} />
-                  <span style={{ textWrap: 'pretty' }}>Let the others know and ask if they want to be kept for similar units</span>
+                  <span style={{ textWrap: 'balance' }}>Let the others know and ask if they want to be kept for similar units</span>
                 </label>
               </span>
             )} />
@@ -1470,7 +1478,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 {RECONSIDER_REASONS.map((code) => (
                   <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
                     <input type="radio" name="reconsider-reason" checked={reconsiderReason === code} onChange={() => setReconsiderReason(code)} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, textWrap: 'pretty' }}>{RECONSIDER_REASON_LABELS[code]}</span>
+                    <span style={{ flex: 1, minWidth: 0, textWrap: 'balance' }}>{RECONSIDER_REASON_LABELS[code]}</span>
                   </label>
                 ))}
               </span>
@@ -1479,7 +1487,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <div style={{ height: 'var(--gap-section)' }} aria-hidden="true" />
 
           {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
-          <section className="rl-card" style={{ padding: 'var(--s-4)' }}>
+          <section className="rl-card" style={{ padding: 'var(--card-pad)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
               <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
               <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
@@ -1553,10 +1561,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={textBusy} label="Writing the report text">{textCopied ? 'Copied' : 'Copy text'}</Pending></button>
               </div>
               {brandHint && needsBrandingHint(profile) && (
-                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'pretty' }}>{BRANDING_HINT} <a {...linkProps(adapter.paths.profile)} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'balance' }}>{BRANDING_HINT} <a {...linkProps(adapter.paths.profile)} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
               )}
               {sendMsg && (
-                <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'pretty' }}>{sendMsg}</div>
+                <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>{sendMsg}</div>
               )}
             </section>
           )}
@@ -1620,7 +1628,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <div role="status" aria-live="polite" className="lv-toast" data-toast={toast ? '' : undefined}>{toast}</div>
       <style jsx>{`
         .lv-toast:empty { display: none; }
-        .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; background: ${C.inst}; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); box-shadow: ${SH.raised}; text-wrap: pretty; }
+        .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; background: ${C.inst}; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); box-shadow: ${SH.raised}; text-wrap: balance; }
         .lv-fold { display: grid; grid-template-rows: 0fr; }
         .lv-fold.lv-fold-open { grid-template-rows: 1fr; }
         .lv-fold > div { overflow: hidden; min-height: 0; }
@@ -1634,6 +1642,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           :global(.lv-pillar > :nth-child(n + 3)) { grid-column: 1 / -1; }
         }
         @media (max-width: 344.98px) { :global(.lv-kit-link) { font-size: var(--t-body-2); } }
+        /* The review dot's column: 18px under the dot at the name, so every line of the card starts
+           where the name does. Below 345px the dot sits in the card's padding instead, beside the
+           name, and the card's lines start at its edge: the name and the lines under it have the row. */
+        :global(:root) { --lv-indent: 18px; }
+        @media (max-width: 344.98px) {
+          :global(:root) { --lv-indent: 0px; }
+          :global(.lv-name-row) { position: relative; }
+          :global(.lv-dot) { position: absolute; left: calc(-1 * var(--card-pad) + 2px); top: calc(50% - 4px); }
+        }
       `}</style>
     </>
   );

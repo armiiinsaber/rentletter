@@ -709,13 +709,14 @@ export default function ApplyPage({ invited = null }) {
                   <div className="mp-label">Your application number</div>
                   <div className="mp-h2 num" style={{ marginTop: 'var(--gap-line)' }}>{result.applicationNumber}</div>
                 </div>
-                <button type="button" onClick={copyNumber} className="mp-btn mp-btn-auto" style={{ marginTop: 'var(--gap-card)' }}>{copied ? 'Copied' : 'Copy the number'}</button>
+                <button type="button" onClick={copyNumber} className="mp-btn mp-btn-auto" style={{ marginTop: 'var(--gap-card)', display: 'flex', width: 'fit-content' }}>{copied ? 'Copied' : 'Copy the number'}</button>
                 {result.ownerToken && (
                   <>
                     <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Keep this private. Your owner key opens your profile, where you can see who viewed your application, update your details, revoke it, and apply to your next listing without retyping.')}</p>
-                    <a href="/my-application" className="mp-link">rentletter.ca/my-application</a>
-                    <div className="mp-value mp-mono" style={{ wordBreak: 'break-all' }}>{result.ownerToken}</div>
-                    {form.email && <p className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(`We also emailed a copy to ${form.email}.`)}</p>}
+                    {/* The link and the key each on a line of their own, whole (the key steps down below 345px). */}
+                    <a href="/my-application" className="mp-link" style={{ display: 'flex', width: 'fit-content' }}>rentletter.ca/my-application</a>
+                    <div className="mp-value mp-mono mp-key" style={{ wordBreak: 'break-all' }}>{result.ownerToken}</div>
+                    {form.email && <p className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>We also emailed a copy to <span className="mp-addr" style={{ display: 'block' }}>{`${form.email}.`}</span></p>}
                   </>
                 )}
               </div>

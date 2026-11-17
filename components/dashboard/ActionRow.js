@@ -45,12 +45,12 @@ export function ActionRow({ item, phase, onGo, onDismiss, first: firstRow = fals
     <li ref={ref} className={`al-row ${phase === 'enter' ? 'al-enter' : ''} ${phase === 'leave' ? 'al-leave' : ''}`} data-key={item.key} data-kind={item.kind}
       data-tap-card="" onClick={cardTap(onGo)}
       style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-1)', borderTop: firstRow ? 'none' : `1px solid ${p.rule}` }}>
-      <div role="button" tabIndex={0} onClick={onGo} onKeyDown={key} style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 'var(--s-2) 0', cursor: 'pointer' }}>
+      <div role="button" tabIndex={0} onClick={onGo} onKeyDown={key} className="al-text" style={{ flex: 1, minWidth: 0, minHeight: 44, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 'var(--s-2) 0', cursor: 'pointer' }}>
         <span style={{ display: 'block', fontSize: 'var(--t-body)', fontWeight: 700, color: p.text, letterSpacing: '-0.01em', lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>{lineOne}</span>
-        <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: p.mute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>{glued}</span>
+        <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: p.mute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance' }}>{glued}</span>
       </div>
       {/* The verb fills the row's height, so it shares the row's top and height (R2); it looks the same. */}
-      <button type="button" onClick={onGo} style={{ alignSelf: 'stretch', minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: p.text, textDecoration: 'underline', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{item.verb}</button>
+      <button type="button" onClick={onGo} className="al-verb" style={{ alignSelf: 'stretch', minHeight: 44, padding: '0 var(--s-2)', background: 'transparent', border: 'none', color: p.text, textDecoration: 'underline', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{item.verb}</button>
       {dismissable && <button type="button" className="al-x" onClick={onDismiss} aria-label={`Dismiss: ${item.title}`} title="Dismiss until something changes" style={{ alignSelf: 'stretch', width: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: 'none', color: p.mute, cursor: 'pointer', flexShrink: 0 }}><Icon name="x" size={16} /></button>}
     </li>
   );

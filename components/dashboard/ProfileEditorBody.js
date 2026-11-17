@@ -337,22 +337,24 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       <div style={{ position: 'relative', border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 16, paddingLeft: 20, background: C.paperDeep, marginBottom: 10, overflow: 'hidden' }}>
         {/* the accent edge re-enters on every colour change instead of snapping */}
         <Crossfade watch={accentPreview}><span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: accentPreview }} /></Crossfade>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        {/* The name and brokerage beside the logo while they keep 220px; on a phone they go under it,
+            the card's width, and a long name wraps instead of being cut short. */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
           {/* top-left logo slot (the brand placement) */}
           <div style={{ width: 88, height: 56, borderRadius: 8, background: '#fff', border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, padding: 6 }}>
             <Crossfade watch={logoUrl || 'none'}>{logoUrl
               ? <img src={logoUrl} alt="Your logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
               : <span style={{ fontSize: 10.5, color: C.inkMute, textAlign: 'center', lineHeight: 1.3 }}>No logo yet</span>}</Crossfade>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <Crossfade watch={fontId || 'default'}><div style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{form.full_name || 'Your name'}</div></Crossfade>
+          <div style={{ minWidth: 0, flex: '1 1 220px' }}>
+            <Crossfade watch={fontId || 'default'}><div style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{form.full_name || 'Your name'}</div></Crossfade>
             {(form.brokerage || !logoUrl) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 1 }}>{form.brokerage || 'Your brokerage'}</div>}
             {form.phone && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>{form.phone}</div>}
           </div>
         </div>
       </div>
       <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginBottom: 10 }}>
-        This is your brand, it appears top-left on the landlord reports you send.
+        This is your brand, it appears <span style={{ whiteSpace: 'nowrap' }}>top-left</span> on the landlord reports you send.
       </p>
 
       <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" style={{ display: 'none' }}

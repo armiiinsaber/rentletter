@@ -146,7 +146,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
         <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>We match the documents, and you verify the facts.</div>
         {/* Fit v2 (docs/fit-v2.md): the number over what was assessed, the one coverage line, and the
             check docs items, which are shown here and never subtracted. */}
-        {fit ? <div data-checklist-fit="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'pretty' }}>{fitLine(fit)}{fit.incomplete ? `. ${fit.incomplete.next}` : fit.notAssessedLine ? `. ${fit.notAssessedLine}` : ''}</div> : null}
+        {fit ? <div data-checklist-fit="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'balance' }}>{fitLine(fit)}{fit.incomplete ? `. ${fit.incomplete.next}` : fit.notAssessedLine ? `. ${fit.notAssessedLine}` : ''}</div> : null}
         {fit && Array.isArray(fit.flags) && fit.flags.length ? <StatusPills label="Check docs" items={fit.flags.map((f) => f.text)} style={{ marginTop: 'var(--s-1)' }} /> : null}
       </div>
       <div style={{ border: `1px solid ${C.rule}`, borderRadius: R.card, background: C.paper, overflow: 'hidden' }}>
@@ -158,25 +158,26 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
             <div key={row.title} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-1) var(--s-3)', padding: 'var(--s-3) var(--s-3)', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
-                <div data-credit-row={row.credit ? (row.credit.shared ? 'shared' : 'none') : undefined} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+                <div data-credit-row={row.credit ? (row.credit.shared ? 'shared' : 'none') : undefined} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'balance' }}>
                   {row.integrity
                     ? <IntegrityChecks applicant={applicant} listingId={listing?.id} heldDocuments={heldDocuments} onViewDocument={onViewDocument} />
                     : row.credit
                     ? <StackedLines parts={[row.credit.label, ...row.credit.lines]} />
                     : <StackedLines parts={[labelled('Said', row.said).join(', '), row.docs != null ? labelled('Docs', row.docs).join(', ') : null]} />}
                 </div>
-                {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>Also seen: {line}</div>) : null}
-                {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'pretty' }}>{row.note}</div> : null}
+                {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'balance' }}>Also seen: {line}</div>) : null}
+                {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'balance' }}>{row.note}</div> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'pending' ? <StatusPills label="Reference" items={[`Asked ${shortDate(refResp.sentAt)}`, 'no answer yet']} style={{ marginTop: 'var(--s-1)' }} /> : null}
                 {row.key === 'landlord' && refResp && refResp.status === 'answered' ? (
                   <div style={{ marginTop: 'var(--s-1)' }}>
-                    <StatusPills label="Reference answers" items={String(answerSummary(refResp.answers) || '').split(' · ')} />
+                    {/* The answers are short sentences, a line each: a 28px pill would cut "When: Mar 2018 to Aug 2026" on a phone. */}
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4 }}><StackedLines parts={String(answerSummary(refResp.answers) || '').split(' · ')} /></div>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 2 }}><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Answered {shortDate(refResp.answeredAt)}</span></div>
                   </div>
                 ) : null}
                 {row.key === 'landlord' && asking ? (
                   <div style={{ marginTop: 'var(--s-2)', padding: 'var(--s-2) var(--s-3)', background: C.paperDeep, borderRadius: R.ctrl }}>
-                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'pretty' }}>Six closed questions go to <span style={{ fontWeight: 700 }}>{landlordEmail}</span>. Nothing goes to {String(app.full_name || 'the applicant').split(/\s+/)[0]}.</div>
+                    <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 1.4, overflowWrap: 'anywhere', textWrap: 'balance' }}>Six closed questions go to <span style={{ fontWeight: 700 }}>{landlordEmail}</span>. Nothing goes to {String(app.full_name || 'the applicant').split(/\s+/)[0]}.</div>
                     <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
                       <button type="button" onClick={sendAsk} disabled={sending} style={{ ...btn(false), minWidth: 0, opacity: sending ? 0.7 : 1 }}><Pending busy={sending} label="Sending the questions">Send</Pending></button>
                       <button type="button" onClick={() => setAsking(false)} disabled={sending} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
@@ -212,7 +213,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
               {row.partyChecks ? (
                 <div data-party-checks={row.partyChecks.id} style={{ flex: '1 1 100%', minWidth: 0, marginTop: 'var(--s-1)' }}>
                   <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>Document checks</div>
-                  <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'pretty' }}>
+                  <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'balance' }}>
                     <IntegrityChecks applicant={applicant} party={row.partyChecks} listingId={listing?.id} heldDocuments={(Array.isArray(partyDocuments) ? partyDocuments : []).filter((d) => d && String(d.partyId || '') === String(row.partyChecks.id))} onViewDocument={onViewDocument} />
                   </div>
                 </div>

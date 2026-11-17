@@ -23,7 +23,7 @@ const outlineBtn = { display: 'inline-flex', alignItems: 'center', justifyConten
 // A month and its day stay on one line ("October 6"), the way noWidow keeps the last two words.
 const MONTH_DAY = /\b(January|February|March|April|May|June|July|August|September|October|November|December) (\d{1,2})\b/g;
 const say = (s) => noWidow(String(s || '').replace(MONTH_DAY, '$1\u00a0$2'));
-const line = { fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, overflowWrap: 'anywhere', textWrap: 'pretty' };
+const line = { fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, overflowWrap: 'anywhere', textWrap: 'balance' };
 
 export function IntegrityLine({ report, style }) {
   const { flags } = integrityOf(report);

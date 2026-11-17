@@ -81,7 +81,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
             <>
               <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-1)' }}>{who} asks:</div>
               <p style={{ fontSize: 'var(--t-body)', color: C.ink, fontWeight: 700, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-2)', textWrap: 'balance' }}>Six questions about {applicantName || 'the applicant'}&apos;s tenancy with you.</p>
-              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-4)', textWrap: 'pretty' }}>One tap each. Every question has Prefer not to say. Nothing else is asked.</p>
+              <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-4)', textWrap: 'balance' }}>One tap each. Every question has Prefer not to say. Nothing else is asked.</p>
               {shown.map((q, i) => (
                 <div key={q.key} style={{ borderTop: `1px solid ${C.rule}`, padding: 'var(--s-3) 0' }}>
                   <div style={{ fontSize: 'var(--t-body)', color: C.ink, fontWeight: 600, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-2)', textWrap: 'balance' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{i + 1}</span>{q.text(first)}</div>
@@ -109,7 +109,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
               </button>
             </>
           ) : (
-            <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{(LINES[view] || LINES.unavailable)(who)}</p>
+            <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'balance' }}>{(LINES[view] || LINES.unavailable)(who)}</p>
           )}
         </div>
       </main>

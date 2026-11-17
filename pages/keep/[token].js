@@ -92,7 +92,7 @@ export default function KeepPage({ token, state, realtorName }) {
               </div>
             </>
           ) : (
-            <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'pretty' }}>{keepLine(view, who)}</p>
+            <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 0, textWrap: 'balance' }}>{keepLine(view, who)}</p>
           )}
         </div>
       </main>

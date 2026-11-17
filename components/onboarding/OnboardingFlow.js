@@ -47,7 +47,7 @@ export function OnboardingStyles() {
       .ob-main { max-width: 560px; margin: 0 auto; padding: clamp(28px, 7vw, 64px) clamp(16px, 4vw, 32px) max(48px, env(safe-area-inset-bottom)); }
       .ob-count { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: ${C.inkMute}; margin-bottom: 14px; }
       .ob-h1 { font-family: ${FONT.serif}; font-weight: 600; font-size: clamp(28px, 7.2vw, 40px); letter-spacing: -0.025em; line-height: 1.08; color: ${C.ink}; text-wrap: balance; margin-bottom: 12px; }
-      .ob-lead { font-size: clamp(15px, 4vw, 17px); color: ${C.inkSoft}; line-height: 1.55; text-wrap: pretty; margin-bottom: 24px; }
+      .ob-lead { font-size: clamp(15px, 4vw, 17px); color: ${C.inkSoft}; line-height: 1.55; text-wrap: balance; margin-bottom: 24px; }
       .ob-form { display: grid; gap: 18px; }
       .ob-primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 54px; padding: 0 var(--gap-card); background: ${C.red}; color: ${C.paper}; border: none; border-radius: var(--btn-radius); font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; }
       .ob-primary:disabled { background: ${C.ruleDark}; cursor: not-allowed; }

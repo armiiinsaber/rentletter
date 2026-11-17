@@ -42,6 +42,14 @@ export const GlobalStyle = () => (
          sets its own (components/admin/AdminShell.js). */
       --focus-ring: ${C.ink};
     }
+    /* The page's side gutter: 16px on a phone to 32px wide. Below 345px (a 320 screen) the gutter
+       and a card's padding are 12px, not 16: the text inside gains 16px. */
+    :root { --page-gutter: clamp(16px, 4vw, 32px); }
+    @media (max-width: 344.98px) { :root { --card-pad: 12px; --page-gutter: 12px; } }
+    /* An email address is set whole, like a link: on one line, and below 345px a size down so a
+       long one fits a 320 screen (components/dashboard/FormDataSheet.js). */
+    .rl-addr { white-space: nowrap; }
+    @media (max-width: 344.98px) { .rl-addr { font-size: 13px !important; } }
     /* The two webfonts, self hosted (public/fonts, the latin variable files), swapped in when they
        arrive; the preloads live in pages/_document.js. */
     @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/fonts/inter-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
@@ -353,7 +361,7 @@ export const ConfirmSheet = ({
         <h3 data-sheet-drag="" style={{ fontSize: 18, fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', marginBottom: 8 }}>
           {title}
         </h3>
-        {body && <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18, textWrap: 'pretty' }}>{typeof body === 'string' ? noWidow(body) : body}</p>}
+        {body && <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.55, marginBottom: 18, textWrap: 'balance' }}>{typeof body === 'string' ? noWidow(body) : body}</p>}
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           {/* A confirmation is only ever a direct hit (lib/motion.js: the tap resolver skips it). */}
           <button data-destructive="" onClick={onConfirm} disabled={busy} autoFocus

@@ -501,16 +501,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* ── Branding tile — identity moment, whole card → /profile. The card's 3px left edge
            (inline style) carries the colour sampled from the uploaded logo, red otherwise. ── */
         .dash-brand { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); text-decoration: none; color: ${C.ink}; }
-        .dash-brand-identity { display: flex; align-items: center; gap: var(--s-3); min-width: 0; }
+        /* The name and brokerage beside the logo while they keep 280px; on a phone, under it, the card's width. */
+        .dash-brand-identity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); min-width: 0; }
         /* Transparent logo art sits straight on the card surface — no tile, no frame. */
         .dash-brand-logo { width: clamp(72px, 20vw, 96px); height: clamp(72px, 20vw, 96px); object-fit: contain; flex-shrink: 0; }
         /* Neutral backing exists ONLY as the no-logo fallback (initials as a placeholder mark). */
         .dash-brand-initials { width: clamp(64px, 18vw, 84px); height: clamp(64px, 18vw, 84px); border-radius: 14px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: var(--t-d3); color: ${C.inkSoft}; flex-shrink: 0; }
-        .dash-brand-id { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; flex: 1; }
+        .dash-brand-id { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; flex: 1 1 280px; }
         /* Masthead byline: name in the display serif, brokerage muted below. */
         .dash-brand-name { font-family: ${FONT.serif}; font-size: var(--t-d3); font-weight: 600; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
         .dash-brand-brok { font-size: var(--t-body-2); color: ${C.inkMute}; overflow-wrap: anywhere; }
-        .dash-brand-desc { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.5; margin-top: var(--s-1); text-wrap: pretty; white-space: normal; }
+        .dash-brand-desc { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.5; margin-top: var(--s-1); text-wrap: balance; white-space: normal; }
         .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); font-weight: 700; color: ${C.red}; }
 
         /* ── Section rhythm: one gap between blocks, and a short note under the greeting ── */

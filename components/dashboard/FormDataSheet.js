@@ -59,7 +59,7 @@ export default function FormDataSheet({ open, listingId, onClose }) {
       <div data-form-data="" style={{ padding: '4px var(--s-4) var(--s-5)' }}>
         <div data-sheet-drag="" style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Form data</div>
         <h3 data-sheet-drag="" style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 'var(--s-2)', textWrap: 'balance' }}>{state.data ? noWidow(state.data.listingName || 'This listing') : 'This listing'}</h3>
-        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-4)', textWrap: 'pretty' }}>{noWidow('Every value an agreement to lease asks for, in its order. Copy and paste into the forms tool you already use.')}</p>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-4)', textWrap: 'balance' }}>{noWidow('Every value an agreement to lease asks for, in its order. Copy and paste into the forms tool you already use.')}</p>
         {state.loading ? <Loader label="Loading the form data" /> : null}
         {state.error ? <p role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, lineHeight: 'var(--lh-body)' }}>{noWidow(state.error)}</p> : null}
         {state.data ? (
@@ -76,12 +76,13 @@ export default function FormDataSheet({ open, listingId, onClose }) {
                     <button type="button" onClick={() => copy(g.key, text)} disabled={!text} aria-label={`Copy group ${g.title}`} style={copyBtn(!!text)}>{copied === g.key ? 'Copied' : 'Copy group'}</button>
                   </div>
                   {g.items.map((it) => (
-                    <div key={it.key} data-form-item={it.key} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, borderBottom: `1px solid ${C.rule}` }}>
-                      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 var(--s-3)', padding: 'var(--s-1) 0' }}>
+                    <div key={it.key} data-form-item={it.key} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, borderBottom: `1px solid ${C.rule}` }}>
+                      {/* The label and value keep 220px beside Copy; narrower, Copy goes under them at the right. */}
+                      <div style={{ flex: '1 1 220px', minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0 var(--s-3)', padding: 'var(--s-1) 0' }}>
                         <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, fontWeight: 600 }}>{it.label}</span>
-                        <span data-form-value="" style={{ fontSize: 'var(--t-body-2)', color: it.value != null ? C.ink : C.inkMute, fontWeight: it.value != null ? 600 : 500, minWidth: 0, overflowWrap: 'anywhere' }}>{it.value != null ? it.value : NOT_ENTERED}</span>
+                        <span data-form-value="" className={typeof it.value === 'string' && /^\S+@\S+\.\S+$/.test(it.value.trim()) ? 'rl-addr' : undefined} style={{ fontSize: 'var(--t-body-2)', color: it.value != null ? C.ink : C.inkMute, fontWeight: it.value != null ? 600 : 500, minWidth: 0, overflowWrap: 'anywhere' }}>{it.value != null ? it.value : NOT_ENTERED}</span>
                       </div>
-                      <button type="button" onClick={() => copy(it.key, it.value)} disabled={it.value == null} aria-label={`Copy ${it.label}`} style={{ ...copyBtn(it.value != null), minWidth: 72 }}>{copied === it.key ? 'Copied' : 'Copy'}</button>
+                      <button type="button" onClick={() => copy(it.key, it.value)} disabled={it.value == null} aria-label={`Copy ${it.label}`} style={{ ...copyBtn(it.value != null), minWidth: 72, marginLeft: 'auto' }}>{copied === it.key ? 'Copied' : 'Copy'}</button>
                     </div>
                   ))}
                 </section>

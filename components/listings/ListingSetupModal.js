@@ -246,7 +246,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
             <label><span style={fieldLabel}>Max rent to income (%)</span>
               <input type="number" min="0" max="100" inputMode="numeric" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder={String(DEFAULT_RENT_SHARE_CAP)} style={inputStyle} />
-              <span style={{ display: 'block', fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 4, textWrap: 'pretty' }}>{CAP_HELPER}</span></label>
+              <span style={{ display: 'block', fontSize: 12, color: C.inkMute, lineHeight: 1.5, marginTop: 4, textWrap: 'balance' }}>{CAP_HELPER}</span></label>
           </div>
 
           {/* 20px between the two rows: each 24px row then reaches a 44px hit area (10px above and below
@@ -283,7 +283,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           </button>
           {boardOpen && (
             <div id="listing-board-details" data-board-details="">
-              <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: '0 0 10px', textWrap: 'pretty' }}>What the board’s forms ask for, typed once. Form data lays it out to copy once a tenant is accepted.</p>
+              <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: '0 0 10px', textWrap: 'balance' }}>What the board’s forms ask for, typed once. Form data lays it out to copy once a tenant is accepted.</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                 <label><span style={fieldLabel}>MLS number</span>
                   <input type="text" value={form.mls_number} onChange={(e) => set({ mls_number: e.target.value })} placeholder="C1234567" autoComplete="off" style={inputStyle} /></label>
@@ -322,13 +322,13 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
               </div>
               {/* The province's deposits alone (lib/boardDetails.js depositRules), each against the rent typed above. */}
               <div style={{ ...sectionLabel, marginTop: 18, marginBottom: 6 }}>Deposits</div>
-              <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: '0 0 10px', textWrap: 'pretty' }}>{rules.line}</p>
+              <p style={{ fontSize: 12, color: C.inkMute, lineHeight: 1.5, margin: '0 0 10px', textWrap: 'balance' }}>{rules.line}</p>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
                 {rules.fields.map((f) => (
                   <label key={f.key}><span style={fieldLabel}>{f.label} (CAD)</span>
                     <input type="text" inputMode="numeric" value={form[f.key]} onChange={(e) => set({ [f.key]: e.target.value.replace(/[^\d]/g, '') })} placeholder={f.cap === 'half' && rentNum ? String(Math.floor(rentNum / 2)) : f.cap === 'month' && rentNum ? String(rentNum) : '0'}
                       style={{ ...inputStyle, borderColor: depositError(f.key) ? C.red : C.rule }} />
-                    <span style={{ display: 'block', fontSize: 12, color: depositError(f.key) ? C.red : C.inkMute, lineHeight: 1.5, marginTop: 4, textWrap: 'pretty' }}>{depositError(f.key) || f.note}</span></label>
+                    <span style={{ display: 'block', fontSize: 12, color: depositError(f.key) ? C.red : C.inkMute, lineHeight: 1.5, marginTop: 4, textWrap: 'balance' }}>{depositError(f.key) || f.note}</span></label>
                 ))}
               </div>
             </div>
@@ -376,7 +376,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
       <div style={{ padding: '4px clamp(20px, 4vw, 28px) clamp(20px, 4vw, 28px)' }}>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>{creating ? 'Confirm new listing' : 'Confirm changes'}</div>
             <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 6 }}>{creating ? 'Create this listing?' : 'Save these changes?'}</h3>
-            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16, textWrap: 'pretty' }}>{creating ? 'You can edit the details later, nothing here is locked in.' : RENT_WARNING}</p>
+            <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16, textWrap: 'balance' }}>{creating ? 'You can edit the details later, nothing here is locked in.' : RENT_WARNING}</p>
             <div style={{ background: C.paperDeep, borderRadius: R.ctrl, padding: '14px 16px', marginBottom: 18 }}>
               {[
                 ['Address', displayAddress({ address: String(form.address).trim(), unit: String(form.unit).trim() })],
