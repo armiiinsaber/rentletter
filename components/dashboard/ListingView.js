@@ -855,7 +855,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       {rows.map(([label, value]) => (
         <div key={label} data-fact={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{noWidow(label)}</div>
-          <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'balance' }}>{typeof value === 'string' ? <StackedLines text={value} /> : value}</div>
+          <div className="lv-fact-value" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, overflowWrap: 'anywhere', marginTop: 'var(--s-1)', textWrap: 'balance' }}>{typeof value === 'string' ? <StackedLines text={value} /> : value}</div>
         </div>
       ))}
     </div>
@@ -969,7 +969,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               345px the review dot sits in the card's padding (lv-dot), so the name has the row. */}
           <div className="lv-name-row" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 26 }}>
             {tracking && <span className="lv-dot" aria-label={fresh ? 'Not yet reviewed' : undefined} title={fresh ? 'Not yet reviewed' : ''} style={{ width: 8, height: 8, borderRadius: '50%', background: fresh ? C.red : 'transparent', flexShrink: 0 }} />}
-            <span title={app.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body)', fontWeight: 500, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3 }}>{app.full_name || 'Applicant'}</span>
+            <span className={adapter.kind === 'demo' ? 'lv-name-demo' : undefined} title={app.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body)', fontWeight: 500, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3 }}>{app.full_name || 'Applicant'}</span>
           </div>
           {/* Row two: the meter, the Fit number and the label as one group at the right, the chevron at the far right. */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--s-2)', minHeight: 26, marginTop: 'var(--s-1)', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>
@@ -1642,6 +1642,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           :global(.lv-pillar > :nth-child(n + 3)) { grid-column: 1 / -1; }
         }
         @media (max-width: 344.98px) { :global(.lv-kit-link) { font-size: var(--t-body-2); } }
+        /* Below 345px a fact's value is 13px, so a four word employer holds two words a line at 320;
+           in the sandbox the applicant's name on the card is 14px, for its four word demo name. */
+        @media (max-width: 344.98px) { :global(.lv-fact-value) { font-size: 13px !important; } :global(.lv-name-demo) { font-size: var(--t-body-2) !important; } }
         /* The review dot's column: 18px under the dot at the name, so every line of the card starts
            where the name does. Below 345px the dot sits in the card's padding instead, beside the
            name, and the card's lines start at its edge: the name and the lines under it have the row. */

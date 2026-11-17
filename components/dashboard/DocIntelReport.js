@@ -5,7 +5,7 @@
 // comparisonRows). Then the documents read, one small card each. No summary paragraph, no
 // confidence, no status colours: state is the tick, the dot and the words.
 import { C, R } from '../theme';
-import { Icon, StatusPills, StackedLines } from '../ui';
+import { Icon, StatusPills, StackedLines, LabelValue } from '../ui';
 import { comparisonRows } from '../../lib/documentsLine';
 import { creditLines } from '../../lib/creditShared';
 
@@ -38,6 +38,7 @@ export default function DocIntelReport({ result }) {
   const nameLine = result.nameMatch === 'mismatch' ? `Name on the documents did not match${result.applicantName ? ` ${result.applicantName}` : ''}${Array.isArray(result.documentNames) && result.documentNames.length ? `: they name ${result.documentNames.filter(Boolean).join(', ')}` : ''}.` : result.nameMatch === 'unclear' ? 'The name on the documents could not be confirmed.' : null;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-3)' }}>
+      <style jsx global>{`@media (max-width: 344.98px) { .di-doc { background: transparent !important; border: 0 !important; border-top: 1px solid ${C.rule} !important; border-radius: 0 !important; padding: var(--s-2) 0 0 !important; } }`}</style>
       {nameLine && <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}><Mark status="mismatch" />{nameLine}</div>}
       {rows.length > 0 && (
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 'var(--s-2)' }}>
@@ -46,7 +47,7 @@ export default function DocIntelReport({ result }) {
               <span style={{ marginTop: 3 }}><Mark status={r.status} /></span>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 'var(--lh-body)' }}>{r.field}</div>
-                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance' }}><StackedLines parts={[`Said: ${r.said}`, `Docs: ${r.docs}`]} /></div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance' }}><StackedLines parts={[<LabelValue key="said" label="Said:" value={r.said} />, <LabelValue key="docs" label="Docs:" value={r.docs} />]} /></div>
                 {r.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' }}>Also seen: {line}</div>)}
               </div>
             </li>
@@ -64,7 +65,9 @@ export default function DocIntelReport({ result }) {
               const isCredit = !isUnrecognized && (/credit\s*report/i.test(type) || ex.creditScore != null || ex.scoreBand != null);
               const rowKeys = (isCredit ? [] : STD_FIELDS).filter((k) => ex[k] != null && ex[k] !== '');
               return (
-                <div key={i} style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'var(--s-3)' }}>
+                // Below 345px (a 320 screen, three cards deep) each document is a row under a rule, not a box of
+                // its own, so a long value (a three word name) keeps its line (.di-doc above).
+                <div key={i} className="di-doc" style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.card, padding: 'var(--s-3)' }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', marginBottom: 'var(--s-2)', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>{isUnrecognized ? 'Not a supporting document' : prettyType(type)}</span>
                     {/* The file name whole beside the type, or on the line under it when the two do not fit. */}

@@ -133,9 +133,10 @@ export default function PeopleList({ people, onChanged, className = '', style })
                       {(p.fits || []).length === 0 && <div style={{ fontSize: 'var(--t-body-2)', color: C.instMute, lineHeight: 'var(--lh-body)', minHeight: 44, display: 'flex', alignItems: 'center' }}>No active listing to invite them to.</div>}
                       {(p.fits || []).map((f) => (
                         <div key={f.listingId} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 'var(--s-2) var(--s-3)', minHeight: 44, padding: 'var(--s-1) 0' }}>
-                          {/* The pills keep their full width; when the row is too narrow the control moves below them. */}
+                          {/* The pills keep their full width; when the row is too narrow the control moves below them,
+                              and a pill longer than the row (a long address) wraps inside itself, balanced (.rl-pills-wrap). */}
                           {/* Applied is a status, not an action: a pill like the others, full contrast, not tappable. */}
-                          <StatusPills tone="ink" label={`Fit for ${f.listingName}`} items={[fitText(f), f.listingName, f.applied ? 'Applied' : null]} style={{ flex: '1 1 auto' }} />
+                          <StatusPills tone="ink" label={`Fit for ${f.listingName}`} items={[fitText(f), f.listingName, f.applied ? 'Applied' : null]} className="rl-pills-wrap" style={{ flex: '1 1 auto', minWidth: 0 }} />
                           {f.applied ? null
                             // These two are statuses drawn as controls: a tap on them is a tap on the row.
                             : pending(p) ? <button type="button" disabled title="Waiting for their yes" aria-label="Invite, waiting for their yes" style={{ ...ctrl, ...quiet, cursor: 'default', pointerEvents: 'none' }}>Invite</button>

@@ -295,6 +295,8 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
   return (
     <div>
       <MotionStyles />
+      {/* Below 345px the preview's name is 14px, so a long name holds two words a line at 320. */}
+      <style jsx global>{`@media (max-width: 344.98px) { .pe-preview-name { font-size: var(--t-body-2) !important; } }`}</style>
       <Head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -347,7 +349,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
               : <span style={{ fontSize: 10.5, color: C.inkMute, textAlign: 'center', lineHeight: 1.3 }}>No logo yet</span>}</Crossfade>
           </div>
           <div style={{ minWidth: 0, flex: '1 1 220px' }}>
-            <Crossfade watch={fontId || 'default'}><div style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{form.full_name || 'Your name'}</div></Crossfade>
+            <Crossfade watch={fontId || 'default'}><div className="pe-preview-name" style={{ fontSize: 16, fontWeight: 800, color: C.ink, letterSpacing: '-0.01em', overflowWrap: 'anywhere' }}>{form.full_name || 'Your name'}</div></Crossfade>
             {(form.brokerage || !logoUrl) && <div style={{ fontSize: 13, color: C.inkSoft, marginTop: 1 }}>{form.brokerage || 'Your brokerage'}</div>}
             {form.phone && <div style={{ fontSize: 12, color: C.inkMute, marginTop: 1 }}>{form.phone}</div>}
           </div>

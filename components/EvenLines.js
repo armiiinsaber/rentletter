@@ -4,7 +4,7 @@
 // and wraps a longer one as it comes, so a long paragraph on a phone can end on one word. And
 // balance evens the lengths without minding the words, so a short block can still leave one word
 // on a line of its own ("2150 Lake Shore / Boulevard West, / Penthouse / 4512, Toronto").
-// After each render, each resize and each change to the page, every block that wraps that way is
+// After each render, each resize or turn of the phone and each change to the page, every block that wraps that way is
 // narrowed until it reads even: a block of seven lines or more to the narrowest width that keeps
 // its number of lines (the words move down until the last line is as full as the others, the way
 // balance sets a shorter block); any other, a step at a time, to the first width where every line
@@ -105,8 +105,10 @@ export function useEvenLines() {
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => soon(0));
     const onResize = () => soon(50);
     window.addEventListener('resize', onResize);
+    // A turn of the phone: iOS fires orientationchange before the new width settles, then resize.
+    window.addEventListener('orientationchange', onResize);
     const watch = new MutationObserver(() => soon(120));
     watch.observe(document.body, { childList: true, subtree: true, characterData: true });
-    return () => { clearTimeout(timer); cancelAnimationFrame(frame); window.removeEventListener('resize', onResize); watch.disconnect(); };
+    return () => { clearTimeout(timer); cancelAnimationFrame(frame); window.removeEventListener('resize', onResize); window.removeEventListener('orientationchange', onResize); watch.disconnect(); };
   }, []);
 }

@@ -123,7 +123,7 @@ export default function UploadPage() {
             <>
               <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Document request</div>
               <h1 style={{ fontSize: 'clamp(24px, 5.5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10 }}>
-                Upload your documents{firstName ? `, ${firstName}` : ''}
+                {firstName ? `${firstName}, upload your documents` : 'Upload your documents'}
               </h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, marginBottom: 22 }}>
                 {req?.realtorName ? <><strong style={{ color: C.ink }}>{req.realtorName}</strong>, the realtor representing the landlord, requested a few documents to finalize your rental application</> : 'The listing realtor requested a few documents to finalize your rental application'}

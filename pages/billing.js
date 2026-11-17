@@ -39,7 +39,7 @@ export default function Billing({ profile, entitlement: e }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}><span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Plans</span></div>
           {e.status === 'founding' ? (
             <>
-              <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 36px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>You’re a founding member.</h1>
+              <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 36px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>Founding member.</h1>
               <p style={{ fontSize: 15.5, color: C.inkSoft, lineHeight: 1.55, textWrap: 'balance' }}>Rentletter is free for you, for life. Nothing to manage here.</p>
             </>
           ) : subscribed ? (

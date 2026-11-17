@@ -50,6 +50,12 @@ export const GlobalStyle = () => (
        long one fits a 320 screen (components/dashboard/FormDataSheet.js). */
     .rl-addr { white-space: nowrap; }
     @media (max-width: 344.98px) { .rl-addr { font-size: 13px !important; } }
+    /* A label and its value (LabelValue below): one line while both fit, else the label above the value. */
+    .rl-lv { display: flex; flex-wrap: wrap; column-gap: 0.28em; }
+    .rl-lv-label { white-space: nowrap; }
+    .rl-lv-value { min-width: 0; }
+    .rl-lv.rl-lv-narrow { display: inline; }
+    @media (max-width: 344.98px) { .rl-lv.rl-lv-narrow { display: flex; } }
     /* The two webfonts, self hosted (public/fonts, the latin variable files), swapped in when they
        arrive; the preloads live in pages/_document.js. */
     @font-face { font-family: 'Inter'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/fonts/inter-latin.woff2') format('woff2'); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
@@ -128,6 +134,11 @@ export const GlobalStyle = () => (
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; transition: none; animation: none; }
     .rl-pill.rl-pill-action { background: ${C.inst}; border-color: ${C.inst}; color: ${C.paper}; }
     .rl-pills.rl-pills-ink .rl-pill { background: transparent; border-color: rgba(250, 248, 243, 0.24); color: ${C.paper}; }
+    /* A row whose pills may wrap their text (the Pipeline's open row, components/dashboard/PeopleList.js):
+       a pill whose text holds one line is the same 28px pill; one longer than its row (a long address)
+       wraps inside itself, balanced, and grows with its lines, never past the row or the screen. */
+    .rl-pills.rl-pills-wrap { min-width: 0; }
+    .rl-pills.rl-pills-wrap .rl-pill { height: auto; min-height: 28px; padding-top: 4px; padding-bottom: 4px; line-height: 1.25; white-space: normal; overflow: visible; text-overflow: clip; text-wrap: balance; border-radius: 14px; }
     /* The same pill at the type scale of a scaled mockup (components/mockups, components/film), where
        body text is 9 to 13px: half its text size in height, as on the live card. */
     .rl-pills.rl-pills-mock { gap: 4px; }
@@ -231,6 +242,16 @@ export const StackedLines = ({ parts, text }) => {
   const list = (parts || String(text ?? '').split(' · ')).filter((x) => x !== null && x !== undefined && x !== false && x !== '');
   return <>{list.map((x, i) => <span key={i} style={{ display: 'block' }}>{typeof x === 'string' ? noWidow(x) : x}</span>)}</>;
 };
+
+// ─── LABEL AND VALUE: "Said: Anastasia Konstantinopoulou" ───────
+// A label and its value share a line while both fit on it; when they cannot, the label stands on
+// a line of its own and the value goes under it, at the same size, its own lines balanced. The
+// space between them is in the text, so it reads "Said: …" (.rl-lv in GlobalStyle). narrow: only
+// below 345px; wider, the label and value are one line of text that wraps balanced, and its text
+// reads "Said: …" on one line (the checklist's walks read it so at 390).
+export const LabelValue = ({ label, value, narrow = false }) => (
+  <span className={narrow ? 'rl-lv rl-lv-narrow' : 'rl-lv'}><span className="rl-lv-label">{label}</span>{' '}<span className="rl-lv-value">{typeof value === 'string' ? noWidow(value) : value}</span></span>
+);
 
 // ─── WORDMARK: the official logo, the one mark everywhere ─────
 // The red bar (the tick motif), then "Rentletter" in Fraunces 600 at optical size 144, drawn as

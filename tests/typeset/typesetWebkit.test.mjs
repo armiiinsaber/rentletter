@@ -6,9 +6,13 @@
 // Every block of text is measured word by word (tests/helpers/textLines.mjs): no line of one word
 // beside a longer one, no line under 60% of its block's longest, no word or link split, nothing
 // outside its block and nothing cut short with an ellipsis; a link may stand alone on its line,
-// whole. And the page never scrolls sideways. Each state is measured at 390, then the same page at
-// 320. Every break is named (state, width, block) before the test fails; a page measured with a
-// break is saved to /tmp/typeset/<engine>/. A WebKit walk fails, never skips, when the binary is missing.
+// whole. The page never scrolls sideways, and no pill runs past its row or the screen edge. Each
+// state is measured at 390, then the same page at 320. Every break is named (state, width, block)
+// before the test fails; a page measured with a break is saved to /tmp/typeset/<engine>/. And no
+// page logs a hydration warning or error (the server's HTML and the first render the same, with
+// components/EvenLines.js narrowing blocks after it). A WebKit walk fails, never skips, when the
+// binary is missing. It runs on its own, one engine a run: npm run test:typeset:webkit and
+// npm run test:typeset:chrome, each under the run ceiling (scripts/test-run.mjs).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
@@ -49,28 +53,50 @@ before(async () => {
 after(async () => { leaveTurn(); down(); if (turn) giveTurn(); }, { timeout: STOP_TIMEOUT });
 
 const slug = (s) => s.replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '').toLowerCase();
+// React's hydration messages: the development wording, and the production errors for a mismatch
+// (418 text or markup, 423 recovered by rendering on the client, 425 text content).
+const HYDRATION = /hydrat|did not match|didn't match|server rendered|Minified React error #(418|423|425)\b/i;
+// Run in the page after readPage: every pill a person can see (marked data-tl-block) inside its
+// row, its row inside the box that holds it, and both on the screen.
+const PILLS_INSIDE = () => {
+  const iw = window.innerWidth; const out = []; const px = (n) => Math.round(n);
+  for (const p of document.querySelectorAll('.rl-pill[data-tl-block]')) {
+    const r = p.getBoundingClientRect(); const t = p.textContent.replace(/\s+/g, ' ').trim();
+    const row = p.closest('.rl-pills'); const rr = row && row.getBoundingClientRect(); const hr = row && row.parentElement && row.parentElement.getBoundingClientRect();
+    if (r.left < -0.5 || r.right > iw + 0.5) out.push(`the pill "${t}" past the screen edge (${px(r.left)} to ${px(r.right)} on a ${iw}px screen)`);
+    else if (rr && (r.left < rr.left - 0.5 || r.right > rr.right + 0.5)) out.push(`the pill "${t}" past its row (${px(r.left)} to ${px(r.right)}, row ${px(rr.left)} to ${px(rr.right)})`);
+    else if (rr && hr && (rr.left < hr.left - 0.5 || rr.right > hr.right + 0.5)) out.push(`the row of the pill "${t}" past its box (${px(rr.left)} to ${px(rr.right)}, box ${px(hr.left)} to ${px(hr.right)})`);
+  }
+  return out;
+};
 async function walk(type, opts, engine) {
   if (swept++) { walkStep('restarting the fake stack servers'); await fresh(); }
   walkStep(`every state in ${engine}`);
   mkdirSync(`/tmp/typeset/${engine}`, { recursive: true });
   const browser = await type.launch(opts);
-  const breaks = []; let measured = 0; const t0 = Date.now();
+  const breaks = []; const hydration = []; let measured = 0; const t0 = Date.now();
+  const heard = (where, text) => { if (HYDRATION.test(text)) hydration.push(`${where}: ${String(text).split('\n')[0].slice(0, 200)}`); };
+  const onContext = (ctx) => {
+    ctx.on('console', (m) => { if (m.type() === 'error' || m.type() === 'warning') heard(m.page() ? m.page().url() : 'a page', m.text()); });
+    ctx.on('weberror', (e) => heard(e.page() ? e.page().url() : 'a page', String((e.error() && e.error().message) || e.error())));
+  };
   try {
     const measure = async (page, state) => {
       for (const width of [390, 320]) {
         if (width !== 390) await page.setViewportSize({ width, height: 844 });
         await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(350);
-        const problems = pageProblems(await readPage(page));
+        const problems = [...pageProblems(await readPage(page)), ...(await page.evaluate(PILLS_INSIDE))];
         measured++;
         for (const p of problems) breaks.push(`${state} at ${width}: ${p}`);
         if (problems.length) await page.screenshot({ path: `/tmp/typeset/${engine}/${slug(state)}-${width}.png`, fullPage: true }).catch(() => {});
       }
       await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
     };
-    const failed = await sweep({ browser, bases, concurrency: 4, measure, contextOptions: { viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, serviceWorkers: 'block', reducedMotion: 'reduce' } });
-    console.log(`${engine}: ${STATES.length} pages, ${measured} measurements at 390 and 320, ${breaks.length} breaks, ${Math.round((Date.now() - t0) / 1000)}s`);
+    const failed = await sweep({ browser, bases, concurrency: 4, measure, onContext, contextOptions: { viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, serviceWorkers: 'block', reducedMotion: 'reduce' } });
+    console.log(`${engine}: ${STATES.length} pages, ${measured} measurements at 390 and 320, ${breaks.length} breaks, ${hydration.length} hydration messages, ${Math.round((Date.now() - t0) / 1000)}s`);
     assert.deepEqual(failed, [], `${engine}: every state opens`);
     assert.deepEqual(breaks, [], `${engine}: no wrapped text breaks the rule`);
+    assert.deepEqual(hydration, [], `${engine}: no page logs a hydration warning or error`);
     assert.ok(measured >= STATES.length * 2, `${engine}: every state measured at both widths (${measured})`);
   } finally { await browser.close(); }
 }

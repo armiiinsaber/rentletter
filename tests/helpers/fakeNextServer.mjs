@@ -40,7 +40,7 @@ const lapsed = process.env.FAKE_PROFILE === 'lapsed';
 const t = tables(lapsed ? { plan: 'trial', profileOver: { trial_ends_at: new Date(Date.now() - 2 * 86400000).toISOString() } } : {});
 for (const a of t.applications || []) if (!('rent_to_income_ratio' in a)) a.rent_to_income_ratio = null;
 // FAKE_LONG=1: the same rows with the longest values a screen meets in practice (the wrapped text
-// walks, tests/routes/typeset*Webkit.test.mjs): long names, a long brokerage, long addresses, long
+// walks, tests/typeset/typesetWebkit.test.mjs): long names, a long brokerage, long addresses, long
 // employers and emails, the widest short code (WWWWWWW, seeded below), a reference request still
 // open, a Pipeline person asked and not yet answered, and one sent a renewal. Invented people.
 const long = process.env.FAKE_LONG === '1';

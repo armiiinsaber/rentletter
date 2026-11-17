@@ -97,6 +97,9 @@ export const ProfileStyles = () => (
        345px each steps down one size so it fits a 320 screen (a code or a link may; the words may not). */
     .mp-addr { white-space: nowrap; }
     @media (max-width: 344.98px) { .mp-addr, .mp-value.mp-addr { font-size: 13px; } .mp-value.mp-key { font-size: 12px; } }
+    /* The apply banner's "Goes to {realtor}, {brokerage}" (pages/apply/[token].js): below 345px a size
+       down, and the brokerage on a line of its own under the name. */
+    @media (max-width: 344.98px) { .mp-p.mp-goes { font-size: 13px; } .mp-goes-brok { display: block; } }
     .mp-h1 { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; overflow-wrap: anywhere; text-wrap: balance; }
     .mp-h2 { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; text-wrap: balance; }
     .mp-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 44px; }

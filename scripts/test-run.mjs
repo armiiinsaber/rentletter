@@ -4,10 +4,12 @@
 // (tests/helpers/devServer.mjs), and the run fails. A run that ends in time exits with its own code.
 // However the run ends, every server one of its walks started and that is still up is taken down.
 // TEST_RUN_CLEAR=none leaves the walks' servers and turn alone (a test of this script, inside a run).
-// --no-walks leaves out the browser walks (tests/routes/*Webkit.test.mjs): npm test is the unit and
-// route tests; the walks run as npm run test:webkit and npm run test:chrome, each under its own ceiling.
+// --no-walks leaves out the browser walks (every *Webkit.test.mjs): npm test is the unit and route
+// tests; the walks run as npm run test:webkit and npm run test:chrome, each under its own ceiling, and
+// the sitewide wrapped text walk (tests/typeset) as npm run test:typeset:webkit and test:typeset:chrome.
 //   node scripts/test-run.mjs --no-walks "tests/**/*.test.mjs"           (npm test)
 //   node scripts/test-run.mjs --test-name-pattern=WebKit "tests/routes/*Webkit.test.mjs"   (npm run test:webkit)
+//   node scripts/test-run.mjs --test-name-pattern=WebKit "tests/typeset/*Webkit.test.mjs"  (npm run test:typeset:webkit)
 import { spawn, execSync } from 'node:child_process';
 import { rmSync, globSync } from 'node:fs';
 import { relative } from 'node:path';

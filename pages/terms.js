@@ -17,7 +17,7 @@ Rentletter provides software that helps real estate professionals ("Realtors") c
 - You are responsible for the accuracy of your account information, for keeping your credentials secure, and for all activity under your account.
 - You must notify us promptly of any unauthorized use of your account.
 
-## 3. Realtor responsibilities and lawful use
+## 3. Realtor duties and lawful use
 As a Realtor using the Service, you agree that:
 - **You make all decisions.** You (and/or your landlord client) are solely responsible for any decision to accept, decline, shortlist, or otherwise act on any applicant. Rentletter does not recommend that any applicant be accepted or rejected, and any ranking, insight, or report is a tool to assist your own independent judgment.
 - **You will comply with human rights and housing law.** You will use the Service in compliance with all applicable laws, including the Ontario Human Rights Code, the human rights legislation of other provinces, and all applicable fair-housing, landlord-tenant, consumer-protection, and privacy laws. You will not use the Service to discriminate against any person on the basis of a protected ground.

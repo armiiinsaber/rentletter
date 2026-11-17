@@ -92,8 +92,14 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
       <style jsx global>{`
         .rl-nums { grid-template-columns: repeat(4, minmax(0, 1fr)); }
         @media (max-width: 420px) { .rl-nums { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        /* Below 345px (a 320 screen) the address and each applicant's rank, name and score are a size
+           down (22px and 16px), so a long address or name holds two words a line. */
+        @media (max-width: 344.98px) { .t-d1.rr-addr { font-size: var(--t-d2); } .t-d3.rr-head { font-size: var(--t-body); } }
+        /* Below 345px the rank stands on its own line above the name, and the page's sides are the 12px
+           gutter every page takes there (components/ui.js --page-gutter), so a three word name has the row. */
+        @media (max-width: 344.98px) { .rr-rank { display: block; margin-right: 0 !important; } .rr-main { padding-left: var(--page-gutter) !important; padding-right: var(--page-gutter) !important; } }
       `}</style>
-      <main style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-5) var(--s-4) var(--s-7)', paddingTop: 'calc(var(--s-5) + env(safe-area-inset-top, 0px))' }}>
+      <main className="rr-main" style={{ minHeight: '100vh', background: C.paper, padding: 'var(--s-5) var(--s-4) var(--s-7)', paddingTop: 'calc(var(--s-5) + env(safe-area-inset-top, 0px))' }}>
         <div style={{ maxWidth: 640, margin: '0 auto' }}>{children}</div>
       </main>
     </>
@@ -119,7 +125,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             {realtor.brokerage ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{realtor.brokerage}</div> : null}
           </div>
         </div>
-        <h1 className="t-d1" style={{ color: C.ink, margin: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{listing.address}</h1>
+        <h1 className="t-d1 rr-addr" style={{ color: C.ink, margin: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{listing.address}</h1>
         <StatusPills label="The unit" items={[listing.rent != null ? `${money(listing.rent)} per month` : null, listing.bedroomsLabel || null]} style={{ marginTop: 'var(--s-3)' }} />
         <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-2)', textWrap: 'balance' }}>
           Prepared {longDate(payload.generatedAt)}{listing.landlordName ? ` for ${listing.landlordName}` : ''}
@@ -135,10 +141,10 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             {/* The name takes the whole line when the score beside it would squeeze it: the score moves
                 under it whenever the rank and the name do not fit beside it on one line. */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--s-1) var(--s-3)' }}>
-              <div className="t-d3" style={{ color: C.ink, minWidth: 0, flex: '1 1 auto', overflowWrap: 'anywhere', textWrap: 'balance' }}><span className="num" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{noWidow(a.name)}</div>
+              <div className="t-d3 rr-head" style={{ color: C.ink, minWidth: 0, flex: '1 1 auto', overflowWrap: 'anywhere', textWrap: 'balance' }}><span className="num rr-rank" style={{ color: C.inkMute, marginRight: 'var(--s-2)' }}>{a.rank}</span>{noWidow(a.name)}</div>
               {a.fit && a.fit.score != null ? (
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--s-2)', flexShrink: 0 }}>
-                  <span className="t-d3 num" style={{ color: C.ink }}>{Number(a.fit.score).toFixed(1)}</span>
+                  <span className="t-d3 num rr-head" style={{ color: C.ink }}>{Number(a.fit.score).toFixed(1)}</span>
                   <span style={{ ...eyebrow, color: a.fit.label === 'verified' ? C.ink : C.inkMute }}>{a.fit.label}</span>
                 </div>
               ) : a.fit && a.fit.incomplete ? null : <span style={eyebrow}>Rent share unknown</span>}

@@ -16,9 +16,15 @@
 // the answers show under the row and count as a confirmation, never as a number.
 import React, { useState, useEffect } from 'react';
 import { C, R } from '../theme';
-import { Icon, StatusPills, StackedLines } from '../ui';
-// "Said: a · b" as dot line items, the label on the first: labelled('Said', 'a · b') -> ['Said: a', 'b'].
-const labelled = (label, value) => String(value).split(' · ').map((v, i) => (i ? v : `${label}: ${v}`));
+import { Icon, StatusPills, StackedLines, LabelValue } from '../ui';
+// "Said: a · b" reads "Said: a, b". A value of one or two words is one unit (noWidow ties the last two
+// words), so where it does not fit beside its label the label would stand alone on its line: below
+// 345px the label then goes above the value (components/ui.js LabelValue). A longer value shares its
+// first line with the label, as one line of text.
+const labelled = (label, value) => {
+  const v = String(value).split(' · ').join(', ');
+  return v.trim().split(/\s+/).length <= 2 ? <LabelValue key={label} narrow label={`${label}:`} value={v} /> : `${label}: ${v}`;
+};
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { readVerification, fitLine } from '../../lib/fitScore';
 import { incomeIsJoint, householdIncomeOf } from '../../lib/jointIncome';
@@ -163,7 +169,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                     ? <IntegrityChecks applicant={applicant} listingId={listing?.id} heldDocuments={heldDocuments} onViewDocument={onViewDocument} />
                     : row.credit
                     ? <StackedLines parts={[row.credit.label, ...row.credit.lines]} />
-                    : <StackedLines parts={[labelled('Said', row.said).join(', '), row.docs != null ? labelled('Docs', row.docs).join(', ') : null]} />}
+                    : <StackedLines parts={[labelled('Said', row.said), row.docs != null ? labelled('Docs', row.docs) : null]} />}
                 </div>
                 {Array.isArray(row.also) && row.also.length ? row.also.map((line) => <div key={line} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'balance' }}>Also seen: {line}</div>) : null}
                 {row.note ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.4, marginTop: 'var(--s-1)', textWrap: 'balance' }}>{row.note}</div> : null}

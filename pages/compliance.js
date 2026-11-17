@@ -36,7 +36,7 @@ export default function CompliancePage() {
               Compliance overview · for property managers & legal teams
             </div>
             <h1 className="rl-serif" style={{ fontSize: 'clamp(34px, 5.5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 20 }}>
-              Built to help Canadian landlords and property managers screen tenants defensibly.
+              Screening for Ontario and BC.
             </h1>
             <p style={{ fontSize: 'clamp(15px, 2vw, 18px)', color: C.inkSoft, lineHeight: 1.65 }}>
               Rentletter is designed to support fair housing obligations under the Ontario Human Rights Code (and equivalent provincial human rights legislation across Canada). This page explains the safeguards built into the product so legal and compliance teams can evaluate it quickly.

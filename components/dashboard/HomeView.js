@@ -227,7 +227,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   );
   // Derived, presentation-only summaries from data that already exists (no fabrication,
   // no new API calls — everything below comes from the listings/profile already loaded).
-  const firstName = (profile?.full_name || '').trim().split(/\s+/)[0] || '';
   // Event-type Noticed actions on the home page go to the listing page, which owns the applicant
   // cards: #docs=<linkId>[&renew] makes ListingView open that applicant (marking them reviewed),
   // scroll to them and light up the document-request panel.
@@ -244,10 +243,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     return () => clearTimeout(t);
   }, []);
   // The greeting line: the hour comes from the CLIENT after mount (lib/greeting.js), so the server's
-  // clock never decides it; until then the line holds its height and is not shown.
+  // clock never decides it; until then the line holds its height and is not shown. It carries no
+  // name ("Good evening."), so it reads as one line at 320 whatever the realtor's name is.
   const [clientHour, setClientHour] = useState(null);
   useEffect(() => { setClientHour(new Date().getHours()); }, []);
-  const greeting = clientHour == null ? '' : greetingFor(clientHour, firstName);
+  const greeting = clientHour == null ? '' : greetingFor(clientHour);
   // The bell receives one stable object per signals change: a fresh object every render would make
   // the bell's setSignals effect re render this page forever.
   // The one line of standing: the listings that take applications, the applicants on them, and the
@@ -511,6 +511,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* Masthead byline: name in the display serif, brokerage muted below. */
         .dash-brand-name { font-family: ${FONT.serif}; font-size: var(--t-d3); font-weight: 600; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
         .dash-brand-brok { font-size: var(--t-body-2); color: ${C.inkMute}; overflow-wrap: anywhere; }
+        /* Below 345px a long name takes the body size (16px), so it holds two words a line at 320. */
+        @media (max-width: 344.98px) { .dash-brand-name { font-size: var(--t-body); } }
         .dash-brand-desc { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.5; margin-top: var(--s-1); text-wrap: balance; white-space: normal; }
         .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); font-weight: 700; color: ${C.red}; }
 

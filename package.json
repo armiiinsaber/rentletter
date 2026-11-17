@@ -8,6 +8,8 @@
     "test": "node scripts/test-run.mjs --no-walks \"tests/**/*.test.mjs\"",
     "test:webkit": "node scripts/test-run.mjs --test-name-pattern=WebKit \"tests/routes/*Webkit.test.mjs\"",
     "test:chrome": "node scripts/test-run.mjs --test-name-pattern=Chrome \"tests/routes/*Webkit.test.mjs\"",
+    "test:typeset:webkit": "node scripts/test-run.mjs --test-name-pattern=WebKit \"tests/typeset/*Webkit.test.mjs\"",
+    "test:typeset:chrome": "node scripts/test-run.mjs --test-name-pattern=Chrome \"tests/typeset/*Webkit.test.mjs\"",
     "verify:migrations": "node scripts/verify-migrations.mjs",
     "brand:build": "node scripts/brand/build-brand.mjs",
     "brand:kit": "node scripts/brand/build-brand.mjs kit",

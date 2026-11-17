@@ -86,10 +86,15 @@ test('npm test leaves the browser walks to their own runs, each under the ceilin
   assert.equal(scripts.test, 'node scripts/test-run.mjs --no-walks "tests/**/*.test.mjs"');
   assert.equal(scripts['test:webkit'], 'node scripts/test-run.mjs --test-name-pattern=WebKit "tests/routes/*Webkit.test.mjs"');
   assert.equal(scripts['test:chrome'], 'node scripts/test-run.mjs --test-name-pattern=Chrome "tests/routes/*Webkit.test.mjs"');
+  // The sitewide wrapped text walk runs on its own, one engine a run, under the same ceiling.
+  assert.equal(scripts['test:typeset:webkit'], 'node scripts/test-run.mjs --test-name-pattern=WebKit "tests/typeset/*Webkit.test.mjs"');
+  assert.equal(scripts['test:typeset:chrome'], 'node scripts/test-run.mjs --test-name-pattern=Chrome "tests/typeset/*Webkit.test.mjs"');
   // The split holds only while every browser walk is a *Webkit.test.mjs file and nothing else drives a browser.
-  const files = readdirSync(join(ROOT, 'tests/routes')).filter((f) => f.endsWith('.test.mjs'));
-  for (const f of files) {
-    const browser = /playwright|helpers\/browsers\.mjs/.test(readFileSync(join(ROOT, 'tests/routes', f), 'utf8'));
-    assert.equal(browser, /Webkit\.test\.mjs$/.test(f), `${f}: a browser walk exactly when named *Webkit.test.mjs`);
+  for (const dir of ['tests/routes', 'tests/typeset']) {
+    const files = readdirSync(join(ROOT, dir)).filter((f) => f.endsWith('.test.mjs'));
+    for (const f of files) {
+      const browser = /playwright|helpers\/browsers\.mjs/.test(readFileSync(join(ROOT, dir, f), 'utf8'));
+      assert.equal(browser, /Webkit\.test\.mjs$/.test(f), `${f}: a browser walk exactly when named *Webkit.test.mjs`);
+    }
   }
 });

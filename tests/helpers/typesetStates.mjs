@@ -1,5 +1,5 @@
 // tests/helpers/typesetStates.mjs  Every page and state a person can reach, for the wrapped text
-// walks (tests/routes/typesetWebkit.test.mjs) and the audit behind them: public, realtor, billing,
+// walks (tests/typeset/typesetWebkit.test.mjs) and the audit behind them: public, realtor, billing,
 // tenant and landlord, on the fake stack with the long values (tests/helpers/fakeNextServer.mjs,
 // FAKE_LONG=1). Each state opens on a page of its own: go(page, f), where f(path) answers a GET on
 // the fake server as JSON; a state with steps(page, f) then yields the name of each further state
@@ -10,8 +10,9 @@
 //   phase         'read' (the default) changes nothing another state shows, so these run side by
 //                 side; 'write' adds what only its own page shows, after every read; 'alone' takes
 //                 the realtor's listings or name away for a moment and runs last, by itself.
-//   sweep({ browser, bases, concurrency, measure })   opens every state at 390, calls
-//                 measure(page, name, kind) after each, and answers the names that did not open.
+//   sweep({ browser, bases, concurrency, measure, onContext })   opens every state at 390, calls
+//                 measure(page, name, kind) after each, and answers the names that did not open;
+//                 onContext(context, key) is called once for each browser context it opens.
 const wait = (p, ms = 400) => p.waitForTimeout(ms);
 const settle = async (p) => { await p.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}); await wait(p, 400); };
 export const open = async (p, path) => { await p.goto(path, { waitUntil: 'load', timeout: 60000 }); await settle(p); };
@@ -181,9 +182,9 @@ export const STATES = [
 
 // Every state, in its phase, concurrency at a time; measure(page, name, kind) after each state
 // and each step. Answers [{ name, error }] for the states that did not open.
-export async function sweep({ browser, bases, contextOptions, concurrency = 4, measure }) {
+export async function sweep({ browser, bases, contextOptions, concurrency = 4, measure, onContext }) {
   const ctx = {};
-  for (const [k, base] of Object.entries(bases)) { ctx[k] = await browser.newContext({ ...contextOptions, baseURL: base }); await ctx[k].route(/supabase\.co\//, (r) => r.abort()); }
+  for (const [k, base] of Object.entries(bases)) { ctx[k] = await browser.newContext({ ...contextOptions, baseURL: base }); await ctx[k].route(/supabase\.co\//, (r) => r.abort()); if (onContext) await onContext(ctx[k], k); }
   const failed = [];
   const one = async (s) => {
     const key = s.server === 'on' ? 'on' : 'off';

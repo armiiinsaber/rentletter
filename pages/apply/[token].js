@@ -771,7 +771,10 @@ export default function ApplyPage({ invited = null }) {
                     </>;
                   })()}
                   {(invite.realtorName || invite.realtorBrokerage) && (
-                    <div className="mp-p" style={{ color: inkText, marginTop: 'var(--gap-line)' }}>{noWidow(`Goes to ${[invite.realtorName, invite.realtorBrokerage].filter(Boolean).join(', ')}`)}</div>
+                    // Below 345px a size down and the brokerage on its own line (.mp-goes, components/tenant/ProfileFacts.js).
+                    <div className="mp-p mp-goes" style={{ color: inkText, marginTop: 'var(--gap-line)' }}>{invite.realtorName && invite.realtorBrokerage
+                      ? <>{noWidow(`Goes to ${invite.realtorName},`)} <span className="mp-goes-brok">{noWidow(invite.realtorBrokerage)}</span></>
+                      : noWidow(`Goes to ${invite.realtorName || invite.realtorBrokerage}`)}</div>
                   )}
                 </div>
               )}
