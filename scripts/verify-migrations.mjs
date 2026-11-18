@@ -50,6 +50,7 @@ const FILES = {
   m014: 'db/014-prefill-record.sql',
   tenantProfiles: 'db/tenant-profiles.sql',
   m015: 'db/015-profile-verified-email.sql',
+  m016: 'db/016-drop-application-defaults.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -751,7 +752,47 @@ async function pathA() {
   await run013(db, 'A8');
   await run014(db, 'A10');
   await run015(db, 'A11');
+  await run016(db, 'A12');
   await db.close();
+}
+
+// ── db/016-drop-application-defaults.sql ────────────────────────────────────────────────────
+// The baseline has none of the three columns: the file runs first with nothing to do. Then the
+// columns are added as production has them (a default of '1', 'no' and '[]'), a row is written
+// that relies on those defaults, and the file runs twice. The defaults go, no row changes, no
+// type, NOT NULL, constraint or index moves, and a row written afterwards without the columns
+// reads null in all three.
+const DEFAULT_COLUMNS = ['number_of_occupants', 'smoker', 'references'];
+const defaultsOf = async (db) => Object.fromEntries((await rows(db, "SELECT column_name, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'applications' AND column_name = ANY($1)", [DEFAULT_COLUMNS])).map((r) => [r.column_name, r.column_default]));
+async function run016(db, tag) {
+  const noDefault = (list) => list.map((r) => (DEFAULT_COLUMNS.includes(r.attname) ? { ...r, def: null } : r));
+  const shape0 = await applicationsCatalog(db); const rows0 = await rows(db, 'SELECT * FROM public.applications ORDER BY id');
+  await step(db, `${tag}0 (016 before the columns exist)`, FILES.m016);
+  check(same(await applicationsCatalog(db), shape0) && same(await rows(db, 'SELECT * FROM public.applications ORDER BY id'), rows0), `${tag}0: with none of the three columns there, nothing changes`);
+  await db.exec(`ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS number_of_occupants text DEFAULT '1'; ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS smoker text DEFAULT 'no'; ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS "references" jsonb DEFAULT '[]'::jsonb;`);
+  const OLD = 'ffffffff-0000-4000-8000-000000000016';
+  await db.query("INSERT INTO public.applications (id, application_number, full_name) VALUES ($1, 'RL-2026-016A-016A', 'Written on the defaults')", [OLD]);
+  const had = await defaultsOf(db);
+  check(DEFAULT_COLUMNS.every((c) => had[c] != null), `${tag}: before 016 the three columns carry a default`, JSON.stringify(had));
+  const shape = await applicationsCatalog(db); const constraints = await applicationsConstraints(db); const indexes = await applicationsIndexes(db);
+  const before = await rows(db, 'SELECT * FROM public.applications ORDER BY id');
+  await step(db, `${tag}1`, FILES.m016);
+  const after = await defaultsOf(db);
+  check(DEFAULT_COLUMNS.every((c) => c in after && after[c] === null), `${tag}1: number_of_occupants, smoker and references have no default`, JSON.stringify(after));
+  check(same(await applicationsCatalog(db), noDefault(shape)), `${tag}1: every column, type and NOT NULL of applications is as it was, and no other default moved`);
+  check(same(await applicationsConstraints(db), constraints) && same(await applicationsIndexes(db), indexes), `${tag}1: every constraint and index is as it was`);
+  check(same(await rows(db, 'SELECT * FROM public.applications ORDER BY id'), before), `${tag}1: no row of applications changed`);
+  const kept = (await rows(db, 'SELECT number_of_occupants, smoker, "references" FROM public.applications WHERE id = $1', [OLD]))[0];
+  check(kept.number_of_occupants === '1' && kept.smoker === 'no' && Array.isArray(kept.references) && kept.references.length === 0, `${tag}1: a row written on the defaults keeps what it stored`, JSON.stringify(kept));
+  const shape1 = await applicationsCatalog(db);
+  await step(db, `${tag}2 (016 again)`, FILES.m016);
+  check(same(await applicationsCatalog(db), shape1) && same(await applicationsConstraints(db), constraints) && same(await applicationsIndexes(db), indexes), `${tag}2: a second run leaves every column, constraint and index as they were`);
+  check(same(await rows(db, 'SELECT * FROM public.applications ORDER BY id'), before), `${tag}2: and every row`);
+  const NEW = 'ffffffff-0000-4000-8000-000000000017';
+  await db.query("INSERT INTO public.applications (id, application_number, full_name) VALUES ($1, 'RL-2026-016B-016B', 'Written after')", [NEW]);
+  const fresh = (await rows(db, 'SELECT number_of_occupants, smoker, "references" FROM public.applications WHERE id = $1', [NEW]))[0];
+  check(fresh.number_of_occupants === null && fresh.smoker === null && fresh.references === null, `${tag}2: a row written without the three columns reads null in each, never a household of one, a non smoker or no references`, JSON.stringify(fresh));
+  await db.query('DELETE FROM public.applications WHERE id = ANY($1)', [[OLD, NEW]]);
 }
 
 async function pathB() {
@@ -790,6 +831,7 @@ async function pathB() {
   await run013(db, 'B15');
   await run014(db, 'B16');
   await run015(db, 'B17');
+  await run016(db, 'B18');
   return { db, before };
 }
 

@@ -124,7 +124,7 @@ test('prefill: the first read claims the token, a later read needs the nonce, th
     const form = rowToForm(first.application);
     assert.equal(form.hasCoApplicant, true); assert.equal(form.coApplicantName, 'Dev Nair'); assert.equal(form.coApplicantIncome, '70000');
     assert.equal(form.coApplicantAge, ''); assert.equal(form.coApplicantRelationship, '');
-    assert.equal(form.ageConfirmed, true, 'a stored application counts as age confirmed');
+    assert.equal(form.ageConfirmed, false, 'a stored application with no explicit answer is not age confirmed');
     await P.consumePrefill(token); assert.equal(kv.values[P.claimedKey(token)], undefined);
   } finally { kv.restore(); }
   const { PREFILL_TTL } = await import('../lib/pipelineState.js'); assert.equal(PREFILL_TTL, 48 * 3600);
@@ -197,11 +197,11 @@ test('the snapshot folds a duplicate application: the sandbox pair yields one So
   assert.equal(demoSnapshot('demo-carlaw').applicants.filter((a) => a.name === 'Sofia Russo').length, 1, 'the sandbox landlord page agrees');
 });
 
-// 10. a stored application never asks the date again
-test('rowToForm marks any stored application age confirmed, with or without the flag', async () => {
+// 10. a stored application asks the date again unless it says yes explicitly
+test('rowToForm marks a stored application age confirmed only when its row says so', async () => {
   const { rowToForm } = await import('../lib/pipelinePrefill.js');
   const { demoPrefillRow } = await import('../lib/demoFixture.js');
-  assert.equal(rowToForm({ id: 'A1', full_name: 'Old Row' }).ageConfirmed, true);
+  assert.equal(rowToForm({ id: 'A1', full_name: 'Old Row' }).ageConfirmed, false);
   assert.equal(rowToForm({ id: 'A1', full_name: 'New Row', scorecard: { ageConfirmed: true } }).ageConfirmed, true);
   assert.equal(rowToForm({}).ageConfirmed, false, 'an empty row is not an application');
   assert.equal(demoPrefillRow().scorecard.ageConfirmed, true, 'the sandbox row carries the flag');

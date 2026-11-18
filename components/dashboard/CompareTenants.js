@@ -11,6 +11,7 @@ import { C, R } from '../theme';
 import { StatusPills, StackedLines } from '../ui';
 import { noWidow } from '../../lib/typeset';
 import { unitRulesApply, ruleLine } from '../../lib/unitRules';
+import { NOT_SHARED } from '../../lib/referredCopy';
 
 // ── Normalization helpers (used by each page to build the `pool` items) ──
 export const toNum = (v) => { if (v == null || v === '') return null; const n = Number(v); return Number.isFinite(n) ? n : null; };
@@ -192,7 +193,7 @@ export default function CompareTenants({ pool, onClose, unitRules = null }) {
           <div style={{ display: 'grid', gap: 4 }}>
             {selected.map((t) => (
               <div key={t.id} style={{ fontSize: 'var(--t-body)', color: C.inkSoft, lineHeight: 1.45, overflowWrap: 'anywhere' }}>
-                <StackedLines parts={[<><span style={{ fontWeight: 700, color: C.ink }}>{firstName(t.name)}</span>:{'\u00a0'}{t.smoker ? t.smoker.toLowerCase() : 'smoking not stated'}</>, t.pets ? `pets: ${t.pets}` : 'no pets stated']} />
+                <StackedLines parts={[<><span style={{ fontWeight: 700, color: C.ink }}>{firstName(t.name)}</span>:{'\u00a0'}{t.smokerNotShared ? `smoking: ${NOT_SHARED}` : t.smoker ? t.smoker.toLowerCase() : 'smoking not stated'}</>, t.petsNotShared ? `pets: ${NOT_SHARED}` : t.pets ? `pets: ${t.pets}` : 'no pets stated']} />
               </div>
             ))}
           </div>

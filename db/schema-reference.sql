@@ -216,3 +216,8 @@
 --                      lib/profileFacts.js PROFILE_FACT_KEYS (tests/profileFacts.test.mjs compares
 --                      the two). Never applications, never an owner token. Read only by
 --                      lib/profileShareStore.js.
+
+-- ── applications: three defaults dropped (db/016-drop-application-defaults.sql) ─────────────
+--   number_of_occupants, smoker and "references" carry no default: a column nobody wrote reads
+--   null (unknown), never '1', 'no' or '[]'. lib/supabaseBridge.js upsertApplication sends all
+--   three on every write.

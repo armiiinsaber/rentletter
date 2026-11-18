@@ -62,7 +62,7 @@ test('24: age_confirmed is a column; the read falls back to the scorecard key on
   assert.equal(ageConfirmedOf({ id: 'A1', age_confirmed: false, scorecard: { ageConfirmed: true } }), false, 'the column wins');
   assert.equal(ageConfirmedOf({ id: 'A1', scorecard: { ageConfirmed: true } }), true, 'column absent: the scorecard key');
   assert.equal(ageConfirmedOf({ id: 'A1', scorecard: { ageConfirmed: false } }), false, 'column absent: the scorecard key');
-  assert.equal(ageConfirmedOf({ id: 'A1', age_confirmed: null }), true, 'a stored row from before the flag was accepted under the same check');
+  assert.equal(ageConfirmedOf({ id: 'A1', age_confirmed: null }), false, 'null is unknown, and unknown is not confirmed');
   assert.equal(ageConfirmedOf({}), false);
   assert.equal(rowToForm({ id: 'A1', full_name: 'A', age_confirmed: true }).ageConfirmed, true);
   assert.equal(rowToForm({ id: 'A1', full_name: 'A', age_confirmed: false }).ageConfirmed, false);

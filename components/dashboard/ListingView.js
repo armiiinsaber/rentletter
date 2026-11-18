@@ -801,6 +801,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       moveInDate: app.move_in_date || null,
       smoker: smokerLabel(app.smoker),
       pets: app.pets || null,
+      // A referred copy (lib/referredCopy.js): the two answers were not shared, which is not the
+      // same as not stated.
+      smokerNotShared: notShared(app, 'smoker'),
+      petsNotShared: notShared(app, 'pets'),
     };
   });
 

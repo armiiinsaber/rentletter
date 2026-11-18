@@ -26,6 +26,7 @@ import DocumentUploader from '../../components/tenant/DocumentUploader';
 import PartiesCard from '../../components/tenant/PartiesCard';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
+import { ageStepValid, ageForSubmit, ageReviewLine, startStep } from '../../lib/applyAge';
 import { runSubmitChain, SAVING_COPY } from '../../lib/submitChain';
 import Loader, { Pending, ScreenLoader } from '../../components/brand/Loader';
 
@@ -134,7 +135,9 @@ export default function ApplyPage({ invited = null }) {
   // One step at a time, at every width: the current step's card is rendered, no other step is in
   // the DOM. Invited from Pipeline: the form arrives filled and opens on the review card; Edit
   // opens a step and Continue returns to the review.
-  const [step, setStep] = useState(invited && invited.form ? STEPS.length : 1);
+  // An invited applicant starts on the review, unless their stored age of majority answer is not
+  // an explicit yes: then on the step that asks it (lib/applyAge.js).
+  const [step, setStep] = useState(startStep(invited, STEPS));
   const [fromReview, setFromReview] = useState(false);
   // After a step change the new card's top comes into view: an effect after commit, no timer,
   // no transition, nothing a browser might skip.
@@ -289,7 +292,7 @@ export default function ApplyPage({ invited = null }) {
   // Per-field validity for the VITAL fields the screening depends on.
   const vital = {
     fullName: !!form.fullName.trim(),
-    dateOfBirth: form.ageConfirmed === true || (!!form.dateOfBirth && derivedAge != null && derivedAge >= minAge), // an invited applicant's stored answer counts
+    dateOfBirth: ageStepValid(form, minAge), // an invited applicant's stored answer counts only when it is an explicit yes
     email: isValidEmail(form.email),
     phone: isValidPhone(form.phone),
     annualIncome: !!String(form.annualIncome).trim(),
@@ -367,7 +370,7 @@ export default function ApplyPage({ invited = null }) {
     const incomeNum = Number(String(form.annualIncome).replace(/[^\d.]/g, '')) || 0;
     const rows = [
       ['Full name', form.fullName.trim()],
-      ['Age of majority', form.dateOfBirth ? (derivedAge != null && derivedAge >= minAge ? `Confirmed ${minAge} or over` : 'Under the age of majority') : form.ageConfirmed ? `Confirmed ${minAge} or over` : 'not set'],
+      ['Age of majority', ageReviewLine(form, minAge)],
       ['Email', form.email.trim()],
       ['Phone', form.phone.trim()],
       ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : 'not set'],
@@ -397,7 +400,7 @@ export default function ApplyPage({ invited = null }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // The date of birth stays on this device: only the age of majority answer travels.
-        body: JSON.stringify({ ...form, dateOfBirth: undefined, age: undefined, ageConfirmed: form.ageConfirmed === true || (derivedAge != null && derivedAge >= minAge), mode: 'application', inviteToken: token }),
+        body: JSON.stringify({ ...form, dateOfBirth: undefined, age: undefined, ageConfirmed: ageForSubmit(form, minAge), mode: 'application', inviteToken: token }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.error || !json?.applicationNumber) {
