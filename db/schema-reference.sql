@@ -204,3 +204,15 @@
 --   reused_checks             text[], nullable: document check kinds sent from the profile.
 --   Written once per application by the service role (pages/api/applications/mirror.js); read
 --   by lib/kpiStore.js for lib/kpis.js profileReuse.
+--
+-- ── tenant_profiles: the proved email and the shareable view (db/015-profile-verified-email.sql) ──
+--   email_verified_at  timestamptz, nullable: when the tenant proved the address (the magic link,
+--                      or the link confirming a change of address). Null: nothing proved.
+--   last_active_at     timestamptz, nullable: last signed in, written at most once a day.
+--   CHECK tenant_profiles_no_fit_result: facts never holds fit, fitScore, fit_score, score,
+--                      scorecard, criteria, rank or ranking.
+--   VIEW tenant_profile_shareable (security_invoker, nothing granted to anon or authenticated):
+--                      id, email_verified_at, facts_updated_at, and facts cut down to the keys of
+--                      lib/profileFacts.js PROFILE_FACT_KEYS (tests/profileFacts.test.mjs compares
+--                      the two). Never applications, never an owner token. Read only by
+--                      lib/profileShareStore.js.

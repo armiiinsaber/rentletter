@@ -48,6 +48,8 @@ const FILES = {
   m012: 'db/012-board-details.sql',
   m013: 'db/013-kpi-daily.sql',
   m014: 'db/014-prefill-record.sql',
+  tenantProfiles: 'db/tenant-profiles.sql',
+  m015: 'db/015-profile-verified-email.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -590,6 +592,66 @@ async function run014(db, tag) {
   check(same(strip(await rows(db, 'SELECT * FROM public.applications ORDER BY id')), before), `${tag}2: put back, every application is what it was`);
 }
 
+// ── db/015-profile-verified-email.sql ───────────────────────────────────────────────────────
+// Before db/tenant-profiles.sql the file does nothing. After it: two nullable columns, the Fit
+// key check on facts, and the view tenant_profile_shareable, which returns facts cut down to the
+// whitelist (lib/profileFacts.js PROFILE_FACT_KEYS), never applications or an owner token, and
+// is closed to the browser roles. A second run changes nothing.
+const SHAREABLE_KEYS = ['fullName', 'email', 'phone', 'employer', 'jobTitle', 'employmentType', 'yearsAtJob', 'annualIncome', 'previousAddress', 'yearsAtPrevious', 'previousLandlordName', 'previousLandlordContact', 'moveInDate', 'pets'];
+const TP = 'eeeeeeee-0000-4000-8000-000000000001';
+const profileCatalog = (db) => rows(db, "SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE c.oid IN ('public.tenant_profiles'::regclass, 'public.tenant_profile_shareable'::regclass) AND a.attnum > 0 AND NOT a.attisdropped ORDER BY c.relname, a.attname");
+const profileConstraints = (db) => rows(db, "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'public.tenant_profiles'::regclass ORDER BY conname");
+async function check015(db, label) {
+  for (const c of ['email_verified_at', 'last_active_at']) {
+    const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tenant_profiles' AND column_name = $1", [c]))[0];
+    check(col && col.data_type === 'timestamp with time zone' && col.is_nullable === 'YES' && col.column_default === null, `${label}: tenant_profiles.${c} is a nullable timestamp with no default`, JSON.stringify(col));
+  }
+  check((await constraintCount(db, 'tenant_profiles_no_fit_result')) === 1, `${label}: tenant_profiles_no_fit_result exists once`);
+  const cols = (await rows(db, "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tenant_profile_shareable' ORDER BY column_name")).map((r) => r.column_name);
+  check(same(cols, ['email_verified_at', 'facts', 'facts_updated_at', 'id']), `${label}: the view has id, email_verified_at, facts_updated_at and facts, and no other column`, JSON.stringify(cols));
+  check(/security_invoker=true/.test(String(await one(db, "SELECT array_to_string(reloptions, ',') FROM pg_class WHERE oid = 'public.tenant_profile_shareable'::regclass"))), `${label}: the view reads as its caller (security_invoker)`);
+  for (const role of ['anon', 'authenticated']) for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) check((await one(db, 'SELECT has_table_privilege($1, $2, $3)', [role, 'public.tenant_profile_shareable', priv])) === false, `${label}: ${role} holds no ${priv} on the view`);
+  const as = async (role, fn) => { await db.exec(`SET ROLE ${role}`); try { return await fn(); } finally { await db.exec('RESET ROLE'); } };
+  for (const role of ['anon', 'authenticated']) check(/permission denied/.test(await as(role, () => refused(db, 'SELECT * FROM public.tenant_profile_shareable'))), `${label}: ${role} cannot read the view`);
+  // A profile holding every kind of answer, and an owner token on its application list.
+  const facts = { fullName: 'Maya Okafor', email: 'maya@mail.ca', phone: '4165550101', employer: 'Northwind', jobTitle: 'Analyst', employmentType: 'full-time', yearsAtJob: '3', annualIncome: '84000', previousAddress: '12 Elm St', yearsAtPrevious: '2', previousLandlordName: 'Lee', previousLandlordContact: 'lee@mail.ca', moveInDate: '2027-01-01', pets: 'none',
+    numberOfOccupants: '4', smoker: 'no', age: '31', dateOfBirth: '1995-02-03', coApplicantRelationship: 'spouse', coApplicantAge: '33', coApplicantName: 'Sam', hasCoApplicant: true, netIncome: '61000', currentRent: '2100', businessName: 'Maya Co', reference1Name: 'Ivy', incomeSource: 'assistance' };
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts, applications, facts_updated_at, email_verified_at) VALUES ($1, 'maya@mail.ca', 'k1', $2, $3, '2026-11-10T15:00:00Z', '2026-11-12T15:00:00Z')", [TP, JSON.stringify(facts), JSON.stringify([{ applicationNumber: 'RL-2026-ABCD-EFGH', ownerToken: 'OWNERTOKENSECRET' }])]);
+  const seen = (await rows(db, 'SELECT * FROM public.tenant_profile_shareable WHERE id = $1', [TP]))[0];
+  check(same(Object.keys(seen.facts).sort(), [...SHAREABLE_KEYS].sort()), `${label}: through the view facts holds the ${SHAREABLE_KEYS.length} whitelisted keys and no other`, Object.keys(seen.facts).sort().join(','));
+  check(!/OWNERTOKENSECRET|numberOfOccupants|coApplicant|dateOfBirth|smoker|netIncome|currentRent|reference1|incomeSource|"age"/.test(JSON.stringify(seen)), `${label}: no owner token, household size, age, relationship or any other answer comes through the view`);
+  check(seen.facts.annualIncome === '84000' && seen.email_verified_at != null && seen.facts_updated_at != null, `${label}: the whitelisted values, the proof of the address and the date of the facts come through`);
+  check(/does not exist/.test(await refused(db, 'SELECT applications FROM public.tenant_profile_shareable')), `${label}: the view has no applications column to ask for`);
+  // facts that are null, or not an object, read as no facts.
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts) VALUES ('eeeeeeee-0000-4000-8000-000000000002', 'omar@mail.ca', 'k2', NULL), ('eeeeeeee-0000-4000-8000-000000000003', 'lena@mail.ca', 'k3', '[]'::jsonb)");
+  check((await one(db, "SELECT count(*)::int FROM public.tenant_profile_shareable WHERE facts = '{}'::jsonb")) === 2, `${label}: a profile with no facts reads as an empty object`);
+  for (const key of ['fit', 'fitScore', 'fit_score', 'score', 'scorecard', 'criteria', 'rank', 'ranking']) check(/tenant_profiles_no_fit_result/.test(await refused(db, "UPDATE public.tenant_profiles SET facts = facts || jsonb_build_object($2::text, 91) WHERE id = $1", [TP, key])), `${label}: facts holding "${key}" is refused`);
+  await db.query("DELETE FROM public.tenant_profiles WHERE id IN ($1, 'eeeeeeee-0000-4000-8000-000000000002', 'eeeeeeee-0000-4000-8000-000000000003')", [TP]);
+}
+async function run015(db, tag) {
+  // Before db/tenant-profiles.sql: nothing to change, and the file says so without failing.
+  await step(db, `${tag}0 (015 before tenant-profiles)`, FILES.m015);
+  check((await one(db, "SELECT to_regclass('public.tenant_profile_shareable') IS NULL")) === true && (await one(db, "SELECT to_regclass('public.tenant_profiles') IS NULL")) === true, `${tag}0: with no tenant_profiles table the file creates nothing`);
+  await step(db, `${tag}0 (tenant-profiles)`, FILES.tenantProfiles);
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts, profile_revision) VALUES ('eeeeeeee-0000-4000-8000-000000000009', 'kept@mail.ca', 'k9', '{\"fullName\":\"Kept\",\"numberOfOccupants\":\"2\"}', 4)");
+  const before = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  await step(db, `${tag}1`, FILES.m015);
+  const strip = (list) => list.map((r) => { const o = { ...r }; delete o.email_verified_at; delete o.last_active_at; return o; });
+  check((await one(db, 'SELECT count(*)::int FROM public.tenant_profiles WHERE email_verified_at IS NOT NULL OR last_active_at IS NOT NULL')) === 0, `${tag}1: an existing profile has proved nothing (null)`);
+  check(same(strip(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id')), before), `${tag}1: no other column of any profile moved, and its own facts are whole`);
+  await check015(db, `${tag}1`);
+  await db.query("UPDATE public.tenant_profiles SET email_verified_at = '2026-11-12T15:00:00Z' WHERE id = 'eeeeeeee-0000-4000-8000-000000000009'");
+  const shape = await profileCatalog(db); const constraints = await profileConstraints(db);
+  const viewDef = await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)");
+  await step(db, `${tag}2 (015 again)`, FILES.m015);
+  check(same(await profileCatalog(db), shape), `${tag}2: a second run leaves every column of the table and the view as it was`);
+  check(same(await profileConstraints(db), constraints), `${tag}2: and every constraint`);
+  check((await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)")) === viewDef, `${tag}2: and the view's definition`);
+  check((await one(db, "SELECT email_verified_at IS NOT NULL FROM public.tenant_profiles WHERE id = 'eeeeeeee-0000-4000-8000-000000000009'")) === true, `${tag}2: a proof recorded before the second run is still there`);
+  await check015(db, `${tag}2`);
+  await db.query("DELETE FROM public.tenant_profiles WHERE id = 'eeeeeeee-0000-4000-8000-000000000009'");
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -688,6 +750,7 @@ async function pathA() {
   await run012(db, 'A7');
   await run013(db, 'A8');
   await run014(db, 'A10');
+  await run015(db, 'A11');
   await db.close();
 }
 
@@ -726,6 +789,7 @@ async function pathB() {
   await run012(db, 'B14');
   await run013(db, 'B15');
   await run014(db, 'B16');
+  await run015(db, 'B17');
   return { db, before };
 }
 
