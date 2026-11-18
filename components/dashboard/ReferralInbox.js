@@ -69,15 +69,15 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 'var(--t-body)', fontWeight: 800, color: C.ink, letterSpacing: '-0.01em' }}>{a.name || 'Applicant'}</div>
                       <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', overflowWrap: 'anywhere' }}>
-                        <StackedLines parts={[[a.jobTitle, a.employer].filter(Boolean).join(' at ') || 'Role not listed', EMP[a.employmentType] || null, a.annualIncome ? `${money(a.annualIncome)} a year before tax` : null, a.netIncome ? `About ${money(a.netIncome)} after tax` : null]} />
+                        <StackedLines parts={[[a.jobTitle, a.employer].filter(Boolean).join(' at ') || 'Role not listed', EMP[a.employmentType] || null, a.annualIncome ? `${money(a.annualIncome)} a year before tax` : null]} />
                       </div>
-                      <StatusPills label="Applicant" items={[a.yearsAtJob ? `${a.yearsAtJob} yrs in role` : null, a.rentalYears ? `${a.rentalYears} yrs renting` : null, a.rentalYears && a.hasLandlordRef ? 'landlord ref' : null, a.occupants ? `${a.occupants} occupant(s)` : null, a.pets ? `pets: ${a.pets}` : null, a.moveInDate ? `move in ${a.moveInDate}` : null]} style={{ marginTop: 'var(--s-2)' }} />
+                      <StatusPills label="Applicant" items={[a.yearsAtJob ? `${a.yearsAtJob} yrs in role` : null, a.rentalYears ? `${a.rentalYears} yrs renting` : null, a.rentalYears && a.hasLandlordRef ? 'landlord ref' : null, a.moveInDate ? `move in ${a.moveInDate}` : null]} style={{ marginTop: 'var(--s-2)' }} />
                     </div>
                     {assignedListing
                       ? <a {...linkProps(adapter.paths.listing(assignedListing.id))} style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', flexShrink: 0 }}><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /> On {assignedListing.name || 'your listing'}</a>
                       : <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.ink, background: C.paperDeep, padding: 'var(--s-1) var(--s-2)', borderRadius: R.pill, flexShrink: 0 }}>Not yet assigned</span>}
                   </div>
-                  <ReferralCaution meta={{ fromName: ref.from?.name, fromBrokerage: ref.from?.brokerage, approvedAt: ref.approvedAt, note: ref.note, verification: ref.verification }} compact />
+                  <ReferralCaution meta={{ fromName: ref.from?.name, fromBrokerage: ref.from?.brokerage, approvedAt: ref.approvedAt }} compact />
                   {!assignedListing && (
                     <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap', alignItems: 'center', marginTop: 'var(--s-3)' }}>
                       <select value={choice[ref.id] || ''} onChange={(e) => setChoice((c) => ({ ...c, [ref.id]: e.target.value }))} aria-label="Assign to listing"

@@ -23,7 +23,7 @@
 -- tenant_profile_shareable (view): id, when the email was proved, when the facts were last
 -- updated, and facts cut down to the keys of lib/profileFacts.js PROFILE_FACT_KEYS. It never
 -- selects applications (which holds owner tokens), the email column, or any other key of facts:
--- no household size, age, date of birth, relationship, smoker, net income, current rent or
+-- no household size, age, date of birth, relationship, pets, smoker, net income, current rent or
 -- personal reference can be read through it, whatever a later query asks for.
 -- tests/profileFacts.test.mjs compares the list below with the code's.
 -- security_invoker: the view reads as the caller, so the table's row level security (on, no
@@ -56,7 +56,7 @@ BEGIN
       COALESCE((
         SELECT jsonb_object_agg(f.key, f.value)
         FROM jsonb_each(CASE WHEN jsonb_typeof(p.facts) = 'object' THEN p.facts ELSE '{}'::jsonb END) AS f(key, value)
-        WHERE f.key IN ('fullName', 'email', 'phone', 'employer', 'jobTitle', 'employmentType', 'yearsAtJob', 'annualIncome', 'previousAddress', 'yearsAtPrevious', 'previousLandlordName', 'previousLandlordContact', 'moveInDate', 'pets')
+        WHERE f.key IN ('fullName', 'email', 'phone', 'employer', 'jobTitle', 'employmentType', 'yearsAtJob', 'annualIncome', 'previousAddress', 'yearsAtPrevious', 'previousLandlordName', 'previousLandlordContact', 'moveInDate')
       ), '{}'::jsonb) AS facts
     FROM public.tenant_profiles p
   $view$;

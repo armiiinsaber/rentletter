@@ -9,18 +9,18 @@ import { useAdapter } from '../../lib/dashboardAdapter';
 import { Pending } from '../brand/Loader';
 
 // A bottom sheet (components/Sheet.js). It stays mounted so it can slide away, starts empty each
-// time it opens, and asks before dropping a name, an email or a note already typed.
+// time it opens, and asks before dropping a name or an email already typed. There is no note
+// field: nothing a realtor writes about an applicant travels with a referral.
 export default function ReferModal({ open = true, listingId, applicant: given, onClose, onCreated }) {
   const last = useRef(given); if (given) last.current = given;
   const applicant = given || last.current;
   const adapter = useAdapter();
   const [toName, setToName] = useState('');
   const [toEmail, setToEmail] = useState('');
-  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  useEffect(() => { if (open) { setToName(''); setToEmail(''); setNote(''); setError(''); setBusy(false); } }, [open]);
-  const dirty = !!(toName.trim() || toEmail.trim() || note.trim());
+  useEffect(() => { if (open) { setToName(''); setToEmail(''); setError(''); setBusy(false); } }, [open]);
+  const dirty = !!(toName.trim() || toEmail.trim());
   const app = applicant?.application || {};
   const valid = toName.trim() && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(toEmail);
 
@@ -28,7 +28,7 @@ export default function ReferModal({ open = true, listingId, applicant: given, o
     e.preventDefault(); if (!valid || busy) return;
     setBusy(true); setError('');
     try {
-      const r = await adapter.fetch('/api/referrals/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId, linkId: applicant.linkId, toName, toEmail, note }) });
+      const r = await adapter.fetch('/api/referrals/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId, linkId: applicant.linkId, toName, toEmail }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || 'Could not create the referral.');
       onCreated?.(j.referral);
@@ -47,12 +47,9 @@ export default function ReferModal({ open = true, listingId, applicant: given, o
         <label style={{ display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, marginBottom: 6 }}>Receiving realtor’s name</label>
         <input value={toName} onChange={(e) => setToName(e.target.value)} placeholder="Priya Patel" style={{ width: '100%', padding: '11px 12px', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, marginBottom: 12 }} />
         <label style={{ display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, marginBottom: 6 }}>Their email</label>
-        <input type="email" inputMode="email" value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="priya@brokerage.ca" style={{ width: '100%', padding: '11px 12px', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, marginBottom: 12 }} />
-        <label style={{ display: 'block', fontSize: 12, color: C.inkSoft, fontWeight: 600, marginBottom: 6 }}>Note to them (optional)</label>
-        <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 400))} rows={2} placeholder="Great applicant, wrong budget for my unit. Looking in the east end, ~$2,400." style={{ width: '100%', padding: '11px 12px', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, resize: 'vertical', fontFamily: 'inherit', marginBottom: 6 }} />
-        <div style={{ fontSize: 11.5, color: C.inkMute, marginBottom: 14, lineHeight: 1.5 }}>The applicant sees this note too. Keep it about the unit fit, not about them.</div>
-        <div style={{ padding: '10px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14 }}>
-          If approved, {toName.trim() ? toName.trim().split(' ')[0] : 'they'} receive the applicant’s facts (employment, income, rental history, household, references, intro){applicant?.docVerifications?.length ? ' plus a dated summary of your document check, never the documents' : ''}. They don’t see your listing or your notes.
+        <input type="email" inputMode="email" value={toEmail} onChange={(e) => setToEmail(e.target.value)} placeholder="priya@brokerage.ca" style={{ width: '100%', padding: '11px 12px', fontSize: 'var(--t-body)', border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, marginBottom: 14 }} />
+        <div style={{ padding: '10px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 14, textWrap: 'balance' }}>
+          If approved, {toName.trim() ? toName.trim().split(' ')[0] : 'they'} receive the applicant’s name, contact details, employment, income before tax, rental history, landlord reference and move in date. They don’t see your listing, your notes, your documents or your document check.
         </div>
         {error && <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>

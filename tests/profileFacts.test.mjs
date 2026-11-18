@@ -27,7 +27,7 @@ const src = (p) => readFileSync(join(ROOT, p), 'utf8');
 const walk = (dir, out = []) => { for (const f of readdirSync(join(ROOT, dir))) { const p = `${dir}/${f}`; if (statSync(join(ROOT, p)).isDirectory()) walk(p, out); else if (/\.js$/.test(f)) out.push(p); } return out; };
 
 // The list, pinned. Changing it is a decision: this line and the view in db/015 change with it.
-const WHITELIST = ['fullName', 'email', 'phone', 'employer', 'jobTitle', 'employmentType', 'yearsAtJob', 'annualIncome', 'previousAddress', 'yearsAtPrevious', 'previousLandlordName', 'previousLandlordContact', 'moveInDate', 'pets'];
+const WHITELIST = ['fullName', 'email', 'phone', 'employer', 'jobTitle', 'employmentType', 'yearsAtJob', 'annualIncome', 'previousAddress', 'yearsAtPrevious', 'previousLandlordName', 'previousLandlordContact', 'moveInDate'];
 // What must never be on it: the score and any rank, a realtor's words, household size, and the
 // protected grounds of the Ontario and BC Human Rights Codes or a proxy for one.
 const NEVER = [
@@ -37,7 +37,7 @@ const NEVER = [
   'coApplicantName', 'coApplicantAge', 'coApplicantEmployer', 'coApplicantJobTitle', 'coApplicantIncome', 'coApplicantRelationship',
   'age', 'ageConfirmed', 'dateOfBirth', 'dob', 'gender', 'sex', 'sexualOrientation', 'genderIdentity', 'race', 'ancestry', 'colour', 'ethnicOrigin', 'placeOfOrigin', 'citizenship', 'immigrationStatus',
   'religion', 'creed', 'disability', 'serviceAnimal', 'incomeSource', 'incomeKind', 'publicAssistance', 'sourceOfIncome', 'lawfulSourceOfIncome', 'politicalBelief', 'criminalRecord',
-  'smoker', 'netIncome', 'netIncomeSource', 'currentRent', 'businessName', 'reference1Name', 'reference1Contact', 'reference2Name', 'ownerToken', 'owner_token', 'applications', 'coverLetter',
+  'pets', 'hasPets', 'petType', 'smoker', 'netIncome', 'netIncomeSource', 'currentRent', 'businessName', 'reference1Name', 'reference1Contact', 'reference2Name', 'ownerToken', 'owner_token', 'applications', 'coverLetter',
 ];
 
 test('the whitelist: one closed list, every key a key of the apply form', () => {
@@ -45,7 +45,7 @@ test('the whitelist: one closed list, every key a key of the apply form', () => 
   assert.ok(Object.isFrozen(F.PROFILE_FACT_KEYS) && Object.isFrozen(F.PROFILE_FACTS) && F.PROFILE_FACTS.every(Object.isFrozen), 'frozen: nothing adds to it at run time');
   for (const k of F.PROFILE_FACT_KEYS) assert.ok(Object.prototype.hasOwnProperty.call(EMPTY_FORM, k), `${k} is a key the tenant typed`);
   for (const k of NEVER) assert.equal(F.isProfileFactKey(k), false, `${k} is not shareable`);
-  assert.deepEqual(F.PROFILE_FACTS.map((f) => f.label), ['Name', 'Email', 'Phone', 'Employer', 'Job title', 'Employment type', 'Time at job', 'Income before tax', 'Current address', 'Time at that address', 'Landlord reference', 'Landlord contact', 'Move in date', 'Pets']);
+  assert.deepEqual(F.PROFILE_FACTS.map((f) => f.label), ['Name', 'Email', 'Phone', 'Employer', 'Job title', 'Employment type', 'Time at job', 'Income before tax', 'Current address', 'Time at that address', 'Landlord reference', 'Landlord contact', 'Move in date']);
   // One place: no other file under lib, pages or components declares a list of shareable facts.
   const copies = [...walk('lib'), ...walk('pages'), ...walk('components')].filter((p) => p !== 'lib/profileFacts.js' && /PROFILE_FACT_KEYS\s*=|PROFILE_FACTS\s*=/.test(src(p)));
   assert.deepEqual(copies, []);

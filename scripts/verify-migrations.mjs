@@ -597,7 +597,7 @@ async function run014(db, tag) {
 // key check on facts, and the view tenant_profile_shareable, which returns facts cut down to the
 // whitelist (lib/profileFacts.js PROFILE_FACT_KEYS), never applications or an owner token, and
 // is closed to the browser roles. A second run changes nothing.
-const SHAREABLE_KEYS = ['fullName', 'email', 'phone', 'employer', 'jobTitle', 'employmentType', 'yearsAtJob', 'annualIncome', 'previousAddress', 'yearsAtPrevious', 'previousLandlordName', 'previousLandlordContact', 'moveInDate', 'pets'];
+const SHAREABLE_KEYS = ['fullName', 'email', 'phone', 'employer', 'jobTitle', 'employmentType', 'yearsAtJob', 'annualIncome', 'previousAddress', 'yearsAtPrevious', 'previousLandlordName', 'previousLandlordContact', 'moveInDate'];
 const TP = 'eeeeeeee-0000-4000-8000-000000000001';
 const profileCatalog = (db) => rows(db, "SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE c.oid IN ('public.tenant_profiles'::regclass, 'public.tenant_profile_shareable'::regclass) AND a.attnum > 0 AND NOT a.attisdropped ORDER BY c.relname, a.attname");
 const profileConstraints = (db) => rows(db, "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'public.tenant_profiles'::regclass ORDER BY conname");
@@ -619,7 +619,7 @@ async function check015(db, label) {
   await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts, applications, facts_updated_at, email_verified_at) VALUES ($1, 'maya@mail.ca', 'k1', $2, $3, '2026-11-10T15:00:00Z', '2026-11-12T15:00:00Z')", [TP, JSON.stringify(facts), JSON.stringify([{ applicationNumber: 'RL-2026-ABCD-EFGH', ownerToken: 'OWNERTOKENSECRET' }])]);
   const seen = (await rows(db, 'SELECT * FROM public.tenant_profile_shareable WHERE id = $1', [TP]))[0];
   check(same(Object.keys(seen.facts).sort(), [...SHAREABLE_KEYS].sort()), `${label}: through the view facts holds the ${SHAREABLE_KEYS.length} whitelisted keys and no other`, Object.keys(seen.facts).sort().join(','));
-  check(!/OWNERTOKENSECRET|numberOfOccupants|coApplicant|dateOfBirth|smoker|netIncome|currentRent|reference1|incomeSource|"age"/.test(JSON.stringify(seen)), `${label}: no owner token, household size, age, relationship or any other answer comes through the view`);
+  check(!/OWNERTOKENSECRET|numberOfOccupants|coApplicant|dateOfBirth|smoker|netIncome|currentRent|reference1|incomeSource|"age"|"pets"/.test(JSON.stringify(seen)), `${label}: no owner token, household size, age, relationship, pets or any other answer comes through the view`);
   check(seen.facts.annualIncome === '84000' && seen.email_verified_at != null && seen.facts_updated_at != null, `${label}: the whitelisted values, the proof of the address and the date of the facts come through`);
   check(/does not exist/.test(await refused(db, 'SELECT applications FROM public.tenant_profile_shareable')), `${label}: the view has no applications column to ask for`);
   // facts that are null, or not an object, read as no facts.

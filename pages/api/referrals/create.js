@@ -1,9 +1,10 @@
-// /api/referrals/create: POST { listingId, linkId, toName, toEmail, note } (Realtor 1)
+// /api/referrals/create: POST { listingId, linkId, toName, toEmail } (Realtor 1)
 // Creates a PENDING referral and emails the APPLICANT for consent. Nothing is shared yet.
+// No note about the applicant is taken, and Realtor 1's document read is not attached.
 import { Resend } from 'resend';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { requireRealtor } from '../../../lib/realtorAuth';
-import { fetchListingApplicants, attachDocVerifications } from '../../../lib/supabaseBridge';
+import { fetchListingApplicants } from '../../../lib/supabaseBridge';
 import { createReferral, kvReady } from '../../../lib/referrals';
 import { consentEmail } from '../../../lib/referralEmails';
 import { isEmail, normalizeEmail } from '../../../lib/tenantProfileStore';
@@ -18,7 +19,7 @@ export default async function handler(req, res) {
   // Write path: needs an unlocked plan (lib/entitlements.js) → 402 otherwise.
   if (!(await requireEntitlement(req, res, ctx.supabase, ctx.user))) return;
   if (!kvReady()) return res.status(503).json({ error: 'Service temporarily unavailable.' });
-  const { listingId, linkId, toName, toEmail, note } = req.body || {};
+  const { listingId, linkId, toName, toEmail } = req.body || {};
   if (!listingId || !linkId) return res.status(400).json({ error: 'Missing applicant.' });
   if (!isEmail(toEmail)) return res.status(400).json({ error: 'Enter the receiving realtor’s email.' });
   if (!String(toName || '').trim()) return res.status(400).json({ error: 'Enter the receiving realtor’s name.' });
@@ -27,12 +28,12 @@ export default async function handler(req, res) {
   const { data: listing } = await ctx.supabase.from('listings').select('id, name, address').eq('id', listingId).maybeSingle();
   if (!listing) return res.status(404).json({ error: 'Listing not found.' });
   const admin = getSupabaseAdminClient();
-  const applicants = await attachDocVerifications(admin, listing.id, await fetchListingApplicants(admin, listing.id), 'referral');
+  const applicants = await fetchListingApplicants(admin, listing.id);
   const link = applicants.find((a) => String(a.linkId) === String(linkId));
   if (!link) return res.status(404).json({ error: 'Applicant not found on this listing.' });
 
   try {
-    const { ref, token } = await createReferral({ fromProfile: { ...ctx.profile, id: ctx.user.id }, fromListing: listing, link, toName, toEmail, note });
+    const { ref, token } = await createReferral({ fromProfile: { ...ctx.profile, id: ctx.user.id }, fromListing: listing, link, toName, toEmail });
     const site = process.env.NEXT_PUBLIC_SITE_URL || 'https://rentletter.ca';
     const url = `${site}/refer/${encodeURIComponent(token)}`;
     if (process.env.RESEND_API_KEY) {

@@ -81,6 +81,28 @@ test('the signed in tenant: the session cookie gives the profile, its email and 
   } finally { kv.restore(); }
 });
 
+test('the proof time is the profile\'s email_verified_at when it holds one, else the session\'s', async () => {
+  const LATER = '2026-11-14T09:30:00.000Z'; // a change of address confirmed after the session began
+  const seed = (profile) => fakeKv({ [`tsession:${sha('SESSIONTOKEN')}`]: { profileId: PROFILE, createdAt: PROVED }, [`tprofile_id:${PROFILE}`]: JSON.stringify('emailkey1'), 'tprofile:emailkey1': { id: PROFILE, email: 'maya@mail.ca', profileRevision: 3, ...profile } });
+  const req = { headers: { cookie: 'rl_tenant=SESSIONTOKEN' } };
+  let kv = seed({ emailVerifiedAt: LATER });
+  try {
+    assert.equal((await P.sessionProof(req)).provedAt, LATER, 'the profile\'s own record of when the address was proved');
+    // And it is what the application is stamped with at submit.
+    const db = fakeSupabase({ applications: [{ id: 'A1', email: 'maya@mail.ca', prefill_source: null }] });
+    const out = await P.recordPrefill(db, { applicationId: 'A1', req });
+    assert.equal(out.written, true); assert.equal(out.columns.email_verified_at_submit, LATER);
+    assert.equal(db.tables.applications[0].email_verified_at_submit, LATER);
+  } finally { kv.restore(); }
+  for (const profile of [{}, { emailVerifiedAt: null }, { emailVerifiedAt: '' }]) {
+    kv = seed(profile);
+    try { assert.equal((await P.sessionProof(req)).provedAt, PROVED, 'none on the profile (before db/015, or nothing written): the session, as before'); } finally { kv.restore(); }
+  }
+  // The proof is read from the profile's record, never by a second reader of the profile table
+  // (tests/profileFacts.test.mjs pins who may read tenant_profiles).
+  assert.doesNotMatch(src('lib/prefillRecord.js'), /from\('tenant_profiles'\)/);
+});
+
 test('the write: once per application, never over a record already there', async () => {
   const tables = { applications: [{ id: 'A1', email: 'maya@mail.ca', owner_token: 'OWNERTOKENSECRET', prefill_source: null }, { id: 'A2', email: 'omar@mail.ca', prefill_source: 'none' }] };
   const admin = fakeSupabase(tables);

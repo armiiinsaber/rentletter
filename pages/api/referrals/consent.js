@@ -1,9 +1,9 @@
 // /api/referrals/consent: PUBLIC, token-authenticated (the applicant's single-use link).
-//   GET  ?t=   → who/what would be shared (current facts), status
+//   GET  ?t=   → who/what would be shared (the whitelist's cut of the current facts), status
 //   POST {t, decision:'approve'|'decline'} → records the decision; on approve mints the
 //        derived application and emails Realtor 2 (+ Realtor 1 the outcome). Token is consumed.
 import { Resend } from 'resend';
-import { referralForToken, decideReferral, currentFacts, effectiveStatus, SHARED_FIELDS, kvReady } from '../../../lib/referrals';
+import { referralForToken, decideReferral, currentFacts, effectiveStatus, sharedFields, kvReady } from '../../../lib/referrals';
 import { receivedEmail, inviteEmail, outcomeEmail } from '../../../lib/referralEmails';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
@@ -33,9 +33,10 @@ export default async function handler(req, res) {
     const facts = status === 'pending' ? await currentFacts(ref) : null;
     return res.status(200).json({
       status, from: { name: ref.from.name, brokerage: ref.from.brokerage }, to: { name: ref.to.name, brokerage: ref.to.brokerage, email: ref.to.email.replace(/^(.).+(@.+)$/, '$1…$2') },
-      note: ref.note, applicantName: ref.applicantName, expiresAt: ref.expiresAt, factsSource: facts?.source || null,
-      fields: facts ? SHARED_FIELDS.map(([label, get]) => ({ label, value: get(facts.form) || null })) : [],
-      verification: ref.verification ? { analyzedAt: ref.verification.analyzedAt, documentsCount: ref.verification.documentsCount } : null,
+      applicantName: ref.applicantName, expiresAt: ref.expiresAt, factsSource: facts?.source || null,
+      // The rows of lib/profileFacts.js sharePayload, and nothing else: what the tenant reads here is
+      // what the receiving realtor gets. No note and no document summary exist to show.
+      fields: facts ? sharedFields(facts.payload) : [],
     });
   }
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -50,8 +51,8 @@ export default async function handler(req, res) {
     send(await realtorEmail(r.from.profileId), approve ? 'Referral approved' : 'Referral declined', outcomeEmail({ approved: approve, applicantName: r.applicantName, toName: r.to.name, dashboardUrl: `${site}/dashboard` })).catch(() => {});
     if (approve) {
       const html = r.to.profileId
-        ? receivedEmail({ fromName: r.from.name, fromBrokerage: r.from.brokerage, applicantName: r.applicantName, note: r.note, dashboardUrl: `${site}/dashboard#referrals` })
-        : inviteEmail({ fromName: r.from.name, fromBrokerage: r.from.brokerage, applicantName: r.applicantName, note: r.note, signupUrl: `${site}/signup?ref=1&from=${encodeURIComponent(r.from.name || '')}&email=${encodeURIComponent(r.to.email)}` });
+        ? receivedEmail({ fromName: r.from.name, fromBrokerage: r.from.brokerage, applicantName: r.applicantName, dashboardUrl: `${site}/dashboard#referrals` })
+        : inviteEmail({ fromName: r.from.name, fromBrokerage: r.from.brokerage, applicantName: r.applicantName, signupUrl: `${site}/signup?ref=1&from=${encodeURIComponent(r.from.name || '')}&email=${encodeURIComponent(r.to.email)}` });
       send(r.to.email, r.to.profileId ? `${r.from.name || 'A realtor'} referred an applicant to you` : `${r.from.name || 'A realtor'} referred an applicant to you on Rentletter`, html).catch(() => {});
     }
     return res.status(200).json({ ok: true, status: r.status });

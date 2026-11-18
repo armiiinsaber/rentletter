@@ -114,12 +114,11 @@ export default function ReferralConsent() {
               <p style={{ fontSize: 15.5, color: C.inkSoft, lineHeight: 1.6, marginBottom: 8 }}>
                 <strong style={{ color: C.ink }}>{from}</strong> thinks <strong style={{ color: C.ink }}>{to}</strong> may have units that fit you, and would like to pass your rental application along.
               </p>
-              {data.note && <blockquote style={{ margin: '10px 0 18px', paddingLeft: 14, borderLeft: `3px solid ${C.rule}`, fontSize: 14, color: C.inkSoft, lineHeight: 1.55, fontStyle: 'italic' }}>“{data.note}”, {data.from?.name || 'your realtor'}</blockquote>}
 
               <div className="rl-card" style={{ padding: 'clamp(16px, 4vw, 22px)', marginTop: 18, marginBottom: 14 }}>
                 <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 10 }}>Exactly what would be shared</div>
                 <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 12 }}>
-                  {data.factsSource === 'profile' ? 'These are your current profile details.' : 'These are the details from your application.'} Nothing else, not your other applications, not your documents, not your owner key.
+                  {data.factsSource === 'profile' ? 'These are your current profile details.' : 'These are the details from your application.'} Nothing else: not your other applications, not your documents, not a note from {data.from?.name || 'your realtor'}, not your owner key.
                 </p>
                 <div style={{ display: 'grid', gap: 0 }}>
                   {data.fields.map((f) => (
@@ -129,11 +128,6 @@ export default function ReferralConsent() {
                     </div>
                   ))}
                 </div>
-                {data.verification && (
-                  <div style={{ marginTop: 12, padding: '10px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 12.5, color: C.inkSoft, lineHeight: 1.55 }}>
-                    Also shared: a <strong style={{ color: C.ink }}>summary</strong> of the document check {from.split(' (')[0]} ran{data.verification.analyzedAt ? ` on ${dateLong(data.verification.analyzedAt)}` : ''}, which facts matched, and when. The documents themselves stay with that realtor for 14 days at most and are not shared.
-                  </div>
-                )}
               </div>
 
               <div style={{ padding: '12px 14px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 20 }}>
