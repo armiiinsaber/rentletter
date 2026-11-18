@@ -63,6 +63,17 @@ const STEPS = [
   async () => {}, async () => {},
 ];
 const applyStart = async (p) => { await open(p, `/apply/${INVITE}`); await p.getByLabel('Email').waitFor({ timeout: 30000 }); };
+// A listing in British Columbia, for the age rule's refusal there (lib/applyAge.js BC_UNDER_AGE):
+// the fake stack's realtors are in Ontario, so the page's own read of the province is answered
+// with BC, the rest of the answer as the server gave it. path: the GET that carries the province.
+const inBC = (p, path) => p.route((url) => url.pathname === path, async (route) => {
+  if (route.request().method() !== 'GET') return route.continue();
+  const r = await route.fetch(); const body = await r.json().catch(() => ({}));
+  return route.fulfill({ response: r, json: { ...body, province: 'BC' } });
+});
+// A date of birth that makes someone `n` years old today.
+const yearsAgo = (n) => { const d = new Date(); d.setFullYear(d.getFullYear() - n); d.setDate(d.getDate() - 30); const z = (v) => String(v).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
+const BC_UNDER_AGE = 'Applications in British Columbia are open to people 19 or older.';
 async function applyTo(p, step) { await applyStart(p); for (let i = 0; i < step - 1; i++) { await STEPS[i](p); await tap(p, 'Continue'); } }
 // The landlord's report for L1, sent from the realtor's session on this page.
 async function report(p) {
@@ -158,6 +169,7 @@ export const STATES = [
   // ── tenant ──
   { name: 'apply, the first step', kind: 'tenant', go: applyStart, steps: async function* (p) { for (let i = 0; i < STEPS.length; i++) { await STEPS[i](p); await tap(p, 'Continue'); yield i + 2 > STEPS.length ? 'apply, review' : `apply, step ${i + 2}`; } } },
   { name: 'apply, through the short link', kind: 'tenant', go: (p) => open(p, '/a/WWWWWWW') },
+  { name: 'apply, British Columbia, under 19', kind: 'tenant', go: async (p) => { await inBC(p, '/api/invite/resolve'); await applyStart(p); await STEPS[0](p); await tap(p, 'Continue'); await p.getByLabel('Full name').fill('Maximiliano Castellanos Ruiz'); await p.getByLabel('Date of birth').fill(yearsAgo(18)); await p.getByLabel('Phone').fill('4165550142'); await tap(p, 'Continue'); await p.getByText(BC_UNDER_AGE).first().waitFor({ timeout: 15000 }); } },
   { name: 'apply, a field left empty', kind: 'tenant', go: async (p) => { await applyStart(p); await tap(p, 'Continue'); } },
   { name: 'apply, sent', kind: 'tenant', phase: 'write', go: async (p) => { await applyTo(p, 8); await p.getByRole('checkbox').first().check().catch(() => {}); await tap(p, /^(Send|Submit)/); await p.getByText('Application submitted').first().waitFor({ timeout: 30000 }); await wait(p, 400); } },
   { name: 'apply, the unit is rented', kind: 'tenant', go: (p) => open(p, '/apply/demo0000000000000009') },
@@ -175,6 +187,7 @@ export const STATES = [
   { name: 'confirm, expired', kind: 'tenant', go: (p) => open(p, '/my-application/confirm?t=demo-expired') },
   { name: 'party form, co applicant', kind: 'tenant', phase: 'write', go: async (p, f) => { const t = await partyToken(p, f, 'co', 'J1'); await open(p, `/party/${t}`); } },
   { name: 'party form, guarantor step 2', kind: 'tenant', phase: 'write', go: async (p, f) => { const t = await partyToken(p, f, 'guarantor', 'J5'); await open(p, `/party/${t}`); await p.getByLabel('Full name').fill('Bartholomew Castellanos Whitfield'); await p.getByLabel('Date of birth').fill('1978-11-02'); await p.getByLabel('Phone').fill('4165550199'); await p.getByLabel('Address').fill('4100 Yonge Street, Unit 1907, North York').catch(() => {}); await tap(p, 'Continue'); } },
+  { name: 'party form, British Columbia co applicant, under 19', kind: 'tenant', phase: 'write', go: async (p, f) => { const t = await partyToken(p, f, 'co', 'J2'); await inBC(p, '/api/party/self'); await open(p, `/party/${t}`); await p.getByLabel('Full name').fill('Anastasia Konstantinopoulou'); await p.getByLabel('Date of birth').fill(yearsAgo(18)); await tap(p, 'Continue'); await p.getByText(BC_UNDER_AGE).first().waitFor({ timeout: 15000 }); } },
   { name: 'party form, decline', kind: 'tenant', phase: 'write', go: async (p, f) => { const t = await partyToken(p, f, 'co', 'J4'); await open(p, `/party/${t}?decline=1`); } },
   { name: 'party form, a link that is not valid', kind: 'tenant', go: (p) => open(p, '/party/ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ') },
   { name: 'reference, open', kind: 'tenant', go: (p) => open(p, `/ref/${'p'.repeat(32)}`) },

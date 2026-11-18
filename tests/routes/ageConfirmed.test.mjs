@@ -81,7 +81,7 @@ test('a stored confirmation that is not an explicit yes: unticked at prefill, as
       assert.equal(apps(), before, `${what}: no application is stored`);
       // Confirmed on this visit: the step closes, the review says so, the new application stores yes.
       const confirmed = { ...form, dateOfBirth: '1990-06-15' };
-      assert.equal(ageStepValid(confirmed, RULE), true); assert.equal(ageReviewLine(confirmed, RULE), 'Confirmed 18 or over'); assert.equal(ageForSubmit(confirmed, RULE), true);
+      assert.equal(ageStepValid(confirmed, RULE), true); assert.equal(ageReviewLine(confirmed, RULE), 'Age requirement met'); assert.equal(ageForSubmit(confirmed, RULE), true);
       assert.equal('dateOfBirth' in JSON.parse(JSON.stringify(body(confirmed))), false, 'the date stays on the device');
       const stored = await submit(s, confirmed, `203.0.113.${20 + n}`);
       assert.equal(stored.tenant.ageConfirmed, true, `${what}: confirmed on this visit, stored true`);
@@ -105,7 +105,7 @@ test('a stored true still prefills as today: straight to the review, confirmed, 
     assert.equal(form.ageConfirmed, true);
     assert.equal(startStep({ token: 'x', form }, STEPS), STEPS.length, 'the review');
     assert.equal(startStep(null, STEPS), 1, 'not invited: the first step, as before');
-    assert.equal(ageStepValid(form, RULE), true); assert.equal(ageReviewLine(form, RULE), 'Confirmed 18 or over'); assert.equal(ageForSubmit(form, RULE), true);
+    assert.equal(ageStepValid(form, RULE), true); assert.equal(ageReviewLine(form, RULE), 'Age requirement met'); assert.equal(ageForSubmit(form, RULE), true);
     const stored = await submit(s, form, '203.0.113.40');
     assert.equal(stored.tenant.ageConfirmed, true); assert.equal(kvAppToRow(stored).age_confirmed, true);
   } finally { s.restore(); }

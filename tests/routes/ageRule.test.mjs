@@ -59,7 +59,7 @@ test('Ontario 17 who confirms: asked once, the rule is met, the answer is stored
   const seventeen = { ...EMPTY_FORM, ...FORM, dateOfBirth: dob(17) };
   assert.deepEqual(page(seventeen, ON), { band: 's4', asks: true, valid: false, sends: false, s4: undefined, problem: 'Answer the question below.', review: 'Under the age of majority' }, 'asked, and open until answered');
   const yes = { ...seventeen, withdrawnFromParentalControl: true };
-  assert.deepEqual(page(yes, ON), { band: 's4', asks: true, valid: true, sends: true, s4: true, problem: '', review: 'Confirmed 16 or 17, withdrawn from parental control' });
+  assert.deepEqual(page(yes, ON), { band: 's4', asks: true, valid: true, sends: true, s4: true, problem: '', review: 'Age requirement met' });
   assert.equal(A.WITHDRAWN_QUESTION, 'Have you withdrawn from parental control?', 'one plain yes or no question');
   for (const age of [16, 17]) assert.equal(page({ dateOfBirth: dob(age), withdrawnFromParentalControl: true }, ON).valid, true, `Ontario ${age}`);
   assert.equal(page({ dateOfBirth: dob(18) }, ON).asks, false, 'not asked of an 18 year old');
@@ -128,7 +128,7 @@ test('Ontario 15: never asked the question, never meets the rule, whatever the f
 test('British Columbia 18: no s. 4 question, 19 is the rule, a stored yes is asked again, and an s. 4 answer is dropped on the server', async (tc) => {
   clockAt(tc, NOW + 30 * 60 * 1000);
   const eighteen = { ...EMPTY_FORM, ...FORM, dateOfBirth: dob(18), withdrawnFromParentalControl: true };
-  assert.deepEqual(page(eighteen, BC), { band: 'under', asks: false, valid: false, sends: false, s4: undefined, problem: 'You must be at least 19 (the age of majority in British Columbia) to submit a rental application on your own. Applicants under 19 need a guarantor, support for that is coming soon.', review: 'Under the age of majority' });
+  assert.deepEqual(page(eighteen, BC), { band: 'under', asks: false, valid: false, sends: false, s4: undefined, problem: 'Applications in British Columbia are open to people 19 or older.', review: 'Under the age of majority' });
   assert.equal(page({ dateOfBirth: dob(17), withdrawnFromParentalControl: true }, BC).valid, false, 's. 4 is Ontario law');
   assert.equal(page({ dateOfBirth: dob(19) }, BC).valid, true);
   assert.equal(A.ageHint(BC), 'You must be 19 or over (British Columbia age of majority) to apply on your own. The date stays on this device.');
