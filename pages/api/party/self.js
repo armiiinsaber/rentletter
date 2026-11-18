@@ -24,6 +24,7 @@ import { applicationUrl } from '../../../lib/reconsiderInvite';
 import { normalizeProvince } from '../../../lib/provinces';
 import { displayLabel } from '../../../lib/listingAddress';
 import { logServerError } from '../../../lib/serverLog';
+import { ageRuleFor, submittedAge } from '../../../lib/applyAge';
 
 const NOT_FOUND = 'This link is not valid.';
 
@@ -102,6 +103,10 @@ export default async function handler(req, res) {
     const form = req.body && req.body.form && typeof req.body.form === 'object' ? req.body.form : {};
     const errors = partyFormErrors(form, party.role);
     if (Object.keys(errors).length) return res.status(400).json({ error: Object.values(errors)[0], errors });
+    // The age rule (lib/applyAge.js) for this party's role in the listing's province: an explicit
+    // yes from their page or a 400 and nothing written. The answer is checked, not stored.
+    const age = submittedAge(form, ageRuleFor(ctx.profile ? ctx.profile.province : null, party.role));
+    if (!age.ok) return res.status(400).json({ error: age.error, errors: { dateOfBirth: age.error } });
     const { incomeKind, ...row } = partyRowFromForm(form, party.role);
     const now = new Date().toISOString();
     const err = await updateParty(admin, party.id, { ...row, status: PARTY_STATUS.SUBMITTED, submitted_at: party.submitted_at || now, consented_at: now });

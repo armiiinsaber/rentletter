@@ -75,6 +75,7 @@ async function partyFills(page, token, { name, address = null }) {
   await page.goto(`/party/${token}`, { waitUntil: 'load', timeout: 120000 });
   await page.locator('#party-step-1').waitFor({ timeout: 60000 });
   await page.getByLabel('Full name').fill(name);
+  await page.getByLabel('Date of birth').fill('1990-05-14'); // the age rule (lib/applyAge.js): of age, so no further question
   await page.getByLabel('Phone').fill('416 555 0199');
   if (address) await page.getByLabel('Address').fill(address);
   await page.getByRole('button', { name: 'Continue' }).click();

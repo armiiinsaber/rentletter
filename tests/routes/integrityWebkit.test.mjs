@@ -133,6 +133,7 @@ async function guarantorForm(page, token, name) {
   await page.goto(`/party/${token}`, { waitUntil: 'load', timeout: 120000 });
   await page.locator('#party-step-1').waitFor({ timeout: 60000 });
   await page.getByLabel('Full name').fill(name);
+  await page.getByLabel('Date of birth').fill('1978-11-02'); // a guarantor of age (lib/applyAge.js)
   await page.getByLabel('Phone').fill('416 555 0199');
   await page.getByLabel('Address').fill('14 Sample Cres, Toronto'); // a guarantor's address, for the lease
   await page.getByRole('button', { name: 'Continue' }).click();

@@ -16,7 +16,7 @@ import { useRouter } from 'next/router';
 import { GlobalStyle, Wordmark, StatusPills } from '../../components/ui';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
-import { normalizeProvince, ageOfMajority, provinceName, humanRightsCodeName } from '../../lib/provinces';
+import { normalizeProvince, provinceName, humanRightsCodeName } from '../../lib/provinces';
 import { formatUnit } from '../../lib/unitType';
 import { EMPTY_FORM, serializePets, ageFromDob } from '../../lib/tenantProfile';
 import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
@@ -26,7 +26,7 @@ import DocumentUploader from '../../components/tenant/DocumentUploader';
 import PartiesCard from '../../components/tenant/PartiesCard';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
-import { ageStepValid, ageForSubmit, ageReviewLine, startStep } from '../../lib/applyAge';
+import { ageRuleFor, AGE_ROLE, ageStepValid, ageForSubmit, withdrawnForSubmit, ageReviewLine, ageHint, ageProblem, asksWithdrawn, startStep, WITHDRAWN_QUESTION } from '../../lib/applyAge';
 import { runSubmitChain, SAVING_COPY } from '../../lib/submitChain';
 import Loader, { Pending, ScreenLoader } from '../../components/brand/Loader';
 
@@ -86,12 +86,6 @@ function formatPhone(v) {
   return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`;
 }
 
-// Province-aware legal-capacity gate: Ontario 18, British Columbia 19. Threshold + wording both
-// come from the listing's province (the owning realtor's), resolved from the invite.
-function underAgeMsg(province) {
-  const min = ageOfMajority(province);
-  return `You must be at least ${min} (the age of majority in ${provinceName(province)}) to submit a rental application on your own. Applicants under ${min} need a guarantor, support for that is coming soon.`;
-}
 
 // The steps: seven cards of fields, then the review card. Each step's vital keys gate Continue.
 const STEPS = [
@@ -214,9 +208,7 @@ export default function ApplyPage({ invited = null }) {
   const markTouched = (k) => setTouched((t) => ({ ...t, [k]: true }));
   const showErr = (k) => Boolean(touched[k] || triedSubmit);
 
-  // DOB drives both the (now removed) age field and the legal-capacity gate. Keep the derived
-  // age in the payload so generate.js still receives `age` — no API change needed.
-  const derivedAge = ageFromDob(form.dateOfBirth);
+  // The date of birth drives the age step (lib/applyAge.js) and stays on this device.
   const updateDob = (v) => setForm((f) => ({ ...f, dateOfBirth: v, age: (ageFromDob(v) ?? '') === '' ? '' : String(ageFromDob(v)) }));
 
   // ── Tenancy Profile derived writes (same pattern as age/DOB): structured UI answers
@@ -282,7 +274,9 @@ export default function ApplyPage({ invited = null }) {
   // Before the invite resolves, province defaults to Ontario; the form isn't interactive until
   // status==='ready', by which point the resolved province is in effect.
   const listingProvince = normalizeProvince(invite?.province);
-  const minAge = ageOfMajority(listingProvince);
+  // The age rule for the applicant on this listing (lib/applyAge.js): Ontario 18, or 16 or 17 with
+  // a yes to the s. 4 question; British Columbia 19. The same rule pages/api/generate.js checks.
+  const ageRule = ageRuleFor(listingProvince, AGE_ROLE.APPLICANT);
   // Province arrives with the invite (and a prefilled profile may come from another province):
   // refresh an ESTIMATED after-tax figure; a tenant-stated one is never touched.
   useEffect(() => {
@@ -292,7 +286,7 @@ export default function ApplyPage({ invited = null }) {
   // Per-field validity for the VITAL fields the screening depends on.
   const vital = {
     fullName: !!form.fullName.trim(),
-    dateOfBirth: ageStepValid(form, minAge), // an invited applicant's stored answer counts only when it is an explicit yes
+    dateOfBirth: ageStepValid(form, ageRule), // an invited applicant's stored answer counts only when it is an explicit yes, and only in Ontario
     email: isValidEmail(form.email),
     phone: isValidPhone(form.phone),
     annualIncome: !!String(form.annualIncome).trim(),
@@ -309,7 +303,7 @@ export default function ApplyPage({ invited = null }) {
   const phoneError = showErr('phone') && !vital.phone
     ? (phoneDigits(form.phone).length ? 'Enter a 10-digit phone number.' : 'Phone number is required.') : '';
   const dobError = showErr('dateOfBirth') && !vital.dateOfBirth
-    ? (form.dateOfBirth ? underAgeMsg(listingProvince) : 'Date of birth is required.') : '';
+    ? ageProblem(form, ageRule) : '';
 
   // Resolve the invite token once the router has the param.
   useEffect(() => {
@@ -347,6 +341,9 @@ export default function ApplyPage({ invited = null }) {
         if (bedsLabel) descBits.push(bedsLabel);
         if (rent) descBits.push(`$${rent}/mo`);
         setForm((f) => ({ ...(invited && invited.form ? { ...EMPTY_FORM, ...invited.form } : f), apartmentAddress: u.address || '', apartmentDescription: descBits.join(' · ') }));
+        // Now the province is known: a stored yes counts in Ontario alone, so in British Columbia an
+        // invited applicant lands on the step that asks the date (lib/applyAge.js startStep).
+        if (invited && invited.form) setStep(startStep(invited, STEPS, ageRuleFor(json.province, AGE_ROLE.APPLICANT)));
         setStatus('ready');
         // The sandbox preview of the submitted state (?preview=done on a demo token): the confirmation
         // and the document card render from fixed values; nothing is created or sent.
@@ -370,7 +367,7 @@ export default function ApplyPage({ invited = null }) {
     const incomeNum = Number(String(form.annualIncome).replace(/[^\d.]/g, '')) || 0;
     const rows = [
       ['Full name', form.fullName.trim()],
-      ['Age of majority', ageReviewLine(form, minAge)],
+      ['Age of majority', ageReviewLine(form, ageRule)],
       ['Email', form.email.trim()],
       ['Phone', form.phone.trim()],
       ['Income before tax', incomeNum ? `$${incomeNum.toLocaleString()}/yr` : 'not set'],
@@ -400,7 +397,7 @@ export default function ApplyPage({ invited = null }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // The date of birth stays on this device: only the age of majority answer travels.
-        body: JSON.stringify({ ...form, dateOfBirth: undefined, age: undefined, ageConfirmed: ageForSubmit(form, minAge), mode: 'application', inviteToken: token }),
+        body: JSON.stringify({ ...form, withdrawnFromParentalControl: withdrawnForSubmit(form, ageRule), dateOfBirth: undefined, age: undefined, ageConfirmed: ageForSubmit(form, ageRule), mode: 'application', inviteToken: token }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json?.error || !json?.applicationNumber) {
@@ -507,7 +504,11 @@ export default function ApplyPage({ invited = null }) {
       case 'you': return (
         <>
           <Field label="Full name" required value={form.fullName} onChange={(v) => update('fullName', v)} onBlur={() => markTouched('fullName')} error={showErr('fullName') && !vital.fullName ? 'Full name is required.' : ''} placeholder="Jane Doe" />
-          <Field label="Date of birth" required value={form.dateOfBirth} onChange={updateDob} onBlur={() => markTouched('dateOfBirth')} error={dobError} type="date" hint={`You must be ${minAge} or over (${provinceName(listingProvince)} age of majority) to apply on your own. The date stays on this device.`} />
+          <Field label="Date of birth" required value={form.dateOfBirth} onChange={updateDob} onBlur={() => markTouched('dateOfBirth')} error={dobError} type="date" hint={ageHint(ageRule)} />
+          {asksWithdrawn(form, ageRule) && (
+            <SelectField label={WITHDRAWN_QUESTION} value={form.withdrawnFromParentalControl === true ? 'yes' : form.withdrawnFromParentalControl === false ? 'no' : ''} onChange={(v) => update('withdrawnFromParentalControl', v === 'yes' ? true : v === 'no' ? false : undefined)}
+              options={[{ value: '', label: 'Select' }, { value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} />
+          )}
           <Field label="Phone" required value={form.phone} onChange={(v) => update('phone', formatPhone(v))} onBlur={() => markTouched('phone')} error={phoneError} placeholder="(416) 555-1234" type="tel" inputMode="tel" />
         </>
       );

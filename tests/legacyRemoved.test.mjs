@@ -1,6 +1,5 @@
 // The legacy landlord share system is gone: nothing imports from or calls pages/api/landlord,
-// the two live invite routes live under pages/api/invite and are what the apply page and the
-// homepage call.
+// the two live invite routes live under pages/api/invite and are what the apply page calls.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
@@ -28,9 +27,12 @@ test('the two live invite routes moved and are what the tenant pages call', () =
   assert.equal(existsSync(`${root}pages/api/invite/tag.js`), true);
   const apply = readFileSync(`${root}pages/apply/[token].js`, 'utf8');
   const home = readFileSync(`${root}pages/index.js`, 'utf8');
-  for (const src of [apply, home]) assert.match(src, /\/api\/invite\/resolve\?token=/);
-  // The apply page tags through lib/submitChain.js (retried, before the done page); the homepage form still calls it directly.
-  assert.match(home, /'\/api\/invite\/tag'/);
+  assert.match(apply, /\/api\/invite\/resolve\?token=/);
+  // The homepage no longer has its own form: an old /?invite={token} link opens the apply page,
+  // which resolves the invite and asks the age rule (lib/applyAge.js).
+  assert.match(home, /window\.location\.replace\(`\/apply\/\$\{encodeURIComponent\(inviteParam\)\}`\)/);
+  assert.doesNotMatch(home, /\/api\/invite\/resolve|\/api\/invite\/tag|\/api\/generate/, 'the homepage calls none of the submit routes');
+  // The apply page tags through lib/submitChain.js (retried, before the done page).
   assert.match(apply, /runSubmitChain\(/);
   assert.match(readFileSync(`${root}lib/submitChain.js`, 'utf8'), /'\/api\/invite\/tag'/);
   const resolve = readFileSync(`${root}pages/api/invite/resolve.js`, 'utf8');

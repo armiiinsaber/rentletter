@@ -18,9 +18,12 @@ import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { PARTY_STATUS, GUARANTOR_SENTENCE, PARTY_CONSENT_LINE, DECLINE_LINE, WITHDRAW_LINE, INCOME_KIND_LABEL, partyFormErrors, STATUS_LABEL } from '../../lib/parties';
 import { PARTY_ROLE, INCOME_KIND } from '../../lib/application-state';
 import { Pending, ScreenLoader } from '../../components/brand/Loader';
+import { ageRuleFor, asksWithdrawn, ageForSubmit, ageHint, ageProblem, ageReviewLine, WITHDRAWN_QUESTION } from '../../lib/applyAge';
 
 const STEPS = [{ id: 'you', title: 'About you' }, { id: 'work', title: 'Employment and income' }, { id: 'review', title: 'Review and consent' }];
-const EMPTY = { fullName: '', phone: '', address: '', employmentType: 'full-time', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '', incomeKind: INCOME_KIND.EMPLOYMENT };
+// dateOfBirth and withdrawnFromParentalControl stay on this device: the form sends only the
+// answer, ageConfirmed (lib/applyAge.js).
+const EMPTY = { fullName: '', phone: '', address: '', dateOfBirth: '', withdrawnFromParentalControl: undefined, employmentType: 'full-time', jobTitle: '', employer: '', yearsAtJob: '', annualIncome: '', incomeKind: INCOME_KIND.EMPLOYMENT };
 const money = (v) => (v ? `$${Number(String(v).replace(/[^0-9.]/g, '')).toLocaleString('en-CA')}` : '');
 
 export default function PartyPage() {
@@ -67,6 +70,9 @@ export default function PartyPage() {
   useEffect(() => { document.getElementById(`party-step-${step}`)?.scrollIntoView({ block: 'start' }); }, [step]);
 
   const isGuarantor = ctx && ctx.role === PARTY_ROLE.GUARANTOR;
+  // The age rule for this party's role in the listing's province (lib/applyAge.js): the same one
+  // pages/api/party/self.js checks.
+  const ageRule = ageRuleFor(ctx ? ctx.province : null, ctx ? ctx.role : null);
   const roleWord = isGuarantor ? 'guarantor' : 'co applicant';
   const leave = async (action) => {
     if (busy) return;
@@ -77,8 +83,8 @@ export default function PartyPage() {
   };
   const next = () => {
     setError('');
-    const e = partyFormErrors(form, ctx.role);
-    const mine = step === 1 ? ['fullName', 'address'] : step === 2 ? ['annualIncome'] : [];
+    const e = { ...partyFormErrors(form, ctx.role), ...(ageProblem(form, ageRule) ? { dateOfBirth: ageProblem(form, ageRule) } : {}) };
+    const mine = step === 1 ? ['fullName', 'address', 'dateOfBirth'] : step === 2 ? ['annualIncome'] : [];
     const here = Object.fromEntries(Object.entries(e).filter(([k]) => mine.includes(k)));
     setErrors(here);
     if (Object.keys(here).length) return;
@@ -89,7 +95,8 @@ export default function PartyPage() {
     if (!consent) { setError('Tick the consent line to send your form.'); return; }
     setBusy(true); setError('');
     try {
-      const j = await post({ action: 'submit', form });
+      // The date and the s. 4 answer stay here; the answer travels (lib/applyAge.js).
+      const j = await post({ action: 'submit', form: { ...form, dateOfBirth: undefined, withdrawnFromParentalControl: undefined, ageConfirmed: ageForSubmit(form, ageRule) } });
       if (j.docRequest) setDocRequest(j.docRequest);
       setPhase('submitted'); window.scrollTo(0, 0);
     } catch (e) { setError(e.message); }
@@ -192,6 +199,11 @@ export default function PartyPage() {
   const fields = step === 1 ? (
     <>
       <Field label="Full name" value={form.fullName} onChange={(v) => update('fullName', v)} placeholder="Alex Smith" required error={errors.fullName} />
+      <Field label="Date of birth" value={form.dateOfBirth} onChange={(v) => update('dateOfBirth', v)} type="date" required error={errors.dateOfBirth} hint={ageHint(ageRule)} />
+      {asksWithdrawn(form, ageRule) && (
+        <SelectField label={WITHDRAWN_QUESTION} value={form.withdrawnFromParentalControl === true ? 'yes' : form.withdrawnFromParentalControl === false ? 'no' : ''} onChange={(v) => update('withdrawnFromParentalControl', v === 'yes' ? true : v === 'no' ? false : undefined)}
+          options={[{ value: '', label: 'Select' }, { value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]} />
+      )}
       <Field label="Phone" value={form.phone} onChange={(v) => update('phone', v)} placeholder="416 555 0142" type="tel" inputMode="tel" />
       {isGuarantor && <Field label="Address" value={form.address} onChange={(v) => update('address', v)} placeholder="12 Sample St, Toronto" required error={errors.address} hint="Kept for the lease and used nowhere else." />}
     </>
@@ -207,7 +219,7 @@ export default function PartyPage() {
   ) : (
     <>
       <div className="mp-facts" style={{ marginTop: 0 }}>
-        {[['Name', form.fullName], ['Phone', form.phone], ...(isGuarantor ? [['Address', form.address]] : []), ['Employment', [EMP_LABEL[form.employmentType], form.jobTitle, form.employer].filter(Boolean).join(' · ')], ['Years at job', form.yearsAtJob], ['Income', `${money(form.annualIncome)} a year · ${INCOME_KIND_LABEL[form.incomeKind]}`]].map(([k, v]) => (
+        {[['Name', form.fullName], ['Age', ageReviewLine(form, ageRule)], ['Phone', form.phone], ...(isGuarantor ? [['Address', form.address]] : []), ['Employment', [EMP_LABEL[form.employmentType], form.jobTitle, form.employer].filter(Boolean).join(' · ')], ['Years at job', form.yearsAtJob], ['Income', `${money(form.annualIncome)} a year · ${INCOME_KIND_LABEL[form.incomeKind]}`]].map(([k, v]) => (
           <div key={k} className="mp-fact"><div className="mp-label">{k}</div><div className="mp-value"><LinesText text={v || 'not set'} /></div></div>
         ))}
       </div>

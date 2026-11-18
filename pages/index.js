@@ -4,7 +4,6 @@ import { C, R, SH, EASE } from '../components/theme';
 import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
 import AppHead from '../components/AppHead';
 import DeviceFrame, { DEVICE_BREAKPOINT } from '../components/DeviceFrame';
-import { cardTap } from '../lib/motion';
 import { noWidow } from '../lib/typeset';
 import HeroDemo from '../components/mockups/HeroDemo';
 import HomeDoor from '../components/brand/HomeDoor';
@@ -90,15 +89,11 @@ export default function Home() {
   });
   const [resume, setResume] = useState('');
   const [applicationNumber, setApplicationNumber] = useState('');
-  const [error, setError] = useState('');
   const [emailSending, setEmailSending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [copiedResume, setCopiedResume] = useState(false);
   const [copiedAppNum, setCopiedAppNum] = useState(false);
 
-  // ── Invite state — tenant arrived via a realtor's listing-scoped link ──
-  const [inviteToken, setInviteToken] = useState('');
-  const [inviteContext, setInviteContext] = useState(null); // { realtorName, realtorBrokerage, listingName, unit }
 
 
   // The "See a sample dashboard" demo entry is ALWAYS available on the landing page —
@@ -114,19 +109,11 @@ export default function Home() {
 
     // ─── ENTRY 0: Tenant arrived via realtor's invite link ───
     // Sandbox tokens (demo…) are answered by the resolver without an invite record.
+    // An old link (/?invite={token}, before invites moved to /apply/{token}) opens the apply page,
+    // which asks the age rule (lib/applyAge.js). This page no longer shows its own form.
     if (inviteParam && (/^[a-f0-9]{20}$/.test(inviteParam) || /^demo\d{16}$/.test(inviteParam))) {
-      setInviteToken(inviteParam);
-      // Fetch the invite context to display "applying for X" banner
-      fetch(`/api/invite/resolve?token=${encodeURIComponent(inviteParam)}`)
-        .then(r => r.json())
-        .then(json => {
-          if (json && !json.error) {
-            setInviteContext(json);
-            setStep('form'); // jump straight to form, no landing page
-          }
-        })
-        .catch(() => { /* swallow, tenant can still apply normally */ });
-      // Don't return — let the rest of the logic also run in case of other params
+      window.location.replace(`/apply/${encodeURIComponent(inviteParam)}`);
+      return;
     }
 
     // ─── ENTRY 4: Returning user, restore the submitted application ───
@@ -159,103 +146,6 @@ export default function Home() {
     setHeroTilt({ x: dy * -2.5, y: dx * 2.5 });
   };
   const handleTiltLeave = () => setHeroTilt({ x: 0, y: 0 });
-
-  const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
-
-  const isFormValid = () => {
-    return form.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)
-      && form.fullName && form.jobTitle && form.employer
-      && form.annualIncome && form.moveInDate;
-  };
-
-  const handlePay = () => {
-    // Free. The application is stored under a fresh number; nothing is sold after it.
-    localStorage.setItem('rentletter_form', JSON.stringify(form));
-    submitApplication(form);
-  };
-
-  // ─── DEV: Autofill test data ─────────────────
-  const fillTestData = () => {
-    const sampleProfiles = [
-      {
-        email: 'sarah.chen.test@example.com',
-        apartmentAddress: '144 Roxborough Drive, Toronto',
-        apartmentDescription: '1BR, Rosedale, $2,200/mo',
-        fullName: 'Sarah Chen',
-        jobTitle: 'Marketing Manager', employer: 'Loblaw Companies',
-        yearsAtJob: '4', annualIncome: '87000',
-        previousAddress: '245 Sherbourne Street, Toronto', yearsAtPrevious: '2.5',
-        previousLandlordName: 'Michael Park', previousLandlordContact: '416-555-0142',
-        moveInDate: '2026-06-15',
-        pets: 'None',
-      },
-      {
-        email: 'james.okafor.test@example.com',
-        apartmentAddress: '88 Yonge Street, Toronto',
-        apartmentDescription: 'Studio, downtown, $1,850/mo',
-        fullName: 'James Okafor',
-        jobTitle: 'Software Engineer', employer: 'Shopify',
-        yearsAtJob: '1.5', annualIncome: '95000',
-        previousAddress: '', yearsAtPrevious: '',
-        previousLandlordName: '', previousLandlordContact: '',
-        moveInDate: '2026-07-01',
-        pets: 'None',
-      },
-      {
-        email: 'priya.nair.test@example.com',
-        apartmentAddress: '550 Queen Street West, Toronto',
-        apartmentDescription: '2BR, Queen West, $3,100/mo',
-        fullName: 'Priya Nair',
-        jobTitle: 'Senior UX Designer', employer: 'CIBC',
-        yearsAtJob: '5', annualIncome: '115000',
-        previousAddress: '300 Bloor Street West, Toronto', yearsAtPrevious: '3',
-        previousLandlordName: 'David Wong', previousLandlordContact: '647-555-0199',
-        moveInDate: '2026-08-01',
-        pets: 'One indoor cat, 6 years old, vet records available',
-      },
-    ];
-    const random = sampleProfiles[Math.floor(Math.random() * sampleProfiles.length)];
-    setForm(random);
-  };
-
-  const submitApplication = async (data) => {
-    setError('');
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, mode: 'application' }),
-      });
-      const json = await res.json();
-      if (json.error) throw new Error(json.error);
-      setResume(json.resume);
-      if (json.applicationNumber) {
-        setApplicationNumber(json.applicationNumber);
-        localStorage.setItem('rentletter_app_number', json.applicationNumber);
-        // If this submission came from a realtor's invite link, tag it
-        if (inviteToken && /^[a-f0-9]{20}$/.test(inviteToken)) {
-          fetch('/api/invite/tag', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: inviteToken, applicationNumber: json.applicationNumber }),
-          }).catch(e => console.error('[tag-invite] fire-and-forget failed', e));
-        }
-      }
-      if (json.ownerToken) {
-        localStorage.setItem('rentletter_owner_token', json.ownerToken);
-      }
-      localStorage.setItem('rentletter_resume', json.resume);
-      window.history.replaceState({}, '', window.location.pathname);
-      setStep('result');
-      // The confirmation email: the application number and the owner token.
-      if (data.email && json.applicationNumber) {
-        sendEmail(data.email, data.fullName, json.applicationNumber, json.ownerToken, json.emailSig || null);
-      }
-    } catch (e) {
-      setError(e.message);
-      setStep('form');
-    }
-  };
 
   const sendEmail = async (email, fullName, appNum, ownerTok, signature = null) => {
     setEmailSending(true);
@@ -702,238 +592,6 @@ export default function Home() {
 
 
   // ════════════════════════════════════════════════════════════
-  // FORM
-  // ════════════════════════════════════════════════════════════
-  if (step === 'form') {
-    return (
-      <>
-        <Head><title>Your details · Rentletter</title></Head>
-        <GlobalStyle />
-        <div style={{ minHeight: '100vh', background: C.paper }}>
-          <header style={{ borderBottom: `1px solid ${C.rule}`, padding: '22px 32px', paddingTop: 'calc(22px + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <button onClick={() => setStep('landing')} style={{ background: 'transparent', border: 'none', color: C.inkSoft, fontSize: 14, fontWeight: 500 }}>
-                ← Back
-              </button>
-            </div>
-          </header>
-
-          <div style={{ maxWidth: 680, margin: '0 auto', padding: '64px 32px 80px' }}>
-
-            {/* INVITE BANNER, tenant arrived via a realtor's listing-scoped link */}
-            {inviteContext && (
-              <div style={{
-                background: C.ink, color: C.paper,
-                padding: '20px 24px',
-                marginBottom: 28, borderRadius: R.card,
-                borderLeft: `4px solid ${C.red}`,
-              }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 6 }}>
-                  Applying for
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '-0.01em', marginBottom: 4 }}>
-                  {inviteContext.listingName || (inviteContext.unit?.address) || 'Rental unit'}
-                </div>
-                {inviteContext.unit && (
-                  <div style={{ fontSize: 13, color: '#c8c2b3', marginBottom: 8 }}>
-                    {inviteContext.unit.monthlyRent && `$${inviteContext.unit.monthlyRent}/mo`}
-                    {inviteContext.unit.bedrooms && `, ${inviteContext.unit.bedrooms} bed`}
-                  </div>
-                )}
-                {(inviteContext.realtorName || inviteContext.realtorBrokerage) && (
-                  <div style={{ fontSize: 13, color: '#c8c2b3' }}>
-                    Submitted to: <strong style={{ color: C.paper }}>{inviteContext.realtorName}</strong>
-                    {inviteContext.realtorBrokerage && `, ${inviteContext.realtorBrokerage}`}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ── DEV TEST BAR (will be removed before public launch) ── */}
-            <div style={{
-              marginBottom: 32, padding: '14px 18px',
-              background: C.info, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl,
-              display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap',
-              fontSize: 12,
-            }}>
-              <span style={{ color: C.ink, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 10 }}>
-                Dev mode
-              </span>
-              <button onClick={fillTestData} className="rl-btn"
-                style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '6px var(--gap-card)', fontSize: 11, fontWeight: 600 }}>
-                Fill random sample
-              </button>
-              <span style={{ fontSize: 11, color: C.inkSoft }}>
-                Fills the form with sample data. Remove this block before launch.
-              </span>
-            </div>
-
-            <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.04 }}>
-              Tell us about you
-            </h1>
-            <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 56, lineHeight: 1.55 }}>
-              The more specific, the better. Skip anything that doesn't apply.
-            </p>
-
-            {error && (
-              <div style={{ background: C.redTint, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl, padding: '14px 18px', marginBottom: 32, color: C.ink, fontSize: 14 }}>
-                {error}
-              </div>
-            )}
-
-            {/* Privacy-first positioning note */}
-            <div style={{
-              marginBottom: 40, padding: '18px 22px',
-              background: C.card, border: `1px solid ${C.rule}`, borderLeft: `3px solid ${C.red}`, borderRadius: R.ctrl,
-              fontSize: 13, color: C.inkSoft, lineHeight: 1.6,
-            }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.red, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>
-                Designed to be privacy-first
-              </div>
-              We collect what landlords need to make a good decision, not your SIN, bank info, or driver's license. Those come after an offer, not before. Aligned with Ontario Human Rights Code best practices.
-            </div>
-
-            <FormSection num="01" title="Where to send it" required>
-              <Field label="Email" value={form.email} onChange={v => update('email', v)} placeholder="you@example.com" type="email" />
-            </FormSection>
-
-            <FormSection num="02" title="The apartment">
-              <Field label="Address" value={form.apartmentAddress} onChange={v => update('apartmentAddress', v)} placeholder="123 King St W, Toronto" />
-              <Field label="Brief description" value={form.apartmentDescription} onChange={v => update('apartmentDescription', v)} placeholder="2BR, downtown, $2,400/mo" />
-            </FormSection>
-
-            <FormSection num="03" title="About you" required>
-              <Field label="Full name" value={form.fullName} onChange={v => update('fullName', v)} placeholder="Jane Doe" />
-              <Field label="Phone" value={form.phone} onChange={v => update('phone', v)} placeholder="(416) 555-0142" type="tel" />
-            </FormSection>
-
-            <FormSection num="04" title="Employment" required>
-              <Field label="Job title" value={form.jobTitle} onChange={v => update('jobTitle', v)} placeholder="Software engineer" />
-              <Field label="Employer" value={form.employer} onChange={v => update('employer', v)} placeholder="Shopify" />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                <Field label="Years at this job" value={form.yearsAtJob} onChange={v => update('yearsAtJob', v)} placeholder="3" />
-                <Field label="Annual income (CAD)" value={form.annualIncome} onChange={v => update('annualIncome', v)} placeholder="85,000" type="number" />
-              </div>
-            </FormSection>
-
-            <FormSection num="05" title="Current rental">
-              <Field label="Current address" value={form.previousAddress} onChange={v => update('previousAddress', v)} placeholder="456 Queen St, Toronto" />
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                <Field label="Years there" value={form.yearsAtPrevious} onChange={v => update('yearsAtPrevious', v)} placeholder="2" />
-                <Field label="Current rent (CAD/mo)" value={form.currentRent} onChange={v => update('currentRent', v)} placeholder="2,200" type="number" />
-              </div>
-              <Field label="Current landlord name" value={form.previousLandlordName} onChange={v => update('previousLandlordName', v)} placeholder="John Smith" />
-              <Field label="Landlord contact" value={form.previousLandlordContact} onChange={v => update('previousLandlordContact', v)} placeholder="phone or email" />
-            </FormSection>
-
-            <FormSection num="06" title="Your move" required>
-              <Field label="Desired move in date" value={form.moveInDate} onChange={v => update('moveInDate', v)} type="date" />
-            </FormSection>
-
-            <FormSection num="07" title="Household">
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                <Field label="Total occupants" value={form.numberOfOccupants} onChange={v => update('numberOfOccupants', v)} placeholder="2" type="number" />
-                <SelectField
-                  label="Smoker?"
-                  value={form.smoker}
-                  onChange={v => update('smoker', v)}
-                  options={[
-                    { value: 'no', label: 'Non-smoker' },
-                    { value: 'outdoor', label: 'Outdoor only' },
-                    { value: 'yes', label: 'Yes' },
-                  ]}
-                />
-              </div>
-
-              {/* Co-applicant toggle */}
-              <ToggleField
-                label="Applying with a co tenant? (another adult who’ll be on the lease)"
-                value={form.hasCoApplicant}
-                onChange={v => update('hasCoApplicant', v)}
-              />
-              {form.hasCoApplicant && (
-                <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.red}`, marginTop: 4 }}>
-                  <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 14 }}>
-                    Co-applicant
-                  </div>
-                  <Field label="Full name" value={form.coApplicantName} onChange={v => update('coApplicantName', v)} placeholder="Alex Smith" />
-                  <Field label="Job title" value={form.coApplicantJobTitle} onChange={v => update('coApplicantJobTitle', v)} placeholder="Designer" />
-                  <Field label="Employer" value={form.coApplicantEmployer} onChange={v => update('coApplicantEmployer', v)} placeholder="Figma" />
-                  <Field label="Annual income (CAD)" value={form.coApplicantIncome} onChange={v => update('coApplicantIncome', v)} placeholder="75,000" type="number" />
-                </div>
-              )}
-            </FormSection>
-
-            <FormSection num="08" title="Lifestyle">
-              <Field label="Pets" value={form.pets} onChange={v => update('pets', v)} placeholder="One small cat, indoor only, vet records available" />
-            </FormSection>
-
-            <FormSection num="09" title="References (optional but recommended)">
-              <p style={{ fontSize: 13, color: C.inkSoft, marginBottom: 18, lineHeight: 1.55 }}>
-                Two people who can vouch for you. Mentioning these by name on your application is more persuasive than saying "references available."
-              </p>
-              <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}`, marginBottom: 16 }}>
-                <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
-                  Reference 1
-                </div>
-                <Field label="Full name" value={form.reference1Name} onChange={v => update('reference1Name', v)} placeholder="Sarah Johnson" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                  <Field label="Relationship" value={form.reference1Relationship} onChange={v => update('reference1Relationship', v)} placeholder="Current manager" />
-                  <Field label="Phone or email" value={form.reference1Contact} onChange={v => update('reference1Contact', v)} placeholder="416-555-0142" />
-                </div>
-              </div>
-              <div style={{ paddingLeft: 16, borderLeft: `2px solid ${C.rule}` }}>
-                <div style={{ fontSize: 11, color: C.inkMute, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
-                  Reference 2
-                </div>
-                <Field label="Full name" value={form.reference2Name} onChange={v => update('reference2Name', v)} placeholder="David Chen" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 18 }}>
-                  <Field label="Relationship" value={form.reference2Relationship} onChange={v => update('reference2Relationship', v)} placeholder="Friend of 5 years" />
-                  <Field label="Phone or email" value={form.reference2Contact} onChange={v => update('reference2Contact', v)} placeholder="dchen@email.com" />
-                </div>
-              </div>
-            </FormSection>
-
-            {/* Generate button, free for all tenants */}
-            {(
-              <div className="rl-card" style={{ marginTop: 48, padding: '28px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', paddingBottom: 16, borderBottom: `1px solid ${C.rule}` }}>
-                  <span style={{ fontSize: 15, color: C.inkSoft }}>Your professional rental application</span>
-                  <span style={{ fontSize: 13, color: C.ink, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Free</span>
-                </div>
-                <div style={{ marginTop: 16, fontSize: 14, color: C.inkSoft, lineHeight: 1.6 }}>
-                  Submit your application and get a unique Rentletter number to share with realtors and landlords. No payment required.
-                </div>
-                <button
-                  onClick={handlePay}
-                  disabled={!isFormValid()}
-                  className="rl-btn"
-                  style={{
-                    width: '100%', marginTop: 24,
-                    background: isFormValid() ? C.ink : '#c8c2b3',
-                    color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '18px',
-                    fontSize: 15, fontWeight: 600,
-                    cursor: isFormValid() ? 'pointer' : 'not-allowed',
-                  }}
-                >
-                  {isFormValid()
-                    ? 'Generate my application →'
-                    : 'Complete required fields'}
-                </button>
-                <p style={{ fontSize: 12, color: C.inkMute, marginTop: 14, textAlign: 'center' }}>
-                  Not legal advice
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      </>
-    );
-  }
-
-
-  // ════════════════════════════════════════════════════════════
   // RESULT
   // ════════════════════════════════════════════════════════════
   if (step === 'result') {
@@ -1066,94 +724,6 @@ function FooterCol({ title, links }) {
           <a key={label} href={href} style={{ color: C.inkSoft, textDecoration: 'none', fontSize: 13.5, lineHeight: 1.3 }}>{label}</a>
         ))}
       </div>
-    </div>
-  );
-}
-
-// ─── FORM COMPONENTS ──────────────────────────────────────────
-function FormSection({ num, title, required, children }) {
-  return (
-    <div style={{ marginBottom: 40, paddingBottom: 40, borderBottom: `1px solid ${C.rule}` }}>
-      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'baseline', gap: 14 }}>
-        <span style={{ fontSize: 13, color: C.inkMute, fontWeight: 500 }}>{num}</span>
-        <h3 style={{ fontSize: 20, fontWeight: 700, color: C.ink, letterSpacing: '-0.01em' }}>{title}</h3>
-        {required && <span style={{ fontSize: 11, color: C.inkMute, fontWeight: 500 }}>Required</span>}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>{children}</div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, placeholder, type = 'text' }) {
-  return (
-    <div>
-      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        style={{
-          width: '100%', padding: '14px 0', fontSize: 16,
-          border: 'none', borderBottom: `1px solid ${C.rule}`,
-          background: 'transparent', color: C.ink,
-          transition: 'border color 0.2s',
-        }}
-        onFocus={e => e.target.style.borderBottomColor = C.ink}
-        onBlur={e => e.target.style.borderBottomColor = C.rule} />
-    </div>
-  );
-}
-
-function SelectField({ label, value, onChange, options }) {
-  return (
-    <div>
-      <label style={{ display: 'block', fontSize: 13, color: C.inkSoft, marginBottom: 8, fontWeight: 500 }}>{label}</label>
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        style={{
-          width: '100%', padding: '14px 0', fontSize: 16,
-          border: 'none', borderBottom: `1px solid ${C.rule}`,
-          background: 'transparent', color: C.ink,
-          appearance: 'none',
-          fontFamily: "'Inter', sans-serif",
-          cursor: 'pointer',
-        }}
-        onFocus={e => e.target.style.borderBottomColor = C.ink}
-        onBlur={e => e.target.style.borderBottomColor = C.rule}>
-        {options.map(opt => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-function ToggleField({ label, value, onChange }) {
-  return (
-    // The whole row is the target: the switch, its words and the gap between them.
-    <div data-tap-card="" onClick={cardTap(() => onChange(!value))} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', cursor: 'pointer' }}>
-      <button
-        type="button"
-        onClick={() => onChange(!value)}
-        style={{
-          width: 44, height: 24,
-          background: value ? C.red : C.rule,
-          border: 'none',
-          borderRadius: 12,
-          position: 'relative',
-          cursor: 'pointer',
-          transition: 'background 0.2s',
-          padding: 0,
-        }}>
-        <span style={{
-          position: 'absolute',
-          top: 2, left: value ? 22 : 2,
-          width: 20, height: 20, borderRadius: '50%',
-          background: C.paper,
-          transition: 'left 0.2s',
-        }} />
-      </button>
-      <span style={{ fontSize: 14, color: C.ink, fontWeight: 500, cursor: 'pointer' }}>
-        {label}
-      </span>
     </div>
   );
 }

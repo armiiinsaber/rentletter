@@ -40,7 +40,9 @@ const TOKEN = 'ABCDEFGHJKMNPQRSTUVWXYZ234567892';
 // The primary's KV record, as pages/api/generate.js writes it: the owner token lives there.
 const withApp = (s, appId, ownerToken = TOKEN) => { const a = s.db.tables.applications.find((x) => x.id === appId); s.kv.values[`app:${a.application_number}`] = { applicationNumber: a.application_number, ownerToken, email: a.email, tenant: { fullName: a.full_name } }; a.owner_token = ownerToken; return a; };
 const up = (over = {}) => { const t = tables(); return installFakeStack({ tables: { ...t, application_events: [], ...over }, user: USER }); };
-const FORM = { fullName: 'Jordan Lee', phone: '416 555 0199', employmentType: 'full-time', jobTitle: 'Analyst', employer: 'Northwind Sample Clinic Inc.', yearsAtJob: '2', annualIncome: '64000', incomeKind: 'employment' };
+// ageConfirmed: the answer pages/party/[token].js sends once the date of birth meets the age rule
+// (lib/applyAge.js); pages/api/party/self.js refuses a form without it.
+const FORM = { fullName: 'Jordan Lee', phone: '416 555 0199', employmentType: 'full-time', jobTitle: 'Analyst', employer: 'Northwind Sample Clinic Inc.', yearsAtJob: '2', annualIncome: '64000', incomeKind: 'employment', ageConfirmed: true };
 const tokenFromMail = (s, to) => { const m = s.resend.sent.find((x) => String(x.to).toLowerCase() === to); const found = m && String(m.text).match(/\/party\/([A-Z2-9]{32})/); return found ? found[1] : null; };
 
 test('the words and the rules: roles, labels, who may be invited where, the form rows', () => {

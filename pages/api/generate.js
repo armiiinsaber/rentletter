@@ -6,6 +6,22 @@ import { inviteRent } from '../../lib/inviteResolve';
 import { isSupabaseConfigured as inviteSupabaseConfigured } from '../../lib/supabase/server';
 import { getSupabaseAdminClient as inviteAdminClient } from '../../lib/supabase/admin';
 import { confirmationSignature } from '../../lib/sendSignature';
+import { loadInviteListing } from '../../lib/inviteResolve';
+import { isSandboxToken } from '../../lib/features';
+import { ageRuleFor, AGE_ROLE, submittedAge } from '../../lib/applyAge';
+
+// The listing's province, for the age rule (lib/applyAge.js): the owning realtor's, from the
+// listings row by invite token, the KV invite record when there is no row. The sandbox listing is
+// in Ontario (pages/api/invite/resolve.js). null when unknown: the rule reads that as Ontario, as
+// the apply page does before its invite resolves.
+async function submitProvince(inviteToken, record) {
+  if (isSandboxToken(inviteToken)) return 'ON';
+  if (!/^[a-f0-9]{20}$/.test(String(inviteToken || ''))) return null;
+  const admin = inviteSupabaseConfigured() && process.env.SUPABASE_SERVICE_ROLE_KEY ? inviteAdminClient() : null;
+  const found = admin ? await loadInviteListing(admin, inviteToken) : null;
+  if (found && found.profile && found.profile.province) return found.profile.province;
+  return record && record.province ? record.province : null;
+}
 
 
 // The application number and the owner token come from lib/applicationIds.js, the same module
@@ -173,6 +189,12 @@ export default async function handler(req, res) {
   if (!fullName || !jobTitle || !annualIncome) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+  // The age rule (lib/applyAge.js), before anything is stored: an explicit yes from the page or a
+  // 400 and nothing written. The province is read only when an s. 4 answer came with the request,
+  // since it decides whether that answer is kept (Ontario alone).
+  const province = formData.withdrawnFromParentalControl === true ? await submitProvince(inviteToken, /^[a-f0-9]{20}$/.test(String(inviteToken || '')) ? await kvGet(`linvite:${inviteToken}`) : null) : null;
+  const age = submittedAge(formData, ageRuleFor(province, AGE_ROLE.APPLICANT));
+  if (!age.ok) return res.status(400).json({ error: age.error });
 
   const moveDate = moveInDate
     ? new Date(moveInDate).toLocaleDateString('en-CA', { month: 'long', day: 'numeric', year: 'numeric' })
@@ -234,12 +256,15 @@ export default async function handler(req, res) {
       applicationNumber,
       createdAt: new Date().toISOString(),
       email: email || null,
-      // The date of birth is asked on the form only to check the age of majority in the
-      // listing's province; the check's answer is stored, the date and the age never are.
+      // The date of birth is asked on the form only to check the age rule for the listing's
+      // province (lib/applyAge.js); the answer is stored, the date and the age never are. The s. 4
+      // answer sits beside it only for an Ontario applicant admitted at 16 or 17; it is never copied
+      // to the applications table (lib/applicationMap.js) and no realtor read sees it.
       tenant: {
         fullName,
         ageConfirmed: ageConfirmed === true,
         phone: phone || null,
+        ...(age.withdrawnFromParentalControl ? { withdrawnFromParentalControl: true } : {}),
       },
       employment: {
         jobTitle,

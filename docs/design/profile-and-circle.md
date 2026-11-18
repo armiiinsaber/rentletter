@@ -1142,6 +1142,13 @@ This is the product at launch.
 18. AI reading of documents for a standing profile: any duty to disclose automated processing, or to offer a human review of a check the tenant disputes?
 19. Minors and capacity: any duty to confirm a tenant is an adult before holding their ID, given that age is never stored?
 20. Breach: with a vault, what are the notification duties and what security safeguards would a regulator expect for stored ID images?
+21. Age and Ontario's Human Rights Code s. 4. Section 4 gives a 16 or 17 year old who has withdrawn from parental control a right to equal treatment in renting, and makes their lease enforceable as if they were 18. The rule built (`lib/applyAge.js`):
+    * In Ontario, an applicant or co applicant qualifies at 18 or over. At 16 or 17 they qualify if they answer yes to one plain question: "Have you withdrawn from parental control?" It is asked only when their date of birth makes them 16 or 17, and nothing further is asked about why.
+    * In British Columbia the rule is the age of majority, 19.
+    * A guarantor must be of the age of majority in both provinces (18 and 19), since a guarantor is not renting the home.
+    * The date of birth never leaves the tenant's device. The applicant's yes is stored beside the age confirmation on their application. It is never shown to the realtor, the landlord or in any report; the realtor sees nothing about age at all.
+
+    Does this meet s. 4? May a platform take the tenant's own yes as enough, or must anything more be asked or kept? Is refusing a guarantor under 18 in Ontario lawful? Does s. 4 reach a co applicant the same way as the applicant?
 
 ### 11.2 For Armin
 
