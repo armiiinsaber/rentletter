@@ -36,6 +36,7 @@ import { partyConfirmKey, partyFacts } from '../../lib/parties';
 import IntegrityChecks from './IntegrityChecks';
 import { integrityOf } from '../../lib/documentIntegrity';
 import { Pending } from '../brand/Loader';
+import { notShared } from '../../lib/referredCopy';
 
 const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
 const money = (n) => (n != null && n !== '' && Number.isFinite(Number(n)) ? `$${Number(n).toLocaleString('en-CA')}` : null);
@@ -120,7 +121,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     { key: 'employer', title: 'Income', said: app.annual_income ? `${money(householdIncomeOf(app))} a year${incomeIsJoint(app) ? ' (joint)' : ''}` : 'no income given', docs: incomeFact, verb: 'Called employer' },
     { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true, also: alsoSeen, note: GUIDANCE },
     { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' , note: GUIDANCE },
-    { key: 'reference', title: 'References', said: refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },
+    { key: 'reference', title: 'References', said: notShared(app, 'references') ? 'not shared' : refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },
     { key: null, title: 'Rent share', said: fit ? `${fit.ratio}% of income · your max ${maxPct}%` : 'unknown, no income or rent', docs: null },
     // Credit: the applicant's own report, read and shown, never scored (lib/creditShared.js).
     { key: null, title: 'Credit', credit: creditLines(report) },

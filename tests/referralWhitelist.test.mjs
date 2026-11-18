@@ -120,10 +120,10 @@ test('end to end: nothing planted reaches the consent list, Realtor 2\'s copy, t
     assert.equal(out.ok, true);
     const derived = kv.values[`app:${out.ref.referredApplicationNumber}`];
     clean(derived, 'the application made for Realtor 2');
-    assert.equal(derived.household.numberOfOccupants, '1', 'the form\'s blank, not the tenant\'s answer');
-    assert.equal(derived.coApplicant, null); assert.deepEqual(derived.references, []); assert.equal(derived.lifestyle.pets, null);
+    assert.equal(derived.household.numberOfOccupants, null, 'not shared: null, never the form\'s blank');
+    assert.equal(derived.coApplicant, null); assert.equal(derived.references, null); assert.equal(derived.lifestyle.pets, null);
     assert.equal(derived.employment.netIncome, null); assert.equal(derived.rental.currentRent, null);
-    assert.deepEqual(derived.tenant, { fullName: 'Maya Okafor', ageConfirmed: false, phone: '416 555 0101' }, 'no date of birth');
+    assert.deepEqual(derived.tenant, { fullName: 'Maya Okafor', ageConfirmed: null, phone: '416 555 0101' }, 'no date of birth, and the age confirmation is not shared, not failed');
     assert.deepEqual(Object.keys(derived.referral).sort(), ['approvedAt', 'factsSource', 'fromBrokerage', 'fromName', 'id', 'toEmail', 'toName'], 'who referred and when: no note, no document summary');
     assert.notEqual(derived.ownerToken, 'OWNERTOKENSECRET', 'a new owner token, never Realtor 1\'s');
     assert.equal(JSON.stringify(derived).includes('REALTOR1-LISTING'), false, 'nothing about Realtor 1\'s listing');
@@ -188,7 +188,7 @@ test('older rows: a stored note, document summary and household size stay stored
     // (No database in this test: the write to KV happens first, then the library stops.)
     await assert.rejects(R.assignReferral(kv.values[`referral:${OLD_ID}`], { id: 'L2', name: '30 Bay St', monthly_rent: 2500, bedrooms: 2 }, REALTOR2), /Supabase is not configured/);
     const next = kv.values[`app:${OLD_RL}`];
-    assert.equal(next.household.numberOfOccupants, '1'); assert.equal(next.coApplicant, null); assert.deepEqual(next.references, []); assert.equal(next.lifestyle.pets, null); assert.equal(next.employment.netIncome, null);
+    assert.equal(next.household.numberOfOccupants, null); assert.equal(next.coApplicant, null); assert.equal(next.references, null); assert.equal(next.lifestyle.pets, null); assert.equal(next.employment.netIncome, null);
     assert.equal('dateOfBirth' in next.tenant, false);
     assert.equal(next.apartment.estimatedRent, 2500, 'scored against Realtor 2\'s rent');
   } finally { kv.restore(); }
@@ -212,4 +212,156 @@ test('older rows: a stored note, document summary and household size stay stored
   assert.equal(JSON.stringify(list).includes(PLANTED.note) || JSON.stringify(list).includes(PLANTED.numberOfOccupants) || /SUMMARY-/.test(JSON.stringify(list)), false, 'the old note, summary and household size do not reach the realtor\'s browser');
   assert.equal(JSON.stringify(list).includes('OLDDERIVEDTOKEN'), false, 'and no owner token');
   assert.equal(db.tables.applications[0].referral_meta.note, PLANTED.note, 'the stored row is untouched');
+});
+
+// ── what was not shared is not shared: never the apply form's blank ─────────────────────────────
+const WORDS = /\bage\b|occupant|household|smok|\bpets?\b|co.?applicant/i;
+
+test('a referred copy stores what was not shared as null, and no screen, report, check or Fit reads a blank', async () => {
+  const R = await import('../lib/referrals.js');
+  const C = await import('../lib/referredCopy.js');
+  const { emailKey } = await import('../lib/tenantProfileStore.js');
+  const { upsertApplication, linkApplicantToListing, fetchListingApplicants } = await import('../lib/supabaseBridge.js');
+  const { computeFit } = await import('../lib/fitScore.js');
+  const { synthesisFacts, synthesisLine } = await import('../lib/applicantSynthesis.js');
+  const { screenableFacts } = await import('../lib/applicantAnalysis.js');
+  const { buildSnapshot } = await import('../lib/reportSnapshot.js');
+  const { rowToForm } = await import('../lib/pipelinePrefill.js');
+
+  // The copy as stored in KV: the tenant typed a household of 7, a smoker answer, pets, references.
+  const { moveInDate, ...noMoveIn } = FACTS; void moveInDate;
+  const run = async (facts) => {
+    const kv = fakeKv({ [`app:${SOURCE_RL}`]: sourceApp(), [`tprofile:${emailKey('maya@mail.ca')}`]: { id: 'dddddddd-0000-4000-8000-000000000001', email: 'maya@mail.ca', emailKey: emailKey('maya@mail.ca'), facts: { ...EMPTY_FORM, ...facts, ...PLANTED, moveInDate: facts.moveInDate || '' }, factsUpdatedAt: '2026-11-10T15:00:00.000Z', applications: [], profileRevision: 2 } });
+    try { const { token } = await R.createReferral({ fromProfile: REALTOR1, fromListing: LISTING1, link: LINK, toName: 'Priya Patel', toEmail: REALTOR2.email }); const out = await R.decideReferral(token, true); return kv.values[`app:${out.ref.referredApplicationNumber}`]; } finally { kv.restore(); }
+  };
+  const derived = await run(FACTS);
+  assert.deepEqual(derived.household, { numberOfOccupants: null, smoker: null, evParkingNeeded: null }, 'household size and the smoker answer: not shared, never "1" and "no"');
+  assert.equal(derived.tenant.ageConfirmed, null, 'age of majority: not shared, never a failed confirmation');
+  assert.equal(derived.references, null, 'references: not shared, never an empty list');
+  assert.equal(derived.coApplicant, null); assert.equal(derived.lifestyle.pets, null);
+  assert.deepEqual([derived.employment.netIncome, derived.employment.netIncomeSource, derived.employment.businessName, derived.rental.currentRent], [null, null, null, null], 'no "estimated" label for an income that was not shared');
+  assert.equal(derived.move.moveInDate, 'January 1, 2027', 'a whitelisted fact the tenant gave');
+  assert.equal(derived.profileRevision, 0);
+  const noDate = await run(noMoveIn);
+  assert.equal(noDate.move.moveInDate, null, 'no move in date given: null, never "as soon as possible"');
+  assert.equal(JSON.stringify(noDate).includes('as soon as possible'), false);
+
+  // The row as written, then as a realtor reads it.
+  const db = fakeSupabase({ listings: [{ id: 'L2', profile_id: REALTOR2.id, monthly_rent: 2500, pref_rent_to_income_max_pct: 40 }], listing_applicants: [], applications: [] });
+  const id = await upsertApplication(db, derived);
+  await linkApplicantToListing(db, 'L2', id, 'referral');
+  const stored = db.tables.applications[0];
+  assert.deepEqual([stored.age_confirmed, stored.number_of_occupants, stored.smoker, stored.references, stored.pets, stored.co_applicant, stored.net_income, stored.net_income_source, stored.current_rent], [null, null, null, null, null, null, null, null, null], 'stored as not shared');
+  const [seen] = await fetchListingApplicants(db, 'L2');
+  const app = seen.application;
+  for (const c of C.UNSHARED_COLUMNS) { assert.equal(app[c], null, `${c} reads null`); assert.equal(C.notShared(app, c), true, `${c} is not shared`); }
+  assert.equal(C.notShared(app, 'annual_income'), false); assert.equal(app.annual_income, 84000); assert.equal(app.prev_landlord_name, 'Lee Park');
+  assert.equal(JSON.stringify(seen).includes('OWNERTOKEN') || 'owner_token' in app, false, 'no owner token on the realtor side');
+
+  // A row written before this rule holds the blanks. Unedited by the tenant, they read null.
+  const blanks = { id: 'A9', application_number: 'RL-2026-B1A0-B1A0', full_name: 'Maya Okafor', email: 'maya@mail.ca', annual_income: 84000, employer: 'Northwind', job_title: 'Analyst', rent_to_income_ratio: 36, prev_landlord_name: 'Lee Park', years_at_previous: '2',
+    age_confirmed: false, number_of_occupants: '1', smoker: 'no', pets: null, references: [], co_applicant: null, net_income: null, net_income_source: null, current_rent: null, business_name: null, profile_revision: 0,
+    referral_meta: { id: 'x', fromName: 'Sarah Chen', fromBrokerage: 'Harbourfront Realty', approvedAt: '2026-11-11T15:00:00.000Z', factsSource: 'profile' } };
+  const cut = C.referredRowForRealtor(blanks);
+  assert.deepEqual([cut.age_confirmed, cut.number_of_occupants, cut.smoker, cut.references], [null, null, null, null], 'never false, "1", "no" or an empty list');
+  assert.equal(blanks.age_confirmed, false, 'the stored row is not changed');
+  // Once the tenant edits the copy from their own profile page, its answers are their own.
+  const own = C.referredRowForRealtor({ ...blanks, profile_revision: 2, smoker: 'outdoor', age_confirmed: true, references: [{ name: 'Ivy' }], number_of_occupants: '3' });
+  assert.deepEqual([own.smoker, own.age_confirmed, own.references.length], ['outdoor', true, 1]);
+  assert.equal(own.number_of_occupants, null, 'household size on a referred application is never read by a realtor');
+  assert.equal(C.referredRowForRealtor({ id: 'A1', number_of_occupants: '2', smoker: 'no' }).number_of_occupants, '2', 'an ordinary application is untouched');
+
+  // Fit: the same number, label and flags whether those answers are unknown or filled in. Nothing
+  // unshared is a fail, a flag or a missing pillar.
+  const listing = { id: 'L2', monthly_rent: 2500, pref_rent_to_income_max_pct: 40, pref_requires_landlord_reference: true };
+  const pick = (f) => ({ score: f.score, scoreExact: f.scoreExact, label: f.label, flags: f.flags, notAssessed: f.notAssessed, incomplete: f.incomplete, assessed: f.assessed, of: f.of });
+  const now = Date.parse('2026-11-18T15:00:00Z');
+  const unknown = computeFit({ application: cut, listing, verification: null, confirmations: {}, now });
+  const filled = computeFit({ application: { ...cut, age_confirmed: true, number_of_occupants: '3', smoker: 'yes', pets: 'two dogs', references: [{ name: 'Ivy' }, { name: 'Jo' }] }, listing, verification: null, confirmations: {}, now });
+  const blank = computeFit({ application: blanks, listing, verification: null, confirmations: {}, now });
+  assert.deepEqual(pick(unknown), pick(filled), 'Fit does not move with an unshared answer');
+  assert.deepEqual(pick(unknown), pick(blank));
+  assert.deepEqual(unknown.flags, [], 'no flag'); assert.doesNotMatch(JSON.stringify(pick(unknown)), WORDS);
+  assert.doesNotMatch(code('lib/fitScore.js'), /age_confirmed|ageConfirmed|number_of_occupants|\.smoker\b|\.pets\b/, 'Fit reads none of them');
+
+  // The card summary, the document analysis, the landlord report: references unknown, never 0.
+  assert.equal(synthesisFacts({ application: cut }).references, null);
+  assert.doesNotMatch(String(synthesisLine({ application: cut }) || ''), /no reference|0 reference/i);
+  assert.equal(synthesisFacts({ application: { ...cut, referral_meta: null, references: [] } }).references, 0, 'an ordinary application with none still counts 0');
+  assert.equal(screenableFacts(cut, listing).referencesProvided, null);
+  assert.equal(screenableFacts({ references: [] }, listing).referencesProvided, 0);
+  const snap = buildSnapshot({ listing: { ...listing, address: '30 Bay St', name: '30 Bay St' }, applicants: [{ linkId: 'J9', decisionStatus: 'none', withdrawnAt: null, confirmations: {}, application: { ...cut, fit: unknown } }], profile: { id: 'P2', full_name: 'Priya Patel' } });
+  const person = JSON.parse(JSON.stringify(snap)).applicants ? snap.applicants[0] : null;
+  assert.ok(person, 'the referred applicant is on the report'); assert.equal(person.numbers.references, null);
+  assert.doesNotMatch(JSON.stringify(snap), WORDS, 'the report says nothing about age, household, smoking or pets');
+  assert.match(src('lib/landlordReportPdf.js'), /\['REFERENCES', n\.references === null \? 'not shared' : String\(n\.references \|\| 0\)\]/);
+  assert.match(src('pages/r/[token].js'), /\['References', n\.references === null \? 'not shared' : String\(n\.references \|\| 0\)\]/);
+
+  // The screens: "Not shared", never "Non-smoker", "None", "0 provided" or "none".
+  const view = src('components/dashboard/ListingView.js');
+  assert.match(view, /\['Smoker', notShared\(app, 'smoker'\) \? NOT_SHARED : smokerLabel\]/);
+  assert.match(view, /\['Pets', notShared\(app, 'pets'\) \? NOT_SHARED : \(app\.pets \|\| 'None'\)\]/);
+  assert.match(view, /\['References', referenceCount\(app\) == null \? NOT_SHARED :/);
+  assert.equal(C.NOT_SHARED, 'Not shared');
+  assert.match(src('components/dashboard/ScreeningChecklist.js'), /said: notShared\(app, 'references'\) \? 'not shared' : refs \?/);
+  // No realtor screen, route or email shows an age confirmation or a household size at all.
+  for (const p of ['components/dashboard/ListingView.js', 'components/dashboard/ScreeningChecklist.js', 'components/dashboard/CompareTenants.js', 'components/dashboard/ReferralInbox.js', 'components/dashboard/ReferralCaution.js', 'lib/reportSnapshot.js', 'lib/landlordReportPdf.js', 'pages/r/[token].js', 'lib/referralEmails.js']) assert.doesNotMatch(code(p), /age_confirmed|ageConfirmed|number_of_occupants|numberOfOccupants/, `${p} reads no age confirmation and no household size`);
+
+  // The Pipeline prefill never ticks the age box from an answer that was not shared.
+  assert.equal(rowToForm(cut).ageConfirmed, false);
+  assert.equal(rowToForm({ id: 'A1', application_number: 'RL-1', age_confirmed: true }).ageConfirmed, true, 'an ordinary application is read as before');
+});
+
+test('a note planted in a KV referral record reaches no realtor facing output, and is not deleted', async () => {
+  const R = await import('../lib/referrals.js');
+  const { emailKey } = await import('../lib/tenantProfileStore.js');
+  const crypto = await import('node:crypto');
+  const ID = 'ffffffff-0000-4000-8000-00000000000f'; const RL = 'RL-2026-N0TE-N0TE'; const TOKEN = 'consent-token-of-at-least-twenty-chars';
+  const summary = { analyzedAt: '2026-09-01T15:00:00Z', verified: false, reason: 'SUMMARY-name_mismatch', incomeFigure: 'SUMMARY-$84,000', employerName: 'SUMMARY-Northwind', credit: { band: 'SUMMARY-credit' }, forListing: 'SUMMARY-9 King St' };
+  const record = (status) => ({ id: ID, status, from: { profileId: REALTOR1.id, name: 'Sarah Chen', brokerage: 'Harbourfront Realty', listingId: LISTING1.id, linkId: LINK.linkId }, to: { email: REALTOR2.email, name: 'Priya Patel', profileId: null },
+    note: PLANTED.note, verification: summary, sourceApplicationNumber: SOURCE_RL, applicantEmail: 'maya@mail.ca', applicantEmailKey: emailKey('maya@mail.ca'), applicantName: 'Maya Okafor',
+    referredApplicationNumber: status === 'approved' ? RL : null, assignedListingId: null, assignedAt: null, createdAt: '2026-11-15T15:00:00.000Z', decidedAt: status === 'approved' ? '2026-11-16T15:00:00.000Z' : null, expiresAt: '2099-01-01T00:00:00.000Z', factsSource: 'snapshot' });
+  const leaked = (value, what) => { const text = JSON.stringify(value); assert.equal(text.includes(PLANTED.note), false, `${what}: the stored note was read`); assert.equal(/SUMMARY-/.test(text), false, `${what}: the stored document summary was read`); assert.equal(text.includes(PLANTED.numberOfOccupants), false, `${what}: the stored household size was read`); };
+  const seed = (status) => {
+    const kv = fakeKv({ [`referral:${ID}`]: record(status), [`app:${SOURCE_RL}`]: sourceApp(), [`app:${RL}`]: { ...sourceApp(), applicationNumber: RL, ownerToken: 'DERIVEDTOKEN', referral: { id: ID, fromName: 'Sarah Chen', note: PLANTED.note, verification: summary } }, [`rconsent:${crypto.createHash('sha256').update(TOKEN).digest('hex')}`]: { referralId: ID } });
+    for (const key of [`referrals_to:${emailKey(REALTOR2.email)}`, `referrals_from:${REALTOR1.id}`, `referrals_app:${emailKey('maya@mail.ca')}`]) kv.store.lists[key] = [ID];
+    return kv;
+  };
+  features.overrideFeature('referrals', true);
+  let kv = seed('approved');
+  try {
+    // Every reader of referral:{id}.
+    for (const [what, read] of [['getReferral', () => R.getReferral(ID)], ['listFromRealtor', () => R.listFromRealtor(REALTOR1.id)], ['listToEmail', () => R.listToEmail(REALTOR2.email)], ['listForApplicant', () => R.listForApplicant('maya@mail.ca')], ['referralForToken', () => R.referralForToken(TOKEN)], ['inboxFor', () => R.inboxFor(REALTOR2)]]) {
+      const got = await read();
+      assert.ok(got && (Array.isArray(got) ? got.length === 1 : got.id === ID), `${what} finds the referral`);
+      leaked(got, what);
+      for (const r of Array.isArray(got) ? got : [got]) { assert.equal('note' in r, false, `${what}: no note key`); assert.equal('verification' in r, false, `${what}: no summary key`); assert.deepEqual({ ...r }.note, undefined, `${what}: a spread copy carries none`); }
+    }
+    // The dashboard's two lists (lib/dashboardSignals.js) and the sent list route build from these.
+    const { default: consent } = await import('../pages/api/referrals/consent.js');
+    const page = res(); await consent({ method: 'GET', query: { t: TOKEN }, headers: {} }, page);
+    assert.equal(page.code, 200); leaked(page.body, 'the consent route');
+    // A write through the library keeps what was stored: nothing is deleted.
+    assert.equal(await R.claimReferrals(REALTOR2), 1);
+    assert.equal(kv.values[`referral:${ID}`].note, PLANTED.note); assert.deepEqual(kv.values[`referral:${ID}`].verification, summary);
+    assert.equal(kv.values[`referral:${ID}`].to.profileId, REALTOR2.id, 'and the write itself landed');
+  } finally { kv.restore(); }
+
+  // A pending one: the tenant approves. What the route emails from, and the copy made, carry none.
+  kv = seed('pending');
+  try {
+    const out = await R.decideReferral(TOKEN, true);
+    assert.equal(out.ok, true); leaked(out.ref, 'the referral the emails are built from'); leaked(out.app, 'the copy made for Realtor 2');
+    leaked(await R.inboxFor(REALTOR2), 'the inbox after approval');
+    assert.equal(kv.values[`referral:${ID}`].note, PLANTED.note, 'still stored after the approval was saved');
+    assert.equal(kv.values[`referral:${ID}`].status, 'approved');
+  } finally { kv.restore(); features.overrideFeature('referrals'); }
+
+  // One door: no file reads a referral:{id} record except lib/referrals.js readReferral.
+  const { readdirSync, statSync } = await import('node:fs');
+  const walk = (dir, out = []) => { for (const f of readdirSync(new URL(`../${dir}`, import.meta.url))) { const p = `${dir}/${f}`; if (statSync(new URL(`../${p}`, import.meta.url)).isDirectory()) walk(p, out); else if (/\.js$/.test(f)) out.push(p); } return out; };
+  const readers = [...walk('lib'), ...walk('pages'), ...walk('components')].filter((p) => /(kvGet|kvGetJson|kvMgetJson)\(`referral:/.test(src(p)) || /get\/referral:/.test(src(p)));
+  assert.deepEqual(readers, ['lib/referrals.js']);
+  assert.equal((code('lib/referrals.js').match(/kvGet\(`referral:/g) || []).length, 1, 'and that file reads it in one place, readReferral, which seals it');
+  assert.match(code('lib/referrals.js'), /async function readReferral\(id\) \{ return seal\(await kvGet\(`referral:\$\{id\}`\)\); \}/);
 });

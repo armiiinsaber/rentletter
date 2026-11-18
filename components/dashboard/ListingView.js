@@ -20,6 +20,7 @@ import { IntegrityLine } from '../../components/dashboard/IntegrityChecks';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
 import { computeFit, compareFit, capOf, fitLine } from '../../lib/fitScore';
 import { incomeIsJoint, householdIncomeOf } from '../../lib/jointIncome';
+import { notShared, NOT_SHARED, referenceCount } from '../../lib/referredCopy';
 import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
@@ -796,7 +797,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       employmentType: ({ 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' })[app.employment_type] || employmentTypeFromTitle(app.job_title),
       yearsAtAddress: toNum(app.years_at_previous),
       currentRent: toNum(app.current_rent),
-      references: Array.isArray(app.references) ? app.references.length : null,
+      references: Array.isArray(app.references) && !notShared(app, 'references') ? app.references.length : null,
       moveInDate: app.move_in_date || null,
       smoker: smokerLabel(app.smoker),
       pets: app.pets || null,
@@ -902,7 +903,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const incomeRows = present([
       ['Income (before tax)', app.annual_income ? `${money(householdIncomeOf(app))}/yr${incomeIsJoint(app) ? ' (joint)' : ''}` : null],
       ['Applicant alone', incomeIsJoint(app) ? `${money(app.annual_income)}/yr` : null],
-      ['After tax', app.net_income ? `${money(app.net_income)}/yr${app.net_income_source === 'stated' ? ' (stated)' : ' (estimate)'}` : null],
+      ['After tax', notShared(app, 'net_income') ? NOT_SHARED : app.net_income ? `${money(app.net_income)}/yr${app.net_income_source === 'stated' ? ' (stated)' : ' (estimate)'}` : null],
       [app.employment_type === 'self-employed' ? 'Business' : 'Employer', app.employer ? `${app.employer}${app.employment_type ? ` · ${EMP_LABEL[app.employment_type] || app.employment_type}` : ''}` : null],
       ['Role', app.job_title || null],
       ['Tenure', app.years_at_job ? `${app.years_at_job} yrs` : null],
@@ -912,16 +913,18 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       ['Credit', (() => { const c = creditLines(a.docVerifications); return c.shared ? [c.label, c.lines[0]].filter(Boolean).join(' · ') : c.label; })()],
     ]);
     const tenancyRows = present([
-      ['Current rent', app.current_rent ? `${money(app.current_rent)}/mo` : null],
+      ['Current rent', notShared(app, 'current_rent') ? NOT_SHARED : app.current_rent ? `${money(app.current_rent)}/mo` : null],
       ['Years at address', app.years_at_previous ? `${app.years_at_previous} yrs` : null],
       // Landlord reference capture from the apply form (existing columns prev_landlord_name / prev_landlord_contact).
       ['Landlord reference', app.prev_landlord_name ? [app.prev_landlord_name, app.prev_landlord_contact].filter(Boolean).join(' · ') : 'None on file'],
-      ['References', Array.isArray(app.references) ? `${app.references.length} provided` : null],
+      ['References', referenceCount(app) == null ? NOT_SHARED : Array.isArray(app.references) ? `${app.references.length} provided` : null],
     ]);
     const livingRows = present([
       ['Move in', app.move_in_date || null],
-      ['Smoker', smokerLabel],
-      ['Pets', app.pets || 'None'],
+      // A referred copy (lib/referredCopy.js): what the tenant did not share reads "Not shared",
+      // never the form's blank ("Non-smoker", "None").
+      ['Smoker', notShared(app, 'smoker') ? NOT_SHARED : smokerLabel],
+      ['Pets', notShared(app, 'pets') ? NOT_SHARED : (app.pets || 'None')],
     ]);
     // The rank one active card carries the red edge; everyone else sits on the rule colour.
     const first = rank === 1 && !isSetAside;
