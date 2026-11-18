@@ -190,3 +190,17 @@
 --                          (lib/signupSource.js SIGNUP_SOURCE; tests/signupSource.test.mjs compares
 --                          the two). Written once by the server; the trigger
 --                          profiles_keep_signup_source keeps it as it was on a browser role's update.
+--
+-- ── applications: the reuse record (db/014-prefill-record.sql) ───────────────────────────────
+--   prefill_source            text, nullable   CHECK applications_prefill_source_check: null, or
+--                             none, profile, previous_application, pipeline_invite, pass_on
+--                             (lib/prefillRecord.js PREFILL_SOURCES; tests/prefillRecord.test.mjs
+--                             compares the two). Null is an application from before db/014.
+--   prefill_profile_id        uuid, nullable, no foreign key: the tenant profile the form was
+--   prefill_profile_revision  integer, nullable   filled from and its revision, set together
+--                             for profile and pass_on only (applications_prefill_profile_pair).
+--   email_verified_at_submit  timestamptz, nullable: when the signed in tenant proved the
+--                             application's email. Null when nobody was signed in with it.
+--   reused_checks             text[], nullable: document check kinds sent from the profile.
+--   Written once per application by the service role (pages/api/applications/mirror.js); read
+--   by lib/kpiStore.js for lib/kpis.js profileReuse.

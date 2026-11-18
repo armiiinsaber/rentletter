@@ -47,6 +47,7 @@ const FILES = {
   m011: 'db/011-document-content-hash.sql',
   m012: 'db/012-board-details.sql',
   m013: 'db/013-kpi-daily.sql',
+  m014: 'db/014-prefill-record.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -532,6 +533,63 @@ async function run013(db, tag) {
   check(same(await rows(db, 'SELECT * FROM public.profiles ORDER BY id'), before.map((r) => ({ ...r, signup_source: null }))), `${tag}2: put back, every profile is what it was, with an empty first touch`);
 }
 
+// ── db/014-prefill-record.sql ───────────────────────────────────────────────────────────────
+// applications gains the five nullable columns of the reuse record, with no default, and three
+// named checks. Every existing application reads null in all five (unknown, never a reuse) and
+// no other column of any application moves. A second run changes nothing.
+const PREFILL_COLUMNS = [['prefill_source', 'text'], ['prefill_profile_id', 'uuid'], ['prefill_profile_revision', 'integer'], ['email_verified_at_submit', 'timestamp with time zone'], ['reused_checks', 'ARRAY']];
+const PREFILL_CHECKS = ['applications_prefill_source_check', 'applications_prefill_profile_pair', 'applications_prefill_record_whole'];
+const PROFILE_ID = 'dddddddd-0000-4000-8000-000000000001';
+const applicationsCatalog = (db) => rows(db, "SELECT a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE a.attrelid = 'public.applications'::regclass AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attname");
+const applicationsConstraints = (db) => rows(db, "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'public.applications'::regclass ORDER BY conname");
+const applicationsIndexes = (db) => rows(db, "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'applications' ORDER BY indexname");
+async function check014(db, label) {
+  for (const [c, type] of PREFILL_COLUMNS) {
+    const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'applications' AND column_name = $1", [c]))[0];
+    check(col && col.data_type === type && col.is_nullable === 'YES' && col.column_default === null, `${label}: applications.${c} is nullable ${type} with no default`, JSON.stringify(col));
+  }
+  for (const name of PREFILL_CHECKS) check((await constraintCount(db, name)) === 1, `${label}: ${name} exists once`);
+  check((await one(db, "SELECT count(*)::int FROM pg_constraint WHERE conrelid = 'public.applications'::regclass AND contype = 'f' AND pg_get_constraintdef(oid) LIKE '%prefill_profile_id%'")) === 0, `${label}: prefill_profile_id carries no foreign key`);
+  check((await one(db, "SELECT count(*)::int FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'applications' AND indexname = 'applications_prefill_profile_idx'")) === 1, `${label}: the index on prefill_profile_id exists once`);
+  const set = (cols, id = app(1)) => db.query(`UPDATE public.applications SET prefill_source = $2, prefill_profile_id = $3, prefill_profile_revision = $4, email_verified_at_submit = $5, reused_checks = $6 WHERE id = $1`, [id, cols.source ?? null, cols.profile ?? null, cols.revision ?? null, cols.verified ?? null, cols.checks ?? null]);
+  const wrong = async (cols, name, what) => { let message = ''; try { await set(cols); message = '(not refused)'; } catch (e) { message = String(e.message || e); } check(new RegExp(name).test(message), `${label}: ${what} is refused`, message); };
+  await wrong({ source: 'typed' }, 'applications_prefill_source_check', 'a source outside the list');
+  await wrong({ source: 'profile' }, 'applications_prefill_profile_pair', 'a profile source with no profile');
+  await wrong({ source: 'profile', profile: PROFILE_ID }, 'applications_prefill_profile_pair', 'a profile source with no revision');
+  await wrong({ source: 'pass_on', profile: PROFILE_ID, revision: -1 }, 'applications_prefill_profile_pair', 'a negative revision');
+  await wrong({ source: 'none', profile: PROFILE_ID, revision: 2 }, 'applications_prefill_profile_pair', 'a profile on an application typed fresh');
+  await wrong({ source: 'pipeline_invite', profile: PROFILE_ID, revision: 2 }, 'applications_prefill_profile_pair', 'a profile on a pipeline invite');
+  await wrong({ profile: PROFILE_ID, revision: 2 }, 'applications_prefill_profile_pair', 'a profile with no source');
+  await wrong({ source: 'none', checks: [] }, 'applications_prefill_record_whole', 'document checks with no profile');
+  await wrong({ verified: '2026-11-17T15:00:00Z' }, 'applications_prefill_record_whole', 'a proved email with no source');
+  const good = [
+    { source: 'none' }, { source: 'none', verified: '2026-11-17T15:00:00Z' }, { source: 'previous_application' }, { source: 'pipeline_invite' },
+    { source: 'profile', profile: PROFILE_ID, revision: 0, checks: [] }, { source: 'profile', profile: PROFILE_ID, revision: 3, verified: '2026-11-17T15:00:00Z', checks: ['income_annual_gross'] },
+    { source: 'pass_on', profile: PROFILE_ID, revision: 1, verified: '2026-11-17T15:00:00Z', checks: [] },
+  ];
+  for (const g of good) { await set(g); const r = (await rows(db, 'SELECT prefill_source, prefill_profile_id, prefill_profile_revision FROM public.applications WHERE id = $1', [app(1)]))[0]; check(r.prefill_source === g.source && r.prefill_profile_id === (g.profile ?? null) && r.prefill_profile_revision === (g.revision ?? null), `${label}: ${g.source}${g.profile ? ' with its profile' : ''}${g.verified ? ' and a proved email' : ''} is kept`, JSON.stringify(r)); }
+  await set({});
+}
+async function run014(db, tag) {
+  const strip = (list) => list.map((r) => { const o = { ...r }; for (const [c] of PREFILL_COLUMNS) delete o[c]; return o; });
+  const before = await rows(db, 'SELECT * FROM public.applications ORDER BY id');
+  await step(db, `${tag}1`, FILES.m014);
+  check((await one(db, 'SELECT count(*)::int FROM public.applications WHERE prefill_source IS NOT NULL OR prefill_profile_id IS NOT NULL OR prefill_profile_revision IS NOT NULL OR email_verified_at_submit IS NOT NULL OR reused_checks IS NOT NULL')) === 0, `${tag}1: every existing application reads unknown (null) in all five columns`);
+  check(same(strip(await rows(db, 'SELECT * FROM public.applications ORDER BY id')), before), `${tag}1: no other column of any application moved`);
+  await check014(db, `${tag}1`);
+  await db.query("UPDATE public.applications SET prefill_source = 'profile', prefill_profile_id = $2, prefill_profile_revision = 4, email_verified_at_submit = '2026-11-17T15:00:00Z', reused_checks = '{}' WHERE id = $1", [app(2), PROFILE_ID]);
+  const shape = await applicationsCatalog(db); const constraints = await applicationsConstraints(db); const indexes = await applicationsIndexes(db);
+  await step(db, `${tag}2 (014 again)`, FILES.m014);
+  check(same(await applicationsCatalog(db), shape), `${tag}2: a second run leaves every column of applications, its type, NOT NULL and default as they were`);
+  check(same(await applicationsConstraints(db), constraints), `${tag}2: and every constraint`);
+  check(same(await applicationsIndexes(db), indexes), `${tag}2: and every index`);
+  const kept = (await rows(db, 'SELECT prefill_source, prefill_profile_id, prefill_profile_revision, reused_checks FROM public.applications WHERE id = $1', [app(2)]))[0];
+  check(kept.prefill_source === 'profile' && kept.prefill_profile_id === PROFILE_ID && kept.prefill_profile_revision === 4 && Array.isArray(kept.reused_checks) && kept.reused_checks.length === 0, `${tag}2: a record written before the second run is still there`, JSON.stringify(kept));
+  await check014(db, `${tag}2`);
+  await db.query('UPDATE public.applications SET prefill_source = NULL, prefill_profile_id = NULL, prefill_profile_revision = NULL, email_verified_at_submit = NULL, reused_checks = NULL WHERE id = $1', [app(2)]);
+  check(same(strip(await rows(db, 'SELECT * FROM public.applications ORDER BY id')), before), `${tag}2: put back, every application is what it was`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -629,6 +687,7 @@ async function pathA() {
   await run011(db, 'A6');
   await run012(db, 'A7');
   await run013(db, 'A8');
+  await run014(db, 'A10');
   await db.close();
 }
 
@@ -666,6 +725,7 @@ async function pathB() {
   await run011(db, 'B13');
   await run012(db, 'B14');
   await run013(db, 'B15');
+  await run014(db, 'B16');
   return { db, before };
 }
 

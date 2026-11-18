@@ -50,7 +50,24 @@ export async function getServerSideProps(ctx) {
     const nonce = (cookieHeader.match(new RegExp(`(?:^|;\\s*)${PREFILL_COOKIE}=([^;]+)`)) || [])[1] || null;
     const r = await readPrefill(getSupabaseAdminClient(), from, { nonce: nonce ? decodeURIComponent(nonce) : null });
     if (r && r.nonce) ctx.res.setHeader('Set-Cookie', `${PREFILL_COOKIE}=${encodeURIComponent(r.nonce)}; Path=/apply/${encodeURIComponent(String(ctx.params?.token || ''))}; Max-Age=172800; HttpOnly; SameSite=Lax${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`);
-    return { props: { invited: r ? { token: from, form: rowToForm(r.application) } : null } };
+    if (!r) return { props: { invited: null } };
+    // Where the answers come from is recorded at submit (lib/prefillRecord.js, db/014). When the
+    // invited person has a profile with saved answers, the form is filled from the profile (their
+    // newest answers) and the ticket says so, bound to that email; otherwise from the application
+    // the realtor kept, as before. The ticket is minted here, on the server; it holds no fact.
+    let form = rowToForm(r.application); let ticket = null;
+    try {
+      const { getProfileByEmail, cleanFacts } = await import('../../lib/tenantProfileStore');
+      const { mintTicket, emailHash, PREFILL_SOURCE } = await import('../../lib/prefillRecord');
+      const email = String(r.application.email || '').trim().toLowerCase();
+      const profile = email ? await getProfileByEmail(email) : null;
+      if (profile && profile.facts && String(profile.email || '').trim().toLowerCase() === email) {
+        form = { ...cleanFacts(profile.facts), email };
+        ticket = await mintTicket({ source: PREFILL_SOURCE.PROFILE, bound: 'email', profileId: profile.id, revision: Number(profile.profileRevision) || 0, emailKey: emailHash(email) });
+      }
+      if (!ticket) ticket = await mintTicket({ source: PREFILL_SOURCE.PIPELINE_INVITE, bound: 'none' });
+    } catch (e) { form = rowToForm(r.application); ticket = null; }
+    return { props: { invited: { token: from, form, ticket: ticket || null } } };
   } catch (e) {
     console.error('[apply] prefill failed:', e?.message || e);
     return { props: { invited: null } };
@@ -94,6 +111,10 @@ export default function ApplyPage({ invited = null }) {
   // done page shows only once the mirror answered. saveHeld: every try failed, Try again shows.
   const [status, setStatus] = useState('loading');
   const [saveHeld, setSaveHeld] = useState(false);
+  // The single use ticket the server handed over when the form was filled from somewhere
+  // (lib/prefillRecord.js): sent with the submission, so the record of where the answers came from
+  // is the server's. null: typed fresh.
+  const prefillTicket = useRef(invited && invited.ticket ? invited.ticket : null);
   const generated = useRef(null); // { applicationNumber, ownerToken, emailSig, token } from /api/generate
   const [invalidMsg, setInvalidMsg] = useState('');
   const [rented, setRented] = useState(null);       // { realtorName, listingName } when the unit is gone
@@ -163,6 +184,16 @@ export default function ApplyPage({ invited = null }) {
         j = await r.json().catch(() => ({}));
         if (!r.ok || !j?.form) throw new Error(j?.error || 'Could not load your saved profile.');
       }
+      // The server says where these answers came from: a ticket for the signed in profile, or for
+      // the application kept on this device. No ticket (the call failed) reads as typed fresh.
+      try {
+        const tr = await fetch('/api/tenant/prefill-ticket', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(saved.source === 'profile' ? { source: 'profile' } : { source: 'previous_application', applicationNumber: saved.app, ownerToken: saved.token }),
+        });
+        const tj = await tr.json().catch(() => ({}));
+        prefillTicket.current = tr.ok && tj && tj.ok && tj.ticket ? tj.ticket : null;
+      } catch (e) { prefillTicket.current = null; }
       // Everything about the tenant comes from the profile; the UNIT facts stay from this invite.
       setForm((f) => ({ ...EMPTY_FORM, ...j.form, apartmentAddress: f.apartmentAddress, apartmentDescription: f.apartmentDescription }));
       setTouched({}); setTriedSubmit(false); setError('');
@@ -398,7 +429,9 @@ export default function ApplyPage({ invited = null }) {
     setSaveHeld(false);
     setStatus('saving');
     const post = async (url, body) => {
-      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      // The mirror writes the application's row: the ticket rides with it and nowhere else.
+      const sent = url === '/api/applications/mirror' && prefillTicket.current ? { ...body, prefillTicket: prefillTicket.current } : body;
+      const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sent) });
       return { ok: r.ok, status: r.status, json: await r.json().catch(() => ({})) };
     };
     const out = await runSubmitChain({ post, token: g.token, applicationNumber: g.applicationNumber });

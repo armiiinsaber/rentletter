@@ -284,7 +284,7 @@ test('the store reads no tenant name or owner token, tolerates a missing audit t
   assert.deepEqual(Object.keys(data.profiles[0]).sort(), ['created_at', 'email', 'id', 'signup_source']);
   assert.ok(!JSON.stringify(data).includes('OWNERTOKENSECRET'));
   const selects = db.queries.filter((q) => q.table === 'applications').map((q) => q.select);
-  assert.deepEqual([...new Set(selects)], ['id, email']);
+  assert.deepEqual([...new Set(selects)], ['id, email, prefill_source, prefill_profile_id, email_verified_at_submit, reused_checks']);
   const c = await loadCommitment(fakeSupabase(tables()), NOW, { KPI_EXCLUDE_PROFILE_IDS: 'R1' });
   assert.equal(c.kpis.activeRealtors.mtd, 0);
   assert.doesNotMatch(src('lib/kpiStore.js'), /'[^'\n]*(owner_token|cover_letter|full_name|phone)[^'\n]*'/, 'no query string names a tenant column');
@@ -363,4 +363,102 @@ test('vercel.json runs each cron in the two UTC hours that are 06:00 and 08:00 i
 test('the trigger sentence, word for word', () => {
   assert.equal(K.TRIGGER_SENTENCE, 'When 30 realtors close 50 rentals a month through Rentletter for three straight months, and 100 tenants have reused their profile, I go full time and raise. If not by November 17, 2027, I decide again on purpose.');
   assert.match(src('components/admin/Commitment.js'), /<p className="cm-trigger">\{TRIGGER_SENTENCE\}<\/p>/);
+});
+
+// ── 1d, counted from the record (db/014-prefill-record.sql, lib/prefillRecord.js) ─────────────
+// One application: where its answers came from, the profile, and when its email was proved.
+const PROVED_AT = '2026-11-03T15:00:00Z';
+const fresh = { prefill_source: 'none', prefill_profile_id: null, email_verified_at_submit: null, reused_checks: null };
+const legacy = { prefill_source: null, prefill_profile_id: null, email_verified_at_submit: null, reused_checks: null };
+const reused = (profile, over = {}) => ({ prefill_source: 'profile', prefill_profile_id: profile, email_verified_at_submit: PROVED_AT, reused_checks: [], ...over });
+function tracked() {
+  const w = world(); w.d.prefillTracked = true;
+  const submit = (listing, at, email, record) => { const link = w.submit(listing, at, email); Object.assign(w.d.applications[w.d.applications.length - 1], record); return link; };
+  return { w, submit };
+}
+
+test('true reuse: a fresh application, a prefilled one, an unproved email and a legacy row', () => {
+  const { w, submit } = tracked(); w.realtor('R1').listing('L1', 'R1').listing('L2', 'R1');
+  submit('L1', '2026-11-04T15:00:00Z', 'maya@mail.ca', fresh);
+  assert.deepEqual(K.profileReuse(w.d), { count: 0, tracked: true, label: null, withDocuments: 0 }, 'typed fresh: nobody reused anything, and the label is gone');
+  submit('L2', '2026-11-06T15:00:00Z', 'maya@mail.ca', reused('P-maya'));
+  assert.deepEqual(K.profileReuse(w.d), { count: 1, tracked: true, label: null, withDocuments: 0 }, 'filled from her profile, her email proved at submit: one tenant');
+  submit('L1', '2026-11-06T15:00:00Z', 'omar@mail.ca', reused('P-omar', { email_verified_at_submit: null }));
+  assert.equal(K.profileReuse(w.d).count, 1, 'filled from a profile but the email was not proved at submit: not counted');
+  // A legacy tenant on two listings: the old count would have taken them; the record does not know.
+  submit('L1', '2026-05-02T15:00:00Z', 'lena@mail.ca', legacy); submit('L2', '2026-09-02T15:00:00Z', 'lena@mail.ca', legacy);
+  assert.equal(K.profileReuse(w.d).count, 1, 'null is unknown, never a reuse');
+  // The other sources are not the tenant reusing a profile.
+  submit('L1', '2026-11-07T15:00:00Z', 'ivy@mail.ca', { ...fresh, prefill_source: 'previous_application', email_verified_at_submit: PROVED_AT });
+  submit('L1', '2026-11-07T15:00:00Z', 'noor@mail.ca', { ...fresh, prefill_source: 'pipeline_invite', email_verified_at_submit: PROVED_AT });
+  submit('L1', '2026-11-07T15:00:00Z', 'sam@mail.ca', { ...fresh, email_verified_at_submit: PROVED_AT });
+  assert.equal(K.profileReuse(w.d).count, 1, 'one old application, a realtor\'s invite, and a proved email typed fresh: none is a reuse');
+  submit('L1', '2026-11-08T15:00:00Z', 'kai@mail.ca', reused('P-kai', { prefill_source: 'pass_on' }));
+  assert.equal(K.profileReuse(w.d).count, 2, 'a pass on made from the profile counts');
+  submit('L1', '2026-11-08T15:00:00Z', 'zoe@mail.ca', { ...reused('P-zoe'), prefill_profile_id: null });
+  assert.equal(K.profileReuse(w.d).count, 2, 'a source with no profile names nobody');
+  // The stricter number beside it: a reuse that carried a document check.
+  submit('L2', '2026-11-09T15:00:00Z', 'kai@mail.ca', reused('P-kai', { reused_checks: ['income_annual_gross'] }));
+  assert.deepEqual(K.profileReuse(w.d), { count: 2, tracked: true, label: null, withDocuments: 1 });
+});
+
+test('true reuse counts a tenant once: two listings of one realtor, or two realtors', () => {
+  const one = tracked(); one.w.realtor('R1').listing('L1', 'R1').listing('L2', 'R1');
+  one.submit('L1', '2026-10-04T15:00:00Z', 'maya@mail.ca', reused('P-maya')); one.submit('L2', '2026-11-06T15:00:00Z', 'maya@mail.ca', reused('P-maya'));
+  assert.equal(K.profileReuse(one.w.d).count, 1, 'the same tenant on two listings of one realtor: one');
+  const two = tracked(); two.w.realtor('R1').realtor('R2').listing('L1', 'R1').listing('L3', 'R2');
+  two.submit('L1', '2026-10-04T15:00:00Z', 'maya@mail.ca', reused('P-maya')); two.submit('L3', '2026-11-06T15:00:00Z', 'maya@mail.ca', reused('P-maya'));
+  assert.equal(K.profileReuse(two.w.d).count, 1, 'the same tenant with two realtors: one');
+  // One reuse is enough: no second listing is needed.
+  const once = tracked(); once.w.realtor('R1').listing('L1', 'R1');
+  once.submit('L1', '2026-11-06T15:00:00Z', 'maya@mail.ca', reused('P-maya'));
+  assert.equal(K.profileReuse(once.w.d).count, 1, 'a single application filled from the profile is a reuse');
+  // The tenant is the profile, not the email on the form.
+  const renamed = tracked(); renamed.w.realtor('R1').listing('L1', 'R1').listing('L2', 'R1');
+  renamed.submit('L1', '2026-10-04T15:00:00Z', 'maya@mail.ca', reused('P-maya')); renamed.submit('L2', '2026-11-06T15:00:00Z', 'maya.k@mail.ca', reused('P-maya'));
+  assert.equal(K.profileReuse(renamed.w.d).count, 1, 'one profile under two addresses: one');
+});
+
+test('true reuse leaves out the accounts and the applications every other metric leaves out', () => {
+  const { w, submit } = tracked(); w.realtor('R1').realtor('R2', { email: 'x@example.com' }).realtor('R3').listing('L1', 'R1').listing('L2', 'R2').listing('L3', 'R3');
+  submit('L2', '2026-11-06T15:00:00Z', 'maya@mail.ca', reused('P-maya')); // on a test account's listing
+  submit('L1', '2026-11-06T15:00:00Z', 'qa@example.com', reused('P-qa')); // a test tenant
+  submit('L3', '2026-11-06T15:00:00Z', 'omar@mail.ca', reused('P-omar')); // on a listing counted out by the env list
+  const draft = submit('L1', '2026-11-06T15:00:00Z', 'lena@mail.ca', reused('P-lena')); w.d.links.find((k) => k.id === draft).state = 'draft'; // never submitted
+  assert.equal(K.profileReuse(w.d, { excludeIds: K.parseExcludeIds('R3') }).count, 0);
+  assert.equal(K.profileReuse(w.d).count, 1, 'without the env list R3\'s listing counts');
+});
+
+test('the record at a fixed clock: the snapshot row, the tile and the email say tracked', async () => {
+  const { w, submit } = tracked(); w.realtor('R1').listing('L1', 'R1').listing('L2', 'R1');
+  submit('L1', '2026-11-04T15:00:00Z', 'maya@mail.ca', fresh); submit('L2', '2026-11-06T15:00:00Z', 'maya@mail.ca', reused('P-maya'));
+  const NOON = T('2026-11-17T17:00:00Z');
+  const k = K.computeKpis(w.d, NOON);
+  assert.deepEqual(k.profileReuse, { count: 1, tracked: true, label: null, withDocuments: 0, target: 100 });
+  const row = K.snapshotRow(k, NOON);
+  assert.deepEqual([row.profile_reuse, row.profile_reuse_tracked], [1, true]);
+  // The tile (components/admin/Commitment.js, JSX: read as source): tracked shows the count with
+  // "tenants, all time" and the stricter number beside it; untracked keeps the old label.
+  assert.ok(src('components/admin/Commitment.js').includes("note: k.profileReuse.tracked ? 'tenants, all time' : k.profileReuse.label, pairs: k.profileReuse.tracked ? [['With documents', k.profileReuse.withDocuments ?? 0]] : undefined,"), 'the tile drops "applied twice (reuse not yet tracked)" once tracked');
+  const mail = kpiEmail({ kpis: k, officeUrl: 'https://rentletter.ca/admin' });
+  assert.ok(mail.text.includes('Tenants who reused their profile: 1 (target 100)')); assert.ok(!mail.text.includes('not yet tracked'));
+  // The same rows before the record exists: the old count, with its label.
+  const before = { ...w.d, prefillTracked: false };
+  assert.deepEqual(K.profileReuse(before), { count: 1, tracked: false, label: 'applied twice (reuse not yet tracked)' });
+  assert.equal(K.computeKpis(before, NOON).profileReuse.label, 'applied twice (reuse not yet tracked)');
+});
+
+test('the store reads the record once db/014 has run, and the old columns alone before it', async () => {
+  const withRecord = tables(); withRecord.applications = withRecord.applications.map((a, i) => ({ ...a, ...(i === 0 ? reused('P-maya') : legacy), prefill_profile_revision: i === 0 ? 2 : null }));
+  const { data, missing } = await loadKpiData(fakeSupabase(withRecord));
+  assert.equal(data.prefillTracked, true); assert.deepEqual(missing, []);
+  assert.deepEqual(Object.keys(data.applications[0]).sort(), ['email', 'email_verified_at_submit', 'id', 'prefill_profile_id', 'prefill_source', 'reused_checks']);
+  assert.ok(!JSON.stringify(data).includes('OWNERTOKENSECRET'));
+  const c = await loadCommitment(fakeSupabase(withRecord), NOW, {});
+  assert.deepEqual([c.kpis.profileReuse.count, c.kpis.profileReuse.tracked], [1, true]);
+  // Before db/014: PostgREST refuses the unknown column, the store reads id and email, and the old count stands.
+  const refuses = fakeSupabase(tables(), { failWhen: (q) => (q.table === 'applications' && /prefill_source/.test(q.select || '') ? { code: '42703', message: 'column applications.prefill_source does not exist' } : null) });
+  const old = await loadKpiData(refuses);
+  assert.equal(old.data.prefillTracked, false); assert.deepEqual(Object.keys(old.data.applications[0]).sort(), ['email', 'id']);
+  assert.deepEqual(K.profileReuse(old.data), { count: 0, tracked: false, label: 'applied twice (reuse not yet tracked)' });
 });

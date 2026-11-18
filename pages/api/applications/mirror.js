@@ -3,6 +3,7 @@
 // was written to KV (generate.js) and linked to the invite (pages/api/invite/tag.js).
 // It mirrors the KV app:{RL} into Supabase `applications` (service-role) and links
 // it to the invite's listing via `listing_applicants` (added_via ADDED_VIA.INVITE).
+// It also records where the application's answers came from (lib/prefillRecord.js).
 //
 // Non-blocking by design: if Supabase isn't configured it no-ops with 200 so the
 // tenant flow is never affected. KV remains the source of truth for the tenant path.
@@ -16,9 +17,10 @@ import { checkSubmitLimits } from '../../../lib/rateLimit';
 import { upsertApplication, linkApplicantToListing } from '../../../lib/supabaseBridge';
 import { isApplicationNumber } from '../../../lib/applicationIds';
 import { kvReady, mintRequest, uploadUrl } from '../../../lib/docRequest';
+import { recordPrefill } from '../../../lib/prefillRecord';
 
 export function createHandler(deps = {}) {
-  const { admin: adminFactory = getSupabaseAdminClient, configured = () => isSupabaseConfigured() && !!process.env.SUPABASE_SERVICE_ROLE_KEY, kv = { get: kvGet, lrange: kvLrange, incr: kvIncr, expire: kvExpire, ready: kvReady }, record = recordForListing, mint = mintRequest, now = () => Date.now() } = deps;
+  const { admin: adminFactory = getSupabaseAdminClient, configured = () => isSupabaseConfigured() && !!process.env.SUPABASE_SERVICE_ROLE_KEY, kv = { get: kvGet, lrange: kvLrange, incr: kvIncr, expire: kvExpire, ready: kvReady }, record = recordForListing, mint = mintRequest, now = () => Date.now() , prefill = recordPrefill } = deps;
   return async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -66,6 +68,10 @@ export function createHandler(deps = {}) {
       .maybeSingle();
 
     const applicationId = await upsertApplication(admin, app);
+    // Where the answers came from, written once at submit (lib/prefillRecord.js, db/014): the
+    // ticket the apply page was handed when it filled the form, and the tenant session if one is
+    // signed in. No ticket reads as typed fresh. It never throws and never holds up the mirror.
+    await prefill(admin, { applicationId, ticketId: req.body?.prefillTicket || null, req });
     let linked = false;
     let docRequest = null;
     if (listing?.id) {

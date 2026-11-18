@@ -541,7 +541,7 @@ Notes:
 
 ```sql
 ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS prefill_source text;
-ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS prefill_profile_id uuid REFERENCES public.tenant_profiles(id) ON DELETE SET NULL;
+ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS prefill_profile_id uuid;
 ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS prefill_profile_revision integer;
 ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS email_verified_at_submit timestamptz;
 ALTER TABLE public.applications ADD COLUMN IF NOT EXISTS reused_checks text[];
@@ -554,12 +554,23 @@ DO $$ BEGIN
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'applications_prefill_profile_pair') THEN
     ALTER TABLE public.applications ADD CONSTRAINT applications_prefill_profile_pair CHECK (
-      (prefill_source IN ('profile','pass_on')) = (prefill_profile_id IS NOT NULL AND prefill_profile_revision IS NOT NULL)
-      OR prefill_source IS NULL
+      (prefill_source IS NOT NULL AND prefill_source IN ('profile','pass_on') AND prefill_profile_id IS NOT NULL AND prefill_profile_revision IS NOT NULL AND prefill_profile_revision >= 0)
+      OR ((prefill_source IS NULL OR prefill_source NOT IN ('profile','pass_on')) AND prefill_profile_id IS NULL AND prefill_profile_revision IS NULL)
+    );
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'applications_prefill_record_whole') THEN
+    ALTER TABLE public.applications ADD CONSTRAINT applications_prefill_record_whole CHECK (
+      (reused_checks IS NULL OR prefill_profile_id IS NOT NULL)
+      AND (prefill_source IS NOT NULL OR email_verified_at_submit IS NULL)
     );
   END IF;
 END $$;
 ```
+
+Built as `db/014-prefill-record.sql`. Two points where the first draft of this section was wrong, now matching the migration:
+
+* `prefill_profile_id` carries no foreign key. The draft had `REFERENCES tenant_profiles ON DELETE SET NULL` beside a check that a profile source always names its profile. The two contradict: deleting a profile would null the id, break the check, and the delete would be refused. A tenant's delete must never be stopped by an application already sent, so the check stays and the foreign key goes. The id is a random uuid that names nobody once the profile is gone.
+* The pair check is strict both ways: a profile source always names a profile and a revision, and no other source ever does.
 
 Section 5 says what each value means and who writes it.
 
@@ -982,7 +993,8 @@ Backups: a deleted profile leaves the live database at once and leaves backups w
 Profile reuse, target 100.
 
 * Fed by section 5. Every one tap application writes the record. Every pass on that reaches a listing writes it too.
-* The Pipeline invite prefilled from a profile counts. The Pipeline invite prefilled from an old application row does not: that is the realtor reusing, not the tenant.
+* A Pipeline invite filled from the tenant's profile is recorded as `profile`. It counts toward profile reuse only when the tenant's email is proved at submit, that is, when they are signed in with that address. The invite link alone does not prove it.
+* A Pipeline invite filled from an old application row is recorded as `pipeline_invite` and never counts: that is the realtor reusing, not the tenant.
 
 Referral share, target one third.
 
