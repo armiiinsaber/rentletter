@@ -12,12 +12,14 @@
 //      poster preview opens the poster.
 //   4. At 1280, 390 and 320 every block of text in the section holds one line or wraps balanced,
 //      with no lone word (tests/helpers/textLines.mjs), and the page is no wider than the screen.
-//   5. The poster: every word exactly; the sheet 816 by 1056 with 72px of padding; the two fonts
+//   5. The poster: the drawn wordmark first in the top row, 13px tall, its letters on the date's
+//      baseline, in its 44px link home; every word exactly; the sheet 816 by 1056 with 72px of padding; the two fonts
 //      loaded and set as specified; every gap as specified; every block balanced; at 390 and 320
 //      the sheet is smaller and the same lines hold the same words (nothing reflows); the two
 //      buttons, and Save as PDF calls window.print.
 //   6. Chrome only: page.pdf at Letter size is exactly one page, 612 by 792 points, with every word
-//      on it and nothing outside the sheet in print. Saved to /tmp/office/commitment-poster.pdf,
+//      on it, the wordmark drawn (its red bar, its link) and not set as text, and nothing outside
+//      the sheet in print. Saved to /tmp/office/commitment-poster.pdf,
 //      with a PNG of the printed sheet beside it.
 // Screenshots to /tmp/office/<engine>/. A WebKit walk fails, never skips, when the binary is missing.
 import { test, before, after } from 'node:test';
@@ -31,6 +33,7 @@ import { reap } from '../helpers/reap.mjs';
 import { readLines, assertBalanced, MARK_BLOCKS, pageProblems } from '../helpers/textLines.mjs';
 import { WIDER_THAN_VIEWPORT } from '../helpers/screens.mjs';
 import { TRIGGER_SENTENCE, monthName, monthOf, addMonths, daysLeft } from '../../lib/kpis.js';
+import { LOGO } from '../../lib/brand/logoPaths.js';
 
 const PORT = 3179; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -88,7 +91,7 @@ const tile = (page, key) => page.locator(`[data-tile="${key}"]`).evaluate((el) =
 }));
 
 const POSTER_WORDS = [
-  ['.po-top .po-caps:nth-child(1)', 'Rentletter'], ['.po-top .po-caps:nth-child(2)', 'Toronto, November 17, 2026'],
+  ['.po-top .po-caps:nth-child(2)', 'Toronto, November 17, 2026'],
   ['.po-when', 'When for three months in a row'],
   ['.po-cell:nth-child(1) .po-n', '30'], ['.po-cell:nth-child(1) .po-label', 'realtors use it every month'],
   ['.po-cell:nth-child(2) .po-n', '50'], ['.po-cell:nth-child(2) .po-label', 'rentals close through it every month'],
@@ -112,9 +115,27 @@ const POSTER_GEOMETRY = () => {
     top: box('.po-top'), rule2: box('.po-rule-2'), rule2Style: getComputedStyle(sheet.querySelector('.po-rule-2')).borderTop, when: box('.po-when'), gridBox: box('.po-grid'), then: box('.po-then'), withBox: box('.po-with'),
     footRule: box('footer > .po-rule-1'), footRuleStyle: getComputedStyle(sheet.querySelector('footer > .po-rule-1')).borderTop, foot: box('.po-foot'), ifnot: box('.po-ifnot'), sign: box('.po-sign'), signRule: box('.po-sign .po-rule-1'), name: box('.po-name'),
     n: box('.po-cell:nth-child(1) .po-n'), label: box('.po-cell:nth-child(1) .po-label'), footer: box('footer'),
-    fonts: { caps: cs('.po-top .po-caps:nth-child(1)'), capsQuiet: cs('.po-top .po-caps:nth-child(2)'), when: cs('.po-when'), n: cs('.po-n'), label: cs('.po-label'), then: cs('.po-then'), with: cs('.po-with'), ifnot: cs('.po-ifnot'), name: cs('.po-name') },
+    fonts: { capsQuiet: cs('.po-top .po-caps:nth-child(2)'), when: cs('.po-when'), n: cs('.po-n'), label: cs('.po-label'), then: cs('.po-then'), with: cs('.po-with'), ifnot: cs('.po-ifnot'), name: cs('.po-name') },
     loaded: { archivo: document.fonts.check('800 132px Archivo') && [...document.fonts].some((f) => /Archivo/.test(f.family) && f.status === 'loaded'), newsreader: [...document.fonts].some((f) => /Newsreader/.test(f.family) && f.status === 'loaded') },
     blocksWithBalance: [...sheet.querySelectorAll('.po-caps, .po-when, .po-n, .po-label, .po-then, .po-with, .po-ifnot')].every((el) => { const st = getComputedStyle(el); return /balance/.test(st.textWrap || st.getPropertyValue('text-wrap') || st.getPropertyValue('text-wrap-style') || ''); }),
+  };
+};
+// The top row's first item: the drawn wordmark (components/ui.js Wordmark) in its link home. Where
+// its letters' baseline falls (LOGO.baseline of LOGO.h down the mark) against the date's own
+// baseline (a zero size inline block at the end of the date's text sits on it), and its 44px target.
+const POSTER_MARK = ({ baseline, h }) => {
+  const sheet = document.querySelector('[data-poster]'); const origin = sheet.getBoundingClientRect(); const r2 = (n) => Math.round(n * 1000) / 1000;
+  const row = sheet.querySelector('.po-top'); const a = row.firstElementChild; const svg = a && a.querySelector('svg.rl-wordmark');
+  if (!svg) return { tag: a && a.tagName, svg: false };
+  const q = svg.getBoundingClientRect(); const l = a.getBoundingClientRect(); const date = row.querySelector('.po-caps:nth-child(2)');
+  const probe = document.createElement('span'); probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline'; date.appendChild(probe);
+  const dateBaseline = probe.getBoundingClientRect().bottom - origin.top; probe.remove();
+  const cx = l.left + l.width / 2; const cy = l.top + l.height / 2; const inLink = (dy) => { const el = document.elementFromPoint(cx, cy + dy); return !!el && a.contains(el); };
+  return {
+    tag: a.tagName, svg: true, className: ['rl-mark', 'po-mark'].filter((c) => a.classList.contains(c)).join(' '), href: a.getAttribute('href'), label: a.getAttribute('aria-label'), role: svg.getAttribute('role'), name: svg.getAttribute('aria-label'), text: a.textContent,
+    height: r2(q.height), left: r2(q.left - origin.left), top: r2(q.top - origin.top), lettersBaseline: r2(q.top - origin.top + (baseline / h) * q.height), dateBaseline: r2(dateBaseline),
+    rowHeight: r2(row.getBoundingClientRect().height), dateHeight: r2(date.getBoundingClientRect().height),
+    letters: getComputedStyle(svg.querySelector('path')).fill, bar: getComputedStyle(svg.querySelector('rect')).fill, target: [inLink(-21.5), inLink(0), inLink(21.5)],
   };
 };
 const rgb = (hex) => { const n = parseInt(hex.slice(1), 16); return `rgb(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255})`; };
@@ -194,10 +215,21 @@ async function walk(type, opts, engine) {
     assert.deepEqual(g.loaded, { archivo: true, newsreader: true }, 'Archivo and Newsreader are loaded');
     assert.deepEqual(g.sheet, { width: 816, height: 1056, padding: ['72px', '72px', '72px', '72px'], background: rgb('#ffffff'), color: rgb('#111111'), scrollHeight: 1056, scrollWidth: 816 }, 'US Letter at 96 per inch, 72px of padding, nothing past the sheet');
     const f = g.fonts;
-    for (const k of ['caps', 'capsQuiet', 'name']) assert.deepEqual([px(f[k].size), f[k].weight, f[k].transform, f[k].stretch, Math.round(px(f[k].spacing) * 100) / 100], [13, '600', 'uppercase', '110%', 1.82], `${k}: Archivo 13px, 600, 0.14em, uppercase, width 110%`);
-    for (const k of ['caps', 'capsQuiet', 'name', 'n', 'label', 'then', 'with']) assert.match(f[k].family, /^"?Archivo/, `${k} is set in Archivo`);
+    for (const k of ['capsQuiet', 'name']) assert.deepEqual([px(f[k].size), f[k].weight, f[k].transform, f[k].stretch, Math.round(px(f[k].spacing) * 100) / 100], [13, '600', 'uppercase', '110%', 1.82], `${k}: Archivo 13px, 600, 0.14em, uppercase, width 110%`);
+    for (const k of ['capsQuiet', 'name', 'n', 'label', 'then', 'with']) assert.match(f[k].family, /^"?Archivo/, `${k} is set in Archivo`);
     for (const k of ['when', 'ifnot']) assert.match(f[k].family, /^"?Newsreader/, `${k} is set in Newsreader`);
-    assert.equal(f.capsQuiet.color, rgb('#555555')); assert.equal(f.caps.color, rgb('#111111'));
+    assert.equal(f.capsQuiet.color, rgb('#555555'));
+    // The top row's name is the drawn wordmark in its link home, never the word as type: 13px tall,
+    // its letters on the date's baseline, in the poster's ink with the red bar, a 44px target, and
+    // the row exactly as tall as the date's one line, so nothing under it moves.
+    const mk = await page.evaluate(POSTER_MARK, { baseline: LOGO.baseline, h: LOGO.h });
+    assert.deepEqual({ tag: mk.tag, svg: mk.svg, className: mk.className, href: mk.href, label: mk.label, role: mk.role, name: mk.name, text: mk.text }, { tag: 'A', svg: true, className: 'rl-mark po-mark', href: '/', label: 'Rentletter home', role: 'img', name: 'Rentletter', text: '' }, `${engine}: the wordmark, in its link home, with no word typed beside it`);
+    assert.ok(Math.abs(mk.height - 13) <= 0.05, `${engine}: the wordmark is 13px tall, the row's type size (${mk.height})`); assert.ok(Math.abs(mk.left - 72) <= 0.05, `${engine}: and starts at the left padding (${mk.left})`);
+    assert.ok(Math.abs(mk.lettersBaseline - mk.dateBaseline) <= 0.1, `${engine}: the wordmark's letters sit on the date's baseline (${mk.lettersBaseline} and ${mk.dateBaseline})`);
+    assert.deepEqual([mk.letters, mk.bar], [rgb('#111111'), rgb('#d72027')], `${engine}: the letters in ink #111111, the bar in the brand red`);
+    assert.deepEqual(mk.target, [true, true, true], `${engine}: the link answers 22px above and below its middle (a 44px target)`);
+    assert.ok(Math.abs(mk.rowHeight - mk.dateHeight) <= 0.05, `${engine}: the top row is as tall as the date's one line (${mk.rowHeight} and ${mk.dateHeight})`);
+    assert.ok(mk.top >= 0 && mk.top + mk.height <= 1056, `${engine}: the wordmark sits inside the sheet`);
     assert.deepEqual([px(f.when.size), px(f.when.lineHeight), f.when.color], [30, 37.5, rgb('#333333')], 'Newsreader 30px, line height 1.25, #333333');
     assert.deepEqual([px(f.n.size), f.n.weight, f.n.stretch, px(f.n.lineHeight), f.n.color], [132, '800', '75%', 118.8, rgb('#c8321e')], 'the numbers: 132px, 800, width 75%, line height 0.9, #C8321E');
     assert.deepEqual([px(f.label.size), f.label.weight], [20, '500']);
@@ -253,6 +285,16 @@ async function walk(type, opts, engine) {
       const text = squash(items.map((i) => i.str).join(''));
       for (const [, words] of POSTER_WORDS) assert.ok(text.includes(squash(words)), `the PDF holds "${words}"`);
       assert.doesNotMatch(text, /saveaspdf|backtooffice|localhost|http/, 'no button and no browser header or footer on the page');
+      // The name is drawn, not set: no line of text says it; the wordmark's red bar is the one fill in
+      // the brand red; its link home is the one link, at the top left, from the left padding.
+      assert.doesNotMatch(text, /rentletter/, 'the name on the page is the drawn wordmark, not a line of text');
+      const ops = await pdfPage.getOperatorList();
+      const reds = ops.fnArray.filter((fn, i) => fn === pdfjs.OPS.setFillRGBColor && [215, 32, 39].every((v, j) => ops.argsArray[i][j] === v)).length;
+      assert.equal(reds, 1, 'the wordmark\'s red bar is drawn once');
+      const links = (await pdfPage.getAnnotations()).filter((a) => a.subtype === 'Link');
+      assert.deepEqual(links.map((a) => new URL(a.url).pathname), ['/'], 'one link on the page: the wordmark, home');
+      const [lx1, ly1, lx2, ly2] = links[0].rect;
+      assert.ok(Math.abs(lx1 - 54) <= 0.5 && lx2 <= 612 / 2 && ly1 >= 792 - 54 - 36 && ly2 <= 792, `the wordmark sits at the top left, from the left padding, inside the page (${links[0].rect.map(Math.round)})`);
       // Nothing clipped: every run of text sits inside the sheet's padding (72px is 54 points). y is the
       // run's baseline and height its font size: the capitals stand about three quarters of that above it.
       for (const i of items) { const x = i.transform[4]; const y = i.transform[5]; assert.ok(x >= 54 - 1 && x + i.width <= 612 - 54 + 1 && y >= 54 - 1 && y + 0.75 * i.height <= 792 - 54 + 1, `"${i.str}" sits inside the page's padding (${Math.round(x)}, ${Math.round(y)}, ${Math.round(i.width)} wide)`); }

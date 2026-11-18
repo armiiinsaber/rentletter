@@ -10,6 +10,8 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { isAdmin } from '../../lib/adminAuth';
+import { LOGO } from '../../lib/brand/logoPaths';
+import { Wordmark } from '../../components/ui';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -20,9 +22,14 @@ export async function getServerSideProps({ req, res }) {
 
 const SHEET = { width: 816, height: 1056, padding: 72 };
 const GUTTER = 16; // the grey ground left on each side of the sheet on a narrow screen
-// The top row is set as words in Archivo, as the poster's spec has it: the one place the name is
-// type and not the drawn wordmark (components/ui.js Wordmark), because this sheet is not a product screen.
-const TOP = ['Rentletter', 'Toronto, November 17, 2026'];
+// The top row: the drawn wordmark (components/ui.js Wordmark, the one logo everywhere) as tall as
+// the row's 13px type, its letters on the row's baseline, beside the date. Its size is the cap
+// height, so a mark 13px tall has a cap of 13 / 107.43 of 100; the letters' baseline is
+// LOGO.baseline of LOGO.h down the mark, so it is lowered by the rest. It rises 12.8px above the
+// baseline, more than the 13px line's own ascent (11px in Chrome): a negative top margin keeps it
+// from making the line taller, so the row stays as tall as the date and nothing under it moves.
+const MARK_CAP = (13 * 100) / LOGO.h;
+const MARK_STYLE = { display: 'inline-block', verticalAlign: `${-((LOGO.h - LOGO.baseline) * MARK_CAP) / 100}px`, marginTop: -4 };
 const CELLS = [
   ['30', 'realtors use it every month'],
   ['50', 'rentals close through it every month'],
@@ -58,8 +65,8 @@ export default function CommitmentPoster() {
         <div className="po-fit" style={{ width: SHEET.width * scale, height: SHEET.height * scale }}>
           <article className="po-sheet" data-poster="" style={{ transform: scale === 1 ? 'none' : `scale(${scale})` }}>
             <header className="po-top">
-              <span className="po-caps">{TOP[0]}</span>
-              <span className="po-caps po-caps-quiet">{TOP[1]}</span>
+              <a href="/" className="rl-mark po-mark" aria-label="Rentletter home"><Wordmark size={MARK_CAP} style={MARK_STYLE} /></a>
+              <span className="po-caps po-caps-quiet">Toronto, November 17, 2026</span>
             </header>
             <div className="po-rule-2" />
             <p className="po-when">When for three months in a row</p>
@@ -102,6 +109,12 @@ export default function CommitmentPoster() {
         .po-top { display: flex; justify-content: space-between; align-items: baseline; gap: 24px; }
         .po-caps { font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; font-stretch: 110%; line-height: 1.2; white-space: nowrap; }
         .po-caps-quiet { color: #555555; }
+        /* The wordmark's link: one line of the row's own 13px type, so it is exactly as tall as the
+           date and shares its baseline. Its 44px target reaches above and below the row without
+           moving it. The letters in the poster's ink; the bar stays the brand red. */
+        .po-top .po-mark { position: relative; display: block; min-height: 0; flex-shrink: 0; font-family: 'Archivo', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; font-stretch: 110%; line-height: 1.2; white-space: nowrap; color: #111111; text-decoration: none; }
+        .po-top .po-mark::before { content: ''; position: absolute; left: 0; right: 0; top: calc(50% - 22px); height: 44px; }
+        .po-top .po-mark .rl-wordmark path { fill: #111111; }
         .po-rule-2 { height: 0; border-top: 2px solid #111111; margin-top: 20px; }
         .po-rule-1 { height: 0; border-top: 1px solid #111111; }
         .po-when { font-family: 'Newsreader', Georgia, serif; font-weight: 400; font-size: 30px; line-height: 1.25; color: #333333; margin-top: 56px; }

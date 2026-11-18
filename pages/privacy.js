@@ -26,6 +26,8 @@ The Service is used by three types of people, and this policy applies to all of 
 
 **2.4 Information we collect automatically.** Like most online services, we and our service providers may collect limited technical information such as IP address, browser type, device information, and usage activity, to operate, secure, and improve the Service.
 
+We set one cookie that remembers how you first found Rentletter, such as a referral link. It holds a single word and never your name, email or anything you type.
+
 ## 3. How we use personal information
 We use personal information to:
 - Provide and operate the Service · receiving applications, organizing and ranking them against a landlord's stated criteria, reading the documents an applicant provides and comparing them with the application, generating insights, and producing reports for landlords.
