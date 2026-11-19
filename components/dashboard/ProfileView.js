@@ -1,6 +1,6 @@
 // components/dashboard/ProfileView.js
-// The profile page: the header, the title, the editor card (components/dashboard/ProfileEditorBody.js)
-// and Sign out. pages/profile.js mounts it over the Supabase session; /demo/dashboard?profile=1
+// The profile page: the header, the title, the editor card (components/dashboard/ProfileEditorBody.js),
+// Invite a realtor (components/dashboard/InviteRealtor.js) and Sign out. pages/profile.js mounts it over the Supabase session; /demo/dashboard?profile=1
 // mounts it over the sandbox adapter. Every field saves on its own and says Saved beside its label.
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -11,6 +11,7 @@ import { linkProps, rememberProfile, rememberScreenView, useTakeOver } from '../
 import { C, R } from '../theme';
 import DashboardHeader from './DashboardHeader';
 import ProfileEditorBody from './ProfileEditorBody';
+import InviteRealtor from './InviteRealtor';
 
 export default function ProfileView({ initialProfile }) {
   const [profile, setProfile] = useState(initialProfile);
@@ -45,6 +46,8 @@ export default function ProfileView({ initialProfile }) {
           <section id="branding" className="rl-card" style={{ padding: 'var(--card-pad)', scrollMarginTop: 16 }}>
             <ProfileEditorBody profile={profile} onSaved={setProfile} />
           </section>
+          {/* Invite a realtor: the realtor's own invite link and who joined through it. */}
+          <InviteRealtor />
           {/* Sign out: the account's exit, outlined, at the foot of the page that is about the account. */}
           <div style={{ marginTop: 'var(--gap-section)' }}>
             <button type="button" onClick={signOut} style={{ minHeight: 44, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', border: `1.5px solid ${C.ink}`, background: 'transparent', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Sign out</button>

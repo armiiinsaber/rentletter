@@ -147,7 +147,8 @@ export const STATES = [
   { name: 'edit listing sheet', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, 'Edit', { exact: true }); }, steps: async function* (p) { await openAll(p, '[role=dialog]'); yield 'edit listing sheet, every fold open'; } },
   { name: 'delete listing', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Details/); await tap(p, /Delete listing/); } },
   { name: 'request documents', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await expand(p, LONG.a2); await tap(p, /^Request documents/); } },
-  { name: 'profile', kind: 'realtor', go: (p) => open(p, '/profile'), steps: async function* (p) { await openAll(p); yield 'profile, every fold open'; } },
+  { name: 'profile', kind: 'realtor', go: async (p) => { await open(p, '/profile'); await p.locator('[data-invite-realtor]').waitFor({ timeout: 30000 }); }, steps: async function* (p) { await openAll(p); yield 'profile, every fold open'; } },
+  { name: 'join, a realtor\'s invite link', kind: 'public', go: async (p) => { await open(p, '/join?invite=K7M2Q9XW4TPB3HNC'); await p.locator('[data-realtor-invite-landing]').waitFor({ timeout: 30000 }); } },
   // The second listing rented to its applicant, with a co applicant and a guarantor on the
   // application: Form data and the rented listing.
   { name: 'form data sheet', kind: 'realtor', phase: 'write', go: async (p, f) => { await rentL2(p, f); await open(p, '/listing/L2'); await tap(p, /^Details/); await p.locator('[data-form-data-row]').getByRole('button', { name: 'Form data' }).click(); await wait(p, 600); } },
@@ -205,7 +206,9 @@ export const STATES = [
   { name: 'landlord report, sandbox', kind: 'landlord', go: (p) => open(p, '/r/demo-demo-carlaw') },
   // ── the founder office: the Commitment section first, and the poster ──
   { name: 'office, the commitment counted', kind: 'office', phase: 'write', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await p.locator('.cm-svg').waitFor({ timeout: 15000 }); await wait(p, 400); } },
+  { name: 'office, the Lead Realtor Partner counted', kind: 'office', phase: 'write', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await f('/__fake/kpi?partner=1'); await office(p); await open(p, '/admin'); await p.locator('[data-partner-tile="active"]').waitFor({ timeout: 30000 }); await p.locator('[data-partner-start]:not([data-partner-start=""])').waitFor({ timeout: 30000 }); await wait(p, 400); } },
   { name: 'office, the commitment poster', kind: 'office', phase: 'write', go: async (p) => { await office(p); await open(p, '/admin/commitment'); await p.locator('[data-poster]').waitFor({ timeout: 30000 }); await wait(p, 400); } },
+  { name: 'office, the Lead Realtor Partner with no start date', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await f('/__fake/kpi?partner=1'); await f('/__fake/kpi?start=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-partner-start=""]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?start=1'); } } },
   { name: 'office, the commitment before its table exists', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?history=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?history=1'); } } },
 ];
 

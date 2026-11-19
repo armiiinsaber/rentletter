@@ -51,6 +51,7 @@ const FILES = {
   tenantProfiles: 'db/tenant-profiles.sql',
   m015: 'db/015-profile-verified-email.sql',
   m016: 'db/016-drop-application-defaults.sql',
+  m017: 'db/017-realtor-invites.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -753,6 +754,7 @@ async function pathA() {
   await run014(db, 'A10');
   await run015(db, 'A11');
   await run016(db, 'A12');
+  await run017(db, 'A13');
   await db.close();
 }
 
@@ -795,6 +797,87 @@ async function run016(db, tag) {
   await db.query('DELETE FROM public.applications WHERE id = ANY($1)', [[OLD, NEW]]);
 }
 
+// ── db/017-realtor-invites.sql ──────────────────────────────────────────────────────────────
+// profiles gains invite_code (text) and invited_by (uuid), both nullable with no default, and
+// every existing profile reads null in both. The code is checked and unique, a profile can never
+// be its own inviter, and the inviter must exist. From the browser role both columns keep the
+// value they had while the rest of the same update goes through; from any role a code or a credit
+// that is set stays what it is, and the credit empties only when the inviting profile is deleted.
+// Row level security is as it was: a realtor reads their own code and no other profile's row.
+// A second run changes no column, constraint, index, trigger, policy or row.
+const INV = { a: 'ffffffff-0000-4000-8000-0000000017a1', b: 'ffffffff-0000-4000-8000-0000000017b2', c: 'ffffffff-0000-4000-8000-0000000017c3', gone: 'ffffffff-0000-4000-8000-0000000017d4' };
+const CODE = { a: 'K7M2Q9XW4TPB3HNC', b: 'B7M2Q9XW4TPB3HNC', other: 'Z7M2Q9XW4TPB3HNZ' };
+const INVITE_CONSTRAINTS = ['profiles_invite_code_check', 'profiles_invited_by_fkey', 'profiles_not_invited_by_self'];
+const profilesCatalog = (db) => rows(db, "SELECT a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE a.attrelid = 'public.profiles'::regclass AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attnum");
+const profilesConstraints = (db) => rows(db, "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'public.profiles'::regclass ORDER BY conname");
+const profilesIndexes = (db) => rows(db, "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'profiles' ORDER BY indexname");
+const profilesTriggers = (db) => rows(db, "SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass AND NOT tgisinternal ORDER BY 1");
+const profilesPolicies = (db) => rows(db, "SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profiles' ORDER BY policyname");
+const inviteOf = async (db, id) => (await rows(db, 'SELECT invite_code, invited_by, full_name FROM public.profiles WHERE id = $1', [id]))[0];
+const asRealtor = async (db, id, fn) => { await db.exec(`SET request.jwt.claim.sub = '${id}'; SET ROLE authenticated`); try { return await fn(); } finally { await db.exec('RESET ROLE; RESET request.jwt.claim.sub'); } };
+async function check017(db, label) {
+  for (const [c, type] of [['invite_code', 'text'], ['invited_by', 'uuid']]) {
+    const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = $1", [c]))[0];
+    check(col && col.data_type === type && col.is_nullable === 'YES' && col.column_default === null, `${label}: profiles.${c} is nullable ${type} with no default`, JSON.stringify(col));
+  }
+  for (const name of INVITE_CONSTRAINTS) check((await constraintCount(db, name)) === 1, `${label}: the constraint ${name} exists once`);
+  check((await one(db, "SELECT count(*)::int FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass AND tgname = 'profiles_keep_invite'")) === 1, `${label}: the keep trigger exists once`);
+  check((await one(db, "SELECT count(*)::int FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'profiles' AND indexname IN ('profiles_invite_code_key', 'profiles_invited_by_idx')")) === 2, `${label}: the unique code index and the invited_by index exist`);
+  // Three realtors of this check's own: a invites b, c is nobody's.
+  await db.query("INSERT INTO public.profiles (id, email, full_name) VALUES ($1, 'inviter@example.com', 'Inviter'), ($2, 'invited@example.com', 'Invited'), ($3, 'third@example.com', 'Third')", [INV.a, INV.b, INV.c]);
+  // The code: checked, unique, and once set it stays.
+  for (const bad of ['short', 'k7m2q9xw4tpb3hnc', 'K7M2Q9XW4TPB3HN0', 'K7M2Q9XW4TPB3HNCX', INV.a, 'inviter@example.com', '']) check(/profiles_invite_code_check/.test(await refused(db, 'UPDATE public.profiles SET invite_code = $2 WHERE id = $1', [INV.a, bad])), `${label}: the code "${bad}" is refused`);
+  await db.query('UPDATE public.profiles SET invite_code = $2 WHERE id = $1', [INV.a, CODE.a]);
+  check(/profiles_invite_code_key/.test(await refused(db, 'UPDATE public.profiles SET invite_code = $2 WHERE id = $1', [INV.b, CODE.a])), `${label}: a code another profile holds is refused`);
+  await db.query('UPDATE public.profiles SET invite_code = $2 WHERE id = $1', [INV.b, CODE.b]);
+  await db.query('UPDATE public.profiles SET invite_code = $2 WHERE id = $1', [INV.a, CODE.other]);
+  await db.query('UPDATE public.profiles SET invite_code = NULL WHERE id = $1', [INV.a]);
+  check((await inviteOf(db, INV.a)).invite_code === CODE.a, `${label}: a code that is set never changes, even from the server`);
+  // The credit: never the profile itself, never a profile that is not there, and once set it stays.
+  check(/profiles_not_invited_by_self/.test(await refused(db, 'UPDATE public.profiles SET invited_by = id WHERE id = $1', [INV.c])), `${label}: a realtor can never be invited by themselves`);
+  check(/profiles_invited_by_fkey/.test(await refused(db, 'UPDATE public.profiles SET invited_by = $2 WHERE id = $1', [INV.c, INV.gone])), `${label}: the inviter must be a profile`);
+  await db.query('UPDATE public.profiles SET invited_by = $2 WHERE id = $1', [INV.b, INV.a]);
+  await db.query('UPDATE public.profiles SET invited_by = $2 WHERE id = $1', [INV.b, INV.c]);
+  await db.query('UPDATE public.profiles SET invited_by = NULL WHERE id = $1', [INV.b]);
+  check((await inviteOf(db, INV.b)).invited_by === INV.a, `${label}: a credit that is set never changes, even from the server`);
+  // From the browser role: the realtor's own update goes through, and neither column moves.
+  await asRealtor(db, INV.b, () => db.query("UPDATE public.profiles SET invite_code = $2, invited_by = $3, full_name = 'Renamed' WHERE id = $1", [INV.b, CODE.other, INV.c]));
+  let kept = await inviteOf(db, INV.b);
+  check(kept.invite_code === CODE.b && kept.invited_by === INV.a && kept.full_name === 'Renamed', `${label}: from the browser role the name changes, the code and the credit do not`, JSON.stringify(kept));
+  await asRealtor(db, INV.c, () => db.query("UPDATE public.profiles SET invite_code = $2, invited_by = $3, full_name = 'Third renamed' WHERE id = $1", [INV.c, CODE.other, INV.a]));
+  kept = await inviteOf(db, INV.c);
+  check(kept.invite_code === null && kept.invited_by === null && kept.full_name === 'Third renamed', `${label}: from the browser role an empty code and an empty credit stay empty: a realtor cannot credit anyone, themselves included`, JSON.stringify(kept));
+  // Row level security: their own code, and no other profile's row.
+  check((await asRealtor(db, INV.a, () => one(db, 'SELECT invite_code FROM public.profiles WHERE id = $1', [INV.a]))) === CODE.a, `${label}: a realtor reads their own invite code`);
+  check((await asRealtor(db, INV.c, () => one(db, 'SELECT count(*)::int FROM public.profiles WHERE id = $1', [INV.a]))) === 0, `${label}: a realtor cannot read another realtor's invite code`);
+  check((await asRealtor(db, INV.c, () => one(db, 'SELECT count(*)::int FROM public.profiles WHERE invite_code IS NOT NULL OR invited_by IS NOT NULL'))) === 0, `${label}: nor any code or credit at all through a filter`);
+  check((await asRealtor(db, INV.c, () => one(db, 'SELECT count(*)::int FROM public.profiles WHERE invited_by = $1', [INV.a]))) === 0, `${label}: nor another realtor's list of invited realtors`);
+  check((await asRealtor(db, INV.a, () => one(db, 'SELECT count(*)::int FROM public.profiles'))) === 1, `${label}: the browser role sees one profile, its own: the invited list is the server's to answer`);
+  check(/permission denied|row-level security/.test(await db.exec('SET ROLE anon').then(() => refused(db, 'SELECT invite_code FROM public.profiles')).finally(() => db.exec('RESET ROLE'))) || (await db.exec('SET ROLE anon').then(() => one(db, 'SELECT count(*)::int FROM public.profiles')).finally(() => db.exec('RESET ROLE'))) === 0, `${label}: a visitor who is not signed in reads no code`);
+}
+async function run017(db, tag) {
+  const strip = (list) => list.map((r) => { const o = { ...r }; delete o.invite_code; delete o.invited_by; return o; });
+  const before = await rows(db, 'SELECT * FROM public.profiles ORDER BY id');
+  const policies = await profilesPolicies(db);
+  await step(db, `${tag}1`, FILES.m017);
+  check((await one(db, 'SELECT count(*)::int FROM public.profiles WHERE invite_code IS NOT NULL OR invited_by IS NOT NULL')) === 0, `${tag}1: every existing profile has no code and no credit`);
+  check(same(strip(await rows(db, 'SELECT * FROM public.profiles ORDER BY id')), before), `${tag}1: no other column of any profile moved`);
+  check(same(await profilesPolicies(db), policies), `${tag}1: the policies on profiles are exactly what they were`);
+  await check017(db, `${tag}1`);
+  const shape = await profilesCatalog(db); const constraints = await profilesConstraints(db); const indexes = await profilesIndexes(db); const triggers = await profilesTriggers(db);
+  const held = await rows(db, 'SELECT * FROM public.profiles ORDER BY id');
+  await step(db, `${tag}2 (017 again)`, FILES.m017);
+  check(same(await profilesCatalog(db), shape), `${tag}2: a second run leaves every column of profiles, its type, NOT NULL and default as they were`);
+  check(same(await profilesConstraints(db), constraints) && same(await profilesIndexes(db), indexes) && same(await profilesTriggers(db), triggers) && same(await profilesPolicies(db), policies), `${tag}2: and every constraint, index, trigger and policy`);
+  check(same(await rows(db, 'SELECT * FROM public.profiles ORDER BY id'), held), `${tag}2: and every row: the codes and the credit written before the second run are still there`);
+  // The one way a credit empties: the inviting profile is deleted.
+  await db.query('DELETE FROM public.profiles WHERE id = $1', [INV.a]);
+  const orphan = await inviteOf(db, INV.b);
+  check(orphan.invited_by === null && orphan.invite_code === CODE.b, `${tag}2: when the inviting profile is deleted the credit empties and the invited realtor keeps their own code`, JSON.stringify(orphan));
+  await db.query('DELETE FROM public.profiles WHERE id = ANY($1)', [[INV.b, INV.c]]);
+  check(same(await rows(db, 'SELECT * FROM public.profiles ORDER BY id'), before.map((r) => ({ ...r, invite_code: null, invited_by: null }))), `${tag}2: this check's own realtors removed, every profile is what it was, with no code and no credit`);
+}
+
 async function pathB() {
   say('\nPATH B  upgrade from the old 001');
   const db = new PGlite();
@@ -832,6 +915,7 @@ async function pathB() {
   await run014(db, 'B16');
   await run015(db, 'B17');
   await run016(db, 'B18');
+  await run017(db, 'B19');
   return { db, before };
 }
 

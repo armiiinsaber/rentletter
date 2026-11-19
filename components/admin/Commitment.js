@@ -11,6 +11,7 @@ import { C, R, FONT } from '../theme';
 import { adminFetch } from './adminFetch';
 import Loader from '../brand/Loader';
 import { TRIGGER_SENTENCE, TARGETS, monthName, monthShort, sharePct } from '../../lib/kpis';
+import { partnerTiles, partnerStartLine } from './partnerTiles';
 
 const nb = (s) => String(s).replace(/ /g, ' ');
 
@@ -135,7 +136,33 @@ export default function Commitment() {
         </div>
         <div className="ad-card cm-card"><PosterPreview /></div>
       </div>
+      {data?.partner && (
+        <div className="cm-partner" data-partner="" role="group" aria-label="Lead Realtor Partner">
+          <div className="ad-eyebrow">Lead Realtor Partner</div>
+          {!data.partner.configured && <p className="ad-quiet cm-partner-note" data-partner-unset="">KPI_PARTNER_PROFILE_ID is not set.</p>}
+          {data.partner.configured && !data.partner.found && <p className="ad-quiet cm-partner-note">No counted realtor has the id in KPI_PARTNER_PROFILE_ID.</p>}
+          {data.partner.configured && data.partner.found && !data.partner.tracked && <p className="ad-quiet cm-partner-note" style={{ marginBottom: 12 }}>Invites are not recorded yet. They start once db/017 has run.</p>}
+          {data.partner.configured && data.partner.found && <p className="ad-quiet cm-partner-note" data-partner-start={data.partner.start || ''} style={{ marginBottom: 12 }}>{partnerStartLine(data.partner)}</p>}
+          {data.partner.configured && data.partner.found && (
+            <div className="cm-tiles" style={{ marginBottom: 0 }}>
+              {partnerTiles(data.partner).map((t) => (
+                <div className="cm-tile" key={t.key} data-partner-tile={t.key}>
+                  <div className="cm-tile-l">{nb(t.label)}</div>
+                  <div className="cm-tile-v ad-num"><span>{t.value}</span></div>
+                  {t.note && <div className="cm-tile-t" style={{ lineHeight: 1.45, textWrap: 'balance' }}>{t.note}</div>}
+                  {t.pairs && (
+                    <div className="cm-pairs">
+                      {t.pairs.map(([label, value]) => <div className="cm-pair" key={label}><span className="cm-pair-l">{nb(label)}</span><span className="cm-pair-v ad-num">{nb(value)}</span></div>)}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       <style jsx global>{`
+        .cm-partner { margin-top: 30px; padding-top: 26px; border-top: 1px solid ${C.instRule}; }
         .cm { margin-bottom: 34px; padding-bottom: 30px; border-bottom: 1px solid ${C.instRule}; }
         .cm-trigger { font-family: ${FONT.serif}; font-weight: 500; font-size: clamp(19px, 2.5vw, 27px); line-height: 1.3; letter-spacing: -0.015em; color: ${C.instText}; margin: 0 0 20px; max-width: 980px; text-wrap: balance; }
         .cm-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
@@ -156,6 +183,7 @@ export default function Commitment() {
         .cm-card { padding: 14px 16px; }
         .cm-card-h { font-size: 10.5px; color: ${C.instMute}; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 10px; }
         .cm-note { margin: 0; max-width: 520px; text-wrap: balance; }
+        .cm-partner-note { margin: 0; max-width: 520px; text-wrap: balance; }
         .cm-chart + .cm-note { margin-top: 12px; }
         .cm-legend { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-bottom: 12px; }
         .cm-key { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: ${C.instText}; }

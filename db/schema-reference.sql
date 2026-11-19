@@ -191,6 +191,21 @@
 --                          the two). Written once by the server; the trigger
 --                          profiles_keep_signup_source keeps it as it was on a browser role's update.
 --
+-- ── profiles: invite a realtor (db/017-realtor-invites.sql) ──────────────────────────────────
+--   profiles.invite_code   text, nullable, unique (profiles_invite_code_key)   CHECK
+--                          profiles_invite_code_check: 16 characters, lib/signupSource.js
+--                          INVITE_CODE. The realtor's own invite link is /join?invite=<code>.
+--                          Made by the server the first time the realtor opens the invite
+--                          section (lib/realtorInvite.js); never changes once set.
+--   profiles.invited_by    uuid, nullable, REFERENCES profiles(id) ON DELETE SET NULL   CHECK
+--                          profiles_not_invited_by_self. The realtor whose link this one signed
+--                          up from, written once at signup (lib/signupSource.js
+--                          recordSignupSource). One level only.
+--                          The trigger profiles_keep_invite keeps both as they were on a browser
+--                          role's write, and keeps a set value from any role. No policy is added:
+--                          a realtor reads their own row only, and the list of realtors they
+--                          invited is answered by pages/api/profile/invite.js.
+--
 -- ── applications: the reuse record (db/014-prefill-record.sql) ───────────────────────────────
 --   prefill_source            text, nullable   CHECK applications_prefill_source_check: null, or
 --                             none, profile, previous_application, pipeline_invite, pass_on

@@ -19,6 +19,8 @@
 // address with listings, applications and confirmed tenants this month and last, and fourteen
 // months of public.kpi_daily rows; history=0 takes the kpi_daily table away again (the office
 // before db/013 has run). The office is opened with ADMIN_PASSWORD from the environment.
+// GET /__fake/kpi?partner=1 (after seed=1) names the Lead Realtor Partner and the realtors who
+// signed up from the partner's invite link (db/017-realtor-invites.sql).
 // It builds into, or serves from, .next-fake-<port> (NEXT_DIST_DIR, next.config.js); prod needs
 // `NEXT_DIST_DIR=.next-fake-<port> FAKE_STACK_BUILD=1 next build` first. Prints "ready" when up.
 import { registerHooks, createRequire } from 'node:module';
@@ -55,6 +57,11 @@ const LONG_NAMES = { A1: 'Oluwaseun Adebayo Fitzgerald', A2: 'Anastasia Konstant
 const LONG_EMAILS = { A1: 'oluwaseun.fitzgerald@outlook.com', A2: 'anastasia.konstantinopoulou@gmail.com', A3: 'bartholomew.whitfield@outlook.com', A4: 'guadalupe.thanabalasingham@gmail.com', A5: 'o.fitzgerald@northwindclinic.ca', A6: 'mariafernanda.gonzalez@gmail.com' };
 if (long) {
   Object.assign(t.profiles[0], { full_name: 'Alexandria Konstantinopoulou', brokerage: 'Harbourfront Residential Realty Inc., Brokerage', phone: '416 555 0199' });
+  // Invite a realtor (db/017): two realtors who joined through this realtor's invite link, with names at the long end (emails inside the 30 to 37 characters above: the office list holds one line of that).
+  t.profiles.push(
+    { id: 'invited-realtor-1', email: 'mf.gonzalez@harbourfrontrealty.ca', full_name: 'María Fernanda González Rodríguez', plan: 'founding', province: 'ON', created_at: '2026-06-03T15:00:00Z', signup_source: null, invite_code: null, invited_by: USER.id },
+    { id: 'invited-realtor-2', email: 'b.whitfield@harbourfrontrealty.ca', full_name: 'Bartholomew Nakamura Whitfield', plan: 'founding', province: 'ON', created_at: '2026-04-21T15:00:00Z', signup_source: null, invite_code: null, invited_by: USER.id },
+  );
   const L = Object.fromEntries(t.listings.map((l) => [l.id, l]));
   Object.assign(L.L1, { name: '2150 Lake Shore Boulevard West, Penthouse 4512', address: '2150 Lake Shore Boulevard West, Penthouse 4512, Toronto', landlord_name: 'Bartholomew Castellanos Whitfield', landlord_email: 'b.castellanos.whitfield@outlook.com' });
   Object.assign(L.L2, { name: '1 Bloor Street East, Unit 3407', address: '1 Bloor Street East, Unit 3407, Toronto' });
@@ -237,6 +244,29 @@ http.createServer(async (req, res) => {
       for (let i = 12; i >= 1; i--) { const m = addMonths(month, -i + 1); const a = climb[13 - i]; t.kpi_daily.push({ day: `${m}-01`, active_realtors_mtd: 0, rentals_closed_mtd: 0, active_realtors_last_month: a, rentals_closed_last_month: Math.round(a * 1.55), streak_months: 0, profile_reuse: a, profile_reuse_tracked: false, signups_mtd: 0, signups_known_mtd: 0, referral_signups_mtd: 0, referral_share_mtd: null, signups_last_month: 0, signups_known_last_month: 0, referral_signups_last_month: 0, referral_share_last_month: null, days_left: 365, computed_at: new Date(now).toISOString() }); }
       t.kpi_daily.push({ ...t.kpi_daily[t.kpi_daily.length - 1], day: torontoDate(now), active_realtors_mtd: 12, rentals_closed_mtd: 9 });
     }
+    // partner=1 (after seed=1): the Lead Realtor Partner section has someone to count. The first
+    // seeded realtor is the partner (KPI_PARTNER_PROFILE_ID), four realtors from three months ago
+    // signed up from the partner's invite link, two of them with an application in each of the
+    // three complete months before this one, and a fifth was invited by one of those four (a
+    // second level, counted nowhere). None of them signed up this month or last, so the referral
+    // share the office walk reads is what it was.
+    if (q.get('partner') === '1' && t.__kpiSeeded && !t.__partnerSeeded) {
+      t.__partnerSeeded = true;
+      process.env.KPI_PARTNER_PROFILE_ID = 'kpi-realtor-00';
+      t.__partnerStart = `${addMonths(month, -4)}-17`;
+      const byId = Object.fromEntries(t.profiles.map((p) => [p.id, p]));
+      for (const p of t.profiles) if (!('invited_by' in p)) p.invited_by = null;
+      for (const n of ['06', '07', '08', '09']) byId[`kpi-realtor-${n}`].invited_by = 'kpi-realtor-00';
+      byId['kpi-realtor-10'].invited_by = 'kpi-realtor-06';
+      for (const i of [6, 7]) for (const back of [2, 3]) {
+        const at = `${addMonths(month, -back)}-12T16:00:00Z`; const a = `kpi-A${i}-0-back${back}`;
+        t.applications.push({ id: a, application_number: `RL-KPI-${i}-0-B${back}`, full_name: 'Invented Tenant', email: `earlier${i}-${back}@mail.ca`, created_at: at });
+        t.listing_applicants.push({ id: `kpi-K${i}-0-back${back}`, listing_id: `kpi-L${i}-0`, application_id: a, decision_status: 'none', added_via: 'invite', created_at: at, state: 'submitted' });
+      }
+    }
+    // start=1 (the default once partner=1 has run) counts from a start date four months back
+    // (KPI_PARTNER_START); start=0 takes the start date away: the counts are all time.
+    if (t.__partnerSeeded) { if (q.get('start') === '0') delete process.env.KPI_PARTNER_START; else if (q.get('start') === '1' || q.get('partner') === '1') process.env.KPI_PARTNER_START = t.__partnerStart; }
     if (q.get('history') === '0') delete t.kpi_daily;
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ seeded: !!t.__kpiSeeded, history: Array.isArray(t.kpi_daily) ? t.kpi_daily.length : null })); return;
   }
