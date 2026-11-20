@@ -10,7 +10,8 @@
 //   · before the first document, the tenant agrees to keeping documents in their profile;
 //   · with the vault off (TENANT_VAULT_ENABLED=false) the page says documents are paused: what is
 //     stored still shows and can still be deleted, nothing new is added;
-//   · the list of who viewed the profile is empty until shares exist, and says so.
+//   · who can see the profile: every share (lib/profileShares.js), the realtor it is with, since
+//     when, each view of it with its date, and Stop sharing, which asks once, in the page.
 // "verified" is never said here: a fact is read from a document, on a date.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { noWidow, dateLong } from '../../lib/typeset';
@@ -36,8 +37,11 @@ export default function ProfileVault({ profile }) {
   const [seeOpen, setSeeOpen] = useState(false);
   const input = useRef(null);
 
+  const [shares, setShares] = useState([]);
   const load = useCallback(async () => {
     try { const r = await fetch('/api/tenant/vault'); if (r.ok) setVault(await r.json()); else setVault({ failed: true }); } catch (e) { setVault({ failed: true }); }
+    // Who can see the profile, and each realtor's views of it (pages/api/tenant/shares.js).
+    try { const r = await fetch('/api/tenant/shares'); const j = r.ok ? await r.json() : null; setShares(j && Array.isArray(j.shares) ? j.shares : []); } catch (e) { setShares([]); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -52,6 +56,17 @@ export default function ProfileVault({ profile }) {
     setBusy(key); setMessage(null);
     try { await post(body); setAsking(''); await load(); if (done) setMessage({ tone: 'ok', text: done }); }
     catch (e) { setMessage({ tone: 'warn', text: e.message }); }
+    setBusy('');
+  };
+  const stop = async (id) => {
+    if (busy) return;
+    setBusy(`stop:${id}`); setMessage(null);
+    try {
+      const r = await fetch('/api/tenant/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'stop', id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) throw new Error(j?.error || 'Something went wrong. Please try again.');
+      setAsking(''); await load();
+    } catch (e) { setMessage({ tone: 'warn', text: e.message }); }
     setBusy('');
   };
   const add = async (file) => {
@@ -69,7 +84,7 @@ export default function ProfileVault({ profile }) {
   };
 
   if (!vault || vault.failed) return null;
-  const { enabled, available, consentAt, emailProved, documents = [], checks = [], views = [] } = vault;
+  const { enabled, available, consentAt, emailProved, documents = [], checks = [] } = vault;
   const canAdd = enabled && available && emailProved;
   const payload = sharePayload({ id: profile.id, facts: profile.facts || {}, factsUpdatedAt: profile.factsUpdatedAt }, checks.map((c) => ({ kind: c.kind, value: c.value, read_at: c.readAt })));
 
@@ -147,10 +162,28 @@ export default function ProfileVault({ profile }) {
       </section>
 
       <section className="rl-card mp-card" data-vault-views="" aria-labelledby="vault-views-h">
-        <h2 id="vault-views-h" className="mp-h2">Who has viewed your profile</h2>
-        {views.length === 0 ? <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('No one. Nobody can view your profile until you approve it, and every view will be listed here with its date.')}</p> : (
+        <h2 id="vault-views-h" className="mp-h2">Who can see your profile</h2>
+        {shares.length === 0 ? <p className="mp-p" data-shares-empty="" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('No one. A realtor sees your profile only when you apply with it or approve a share, and every view is listed here with its date.')}</p> : (
           <ul className="mp-list" style={{ marginTop: 'var(--gap-line)' }}>
-            {views.map((v) => <li key={v.id} style={{ display: 'block' }}><div className="mp-value" style={{ marginTop: 0 }}>{noWidow(v.who || 'A realtor')}</div><div className="mp-source">{noWidow(`${v.action === 'document_opened' ? 'Opened a document' : 'Viewed your profile'} on ${dateLong(v.at)}`)}</div></li>)}
+            {shares.map((sh) => (
+              <li key={sh.id} data-share={sh.live ? 'live' : sh.status} style={{ display: 'block' }}>
+                <div className="mp-value" style={{ marginTop: 0 }}>{noWidow(sh.realtorName)}</div>
+                {sh.realtorBrokerage && <div className="mp-source">{noWidow(sh.realtorBrokerage)}</div>}
+                {sh.listingName && <div className="mp-source">{noWidow(`For ${sh.listingName}`)}</div>}
+                <div className="mp-source" data-share-since="">{noWidow(sh.live ? `Sharing since ${dateLong(sh.approvedAt)}` : sh.status === 'revoked' ? `You stopped sharing on ${dateLong(sh.endedAt)}` : `Ended on ${dateLong(sh.endedAt)}`)}</div>
+                {sh.live && sh.documentsUntil && <div className="mp-source">{noWidow(`Can open your documents until ${dateLong(sh.documentsUntil)}`)}</div>}
+                {(sh.views || []).length === 0
+                  ? <div className="mp-source" data-share-unviewed="">{noWidow('Not viewed yet.')}</div>
+                  : sh.views.map((v) => <div key={v.id} className="mp-source" data-share-view="">{noWidow(`${v.action === 'document_opened' ? 'Opened a document' : 'Viewed your profile'} on ${dateLong(v.at)}`)}</div>)}
+                {sh.live && (asking === sh.id ? (
+                  <div className="mp-actions" data-vault-confirm="">
+                    <p className="mp-p" style={{ flex: '1 1 100%' }}>{noWidow(`Stop sharing with ${sh.realtorName}? Their access to your profile ends now. The application you sent stays with them.`)}</p>
+                    <button type="button" data-destructive="" className="mp-btn" disabled={!!busy} onClick={() => stop(sh.id)}><Pending busy={busy === `stop:${sh.id}`} label="Stopping">Stop sharing</Pending></button>
+                    <button type="button" className="mp-link" disabled={!!busy} onClick={() => setAsking('')}>Keep sharing</button>
+                  </div>
+                ) : <button type="button" data-destructive="" className="mp-link" disabled={!!busy} onClick={() => setAsking(sh.id)} aria-label={`Stop sharing with ${sh.realtorName}`}>Stop sharing</button>)}
+              </li>
+            ))}
           </ul>
         )}
         <button type="button" onClick={() => setSeeOpen((v) => !v)} aria-expanded={seeOpen} className="mp-fold">

@@ -227,6 +227,23 @@ export const STATES = [
   { name: 'tenant profile, before the first document', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=2&consent=0'); await p.locator('[data-vault-consent]').waitFor({ timeout: 15000 }); }, steps: async function* (p) {
     await tap(p, 'Agree and continue'); await p.locator('[data-vault-add]').waitFor({ timeout: 15000 }); await wait(p, 300); yield 'tenant profile, agreed, no documents yet';
   } },
+  // Shares (db/019): the tenant's share list with each view and Stop sharing; one tap apply and
+  // its review, which lists what is sent and what the realtor sees from the profile; and the
+  // realtor's view of a shared profile on the applicant's card, and of one the tenant stopped.
+  { name: 'tenant profile, a share and its views', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=4&docs=1&share=new'); await p.locator('[data-share="live"]').waitFor({ timeout: 15000 }); }, steps: async function* (p) {
+    await p.locator('[data-share="live"]').getByRole('button', { name: /^Stop sharing/ }).click(); await p.locator('[data-vault-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    yield 'tenant profile, stop sharing asked';
+  } },
+  { name: 'tenant profile, a share the tenant stopped', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=5&docs=1&share=new&stopped=1'); await p.locator('[data-share="revoked"]').waitFor({ timeout: 15000 }); } },
+  { name: 'one tap apply, the offer', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=6&docs=1'); await open(p, `/apply/${INVITE}`); await p.locator('[data-one-tap]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-one-tap-apply]').click(); await p.locator('[data-one-tap-share]').waitFor({ timeout: 30000 }); await wait(p, 500);
+    yield 'one tap apply, the review of what is shared';
+  } },
+  { name: 'listing, a shared profile', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=4&docs=1&share=new'); await open(p, '/listing/L1'); await expand(p, 'Maximiliano Castellanos Ruiz'); await p.locator('[data-shared-view]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-shared-view]').click(); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await wait(p, 400);
+    yield 'listing, the shared profile viewed';
+  } },
+  { name: 'listing, a profile the tenant stopped sharing', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=5&docs=1&share=new&stopped=1'); await open(p, '/listing/L1'); await expand(p, 'Valentina Castellanos Ruiz'); await p.locator('[data-shared-ended]').waitFor({ timeout: 30000 }); await wait(p, 300); } },
   { name: 'tenant profile, documents paused', kind: 'tenant', phase: 'alone', go: async (p, f) => { try { await tenantProfile(p, f, 'who=3&docs=1&paused=1'); await p.locator('[data-vault-paused]').waitFor({ timeout: 15000 }); } finally { await f('/__fake/tenant?who=3&paused=0'); } } },
   // ── landlord ──
   { name: 'landlord report', kind: 'landlord', phase: 'write', go: async (p) => { const t = await report(p); await open(p, `/r/${t}`); }, steps: async function* (p) { await tap(p, /meet/i); await wait(p, 400); yield 'landlord report, answered'; await tap(p, /Tap to change/); yield 'landlord report, changing an answer'; } },

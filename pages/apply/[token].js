@@ -23,6 +23,9 @@ import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { Field, SelectField, ToggleField } from '../../components/apply/fields';
 import { ProfileStyles, Eyebrow, LinesText, EMP_LABEL, noWidow } from '../../components/tenant/ProfileFacts';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
+import { youLine } from '../../components/tenant/ProfileVault';
+import { SOURCE } from '../../lib/profileFacts';
+import { checkText, KIND_LABEL } from '../../lib/tenantVaultRules';
 import PartiesCard from '../../components/tenant/PartiesCard';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
@@ -277,6 +280,23 @@ export default function ApplyPage({ invited = null }) {
   // The age rule for the applicant on this listing (lib/applyAge.js): Ontario 18, or 16 or 17 with
   // a yes to the s. 4 question; British Columbia 19. The same rule pages/api/generate.js checks.
   const ageRule = ageRuleFor(listingProvince, AGE_ROLE.APPLICANT);
+  // ── One tap apply (docs/design/profile-and-circle.md section 3.1) ──────────────────────────
+  // A signed in tenant with a profile applies with it: the profile fills the form, the review
+  // lists exactly what is sent and what the realtor will see from the profile, and Submit sends
+  // the application and makes the share (pages/api/tenant/shares.js). An age answer that is not a
+  // stored yes, or does not count in this province, is asked first (lib/applyAge.js startStep);
+  // Continue then returns to the review.
+  const [oneTap, setOneTap] = useState(false);
+  const [sharePreview, setSharePreview] = useState(null); // { facts, checks, documents } from /api/tenant/shares
+  const applyWithProfile = async () => {
+    if (!saved || saved.source !== 'profile' || prefill.state === 'loading') return;
+    await applySavedProfile();
+    try { const r = await fetch('/api/tenant/shares'); const j = r.ok ? await r.json() : null; if (j && j.preview) setSharePreview({ facts: j.preview.facts || [], checks: j.preview.checks || [], documents: j.documents || [] }); } catch (e) { /* the review still lists the application */ }
+    setOneTap(true);
+    const at = startStep({ form: saved.form }, STEPS, ageRule);
+    setFromReview(at !== STEPS.length);
+    setStep(at);
+  };
   // Province arrives with the invite (and a prefilled profile may come from another province):
   // refresh an ESTIMATED after-tax figure; a tenant-stated one is never touched.
   useEffect(() => {
@@ -437,6 +457,9 @@ export default function ApplyPage({ invited = null }) {
     const out = await runSubmitChain({ post, token: g.token, applicationNumber: g.applicationNumber });
     if (!out.ok) { console.warn(`[apply] ${out.step} failed after ${out.attempts} tries: ${out.error?.message || out.error}`); setSaveHeld(true); return; }
     if (out.docRequest) setDocRequest(out.docRequest);
+    // One tap apply: the share for this listing's realtor, approved by this submission. The
+    // server finds the realtor and the listing from the invite. Best effort: the application stands.
+    if (oneTap) { try { await fetch('/api/tenant/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'apply', inviteToken: g.token, applicationNumber: g.applicationNumber }) }); } catch (e) { /* the application is sent; nothing is shared */ } }
     setResult({ applicationNumber: g.applicationNumber, ownerToken: g.ownerToken });
     setStatus('done');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -635,6 +658,18 @@ export default function ApplyPage({ invited = null }) {
             </div>
           );
         })}
+        {/* One tap apply: what the realtor also sees from the profile itself, through the share. */}
+        {oneTap && sharePreview && (
+          <div data-one-tap-share="">
+            <div className="mp-head" style={{ minHeight: 44 }}><div className="mp-value" style={{ marginTop: 0 }}>Shared from your profile</div></div>
+            <p className="mp-p">{noWidow(`${invite?.realtorName || 'This realtor'} also sees these from your profile, each with where it came from${sharePreview.documents.length ? ', and can open your stored documents for 14 days' : ''}. You see each view, and you can stop sharing from your profile at any time.`)}</p>
+            <ul className="mp-list" style={{ marginTop: 'var(--gap-line)' }}>
+              {sharePreview.facts.map((x) => <li key={x.key} style={{ display: 'block' }}><div className="mp-label">{x.label}</div><div className={`mp-value${x.key === 'email' ? ' mp-addr' : ''}`}>{x.key === 'email' ? x.value : <LinesText text={x.value} />}</div><div className="mp-source">{noWidow(youLine(SOURCE.TYPED, x.at))}</div></li>)}
+              {sharePreview.checks.map((x) => { const t = checkText(x); return <li key={x.kind} style={{ display: 'block' }}><div className="mp-label">{t.label}</div><div className="mp-value">{noWidow(t.value)}</div><div className="mp-source">{noWidow(x.line)}</div></li>; })}
+              {sharePreview.documents.map((d) => <li key={d.id} style={{ display: 'block' }}><div className="mp-label">Document</div><div className="mp-value">{KIND_LABEL[d.kind] || 'Document'}</div><div className="mp-source">{noWidow('Can be opened for 14 days')}</div></li>)}
+            </ul>
+          </div>
+        )}
       </>
     );
   };
@@ -819,7 +854,21 @@ export default function ApplyPage({ invited = null }) {
               <div className="mp-stack">
                 {/* Saved profile offer: the apply in seconds entry point, when this device or session holds
                     one. It unmounts the moment a choice is made; an error brings it back with the message. */}
-                {saved && !invited && (prefill.state === 'idle' || prefill.state === 'error') && !prefill.dismissed && (
+                {/* One tap apply: a signed in tenant's own profile. */}
+                {saved && saved.source === 'profile' && !invited && (prefill.state === 'idle' || prefill.state === 'error') && !prefill.dismissed && (
+                  <div className="rl-card mp-card mp-enter" data-one-tap="">
+                    <Eyebrow>One tap apply</Eyebrow>
+                    <h2 className="mp-h2" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Apply with your profile')}</h2>
+                    <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Your profile fills this application. You see exactly what is sent, and to whom, before you submit.')}</p>
+                    <p className="mp-note mp-addr" style={{ marginTop: 'var(--gap-line)' }}>{saved.email}</p>
+                    {prefill.state === 'error' && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(prefill.error)}</p>}
+                    <div className="mp-actions">
+                      <button type="button" data-one-tap-apply="" onClick={applyWithProfile} disabled={prefill.state === 'loading'} className="mp-btn"><Pending busy={prefill.state === 'loading'} label="Loading your profile">Apply with my profile</Pending></button>
+                      <button type="button" onClick={() => setPrefill((p) => ({ ...p, dismissed: true }))} className="mp-link">Start fresh</button>
+                    </div>
+                  </div>
+                )}
+                {saved && saved.source !== 'profile' && !invited && (prefill.state === 'idle' || prefill.state === 'error') && !prefill.dismissed && (
                   <div className="rl-card mp-card mp-enter">
                     <Eyebrow>Apply in seconds</Eyebrow>
                     <h2 className="mp-h2" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Fill this application from your saved profile')}</h2>
@@ -837,7 +886,7 @@ export default function ApplyPage({ invited = null }) {
                     </div>
                   </div>
                 )}
-                {prefill.state === 'applied' && (
+                {prefill.state === 'applied' && !oneTap && (
                   <div role="status" className="rl-card mp-card mp-enter">
                     <p className="mp-p" style={{ color: C.ink }}>{noWidow('Filled from your saved profile. Check each step, especially income and your move in date, then submit. This creates a separate application for this listing; what you confirm here becomes your profile’s latest details.')}</p>
                     {prefill.source?.address && form.apartmentAddress && prefill.source.address.trim().toLowerCase() === form.apartmentAddress.trim().toLowerCase() && (

@@ -53,6 +53,7 @@ const FILES = {
   m016: 'db/016-drop-application-defaults.sql',
   m017: 'db/017-realtor-invites.sql',
   m018: 'db/018-profile-vault.sql',
+  m019: 'db/019-profile-shares.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -719,6 +720,73 @@ async function run018(db, tag) {
   await db.query("DELETE FROM public.tenant_profiles WHERE id = 'eeeeeeee-0000-4000-8000-0000000000a2'");
 }
 
+// ── db/019-profile-shares.sql ──────────────────────────────────────────────────────────────
+// Shares: one table, row level security on, no policy, nothing granted to the browser roles. The
+// tenant and the recipient of a share never change, one live share per tenant, realtor, purpose
+// and listing, an approved share always carries its time, and the log's share_id now points at
+// it. A second run changes nothing.
+const shareCatalog = (db) => rows(db, "SELECT a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE a.attrelid = 'public.profile_shares'::regclass AND a.attnum > 0 AND NOT a.attisdropped ORDER BY a.attname");
+const shareConstraints = (db) => rows(db, "SELECT c.relname, k.conname, pg_get_constraintdef(k.oid) AS def FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('profile_shares', 'profile_access_log') ORDER BY c.relname, k.conname");
+const shareIndexes = (db) => rows(db, "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'profile_shares' ORDER BY indexname");
+const shareTriggers = (db) => rows(db, "SELECT tgname, pg_get_triggerdef(oid) AS def FROM pg_trigger WHERE tgrelid = 'public.profile_shares'::regclass AND NOT tgisinternal ORDER BY tgname");
+const SP = 'eeeeeeee-0000-4000-8000-0000000000b1';
+const SP2 = 'eeeeeeee-0000-4000-8000-0000000000b2';
+const SP3 = 'eeeeeeee-0000-4000-8000-0000000000b3';
+const dropProfiles = (db, ids) => db.query('DELETE FROM public.tenant_profiles WHERE id = ANY($1::uuid[])', [ids]);
+async function check019(db, label) {
+  check((await one(db, "SELECT relrowsecurity FROM pg_class WHERE oid = 'public.profile_shares'::regclass")) === true, `${label}: row level security is on for profile_shares`);
+  check((await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profile_shares'")) === 0, `${label}: profile_shares has no policy`);
+  for (const role of ['anon', 'authenticated']) {
+    for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) check((await one(db, "SELECT has_table_privilege($1, 'public.profile_shares', $2)", [role, priv])) === false, `${label}: ${role} holds no ${priv} on profile_shares`);
+    await db.exec(`SET ROLE ${role}`); let msg = ''; try { msg = await refused(db, 'SELECT * FROM public.profile_shares'); } finally { await db.exec('RESET ROLE'); }
+    check(/permission denied/.test(msg), `${label}: ${role} cannot read profile_shares`, msg);
+  }
+  check((await constraintCount(db, 'profile_access_log_share_id_fkey')) === 1, `${label}: the log's share_id points at profile_shares, once`);
+  const realtors = (await rows(db, 'SELECT id FROM public.profiles ORDER BY id LIMIT 2')).map((r) => r.id);
+  const listing = await one(db, 'SELECT id FROM public.listings ORDER BY id LIMIT 1');
+  check(realtors.length === 2 && !!listing, `${label}: two realtors and a listing to share with`);
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts) VALUES ($1, 'share@mail.ca', 'ks1', '{}'::jsonb), ($2, 'share2@mail.ca', 'ks2', '{}'::jsonb)", [SP, SP2]);
+  const ins = (extra = {}) => { const r = { tenant_profile_id: SP, recipient_profile_id: realtors[0], purpose: 'application', listing_id: listing, status: 'approved', approved_at: '2026-11-19T15:00:00Z', approved_via: 'session', scope: '{facts,checks,documents}', ...extra }; const keys = Object.keys(r); return db.query(`INSERT INTO public.profile_shares (${keys.join(', ')}) VALUES (${keys.map((_, i) => `$${i + 1}`).join(', ')}) RETURNING id`, keys.map((k) => r[k])); };
+  const no = async (extra) => { try { await ins(extra); return ''; } catch (e) { return String(e.message); } };
+  const id = (await ins()).rows[0].id;
+  check(/profile_shares_one_live_idx/.test(await no({})), `${label}: one live share for a tenant, a realtor, a purpose and a listing`);
+  check(/profile_shares_approved_has_time/.test(await no({ recipient_profile_id: realtors[1], approved_at: null })), `${label}: an approved share always carries its time`);
+  check(/profile_shares_scope_known/.test(await no({ recipient_profile_id: realtors[1], scope: '{facts,fit}' })), `${label}: a share shows facts, checks and documents, and nothing else`);
+  check(/profile_shares_status_check/.test(await no({ recipient_profile_id: realtors[1], status: 'forwarded' })), `${label}: a status off the list is refused`);
+  check(/profile_shares_purpose_check/.test(await no({ recipient_profile_id: realtors[1], purpose: 'marketing' })), `${label}: a purpose off the list is refused`);
+  check(/profile_shares_pass_on_has_requester/.test(await no({ recipient_profile_id: realtors[1], purpose: 'pass_on' })), `${label}: a pass on names who asked`);
+  check(/profile_shares_not_self/.test(await no({ recipient_profile_id: realtors[1], purpose: 'pass_on', requested_by: realtors[1] })), `${label}: and never the recipient`);
+  check(/approved_via/.test(await no({ recipient_profile_id: realtors[1], approved_via: 'realtor' })), `${label}: approved only by the tenant's session or link`);
+  check(/never change/.test(await refused(db, 'UPDATE public.profile_shares SET recipient_profile_id = $2 WHERE id = $1', [id, realtors[1]])), `${label}: the recipient of a share never changes`);
+  check(/never change/.test(await refused(db, 'UPDATE public.profile_shares SET tenant_profile_id = $2 WHERE id = $1', [id, SP2])), `${label}: nor the tenant`);
+  await db.query("UPDATE public.profile_shares SET status = 'revoked', ended_at = now() WHERE id = $1", [id]);
+  const again = (await ins()).rows[0].id;
+  check(!!again && again !== id, `${label}: after a share is revoked the tenant can approve a new one`);
+  await db.query("INSERT INTO public.profile_access_log (tenant_profile_id, share_id, actor_type, actor_profile_id, actor_label, action) VALUES ($1, $2, 'realtor', $3, 'A realtor', 'profile_viewed')", [SP, again, realtors[0]]);
+  check(/profile_access_log_share_id_fkey/.test(await refused(db, "INSERT INTO public.profile_access_log (tenant_profile_id, share_id, actor_type, action) VALUES ($1, 'ffffffff-0000-4000-8000-000000000001', 'realtor', 'profile_viewed')", [SP])), `${label}: a log line cannot name a share that does not exist`);
+  await db.query('DELETE FROM public.profile_shares WHERE id = $1', [again]);
+  check((await one(db, "SELECT count(*)::int FROM public.profile_access_log WHERE tenant_profile_id = $1 AND share_id IS NULL AND action = 'profile_viewed'", [SP])) === 1, `${label}: a removed share leaves its log line, pointing at none`);
+  await dropProfiles(db, [SP, SP2]);
+  check((await one(db, 'SELECT count(*)::int FROM public.profile_shares WHERE tenant_profile_id = $1', [SP])) === 0, `${label}: removing the profile removes its shares`);
+}
+async function run019(db, tag) {
+  const logBefore = await rows(db, 'SELECT * FROM public.profile_access_log ORDER BY id');
+  await step(db, `${tag}1`, FILES.m019);
+  check(same(await rows(db, 'SELECT * FROM public.profile_access_log ORDER BY id'), logBefore), `${tag}1: no existing log line moved`);
+  await check019(db, `${tag}1`);
+  const realtor = await one(db, 'SELECT id FROM public.profiles ORDER BY id LIMIT 1');
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts) VALUES ($1, 'kept-share@mail.ca', 'ks3', '{}'::jsonb)", [SP3]);
+  await db.query("INSERT INTO public.profile_shares (tenant_profile_id, recipient_profile_id, purpose, status, approved_at, approved_via) VALUES ($1, $2, 'application', 'approved', '2026-11-19T15:00:00Z', 'session')", [SP3, realtor]);
+  const shape = await shareCatalog(db); const constraints = await shareConstraints(db); const indexes = await shareIndexes(db); const triggers = await shareTriggers(db);
+  const held = await rows(db, 'SELECT * FROM public.profile_shares ORDER BY id');
+  await step(db, `${tag}2 (019 again)`, FILES.m019);
+  check(same(await shareCatalog(db), shape), `${tag}2: a second run leaves every column, its type, NOT NULL and default as they were`);
+  check(same(await shareConstraints(db), constraints) && same(await shareIndexes(db), indexes) && same(await shareTriggers(db), triggers), `${tag}2: and every constraint, index and trigger, on the shares and on the log`);
+  check(same(await rows(db, 'SELECT * FROM public.profile_shares ORDER BY id'), held), `${tag}2: and every row: the share approved before it is still there`);
+  await check019(db, `${tag}2`);
+  await dropProfiles(db, [SP3]);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -821,6 +889,7 @@ async function pathA() {
   await run016(db, 'A12');
   await run017(db, 'A13');
   await run018(db, 'A14');
+  await run019(db, 'A15');
   await db.close();
 }
 
@@ -983,6 +1052,7 @@ async function pathB() {
   await run016(db, 'B18');
   await run017(db, 'B19');
   await run018(db, 'B20');
+  await run019(db, 'B21');
   return { db, before };
 }
 

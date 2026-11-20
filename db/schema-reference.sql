@@ -257,3 +257,19 @@
 --   Row level security is on for all three with no policy, and nothing is granted to anon or
 --   authenticated: lib/tenantVault.js reaches them with the service role, for the tenant's own
 --   session or the expiry job. No realtor route or library reads them.
+--
+-- ── shares (db/019-profile-shares.sql) ─────────────────────────────────────────────────────────
+--   profile_shares   a tenant's permission for one named realtor to read their profile: a grant
+--                    to read, never a copy. tenant_profile_id (CASCADE), recipient_profile_id
+--                    (REFERENCES profiles, CASCADE), purpose (application, pass_on), requested_by,
+--                    handoff_id, listing_id (SET NULL), status (pending, approved, declined,
+--                    revoked, expired), consent_token_hash, consent_expires_at, scope (facts,
+--                    checks, documents), approved_at, approved_via (session, email_link),
+--                    documents_until, expires_at, ended_at, created_at.
+--                    One live share per tenant, realtor, purpose and listing
+--                    (profile_shares_one_live_idx). The trigger profile_shares_keep_parties
+--                    refuses a change to the tenant or the recipient.
+--   profile_access_log.share_id now REFERENCES profile_shares(id) ON DELETE SET NULL.
+--   Row level security is on with no policy, and nothing is granted to anon or authenticated:
+--   lib/profileShares.js writes it for the tenant's own session, and lib/profileShareStore.js
+--   reads through it for the realtor it names, writing a log line with every read.

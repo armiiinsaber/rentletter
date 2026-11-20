@@ -15,6 +15,7 @@ import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
 import { Reveal } from '../brand/Loader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
+import SharedProfile from '../../components/dashboard/SharedProfile';
 import ScreeningChecklist from '../../components/dashboard/ScreeningChecklist';
 import { IntegrityLine } from '../../components/dashboard/IntegrityChecks';
 import DocumentViewer from '../../components/dashboard/DocumentViewer';
@@ -1141,6 +1142,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             docRequest={a.docRequest || null}
             focus={focusDocIntel?.linkId === a.linkId || focusDocFor?.linkId === a.linkId ? (focusDocIntel || focusDocFor) : null}
           />
+
+          {/* The profile the tenant shared by applying with it (lib/profileShares.js): the whitelist and
+              the facts read from documents, each view logged for the tenant. */}
+          <SharedProfile linkId={a.linkId} />
 
           {/* ACTIONS, after the facts. The drag is the fast path; these are the deliberate one. */}
           <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>

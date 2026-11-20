@@ -2,9 +2,10 @@
 // pages/api/cron/expire-vault.js, db/018-profile-vault.sql; docs/design/profile-and-circle.md
 // Phases 3 and 4), over the fake stack: the real routes, the real store, a fake database, bucket,
 // key value store and document reader.
-//   1. A realtor cannot read any vault document or fact, through any route: nothing on the realtor
-//      side names the vault, the vault route knows no realtor session, and the realtor's own
-//      document routes answer nothing for a vault file.
+//   1. A realtor reads the vault only through the one share reader (lib/profileShareStore.js,
+//      db/019): nothing else on the realtor side names the vault, the vault route knows no realtor
+//      session, a signed link is made in exactly one function behind an approved share, and the
+//      realtor's own document routes answer nothing for a vault file.
 //   2. A document is stored only after it is read, with the facts read from it, each from the
 //      closed list; the tenant must have proved the address and agreed first.
 //   3. A deleted document is gone, file included; the facts read from it stay until removed.
@@ -57,11 +58,23 @@ test('1. a realtor cannot read any vault document or fact, through any route', a
   const NAMES = /tenant-vault|tenant_profile_documents|tenant_profile_checks|profile_access_log|tenantVault\b|VAULT_BUCKET/;
   const OWN = ['lib/tenantVault.js', 'lib/tenantVaultRules.js', 'pages/api/tenant/vault.js', 'pages/api/cron/expire-vault.js'];
   const namers = [...walk('lib/'), ...walk('pages/api/'), ...walk('components/dashboard/'), ...walk('components/listings/')].filter((f) => NAMES.test(src(f).split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n')));
-  assert.deepEqual(namers.sort(), [...OWN].sort(), 'only the vault, its rules, the tenant route and the expiry job');
+  // With shares (db/019), a realtor reads the vault only through the one share reader: that
+  // reader, the share lifecycle and the tenant's own shares route join the list, and nothing else.
+  const SHARE = ['lib/profileShareStore.js', 'lib/profileShares.js', 'pages/api/tenant/shares.js'];
+  assert.deepEqual(namers.sort(), [...OWN, ...SHARE].sort(), 'only the vault, its rules, the tenant routes, the expiry job, and the one share reader with the share lifecycle');
   const route = src('pages/api/tenant/vault.js');
   assert.match(route, /const p = await sessionProfile\(req\);\s*\n\s*if \(!p\) return res\.status\(401\)/, 'the tenant session first');
   assert.doesNotMatch(route, /requireEntitlement|withRealtor|getSupabaseServerClient|req\.body\??\.profileId|req\.query/, 'no realtor session, and the profile id never comes from the request');
-  for (const f of OWN) assert.doesNotMatch(src(f), /owner_token|ownerToken|createSignedUrl|getPublicUrl/, `${f}: no owner token, and no link to a file is ever made`);
+  for (const f of [...OWN, ...SHARE]) assert.doesNotMatch(src(f), /owner_token|ownerToken|getPublicUrl/, `${f}: no owner token, and no public link`);
+  // A signed link is made in exactly one function, behind an approved share: signVaultDocument,
+  // which only lib/profileShareStore.js openSharedDocument calls, after its share check and its log line.
+  const signers = [...walk('lib/'), ...walk('pages/api/')].filter((f) => /createSignedUrl/.test(src(f)) && /tenant/i.test(f));
+  assert.deepEqual(signers, ['lib/tenantVault.js'], 'one file of the vault makes a signed link');
+  assert.equal((src('lib/tenantVault.js').match(/createSignedUrl/g) || []).length, 1, 'in one place');
+  assert.match(src('lib/tenantVault.js'), /export async function signVaultDocument\(admin, \{ profileId, documentId, seconds = 60 \}\) \{[\s\S]*?createSignedUrl\(data\.storage_path, seconds, \{ download: false \}\)/, 'inside signVaultDocument');
+  const callers = [...walk('lib/'), ...walk('pages/'), ...walk('components/')].filter((f) => f !== 'lib/tenantVault.js' && /signVaultDocument/.test(src(f)));
+  assert.deepEqual(callers, ['lib/profileShareStore.js'], 'called by the share reader alone');
+  assert.match(src('lib/profileShareStore.js'), /const refused = shareRefusal\(share, viewer, now\);\s*\n\s*if \(refused\) return \{ ok: false, reason: refused \};\s*\n\s*if \(!documentsOpen\(share, now\)\) return \{ ok: false, reason: 'closed' \};[\s\S]*?if \(!logged\) return \{ ok: false, reason: 'not logged' \};\s*\n\s*return await signVaultDocument/, 'after the share check, the documents window and the log line');
   // A realtor who is signed in, with no tenant cookie: the vault route refuses every method.
   const t = await setup();
   await t.upload('letter (Maya Okafor).pdf');

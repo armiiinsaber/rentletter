@@ -82,7 +82,7 @@ if (long) {
 t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_applicant_id: 'J9', profile_id: 'realtor-2', storage_path: 'realtor-2/J9/d9.pdf', kind: 'credit report', mime: 'application/pdf', bytes: 1200, uploaded_by: 'tenant', uploaded_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 13 * 86400000).toISOString(), deleted_at: null, deleted_by: null, opened_count: 0, last_opened_at: null }];
 // The tenant's own profile and vault (db/tenant-profiles.sql, db/018-profile-vault.sql): empty
 // until a walk asks for a tenant (GET /__fake/tenant below).
-for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log']) if (!t[name]) t[name] = [];
+for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log', 'profile_shares', 'tenant_profile_shareable']) if (!t[name]) t[name] = [];
 const stack = installFakeStack({ tables: t, user: USER });
 await stack.db.storage.from('applicant-documents').upload('realtor-2/J9/d9.pdf', Buffer.from('%PDF-1.4 other realtor credit report'), { contentType: 'application/pdf' });
 const { mintRequest, kvSetJson } = await import('../../lib/docRequest.js');
@@ -205,11 +205,11 @@ http.createServer(async (req, res) => {
     // Written the way lib/tenantProfileStore.js writes them: the row, and the session under the
     // hash of its token (tsession:{sha256}), 30 days.
     const { createHash, randomBytes, randomUUID } = await import('node:crypto');
-    const email = `maximiliano.castellanos${who}@outlook.com`;
+    const email = `m.castellanos${who}@outlook.com`;
     const now = new Date().toISOString();
     let row = t.tenant_profiles.find((r) => r.email === email);
     if (!row) {
-      const facts = { fullName: 'Maximiliano Castellanos Ruiz', email, phone: '4165550142', employmentType: 'full-time', jobTitle: 'Senior Clinical Operations Coordinator', employer: 'Northwind Pediatric Rehabilitation Clinic Inc.', yearsAtJob: '4', annualIncome: '118000', netIncome: '84500', netIncomeSource: 'estimated', rentalStatus: 'renting', previousAddress: '4100 Yonge Street, Unit 1907, North York', yearsAtPrevious: '3.5', currentRent: '2650', previousLandlordName: 'Harbourfront Residential Holdings Ltd.', previousLandlordContact: 'leasing@harbourfrontholdings.ca · 416 555 0188', moveInDate: '2026-12-01', reference1Name: 'Bartholomew Nakamura Whitfield', reference1Relationship: 'Manager', reference1Contact: 'b.whitfield@northwindclinic.ca' };
+      const facts = { fullName: 'Maximiliano Castellanos Ruiz', email, phone: '4165550142', employmentType: 'full-time', jobTitle: 'Senior Clinical Operations Coordinator', employer: 'Northwind Pediatric Rehabilitation Clinic Inc.', yearsAtJob: '4', annualIncome: '118000', netIncome: '84500', netIncomeSource: 'estimated', rentalStatus: 'renting', previousAddress: '4100 Yonge Street, Unit 1907, North York', yearsAtPrevious: '3.5', currentRent: '2650', previousLandlordName: 'Harbourfront Holdings Ltd.', previousLandlordContact: 'leasing@harbourfrontholdings.ca · 416 555 0188', moveInDate: '2026-12-01', ageConfirmed: true, reference1Name: 'Bartholomew Nakamura Whitfield', reference1Relationship: 'Manager', reference1Contact: 'b.whitfield@northwindclinic.ca' };
       row = { id: randomUUID(), email, email_key: createHash('sha256').update(email).digest('hex').slice(0, 32), facts, applications: [], facts_updated_at: new Date(Date.now() - 12 * 86400000).toISOString(), profile_revision: 0, created_at: now, updated_at: now, email_verified_at: now, last_active_at: now, vault_consent_at: null };
       t.tenant_profiles.push(row);
     }
@@ -228,6 +228,35 @@ http.createServer(async (req, res) => {
         check('employer_name', { name: 'Northwind Pediatric Rehabilitation Clinic Inc.' }, true, 'employment', docs[2].id),
         check('employment_start', { month: '2022-09' }, null, 'employment', null),
       );
+    }
+    // share=J2: this tenant applied to the realtor's listing with their profile (db/019): the
+    // application behind that applicant row is recorded as made from this profile, the share is
+    // approved three days ago, and the realtor has viewed it and opened a document. stopped=1:
+    // the tenant has since stopped it. The view the reader uses (db/015) holds the profile's facts.
+    const shareLink = q.get('share');
+    if (shareLink) {
+      // share=new: an applicant of their own on the realtor's first listing (no party, nothing
+      // another state touches), named after this tenant.
+      if (shareLink === 'new' && !t.listing_applicants.some((x) => x.id === `J-share-${who}`)) {
+        const a2 = t.applications.find((a) => a.id === 'A2'); const j2 = t.listing_applicants.find((x) => x.id === 'J2');
+        const name = who === '5' ? 'Valentina Castellanos Ruiz' : 'Maximiliano Castellanos Ruiz';
+        t.applications.push({ ...a2, id: `A-share-${who}`, application_number: `RL-2026-SHR${who}-TEST`, full_name: name, email, phone: `41655501${who}7`, owner_token: null });
+        t.listing_applicants.push({ ...j2, id: `J-share-${who}`, application_id: `A-share-${who}`, doc_verifications: null, reviewed_at: null, confirmations: {}, created_at: new Date(Date.now() - 3 * 86400000).toISOString() });
+      }
+      const j = t.listing_applicants.find((x) => x.id === (shareLink === 'new' ? `J-share-${who}` : shareLink)); const app = j && t.applications.find((a) => a.id === j.application_id);
+      if (app && !t.profile_shares.some((s) => s.tenant_profile_id === row.id && s.listing_id === j.listing_id)) {
+        const day = 86400000; const at = (n) => new Date(Date.now() + n * day).toISOString();
+        Object.assign(app, { prefill_source: 'profile', prefill_profile_id: row.id, prefill_profile_revision: 0, email_verified_at_submit: at(-3) });
+        if (!t.tenant_profile_shareable.some((v) => v.id === row.id)) t.tenant_profile_shareable.push({ id: row.id, facts: row.facts, facts_updated_at: row.facts_updated_at, email_verified_at: row.email_verified_at });
+        const stopped = q.get('stopped') === '1';
+        const share = { id: `share-${who}`, tenant_profile_id: row.id, recipient_profile_id: USER.id, purpose: 'application', requested_by: null, listing_id: j.listing_id, status: stopped ? 'revoked' : 'approved', scope: ['facts', 'checks', 'documents'], approved_at: at(-3), approved_via: 'session', documents_until: at(11), expires_at: null, ended_at: stopped ? at(-1) : null, created_at: at(-3) };
+        t.profile_shares.push(share);
+        const p0 = t.profiles[0]; const actor = [p0.full_name, p0.brokerage].filter(Boolean).join(', ');
+        const line = (action, n, doc = null) => ({ id: t.profile_access_log.length + 1, tenant_profile_id: row.id, share_id: share.id, actor_type: action === 'share_approved' || action === 'share_revoked' ? 'tenant' : 'realtor', actor_profile_id: USER.id, actor_label: actor, action, document_id: doc, at: at(n) });
+        t.profile_access_log.push(line('share_approved', -3)); t.profile_access_log.push(line('profile_viewed', -2));
+        t.profile_access_log.push(line('document_opened', -2, `vault-${who}-2`));
+        if (stopped) t.profile_access_log.push(line('share_revoked', -1));
+      }
     }
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ token, vault: process.env.TENANT_VAULT_ENABLED === 'false' ? 'off' : 'on', documents: t.tenant_profile_documents.filter((d) => d.tenant_profile_id === row.id && !d.deleted_at).length })); return;
   }
