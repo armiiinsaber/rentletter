@@ -51,11 +51,11 @@ export function LoadFailed({ onRetry, style }) {
 }
 
 // The frame each screen has: the realtor's header, then the page's own width and paddings.
-const Page = ({ maxWidth, padding, children, label, waiting = true }) => (
+const Page = ({ maxWidth, padding, children, label, waiting = true, nav = null }) => (
   <>
     <GlobalStyle />
     <div style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }} data-route-loading={waiting ? label : undefined}>
-      <DashboardHeader profile={seenProfile() || {}} />
+      <DashboardHeader profile={seenProfile() || {}} nav={nav} />
       <div style={{ maxWidth, margin: '0 auto', padding }}>{children}</div>
     </div>
   </>
@@ -72,12 +72,14 @@ const FRAMES = {
   listing: { maxWidth: 760, padding: 'var(--s-4) clamp(16px, 4vw, 32px) 0', back: 'All listings', label: 'Loading the listing' },
   dashboard: { maxWidth: 1100, padding: 'var(--s-2) clamp(16px, 4vw, 32px) 0', back: null, label: 'Loading your workspace' },
   profile: { maxWidth: 720, padding: 'var(--gap-section) var(--s-4) 0', back: 'Dashboard', label: 'Loading your profile' },
+  circle: { maxWidth: 720, padding: 'var(--s-2) var(--s-4) 0', back: null, label: 'Loading your circle' },
   page: { maxWidth: 720, padding: 'var(--gap-section) var(--s-4) 0', back: 'Dashboard', label: 'Loading' },
 };
 const titleOf = (route) => {
   if (route.kind === 'listing') { const l = seenListing(route.listingId); return l ? `${displayLabel(l, 'Listing')} · Rentletter` : 'Listing · Rentletter'; }
   if (route.kind === 'dashboard') return 'Realtor Dashboard · Rentletter';
   if (route.kind === 'profile') return 'Profile · Rentletter';
+  if (route.kind === 'circle') return 'Circle · Rentletter';
   return 'Rentletter';
 };
 
@@ -86,7 +88,7 @@ export default function RouteLoader({ route, onRetry }) {
   if (route.shot && !route.failed) return <Snapshot shot={route.shot} />;
   const f = FRAMES[route.kind] || FRAMES.page;
   return (
-    <Page label={route.failed ? 'failed' : route.kind} waiting={!route.failed} maxWidth={f.maxWidth} padding={f.padding}>
+    <Page label={route.failed ? 'failed' : route.kind} waiting={!route.failed} maxWidth={f.maxWidth} padding={f.padding} nav={route.kind === 'dashboard' ? 'listings' : route.kind === 'circle' ? 'circle' : null}>
       <Head><title>{titleOf(route)}</title></Head>
       {f.back ? <Back label={f.back} tight={route.kind === 'listing'} /> : null}
       {route.failed ? <LoadFailed onRetry={onRetry} /> : <ScreenLoader label={f.label} />}

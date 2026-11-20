@@ -64,7 +64,13 @@ DO $$ BEGIN
       'reference_answered',
       'form_data_opened',
       'profile_share_approved',
-      'profile_share_revoked'
+      'profile_share_revoked',
+      'circle_connection_requested',
+      'circle_connected',
+      'circle_connection_removed',
+      'brokerage_added',
+      'brokerage_confirmed',
+      'brokerage_disputed'
     ));
   END IF;
 END $$;

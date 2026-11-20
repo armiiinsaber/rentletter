@@ -83,6 +83,9 @@ t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_a
 // The tenant's own profile and vault (db/tenant-profiles.sql, db/018-profile-vault.sql): empty
 // until a walk asks for a tenant (GET /__fake/tenant below).
 for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log', 'profile_shares', 'tenant_profile_shareable']) if (!t[name]) t[name] = [];
+// The realtor circle and the brokerage record (db/021-realtor-circle.sql): empty until a walk
+// asks for a circle (GET /__fake/circle below).
+for (const name of ['circle_connections', 'brokerages', 'brokerage_members']) if (!t[name]) t[name] = [];
 const stack = installFakeStack({ tables: t, user: USER });
 await stack.db.storage.from('applicant-documents').upload('realtor-2/J9/d9.pdf', Buffer.from('%PDF-1.4 other realtor credit report'), { contentType: 'application/pdf' });
 const { mintRequest, kvSetJson } = await import('../../lib/docRequest.js');
@@ -168,6 +171,55 @@ http.createServer(async (req, res) => {
       { id: `P-g-${link}`, application_id: j.application_id, role: 'guarantor', status: 'submitted', full_name: 'Pat Guarantor', email: 'pat@example.com', phone: '416 555 0199', address: '14 Sample Cres, Toronto', employer: 'Northwind Sample Clinic Inc.', job_title: 'Clinic Coordinator', annual_income: 85000, invited_at: now, submitted_at: now, consented_at: now, doc_verifications: null },
     );
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ ok: true, applicationId: j.application_id })); return;
+  }
+  // The Circle screen (pages/circle.js, components/dashboard/CircleView.js): GET /__fake/circle?seed=1
+  // gives the signed in realtor a circle with the long values: one request waiting for them, one
+  // realtor connected (with a confirmed brokerage record, rentals and areas), one request they
+  // sent, and two realtors a search finds, one of whom turned findable off. brokerage=sent adds
+  // the realtor's own record, waiting for its broker of record. seed=0 takes it all away again.
+  // GET /__fake/circle?rows=1 answers the connection rows; ?brokerage-link=1 mints a fresh
+  // confirmation link for the realtor's own record and answers { token }.
+  if (req.url.startsWith('/__fake/circle')) {
+    const q = new URL(req.url, 'http://localhost').searchParams;
+    const ids = ['circle-r1', 'circle-r2', 'circle-r3', 'circle-r4', 'circle-r5'];
+    const clear = () => {
+      t.profiles = t.profiles.filter((p) => !ids.includes(p.id)); stack.db.tables.profiles = t.profiles;
+      t.circle_connections.length = 0; t.brokerages.length = 0; t.brokerage_members.length = 0;
+    };
+    if (q.get('seed') === '0') clear();
+    if (q.get('seed') === '1') {
+      clear();
+      const day = 86400000; const at = (n) => new Date(Date.now() - n * day).toISOString();
+      const realtor = (id, full_name, brokerage, over = {}) => ({ id, email: `${id}@example.com`, full_name, brokerage, phone: '416 555 0177', plan: 'founding', province: 'ON', created_at: at(200), signup_source: 'direct', invite_code: null, invited_by: null, circle_findable: null, does_rentals: null, service_areas: null, ...over });
+      t.profiles.push(
+        realtor('circle-r1', 'Bartholomew Nakamura Whitfield', 'Harbourfront Residential Realty Inc., Brokerage'),
+        realtor('circle-r2', 'Anastasia Konstantinopoulou', 'Lakeshore and Humber Valley Realty Ltd., Brokerage', { does_rentals: true, service_areas: ['Etobicoke', 'Mississauga', 'Liberty Village'] }),
+        realtor('circle-r3', 'Guadalupe Thanabalasingham', 'Northwind Residential Realty Inc., Brokerage'),
+        realtor('circle-r4', 'Oluwaseun Adebayo Fitzgerald', 'Harbourfront Residential Realty Inc., Brokerage'),
+        realtor('circle-r5', 'Guadalupe Hidden', 'Northwind Residential Realty Inc., Brokerage', { circle_findable: false }),
+      );
+      t.circle_connections.push(
+        { id: 'cc-1', requester_id: 'circle-r1', addressee_id: USER.id, status: 'pending', blocked_by: null, created_at: at(1), answered_at: null },
+        { id: 'cc-2', requester_id: USER.id, addressee_id: 'circle-r2', status: 'accepted', blocked_by: null, created_at: at(40), answered_at: at(38) },
+        { id: 'cc-4', requester_id: USER.id, addressee_id: 'circle-r4', status: 'pending', blocked_by: null, created_at: at(3), answered_at: null },
+      );
+      t.brokerages.push({ id: 'bk-2', legal_name: 'Lakeshore and Humber Valley Realty Ltd., Brokerage', address: '3080 Lake Shore Boulevard West, Suite 410, Etobicoke', phone: '416 555 0188', broker_of_record_name: 'Maximiliano Castellanos Ruiz', broker_of_record_email: 'broker@lakeshorehumber.ca', hst_number: null, status: 'confirmed', confirm_token_hash: null, confirm_sent_at: at(60), confirm_expires_at: at(46), broker_confirmed_at: at(58), confirmed_at: at(57), created_by: 'circle-r2', created_at: at(60), updated_at: at(57) });
+      t.brokerage_members.push({ id: 'bm-2', brokerage_id: 'bk-2', profile_id: 'circle-r2', status: 'active', joined_at: at(60), left_at: null });
+      if (q.get('brokerage') === 'sent') {
+        const me = t.profiles.find((p) => p.id === USER.id);
+        t.brokerages.push({ id: 'bk-1', legal_name: me.brokerage || 'Demo Realty', address: '2150 Lake Shore Boulevard West, Suite 1200, Toronto', phone: '416 555 0199', broker_of_record_name: 'Bartholomew Castellanos Whitfield', broker_of_record_email: 'broker@harbourfrontrealty.ca', hst_number: null, status: 'unconfirmed', confirm_token_hash: null, confirm_sent_at: at(1), confirm_expires_at: new Date(Date.now() + 13 * day).toISOString(), broker_confirmed_at: null, confirmed_at: null, created_by: USER.id, created_at: at(1), updated_at: at(1) });
+        t.brokerage_members.push({ id: 'bm-1', brokerage_id: 'bk-1', profile_id: USER.id, status: 'active', joined_at: at(1), left_at: null });
+      }
+    }
+    if (q.get('brokerage-link') === '1') {
+      const { createHash, randomBytes } = await import('node:crypto');
+      const b = t.brokerages.find((x) => x.created_by === USER.id && x.status === 'unconfirmed');
+      if (!b) { res.statusCode = 404; res.end('{}'); return; }
+      const token = randomBytes(32).toString('base64url');
+      b.confirm_token_hash = createHash('sha256').update(token).digest('hex'); b.confirm_expires_at = new Date(Date.now() + 14 * 86400000).toISOString(); b.broker_confirmed_at = null;
+      res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ token })); return;
+    }
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ ok: true, rows: t.circle_connections.map((r) => ({ id: r.id, requester_id: r.requester_id, addressee_id: r.addressee_id, status: r.status })), brokerages: t.brokerages.map((b) => ({ id: b.id, status: b.status, confirmed: !!b.broker_confirmed_at })) })); return;
   }
   if (req.url.startsWith('/__fake/history')) {
     const q = new URL(req.url, 'http://localhost').searchParams; const link = String(q.get('link') || '');

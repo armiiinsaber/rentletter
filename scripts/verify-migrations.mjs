@@ -55,6 +55,7 @@ const FILES = {
   m018: 'db/018-profile-vault.sql',
   m019: 'db/019-profile-shares.sql',
   m020: 'db/020-share-events.sql',
+  m021: 'db/021-realtor-circle.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -832,6 +833,130 @@ async function run020(db, tag) {
   else await db.query("DELETE FROM public.events WHERE payload->>'applicantName' = 'Probe'");
 }
 
+// ── db/021-realtor-circle.sql ──────────────────────────────────────────────────────────────
+// The realtor circle and the brokerage record: three tables, three nullable columns on profiles,
+// the connections of realtors who already joined through an invite link, and six more values of
+// events.type. Run where there is no events table (the tables are made, the timeline is left
+// alone), then on an events table holding the constraint as db/020 left it with an old row in it,
+// then again (nothing changes). The realtors, the brokerages and the events table used here are
+// the verifier's own and are taken away at the end.
+const CIR = { a: 'c1000000-0000-4000-8000-000000000001', b: 'c1000000-0000-4000-8000-000000000002', c: 'c1000000-0000-4000-8000-000000000003', d: 'c1000000-0000-4000-8000-000000000004' };
+const CIRCLE_TABLES = ['brokerages', 'brokerage_members', 'circle_connections'];
+const CIRCLE_COLUMNS = ['circle_findable', 'does_rentals', 'service_areas'];
+const CIRCLE_EVENTS = ['circle_connection_requested', 'circle_connected', 'circle_connection_removed', 'brokerage_added', 'brokerage_confirmed', 'brokerage_disputed'];
+const circleCatalog = (db) => rows(db, "SELECT table_name, column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ANY($1) ORDER BY table_name, ordinal_position", [CIRCLE_TABLES]);
+const circleConstraints = (db) => rows(db, 'SELECT c.relname AS t, k.conname, pg_get_constraintdef(k.oid) AS def FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE c.relname = ANY($1) ORDER BY 1, 2', [CIRCLE_TABLES]);
+const circleIndexes = (db) => rows(db, "SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = ANY($1) ORDER BY 1, 2", [CIRCLE_TABLES]);
+const circleRows = async (db) => { const out = {}; for (const t of CIRCLE_TABLES) out[t] = await rows(db, `SELECT * FROM public.${t} ORDER BY id`); return out; };
+const stripCircle = (list) => list.map((r) => { const o = { ...r }; for (const c of CIRCLE_COLUMNS) delete o[c]; return o; });
+async function check021(db, label) {
+  for (const t of CIRCLE_TABLES) check(await hasTable(db, t), `${label}: the table ${t} exists`);
+  for (const [c, type] of [['circle_findable', 'boolean'], ['does_rentals', 'boolean'], ['service_areas', 'ARRAY']]) {
+    const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = $1", [c]))[0];
+    check(col && col.data_type === type && col.is_nullable === 'YES' && col.column_default === null, `${label}: profiles.${c} is nullable with no default`, JSON.stringify(col));
+  }
+  check((await one(db, 'SELECT count(*)::int FROM pg_class WHERE relname = ANY($1) AND relrowsecurity', [CIRCLE_TABLES])) === 3, `${label}: row level security is on for the three tables`);
+  check((await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = ANY($1)", [CIRCLE_TABLES])) === 0, `${label}: and no policy opens any of them`);
+  check((await one(db, "SELECT count(*)::int FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = ANY($1) AND grantee IN ('anon', 'authenticated')", [CIRCLE_TABLES])) === 0, `${label}: nothing is granted to anon or authenticated`);
+  for (const t of CIRCLE_TABLES) check(/permission denied|row-level security/.test(await asRealtor(db, CIR.a, () => refused(db, `SELECT count(*) FROM public.${t}`)) || ''), `${label}: a signed in realtor's browser cannot read ${t}`);
+  check((await one(db, "SELECT count(*)::int FROM pg_indexes WHERE schemaname = 'public' AND indexname IN ('circle_connections_pair_idx', 'brokerage_members_one_active_idx')")) === 2, `${label}: the one row per pair index and the one active membership index exist`);
+}
+async function run021(db, tag) {
+  const hadEvents = await hasTable(db, 'events');
+  const before = await rows(db, 'SELECT * FROM public.profiles ORDER BY id');
+  const policies = await profilesPolicies(db);
+  const oldTypes = typeList(read(FILES.m020)); const newTypes = typeList(read(FILES.m021));
+  check(same(newTypes, [...oldTypes, ...CIRCLE_EVENTS]), `${tag}: db/021 lists every type db/020 listed, in order, and the six new ones`);
+  // Four realtors of this check's own: b joined through a's invite link before the file ran.
+  await db.query("INSERT INTO public.profiles (id, email, full_name) VALUES ($1, 'circle-a@example.com', 'Circle A'), ($2, 'circle-b@example.com', 'Circle B'), ($3, 'circle-c@example.com', 'Circle C'), ($4, 'circle-d@example.com', 'Circle D')", [CIR.a, CIR.b, CIR.c, CIR.d]);
+  await db.query('UPDATE public.profiles SET invited_by = $2 WHERE id = $1', [CIR.b, CIR.a]);
+  const withMine = await rows(db, 'SELECT * FROM public.profiles ORDER BY id');
+  const credited = await one(db, 'SELECT count(*)::int FROM public.profiles WHERE invited_by IS NOT NULL');
+  let first = `${tag}1`;
+  if (!hadEvents) {
+    first = `${tag}0`;
+    await step(db, `${tag}0 (no events table)`, FILES.m021);
+    check(!(await hasTable(db, 'events')) && (await constraintCount(db, 'events_type_check')) === 0, `${tag}0: where db/events.sql has not run, the tables are made and the timeline is left alone`);
+  } else await step(db, `${tag}1`, FILES.m021);
+  // The first run: nothing of any profile moved, and the invited realtor is in the inviter's circle.
+  check(same(stripCircle(await rows(db, 'SELECT * FROM public.profiles ORDER BY id')), withMine), `${first}: no other column of any profile moved`);
+  check((await one(db, 'SELECT count(*)::int FROM public.profiles WHERE circle_findable IS NOT NULL OR does_rentals IS NOT NULL OR service_areas IS NOT NULL')) === 0, `${first}: every existing profile reads null in the three new columns`);
+  check(same(await profilesPolicies(db), policies), `${first}: the policies on profiles are exactly what they were`);
+  await check021(db, first);
+  const made = await rows(db, 'SELECT requester_id, addressee_id, status, answered_at IS NOT NULL AS answered FROM public.circle_connections ORDER BY created_at, id');
+  check(made.length === credited && made.some((r) => r.requester_id === CIR.a && r.addressee_id === CIR.b && r.status === 'accepted' && r.answered), `${first}: a realtor who joined through an invite link is connected to the inviter, and nobody else is connected`, JSON.stringify(made));
+  // One row per pair, whichever way round; never a realtor with themselves.
+  const con = (a, b, extra = "'pending', NULL, NULL") => refused(db, `INSERT INTO public.circle_connections (requester_id, addressee_id, status, answered_at, blocked_by) VALUES ($1, $2, ${extra})`, [a, b]);
+  check(/circle_connections_pair_idx/.test(await con(CIR.a, CIR.b) || ''), `${first}: a second row for a pair is refused`);
+  check(/circle_connections_pair_idx/.test(await con(CIR.b, CIR.a) || ''), `${first}: and the other way round`);
+  check(/circle_connections_not_self/.test(await con(CIR.c, CIR.c) || ''), `${first}: a realtor is never connected to themselves`);
+  check(/circle_connections_status_check/.test(await con(CIR.c, CIR.d, "'followed', NULL, NULL") || ''), `${first}: a status off the list is refused`);
+  check(/circle_connections_accepted_has_time/.test(await con(CIR.c, CIR.d, "'accepted', NULL, NULL") || ''), `${first}: accepted always carries when`);
+  check(/circle_connections_blocked_by_one_of_them/.test(await con(CIR.c, CIR.d, "'blocked', NULL, NULL") || ''), `${first}: a block names who blocked`);
+  check(/circle_connections_blocked_by_one_of_them/.test(await refused(db, "INSERT INTO public.circle_connections (requester_id, addressee_id, status, blocked_by) VALUES ($1, $2, 'blocked', $3)", [CIR.c, CIR.d, CIR.a]) || ''), `${first}: and only one of the two`);
+  check(/circle_connections_blocked_by_one_of_them/.test(await refused(db, "INSERT INTO public.circle_connections (requester_id, addressee_id, status, blocked_by) VALUES ($1, $2, 'pending', $1)", [CIR.c, CIR.d]) || ''), `${first}: a row that is not a block names nobody`);
+  check((await con(CIR.c, CIR.d)) == null, `${first}: a request between two other realtors is written`);
+  check(/circle_connections_pair_idx/.test(await con(CIR.d, CIR.c) || ''), `${first}: and its pair is then taken`);
+  // The brokerage record: confirmed only after the broker of record, a lower case address, one live link.
+  const brokerage = (extra = '') => `INSERT INTO public.brokerages (legal_name, address, broker_of_record_name, broker_of_record_email, created_by${extra ? ', ' + extra.split('=')[0].trim() : ''}) VALUES ('Probe Realty Inc., Brokerage', '1 Main St, Toronto', 'Dana Probe', $2, $1${extra ? ', ' + extra.split('=')[1].trim() : ''}) RETURNING id`;
+  const b1 = await one(db, brokerage("confirm_token_hash = 'hash-one'"), [CIR.a, 'dana@probe.ca']);
+  check((await one(db, 'SELECT status FROM public.brokerages WHERE id = $1', [b1])) === 'unconfirmed', `${first}: a new brokerage is unconfirmed`);
+  check(/broker_of_record_email/.test(await refused(db, brokerage(), [CIR.a, 'Dana@Probe.ca']) || ''), `${first}: the broker of record's address is stored in lower case`);
+  check(/confirm_token_hash/.test(await refused(db, brokerage("confirm_token_hash = 'hash-one'"), [CIR.c, 'dana@probe.ca']) || ''), `${first}: one link opens one record`);
+  check(/brokerages_status_check/.test(await refused(db, "UPDATE public.brokerages SET status = 'verified' WHERE id = $1", [b1]) || ''), `${first}: a status off the list is refused`);
+  check(/brokerages_confirmed_by_broker_first/.test(await refused(db, "UPDATE public.brokerages SET status = 'confirmed', confirmed_at = now() WHERE id = $1", [b1]) || ''), `${first}: a brokerage cannot be confirmed before its broker of record has confirmed`);
+  await db.query("UPDATE public.brokerages SET broker_confirmed_at = now(), confirm_token_hash = NULL WHERE id = $1", [b1]);
+  check((await refused(db, "UPDATE public.brokerages SET status = 'confirmed', confirmed_at = now() WHERE id = $1", [b1])) == null, `${first}: after the broker of record, the office confirms it`);
+  const m1 = await one(db, 'INSERT INTO public.brokerage_members (brokerage_id, profile_id) VALUES ($1, $2) RETURNING id', [b1, CIR.a]);
+  const b2 = await one(db, brokerage(), [CIR.a, 'other@probe.ca']);
+  check(/brokerage_members_one_active_idx/.test(await refused(db, 'INSERT INTO public.brokerage_members (brokerage_id, profile_id) VALUES ($1, $2)', [b2, CIR.a]) || ''), `${first}: a realtor has one active membership`);
+  await db.query("UPDATE public.brokerage_members SET status = 'left', left_at = now() WHERE id = $1", [m1]);
+  check((await refused(db, 'INSERT INTO public.brokerage_members (brokerage_id, profile_id) VALUES ($1, $2)', [b2, CIR.a])) == null, `${first}: after leaving one, the realtor joins another, and the history is kept`);
+  check(/brokerage_members_status_check/.test(await refused(db, "UPDATE public.brokerage_members SET status = 'owner' WHERE id = $1", [m1]) || ''), `${first}: a membership status off the list is refused`);
+  check(/brokerage_members_brokerage_id_fkey/.test(await refused(db, 'DELETE FROM public.brokerages WHERE id = $1', [b1]) || ''), `${first}: a brokerage with members cannot be deleted`);
+  // The timeline: on an events table as db/020 left it, with a row of an old type in it.
+  const probe = "payload->>'realtorName' = 'Probe'";
+  const addEvent = (type) => db.query("INSERT INTO public.events (profile_id, type, payload) VALUES ($1, $2, '{\"realtorName\":\"Probe\"}'::jsonb)", [CIR.a, type]);
+  const probes = () => rows(db, `SELECT id, profile_id, type, payload, created_at FROM public.events WHERE ${probe} ORDER BY created_at, id`);
+  if (!hadEvents) {
+    const oldEvents = `CREATE TABLE public.events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), profile_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE, type text NOT NULL, payload jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now());\nALTER TABLE public.events ADD CONSTRAINT events_type_check CHECK (type IN (${oldTypes.map((t) => `'${t}'`).join(', ')}));`;
+    await step(db, `${tag}0 (events as db/020 left it)`, `an events table with the constraint of ${FILES.m020}`, oldEvents);
+    await addEvent('profile_share_revoked');
+    for (const t of CIRCLE_EVENTS) check(/events_type_check/.test(await refused(db, 'INSERT INTO public.events (profile_id, type) VALUES ($1, $2)', [CIR.a, t]) || ''), `${tag}0: before the file, ${t} is refused`);
+    const kept = await probes(); const circleBefore = await circleRows(db);
+    await step(db, `${tag}1`, FILES.m021);
+    check(same(await probes(), kept), `${tag}1: the event written before the file did not move`);
+    check(same(await circleRows(db), circleBefore), `${tag}1: and no row of the circle or a brokerage moved`);
+  } else await addEvent('profile_share_revoked');
+  const after = await eventsConstraint(db);
+  check((await constraintCount(db, 'events_type_check')) === 1, `${tag}1: the constraint on events.type exists once`);
+  check(newTypes.every((t) => after.includes(`'${t}'`)), `${tag}1: events.type accepts every type it accepted and the six new ones`);
+  const n = (await probes()).length;
+  for (const t of CIRCLE_EVENTS) await addEvent(t);
+  check((await probes()).length === n + 6, `${tag}1: the six circle and brokerage events are written`);
+  check(/events_type_check/.test(await refused(db, "INSERT INTO public.events (profile_id, type) VALUES ($1, 'circle_followed')", [CIR.a]) || ''), `${tag}1: a type off the list is still refused`);
+  // Again: nothing changes, and a connection someone removed is not brought back.
+  await db.query("UPDATE public.circle_connections SET status = 'removed' WHERE requester_id = $1 AND addressee_id = $2", [CIR.a, CIR.b]);
+  const shape = await circleCatalog(db); const constraints = await circleConstraints(db); const indexes = await circleIndexes(db);
+  const profilesShape = await profilesCatalog(db); const profilesHeld = await rows(db, 'SELECT * FROM public.profiles ORDER BY id');
+  const held = await circleRows(db); const events = await probes();
+  await step(db, `${tag}2 (021 again)`, FILES.m021);
+  check(same(await circleCatalog(db), shape), `${tag}2: a second run leaves every column of the three tables, its type, NOT NULL and default as they were`);
+  check(same(await circleConstraints(db), constraints) && same(await circleIndexes(db), indexes), `${tag}2: and every constraint and index`);
+  check(same(await profilesCatalog(db), profilesShape) && same(await rows(db, 'SELECT * FROM public.profiles ORDER BY id'), profilesHeld) && same(await profilesPolicies(db), policies), `${tag}2: and profiles: every column, every row, every policy`);
+  check(same(await circleRows(db), held), `${tag}2: and every row: no connection is added, and the removed one stays removed`);
+  check((await eventsConstraint(db)) === after && (await constraintCount(db, 'events_type_check')) === 1 && same(await probes(), events), `${tag}2: and the constraint on events.type and every event`);
+  await check021(db, `${tag}2`);
+  // This check's own rows go; a realtor who is deleted leaves no connection behind.
+  await db.query('DELETE FROM public.brokerage_members WHERE profile_id = ANY($1)', [Object.values(CIR)]);
+  await db.query('DELETE FROM public.brokerages WHERE id = ANY($1)', [[b1, b2]]);
+  if (!hadEvents) { await db.query('DROP TABLE public.events'); check(!(await hasTable(db, 'events')), `${tag}2: the verifier's own events table is gone again`); }
+  else await db.query(`DELETE FROM public.events WHERE ${probe}`);
+  await db.query('DELETE FROM public.profiles WHERE id = ANY($1)', [Object.values(CIR)]);
+  check((await one(db, 'SELECT count(*)::int FROM public.circle_connections WHERE requester_id = ANY($1) OR addressee_id = ANY($1)', [Object.values(CIR)])) === 0, `${tag}2: removing a realtor removes their connections`);
+  check(same(stripCircle(await rows(db, 'SELECT * FROM public.profiles ORDER BY id')), before), `${tag}2: this check's own realtors removed, every profile is what it was`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -936,6 +1061,7 @@ async function pathA() {
   await run018(db, 'A14');
   await run019(db, 'A15');
   await run020(db, 'A16');
+  await run021(db, 'A17');
   await db.close();
 }
 
@@ -1100,6 +1226,7 @@ async function pathB() {
   await run018(db, 'B20');
   await run019(db, 'B21');
   await run020(db, 'B22');
+  await run021(db, 'B23');
   return { db, before };
 }
 

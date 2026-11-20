@@ -310,7 +310,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       <div className="dash-bg" style={{ overflowX: 'clip' }}>
         {/* Static, in-flow header (see .dash-bg .rl-header below), it scrolls away with the page; its
             solid canvas background + safe-area padding cover the notch region at the top. */}
-        <DashboardHeader profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} />
+        <DashboardHeader profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} />
 
         {locked && (
           <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>

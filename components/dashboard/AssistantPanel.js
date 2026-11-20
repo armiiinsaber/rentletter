@@ -92,7 +92,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
 
   const go = (item) => { onClose?.(); navigateToAction(item, adapter.paths); };
   const dismiss = async (item) => { const err = await dismissAction(adapter, item); setNote(err || ''); };
-  const goEvent = (e) => { const href = eventHref(e, adapter.paths); onClose?.(); if (href) go(href); };
+  const goEvent = (e) => { const href = eventHref(e, adapter.kind === 'real' ? { ...adapter.paths, circle: '/circle' } : adapter.paths); onClose?.(); if (href) go(href); };
 
   const unread = (e) => !lastReadAt || new Date(e.created_at) > new Date(lastReadAt);
   const groups = useMemo(() => groupByDay(events), [events]);

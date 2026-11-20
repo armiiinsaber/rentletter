@@ -2,7 +2,7 @@
 // touches the network. It behaves like the real clients as far as the code under test can tell:
 //
 //   fakeDb(tables, { absentColumns })   the Supabase query builder the code uses: from, select
-//       (column lists, embedded application:applications(*)), eq, in, is, not, lt, gt, gte, lte,
+//       (column lists, embedded application:applications(*)), eq, in, is, not, ilike, lt, gt, gte, lte,
 //       match, order, limit, maybeSingle, single, insert, upsert, update, delete, rpc, plus
 //       storage.from(bucket) with upload, remove, list and createSignedUrl. An unknown table is
 //       42P01, an absent column is 42703, as PostgREST answers.
@@ -33,6 +33,8 @@ const cmp = (op, a, b) => {
     case 'gt': return String(a) > String(b);
     case 'lte': return String(a) <= String(b);
     case 'gte': return String(a) >= String(b);
+    // ILIKE with % at either end, as the circle search writes it (lib/circle.js).
+    case 'ilike': { const want = String(b).toLowerCase(); const has = String(a == null ? '' : a).toLowerCase(); const core = want.replace(/^%|%$/g, ''); return a != null && (want.startsWith('%') && want.endsWith('%') ? has.includes(core) : want.endsWith('%') ? has.startsWith(core) : want.startsWith('%') ? has.endsWith(core) : has === core); }
     default: return true;
   }
 };
@@ -86,6 +88,7 @@ export function fakeDb(tables, { absentColumns = [], onQuery = null, failWhen = 
       in(k, v) { q.filters.push(['in', k, v]); return b; },
       not(k, op, v) { if (op === 'is' && v === null) q.filters.push(['notnull', k]); return b; },
       is(k, v) { if (v === null) q.filters.push(['isnull', k]); return b; },
+      ilike(k, v) { q.filters.push(['ilike', k, v]); return b; },
       lt(k, v) { q.filters.push(['lt', k, v]); return b; },
       gt(k, v) { q.filters.push(['gt', k, v]); return b; },
       lte(k, v) { q.filters.push(['lte', k, v]); return b; },

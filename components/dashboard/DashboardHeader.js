@@ -19,6 +19,7 @@ import StatusBadge from './StatusBadge';
 import AssistantBell from './AssistantBell';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { linkProps } from '../nav/routes';
+import MainNav from './MainNav';
 
 function initialsOf(profile) {
   const n = (profile?.full_name || '').trim();
@@ -29,7 +30,9 @@ function initialsOf(profile) {
   return (profile?.email || '?')[0].toUpperCase();
 }
 
-export default function DashboardHeader({ profile, signals = null, onAssistantAction }) {
+// nav: 'listings' or 'circle' on the two screens the main navigation opens (Listings, Circle);
+// other screens carry their own way back and no navigation row.
+export default function DashboardHeader({ profile, signals = null, onAssistantAction, nav = null }) {
   const adapter = useAdapter();
   // The service worker (public/sw.js) registers from the realtor side only, in production.
   useEffect(() => { registerServiceWorker(); }, []);
@@ -61,6 +64,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
           </a>
         </div>
       </ScrollHeader>
+      {nav ? <MainNav current={nav} /> : null}
 
       <style jsx>{`
         .rl-hdr-mark {

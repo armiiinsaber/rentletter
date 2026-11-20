@@ -15,6 +15,7 @@ const ROUTES = [
   { kind: 'dashboard', depth: 0, re: /^\/dashboard\/?$/ },
   { kind: 'listing', depth: 1, re: /^\/listing\/([^/]+)\/?$/ },
   { kind: 'profile', depth: 1, re: /^\/profile\/?$/ },
+  { kind: 'circle', depth: 1, re: /^\/circle\/?$/ },
   { kind: 'billing', depth: 1, re: /^\/billing\/?$/ },
   { kind: 'demo', depth: 0, re: /^\/demo\/dashboard\/?$/ },
 ];

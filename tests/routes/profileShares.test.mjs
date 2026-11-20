@@ -396,7 +396,7 @@ test('11. the realtor\'s timeline says the tenant shared their profile, and that
   }
   assert.match(src('db/020-share-events.sql'), /IF to_regclass\('public\.events'\) IS NULL THEN RETURN; END IF;[\s\S]*?IF cdef IS NOT NULL AND cdef LIKE '%profile_share_revoked%' THEN RETURN; END IF;/, 'guarded as db/012 is, and rewritten once');
   const listed = [...src('db/020-share-events.sql').split('CHECK (type IN (')[1].split('));')[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
-  assert.deepEqual(listed, [...E.EVENT_TYPES], 'db/020 holds the whole vocabulary, in order');
+  assert.deepEqual(listed, E.EVENT_TYPES.slice(0, E.EVENT_TYPES.indexOf('profile_share_revoked') + 1), 'db/020 holds the vocabulary as it stood then, in order: every type up to profile_share_revoked');
   // The events are written by the share lifecycle alone, through the one event writer.
   const lib = code('lib/profileShares.js');
   assert.match(lib, /await noteOnTimeline\(admin, share, 'profile_share_approved'\);/); assert.match(lib, /await noteOnTimeline\(admin, data, 'profile_share_revoked'\);/);

@@ -15,6 +15,7 @@ export const NAV = [
   { key: 'realtors', href: '/admin', label: 'Realtors' },
   { key: 'crm', href: '/admin/crm', label: 'CRM' },
   { key: 'promos', href: '/admin/promos', label: 'Promos' },
+  { key: 'brokerages', href: '/admin/brokerages', label: 'Brokerages' },
   { key: 'mockups', href: '/admin/mockups', label: 'Mockups' },
 ];
 
@@ -98,6 +99,8 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
           .ad-nav-inline { display: none; }
           .ad-nav-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 0; padding: 0 clamp(14px, 3vw, 28px); }
           .ad-nav-row a { min-height: 44px; padding: 8px 4px; border-radius: 0; font-size: 13px; }
+          /* Below 345px five equal columns are narrower than the longest word: each item takes its own width. */
+          @media (max-width: 344.98px) { .ad-nav-row { grid-auto-columns: auto; justify-content: space-between; } .ad-nav-row a { padding: 8px 2px; } }
         }
         .ad-iconbtn { width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: ${C.instText}; background: transparent; border: 1px solid transparent; cursor: pointer; }
         .ad-iconbtn:hover, .ad-iconbtn[aria-expanded="true"] { border-color: ${C.instRule}; background: ${C.instRaise}; }

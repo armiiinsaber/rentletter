@@ -49,7 +49,9 @@
 --     'listing_created', 'listing_updated', 'branding_updated',
 --     'pipeline_invited', 'pipeline_renewal_sent', 'pipeline_removed',
 --     'reference_requested', 'reference_answered', 'form_data_opened',
---     'profile_share_approved', 'profile_share_revoked'))   (db/020-share-events.sql)
+--     'profile_share_approved', 'profile_share_revoked',   (db/020-share-events.sql)
+--     'circle_connection_requested', 'circle_connected', 'circle_connection_removed',
+--     'brokerage_added', 'brokerage_confirmed', 'brokerage_disputed'))   (db/021-realtor-circle.sql)
 --   The single source of truth in code is lib/eventTypes.js (EVENT_TYPES). tests/events.test.mjs
 --   reads db/events.sql and fails when the two lists differ.
 --   Append only: service role inserts (lib/events.js recordEvent); realtors SELECT their own rows
@@ -274,3 +276,22 @@
 --   Row level security is on with no policy, and nothing is granted to anon or authenticated:
 --   lib/profileShares.js writes it for the tenant's own session, and lib/profileShareStore.js
 --   reads through it for the realtor it names, writing a log line with every read.
+--
+-- ── the realtor circle and the brokerage record (db/021-realtor-circle.sql) ────────────────────
+--   profiles.circle_findable   boolean, nullable. False: not in the circle search.
+--   profiles.does_rentals      boolean, nullable. profiles.service_areas   text[], nullable.
+--   brokerages          legal_name, address, phone, broker_of_record_name, broker_of_record_email
+--                       (lower case), registration_number, hst_number, status (unconfirmed,
+--                       confirmed, disputed, suspended), confirm_token_hash (unique),
+--                       confirm_sent_at, confirm_expires_at, broker_confirmed_at, confirmed_at,
+--                       created_by (REFERENCES profiles, SET NULL), created_at, updated_at.
+--                       confirmed needs broker_confirmed_at and confirmed_at.
+--   brokerage_members   brokerage_id (RESTRICT), profile_id (CASCADE), status (active, left,
+--                       disputed), joined_at, left_at. One active row per profile
+--                       (brokerage_members_one_active_idx).
+--   circle_connections  requester_id, addressee_id (REFERENCES profiles, CASCADE), status
+--                       (pending, accepted, declined, removed, blocked), blocked_by, created_at,
+--                       answered_at. ONE ROW PER PAIR (circle_connections_pair_idx on LEAST and
+--                       GREATEST of the two ids). Never the same realtor twice.
+--   Row level security is on for the three tables with no policy, and nothing is granted to anon
+--   or authenticated: lib/circle.js and lib/brokerage.js reach them with the service role.

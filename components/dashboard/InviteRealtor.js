@@ -1,7 +1,8 @@
 // components/dashboard/InviteRealtor.js
-// Invite a realtor: the section on the profile page (components/dashboard/ProfileView.js) with
+// Invite a realtor: the card on the Circle screen (components/dashboard/CircleView.js, full) with
 // the realtor's own invite link, a Copy button and the realtors who joined through the link, by
-// name and join date and nothing else. One request, POST /api/profile/invite
+// name and join date and nothing else. The profile page (components/dashboard/ProfileView.js)
+// carries the same section as one line and a link to that card. One request, POST /api/profile/invite
 // (lib/realtorInvite.js), which also makes the realtor's code the first time. Before
 // db/017-realtor-invites.sql has run the route answers that the section is not available and
 // nothing is drawn. The words promise nothing: no reward is described or implied.
@@ -10,9 +11,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { linkProps } from '../nav/routes';
 
 // The clipboard, with the one fallback every browser still has.
-async function writeClipboard(text) {
+export async function writeClipboard(text) {
   try { if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; } } catch (e) { /* the fallback below */ }
   try {
     const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
@@ -21,7 +23,7 @@ async function writeClipboard(text) {
 }
 export const joinedOn = (iso) => { const t = Date.parse(iso); return Number.isNaN(t) ? '' : new Date(t).toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'America/Toronto' }); };
 
-export default function InviteRealtor() {
+export default function InviteRealtor({ full = false }) {
   const adapter = useAdapter();
   const [data, setData] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -46,6 +48,16 @@ export default function InviteRealtor() {
     clearTimeout(timer.current); timer.current = setTimeout(() => setCopied(false), 2000);
   };
   const invited = Array.isArray(data.invited) ? data.invited : [];
+  // On the profile page: the section's name, one line, and the way to the card in Circle.
+  if (!full) {
+    return (
+      <section id="invite-a-realtor" data-invite-realtor="" className="rl-card" aria-labelledby="invite-a-realtor-title" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
+        <h2 id="invite-a-realtor-title" className="t-d3" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Invite a realtor</h2>
+        <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-3)', textWrap: 'balance' }}>Your invite link is in Circle, with everyone who joined through it.</p>
+        <a {...linkProps('/circle#invite-a-realtor')} data-invite-open-circle="" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', border: `1.5px solid ${C.ink}`, color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'none' }}>Open Circle</a>
+      </section>
+    );
+  }
   return (
     <section id="invite-a-realtor" data-invite-realtor="" className="rl-card" aria-labelledby="invite-a-realtor-title" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
       <h2 id="invite-a-realtor-title" className="t-d3" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Invite a realtor</h2>

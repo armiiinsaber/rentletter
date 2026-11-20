@@ -161,6 +161,34 @@ export const STATES = [
   { name: 'request documents', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await expand(p, LONG.a2); await tap(p, /^Request documents/); } },
   { name: 'profile', kind: 'realtor', go: async (p) => { await open(p, '/profile'); await p.locator('[data-invite-realtor]').waitFor({ timeout: 30000 }); }, steps: async function* (p) { await openAll(p); yield 'profile, every fold open'; } },
   { name: 'join, a realtor\'s invite link', kind: 'public', go: async (p) => { await open(p, '/join?invite=K7M2Q9XW4TPB3HNC'); await p.locator('[data-realtor-invite-landing]').waitFor({ timeout: 30000 }); } },
+  // The Circle screen (pages/circle.js): a request waiting, the circle with a connection's
+  // brokerage record, a request sent, the invite card, the realtor's own brokerage and settings;
+  // then a search that finds a realtor, the same after Add (Requested), a search that finds
+  // nobody (the invite link with Copy link and Share by text), and the sheet that asks before a
+  // removal. Alone, and the seeded circle is taken away after: its realtors are profiles.
+  { name: 'circle', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/circle?seed=1&brokerage=sent'); await open(p, '/circle'); await p.locator('[data-circle-list]').waitFor({ timeout: 30000 }); await wait(p, 400); }, steps: async function* (p, f) {
+    try {
+      await p.locator('#cv-search').fill('Guadalupe'); await p.locator('[data-circle-results]').waitFor({ timeout: 30000 }); await wait(p, 500);
+      if (await p.locator('[data-circle-result]').count() !== 1) throw new Error('the search shows a realtor who turned findable off');
+      yield 'circle, a search result';
+      await p.locator('[data-circle-add]').first().click(); await p.locator('[data-circle-requested]').first().waitFor({ timeout: 30000 }); await wait(p, 500);
+      yield 'circle, added: requested';
+      await p.locator('#cv-search').fill('Zoltan Nobody'); await p.locator('[data-circle-invite]').waitFor({ timeout: 30000 }); await wait(p, 500);
+      yield 'circle, nobody found: the invite';
+      await p.locator('#cv-search').fill(''); await wait(p, 300);
+      await p.locator('[data-circle-connection]').getByRole('button', { name: 'Remove' }).click(); await wait(p, 600);
+      yield 'circle, remove asked';
+    } finally { await f('/__fake/circle?seed=0'); }
+  } },
+  // The broker of record's page from the emailed link, its answer, and a link that is spent.
+  { name: 'brokerage, the broker of record\'s page', kind: 'public', phase: 'alone', go: async (p, f) => { await f('/__fake/circle?seed=1&brokerage=sent'); const { token } = await f('/__fake/circle?brokerage-link=1'); await open(p, `/brokerage/confirm/${token}`); await p.locator('[data-brokerage-confirm="ask"]').waitFor({ timeout: 30000 }); }, steps: async function* (p, f) {
+    try {
+      await tap(p, 'Yes, confirm'); await p.locator('[data-brokerage-confirm="confirm"]').waitFor({ timeout: 30000 }); await wait(p, 300);
+      yield 'brokerage, confirmed by the broker of record';
+      await p.reload({ waitUntil: 'load' }); await p.locator('[data-brokerage-confirm="gone"]').waitFor({ timeout: 30000 }); await wait(p, 300);
+      yield 'brokerage, a link that was used';
+    } finally { await f('/__fake/circle?seed=0'); }
+  } },
   // The second listing rented to its applicant, with a co applicant and a guarantor on the
   // application: Form data and the rented listing.
   { name: 'form data sheet', kind: 'realtor', phase: 'write', go: async (p, f) => { await rentL2(p, f); await open(p, '/listing/L2'); await tap(p, /^Details/); await p.locator('[data-form-data-row]').getByRole('button', { name: 'Form data' }).click(); await wait(p, 600); } },
@@ -266,6 +294,7 @@ export const STATES = [
   // ── the founder office: the Commitment section first, and the poster ──
   { name: 'office, the commitment counted', kind: 'office', phase: 'write', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await p.locator('.cm-svg').waitFor({ timeout: 15000 }); await wait(p, 400); } },
   { name: 'office, the Lead Realtor Partner counted', kind: 'office', phase: 'write', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await f('/__fake/kpi?partner=1'); await office(p); await open(p, '/admin'); await p.locator('[data-partner-tile="active"]').waitFor({ timeout: 30000 }); await p.locator('[data-partner-start]:not([data-partner-start=""])').waitFor({ timeout: 30000 }); await wait(p, 400); } },
+  { name: 'office, brokerages to review', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/circle?seed=1&brokerage=sent'); try { await office(p); await open(p, '/admin/brokerages'); await p.locator('[data-brokerage-row]').first().waitFor({ timeout: 30000 }); } finally { await f('/__fake/circle?seed=0'); } } },
   { name: 'office, the commitment poster', kind: 'office', phase: 'write', go: async (p) => { await office(p); await open(p, '/admin/commitment'); await p.locator('[data-poster]').waitFor({ timeout: 30000 }); await wait(p, 400); } },
   { name: 'office, the Lead Realtor Partner with no start date', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await f('/__fake/kpi?partner=1'); await f('/__fake/kpi?start=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-partner-start=""]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?start=1'); } } },
   { name: 'office, the commitment before its table exists', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?history=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?history=1'); } } },
