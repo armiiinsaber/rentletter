@@ -2,7 +2,11 @@
 // The UNIFIED tenant profile — one portable rental identity, keyed by email.
 //
 //   SIGN-IN   email → magic link (no password, no account step). Enumeration-safe copy.
-//   PROFILE   the durable facts (editable — edits apply to FUTURE applications only) +
+//   PROFILE   the tenant's home. The durable facts (editable: edits apply to FUTURE applications
+//             only), each with where it came from and when ("Typed by you on DATE"); the vault
+//             (components/tenant/ProfileVault.js): the facts read from their documents, the
+//             documents with their expiry, Renew and Delete, and who has viewed the profile;
+//             then, as before,
 //             every application they've sent (each a frozen snapshot with its own page,
 //             privacy console and per-application edit path) + email settings + sign out.
 //   REUSE     paste a new invite link → /apply/{token}#profile prefilled from the profile.
@@ -16,7 +20,9 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../components/theme';
 import { GlobalStyle, Wordmark, StatusPills } from '../components/ui';
-import { ProfileStyles, FactSections, Eyebrow, Lines, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
+import { ProfileStyles, FactSections, FactSourceContext, Eyebrow, Lines, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
+import ProfileVault, { youLine } from '../components/tenant/ProfileVault';
+import { SOURCE } from '../lib/profileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 import { Pending, ScreenLoader } from '../components/brand/Loader';
 
@@ -218,9 +224,11 @@ export default function MyProfile() {
       <div className="mp-stack">
         <div className="rl-card mp-card">
           <Eyebrow>My profile</Eyebrow>
-          <h1 className="mp-h1" style={{ marginTop: 'var(--gap-line)' }}>{f?.fullName || 'Your profile'}</h1>
+          {/* The name on one line: a long one steps down in size to fit the card, never a word alone. */}
+          <h1 className="mp-h1" data-profile-name="" style={{ marginTop: 'var(--gap-line)', whiteSpace: 'nowrap', overflowWrap: 'normal', fontSize: `min(var(--t-d1), calc((min(100vw, 760px) - 2 * var(--s-4) - 2 * var(--card-pad)) / ${Math.max(8, String(f?.fullName || 'Your profile').length) * 0.6}))` }}>{f?.fullName || 'Your profile'}</h1>
           <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}><Lines items={[profile.email, f && (f.jobTitle || f.employer) ? [f.jobTitle, f.employer].filter(Boolean).join(' at ') : null, profile.factsUpdatedAt ? `Details updated ${dateLong(profile.factsUpdatedAt)}` : null]} /></p>
           {noticeEl && <div style={{ marginTop: 'var(--gap-card)' }}>{noticeEl}</div>}
+          {apps.length > 0 && <a href="#applications" className="mp-link" data-to-applications="">Your applications</a>}
         </div>
         {/* Reuse: the one ink surface on the page. */}
         <div className="mp-ink">
@@ -247,13 +255,17 @@ export default function MyProfile() {
           {saveError && <p role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(saveError)}</p>}
         </div>
         {f ? (
-          <FactSections facts={f} draft={draft} editing={editing} setDraft={setDraft} canEdit={!editing} saving={saving} justSaved={justSaved} onEdit={startEdit} onCancel={cancelEdit} onSave={saveEdit} contactEditable={false} saveLabel="Save to my profile" />
+          <FactSourceContext.Provider value={youLine(SOURCE.TYPED, profile.factsUpdatedAt)}>
+            <FactSections facts={f} draft={draft} editing={editing} setDraft={setDraft} canEdit={!editing} saving={saving} justSaved={justSaved} onEdit={startEdit} onCancel={cancelEdit} onSave={saveEdit} contactEditable={false} saveLabel="Save to my profile" />
+          </FactSourceContext.Provider>
         ) : (
           <div className="rl-card mp-card"><p className="mp-p">{noWidow('No details saved yet. They appear here after your first application, or add an application you already sent, below.')}</p></div>
         )}
       </div>
 
-      <div className="rl-card mp-card">
+      <ProfileVault profile={profile} />
+
+      <div id="applications" className="rl-card mp-card" style={{ scrollMarginTop: 16 }}>
         <h2 className="mp-h2">Your applications</h2>
         {apps.length === 0 ? <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('No applications yet. When you apply through a realtor’s invite link, it shows up here.')}</p> : (
           <ul className="mp-list" style={{ marginTop: 'var(--gap-card)' }}>
@@ -286,7 +298,7 @@ export default function MyProfile() {
 
       <div className="rl-card mp-card">
         <h2 className="mp-h2">Sign in email</h2>
-        <p className="mp-value" style={{ marginTop: 'var(--gap-line)' }}>{profile.email}</p>
+        <p className="mp-value mp-addr" style={{ marginTop: 'var(--gap-line)' }}>{profile.email}</p>
         <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Changing it sends a confirmation to the new address first. This one keeps working until you confirm there.')}</p>
         {profile.pendingEmail ? (
           <>
@@ -300,7 +312,7 @@ export default function MyProfile() {
           </form>
         )}
         {emailMsg && <p role="status" className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(emailMsg)}</p>}
-        <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Your profile holds the facts you typed, never documents. Anything you upload for a realtor is held for that realtor only for 14 days, then deleted.')}</p>
+        <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Documents you add to your profile are kept until the date beside each one. Anything you upload for one realtor’s request is held for that realtor only for 14 days, then deleted.')}</p>
       </div>
       {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
     </>

@@ -52,6 +52,7 @@ const FILES = {
   m015: 'db/015-profile-verified-email.sql',
   m016: 'db/016-drop-application-defaults.sql',
   m017: 'db/017-realtor-invites.sql',
+  m018: 'db/018-profile-vault.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -654,6 +655,70 @@ async function run015(db, tag) {
   await db.query("DELETE FROM public.tenant_profiles WHERE id = 'eeeeeeee-0000-4000-8000-000000000009'");
 }
 
+// ── db/018-profile-vault.sql ───────────────────────────────────────────────────────────────
+// The tenant's vault: the bucket, one nullable column on tenant_profiles, and three tables with
+// row level security on, no policy, and nothing granted to the browser roles. A credit report
+// has no kind to be stored under, a fact outside the closed list cannot be recorded, a fact
+// outlives its document, and everything goes with the profile. A second run changes nothing.
+const VAULT_TABLES = ['tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log'];
+const vaultCatalog = (db) => rows(db, "SELECT c.relname, a.attname, format_type(a.atttypid, a.atttypmod) AS type, a.attnotnull, pg_get_expr(d.adbin, d.adrelid) AS def FROM pg_attribute a JOIN pg_class c ON c.oid = a.attrelid LEFT JOIN pg_attrdef d ON d.adrelid = a.attrelid AND d.adnum = a.attnum WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log', 'tenant_profiles') AND a.attnum > 0 AND NOT a.attisdropped ORDER BY c.relname, a.attname");
+const vaultConstraints = (db) => rows(db, "SELECT c.relname, k.conname, pg_get_constraintdef(k.oid) AS def FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE c.relnamespace = 'public'::regnamespace AND c.relname IN ('tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log') ORDER BY c.relname, k.conname");
+const vaultIndexes = (db) => rows(db, "SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log') ORDER BY indexname");
+const VP = 'eeeeeeee-0000-4000-8000-0000000000a1';
+const VD = 'dddddddd-0000-4000-8000-0000000000a1';
+async function check018(db, label) {
+  const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tenant_profiles' AND column_name = 'vault_consent_at'"))[0];
+  check(col && col.data_type === 'timestamp with time zone' && col.is_nullable === 'YES' && col.column_default === null, `${label}: tenant_profiles.vault_consent_at is a nullable timestamp with no default`, JSON.stringify(col));
+  check((await one(db, "SELECT count(*)::int FROM storage.buckets WHERE id = 'tenant-vault' AND public = false")) === 1, `${label}: the bucket tenant-vault exists once, private`);
+  for (const t of VAULT_TABLES) {
+    check((await one(db, 'SELECT relrowsecurity FROM pg_class WHERE oid = $1::regclass', [`public.${t}`])) === true, `${label}: row level security is on for ${t}`);
+    check((await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = $1", [t])) === 0, `${label}: ${t} has no policy`);
+    for (const role of ['anon', 'authenticated']) for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) check((await one(db, 'SELECT has_table_privilege($1, $2, $3)', [role, `public.${t}`, priv])) === false, `${label}: ${role} holds no ${priv} on ${t}`);
+    for (const role of ['anon', 'authenticated']) { await db.exec(`SET ROLE ${role}`); let msg = ''; try { msg = await refused(db, `SELECT * FROM public.${t}`); } finally { await db.exec('RESET ROLE'); } check(/permission denied/.test(msg), `${label}: ${role} cannot read ${t}`, msg); }
+  }
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts) VALUES ($1, 'vault@mail.ca', 'kv1', '{}'::jsonb)", [VP]);
+  const doc = (kind, path, extra = '') => `INSERT INTO public.tenant_profile_documents (id, tenant_profile_id, storage_path, kind, mime, bytes, expires_at${extra ? ', deleted_at, deleted_by' : ''}) VALUES (${extra ? 'gen_random_uuid()' : `'${VD}'`}, '${VP}', '${path}', '${kind}', 'application/pdf', 1200, now() + interval '90 days'${extra})`;
+  await db.query(doc('income', `${VP}/a.pdf`));
+  for (const kind of ['credit', 'credit report', 'bank']) check(/tenant_profile_documents_kind_check/.test(await refused(db, doc(kind, `${VP}/x-${kind}.pdf`).replace(`'${VD}'`, 'gen_random_uuid()'))), `${label}: a document of kind "${kind}" is refused`);
+  check(/tenant_profile_documents_deleted_whole/.test(await refused(db, doc('id', `${VP}/half.pdf`, ", now(), NULL"))), `${label}: a deleted document always says who deleted it`);
+  check(/deleted_by_check/.test(await refused(db, doc('id', `${VP}/who.pdf`, ", now(), 'realtor'"))), `${label}: and never a realtor`);
+  check(/storage_path/.test(await refused(db, doc('income', `${VP}/a.pdf`).replace(`'${VD}'`, 'gen_random_uuid()'))), `${label}: a storage path is held once`);
+  const fact = (kind, value) => db.query("INSERT INTO public.tenant_profile_checks (tenant_profile_id, kind, value, source_kind, source_document_id, fresh_until) VALUES ($1, $2, $3::jsonb, 'income', $4, now() + interval '90 days')", [VP, kind, value, VD]);
+  await fact('income_annual_gross', '{"cents":8400000}');
+  for (const kind of ['date_of_birth', 'age', 'income_type', 'status_in_canada', 'household_size']) check(/tenant_profile_checks_kind_check/.test(await refused(db, "INSERT INTO public.tenant_profile_checks (tenant_profile_id, kind, value, source_kind, fresh_until) VALUES ($1, $2, '{}'::jsonb, 'id', now())", [VP, kind])), `${label}: a fact of kind "${kind}" is refused`);
+  check(/tenant_profile_checks_one_per_kind/.test(await refused(db, "INSERT INTO public.tenant_profile_checks (tenant_profile_id, kind, value, source_kind, fresh_until) VALUES ($1, 'income_annual_gross', '{\"cents\":1}'::jsonb, 'income', now())", [VP])), `${label}: one fact of a kind for a profile`);
+  check(/tenant_profile_checks_no_fit_result/.test(await refused(db, "INSERT INTO public.tenant_profile_checks (tenant_profile_id, kind, value, source_kind, fresh_until) VALUES ($1, 'employer_name', '{\"name\":\"x\",\"score\":4}'::jsonb, 'income', now())", [VP])), `${label}: a fact holding a score is refused`);
+  check(/tenant_profile_checks_value_object/.test(await refused(db, "INSERT INTO public.tenant_profile_checks (tenant_profile_id, kind, value, source_kind, fresh_until) VALUES ($1, 'employer_name', '[]'::jsonb, 'income', now())", [VP])), `${label}: a fact's value is an object`);
+  for (const action of ['document_added', 'document_renewed', 'document_expired', 'document_deleted', 'check_recorded', 'check_removed', 'profile_viewed']) await db.query("INSERT INTO public.profile_access_log (tenant_profile_id, actor_type, action, document_id) VALUES ($1, 'system', $2, $3)", [VP, action, VD]);
+  check(/profile_access_log_action_check/.test(await refused(db, "INSERT INTO public.profile_access_log (tenant_profile_id, actor_type, action) VALUES ($1, 'tenant', 'fit_scored')", [VP])), `${label}: the log takes only its own actions`);
+  check(/profile_access_log_actor_type_check/.test(await refused(db, "INSERT INTO public.profile_access_log (tenant_profile_id, actor_type, action) VALUES ($1, 'landlord', 'profile_viewed')", [VP])), `${label}: and only its own actors`);
+  // A fact outlives its document.
+  await db.query('DELETE FROM public.tenant_profile_documents WHERE id = $1', [VD]);
+  check((await one(db, "SELECT source_document_id IS NULL FROM public.tenant_profile_checks WHERE tenant_profile_id = $1 AND kind = 'income_annual_gross'", [VP])) === true, `${label}: when its document's row goes the fact stays, pointing at none`);
+  // Everything goes with the profile.
+  await db.query('DELETE FROM public.tenant_profiles WHERE id = $1', [VP]);
+  for (const t of VAULT_TABLES) check((await one(db, `SELECT count(*)::int FROM public.${t} WHERE tenant_profile_id = $1`, [VP])) === 0, `${label}: deleting the profile empties ${t} of it`);
+}
+async function run018(db, tag) {
+  const before = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  await step(db, `${tag}1`, FILES.m018);
+  const strip = (list) => list.map((r) => { const o = { ...r }; delete o.vault_consent_at; return o; });
+  check(same(strip(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id')), before), `${tag}1: no column of any existing profile moved`);
+  check((await one(db, 'SELECT count(*)::int FROM public.tenant_profiles WHERE vault_consent_at IS NOT NULL')) === 0, `${tag}1: no existing profile has agreed to anything`);
+  await check018(db, `${tag}1`);
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts, vault_consent_at) VALUES ('eeeeeeee-0000-4000-8000-0000000000a2', 'kept-vault@mail.ca', 'kv2', '{}'::jsonb, '2026-11-19T15:00:00Z')");
+  await db.query("INSERT INTO public.tenant_profile_documents (tenant_profile_id, storage_path, kind, mime, bytes, expires_at) VALUES ('eeeeeeee-0000-4000-8000-0000000000a2', 'eeeeeeee-0000-4000-8000-0000000000a2/k.pdf', 'id', 'image/png', 900, '2026-12-03T15:00:00Z')");
+  const shape = await vaultCatalog(db); const constraints = await vaultConstraints(db); const indexes = await vaultIndexes(db);
+  const held = await rows(db, 'SELECT * FROM public.tenant_profile_documents ORDER BY id');
+  await step(db, `${tag}2 (018 again)`, FILES.m018);
+  check(same(await vaultCatalog(db), shape), `${tag}2: a second run leaves every column, its type, NOT NULL and default as they were`);
+  check(same(await vaultConstraints(db), constraints) && same(await vaultIndexes(db), indexes), `${tag}2: and every constraint and index`);
+  check(same(await rows(db, 'SELECT * FROM public.tenant_profile_documents ORDER BY id'), held) && (await one(db, "SELECT vault_consent_at IS NOT NULL FROM public.tenant_profiles WHERE id = 'eeeeeeee-0000-4000-8000-0000000000a2'")) === true, `${tag}2: and every row: the document and the consent written before it are still there`);
+  check((await one(db, "SELECT count(*)::int FROM storage.buckets WHERE id = 'tenant-vault'")) === 1, `${tag}2: and one bucket`);
+  await check018(db, `${tag}2`);
+  await db.query("DELETE FROM public.tenant_profiles WHERE id = 'eeeeeeee-0000-4000-8000-0000000000a2'");
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -755,6 +820,7 @@ async function pathA() {
   await run015(db, 'A11');
   await run016(db, 'A12');
   await run017(db, 'A13');
+  await run018(db, 'A14');
   await db.close();
 }
 
@@ -916,6 +982,7 @@ async function pathB() {
   await run015(db, 'B17');
   await run016(db, 'B18');
   await run017(db, 'B19');
+  await run018(db, 'B20');
   return { db, before };
 }
 

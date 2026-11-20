@@ -5,6 +5,7 @@
 // the realtor tokens (components/ui.js GlobalStyle): the card, the eyebrow, the text button, the
 // line and card gaps. A value made of several facts puts each on its own line (components/ui.js
 // StackedLines), with no dots between them; every prose line runs through noWidow (lib/typeset.js).
+import { createContext, useContext } from 'react';
 import { C, R } from '../theme';
 import { Icon, StackedLines } from '../ui';
 import { Field, SelectField, ToggleField } from '../apply/fields';
@@ -43,15 +44,21 @@ export const Eyebrow = ({ children, style }) => (
 );
 // An email address is set whole, like a link (.mp-addr): one line, a size down below 345px.
 const isAddress = (v) => typeof v === 'string' && /^\S+@\S+\.\S+$/.test(v.trim());
+// Where the facts on this page came from, as one line under each fact that has a value: on the
+// tenant's profile, "Typed by you on DATE" (pages/my-application.js). Null: no line (the snapshot
+// page, where the application itself is the source).
+export const FactSourceContext = createContext(null);
 // One fact: the label over the value, on the line gap. Pairs sit in the two column .mp-facts grid.
 export function Row({ label, value, multiline }) {
   const empty = value === null || value === undefined || value === '';
   // A long single value (an email, an address) takes the full row rather than breaking mid word.
   const wide = typeof value === 'string' && value.length > 16;
+  const source = useContext(FactSourceContext);
   return (
     <div className="mp-fact" style={wide ? { gridColumn: '1 / -1' } : undefined}>
       <div className="mp-label">{noWidow(label)}</div>
       <div className={`mp-value${empty ? ' mp-empty' : ''}${isAddress(value) ? ' mp-addr' : ''}`} style={multiline ? { whiteSpace: 'pre-wrap' } : undefined}>{empty ? 'Not provided' : typeof value === 'string' ? noWidow(value) : value}</div>
+      {source && !empty && <div className="mp-source" data-fact-source="">{noWidow(source)}</div>}
     </div>
   );
 }
@@ -117,6 +124,8 @@ export const ProfileStyles = () => (
     .mp-label { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.inkMute}; text-wrap: balance; }
     .mp-value { margin-top: var(--gap-line); font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.ink}; font-weight: 600; min-width: 0; overflow-wrap: anywhere; text-wrap: balance; }
     .mp-empty { color: ${C.inkMute}; font-weight: 500; }
+    /* Where a fact came from and when, under it: a full row of its own, at the left. */
+    .mp-source { flex: 1 1 100%; min-width: 0; font-size: 13px; line-height: 1.4; color: ${C.inkMute}; font-weight: 400; text-align: left; text-wrap: balance; }
     .mp-p { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: balance; overflow-wrap: anywhere; margin: 0; }
     .mp-note { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: balance; overflow-wrap: anywhere; }
     .mp-alert { font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.danger}; font-weight: 600; text-wrap: balance; overflow-wrap: anywhere; }

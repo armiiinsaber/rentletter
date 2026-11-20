@@ -236,3 +236,24 @@
 --   number_of_occupants, smoker and "references" carry no default: a column nobody wrote reads
 --   null (unknown), never '1', 'no' or '[]'. lib/supabaseBridge.js upsertApplication sends all
 --   three on every write.
+--
+-- ── the tenant's vault (db/018-profile-vault.sql) ─────────────────────────────────────────────
+--   storage bucket tenant-vault   private, 10MB a file, images and PDF, service role only. Path
+--                                 {tenant_profile_id}/{uuid}.{ext}.
+--   tenant_profiles.vault_consent_at   timestamptz, nullable: when the tenant agreed to keep
+--                                 documents in their profile (lib/tenantProfileStore.js).
+--   tenant_profile_documents      one row per stored file: tenant_profile_id (CASCADE),
+--                                 storage_path (unique), kind (id, income, employment, other:
+--                                 no credit kind), mime, bytes, content_hash, uploaded_at,
+--                                 read_at, expires_at, renewed_at, deleted_at, deleted_by
+--                                 (tenant, expiry, profile_delete, admin), object_removed.
+--   tenant_profile_checks         one fact read from a document, one per kind and profile: kind
+--                                 (the closed list of lib/profileFacts.js PROFILE_CHECK_KINDS),
+--                                 value (an object, never a Fit key), agrees_with_typed,
+--                                 source_kind, source_document_id (SET NULL), read_at, fresh_until.
+--   profile_access_log            the tenant's own log: tenant_profile_id (CASCADE), share_id,
+--                                 actor_type (realtor, tenant, system), actor_profile_id,
+--                                 actor_label, action, document_id, at.
+--   Row level security is on for all three with no policy, and nothing is granted to anon or
+--   authenticated: lib/tenantVault.js reaches them with the service role, for the tenant's own
+--   session or the expiry job. No realtor route or library reads them.

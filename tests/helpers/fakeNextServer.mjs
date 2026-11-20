@@ -80,6 +80,9 @@ if (long) {
 }
 // The other realtor's held credit report: owned by OTHER through L9 and J9 (tests/routes/fixture.mjs).
 t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_applicant_id: 'J9', profile_id: 'realtor-2', storage_path: 'realtor-2/J9/d9.pdf', kind: 'credit report', mime: 'application/pdf', bytes: 1200, uploaded_by: 'tenant', uploaded_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 13 * 86400000).toISOString(), deleted_at: null, deleted_by: null, opened_count: 0, last_opened_at: null }];
+// The tenant's own profile and vault (db/tenant-profiles.sql, db/018-profile-vault.sql): empty
+// until a walk asks for a tenant (GET /__fake/tenant below).
+for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log']) if (!t[name]) t[name] = [];
 const stack = installFakeStack({ tables: t, user: USER });
 await stack.db.storage.from('applicant-documents').upload('realtor-2/J9/d9.pdf', Buffer.from('%PDF-1.4 other realtor credit report'), { contentType: 'application/pdf' });
 const { mintRequest, kvSetJson } = await import('../../lib/docRequest.js');
@@ -187,6 +190,46 @@ http.createServer(async (req, res) => {
   if (req.url.startsWith('/__fake/events')) {
     const type = String(new URL(req.url, 'http://localhost').searchParams.get('type') || '');
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify((t.events || []).filter((e) => !type || e.type === type).map((e) => ({ type: e.type, payload: e.payload })))); return;
+  }
+  // The tenant's profile page (pages/my-application.js, components/tenant/ProfileVault.js): GET
+  // /__fake/tenant?who=1 makes (or returns) a tenant profile with the long values, signed in, and
+  // answers { token }, the value of the rl_tenant session cookie. docs=1 stores an ID, a pay
+  // stub and an employment letter in its vault with the facts read from them; consent=0 leaves
+  // the consent to keep documents ungiven; paused=1 turns the vault off for the whole server
+  // (TENANT_VAULT_ENABLED=false) and paused=0 turns it back on.
+  if (req.url.startsWith('/__fake/tenant')) {
+    const q = new URL(req.url, 'http://localhost').searchParams;
+    if (q.get('paused') === '1') process.env.TENANT_VAULT_ENABLED = 'false';
+    if (q.get('paused') === '0') delete process.env.TENANT_VAULT_ENABLED;
+    const who = String(q.get('who') || '1').replace(/[^0-9]/g, '') || '1';
+    // Written the way lib/tenantProfileStore.js writes them: the row, and the session under the
+    // hash of its token (tsession:{sha256}), 30 days.
+    const { createHash, randomBytes, randomUUID } = await import('node:crypto');
+    const email = `maximiliano.castellanos${who}@outlook.com`;
+    const now = new Date().toISOString();
+    let row = t.tenant_profiles.find((r) => r.email === email);
+    if (!row) {
+      const facts = { fullName: 'Maximiliano Castellanos Ruiz', email, phone: '4165550142', employmentType: 'full-time', jobTitle: 'Senior Clinical Operations Coordinator', employer: 'Northwind Pediatric Rehabilitation Clinic Inc.', yearsAtJob: '4', annualIncome: '118000', netIncome: '84500', netIncomeSource: 'estimated', rentalStatus: 'renting', previousAddress: '4100 Yonge Street, Unit 1907, North York', yearsAtPrevious: '3.5', currentRent: '2650', previousLandlordName: 'Harbourfront Residential Holdings Ltd.', previousLandlordContact: 'leasing@harbourfrontholdings.ca · 416 555 0188', moveInDate: '2026-12-01', reference1Name: 'Bartholomew Nakamura Whitfield', reference1Relationship: 'Manager', reference1Contact: 'b.whitfield@northwindclinic.ca' };
+      row = { id: randomUUID(), email, email_key: createHash('sha256').update(email).digest('hex').slice(0, 32), facts, applications: [], facts_updated_at: new Date(Date.now() - 12 * 86400000).toISOString(), profile_revision: 0, created_at: now, updated_at: now, email_verified_at: now, last_active_at: now, vault_consent_at: null };
+      t.tenant_profiles.push(row);
+    }
+    const token = randomBytes(32).toString('base64url');
+    await kvSetJson(`tsession:${createHash('sha256').update(token).digest('hex')}`, { profileId: row.id, createdAt: now }, 30 * 24 * 3600);
+    if (q.get('consent') !== '0' && !row.vault_consent_at) row.vault_consent_at = now;
+    if (q.get('docs') === '1' && !t.tenant_profile_documents.some((d) => d.tenant_profile_id === row.id)) {
+      const day = 86400000; const at = (n) => new Date(Date.now() + n * day).toISOString();
+      const docs = [['id', -3, 11], ['income', -9, 81], ['employment', -9, 81]].map(([kind, up, exp], i) => ({ id: `vault-${who}-${i + 1}`, tenant_profile_id: row.id, storage_path: `${row.id}/vault-${who}-${i + 1}.pdf`, kind, mime: 'application/pdf', bytes: 1200, content_hash: null, uploaded_at: at(up), read_at: at(up), expires_at: at(exp), renewed_at: null, deleted_at: null, deleted_by: null, object_removed: false }));
+      t.tenant_profile_documents.push(...docs);
+      for (const d of docs) await stack.db.storage.from('tenant-vault').upload(d.storage_path, Buffer.from('%PDF-1.4 a tenant document'), { contentType: 'application/pdf' });
+      const check = (kind, value, agrees, source, doc) => ({ id: `check-${who}-${kind}`, tenant_profile_id: row.id, kind, value, agrees_with_typed: agrees, source_kind: source, source_document_id: doc, read_at: at(source === 'id' ? -3 : -9), fresh_until: at(80), created_at: at(-9) });
+      t.tenant_profile_checks.push(
+        check('identity_name_matches', { matches: true }, true, 'id', docs[0].id),
+        check('income_annual_gross', { cents: 11800000 }, true, 'income', docs[1].id),
+        check('employer_name', { name: 'Northwind Pediatric Rehabilitation Clinic Inc.' }, true, 'employment', docs[2].id),
+        check('employment_start', { month: '2022-09' }, null, 'employment', null),
+      );
+    }
+    res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ token, vault: process.env.TENANT_VAULT_ENABLED === 'false' ? 'off' : 'on', documents: t.tenant_profile_documents.filter((d) => d.tenant_profile_id === row.id && !d.deleted_at).length })); return;
   }
   // The wrapped text walks: GET /__fake/state?plan=founding|trial|lapsed|paid|past_due&days=3 sets
   // the signed in realtor's plan (a trial with days left, one ended two days ago, a payment past

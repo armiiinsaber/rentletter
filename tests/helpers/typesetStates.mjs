@@ -114,6 +114,18 @@ async function office(p) {
   if (!m) throw new Error('office sign in set no session cookie');
   await p.context().addCookies([{ name: 'rl_admin', value: decodeURIComponent(m[1]), url: new URL(r.url()).origin, httpOnly: true, sameSite: 'Strict' }]);
 }
+// The tenant's own profile (pages/my-application.js): a tenant the fake stack signs in
+// (/__fake/tenant, tests/helpers/fakeNextServer.mjs), with its session cookie. These states run
+// in the last phase, one at a time ('alone'): every state that needs a tenant signed out (the
+// sign in page, the apply flow, which fills from a signed in profile) has finished by then.
+async function tenantProfile(p, f, query) {
+  const { token } = await f(`/__fake/tenant?${query}`);
+  await open(p, '/my-application'); // signed out first: the page's own address gives the cookie its origin
+  await p.context().addCookies([{ name: 'rl_tenant', value: encodeURIComponent(token), url: new URL(p.url()).origin, httpOnly: true, sameSite: 'Lax' }]);
+  await open(p, '/my-application');
+  await p.locator('[data-vault-documents]').waitFor({ timeout: 30000 });
+  await wait(p, 400);
+}
 export const STATES = [
   // ── public ──
   { name: 'home', kind: 'public', go: (p) => open(p, '/') },
@@ -201,6 +213,21 @@ export const STATES = [
   { name: 'keep, expired', kind: 'tenant', go: (p) => open(p, '/keep/demo-expired') },
   { name: 'keep, not valid', kind: 'tenant', go: (p) => open(p, `/keep/${'z'.repeat(32)}`) },
   { name: 'referral, not valid', kind: 'tenant', go: (p) => open(p, `/refer/${'z'.repeat(32)}`) },
+  // The tenant's profile, their home: the typed facts each with its source and date, the vault
+  // (the facts read from documents, the documents with their expiry, Renew and Delete), who has
+  // viewed it, and what a realtor would see.
+  { name: 'tenant profile, documents stored', kind: 'tenant', phase: 'alone', go: (p, f) => tenantProfile(p, f, 'who=1&docs=1'), steps: async function* (p) {
+    await openAll(p); yield 'tenant profile, every fold open';
+    await p.locator('[data-vault-document="income"]').getByRole('button', { name: /^Delete/ }).click(); await p.locator('[data-vault-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    yield 'tenant profile, a delete asked';
+    await p.locator('[data-vault-confirm]').getByRole('button', { name: 'Keep it' }).click(); await wait(p, 200);
+    await p.locator('[data-vault-check="employer_name"]').getByRole('button', { name: /^Remove/ }).click(); await p.locator('[data-vault-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    yield 'tenant profile, a fact removal asked';
+  } },
+  { name: 'tenant profile, before the first document', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=2&consent=0'); await p.locator('[data-vault-consent]').waitFor({ timeout: 15000 }); }, steps: async function* (p) {
+    await tap(p, 'Agree and continue'); await p.locator('[data-vault-add]').waitFor({ timeout: 15000 }); await wait(p, 300); yield 'tenant profile, agreed, no documents yet';
+  } },
+  { name: 'tenant profile, documents paused', kind: 'tenant', phase: 'alone', go: async (p, f) => { try { await tenantProfile(p, f, 'who=3&docs=1&paused=1'); await p.locator('[data-vault-paused]').waitFor({ timeout: 15000 }); } finally { await f('/__fake/tenant?who=3&paused=0'); } } },
   // ── landlord ──
   { name: 'landlord report', kind: 'landlord', phase: 'write', go: async (p) => { const t = await report(p); await open(p, `/r/${t}`); }, steps: async function* (p) { await tap(p, /meet/i); await wait(p, 400); yield 'landlord report, answered'; await tap(p, /Tap to change/); yield 'landlord report, changing an answer'; } },
   { name: 'landlord report, sandbox', kind: 'landlord', go: (p) => open(p, '/r/demo-demo-carlaw') },
