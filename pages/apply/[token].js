@@ -288,10 +288,25 @@ export default function ApplyPage({ invited = null }) {
   // Continue then returns to the review.
   const [oneTap, setOneTap] = useState(false);
   const [sharePreview, setSharePreview] = useState(null); // { facts, checks, documents } from /api/tenant/shares
+  // The share request after submit: '' | 'shared' | 'failed' (one more try is offered) |
+  // 'retrying' | 'retried' (it went through on the second try) | 'gave-up' (it failed twice).
+  const [shareState, setShareState] = useState('');
+  // The one retry. It asks for the share alone: the application was saved before the first try
+  // and nothing here sends it again.
+  const retryShare = async () => {
+    const g = generated.current;
+    if (shareState !== 'failed' || !g) return;
+    setShareState('retrying');
+    try {
+      const r = await fetch('/api/tenant/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'apply', inviteToken: g.token, applicationNumber: g.applicationNumber }) });
+      const j = await r.json().catch(() => ({}));
+      setShareState(r.ok && j.shared ? 'retried' : 'gave-up');
+    } catch (e) { setShareState('gave-up'); }
+  };
   const applyWithProfile = async () => {
     if (!saved || saved.source !== 'profile' || prefill.state === 'loading') return;
     await applySavedProfile();
-    try { const r = await fetch('/api/tenant/shares'); const j = r.ok ? await r.json() : null; if (j && j.preview) setSharePreview({ facts: j.preview.facts || [], checks: j.preview.checks || [], documents: j.documents || [] }); } catch (e) { /* the review still lists the application */ }
+    try { const r = await fetch('/api/tenant/shares'); const j = r.ok ? await r.json() : null; if (j && j.preview) setSharePreview({ facts: j.preview.facts || [], checks: j.preview.checks || [], documents: (j.documents || []).filter((d) => d.kind === 'income' || d.kind === 'employment') }); } catch (e) { /* the review still lists the application */ }
     setOneTap(true);
     const at = startStep({ form: saved.form }, STEPS, ageRule);
     setFromReview(at !== STEPS.length);
@@ -459,7 +474,9 @@ export default function ApplyPage({ invited = null }) {
     if (out.docRequest) setDocRequest(out.docRequest);
     // One tap apply: the share for this listing's realtor, approved by this submission. The
     // server finds the realtor and the listing from the invite. Best effort: the application stands.
-    if (oneTap) { try { await fetch('/api/tenant/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'apply', inviteToken: g.token, applicationNumber: g.applicationNumber }) }); } catch (e) { /* the application is sent; nothing is shared */ } }
+    // When that request fails the application is still sent, once: the done page says so and
+    // offers one more try of the share alone (retryShare).
+    if (oneTap) { try { await fetch('/api/tenant/shares', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'apply', inviteToken: g.token, applicationNumber: g.applicationNumber }) }).then(async (r) => { const j = await r.json().catch(() => ({})); setShareState(r.ok && j.shared ? 'shared' : 'failed'); }); } catch (e) { setShareState('failed'); } }
     setResult({ applicationNumber: g.applicationNumber, ownerToken: g.ownerToken });
     setStatus('done');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -662,7 +679,7 @@ export default function ApplyPage({ invited = null }) {
         {oneTap && sharePreview && (
           <div data-one-tap-share="">
             <div className="mp-head" style={{ minHeight: 44 }}><div className="mp-value" style={{ marginTop: 0 }}>Shared from your profile</div></div>
-            <p className="mp-p">{noWidow(`${invite?.realtorName || 'This realtor'} also sees these from your profile, each with where it came from${sharePreview.documents.length ? ', and can open your stored documents for 14 days' : ''}. You see each view, and you can stop sharing from your profile at any time.`)}</p>
+            <p className="mp-p">{noWidow(`${invite?.realtorName || 'This realtor'} also sees these from your profile, each with where it came from${sharePreview.documents.length ? ', and can open your income and employment documents for 14 days' : ''}. They never see your ID image. You see each view, and you can stop sharing from your profile at any time.`)}</p>
             <ul className="mp-list" style={{ marginTop: 'var(--gap-line)' }}>
               {sharePreview.facts.map((x) => <li key={x.key} style={{ display: 'block' }}><div className="mp-label">{x.label}</div><div className={`mp-value${x.key === 'email' ? ' mp-addr' : ''}`}>{x.key === 'email' ? x.value : <LinesText text={x.value} />}</div><div className="mp-source">{noWidow(youLine(SOURCE.TYPED, x.at))}</div></li>)}
               {sharePreview.checks.map((x) => { const t = checkText(x); return <li key={x.kind} style={{ display: 'block' }}><div className="mp-label">{t.label}</div><div className="mp-value">{noWidow(t.value)}</div><div className="mp-source">{noWidow(x.line)}</div></li>; })}
@@ -782,6 +799,14 @@ export default function ApplyPage({ invited = null }) {
                   <div className="mp-h2 num" style={{ marginTop: 'var(--gap-line)' }}>{result.applicationNumber}</div>
                 </div>
                 <button type="button" onClick={copyNumber} className="mp-btn mp-btn-auto" style={{ marginTop: 'var(--gap-card)', display: 'flex', width: 'fit-content' }}>{copied ? 'Copied' : 'Copy the number'}</button>
+                {/* One tap apply: the share request failed. The application is sent; the share alone is tried once more. */}
+                {(shareState === 'failed' || shareState === 'retrying' || shareState === 'gave-up') && (
+                  <div data-share-failed={shareState} role="status" style={{ marginTop: 'var(--gap-card)' }}>
+                    <p className="mp-p">{noWidow("Your application was sent. Sharing your profile didn't go through.")}</p>
+                    {shareState !== 'gave-up' && <button type="button" data-share-retry="" onClick={retryShare} disabled={shareState === 'retrying'} className="mp-btn mp-btn-auto" style={{ marginTop: 'var(--gap-line)', display: 'flex', width: 'fit-content' }}><Pending busy={shareState === 'retrying'} label="Sharing">Try again</Pending></button>}
+                  </div>
+                )}
+                {shareState === 'retried' && <p className="mp-p" data-share-retried="" role="status" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Your profile is now shared with this realtor.')}</p>}
                 {result.ownerToken && (
                   <>
                     <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Keep this private. Your owner key opens your profile, where you can see who viewed your application, update your details, revoke it, and apply to your next listing without retyping.')}</p>

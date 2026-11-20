@@ -136,7 +136,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
       const notIn = p.status !== 'submitted';
       // That party's document checks, the same as the primary's, read from the party's own report.
       const pic = notIn ? { flags: [], notes: [] } : integrityOf(p.docVerifications && p.docVerifications[0] ? p.docVerifications[0] : null);
-      return { key: notIn ? null : partyConfirmKey(p.id), title: `${p.roleLabel}: ${p.name}`, said: notIn ? (p.status === 'declined' ? 'declined' : p.status === 'withdrawn' ? 'withdrew' : 'form not in yet') : (partyFacts(p, conf).slice(0, 3).join(', ') || 'no income given'), docs: notIn ? null : pDocs, verb: 'Called employer', party: p.id, partyChecks: pic.flags.length || pic.notes.length ? p : null };
+      return { key: notIn ? null : partyConfirmKey(p.id), title: `${p.roleLabel}: ${p.name}`, label: `${p.roleLabel}:`, name: p.name, said: notIn ? (p.status === 'declined' ? 'declined' : p.status === 'withdrawn' ? 'withdrew' : 'form not in yet') : (partyFacts(p, conf).slice(0, 3).join(', ') || 'no income given'), docs: notIn ? null : pDocs, verb: 'Called employer', party: p.id, partyChecks: pic.flags.length || pic.notes.length ? p : null };
     }) : []),
   ];
 
@@ -164,7 +164,12 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
           return (
             <div key={row.title} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-1) var(--s-3)', padding: 'var(--s-3) var(--s-3)', borderTop: i ? `1px solid ${C.rule}` : 'none' }}>
               <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3 }}>{row.title}</div>
+                {/* A party's line, "Co applicant: {name}". A line short enough to fit a 320 screen whole
+                    (24 characters, "Co applicant: Jordan Lee") is one line of text. A longer one is a
+                    label and its value (components/ui.js LabelValue): side by side where both fit, and
+                    where they do not the label stands above the name, so a long name never leaves one
+                    word alone on a line. */}
+                <div data-checklist-title={row.party ? 'party' : undefined} style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink, lineHeight: 1.3, textWrap: 'balance' }}>{row.name && row.title.length > 24 ? <LabelValue label={row.label} value={row.name} /> : row.title}</div>
                 <div data-credit-row={row.credit ? (row.credit.shared ? 'shared' : 'none') : undefined} style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, marginTop: 'var(--s-1)', overflowWrap: 'anywhere', textWrap: 'balance' }}>
                   {row.integrity
                     ? <IntegrityChecks applicant={applicant} listingId={listing?.id} heldDocuments={heldDocuments} onViewDocument={onViewDocument} />

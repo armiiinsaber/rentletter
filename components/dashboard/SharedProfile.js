@@ -5,15 +5,19 @@
 //   /api/profile-shares/view  peek first (is there a share, has it ended: nothing read, nothing
 //                             logged); then, on the realtor's tap, the read, which is written to
 //                             the tenant's log and shown to the tenant;
-//   /api/profile-shares/open  one stored document, a 60 second link, for 14 days from the share.
+//   /api/profile-shares/open  one stored document (proof of income or an employment letter,
+//                             never an ID), a 60 second link, for 14 days from the share.
 // What shows is the whitelist (lib/profileFacts.js) and the facts read from documents, each with
 // its source and date. Never the Fit score, a rank, a note or household size: the route sends
 // none and this component has nowhere to draw one. A share the tenant stopped says so, and
 // nothing else shows. Nothing is drawn where nothing was shared, or in the sandbox.
+// Values read as the rest of the realtor side writes them: money as "$118,000" (lib/typeset.js
+// money), a date as "Dec 1, 2026" (the format of components/dashboard/CompareTenants.js), time
+// as "4 yrs". Only what is drawn changes; the share payload and the stored values do not.
 import { useEffect, useState } from 'react';
 import { C } from '../theme';
 import { StackedLines } from '../ui';
-import { noWidow, dateLong } from '../../lib/typeset';
+import { noWidow, dateLong, money } from '../../lib/typeset';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { checkText, KIND_LABEL } from '../../lib/tenantVaultRules';
 import { Pending } from '../brand/Loader';
@@ -24,6 +28,17 @@ const value = { fontSize: 'var(--t-body-2)', lineHeight: 1.4, color: C.ink, font
 const source = { fontSize: 13, lineHeight: 1.4, color: C.inkMute, textWrap: 'balance' };
 const button = { minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' };
 const text = { ...button, minHeight: 44, padding: 0, border: 'none', textDecoration: 'underline', textAlign: 'left' };
+
+// A date typed as 2026-12-01 is that calendar day, wherever the realtor is.
+const shortDate = (v) => { const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? `${v}T00:00:00` : v); return Number.isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric', year: 'numeric' }); };
+const years = (v) => { const n = Number(v); return String(v).trim() !== '' && Number.isFinite(n) ? `${n} ${n === 1 ? 'yr' : 'yrs'}` : String(v); };
+// How one shared fact reads. Anything not listed is shown as typed.
+export const readable = (key, v) => (
+  key === 'annualIncome' ? (money(v) || String(v))
+    : key === 'moveInDate' ? shortDate(v)
+      : key === 'yearsAtJob' || key === 'yearsAtPrevious' ? years(v)
+        : String(v ?? '')
+);
 
 export default function SharedProfile({ linkId }) {
   const adapter = useAdapter();
@@ -63,7 +78,7 @@ export default function SharedProfile({ linkId }) {
             {state.facts.map((f, i) => (
               <li key={f.key} data-shared-fact={f.key} style={{ padding: 'var(--s-2) 0', borderTop: i ? `1px solid ${C.rule}` : 'none', display: 'grid', gap: 2 }}>
                 <div style={label}>{f.label}</div>
-                <div className={f.key === 'email' ? 'rl-addr' : undefined} style={value}>{f.key === 'email' ? f.value : <StackedLines text={f.value} />}</div>
+                <div className={f.key === 'email' ? 'rl-addr' : undefined} style={value}>{f.key === 'email' ? f.value : <StackedLines text={readable(f.key, f.value)} />}</div>
                 <div style={source}>{noWidow(f.line)}</div>
               </li>
             ))}
@@ -80,7 +95,7 @@ export default function SharedProfile({ linkId }) {
               <div style={label}>Documents</div>
               <p style={source}>{noWidow(`You can open these until ${dateLong(state.documentsUntil)}. The tenant sees each open.`)}</p>
               {state.documents.map((d) => (
-                <button key={d.id} type="button" data-shared-open={d.kind} onClick={() => open(d.id)} disabled={!!busy} style={text}><Pending busy={busy === `open:${d.id}`} label="Opening">{`Open ${d.kind === 'id' ? 'ID' : String(KIND_LABEL[d.kind] || 'document').toLowerCase()}`}</Pending></button>
+                <button key={d.id} type="button" data-shared-open={d.kind} onClick={() => open(d.id)} disabled={!!busy} style={text}><Pending busy={busy === `open:${d.id}`} label="Opening">{`Open ${String(KIND_LABEL[d.kind] || 'document').toLowerCase()}`}</Pending></button>
               ))}
             </div>
           )}

@@ -812,13 +812,15 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
   // A labelled, collapsible section inside the open card. Only the chevron moves (transform).
   // under: shown beneath the header whether or not the section is open (a party's check docs line).
+  // "Anastasia Konstantinopoulou" as one unit: the two words never part. Longer names wrap as text.
+  const wholeName = (name) => { const w = String(name || '').trim().split(/\s+/); return w.length === 2 ? w.join('\u00a0') : String(name || ''); };
   const renderSection = (a, key, title, defOpen, body, under = null) => {
     const on = sectionOpen(a.linkId, key, defOpen);
     return (
       <div key={key} style={{ borderTop: `1px solid ${C.rule}`, marginTop: 'var(--s-2)' }}>
         <button type="button" aria-expanded={on} aria-controls={`applicant-${a.linkId}-${key}`} onClick={() => toggleSection(a.linkId, key, defOpen)}
           style={{ width: '100%', minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2)', background: 'transparent', border: 'none', padding: 'var(--s-1) 0', cursor: 'pointer', font: 'inherit', color: C.inkMute, textAlign: 'left' }}>
-          <span style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{noWidow(title)}</span>
+          <span className={key.startsWith('party-') ? 'lv-party-title' : undefined} style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: 'var(--lv-title-ls, 0.08em)', textTransform: 'uppercase' }}>{noWidow(title)}</span>
           <span className={`m-chev ${on ? 'open' : ''}`} aria-hidden="true"><Icon name="chevronD" size={16} /></span>
         </button>
         {under}
@@ -1115,9 +1117,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   </div>
                 );
                 // Commas, not separators: a wrapped title never starts or ends a line on a dot.
+                // A name of two words is one unit (wholeName), so a long one takes a line of its own
+                // and is never split with one word alone; below 345px the title's letters sit closer
+                // (.lv-party-title) so that line fits a 320 screen.
                 // That party's document checks, the same line as the primary's, under their own name.
                 const checks = p.status === 'submitted' ? <IntegrityLine report={p.docVerifications?.[0] || null} style={{ paddingBottom: 'var(--s-2)' }} /> : null;
-                return <div key={p.id} data-party-row={p.status} data-party={p.id}>{renderSection(a, `party-${p.id}`, `${p.name}, ${String(p.roleLabel).toLowerCase()}, ${String(p.statusLabel).toLowerCase()}`, false, body, checks)}</div>;
+                return <div key={p.id} data-party-row={p.status} data-party={p.id}>{renderSection(a, `party-${p.id}`, `${wholeName(p.name)}, ${String(p.roleLabel).toLowerCase()}, ${String(p.statusLabel).toLowerCase()}`, false, body, checks)}</div>;
               })}
               <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-2)', textWrap: 'balance' }}>{noWidow(INVITE_CARD.householdLine)}</div>
             </div>
@@ -1639,6 +1644,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           wherever the realtor is on the page. */}
       <div role="status" aria-live="polite" className="lv-toast" data-toast={toast ? '' : undefined}>{toast}</div>
       <style jsx>{`
+        @media (max-width: 344.98px) { :global(.lv-party-title) { --lv-title-ls: 0.03em; } }
         .lv-toast:empty { display: none; }
         .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; background: ${C.inst}; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); box-shadow: ${SH.raised}; text-wrap: balance; }
         .lv-fold { display: grid; grid-template-rows: 0fr; }

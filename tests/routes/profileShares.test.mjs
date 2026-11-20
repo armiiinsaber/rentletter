@@ -9,12 +9,17 @@
 //   4. Every view is logged, before the answer, and shown to the tenant; a read that cannot be
 //      logged is refused.
 //   5. Stored documents open through the share alone: for 14 days, logged, a 60 second link.
+//      Only proof of income and an employment letter: an ID is never opened by a realtor.
 //   6. An application that is no longer open ends its share on its own.
-//   7. One tap apply writes the reuse record and counts in lib/kpis.js.
+//   7. One tap apply writes the reuse record, with the kinds of document check the share
+//      carries, and counts in lib/kpis.js (profile reuse, and reuse with documents).
 //   8. The age rule holds on one tap apply.
 //   9. A tenant can never approve or stop a share on another tenant's profile, and no realtor
 //      route can write a share.
 //  10. Before db/019 has run: no share is made, nothing is listed, nothing is thrown.
+//  11. The realtor's timeline says the tenant shared their profile and that they stopped, on
+//      that applicant, naming the tenant and the listing and holding no fact of the profile.
+//  12. A share request that fails after submit offers one retry of the share alone.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
@@ -130,7 +135,8 @@ test('2. a realtor with a share sees only the whitelist and the checks, each wit
   const sent = JSON.stringify(body);
   for (const [k, v] of Object.entries(PLANTED)) { assert.equal(sent.includes(`"${k}"`), false, `the key ${k} is refused`); if (typeof v === 'string' && v.length > 3) assert.equal(sent.includes(v), false, `and its value (${k})`); }
   assert.doesNotMatch(sent, /PLANTED|OWNERTOKENSECRET|HASHSECRET|storage_path|\.pdf|owner|decision|fit|rank|score|household|occupant|birth|"age"|pets|smok|citizen|relig|marital|assistance/i);
-  assert.deepEqual(body.documents.map((d) => Object.keys(d).sort()), [['id', 'kind', 'readAt'], ['id', 'kind', 'readAt']], 'a document is named by what it is and when it was read, nothing more');
+  assert.deepEqual(body.documents.map((d) => Object.keys(d).sort()), [['id', 'kind', 'readAt']], 'a document is named by what it is and when it was read, nothing more');
+  assert.deepEqual(body.documents.map((d) => d.kind), ['income'], 'the proof of income is listed; the ID is not');
   // The payload is built by lib/profileFacts.js and checked before it leaves.
   assert.match(code('lib/profileShareStore.js'), /return \{ ok: true, payload: assertSharePayload\(read\.payload\), documents/);
   assert.doesNotMatch(code('lib/profileShareStore.js'), /listing_applicants|doc_verifications|decision_|scorecard|tenant_profiles\b/, 'the reader has no way to the Fit, the checklist, the decision or the notes');
@@ -200,7 +206,21 @@ test('5. stored documents open through the share alone: 14 days, logged, a 60 se
   const ok = await w.realtor(open, { linkId: 'J1', documentId: 'doc-pay' });
   assert.equal(ok.code, 200); assert.deepEqual(Object.keys(ok.body).sort(), ['kind', 'mime', 'url']);
   assert.match(ok.body.url, /^https:\/\/signed\.example\/tenant-vault\/.+\?exp=60$/, 'a 60 second signed link');
-  assert.equal((await w.realtor(open, { linkId: 'J1', documentId: 'doc-id' })).code, 200, 'the ID too, for the listing the tenant applied to');
+  // The ID is never opened by a realtor, through an application share or any other: the route
+  // refuses it, nothing is logged as opened, and the one signer refuses it whoever asks.
+  const opensBefore = w.log().filter((l) => l.action === 'document_opened').length;
+  const idOpen = await w.realtor(open, { linkId: 'J1', documentId: 'doc-id' });
+  assert.equal(idOpen.code, 404, 'the ID is refused, on the listing the tenant applied to as on any other');
+  assert.equal(idOpen.body.url, undefined, 'and no link is made');
+  assert.equal(w.log().filter((l) => l.action === 'document_opened').length, opensBefore, 'nor a line saying it was opened');
+  const V = await import('../../lib/tenantVault.js');
+  assert.deepEqual([...V.SHARE_DOCUMENT_KINDS], ['income', 'employment'], 'a realtor opens proof of income and the employment letter, nothing else');
+  assert.deepEqual(await V.signVaultDocument(w.stack.db, { profileId: w.maya.p.id, documentId: 'doc-id' }), { ok: false, reason: 'refused' }, 'signVaultDocument makes no link to an ID');
+  assert.equal((await V.signVaultDocument(w.stack.db, { profileId: w.maya.p.id, documentId: 'doc-pay' })).ok, true);
+  // The identity check still reaches the realtor as a fact, with its date.
+  const idFact = (await w.realtor(view, { linkId: 'J1' })).body;
+  assert.equal(idFact.documents.some((d) => d.kind === 'id'), false);
+  assert.match(idFact.checks.find((c) => c.kind === 'identity_name_matches').line, /^Read from a document on November 3, 2026$/);
   for (const id of ['no-such', 'doc-other']) assert.equal((await w.realtor(open, { linkId: 'J1', documentId: id })).code, 404);
   // A deleted file is not opened.
   w.t.tenant_profile_documents.find((d) => d.id === 'doc-pay').deleted_at = new Date().toISOString();
@@ -255,12 +275,20 @@ test('7. one tap apply writes the reuse record and counts in lib/kpis.js', async
   const sh = w.share();
   assert.deepEqual([sh.tenant_profile_id, sh.recipient_profile_id, sh.listing_id, sh.purpose, sh.status, sh.approved_via], [w.maya.p.id, USER.id, 'L1', 'application', 'approved', 'session'], 'one share: this tenant, this listing\'s realtor, approved by the tenant\'s own session');
   assert.equal(w.log().filter((l) => l.action === 'share_approved' && l.actor_type === 'tenant').length, 1);
+  // The reuse record now names the kinds of document check the share carries: from the closed
+  // list, in its order, and none of the planted kinds.
+  assert.deepEqual(w.a1.reused_checks, ['identity_name_matches', 'income_annual_gross'], 'reused_checks holds the kinds the share carries');
+  assert.ok(w.a1.reused_checks.every((k) => PROFILE_CHECK_KINDS.includes(k)));
   await w.apply();
   assert.equal(w.t.profile_shares.length, 1, 'a second tap makes no second share');
+  assert.deepEqual(w.a1.reused_checks, ['identity_name_matches', 'income_annual_gross']);
   // The office counts her.
   const data = { prefillTracked: true, profiles: w.t.profiles.map((r) => ({ ...r, email: String(r.email).replace('@example.com', '@brokerage.ca') })), listings: w.t.listings, links: w.t.listing_applicants.map((j) => ({ ...j, state: 'submitted' })), applications: w.t.applications.map((a) => ({ ...a, email: String(a.email).replace('@example.com', '@mail.ca') })), events: [] };
   assert.equal(K.profileReuse(data).count, 1, 'profile reuse counts this tenant');
   assert.equal(K.profileReuse({ ...data, applications: data.applications.map((a) => ({ ...a, prefill_source: 'none' })) }).count, 0, 'and would not without the record');
+  // The office's stricter count, reuse with documents, moves with reused_checks.
+  assert.equal(K.profileReuse(data).withDocuments, 1, 'the reused documents count moves');
+  assert.equal(K.profileReuse({ ...data, applications: data.applications.map((a) => ({ ...a, reused_checks: a.reused_checks ? [] : a.reused_checks })) }).withDocuments, 0, 'and would not with an empty list');
   // The realtor finds the share from the application's own record of its profile.
   assert.equal((await w.realtor(view, { linkId: 'J1', peek: true })).body.shared, true);
   const page = src('pages/apply/[token].js');
@@ -333,4 +361,61 @@ test('10. before db/019 has run: no share is made, nothing is listed, nothing is
   assert.deepEqual((await w.realtor(view, { linkId: 'J1' })).body, { shared: false });
   assert.equal((await w.realtor(open, { linkId: 'J1', documentId: 'doc-pay' })).code, 404);
   w.stack.restore();
+});
+
+test('11. the realtor\'s timeline says the tenant shared their profile, and that they stopped', async () => {
+  const w = await setup({ shared: true });
+  const E = await import('../../lib/eventTypes.js');
+  const events = () => (w.t.events || []).filter((e) => /^profile_share_/.test(e.type));
+  assert.deepEqual(events().map((e) => e.type), ['profile_share_approved'], 'one event when the one tap apply makes the share');
+  const made = events()[0];
+  assert.deepEqual([made.profile_id, made.listing_id, made.application_id], [USER.id, 'L1', 'A1'], 'on the realtor\'s timeline, on that applicant');
+  assert.deepEqual(Object.keys(made.payload).sort(), ['applicantName', 'linkId', 'listingName'], 'it names the tenant and the listing and where to go, nothing else');
+  assert.deepEqual([made.payload.applicantName, made.payload.listingName, made.payload.linkId], [w.a1.full_name, '210 Carlaw Ave, Unit 4', 'J1']);
+  assert.equal(E.eventTitle(made), `${w.a1.full_name} shared their profile with you for 210 Carlaw Ave, Unit 4`);
+  // A second tap makes no second share and no second event.
+  await w.apply();
+  assert.equal(events().length, 1);
+  // The tenant stops sharing.
+  assert.equal((await w.tenantCall(w.maya, 'POST', { action: 'stop', id: w.share().id })).code, 200);
+  assert.deepEqual(events().map((e) => e.type), ['profile_share_approved', 'profile_share_revoked']);
+  const stopped = events()[1];
+  assert.deepEqual([stopped.profile_id, stopped.listing_id, stopped.application_id], [USER.id, 'L1', 'A1']);
+  assert.deepEqual(Object.keys(stopped.payload).sort(), ['applicantName', 'linkId', 'listingName']);
+  assert.equal(E.eventTitle(stopped), `${w.a1.full_name} stopped sharing their profile for 210 Carlaw Ave, Unit 4`);
+  // No fact of the profile, no planted key and no token is in either event.
+  const sent = JSON.stringify(events());
+  for (const v of [TYPED.email, TYPED.phone, TYPED.employer, TYPED.annualIncome, TYPED.previousAddress, 'PLANTED', 'OWNERTOKENSECRET', 'HASHSECRET', w.maya.p.id]) assert.equal(sent.includes(v), false, `no ${v} in a timeline event`);
+  // A share that ended on its own, or was already stopped, writes no revoked event.
+  assert.equal((await w.tenantCall(w.maya, 'POST', { action: 'stop', id: w.share().id })).code, 404);
+  assert.equal(events().length, 2);
+  // The vocabulary, the first migration and the new one hold the same two types.
+  for (const type of ['profile_share_approved', 'profile_share_revoked']) {
+    assert.ok(E.EVENT_TYPES.includes(type));
+    assert.match(src('db/events.sql'), new RegExp(`'${type}'`)); assert.match(src('db/020-share-events.sql'), new RegExp(`'${type}'`));
+  }
+  assert.match(src('db/020-share-events.sql'), /IF to_regclass\('public\.events'\) IS NULL THEN RETURN; END IF;[\s\S]*?IF cdef IS NOT NULL AND cdef LIKE '%profile_share_revoked%' THEN RETURN; END IF;/, 'guarded as db/012 is, and rewritten once');
+  const listed = [...src('db/020-share-events.sql').split('CHECK (type IN (')[1].split('));')[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual(listed, [...E.EVENT_TYPES], 'db/020 holds the whole vocabulary, in order');
+  // The events are written by the share lifecycle alone, through the one event writer.
+  const lib = code('lib/profileShares.js');
+  assert.match(lib, /await noteOnTimeline\(admin, share, 'profile_share_approved'\);/); assert.match(lib, /await noteOnTimeline\(admin, data, 'profile_share_revoked'\);/);
+  assert.match(lib, /select\('id, full_name, prefill_profile_id, tenant_profile_id'\)/, 'three columns of the application and its id, never the owner token');
+  w.stack.restore();
+});
+
+test('12. a share request that fails after submit offers one retry of the share alone', () => {
+  const page = src('pages/apply/[token].js');
+  assert.match(page, /noWidow\("Your application was sent\. Sharing your profile didn't go through\."\)/, 'the words the tenant reads');
+  assert.match(page, /data-share-retry="" onClick=\{retryShare\}[^>]*>\s*<Pending[^>]*>Try again<\/Pending>/, 'with a Try again button');
+  assert.match(page, /setShareState\(r\.ok && j\.shared \? 'shared' : 'failed'\); \}\); \} catch \(e\) \{ setShareState\('failed'\); \}/, 'a refused, unshared or unreachable request is a failure');
+  const retry = page.slice(page.indexOf('const retryShare = async () => {'), page.indexOf('const applyWithProfile = async () => {'));
+  assert.ok(retry.length > 0 && retry.length < 1200);
+  assert.match(retry, /if \(shareState !== 'failed' \|\| !g\) return;\s*\n\s*setShareState\('retrying'\);/, 'only from failed, so the retry runs once');
+  assert.match(retry, /setShareState\(r\.ok && j\.shared \? 'retried' : 'gave-up'\);/, 'and a second failure offers no third try');
+  assert.match(page, /\{shareState !== 'gave-up' && <button type="button" data-share-retry=""/);
+  // The retry asks for the share and nothing else: the application is never sent twice.
+  assert.equal((retry.match(/fetch\(/g) || []).length, 1);
+  assert.match(retry, /fetch\('\/api\/tenant\/shares', \{ method: 'POST'[\s\S]{0,120}?body: JSON\.stringify\(\{ action: 'apply', inviteToken: g\.token, applicationNumber: g\.applicationNumber \}\)/);
+  assert.doesNotMatch(retry, /runSubmitChain|saveToListing|\/api\/generate|\/api\/applications\/mirror|setStatus|prefillTicket/, 'no path back to the submit chain');
 });

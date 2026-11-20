@@ -26,6 +26,8 @@ The Service is used by three types of people, and this policy applies to all of 
 
 **Documents a tenant keeps in their own profile.** A tenant who is signed in to their profile may add their own documents to it (identification, a pay stub or other proof of income, an employment letter), after agreeing to this on the profile page. Each file is read once to extract relevant, factual information, and the file is then kept in private storage as part of that tenant's profile: **identification for 14 days, and other documents for 90 days**. The tenant can renew a document other than identification for a further 90 days from the profile page, and can delete any document at any time from the same page, which removes the file immediately. The facts read from a document (for example, that the name on the identification matches, the income before tax, the employer and the start date) are kept with the profile until the tenant removes them, or until the profile has not been signed in to for twelve (12) months, when the stored documents and those facts are deleted. A credit report is never kept in a profile. **No realtor or landlord can view a document or a fact in a tenant's profile unless the tenant approves it.**
 
+When you apply to a listing with your profile, you approve sharing it with that listing's realtor. They can see the facts in your profile and, for 14 days, open your income and employment documents. They never see your ID image. Every view and every document opened shows in your profile, and you can stop sharing at any time.
+
 **2.4 Information we collect automatically.** Like most online services, we and our service providers may collect limited technical information such as IP address, browser type, device information, and usage activity, to operate, secure, and improve the Service.
 
 We set one cookie that remembers how you first found Rentletter, such as a referral link. It holds a single word and never your name, email or anything you type.
@@ -46,6 +48,7 @@ We collect, use, and disclose personal information with consent, except where ot
 ## 5. Who we share information with
 We do not sell personal information. We share it only as needed to operate the Service:
 - **With landlords:** a realtor uses the Service to share screening reports about applicants with the landlord client for the listing the applicant applied to.
+- **A realtor you choose.** When you apply with your profile, the realtor for that listing can read it as described in Section 2.3, until you stop sharing or the application closes.
 - **With service providers (processors)** who help us run the Service, described in Section 6.
 - **For legal reasons:** where required by law, regulation, legal process, or to protect the rights, safety, and property of Rentletter, our users, or others.
 - **In a business transaction:** if we are involved in a merger, acquisition, financing, or sale of assets, personal information may be transferred as part of that transaction, subject to appropriate protections.

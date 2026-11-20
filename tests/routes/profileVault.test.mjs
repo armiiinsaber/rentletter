@@ -72,6 +72,13 @@ test('1. a realtor cannot read any vault document or fact, through any route', a
   assert.deepEqual(signers, ['lib/tenantVault.js'], 'one file of the vault makes a signed link');
   assert.equal((src('lib/tenantVault.js').match(/createSignedUrl/g) || []).length, 1, 'in one place');
   assert.match(src('lib/tenantVault.js'), /export async function signVaultDocument\(admin, \{ profileId, documentId, seconds = 60 \}\) \{[\s\S]*?createSignedUrl\(data\.storage_path, seconds, \{ download: false \}\)/, 'inside signVaultDocument');
+  // An ID is never signed, linked or opened by a realtor: signVaultDocument refuses every kind
+  // but proof of income and the employment letter, before the link is made, and the share reader
+  // lists and opens those two kinds alone, whatever the share's purpose.
+  assert.match(src('lib/tenantVault.js'), /export const SHARE_DOCUMENT_KINDS = Object\.freeze\(\['income', 'employment'\]\);/, 'the kinds a realtor may open: never id, never other');
+  assert.match(src('lib/tenantVault.js'), /if \(!data\) return \{ ok: false, reason: 'missing' \};\s*\n\s*if \(!SHARE_DOCUMENT_KINDS\.includes\(data\.kind\)\) return \{ ok: false, reason: 'refused' \};\s*\n\s*const \{ data: signed, error: sErr \} = await admin\.storage\.from\(VAULT_BUCKET\)\.createSignedUrl/, 'an ID document is refused inside signVaultDocument, before any link');
+  assert.doesNotMatch(src('lib/profileShareStore.js').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n'), /purpose === 'application'|kind !== 'id'/, 'no purpose of share opens an ID');
+  assert.equal((src('lib/profileShareStore.js').match(/SHARE_DOCUMENT_KINDS\.includes\(d\.kind\)/g) || []).length, 2, 'the list and the open both keep to the two kinds');
   const callers = [...walk('lib/'), ...walk('pages/'), ...walk('components/')].filter((f) => f !== 'lib/tenantVault.js' && /signVaultDocument/.test(src(f)));
   assert.deepEqual(callers, ['lib/profileShareStore.js'], 'called by the share reader alone');
   assert.match(src('lib/profileShareStore.js'), /const refused = shareRefusal\(share, viewer, now\);\s*\n\s*if \(refused\) return \{ ok: false, reason: refused \};\s*\n\s*if \(!documentsOpen\(share, now\)\) return \{ ok: false, reason: 'closed' \};[\s\S]*?if \(!logged\) return \{ ok: false, reason: 'not logged' \};\s*\n\s*return await signVaultDocument/, 'after the share check, the documents window and the log line');

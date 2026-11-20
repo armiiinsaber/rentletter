@@ -171,7 +171,7 @@ export default function ProfileVault({ profile }) {
                 {sh.realtorBrokerage && <div className="mp-source">{noWidow(sh.realtorBrokerage)}</div>}
                 {sh.listingName && <div className="mp-source">{noWidow(`For ${sh.listingName}`)}</div>}
                 <div className="mp-source" data-share-since="">{noWidow(sh.live ? `Sharing since ${dateLong(sh.approvedAt)}` : sh.status === 'revoked' ? `You stopped sharing on ${dateLong(sh.endedAt)}` : `Ended on ${dateLong(sh.endedAt)}`)}</div>
-                {sh.live && sh.documentsUntil && <div className="mp-source">{noWidow(`Can open your documents until ${dateLong(sh.documentsUntil)}`)}</div>}
+                {sh.live && sh.documentsUntil && <div className="mp-source">{noWidow(`Can open your income and employment documents until ${dateLong(sh.documentsUntil)}. Never your ID.`)}</div>}
                 {(sh.views || []).length === 0
                   ? <div className="mp-source" data-share-unviewed="">{noWidow('Not viewed yet.')}</div>
                   : sh.views.map((v) => <div key={v.id} className="mp-source" data-share-view="">{noWidow(`${v.action === 'document_opened' ? 'Opened a document' : 'Viewed your profile'} on ${dateLong(v.at)}`)}</div>)}

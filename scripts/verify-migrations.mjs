@@ -54,6 +54,7 @@ const FILES = {
   m017: 'db/017-realtor-invites.sql',
   m018: 'db/018-profile-vault.sql',
   m019: 'db/019-profile-shares.sql',
+  m020: 'db/020-share-events.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -787,6 +788,50 @@ async function run019(db, tag) {
   await dropProfiles(db, [SP3]);
 }
 
+// ── db/020-share-events.sql ────────────────────────────────────────────────────────────────
+// events.type gains profile_share_approved and profile_share_revoked. The baseline has no events
+// table, so the file is run three ways here: where the table is absent (it returns and makes
+// nothing); on an events table that holds the constraint exactly as db/012 wrote it, with a row
+// of an old type in it (the constraint is rewritten once, every old type is still accepted, the
+// two new ones are accepted, a type off the list is still refused, the row does not move); and
+// again (nothing changes). The events table this makes is the verifier's own and is taken away
+// at the end, so the paths that follow see the database as they did before.
+const typeList = (sql) => [...sql.split('CHECK (type IN (')[1].split('));')[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+const eventsConstraint = (db) => one(db, "SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'events_type_check'");
+const SHARE_EVENTS = ['profile_share_approved', 'profile_share_revoked'];
+async function run020(db, tag) {
+  const had = await hasTable(db, 'events');
+  const oldTypes = typeList(read(FILES.m012)); const newTypes = typeList(read(FILES.m020));
+  check(same(newTypes, [...oldTypes, ...SHARE_EVENTS]), `${tag}: db/020 lists every type db/012 listed, in order, and the two new ones`);
+  if (!had) {
+    await step(db, `${tag}0 (no events table)`, FILES.m020);
+    check(!(await hasTable(db, 'events')) && (await constraintCount(db, 'events_type_check')) === 0, `${tag}0: where db/events.sql has not run, the file returns and makes nothing`);
+    const oldEvents = `CREATE TABLE public.events (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), profile_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE, type text NOT NULL, payload jsonb NOT NULL DEFAULT '{}'::jsonb, created_at timestamptz NOT NULL DEFAULT now());\nALTER TABLE public.events ADD CONSTRAINT events_type_check CHECK (type IN (${oldTypes.map((t) => `'${t}'`).join(', ')}));`;
+    await step(db, `${tag}0 (events as db/012 left it)`, `an events table with the constraint of ${FILES.m012}`, oldEvents);
+  }
+  const realtor = await one(db, 'SELECT id FROM public.profiles ORDER BY id LIMIT 1');
+  const add = (type) => db.query("INSERT INTO public.events (profile_id, type, payload) VALUES ($1, $2, '{\"applicantName\":\"Probe\"}'::jsonb)", [realtor, type]);
+  const probes = () => rows(db, "SELECT id, profile_id, type, payload, created_at FROM public.events WHERE payload->>'applicantName' = 'Probe' ORDER BY created_at, id");
+  await add('form_data_opened');
+  const before = await eventsConstraint(db);
+  if (!SHARE_EVENTS.every((t) => before.includes(t))) for (const t of SHARE_EVENTS) check(/events_type_check/.test(await refused(db, "INSERT INTO public.events (profile_id, type) VALUES ($1, $2)", [realtor, t]) || ''), `${tag}0: before the file, ${t} is refused`);
+  const kept = await probes();
+  await step(db, `${tag}1`, FILES.m020);
+  const after = await eventsConstraint(db);
+  check((await constraintCount(db, 'events_type_check')) === 1, `${tag}1: the constraint exists once`);
+  check(newTypes.every((t) => after.includes(`'${t}'`)), `${tag}1: events.type accepts every type it accepted and the two new ones`);
+  check(same(await probes(), kept), `${tag}1: the event written before the file did not move`);
+  for (const t of SHARE_EVENTS) await add(t);
+  check((await probes()).length === kept.length + 2, `${tag}1: profile_share_approved and profile_share_revoked are written`);
+  check(/events_type_check/.test(await refused(db, "INSERT INTO public.events (profile_id, type) VALUES ($1, 'profile_share_peeked')", [realtor]) || ''), `${tag}1: a type off the list is still refused`);
+  const held = await probes();
+  await step(db, `${tag}2 (020 again)`, FILES.m020);
+  check((await eventsConstraint(db)) === after && (await constraintCount(db, 'events_type_check')) === 1, `${tag}2: a second run leaves the constraint exactly as it was`);
+  check(same(await probes(), held), `${tag}2: and every row`);
+  if (!had) { await db.query('DROP TABLE public.events'); check(!(await hasTable(db, 'events')), `${tag}2: the verifier's own events table is gone again`); }
+  else await db.query("DELETE FROM public.events WHERE payload->>'applicantName' = 'Probe'");
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -890,6 +935,7 @@ async function pathA() {
   await run017(db, 'A13');
   await run018(db, 'A14');
   await run019(db, 'A15');
+  await run020(db, 'A16');
   await db.close();
 }
 
@@ -1053,6 +1099,7 @@ async function pathB() {
   await run017(db, 'B19');
   await run018(db, 'B20');
   await run019(db, 'B21');
+  await run020(db, 'B22');
   return { db, before };
 }
 

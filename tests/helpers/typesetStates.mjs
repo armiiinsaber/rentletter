@@ -235,15 +235,30 @@ export const STATES = [
     yield 'tenant profile, stop sharing asked';
   } },
   { name: 'tenant profile, a share the tenant stopped', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=5&docs=1&share=new&stopped=1'); await p.locator('[data-share="revoked"]').waitFor({ timeout: 15000 }); } },
-  { name: 'one tap apply, the offer', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=6&docs=1'); await open(p, `/apply/${INVITE}`); await p.locator('[data-one-tap]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
-    await p.locator('[data-one-tap-apply]').click(); await p.locator('[data-one-tap-share]').waitFor({ timeout: 30000 }); await wait(p, 500);
-    yield 'one tap apply, the review of what is shared';
-  } },
   { name: 'listing, a shared profile', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=4&docs=1&share=new'); await open(p, '/listing/L1'); await expand(p, 'Maximiliano Castellanos Ruiz'); await p.locator('[data-shared-view]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
     await p.locator('[data-shared-view]').click(); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await wait(p, 400);
     yield 'listing, the shared profile viewed';
   } },
+  // The checklist line "Co applicant: {long name}": the label stands above the name where both
+  // do not fit on one line (components/ui.js LabelValue), so no word is left alone.
+  { name: 'listing, checklist with a long co applicant name', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f(`/__fake/seed-parties?link=J2&status=invited&co=${encodeURIComponent(LONG.a2)}`); await open(p, '/listing/L1'); await expand(p, LONG.a2); await p.locator('[data-checklist-title="party"]').first().waitFor({ timeout: 30000 }); await p.locator('[data-checklist-title="party"]').first().scrollIntoViewIfNeeded(); await wait(p, 300); } },
   { name: 'listing, a profile the tenant stopped sharing', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=5&docs=1&share=new&stopped=1'); await open(p, '/listing/L1'); await expand(p, 'Valentina Castellanos Ruiz'); await p.locator('[data-shared-ended]').waitFor({ timeout: 30000 }); await wait(p, 300); } },
+  // After the realtor's shared profile states: its last steps send an application to L1 under the same sample name.
+  { name: 'one tap apply, the offer', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=6&docs=1'); await open(p, `/apply/${INVITE}`); await p.locator('[data-one-tap]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-one-tap-apply]').click(); await p.locator('[data-one-tap-share]').waitFor({ timeout: 30000 }); await wait(p, 500);
+    yield 'one tap apply, the review of what is shared';
+    // The share request after submit fails once: the application is sent, the done page says the
+    // share did not go through and offers Try again; the second request goes through.
+    let mirrors = 0; p.on('request', (r) => { if (r.method() === 'POST' && /\/api\/applications\/mirror/.test(r.url())) mirrors += 1; });
+    await p.route('**/api/tenant/shares', (r) => (r.request().method() === 'POST' ? r.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"down"}' }) : r.fallback()));
+    await p.getByRole('checkbox').first().check().catch(() => {}); await tap(p, /^(Send|Submit)/);
+    await p.locator('[data-share-failed="failed"]').waitFor({ timeout: 30000 }); await p.locator('[data-share-failed]').scrollIntoViewIfNeeded(); await wait(p, 400);
+    yield 'one tap apply, sent, the share did not go through';
+    await p.unroute('**/api/tenant/shares');
+    await p.locator('[data-share-retry]').click(); await p.locator('[data-share-retried]').waitFor({ timeout: 30000 }); await wait(p, 300);
+    if (mirrors !== 1) throw new Error(`the application was sent ${mirrors} times; the retry must send the share alone`);
+    yield 'one tap apply, the share went through on the retry';
+  } },
   { name: 'tenant profile, documents paused', kind: 'tenant', phase: 'alone', go: async (p, f) => { try { await tenantProfile(p, f, 'who=3&docs=1&paused=1'); await p.locator('[data-vault-paused]').waitFor({ timeout: 15000 }); } finally { await f('/__fake/tenant?who=3&paused=0'); } } },
   // ── landlord ──
   { name: 'landlord report', kind: 'landlord', phase: 'write', go: async (p) => { const t = await report(p); await open(p, `/r/${t}`); }, steps: async function* (p) { await tap(p, /meet/i); await wait(p, 400); yield 'landlord report, answered'; await tap(p, /Tap to change/); yield 'landlord report, changing an answer'; } },

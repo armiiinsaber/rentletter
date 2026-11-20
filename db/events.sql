@@ -62,7 +62,9 @@ DO $$ BEGIN
       'pipeline_removed',
       'reference_requested',
       'reference_answered',
-      'form_data_opened'
+      'form_data_opened',
+      'profile_share_approved',
+      'profile_share_revoked'
     ));
   END IF;
 END $$;
