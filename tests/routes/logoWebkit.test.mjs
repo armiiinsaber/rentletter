@@ -57,7 +57,7 @@ async function walk(browserType, launch, viewport, phone) {
   // A press where the logo is on screen now, with nothing scrolled first: Playwright's own tap and
   // click scroll their target into view, which on Listings would be the very scroll under test.
   const pressInPlace = async () => {
-    const r = await page.evaluate((sel) => { const el = [...document.querySelectorAll(sel.replace(':visible', ''))].find((e) => e.getClientRects().length); const b = el.getBoundingClientRect(); const top = Math.max(b.top, 0); return { x: b.left + b.width / 2, y: top + (Math.min(b.bottom, window.innerHeight) - top) / 2, shown: b.bottom - top }; }, LOGO);
+    const r = await page.evaluate((sel) => { const el = [...document.querySelectorAll(sel.replace(/:visible/g, ''))].find((e) => e.getClientRects().length); const b = el.getBoundingClientRect(); const top = Math.max(b.top, 0); return { x: b.left + b.width / 2, y: top + (Math.min(b.bottom, window.innerHeight) - top) / 2, shown: b.bottom - top }; }, LOGO);
     assert.ok(r.shown >= 4, `the logo is on screen where it is pressed (${JSON.stringify(r)})`);
     if (phone) await page.touchscreen.tap(r.x, r.y); else await page.mouse.click(r.x, r.y);
   };

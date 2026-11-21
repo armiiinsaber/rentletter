@@ -38,7 +38,7 @@ import { needsRentConfirm, RENT_WARNING } from '../../lib/listingEditWarning';
 import { PROVINCE_OPTIONS } from '../../lib/provinces';
 import { CREDIT_ASK_LABEL } from '../../lib/creditShared';
 import { BOARD_FIELDS, depositRules, depositCap, normalizeBoardDetails } from '../../lib/boardDetails';
-import { Icon, StatusPills } from '../ui';
+import { Icon } from '../ui';
 import { Pending } from '../brand/Loader';
 
 // The form: six unit facts, the five criteria Fit reads, notes, the landlord client. The
@@ -176,7 +176,8 @@ export function ListingPreview({ form, realtor = null }) {
       <div className="lf-pcard">
         <div className="lf-pcard-k">Rental application</div>
         <div className={`lf-pcard-h${where ? '' : ' lf-pcard-empty'}`} data-preview-address="">{where || 'The address'}</div>
-        <StatusPills label="The listing" items={facts} style={{ marginTop: 'var(--s-3)' }} />
+        {/* Facts, not statuses: a plain list, never pills. */}
+        <ul className="lf-pfacts" aria-label="The listing">{facts.filter(Boolean).map((f) => <li key={f}>{f}</li>)}</ul>
         {realtor && realtor.name ? <div className="lf-pcard-by">Listed by {realtor.name}{realtor.brokerage ? `, ${realtor.brokerage}` : ''}</div> : null}
       </div>
     </section>
@@ -376,8 +377,10 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
     }
   };
 
-  const label = (id, text, optional = false) => <label htmlFor={id} id={`${id}-label`} className="lf-label">{text}{optional ? <span className="lf-opt"> (optional)</span> : null}</label>;
-  const err = (key, id) => { const m = errorOf(key); return m ? <p className="lf-err" id={`${id}-err`} role="alert">{m}</p> : null; };
+  // A field is one label: its words above, the control and the error inside it, so the whole field
+  // is the target a tap lands on (lib/motion.js), as the form's fields always were.
+  const label = (id, text, optional = false) => <span id={`${id}-label`} className="lf-label">{text}{optional ? <span className="lf-opt"> (optional)</span> : null}</span>;
+  const err = (key, id) => { const m = errorOf(key); return m ? <span className="lf-err" id={`${id}-err`} role="alert">{m}</span> : null; };
   const desc = (key, id) => (errorOf(key) ? `${id}-err` : undefined);
 
   // ── The three groups of fields ──
@@ -390,30 +393,30 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           {err('province', 'lf-province')}
         </div>
       )}
-      <div className="lf-field">
+      <label className="lf-field" htmlFor="lf-address">
         {label('lf-address', 'Address')}
         {/* Typed here; an address service can sit behind this one field later, and the province
             above stays the one that decides the deposits. */}
         <input id="lf-address" data-address-field="" type="text" inputMode="text" autoComplete="street-address" enterKeyHint="next" autoCapitalize="words" value={form.address} onChange={(e) => set({ address: e.target.value })} onBlur={() => leave('address')} placeholder="88 Bay Street" className="lf-input" aria-invalid={errorOf('address') ? 'true' : undefined} aria-describedby={desc('address', 'lf-address')} />
         {err('address', 'lf-address')}
-      </div>
-      <div className="lf-field">
+      </label>
+      <label className="lf-field" htmlFor="lf-unit">
         {label('lf-unit', 'Unit or suite', true)}
         <input id="lf-unit" type="text" inputMode="text" autoComplete="address-line2" enterKeyHint="next" value={form.unit} onChange={(e) => set({ unit: e.target.value })} placeholder="4B" className="lf-input lf-input-short" />
-      </div>
+      </label>
     </div>
   );
   const stepBasics = (
     <div className="lf-step" data-step-body="2">
-      <div className="lf-field">
+      <label className="lf-field" htmlFor="lf-rent">
         {label('lf-rent', 'Monthly rent')}
-        <div className="lf-rent">
+        <span className="lf-rent">
           <span className="lf-rent-sign" aria-hidden="true">$</span>
           <input id="lf-rent" type="text" inputMode="numeric" pattern="[0-9,]*" autoComplete="off" enterKeyHint="next" value={formatRent(form.monthly_rent)} onChange={(e) => set({ monthly_rent: e.target.value.replace(/[^\d]/g, '') })} onBlur={() => leave('monthly_rent')} placeholder="2400" className="lf-input lf-rent-input" aria-invalid={errorOf('monthly_rent') ? 'true' : undefined} aria-describedby={desc('monthly_rent', 'lf-rent')} />
           <span className="lf-rent-per" aria-hidden="true">a month</span>
-        </div>
+        </span>
         {err('monthly_rent', 'lf-rent')}
-      </div>
+      </label>
       <div className="lf-field">
         <span id="lf-beds-label" className="lf-label">Bedrooms</span>
         <Chips id="lf-beds" options={[...BEDS, ['__more', moreBeds ? 'Fewer' : 'Loft']]} value={BEDS_MORE.some(([v]) => v === form.bedrooms) ? '__more' : form.bedrooms}
@@ -435,16 +438,16 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   );
   const stepLandlord = (
     <div className="lf-step" data-step-body="3">
-      <div className="lf-field">
+      <label className="lf-field" htmlFor="lf-landlord-name">
         {label('lf-landlord-name', 'Landlord’s name')}
         <input id="lf-landlord-name" type="text" inputMode="text" autoComplete="off" autoCapitalize="words" enterKeyHint="next" value={form.landlord_name} onChange={(e) => set({ landlord_name: e.target.value })} onBlur={() => leave('landlord_name')} placeholder="Pat Owner" className="lf-input" aria-invalid={errorOf('landlord_name') ? 'true' : undefined} aria-describedby={desc('landlord_name', 'lf-landlord-name')} />
         {err('landlord_name', 'lf-landlord-name')}
-      </div>
-      <div className="lf-field">
+      </label>
+      <label className="lf-field" htmlFor="lf-landlord-email">
         {label('lf-landlord-email', 'Landlord’s email')}
         <input id="lf-landlord-email" type="email" inputMode="email" autoComplete="off" autoCapitalize="none" spellCheck={false} enterKeyHint="done" value={form.landlord_email} onChange={(e) => set({ landlord_email: e.target.value })} onBlur={() => leave('landlord_email')} placeholder="owner@email.com" className="lf-input" aria-invalid={errorOf('landlord_email') ? 'true' : undefined} aria-describedby={desc('landlord_email', 'lf-landlord-email')} />
         {err('landlord_email', 'lf-landlord-email')}
-      </div>
+      </label>
     </div>
   );
   // A plain function, not a component: the row keeps its node (and its focus) as the form changes.
@@ -468,10 +471,10 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           <div className="lf-field"><span id="lf-pets-label" className="lf-label">Pets</span><Chips id="lf-pets" options={[['no', 'No pets'], ['yes', 'Pets allowed']]} value={form.allows_pets === 'yes' ? 'yes' : 'no'} onChange={(v) => set({ allows_pets: v })} cols={2} /></div>
           <div className="lf-field"><span id="lf-smoking-label" className="lf-label">Smoking</span><Chips id="lf-smoking" options={[['no', 'Not allowed'], ['outdoor', 'Outdoor only'], ['yes', 'Allowed']]} value={form.allows_smoking} onChange={(v) => set({ allows_smoking: v })} cols={3} /></div>
           <div className="lf-field"><span id="lf-parking-label" className="lf-label">Parking</span><Chips id="lf-parking" options={[['no', 'Not included'], ['yes', 'Included']]} value={form.parking_included} onChange={(v) => set({ parking_included: v })} cols={2} /></div>
-          <div className="lf-field">
+          <label className="lf-field" htmlFor="lf-landlord-phone">
             {label('lf-landlord-phone', 'Landlord’s phone', true)}
             <input id="lf-landlord-phone" type="tel" inputMode="tel" autoComplete="off" enterKeyHint="next" value={form.landlord_phone} onChange={(e) => set({ landlord_phone: e.target.value })} placeholder="(416) 555-0199" className="lf-input" />
-          </div>
+          </label>
 
           {/* OHRC notice · preserved word-for-word */}
           <div className="lf-notice">
@@ -481,11 +484,11 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
           {/* PREFERENCES, financial. The rent share cap is the one affordability rule. No income floor
               exists anywhere in the product (docs/fit-v2.md). */}
           <div className="lf-group">Screening criteria</div>
-          <div className="lf-field">
+          <label className="lf-field" htmlFor="lf-cap">
             {label('lf-cap', 'Max rent to income (%)')}
             <input id="lf-cap" type="number" min="0" max="100" inputMode="numeric" autoComplete="off" enterKeyHint="next" value={form.pref_rent_to_income_max_pct} onChange={(e) => set({ pref_rent_to_income_max_pct: e.target.value })} placeholder={String(DEFAULT_RENT_SHARE_CAP)} className="lf-input lf-input-short" />
             <span className="lf-help">{CAP_HELPER}</span>
-          </div>
+          </label>
           {/* 20px between the rows: each 24px row then reaches a 44px hit area (lib/motion.js planHitAreas). */}
           <div className="lf-checks">
             {check('pref_requires_landlord_reference', 'Require previous landlord reference')}
@@ -497,11 +500,11 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
             {check('pref_guarantor_accepted', 'Guarantor accepted')}
           </div>
 
-          <div className="lf-field">
+          <label className="lf-field" htmlFor="lf-notes">
             {label('lf-notes', 'Additional notes', true)}
             <textarea id="lf-notes" value={form.pref_notes} onChange={(e) => set({ pref_notes: e.target.value })} rows={3} placeholder="e.g. Quiet building, no home business, long term tenant preferred." className="lf-input lf-textarea" />
             <span className="lf-help lf-warn">Reminder: do NOT include preferences about gender, age, family status, race, religion, disability, or income source. These can trigger HRTO complaints.</span>
-          </div>
+          </label>
 
           {/* BOARD DETAILS (lib/boardDetails.js): one 44px toggle row, collapsed on every open. What the
               board's forms ask for, typed once here and read by Form data once a tenant is accepted.
@@ -522,48 +525,48 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
                 ['coop_brokerage_name', 'Cooperating brokerage', 'Their brokerage', 'text'],
                 ['coop_commission', 'Commission to the cooperating brokerage', 'Half a month’s rent plus HST', 'text'],
               ].map(([k, text, ph, type]) => (
-                <div className="lf-field" key={k}>
+                <label className="lf-field" key={k} htmlFor={`lf-${k}`}>
                   {label(`lf-${k}`, text)}
                   <input id={`lf-${k}`} type={type} inputMode={type === 'tel' ? 'tel' : 'text'} autoComplete="off" enterKeyHint="next" value={form[k]} onChange={(e) => set({ [k]: e.target.value })} placeholder={ph} className="lf-input" />
-                </div>
+                </label>
               ))}
               {[['lease_term_months', 'Lease term (months)', '12'], ['parking_spaces', 'Parking spaces', '1']].map(([k, text, ph]) => (
-                <div className="lf-field" key={k}>
+                <label className="lf-field" key={k} htmlFor={`lf-${k}`}>
                   {label(`lf-${k}`, text)}
                   <input id={`lf-${k}`} type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="off" enterKeyHint="next" value={form[k]} onChange={(e) => set({ [k]: e.target.value.replace(/[^\d]/g, '') })} placeholder={ph} className="lf-input lf-input-short" />
-                </div>
+                </label>
               ))}
-              <div className="lf-field">
+              <label className="lf-field" htmlFor="lf-locker">
                 {label('lf-locker', 'Locker')}
                 <input id="lf-locker" type="text" inputMode="text" autoComplete="off" enterKeyHint="next" value={form.locker} onChange={(e) => set({ locker: e.target.value })} placeholder="B12" className="lf-input lf-input-short" />
-              </div>
-              <div className="lf-field">
+              </label>
+              <label className="lf-field" htmlFor="lf-furnished">
                 {label('lf-furnished', 'Furnished')}
                 <select id="lf-furnished" value={form.furnished} onChange={(e) => set({ furnished: e.target.value })} className="lf-input">
                   <option value="">Not entered</option><option value="yes">Yes</option><option value="no">No</option>
                 </select>
-              </div>
+              </label>
               {/* Three states each: an untouched utility stays not set and reads Not entered on the listing page and in Form data. */}
               <div className="lf-group">Utilities</div>
               {[['utilities_heat', 'Heat'], ['utilities_hydro', 'Hydro'], ['utilities_water', 'Water']].map(([k, text]) => (
-                <div className="lf-field" key={k}>
+                <label className="lf-field" key={k} htmlFor={`lf-${k}`}>
                   {label(`lf-${k}`, text)}
                   <select id={`lf-${k}`} value={form[k]} onChange={(e) => set({ [k]: e.target.value })} className="lf-input">
                     <option value="">Not entered</option><option value="yes">Included</option><option value="no">Not included</option>
                   </select>
-                </div>
+                </label>
               ))}
               {/* The province's deposits alone (lib/boardDetails.js depositRules), each against the rent typed above. */}
               <div className="lf-group">Deposits</div>
               <p className="lf-help" style={{ marginTop: 0 }}>{rules.line}</p>
               {rules.fields.map((f) => (
-                <div className="lf-field" key={f.key}>
+                <label className="lf-field" key={f.key} htmlFor={`lf-${f.key}`}>
                   {label(`lf-${f.key}`, `${f.label} (CAD)`)}
                   <input id={`lf-${f.key}`} type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="off" enterKeyHint="next" value={form[f.key]} onChange={(e) => set({ [f.key]: e.target.value.replace(/[^\d]/g, '') })}
                     placeholder={f.cap === 'half' && rentNum ? String(Math.floor(rentNum / 2)) : f.cap === 'month' && rentNum ? String(rentNum) : '0'}
                     className="lf-input lf-input-short" aria-invalid={depositError(f.key) ? 'true' : undefined} />
                   <span className={`lf-help${depositError(f.key) ? ' lf-help-err' : ''}`}>{depositError(f.key) || f.note}</span>
-                </div>
+                </label>
               ))}
             </div>
           )}
@@ -664,7 +667,7 @@ const LF_CSS = `
   .lf-sec + .lf-sec { margin-top: var(--s-6); }
   .lf-sec-h { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; margin-bottom: var(--s-3); }
   .lf-field { display: flex; flex-direction: column; gap: var(--s-2); margin-bottom: var(--s-4); }
-  .lf-label { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: 1.3; }
+  .lf-label { display: block; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: 1.3; }
   .lf-opt { font-weight: 500; color: ${C.inkMute}; }
   .lf-input { width: 100%; min-height: 48px; padding: 0 14px; font-size: var(--t-body); font-family: inherit; color: ${C.ink}; background: ${C.card}; border: 1px solid ${C.ruleDark}; border-radius: var(--card-radius); box-sizing: border-box; }
   .lf-input:focus { outline: none; border-color: ${C.ink}; box-shadow: 0 0 0 1px ${C.ink}; }
@@ -676,7 +679,7 @@ const LF_CSS = `
   .lf-rent-sign { position: absolute; left: 16px; font-size: 28px; font-weight: 700; color: ${C.ink}; pointer-events: none; }
   .lf-rent-per { position: absolute; right: 16px; font-size: var(--t-body-2); color: ${C.inkMute}; pointer-events: none; }
   .lf-rent-input { min-height: 64px; padding-left: 40px; padding-right: 88px; font-size: 28px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
-  .lf-err { font-size: var(--t-body-2); color: ${C.danger}; line-height: 1.4; margin: 0; }
+  .lf-err { display: block; font-size: var(--t-body-2); color: ${C.danger}; line-height: 1.4; margin: 0; }
   .lf-help { display: block; font-size: 13px; color: ${C.inkMute}; line-height: 1.5; text-wrap: balance; }
   .lf-help-err { color: ${C.danger}; }
   .lf-warn { color: ${C.danger}; }
@@ -718,6 +721,8 @@ const LF_CSS = `
   .lf-pcard-k { font-size: var(--t-body-2); color: ${C.inkMute}; }
   .lf-pcard-h { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; margin-top: var(--s-1); overflow-wrap: anywhere; text-wrap: balance; }
   .lf-pcard-empty { color: ${C.ruleDark}; }
+  .lf-pfacts { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--t-body-2); color: ${C.ink}; line-height: var(--lh-body); }
+  .lf-pfacts li { white-space: nowrap; }
   .lf-pcard-by { font-size: var(--t-body-2); color: ${C.inkSoft}; margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid ${C.rule}; text-wrap: balance; }
   /* A phone, a new listing: one step at a time, Continue lifted above the keyboard. */
   @media (max-width: 1023.98px) {

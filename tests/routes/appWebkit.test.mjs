@@ -85,13 +85,13 @@ async function standaloneWays(browser, tag) {
     await open(page, DEMO);
     assert.equal(await page.evaluate(() => navigator.standalone), true);
     assert.equal(await page.locator('[data-install-hint]').count(), 0, `${tag}: no hint in the installed app`);
-    const mark = page.locator('a.rl-mark').first();
+    const mark = page.locator('a.rl-mark:visible').first(); // the header's: the desktop sidebar's is hidden on a phone
     assert.equal(await mark.getAttribute('href'), DEMO, `${tag}: the header logo goes home`);
     assert.ok((await mark.boundingBox()).height >= 44, `${tag}: the header logo is a 44px target`);
     await way('dashboard: a listing card, forward', async () => { await tap(page, page.locator('[role=link][aria-label*="Carlaw"]')); assert.match(path(page), /listing=demo-carlaw/); });
     await way('listing: All listings, back', async () => { await tap(page, page.getByRole('link', { name: /All listings/ })); assert.equal(path(page), DEMO); });
     await open(page, LISTING);
-    await way('listing: the header logo, home', async () => { await tap(page, page.locator('a.rl-mark')); assert.equal(path(page), DEMO); });
+    await way('listing: the header logo, home', async () => { await tap(page, page.locator('a.rl-mark:visible')); assert.equal(path(page), DEMO); });
     await open(page, LISTING);
     await way('compare: Back to ranked list', async () => { await tap(page, page.getByRole('button', { name: /^Compare$/ })); await tap(page, page.getByRole('button', { name: /Back to ranked list/ })); assert.equal(await page.getByRole('button', { name: /Back to ranked list/ }).count(), 0); });
     await way('set aside sheet: Cancel', async () => {

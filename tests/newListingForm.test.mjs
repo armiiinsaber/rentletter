@@ -38,8 +38,10 @@ test('every field a label above it, the right type, inputmode and autocomplete, 
   for (const [id, type, mode, auto] of [['lf-address', 'text', 'text', 'street-address'], ['lf-unit', 'text', 'text', 'address-line2'], ['lf-rent', 'text', 'numeric', 'off'], ['lf-landlord-name', 'text', 'text', 'off'], ['lf-landlord-email', 'email', 'email', 'off'], ['lf-landlord-phone', 'tel', 'tel', 'off'], ['lf-cap', 'number', 'numeric', 'off']]) {
     const el = input(id); assert.ok(el, id);
     assert.match(el, new RegExp(`type="${type}"`), `${id} type`); assert.match(el, new RegExp(`inputMode="${mode}"`), `${id} inputmode`); assert.match(el, new RegExp(`autoComplete="${auto}"`), `${id} autocomplete`);
-    assert.match(html, new RegExp(`<label for="${id}"[^>]*class="lf-label"`), `${id} has its label`);
-    assert.ok(html.indexOf(`<label for="${id}"`) < html.indexOf(`id="${id}"`), `${id}: the label is above it`);
+    // The field is its label: the words first, then the control, inside it (the whole field is the target).
+    const field = (html.match(new RegExp(`<label class="lf-field" for="${id}">([\\s\\S]*?)</label>`)) || [])[1] || '';
+    assert.match(field, /^<span id="[^"]+-label" class="lf-label">/, `${id}: its words come first`);
+    assert.ok(field.indexOf('lf-label') < field.indexOf(`id="${id}"`), `${id}: the words are above the control`);
   }
   assert.match(input('lf-rent'), /value="2,400"/, 'the rent formatted');
   assert.match(html, /role="radiogroup" aria-labelledby="lf-beds-label"/, 'bedrooms are chips');

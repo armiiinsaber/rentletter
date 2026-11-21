@@ -51,6 +51,8 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
   return (
     <div className="ds" data-shell="">
       <aside className="ds-side" data-shell-side="">
+        {/* The same 44px wordmark link as the header's (.rl-mark); on a phone it is hidden with the
+            sidebar and the header's is the one on screen. */}
         <a {...logoProps(home)} aria-label="Rentletter dashboard" className="rl-mark ds-logo"><Wordmark /></a>
         {!locked && (
           <button ref={newRef} type="button" onClick={newListing} className={`ds-btn ${newPrimary ? 'ds-btn-primary' : 'ds-btn-line'}`} data-shell-new="">
@@ -78,7 +80,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         @media (min-width: 1024px) {
           .ds { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: start; max-width: 1800px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; }
           .ds-side { display: flex; flex-direction: column; gap: var(--s-5); position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; padding: var(--s-5) var(--s-4); background: ${C.paperDeep}; border-right: 1px solid ${C.rule}; }
-          .ds-logo { align-self: flex-start; padding: 0 var(--s-2); }
+          .ds-logo { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-2); text-decoration: none; color: inherit; }
           .ds-nav { display: flex; flex-direction: column; gap: var(--s-1); }
           .ds-place { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); min-height: 44px; padding: 0 var(--s-3); border-radius: var(--btn-radius); border: 1px solid transparent; color: ${C.inkSoft}; font-size: var(--t-body-2); font-weight: 600; text-decoration: none; white-space: nowrap; }
           .ds-place[aria-current='page'] { background: ${C.card}; border-color: ${C.rule}; color: ${C.ink}; font-weight: 700; }
