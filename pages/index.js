@@ -283,13 +283,8 @@ export default function Home() {
           </ScrollHeader>
 
           {/* ── HERO: the rental application, rebuilt for realtors. ──────────────── */}
-          <section style={{ padding: 'clamp(44px, 7vw, 96px) clamp(20px, 4vw, 32px) clamp(48px, 7vw, 80px)', maxWidth: 1200, margin: '0 auto' }}>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 420px), 1fr))',
-              gap: 'clamp(28px, 4vw, 64px)',
-              alignItems: 'center',
-            }}>
+          <section className="lp-w-wide" style={{ padding: 'clamp(44px, 7vw, 96px) clamp(20px, 4vw, 32px) clamp(48px, 7vw, 80px)' }}>
+            <div className="lp-hero-grid">
 
               {/* LEFT · text */}
               <div className="lp-hero-text">
@@ -308,10 +303,10 @@ export default function Home() {
                 }}>
                   {HERO_HEADLINE.map((line, i) => <span key={line} style={{ display: 'block', whiteSpace: 'nowrap', color: i === HERO_HEADLINE.length - 1 ? C.red : C.ink }}>{line}</span>)}
                 </h1>
-                <p style={{ fontSize: 'clamp(17px, 1.8vw, 20px)', lineHeight: 1.45, color: C.inkSoft, margin: '0 0 var(--gap-line)', maxWidth: 520, textWrap: 'balance' }}>
+                <p className="lp-sub" style={{ lineHeight: 1.45, color: C.inkSoft, margin: '0 0 var(--gap-line)', textWrap: 'balance' }}>
                   <span className="lp-sentence">{noWidow('Tenants apply from one link and every document is read before you open it.')}</span>
                 </p>
-                <p style={{ fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)', color: C.inkMute, margin: '0 0 30px' }}>
+                <p className="lp-small" style={{ lineHeight: 'var(--lh-body)', color: C.inkMute, margin: '0 0 30px' }}>
                   {noWidow('Free to join. Pay only when a rental lands.')}
                 </p>
 
@@ -336,7 +331,7 @@ export default function Home() {
                     </a>
                   </div>
                   {/* Three facts, each with the red tick on ink text, as everywhere in the product. */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px 16px', flexWrap: 'wrap' }}>
+                  <div className="lp-facts" style={{ display: 'flex', alignItems: 'center', gap: '8px 16px', flexWrap: 'wrap' }}>
                     {['No credit card', 'Free for applicants', 'Your name on every report'].map((t) => (
                       <span key={t} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: C.ink, whiteSpace: 'nowrap' }}>
                         <span style={{ display: 'inline-flex' }}><Icon name="check" size={15} color={C.red} strokeWidth={2} /></span>{t}
@@ -363,7 +358,7 @@ export default function Home() {
                     </DeviceFrame>
                   </div>
                 </div>
-                <div style={{ margin: 'auto 0', padding: 'var(--gap-card) 0', fontSize: 12, color: C.inkMute, textWrap: 'balance' }}>
+                <div className="lp-caption" style={{ margin: 'auto 0', padding: 'var(--gap-card) 0', fontSize: 12, color: C.inkMute, textWrap: 'balance' }}>
                   The Rentletter dashboard, one workspace per listing.
                 </div>
               </div>
@@ -373,45 +368,44 @@ export default function Home() {
           {/* ── FOUR BLOCKS: read, ranked, sure, done. Every sentence is one the product backs today
               (the claims list in the commit names the file for each). ── */}
           <section style={{ borderTop: `1px solid ${C.rule}`, background: C.card }}>
-            <div className="lp-blocks" style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px)' }}>
+            <div className="lp-blocks lp-w" style={{ padding: 'clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px)' }}>
               {BLOCKS.map((b) => (
                 <div key={b.title} className="lp-block">
-                  <h2 className="t-d3" style={{ margin: '0 0 var(--gap-line)', color: C.ink }}>{noWidow(b.title)}</h2>
-                  <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(b.body)}</p>
+                  <h2 className="t-d3 lp-block-t" style={{ margin: '0 0 var(--gap-line)', color: C.ink }}>{noWidow(b.title)}</h2>
+                  <p className="lp-body" style={{ margin: 0, lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(b.body)}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* ── PRICING ── */}
+          {/* ── PRICING, and beside it from 1100px THE OBJECTION, the first question in the FAQ too
+              (pages/faq.js). Stacked below 1100px as they always were. ── */}
           <section style={{ borderTop: `1px solid ${C.rule}` }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px)' }}>
-              <div className="lp-eyebrow" style={{ color: C.red }}>Pricing</div>
-              <h2 className="rl-serif" style={{ fontSize: 'clamp(28px, 4vw, 44px)', lineHeight: 1.08, letterSpacing: '-0.02em', color: C.ink, margin: '0 0 var(--gap-line)', maxWidth: 760, textWrap: 'balance' }}>
-                {noWidow('Free to join. Pay only when a rental lands.')}
-              </h2>
-              {/* The price line goes here, under the headline and above this line, once per rental
-                  billing ships. Until then nobody pays (lib/billingOff.js). */}
-              <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft }}>No credit card to start.</p>
-            </div>
-          </section>
-
-          {/* ── THE OBJECTION, the first question in the FAQ too (pages/faq.js) ── */}
-          <section style={{ padding: '0 clamp(20px, 4vw, 32px) clamp(48px, 7vw, 88px)', maxWidth: 1100, margin: '0 auto' }}>
-            <div className="rl-card" style={{ padding: 'var(--card-pad)' }}>
-              <h2 style={{ fontSize: 'var(--t-d3)', fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em', color: C.ink, margin: '0 0 var(--gap-line)' }}>{noWidow(FEW_RENTALS.q)}</h2>
-              <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(FEW_RENTALS.a)}</p>
-              <a href="/faq" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, marginTop: 'var(--s-1)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>
-                More questions <Icon name="arrow" size={14} />
-              </a>
+            <div className="lp-w lp-pricing" style={{ padding: 'clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px)' }}>
+              <div>
+                <div className="lp-eyebrow" style={{ color: C.red }}>Pricing</div>
+                <h2 className="rl-serif lp-h2-a" style={{ lineHeight: 1.08, letterSpacing: '-0.02em', color: C.ink, margin: '0 0 var(--gap-line)', maxWidth: 760, textWrap: 'balance' }}>
+                  {noWidow('Free to join. Pay only when a rental lands.')}
+                </h2>
+                {/* The price line goes here, under the headline and above this line, once per rental
+                    billing ships. Until then nobody pays (lib/billingOff.js). */}
+                <p className="lp-body" style={{ margin: 0, lineHeight: 'var(--lh-body)', color: C.inkSoft }}>No credit card to start.</p>
+              </div>
+              <div className="rl-card lp-objection" style={{ padding: 'var(--card-pad)' }}>
+                <h2 className="lp-q" style={{ fontWeight: 700, lineHeight: 1.3, letterSpacing: '-0.01em', color: C.ink, margin: '0 0 var(--gap-line)' }}>{noWidow(FEW_RENTALS.q)}</h2>
+                <p className="lp-body lp-read" style={{ margin: 0, lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(FEW_RENTALS.a)}</p>
+                <a href="/faq" className="lp-small" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, marginTop: 'var(--s-1)', fontWeight: 700, color: C.ink }}>
+                  More questions <Icon name="arrow" size={14} />
+                </a>
+              </div>
             </div>
           </section>
 
           {/* ── WHERE WE FIT, its own quiet statement ── */}
           <section style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.card }}>
-            <div style={{ maxWidth: 880, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px)', textAlign: 'center' }}>
+            <div className="lp-w-fit" style={{ padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px)', textAlign: 'center' }}>
               <div className="lp-eyebrow">Where we fit</div>
-              <p className="rl-serif" style={{ fontSize: 'clamp(21px, 3vw, 30px)', lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0, textWrap: 'balance' }}>
+              <p className="rl-serif lp-fit" style={{ lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0, textWrap: 'balance' }}>
                 {noWidow('Rentletter organizes your applicants.')}{' '}
                 <span style={{ color: C.inkMute }}>{noWidow('Run credit checks wherever you already do.')}</span>
               </p>
@@ -419,14 +413,14 @@ export default function Home() {
           </section>
 
           {/* ── HOW IT WORKS ── */}
-          <section style={{ padding: 'clamp(64px, 10vw, 112px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
-            <div style={{ marginBottom: 'var(--s-5)', maxWidth: 640 }}>
+          <section className="lp-w" style={{ padding: 'clamp(64px, 10vw, 112px) clamp(20px, 4vw, 32px)' }}>
+            <div className="lp-how-head" style={{ marginBottom: 'var(--s-5)' }}>
               <div className="lp-eyebrow" style={{ color: C.red }}>How it works</div>
-              <h2 className="rl-serif" style={{ fontSize: 'clamp(26px, 3.6vw, 38px)', lineHeight: 1.12, letterSpacing: '-0.02em', color: C.ink, margin: 0 }}>
+              <h2 className="rl-serif lp-h2-b" style={{ lineHeight: 1.12, letterSpacing: '-0.02em', color: C.ink, margin: 0 }}>
                 {noWidow('From listing to landlord in four steps.')}
               </h2>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 'clamp(20px, 3vw, 36px)' }}>
+            <div className="lp-steps">
               {STEPS.map((st) => (
                 <div key={st.n} style={{ paddingTop: 22, position: 'relative' }}>
                   <span className="rl-step-bar" style={{ background: C.red, position: 'absolute', top: 0, left: 0, right: 0 }} />
@@ -436,30 +430,30 @@ export default function Home() {
                     </span>
                     <span className="rl-serif" style={{ fontSize: 22, color: C.rule }}>{st.n}</span>
                   </div>
-                  <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 700, color: C.ink, margin: '0 0 var(--gap-line)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{noWidow(st.t)}</h3>
-                  <p style={{ margin: 0, fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(st.d)}</p>
+                  <h3 className="lp-q" style={{ fontWeight: 700, color: C.ink, margin: '0 0 var(--gap-line)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{noWidow(st.t)}</h3>
+                  <p className="lp-body" style={{ margin: 0, lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(st.d)}</p>
                 </div>
               ))}
             </div>
           </section>
 
           {/* ── TENANT ENTRY, paste the realtor's invite link → /apply/{token} ── */}
-          <section style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)', maxWidth: 1100, margin: '0 auto' }}>
-            <div className="rl-card" style={{ padding: 'clamp(22px, 3vw, 32px)', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <section className="lp-w" style={{ padding: 'clamp(20px, 4vw, 40px) clamp(20px, 4vw, 32px)' }}>
+            <div className="rl-card lp-tenant" style={{ padding: 'clamp(22px, 3vw, 32px)' }}>
+              <div className="lp-tenant-head" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <span style={{ width: 40, height: 40, flexShrink: 0, borderRadius: R.ctrl, background: C.paperDeep, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon name="user" size={20} color={C.ink} />
                 </span>
                 <div style={{ minWidth: 0 }}>
-                  <h3 style={{ fontSize: 'var(--t-d3)', fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', margin: '0 0 var(--gap-line)' }}>
+                  <h3 className="lp-q" style={{ fontWeight: 700, color: C.ink, letterSpacing: '-0.01em', margin: '0 0 var(--gap-line)' }}>
                     Have an application link?
                   </h3>
-                  <p style={{ fontSize: 'var(--t-body)', lineHeight: 'var(--lh-body)', color: C.inkSoft, margin: 0, textWrap: 'balance' }}>
+                  <p className="lp-body" style={{ lineHeight: 'var(--lh-body)', color: C.inkSoft, margin: 0, textWrap: 'balance' }}>
                     {noWidow('Paste it to go straight to the form. Applying is free.')}
                   </p>
                 </div>
               </div>
-              <div className="rl-ctrl-row">
+              <div className="rl-ctrl-row lp-tenant-ctrl">
                 <input
                   type="text" inputMode="url" value={applyLink}
                   onChange={(e) => { setApplyLink(e.target.value); if (applyError) setApplyError(''); }}
@@ -481,19 +475,19 @@ export default function Home() {
                 </button>
               </div>
               {applyError
-                ? <div style={{ fontSize: 13, color: C.red, lineHeight: 1.5 }}>{applyError}</div>
-                : <div style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>{noWidow('The full link or just the code at the end. No account needed.')}</div>}
+                ? <div className="lp-tenant-note" style={{ fontSize: 13, color: C.red, lineHeight: 1.5 }}>{applyError}</div>
+                : <div className="lp-tenant-note" style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>{noWidow('The full link or just the code at the end. No account needed.')}</div>}
             </div>
           </section>
 
           {/* ── CLOSING BAND, ink, edge to edge ── */}
           <section style={{ background: C.ink, color: C.paper, marginTop: 'clamp(20px, 4vw, 40px)' }}>
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(56px, 8vw, 96px) clamp(20px, 4vw, 32px)', borderLeft: `6px solid ${C.red}` }}>
-              <div style={{ maxWidth: 620 }}>
-                <h2 className="rl-serif" style={{ fontSize: 'clamp(32px, 5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, margin: '0 0 18px', color: C.paper }}>
+            <div className="lp-w" style={{ padding: 'clamp(56px, 8vw, 96px) clamp(20px, 4vw, 32px)', borderLeft: `6px solid ${C.red}` }}>
+              <div className="lp-close">
+                <h2 className="rl-serif lp-h2-c" style={{ letterSpacing: '-0.025em', lineHeight: 1.04, margin: '0 0 18px', color: C.paper }}>
                   {noWidow('Ready when your next listing is.')}
                 </h2>
-                <p style={{ fontSize: 'clamp(16px, 2vw, 18px)', lineHeight: 1.6, color: C.inkInverse, margin: '0 0 32px', textWrap: 'balance' }}>
+                <p className="lp-close-sub" style={{ lineHeight: 1.6, color: C.inkInverse, margin: '0 0 32px', textWrap: 'balance' }}>
                   {noWidow('Create a listing and its applicant link is ready at once.')}
                 </p>
                 <div className="rl-ctrl-row">
@@ -517,8 +511,8 @@ export default function Home() {
           </section>
 
           {/* ── FOOTER ── */}
-          <footer style={{ padding: 'clamp(48px, 7vw, 72px) clamp(20px, 4vw, 32px) 48px', borderTop: `1px solid ${C.rule}`, background: C.card }}>
-            <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+          <footer className="lp-foot" style={{ padding: 'clamp(48px, 7vw, 72px) clamp(20px, 4vw, 32px) 48px', borderTop: `1px solid ${C.rule}`, background: C.card }}>
+            <div className="lp-w-wide">
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 'clamp(28px, 4vw, 48px)', alignItems: 'start' }}>
                 <div style={{ minWidth: 180 }}>
                   <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark size="footer" /></a>
@@ -560,6 +554,88 @@ export default function Home() {
         @media (min-width: 1100px) { .lp-blocks { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
         .lp-block { border-top: 2px solid ${C.red}; padding-top: var(--s-4); }
         .lp-eyebrow { font-size: 11px; color: ${C.inkMute}; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; margin-bottom: var(--s-3); }
+        /* ── Large screens. Below 1440 every section keeps the width and the type it had; from 1440
+           the grid widens, and from 1920 and 2560 it widens again with the type a step larger, so a
+           large monitor reads as a page built for it, not a strip down the middle. Reading text
+           stays near 70 characters a line at every size. ── */
+        .lp-w { max-width: 1100px; margin-left: auto; margin-right: auto; }
+        .lp-w-wide { max-width: 1200px; margin-left: auto; margin-right: auto; }
+        .lp-w-fit { max-width: 880px; margin-left: auto; margin-right: auto; }
+        .lp-hero-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: clamp(28px, 4vw, 64px); align-items: center; }
+        .lp-sub { font-size: clamp(17px, 1.8vw, 20px); max-width: 520px; }
+        .lp-small { font-size: var(--t-body-2); }
+        .lp-body { font-size: var(--t-body); max-width: 70ch; }
+        .lp-q { font-size: var(--t-d3); }
+        .lp-h2-a { font-size: clamp(28px, 4vw, 44px); }
+        .lp-h2-b { font-size: clamp(26px, 3.6vw, 38px); }
+        .lp-h2-c { font-size: clamp(32px, 5vw, 52px); }
+        .lp-fit { font-size: clamp(21px, 3vw, 30px); }
+        .lp-close { max-width: 620px; }
+        .lp-close-sub { font-size: clamp(16px, 2vw, 18px); }
+        .lp-how-head { max-width: 640px; }
+        .lp-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: clamp(20px, 3vw, 36px); }
+        /* Pricing and the question under it: stacked, as always, below 1100px; side by side above. */
+        .lp-pricing { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: clamp(48px, 7vw, 88px); }
+        .lp-tenant { display: flex; flex-direction: column; gap: 16px; }
+        @media (min-width: 1100px) {
+          .lp-pricing { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: clamp(48px, 5vw, 112px); align-items: center; }
+          /* The tenant's card: what it is beside where to paste the link. */
+          .lp-tenant { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); grid-template-areas: 'head ctrl' 'head note'; column-gap: clamp(32px, 4vw, 72px); row-gap: var(--s-2); align-items: center; }
+          .lp-tenant-head { grid-area: head; }
+          .lp-tenant-ctrl { grid-area: ctrl; flex-wrap: nowrap; }
+          .lp-tenant-ctrl input { flex: 1 1 auto; }
+          .lp-tenant-note { grid-area: note; }
+        }
+        @media (min-width: 1440px) {
+          .lp-w { max-width: 1240px; } .lp-w-wide { max-width: 1320px; } .lp-w-fit { max-width: 960px; }
+          .lp-hero-grid { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: clamp(48px, 5vw, 96px); }
+          .lp-shell .rl-header-inner { max-width: 1320px !important; }
+        }
+        @media (min-width: 1920px) {
+          .lp-w { max-width: 1560px; } .lp-w-wide { max-width: 1680px; } .lp-w-fit { max-width: 1200px; }
+          .lp-shell .rl-header-inner { max-width: 1680px !important; }
+          .lp-sub { font-size: 24px; max-width: 30em; }
+          .lp-small { font-size: 16px; }
+          .lp-body { font-size: 18px; }
+          .lp-q { font-size: 22px; }
+          .lp-block-t { font-size: 24px; }
+          .lp-h2-a { font-size: 56px; } .lp-h2-b { font-size: 48px; } .lp-h2-c { font-size: 64px; } .lp-fit { font-size: 38px; }
+          .lp-close { max-width: 820px; } .lp-close-sub { font-size: 21px; } .lp-how-head { max-width: 860px; }
+          .lp-hero-text .rl-btn, .lp-close .rl-btn { min-height: 52px; font-size: 17px !important; }
+          .lp-shell .lh-nav a, .lp-shell .lh-right a { font-size: 16px !important; }
+          .lp-blocks, .lp-steps { gap: 48px; }
+          .lp-shell .lp-eyebrow { font-size: 13px; }
+          .lp-facts > span { font-size: 15px !important; }
+          .lp-caption { font-size: 14px !important; }
+          .lp-tenant-note { font-size: 15px !important; }
+          .lp-tenant input { font-size: 18px !important; min-height: 52px !important; }
+          .lp-tenant .rl-btn { min-height: 52px !important; font-size: 17px !important; }
+          .lp-foot a, .lp-foot p, .lp-foot .lp-legal { font-size: 15px !important; }
+          .lp-foot div[style*="uppercase"] { font-size: 13px !important; }
+        }
+        @supports (font-size: 1cqi) { @media (min-width: 1920px) { .lp-h1 { font-size: clamp(24px, 9.2cqi, 96px); } } }
+        @media (min-width: 2560px) {
+          .lp-w { max-width: 1960px; } .lp-w-wide { max-width: 2080px; } .lp-w-fit { max-width: 1440px; }
+          .lp-shell .rl-header-inner { max-width: 2080px !important; }
+          .lp-sub { font-size: 28px; }
+          .lp-small { font-size: 18px; }
+          .lp-body { font-size: 20px; }
+          .lp-q { font-size: 26px; }
+          .lp-block-t { font-size: 28px; }
+          .lp-h2-a { font-size: 68px; } .lp-h2-b { font-size: 58px; } .lp-h2-c { font-size: 76px; } .lp-fit { font-size: 46px; }
+          .lp-close { max-width: 980px; } .lp-close-sub { font-size: 24px; } .lp-how-head { max-width: 1040px; }
+          .lp-hero-text .rl-btn, .lp-close .rl-btn { min-height: 60px; font-size: 19px !important; padding-left: 32px !important; padding-right: 32px !important; }
+          .lp-shell .lh-nav a, .lp-shell .lh-right a { font-size: 18px !important; }
+          .lp-blocks, .lp-steps { gap: 64px; }
+          .lp-shell .lp-eyebrow { font-size: 15px; }
+          .lp-facts > span { font-size: 17px !important; }
+          .lp-caption { font-size: 16px !important; }
+          .lp-tenant-note { font-size: 17px !important; }
+          .lp-tenant input { font-size: 20px !important; min-height: 60px !important; }
+          .lp-tenant .rl-btn { min-height: 60px !important; font-size: 19px !important; }
+          .lp-foot a, .lp-foot p, .lp-foot .lp-legal { font-size: 17px !important; }
+          .lp-foot div[style*="uppercase"] { font-size: 14px !important; }
+        }
         .lp-legal { display: flex; flex-wrap: wrap; column-gap: 0.9em; overflow: hidden; }
         .lp-legal > span { position: relative; white-space: nowrap; }
         .lp-legal > span + span::before { content: '·'; position: absolute; left: -0.9em; width: 0.9em; text-align: center; }
