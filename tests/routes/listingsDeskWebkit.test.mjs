@@ -144,6 +144,11 @@ async function archiveWalk(type, launch) {
     // A bulk delete: asked in the page, the test listing goes, the real one is skipped and said.
     await desk.locator('[data-shelf-to="active"]:visible').first().click(); await desk.waitForTimeout(400);
     let dialogs = 0; desk.on('dialog', (d) => { dialogs++; d.dismiss(); });
+    // The old delete route, which deleted without the rule, is gone: a request to its path as the
+    // signed in realtor answers 404 or 405 and deletes nothing (L1 and L3 are both deleted or
+    // refused by name just below).
+    const old = await dctx.request.post('/api/listings/delete', { data: { listingId: 'L3' } });
+    assert.ok([404, 405].includes(old.status()), `the old delete path answers ${old.status()}`);
     await desk.locator('[data-row-check="L1"]').check(); await desk.locator('[data-row-check="L3"]').check();
     await desk.locator('[data-bulk-delete]').click();
     const sheet = desk.locator('[role=alertdialog]').filter({ hasText: 'Delete 2 listings?' });

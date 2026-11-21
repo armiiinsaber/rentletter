@@ -18,6 +18,7 @@ import { upsertApplication, linkApplicantToListing } from '../../../lib/supabase
 import { isApplicationNumber } from '../../../lib/applicationIds';
 import { kvReady, mintRequest, uploadUrl } from '../../../lib/docRequest';
 import { recordPrefill } from '../../../lib/prefillRecord';
+import { archivedById, ARCHIVED_REFUSAL } from '../../../lib/listingArchive';
 
 export function createHandler(deps = {}) {
   const { admin: adminFactory = getSupabaseAdminClient, configured = () => isSupabaseConfigured() && !!process.env.SUPABASE_SERVICE_ROLE_KEY, kv = { get: kvGet, lrange: kvLrange, incr: kvIncr, expire: kvExpire, ready: kvReady }, record = recordForListing, mint = mintRequest, now = () => Date.now() , prefill = recordPrefill } = deps;
@@ -66,6 +67,12 @@ export function createHandler(deps = {}) {
       .select('id, name, address, profile_id')
       .eq('invite_token', token)
       .maybeSingle();
+
+    // An archived listing takes no applications (db/025-listing-archive.sql): checked on the row
+    // just loaded, before the application, its link, its event or its document request exist.
+    // The archived time is read on its own (archivedById), so a database without the column
+    // mirrors as before.
+    if (listing?.id && await archivedById(admin, listing.id)) return res.status(ARCHIVED_REFUSAL.status).json(ARCHIVED_REFUSAL.body);
 
     const applicationId = await upsertApplication(admin, app);
     // Where the answers came from, written once at submit (lib/prefillRecord.js, db/014): the

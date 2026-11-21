@@ -13,6 +13,7 @@ import { kvGet } from '../../../lib/kv';
 import { upsertApplication, linkApplicantToListing } from '../../../lib/supabaseBridge';
 import { requireEntitlement } from '../../../lib/requireEntitlement';
 import { isApplicationNumber } from '../../../lib/applicationIds';
+import { archivedById, ARCHIVED_REFUSAL } from '../../../lib/listingArchive';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -40,6 +41,9 @@ export default async function handler(req, res) {
     .eq('id', listingId)
     .maybeSingle();
   if (listErr || !listing) return res.status(404).json({ error: 'Listing not found.' });
+  // An archived listing takes no applications (lib/listingArchive.js), from its own realtor too:
+  // restore it first. Asked only after the ownership read above, and before anything is written.
+  if (await archivedById(getSupabaseAdminClient(), listing.id)) return res.status(ARCHIVED_REFUSAL.status).json(ARCHIVED_REFUSAL.body);
 
   const app = await kvGet(`app:${appNum}`);
   if (!app) return res.status(404).json({ error: 'Application not found. Check the number and try again.' });

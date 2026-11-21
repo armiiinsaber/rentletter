@@ -7,6 +7,7 @@
 import { kvGet, kvIncr, kvExpire, kvTtl, kvCommand } from '../../../lib/kv';
 import { checkSubmitLimits } from '../../../lib/rateLimit';
 import { isApplicationNumber, normalizeApplicationNumber } from '../../../lib/applicationIds';
+import { inviteArchived, ARCHIVED_REFUSAL } from '../../../lib/listingArchive';
 
 export function createHandler({ kv = { get: kvGet, incr: kvIncr, expire: kvExpire, ttl: kvTtl, command: kvCommand }, configured = () => !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN), now = () => Date.now() } = {}) {
   return async function handler(req, res) {
@@ -19,6 +20,8 @@ export function createHandler({ kv = { get: kvGet, incr: kvIncr, expire: kvExpir
     const clientIp = String(req.headers?.['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
     const limited = await checkSubmitLimits({ incr: kv.incr, expire: kv.expire }, { token: `tag:${token}`, ip: clientIp, now: now() });
     if (!limited.ok) return res.status(429).json({ error: limited.message });
+    // An archived listing takes no applications (lib/listingArchive.js): nothing is tagged to it.
+    if (await inviteArchived(token)) return res.status(ARCHIVED_REFUSAL.status).json(ARCHIVED_REFUSAL.body);
     try {
       const invite = await kv.get(`linvite:${token}`);
       if (!invite) return res.status(404).json({ error: 'Invite not found.' });

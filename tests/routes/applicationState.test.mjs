@@ -17,7 +17,7 @@ const withdraw = (await import('../../pages/api/applicants/withdraw.js')).defaul
 const reconsider = (await import('../../pages/api/applicants/reconsider.js')).default;
 const requestDocuments = (await import('../../pages/api/applicants/request-documents.js')).default;
 const status = (await import('../../pages/api/listings/status.js')).default;
-const remove = (await import('../../pages/api/listings/delete.js')).default;
+const remove = (await import('../../pages/api/listings/remove.js')).default;
 const tenantAnalyze = (await import('../../pages/api/upload/analyze-file.js')).default;
 const tenantFinalize = (await import('../../pages/api/upload/finalize.js')).default;
 const { mintRequest } = await import('../../lib/docRequest.js');
@@ -51,7 +51,6 @@ const EXPECTED_ROUTES = [
   'pages/api/applicants/withdraw.js',
   'pages/api/applications/mirror.js',
   'pages/api/listings/add-applicant.js',
-  'pages/api/listings/delete.js',
   'pages/api/listings/remove.js', // a listing with no real application, deleted through lib/realtorWrites.js deleteListing
   'pages/api/listings/status.js',
   'pages/api/party/self.js',
@@ -299,12 +298,15 @@ test('listings/status: a listing move the map does not allow answers 409; someon
   assert.equal((await call(status, { listingId: 'L9', status: 'rented' })).code, 403);
 });
 
-test('listings/delete: the listing is withdrawn through the writer before the rows go', async () => {
+test('listings/remove: the listing is withdrawn through the writer before the rows go', async () => {
+  // The one delete route there is (pages/api/listings/remove.js) deletes only a listing with no real
+  // application (lib/listingArchiveRule.js), so the one on L2 is a test application here.
   const s = up({ listingStates: { L2: L.LIVE } });
+  Object.assign(s.db.tables.applications.find((a) => a.id === 'A6'), { email: 'a6+test@example.com' });
   const seen = [];
   const from = s.db.from.bind(s.db);
   s.db.from = (t) => { const q = from(t); if (t === 'listings') { const u = q.update.bind(q); q.update = (p) => { seen.push(p); return u(p); }; } return q; };
-  const r = await call(remove, { listingId: 'L2' });
+  const r = await call(remove, { listingIds: ['L2'] });
   assert.equal(r.code, 200, JSON.stringify(r.body));
   assert.deepEqual(seen.map((p) => [p.status, p.state]), [['closed', L.WITHDRAWN]]);
   assert.equal(s.db.tables.listings.some((l) => l.id === 'L2'), false);
@@ -356,7 +358,9 @@ test('before the migration has run: no state column, no audit table, and every r
   r = await call(status, { listingId: 'L1', status: 'rented', rentedLinkId: 'J4', notify: false });
   assert.equal(r.code, 200, 'with no stored state a reopened listing can be rented to anyone still on it, as today');
   assert.equal((await linkApplicantToListing(s.db, 'L2', 'A2', 'invite')).created, true);
-  assert.equal((await call(remove, { listingId: 'L2' })).code, 200);
+  // The delete that is left deletes only a listing with no real application: the two on L2 are tests here.
+  for (const id of ['A2', 'A6']) Object.assign(s.db.tables.applications.find((a) => a.id === id), { email: `${id.toLowerCase()}+test@example.com` });
+  assert.equal((await call(remove, { listingIds: ['L2'] })).code, 200);
   assert.equal(OTHER.id !== USER.id, true);
 });
 

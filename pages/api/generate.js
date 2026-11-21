@@ -9,6 +9,7 @@ import { confirmationSignature } from '../../lib/sendSignature';
 import { loadInviteListing } from '../../lib/inviteResolve';
 import { isSandboxToken } from '../../lib/features';
 import { ageRuleFor, AGE_ROLE, submittedAge } from '../../lib/applyAge';
+import { inviteArchived, ARCHIVED_REFUSAL } from '../../lib/listingArchive';
 
 // The listing's province, for the age rule (lib/applyAge.js): the owning realtor's, from the
 // listings row by invite token, the KV invite record when there is no row. The sandbox listing is
@@ -161,6 +162,10 @@ export default async function handler(req, res) {
   const clientIp = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket?.remoteAddress || '';
   const limited = await checkSubmitLimits({ incr: kvIncr, expire: kvExpire }, { token: inviteToken, ip: clientIp });
   if (!limited.ok) return res.status(429).json({ error: limited.message });
+  // An archived listing takes no applications (db/025-listing-archive.sql): read from the listings
+  // row at submit time, before anything is stored, counted or signed for the confirmation email.
+  // Before db/025 has run, or on any error, the submission goes through as it always has.
+  if (await inviteArchived(inviteToken)) return res.status(ARCHIVED_REFUSAL.status).json(ARCHIVED_REFUSAL.body);
   const requestMode = 'application';
 
   const {
