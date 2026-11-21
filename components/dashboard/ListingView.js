@@ -1223,8 +1223,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {/* The shell (components/dashboard/DashShell.js): a listing has red actions of its own, so New listing is outlined here. */}
         <DashShell profile={profile} onAssistantAction={onNoticeAction} current="listings" newPrimary={false} locked={locked}>
 
-        {locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 var(--page-gutter)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
-        {!locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) var(--page-gutter) var(--s-7)' }}>
+        {/* A reading column: at 1024 and wider it keeps its width at the main area's left (DashShell ds-col). */}
+        {locked && <div className="ds-col" style={{ maxWidth: 760, margin: '0 auto', padding: '0 var(--page-gutter)', '--ds-col': '696px' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
+        {!locked && <div className="ds-col" style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) var(--page-gutter) var(--s-7)', '--ds-col': '696px' }}>
           <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>

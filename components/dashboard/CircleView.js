@@ -176,7 +176,8 @@ export default function CircleView({ initialProfile, entitlement = null }) {
       <GlobalStyle />
       <div className="cv" style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
         <DashShell profile={profile} nav="circle" current="circle">
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--s-2) var(--s-4) 64px' }}>
+        {/* A reading column: at 1024 and wider it keeps its width at the main area's left (DashShell ds-col). */}
+        <div className="ds-col" style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--s-2) var(--s-4) 64px' }}>
           <h1 className="t-d1" style={{ color: C.ink, margin: 'var(--s-3) 0 var(--gap-line)' }}>Circle</h1>
           <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--gap-card)' }}>The realtors you work with.</p>
           {adapter.kind !== 'real' ? <p data-circle-sample="" className="cv-standing" style={{ marginBottom: 'var(--gap-card)' }}>Sample realtors. None of these are real accounts, and nothing here is sent to anyone.</p> : null}

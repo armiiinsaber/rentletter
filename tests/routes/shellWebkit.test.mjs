@@ -1,8 +1,11 @@
 // The desktop shell (components/dashboard/DashShell.js) walked for real on the sandbox, in WebKit and
 // in Chrome: at 1440 the sidebar with its five places, the tabs gone, Pipeline and Shared with you
 // chosen in place (the address changes, no transition, no reload), a number that filters the table,
-// a row that opens its listing anywhere it is clicked, and Needs you beside the table; at 1024 Needs
-// you under the table; at 2560 the shell 1800px wide in the middle; at 390 the phone as it was.
+// a row that opens its listing anywhere it is clicked, and Needs you beside the table; at 1440, 1920
+// and 2560 the shell filling the window (the sidebar from its left edge, the main content to within
+// the page padding of its right edge, the numbers one row as wide as the table, the table never
+// wider than its card, the Pipeline under it); at 1024 Needs you under the table; at 390 the phone
+// as it was.
 // Skipped when playwright-core or the browser binary is absent; the WebKit walk fails instead.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,6 +28,28 @@ after(() => server.stop(), { timeout: STOP_TIMEOUT });
 const box = (page, sel) => page.evaluate((s) => { const el = [...document.querySelectorAll(s)].find((e) => e.getClientRects().length); if (!el) return null; const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top + window.scrollY), bottom: Math.round(r.bottom + window.scrollY), width: Math.round(r.width) }; }, sel);
 const visible = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(s)].some((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden'), sel);
 const open = async (page, path = '') => { await page.goto(`${HOME}${path}`, { waitUntil: 'networkidle' }); await page.locator('[data-shell]').first().waitFor({ timeout: 30000 }); await page.waitForTimeout(700); };
+// The shell against the window: the sidebar, the main content's right edge, Needs you, the
+// numbers, the table and the Pipeline section, measured in the page.
+const shellFit = (page) => page.evaluate(() => {
+  const vis = (s) => [...document.querySelectorAll(s)].find((e) => e.getClientRects().length);
+  const box = (el) => el.getBoundingClientRect();
+  const W = window.innerWidth;
+  const edge = document.elementFromPoint(0, Math.round(window.innerHeight / 2));
+  const table = vis('[data-listings-table]');
+  return {
+    W,
+    side: Math.round(box(vis('[data-shell-side]')).left),
+    edgeIsSide: !!(edge && edge.closest('[data-shell-side]')),
+    right: Math.round(Math.max(...['.hv-primary', '.hv-aside', '.rl-hdr-avatar'].map((s) => vis(s)).filter(Boolean).map((e) => box(e).right))),
+    avatar: Math.round(box(vis('.rl-hdr-avatar')).right),
+    ny: Math.round(box(vis('[data-needs-you]')).width),
+    table: { left: Math.round(box(table).left), right: Math.round(box(table).right), over: table.scrollWidth - table.clientWidth },
+    stats: [...document.querySelectorAll('[data-desk-stats] [data-stat]')].map((e) => { const r = box(e); return { left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width), height: Math.round(r.height) }; }),
+    wide: !!vis('[data-listings-table] [data-col="newest"]'),
+    pipeline: !!vis('[data-pipeline-soon]'),
+    sideways: document.documentElement.scrollWidth - W,
+  };
+});
 
 async function walk(browserType, launch) {
   await fetch(HOME).catch(() => null);
@@ -83,6 +108,29 @@ async function walk(browserType, launch) {
     await desk.locator('[data-listings-table] .lt-link').first().focus();
     assert.equal(await desk.evaluate(() => document.activeElement.classList.contains('lt-link')), true);
     assert.match(await desk.evaluate(() => getComputedStyle(document.activeElement.closest('[data-listing-row]')).boxShadow), /inset/, 'the row shows the focus');
+    // 1440, 1920 and 2560: the shell fills the window.
+    for (const width of [1440, 1920, 2560]) {
+      await desk.setViewportSize({ width, height: 1000 }); await desk.waitForTimeout(400);
+      const f = await shellFit(desk); const at = JSON.stringify(f);
+      const pad = Math.min(56, Math.max(24, 8 + 0.01875 * width));
+      assert.equal(f.W, width);
+      assert.equal(f.side, 0, `${width}: the sidebar's left edge at x = 0 (${at})`);
+      assert.ok(f.edgeIsSide, `${width}: the sidebar's paper from the window's left edge (${at})`);
+      assert.ok(f.right <= width && width - f.right <= pad + 1, `${width}: the main content's right edge within the page padding (${Math.round(pad)}px) of the window's (${at})`);
+      assert.ok(Math.abs(width - f.avatar - pad) <= 1, `${width}: the avatar at the top right, one page padding in (${at})`);
+      assert.ok(Math.abs(f.ny - Math.min(440, Math.max(340, 240 + 0.078125 * width))) <= 2, `${width}: Needs you about 340px at 1280 to 440px at 2560 (${f.ny})`);
+      assert.equal(f.stats.length, 3);
+      assert.ok(Math.abs(f.stats[0].left - f.table.left) <= 1 && Math.abs(f.stats[2].right - f.table.right) <= 1, `${width}: the numbers one row as wide as the table (${at})`);
+      assert.ok(f.stats.every((s) => Math.abs(s.width - f.stats[0].width) <= 1 && s.height === f.stats[0].height), `${width}: equal widths, one height (${at})`);
+      assert.ok(f.table.over <= 0, `${width}: no row wider than the table (${at})`);
+      assert.equal(f.wide, width >= 1920, `${width}: the newest applicant column from 1920`);
+      assert.ok(f.pipeline, `${width}: the Pipeline under the listings`);
+      assert.ok(f.sideways <= 0, `${width}: no sideways scroll`);
+    }
+    // Open Pipeline goes to the full view, in place.
+    await desk.locator('[data-pipeline-open]').click();
+    await desk.waitForURL((u) => u.searchParams.get('view') === 'pipeline', { timeout: 10000 }); await desk.waitForTimeout(300);
+    assert.ok(await visible(desk, '#people'), 'the Pipeline view from its section');
     await desk.context().close();
 
     // 1024: Needs you drops under the table.
@@ -97,13 +145,6 @@ async function walk(browserType, launch) {
     assert.ok(stuck.y > 0 && stuck.top === 0 && stuck.height === stuck.vh, `the sidebar stays, full height (${JSON.stringify(stuck)})`);
     await mid.context().close();
 
-    // 2560: the shell 1800 wide, centred.
-    const wide = await (await browser.newContext({ viewport: { width: 2560, height: 1200 } })).newPage();
-    await open(wide);
-    const shell = await box(wide, '[data-shell]');
-    assert.equal(shell.width, 1800); assert.equal(shell.left, 380, 'in the middle');
-    await wide.context().close();
-
     // 390: the phone as it was, no sidebar.
     const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true })).newPage();
     await open(phone);
@@ -115,5 +156,5 @@ async function walk(browserType, launch) {
   } finally { await browser.close(); }
 }
 
-test('the desktop shell in WebKit at 1440, 1024, 2560 and 390', async () => { requireWebkit(); await walk(pw.webkit, {}); });
+test('the desktop shell in WebKit at 1440, 1920, 2560, 1024 and 390', async () => { requireWebkit(); await walk(pw.webkit, {}); });
 test('the same shell walk in Chrome', { skip: haveChrome ? false : 'Chrome binary absent' }, () => walk(pw.chromium, { executablePath: chromeBin }));

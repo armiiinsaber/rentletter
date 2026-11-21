@@ -17,6 +17,7 @@ import { listingStatePills } from '../../lib/listingStateLine.js';
 import DashShell, { viewOf, viewHref } from './DashShell';
 import { DeskStats, ListingsTable, FILTERS } from './ListingsTable';
 import NeedsYou from './NeedsYou';
+import PipelineSoon from './PipelineSoon';
 import { standingOf, rowOf, needsYouItems } from './homeData';
 import { useCirclePending } from './MainNav';
 import { navigateToAction } from './actionNav';
@@ -409,6 +410,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     else if (it.go.kind === 'view') goView(viewHref(adapter.paths.home, it.go.view));
     else go(it.go.href);
   };
+  // The Pipeline section's Open Pipeline: the view in place, from its top.
+  const pipelineHref = viewHref(adapter.paths.home, 'pipeline');
+  const openPipeline = () => { goView(pipelineHref); try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); } };
   const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: liveListings } : null), [signals, liveListings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
@@ -452,10 +456,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         {/* The shell (components/dashboard/DashShell.js): under 1024px the header as it always was,
             static and in flow (see .dash-bg .rl-header below), with the Listings and Circle tabs; at
             1024 and wider the sidebar and the main area. */}
-        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={openNew} newPrimary={!empty}>
+        {/* On a desktop the greeting is the header row's lead, in line with the bell and the avatar,
+            shown with the rest of the Listings view once it is in hand. */}
+        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={openNew} newPrimary={!empty}
+          lead={!locked && ready && view === 'listings' ? <h1 className="hv-greet" style={{ visibility: greeting ? 'visible' : 'hidden' }}>{greeting || '\u00A0'}</h1> : null}>
 
         {locked && (
-          <div className="hv-lock" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
+          <div className="hv-lock ds-col" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)', '--ds-col': '1036px' }}>
             <Paywall entitlement={entitlement} profile={profile} pending={checkoutFlag === 'success'} />
           </div>
         )}
@@ -504,10 +511,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {!empty && <InstallHint />}
           </div>
 
-          {/* DESKTOP. The greeting, quiet, on the page; under it the three numbers that filter the
-              table, or with no listing yet the start, filling the main area. */}
+          {/* DESKTOP. The three numbers that filter the table, one row across the listings column (the
+              greeting is in the header row, above), or with no listing yet the start, filling it. */}
           <div className="hv-desk hv-part-listings">
-            <h1 className="hv-greet" style={{ visibility: greeting ? 'visible' : 'hidden' }}>{greeting || '\u00A0'}</h1>
             {hasListings ? <DeskStats standing={standing} filter={filter} onFilter={setFilter} /> : null}
             {empty ? (
               <div className="hv-start" data-get-started="desktop">
@@ -642,6 +648,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               )}
             </div>
           )}
+
+          {/* DESKTOP. The Pipeline under the listings (components/dashboard/PipelineSoon.js): the same
+              people as the Pipeline view, soonest first, and the way to the full view. With no
+              listing, and on Archived, too, so the column is never a lone table on an empty page. */}
+          <div className="hv-desk hv-part-listings hv-section">
+            <PipelineSoon people={signals.people || []} href={pipelineHref} onOpen={openPipeline} />
+          </div>
 
           {/* 3. PIPELINE (components/dashboard/PeopleList.js): under the listings on a phone; on a
               desktop its own view, and its soonest items feed Needs you. */}
@@ -819,7 +832,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-step-n, .hv-step-n { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.ruleDark}; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
         .dash-step-t { display: block; font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; padding-top: 3px; }
         .dash-step-l { display: block; font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.4; margin-top: 2px; text-wrap: balance; }
-        .hv-start { margin-top: var(--s-2); }
         .hv-start-h { font-family: var(--f-display); font-size: 40px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: ${C.ink}; margin: 0; text-wrap: balance; }
         .hv-start-line { font-size: var(--t-body); color: ${C.inkSoft}; line-height: var(--lh-body); margin: var(--s-3) 0 0; max-width: 34em; text-wrap: balance; }
         .hv-start-new { margin-top: var(--s-5); }
@@ -827,7 +839,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-steps li { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-5); background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); }
         .hv-step-t { font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; margin-top: var(--s-2); }
         .hv-step-l { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); text-wrap: balance; }
-        @media (min-width: 1920px) { .hv-start-h { font-size: 48px; } .hv-start-line { font-size: 18px; } }
+        @media (min-width: 1920px) { .hv-start-h { font-size: 48px; } .hv-start-line { font-size: 18px; } .hv-steps li { padding: var(--s-6); } .hv-step-t { font-size: 18px; } .hv-step-l { font-size: var(--t-body); } }
 
         /* ── Archive and delete: the Active and Archived switch, the line that says what happened,
            the bar for the picked rows, the checkboxes, a card's menu button and its sheet. ── */
@@ -858,7 +870,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-desk { display: none; }
         .hv-section-phone { margin-top: var(--gap-section); }
         @media (min-width: 1024px) {
-          .hv { max-width: none; padding-left: var(--s-5); padding-right: var(--s-5); }
+          /* The main area's whole width, its sides the shell's padding (components/dashboard/DashShell.js). */
+          .hv { max-width: none; padding-left: var(--ds-pad); padding-right: var(--ds-pad); }
           .hv-phone { display: none; }
           .hv-desk { display: block; }
           .hv-cols { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-section); }
@@ -868,7 +881,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           .hv:not([data-view='listings']) .hv-part-listings { display: none; }
           .hv:not([data-view='pipeline']) .hv-part-pipeline { display: none; }
           .hv:not([data-view='shared']) .hv-part-shared { display: none; }
-          .hv-greet { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; letter-spacing: -0.015em; line-height: var(--lh-display); color: ${C.inkSoft}; margin: 0; }
+          /* The greeting, the header row's lead: built for the shell, so its class is global (and
+             unique to this screen). */
+          :global(.hv-greet) { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; letter-spacing: -0.015em; line-height: var(--lh-display); color: ${C.inkSoft}; margin: 0; white-space: nowrap; }
           .hv-section { margin-top: var(--gap-section); }
           .hv-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
           .hv-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
@@ -877,14 +892,27 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           .hv-rented { margin-top: var(--gap-section); }
           .hv-h3 { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; margin: 0; }
           .hv-part-shared :global([data-shared-with-me]) { margin-top: 0; }
+          .hv-part-shared [data-shared-empty] .dash-h2 { margin-bottom: var(--s-2); }
           .dash-brand { margin-top: var(--gap-section); }
         }
+        /* Needs you at the main area's right edge from 1280: about 340px wide there, growing with the
+           window to 440px at 2560, the gap to it the main area's padding. Under 1280 it sits under
+           the listings. */
         @media (min-width: 1280px) {
-          .hv { padding-left: var(--s-6); padding-right: var(--s-6); }
-          .hv-cols { grid-template-columns: minmax(0, 1fr) 320px; column-gap: var(--s-5); align-items: start; }
+          .hv-cols { grid-template-columns: minmax(0, 1fr) clamp(340px, calc(240px + 7.8125vw), 440px); column-gap: calc(var(--ds-pad) - 8px); align-items: start; }
           .hv-aside { position: sticky; top: var(--s-4); }
         }
-        @media (min-width: 1600px) { .hv-cols { grid-template-columns: minmax(0, 1fr) 360px; column-gap: var(--s-6); } }
+        /* 1280 to 1399, the listings column at its narrowest: the three steps of the start one under
+           another, so each title keeps its line. */
+        @media (min-width: 1280px) and (max-width: 1399.98px) { .hv-steps { grid-template-columns: minmax(0, 1fr); } }
+        /* A large screen: the headings and the greeting a size up, the sections a little further apart. */
+        @media (min-width: 1920px) {
+          :global(.hv-greet) { font-size: 26px; }
+          .dash-h2 { font-size: 20px; }
+          .hv-section, .hv-rented, .dash-brand { margin-top: var(--s-7); }
+          .hv-head { margin-bottom: var(--s-4); }
+          .hv-count { font-size: var(--t-body); }
+        }
       `}</style>
     </>
   );

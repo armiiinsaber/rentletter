@@ -35,7 +35,8 @@ export default function ProfileView({ initialProfile }) {
       <GlobalStyle />
       <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
         <DashShell profile={profile} current="profile">
-        <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--gap-section) var(--s-4) 64px' }}>
+        {/* A form: at 1024 and wider it keeps its width at the main area's left (DashShell ds-col). */}
+        <div className="ds-col" style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--gap-section) var(--s-4) 64px' }}>
           {/* The same row the listing page carries at its top. */}
           <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> Dashboard

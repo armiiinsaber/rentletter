@@ -62,6 +62,14 @@ export default function NeedsYou({ items = [], now = null, onGo }) {
         .ny-time { font-size: 13px; color: ${C.inkMute}; line-height: 1.35; font-variant-numeric: tabular-nums; white-space: nowrap; }
         .ny-go { flex-shrink: 0; }
         .ny-more { margin-top: var(--s-2); padding-left: 0; }
+        /* A large screen: a size up, with the listings beside it. */
+        @media (min-width: 1920px) {
+          .ny { padding: var(--s-6); }
+          .ny-title { font-size: 20px; }
+          .ny-what, .ny-line, .ny-empty { font-size: 15px; }
+          .ny-item { padding: var(--s-4) 0; }
+          .ny-item:first-child { padding-top: 0; }
+        }
         @media (prefers-reduced-motion: no-preference) {
           .ny-in { animation: ny-arrive 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
           @keyframes ny-arrive { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }

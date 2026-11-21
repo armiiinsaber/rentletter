@@ -1,6 +1,6 @@
 // The wrapped text on every page and state a person can reach (tests/helpers/typesetStates.mjs:
 // public, realtor, billing, tenant, landlord, the founder office), in WebKit (Safari's engine) and in Chrome, at 390
-// and at 320 (the desktop shell, the listing form and the homepage at 1024, 1440, 1920 and 2560 too), with the long values (tests/helpers/fakeNextServer.mjs, FAKE_LONG=1), on the real
+// and at 320 (the desktop shell, the listing form and the homepage at 1024, 1280, 1440, 1920 and 2560 too), with the long values (tests/helpers/fakeNextServer.mjs, FAKE_LONG=1), on the real
 // pages over the fake stack in two production builds: billing off on 3177, as production runs
 // today, and billing on (BILLING_OFF=false) on 3178 for the trial, paywall and billing screens.
 // Every block of text is measured word by word (tests/helpers/textLines.mjs): no line of one word
@@ -99,7 +99,7 @@ async function walk(type, opts, engine) {
       await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
     };
     const failed = await sweep({ browser, bases, concurrency: 4, measure, onContext, contextOptions: { viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, serviceWorkers: 'block', reducedMotion: 'reduce' } });
-    console.log(`${engine}: ${STATES.length} pages, ${measured} measurements (390 and 320; the desktop shell, the listing form and the homepage at 1024, 1440, 1920 and 2560 too), ${breaks.length} breaks, ${hydration.length} hydration messages, ${Math.round((Date.now() - t0) / 1000)}s`);
+    console.log(`${engine}: ${STATES.length} pages, ${measured} measurements (390 and 320; the desktop shell, the listing form and the homepage at 1024, 1280, 1440, 1920 and 2560 too), ${breaks.length} breaks, ${hydration.length} hydration messages, ${Math.round((Date.now() - t0) / 1000)}s`);
     // The breaks named before any assertion, so a state that did not open hides none of them.
     if (breaks.length) console.log(`${engine} breaks:\n  ${breaks.join('\n  ')}`);
     assert.deepEqual(failed, [], `${engine}: every state opens`);

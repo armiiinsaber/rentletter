@@ -1,10 +1,14 @@
 // components/dashboard/DashShell.js
 // The realtor app's frame. Under 1024px it is the header as it always was (components/dashboard/
 // DashboardHeader.js) with the Listings and Circle tabs, and the screen below it. At 1024 and wider
-// it is a desktop app: a full height sidebar of about 240px with the logo, the New listing button
-// and the five places (Listings, Pipeline, Circle, Shared with you, Profile, the current one
-// marked), and the main area beside it with the bell and the avatar at its top right. The shell
-// fills the screen up to 1800px, then centres between two hairlines.
+// it is a desktop app that fills the window at every width: a full height sidebar of 240px against
+// the window's left edge with the logo, the New listing button and the five places (Listings,
+// Pipeline, Circle, Shared with you, Profile, the current one marked), and the main area filling
+// everything to its right, with even side padding that grows a little with the width (--ds-pad:
+// about 32px at 1280, 56px at 2560) and the bell and the avatar at the window's top right. A view
+// may hand the header row a lead (the dashboard's greeting), set at its left, in line with them.
+// A reading column or a form (className ds-col: a listing, Circle, Profile) keeps its own width,
+// set against the main area's left padding rather than in the middle of the window.
 // Listings, Pipeline and Shared with you are views of the dashboard (?view=pipeline, ?view=shared):
 // between them the address changes in place (components/nav/routes.js goView) with no data request
 // and no transition. Circle and Profile are their own screens. Both layouts are in the markup and
@@ -28,7 +32,7 @@ export const viewOf = (query) => { const v = query && typeof query.view === 'str
 const onDashboard = () => { const r = routeOf(window.location.pathname + window.location.search); return !!r && (r.kind === 'dashboard' || (r.kind === 'demo' && r.demo === 'dashboard')); };
 const plainClick = (e) => !(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
 
-export default function DashShell({ profile, signals = null, onAssistantAction, nav = null, current = null, locked = false, onNewListing = null, newPrimary = true, newRef = null, children }) {
+export default function DashShell({ profile, signals = null, onAssistantAction, nav = null, current = null, locked = false, onNewListing = null, newPrimary = true, newRef = null, lead = null, children }) {
   const adapter = useAdapter();
   const home = adapter.paths.home;
   const pending = useCirclePending();
@@ -53,7 +57,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
   return (
     <div className="ds" data-shell="">
       <div className="ds-main">
-        <DashboardHeader profile={profile} signals={signals} onAssistantAction={onAssistantAction} nav={nav} />
+        <DashboardHeader profile={profile} signals={signals} onAssistantAction={onAssistantAction} nav={nav} lead={lead} />
         {children}
       </div>
       <aside className="ds-side" data-shell-side="">
@@ -80,7 +84,8 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         .ds-side { display: none; }
         .ds-main { min-width: 0; }
         @media (min-width: 1024px) {
-          .ds { display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-areas: 'side main'; align-items: start; max-width: 1800px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; }
+          /* The whole window: the sidebar from its left edge, the main area to its right edge. */
+          .ds { --ds-pad: clamp(24px, calc(8px + 1.875vw), 56px); display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-areas: 'side main'; align-items: start; width: 100%; min-height: 100vh; min-height: 100dvh; }
           .ds-main { grid-area: main; }
           .ds-side { grid-area: side; display: flex; flex-direction: column; gap: var(--s-5); position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; padding: var(--s-5) var(--s-4); background: ${C.paperDeep}; border-right: 1px solid ${C.rule}; }
           .ds-logo { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-2); text-decoration: none; color: inherit; }
@@ -90,10 +95,14 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           .ds-place:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paperDeep}, 0 0 0 4px ${C.ink}; }
           .ds-num { font-variant-numeric: tabular-nums; font-weight: 700; color: ${C.ink}; }
           /* The header in the main area: no wordmark (the sidebar has it), the bell and the avatar at
-             the right, across the main area's whole width. */
+             the window's top right, across the main area's whole width, its sides the main area's
+             padding. A lead sits at its left, in line with them. */
           .ds-main :global(.rl-hdr-mark) { display: none; }
-          .ds-main :global(.rl-header-inner) { max-width: none !important; justify-content: flex-end; padding: var(--s-4) var(--s-6); }
-          .ds-main :global(.rl-header.rl-shrink .rl-header-inner) { padding: var(--s-4) var(--s-6); }
+          .ds-main :global(.rl-header-inner) { max-width: none !important; justify-content: flex-end; padding: var(--s-4) var(--ds-pad); }
+          .ds-main :global(.rl-header.rl-shrink .rl-header-inner) { padding: var(--s-4) var(--ds-pad); }
+          .ds-main :global(.rl-hdr-lead) { display: flex; align-items: center; min-width: 0; min-height: 44px; margin-right: auto; }
+          /* A reading column or a form: its own width, against the main area's left padding. */
+          .ds-main :global(.ds-col) { box-sizing: content-box !important; max-width: var(--ds-col, 688px) !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var(--ds-pad) !important; padding-right: var(--ds-pad) !important; }
         }
         /* The sidebar stays on screen as the page scrolls. The page's own boxes (body, the Next root,
            the view's wrapper) are overflow-x hidden, which makes each a scroll box of its own that
@@ -103,9 +112,6 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           :global(body:has([data-shell])), :global(#__next:has([data-shell])), :global(:has(> [data-shell])) { overflow-x: clip !important; }
         }
         @media (min-width: 1024px) and (hover: hover) { .ds-place:hover { background: rgba(15, 15, 16, 0.045); color: ${C.ink}; } .ds-place[aria-current='page']:hover { background: ${C.card}; } }
-        /* Past 1800px the shell centres, framed by a hairline each side, so a wide screen reads as
-           the app set in the middle, not stretched to the edges. */
-        @media (min-width: 1801px) { .ds { border-left: 1px solid ${C.rule}; border-right: 1px solid ${C.rule}; } }
         /* The buttons of the dashboard: one height, one radius, one padding. Global, so a sheet the
            dashboard opens (components/Sheet.js renders on the body) carries the same buttons. */
         :global(.ds-btn) { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; text-decoration: none; cursor: pointer; white-space: nowrap; }

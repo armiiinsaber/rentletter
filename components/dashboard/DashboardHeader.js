@@ -33,7 +33,9 @@ function initialsOf(profile) {
 
 // nav: 'listings' or 'circle' on the two screens the main navigation opens (Listings, Circle);
 // other screens carry their own way back and no navigation row.
-export default function DashboardHeader({ profile, signals = null, onAssistantAction, nav = null }) {
+// lead: what the desktop shell sets at the left of this row (components/dashboard/DashShell.js), in
+// line with the bell and the avatar; never shown under 1024px.
+export default function DashboardHeader({ profile, signals = null, onAssistantAction, nav = null, lead = null }) {
   const adapter = useAdapter();
   // The service worker (public/sw.js) registers from the realtor side only, in production.
   useEffect(() => { registerServiceWorker(); }, []);
@@ -46,6 +48,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
         <a {...logoProps(adapter.paths.home)} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">
           <Wordmark />
         </a>
+        {lead ? <div className="rl-hdr-lead">{lead}</div> : null}
         {/* CENTER, account status (trial countdown / lapsed / subscribed). Founders get no badge
             at all: the wrapper is empty and hidden, and the bar becomes the clean two-part
             wordmark + actions row. When a badge IS shown it collapses below 560px. */}
@@ -69,6 +72,8 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
       {nav ? <MainNav current={nav} /> : null}
 
       <style jsx>{`
+        /* The lead shows only in the desktop shell (components/dashboard/DashShell.js). */
+        .rl-hdr-lead { display: none; }
         .rl-hdr-mark {
           text-decoration: none;
           display: inline-flex;

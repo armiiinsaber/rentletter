@@ -11,8 +11,9 @@
 //                 side; 'write' adds what only its own page shows, after every read; 'alone' takes
 //                 the realtor's listings or name away for a moment and runs last, by itself.
 //   widths        the widths a state is measured at: 390 and 320 unless it names its own (WIDE:
-//                 390, 320, 1024, 1440, 1920 and 2560, for the desktop shell, the listing form and
-//                 the homepage).
+//                 390, 320, 1024, 1280, 1440, 1920 and 2560, for the desktop shell, the listing form
+//                 and the homepage; DESK: the five desktop widths alone, for a screen whose phone
+//                 widths another state measures).
 //   sweep({ browser, bases, concurrency, measure, onContext })   opens every state at 390, calls
 //                 measure(page, name, kind, widths) after each, and answers the names that did not
 //                 open; onContext(context, key) is called once for each browser context it opens.
@@ -56,7 +57,8 @@ const expand = async (p, name) => { const c = card(p, name); await c.waitFor({ t
 const LONG = { a1: 'Oluwaseun Adebayo Fitzgerald', a2: 'Anastasia Konstantinopoulou', a3: 'Bartholomew Nakamura Whitfield' };
 export const INVITE = 'a1b2c3d4e5f6a7b8c9d0';
 export const NARROW = [390, 320];
-export const WIDE = [390, 320, 1024, 1440, 1920, 2560];
+export const WIDE = [390, 320, 1024, 1280, 1440, 1920, 2560];
+export const DESK = [1024, 1280, 1440, 1920, 2560];
 // The new listing form keeps a draft in the browser (components/listings/ListingSetupModal.js):
 // each form state starts and ends with none, so no other state finds it.
 const noDraft = (p) => p.evaluate(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('rl-listing-draft')) localStorage.removeItem(k); } catch (e) { /* none */ } });
@@ -218,6 +220,11 @@ export const STATES = [
   // ── the desktop dashboard (components/dashboard/DashShell.js) and the listing form, at every width ──
   { name: 'dashboard, the desktop shell with listings', kind: 'realtor', widths: WIDE, go: (p) => open(p, '/dashboard') },
   { name: 'dashboard, Pipeline view', kind: 'realtor', widths: WIDE, go: (p) => open(p, '/dashboard?view=pipeline') },
+  // The other screens in the same shell: a view, a form and two reading columns, at the main area's left.
+  { name: 'dashboard, Shared with you view, the desktop shell', kind: 'realtor', widths: DESK, go: (p) => open(p, '/dashboard?view=shared') },
+  { name: 'profile, the desktop shell', kind: 'realtor', widths: DESK, go: async (p) => { await open(p, '/profile'); await p.locator('[data-invite-realtor]').waitFor({ timeout: 30000 }); } },
+  { name: 'listing, the desktop shell', kind: 'realtor', widths: DESK, go: (p) => open(p, '/listing/L1') },
+  { name: 'circle, the desktop shell', kind: 'realtor', phase: 'alone', widths: DESK, go: async (p, f) => { await f('/__fake/circle?seed=1&brokerage=sent'); await open(p, '/circle'); await p.locator('[data-circle-list]').waitFor({ timeout: 30000 }); await wait(p, 400); }, after: (f) => f('/__fake/circle?seed=0') },
   { name: 'dashboard, empty, the start', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => { await f('/__fake/state?listings=0'); await open(p, '/dashboard'); await p.locator('[data-get-started]').first().waitFor({ state: 'attached', timeout: 30000 }); }, after: (f) => f('/__fake/state?listings=1') },
   { name: 'dashboard, Archived', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
     await f('/__fake/state?archive=1'); await open(p, '/dashboard');

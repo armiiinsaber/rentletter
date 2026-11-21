@@ -6,13 +6,18 @@
 //   standingOf(open, byListing)       -> { listings, applicants, toSend } the three numbers
 //   rowOf(listing, applicants)        -> one row of the listings table
 //   needsYouItems({ ... })            -> the Needs you column, newest first
+//   pipelineSoonest(people)           -> the Pipeline people, the hold that ends soonest first
+//   pipelinePills(person), pipelinePlace(person)  -> a Pipeline row's pills and its listing
 //   relTime(iso, now)                 -> "2 days ago", "Today", "In 3 days"
+//   shortDay(iso)                     -> "Dec 1", the day itself, whatever the time zone
 import { buildActions } from '../../lib/actions.js';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary.js';
 import { stateCounts } from '../../lib/listingStateLine.js';
 import { listingOpen } from '../../lib/listingState.js';
 import { displayLabel } from '../../lib/listingAddress.js';
 import { formatUnit } from '../../lib/unitType.js';
+import { INCOMPLETE_LINE } from '../../lib/fitScore.js';
+import { shortDate } from '../../lib/pipelineState.js';
 
 const DAY = 86400000;
 const live = (apps) => (apps || []).filter((a) => a && !isWithdrawn(a));
@@ -39,12 +44,26 @@ export function lastActivity(listing, apps) {
   return all.filter(Boolean).map(String).sort().pop() || null;
 }
 
+// The newest live applicant on a listing: their name and when they applied, or null with none.
+const appliedOf = (a) => a.createdAt || a.created_at || (a.application && a.application.created_at) || null;
+export function newestApplicant(applicants) {
+  const apps = live(applicants).filter((a) => appliedOf(a));
+  if (!apps.length) return null;
+  const a = apps.reduce((best, x) => (String(appliedOf(x)) > String(appliedOf(best)) ? x : best));
+  const name = String((a.application && a.application.full_name) || a.name || '').trim();
+  return { name: name || 'Applicant', at: appliedOf(a) };
+}
+
 export function rowOf(listing, applicants) {
   const apps = live(applicants);
   const counts = stateCounts(apps);
   const sent = sentOf(apps);
   const open = listingOpen(listing);
   return {
+    // The move in date the listing asks for (the form's possession_date), and the newest applicant:
+    // the two columns the table adds at 1920 and wider.
+    moveIn: (listing && listing.possession_date) || null,
+    newest: newestApplicant(applicants),
     id: listing.id,
     label: displayLabel(listing, 'Untitled listing'),
     rent: listing.monthly_rent ? Number(listing.monthly_rent) : null,
@@ -79,6 +98,32 @@ export function relTime(iso, now) {
   if (days < 0) return -days < 30 ? `${-days} days ago` : new Date(t).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' });
   return `In ${days} days`;
 }
+
+// A date column (possession_date) as the day itself: "Dec 1". Noon keeps it on its day in any zone.
+export function shortDay(iso) {
+  if (!iso) return '';
+  const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`);
+  return Number.isFinite(d.getTime()) ? d.toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '';
+}
+
+// The Pipeline view's people (lib/pipelineState.js peopleRows, already loaded with the signals),
+// the hold that ends soonest first; anyone with no end date after them, in the view's own order.
+export function pipelineSoonest(people) {
+  const end = (p) => { const t = p && p.expiresAt ? new Date(p.expiresAt).getTime() : NaN; return Number.isFinite(t) ? t : Infinity; };
+  return (people || []).filter(Boolean).map((p, i) => [p, i]).sort((a, b) => (end(a[0]) - end(b[0])) || (a[1] - b[1])).map(([p]) => p);
+}
+// The desktop Listings view shows the first five (components/dashboard/PipelineSoon.js).
+export const PIPELINE_SOON_LIMIT = 5;
+// The pills of a closed row in the Pipeline view (components/dashboard/PeopleList.js), in its order.
+export function pipelinePills(p) {
+  if (p.status === 'pending') return [`asked ${shortDate(p.askedAt)}`, 'no answer yet'];
+  const out = [p.best ? `${Number(p.best.score).toFixed(1)} ${p.best.label}` : p.unscored ? INCOMPLETE_LINE : 'Asked to hear about similar units'];
+  if (p.expiresAt) out.push(`until ${shortDate(p.expiresAt)}`);
+  if (p.applied) out.push('applied'); else if (p.lastInvitedAt) out.push(`invited ${shortDate(p.lastInvitedAt)}`);
+  return out;
+}
+// The listing a Pipeline row is about: the one it was scored for, else the one they came from.
+export const pipelinePlace = (p) => (p.best && p.best.listingName) || (p.fromListingName ? `from ${p.fromListingName}` : '');
 
 const first = (n) => String(n || '').trim().split(/\s+/)[0] || '';
 const HOLD_SOON_DAYS = 7;
