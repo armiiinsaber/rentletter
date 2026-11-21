@@ -3,7 +3,8 @@
 // 503 and one log line when the secret is unset, 401 on a wrong bearer).
 // The tenant's vault (lib/tenantVault.js): every stored document past its expiry is deleted,
 // file and row content, and a document_expired line is written to its tenant's log; a profile
-// idle for twelve months loses its stored documents and the facts read from them; a file the
+// idle for twelve months loses its stored documents, the facts read from them and its photo
+// (the file, then its three columns, with photo_removed in the tenant's log); a file the
 // bucket did not confirm removed is tried again, and a deleted row past 30 days is removed.
 // It deletes, by default: there is no dry run. TENANT_VAULT_ENABLED=false never stops it: the
 // kill switch stops new storage, and what is stored still expires on time.
@@ -11,7 +12,7 @@ import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { cronGate } from '../../../lib/documentStore';
 import { expireVaultDocuments, expireIdleVaults, reconcileVault } from '../../../lib/tenantVault';
-import { profileActivity } from '../../../lib/tenantProfileStore';
+import { profileActivity, photoHolders, clearPhoto } from '../../../lib/tenantProfileStore';
 import { logServerError } from '../../../lib/serverLog';
 
 export const config = { maxDuration: 60 };
@@ -27,7 +28,7 @@ export default async function handler(req, res) {
     const expired = await expireVaultDocuments(admin);
     let idle = null; let reconcile = null;
     if (!expired.absent) {
-      try { idle = await expireIdleVaults(admin, { activityFor: profileActivity }); } catch (e) { logServerError('[cron/expire-vault] idle', e); }
+      try { idle = await expireIdleVaults(admin, { activityFor: profileActivity, photos: { holders: photoHolders, clear: clearPhoto } }); } catch (e) { logServerError('[cron/expire-vault] idle', e); }
       try { reconcile = await reconcileVault(admin); } catch (e) { logServerError('[cron/expire-vault] reconcile', e); }
     }
     console.log('[cron/expire-vault] expired=%d profiles=%d idle=%d', expired.expired, expired.profiles, idle ? idle.profiles : 0);

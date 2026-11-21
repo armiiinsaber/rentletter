@@ -305,3 +305,7 @@
 --   VIEW tenant_profile_personal (security_invoker, nothing granted to anon or authenticated):
 --     id and the six columns above. Never facts, applications or an email. Read for a realtor
 --     only by lib/profileShareStore.js, behind a share the tenant approved.
+--
+-- ── photo log actions (db/023-photo-log-actions.sql) ───────────────────────────────────────────
+--   profile_access_log.action also accepts 'photo_added' and 'photo_removed'
+--   (profile_access_log_action_check, the db/018 list and these two).

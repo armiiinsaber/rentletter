@@ -8,6 +8,8 @@
 // another realtor is a name, a brokerage, initials and what they said about their own work:
 // never an email, a phone, a listing or a number. No score, no rank, no count of followers.
 // Before db/021-realtor-circle.sql has run the screen says the circle is not available yet.
+// In the sandbox (/demo/dashboard?circle=1) the same screen runs over sample realtors kept in
+// the browser tab (lib/demoAdapter.js): it says so at the top, and nothing is sent to anyone.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import { GlobalStyle, ConfirmSheet, StatusPills, LabelValue } from '../ui';
@@ -96,7 +98,8 @@ export default function CircleView({ initialProfile, entitlement = null }) {
     setAreas((v) => v || (j.me.serviceAreas || []).join(', '));
     setForm((f) => f || { legalName: j.brokerage?.legalName || j.me.brokerage || initialProfile?.brokerage || '', address: j.brokerage?.address || initialProfile?.brokerage_address || '', phone: j.brokerage?.phone || '', brokerName: j.brokerage?.brokerName || '', brokerEmail: j.brokerage?.brokerEmail || '', hstNumber: j.brokerage?.hstNumber || '' });
   }, [adapter, initialProfile]);
-  useEffect(() => { if (adapter.kind === 'real') load(); else setState('unavailable'); }, [adapter.kind, load]);
+  // The sandbox loads too: its adapter answers from sample realtors (lib/demoAdapter.js).
+  useEffect(() => { load(); }, [load]);
   useEffect(() => () => clearTimeout(copyTimer.current), []);
 
   // The search runs as the realtor types, a moment after the last key; only the latest answer is kept.
@@ -150,13 +153,13 @@ export default function CircleView({ initialProfile, entitlement = null }) {
     setBusy('');
     if (!ok) { setFormNote(j.error || FAILED); return; }
     setData((d) => (d ? { ...d, brokerage: j.brokerage } : d));
-    setFormNote(j.emailed ? `Saved. We emailed ${j.brokerage.brokerName}.` : 'Saved. The email could not be sent. Use Send again.');
+    setFormNote(j.sample ? 'Saved in the sample workspace. No email is sent here.' : j.emailed ? `Saved. We emailed ${j.brokerage.brokerName}.` : 'Saved. The email could not be sent. Use Send again.');
   };
   const resend = async () => {
     setBusy('resend'); setFormNote('');
     const { ok, j } = await post(adapter, '/api/circle/brokerage', { action: 'resend' });
     setBusy('');
-    setFormNote(ok && j.emailed ? `Sent again to ${j.brokerage.brokerName}.` : (j.error || 'The email could not be sent. Try again.'));
+    setFormNote(ok && j.sample ? 'No email is sent in the sample workspace.' : ok && j.emailed ? `Sent again to ${j.brokerage.brokerName}.` : (j.error || 'The email could not be sent. Try again.'));
     if (ok && j.brokerage) setData((d) => (d ? { ...d, brokerage: j.brokerage } : d));
   };
 
@@ -176,6 +179,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--s-2) var(--s-4) 64px' }}>
           <h1 className="t-d1" style={{ color: C.ink, margin: 'var(--s-3) 0 var(--gap-line)' }}>Circle</h1>
           <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--gap-card)' }}>The realtors you work with.</p>
+          {adapter.kind !== 'real' ? <p data-circle-sample="" className="cv-standing" style={{ marginBottom: 'var(--gap-card)' }}>Sample realtors. None of these are real accounts, and nothing here is sent to anyone.</p> : null}
 
           {state === 'locked' && entitlement ? <Paywall entitlement={entitlement} profile={profile} /> : null}
           {state === 'unavailable' ? <p data-circle-unavailable="" className="cv-quiet">Circle is not available yet.</p> : null}
@@ -303,7 +307,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
                 <section className="rl-card cv-card" aria-labelledby="cv-brokerage-title" data-circle-brokerage="">
                   <h2 id="cv-brokerage-title" className="t-d3" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Your brokerage</h2>
                   <p className="cv-quiet" style={{ margin: '0 0 var(--s-4)' }}>Shown on your card to realtors in your circle. Your broker of record confirms it by email.</p>
-                  {data.brokerage ? <p className="cv-standing" data-brokerage-standing={data.brokerage.standing}>{(STANDING[data.brokerage.standing] || STANDING.sent)(data.brokerage)}</p> : null}
+                  {data.brokerage ? <p className="cv-standing" data-brokerage-standing={data.brokerage.standing}>{data.sample ? 'Saved in the sample workspace. In the product, your broker of record gets an email to confirm it.' : (STANDING[data.brokerage.standing] || STANDING.sent)(data.brokerage)}</p> : null}
                   <form onSubmit={saveBrokerage}>
                     <Field id="cv-b-name" label="Legal name" value={form.legalName} onChange={(v) => setForm({ ...form, legalName: v })} autoComplete="organization" />
                     <Field id="cv-b-address" label="Address" value={form.address} onChange={(v) => setForm({ ...form, address: v })} autoComplete="street-address" />

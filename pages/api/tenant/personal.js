@@ -23,7 +23,7 @@ import { sessionProfile, getPersonal, savePersonal, creditReportShared, rateLimi
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
 import { logServerError } from '../../../lib/serverLog';
-import { listVault, logVault, putProfilePhoto, removeProfilePhoto, profilePhoto, photoDataUrl } from '../../../lib/tenantVault';
+import { listVault, logVault, putProfilePhoto, removeProfilePhoto, profilePhoto, photoDataUrl, photoLog } from '../../../lib/tenantVault';
 import { vaultEnabled } from '../../../lib/tenantVaultRules';
 import { cleanAbout, cleanPrepay, photoKind, ABOUT_MAX, PHOTO_MIME, PHOTO_MAX_BYTES } from '../../../lib/profilePersonal';
 import { profileStrength } from '../../../lib/profileStrength';
@@ -70,7 +70,7 @@ export default async function handler(req, res) {
       const vault = admin ? await listVault(admin, p.id) : { documents: [], checks: [] };
       const photo = mine.available && mine.photo && admin ? photoDataUrl(await profilePhoto(admin, { profileId: p.id, path: mine.photo.path, mime: mine.photo.mime })) : null;
       const strength = profileStrength({ facts: p.facts || {}, documentKinds: vault.documents.map((d) => d.kind), checkKinds: vault.checks.map((c) => c.kind), hasPhoto: !!photo, hasAbout: !!(mine.available && mine.about), prepayMonths: mine.available ? mine.prepayMonths : null, creditShared: await creditReportShared(p) });
-      return res.status(200).json({ available: !!mine.available, about: mine.available ? mine.about : null, prepayMonths: mine.available ? mine.prepayMonths : null, landlordReportOk: mine.available ? mine.landlordReportOk : true, photo, photoAddedAt: mine.available && mine.photo && photo ? mine.photo.addedAt : null, photosPaused: !vaultEnabled(), strength });
+      return res.status(200).json({ available: !!mine.available, about: mine.available ? mine.about : null, prepayMonths: mine.available ? mine.prepayMonths : null, landlordReportOk: mine.available ? mine.landlordReportOk : true, photo, photoAddedAt: mine.available && mine.photo && photo ? mine.photo.addedAt : null, photosPaused: !vaultEnabled(), photoLog: admin ? await photoLog(admin, p.id) : [], strength });
     }
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
     const body = req.body && typeof req.body === 'object' ? req.body : {};
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
       // The file first; the profile forgets it only once the bucket says it is gone.
       if (!(await removeProfilePhoto(admin, { profileId: p.id, path: mine.photo.path }))) return res.status(503).json({ error: 'Your photo could not be removed. Try again.' });
       if (!(await savePersonal(p, { photo_path: null, photo_mime: null, photo_added_at: null }))) return res.status(503).json({ error: 'Your photo could not be removed. Try again.' });
-      await logVault(admin, { profileId: p.id, action: 'document_deleted' });
+      await logVault(admin, { profileId: p.id, action: 'photo_removed' });
       return res.status(200).json({ ok: true });
     }
     if (action === 'photo') {
@@ -136,7 +136,7 @@ export default async function handler(req, res) {
       if (!(await savePersonal(p, { photo_path: put.path, photo_mime: type, photo_added_at: at }))) { await removeProfilePhoto(admin, { profileId: p.id, path: put.path }); return res.status(503).json({ error: 'Your photo could not be saved. Try again.' }); }
       // The photo it replaces is removed, the file itself.
       if (mine.photo && mine.photo.path !== put.path) await removeProfilePhoto(admin, { profileId: p.id, path: mine.photo.path });
-      await logVault(admin, { profileId: p.id, action: 'document_added', at });
+      await logVault(admin, { profileId: p.id, action: 'photo_added', at });
       return res.status(200).json({ ok: true, photo: `data:${type};base64,${bytes.toString('base64')}`, photoAddedAt: at });
     }
     return res.status(400).json({ error: 'Unknown action.' });

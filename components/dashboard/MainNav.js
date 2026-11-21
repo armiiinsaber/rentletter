@@ -3,7 +3,8 @@
 // screens they open (components/dashboard/HomeView.js, components/dashboard/CircleView.js). The
 // Circle item carries a count of the requests waiting for the realtor, read from POST
 // /api/circle { action: 'count' } (session, entitlement and the caller's own id on the server).
-// The sandbox has no circle, so it draws nothing there. No count, or a failed read: no badge.
+// The sandbox draws it too, over its own sample Circle (lib/demoAdapter.js). No count, or a
+// failed read: no badge.
 import { useEffect, useState } from 'react';
 import { C } from '../theme';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -18,7 +19,6 @@ export default function MainNav({ current }) {
   const adapter = useAdapter();
   const [pending, setPending] = useState(held);
   useEffect(() => {
-    if (adapter.kind !== 'real') return undefined;
     listeners.add(setPending);
     let live = true;
     (async () => {
@@ -30,9 +30,10 @@ export default function MainNav({ current }) {
     })();
     return () => { live = false; listeners.delete(setPending); };
   }, [adapter]);
-  if (adapter.kind !== 'real') return null;
+  // In the sandbox the Circle is the sandbox's own screen (lib/demoAdapter.js DEMO_PATHS.circle).
+  const to = (key, href) => (key === 'circle' && adapter.paths.circle ? adapter.paths.circle : href);
   const item = (key, href, label, extra = null) => (
-    <a {...linkProps(href, { back: key === 'listings' })} aria-current={current === key ? 'page' : undefined} className="mn-item" data-nav={key}>
+    <a {...linkProps(to(key, href), { back: key === 'listings' })} aria-current={current === key ? 'page' : undefined} className="mn-item" data-nav={key}>
       {label}{extra}
     </a>
   );

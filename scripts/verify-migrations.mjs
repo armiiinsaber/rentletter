@@ -57,6 +57,7 @@ const FILES = {
   m020: 'db/020-share-events.sql',
   m021: 'db/021-realtor-circle.sql',
   m022: 'db/022-full-tenant-profile.sql',
+  m023: 'db/023-photo-log-actions.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -1023,6 +1024,41 @@ async function run022(db, tag) {
   check(same(stripPersonal(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id')), before), `${tag}2: this check's own profiles removed, every tenant profile is what it was`);
 }
 
+// ── db/023-photo-log-actions.sql ───────────────────────────────────────────────────────────
+// profile_access_log.action gains photo_added and photo_removed. Run on the log as db/018 made
+// it, with a line of an old action in it: the two are refused before and accepted after, an
+// action off the list is still refused, the old line does not move; and again (nothing changes).
+const actionList = (sql) => [...sql.split('CHECK (action IN (')[1].split('))')[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+const logActionConstraints = (db) => rows(db, "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'public.profile_access_log'::regclass ORDER BY conname");
+const PL = 'eeeeeeee-0000-4000-8000-0000000000d1';
+async function run023(db, tag) {
+  const oldActions = actionList(read(FILES.m018)); const newActions = actionList(read(FILES.m023));
+  check(same(newActions, [...oldActions, 'photo_added', 'photo_removed']), `${tag}: db/023 lists every action db/018 listed, in order, and the two new ones`);
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts) VALUES ($1, 'photolog@mail.ca', 'pl1', '{}'::jsonb)", [PL]);
+  const add = (action) => refused(db, "INSERT INTO public.profile_access_log (tenant_profile_id, actor_type, action) VALUES ($1, 'tenant', $2)", [PL, action]);
+  const lines = () => rows(db, 'SELECT * FROM public.profile_access_log ORDER BY id');
+  check((await add('document_added')) == null, `${tag}0: a line of an old action is written`);
+  for (const a of ['photo_added', 'photo_removed']) check(/action/.test(await add(a) || ''), `${tag}0: before the file, ${a} is refused`);
+  const kept = await lines(); const before = await logActionConstraints(db);
+  const policies = await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profile_access_log'");
+  await step(db, `${tag}1`, FILES.m023);
+  const after = await logActionConstraints(db);
+  check(after.length === before.length, `${tag}1: the log has as many constraints as before: one was rewritten, none added`, `${before.length} -> ${after.length}`);
+  check(after.filter((c) => /photo_removed/.test(c.def)).length === 1 && newActions.every((a) => after.some((c) => c.def.includes(`'${a}'`))), `${tag}1: one constraint accepts every action it accepted and the two new ones`);
+  check(same(after.filter((c) => !/photo_removed/.test(c.def)), before.filter((c) => !/profile_exported/.test(c.def))), `${tag}1: every other constraint on the log is exactly what it was`);
+  check(same(await lines(), kept), `${tag}1: the line written before the file did not move`);
+  for (const a of ['photo_added', 'photo_removed']) check((await add(a)) == null, `${tag}1: ${a} is written`);
+  check(/action/.test(await add('photo_viewed') || ''), `${tag}1: an action off the list is still refused`);
+  check((await one(db, "SELECT relrowsecurity FROM pg_class WHERE oid = 'public.profile_access_log'::regclass")) === true && (await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profile_access_log'")) === policies && policies === 0, `${tag}1: row level security is still on, with no policy`);
+  for (const role of ['anon', 'authenticated']) check((await one(db, 'SELECT has_table_privilege($1, $2, $3)', [role, 'public.profile_access_log', 'SELECT'])) === false, `${tag}1: ${role} still holds nothing on the log`);
+  const held = await lines();
+  await step(db, `${tag}2 (023 again)`, FILES.m023);
+  check(same(await logActionConstraints(db), after), `${tag}2: a second run leaves every constraint exactly as it was`);
+  check(same(await lines(), held), `${tag}2: and every line`);
+  await dropProfiles(db, [PL]);
+  check((await one(db, 'SELECT count(*)::int FROM public.profile_access_log WHERE tenant_profile_id = $1', [PL])) === 0, `${tag}2: this check's own profile and its lines are gone`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -1129,6 +1165,7 @@ async function pathA() {
   await run020(db, 'A16');
   await run021(db, 'A17');
   await run022(db, 'A18');
+  await run023(db, 'A19');
   await db.close();
 }
 
@@ -1295,6 +1332,7 @@ async function pathB() {
   await run020(db, 'B22');
   await run021(db, 'B23');
   await run022(db, 'B24');
+  await run023(db, 'B25');
   return { db, before };
 }
 

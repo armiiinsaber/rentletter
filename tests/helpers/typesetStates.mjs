@@ -140,6 +140,16 @@ export const STATES = [
   { name: 'faq', kind: 'public', go: (p) => open(p, '/faq'), steps: async function* (p) { await openAll(p); yield 'faq, every answer open'; } },
   { name: 'compliance', kind: 'public', go: (p) => open(p, '/compliance') },
   { name: 'sandbox dashboard', kind: 'public', go: (p) => open(p, '/demo/dashboard') },
+  // The sandbox Circle: the real screen over sample realtors, with a request waiting, connections
+  // and a request sent; then a search result, the invite when nobody matches, and a removal asked.
+  { name: 'sandbox circle', kind: 'public', go: async (p) => { await open(p, '/demo/dashboard?circle=1'); await p.locator('[data-circle-sample]').waitFor({ timeout: 30000 }); await p.locator('[data-circle-request]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('#cv-search').fill('Sofia'); await p.locator('[data-circle-results]').waitFor({ timeout: 30000 }); await wait(p, 400);
+    yield 'sandbox circle, a search result';
+    await p.locator('[data-circle-add]').first().click(); await p.locator('[data-circle-requested]').first().waitFor({ timeout: 30000 }); await wait(p, 400);
+    yield 'sandbox circle, added: requested';
+    await p.locator('#cv-search').fill('Zoltan Nobody'); await p.locator('[data-circle-invite]').waitFor({ timeout: 30000 }); await wait(p, 400);
+    yield 'sandbox circle, nobody found: the invite';
+  } },
   { name: 'sandbox listing', kind: 'public', go: (p) => open(p, '/demo/dashboard?listing=demo-carlaw'), steps: (p) => eachOpen(p, CARD, 'sandbox listing, applicant') },
   { name: 'join, a code that is not valid', kind: 'public', go: (p) => open(p, '/join/ZZZZZZZZ') },
   { name: 'short link no longer active', kind: 'public', go: (p) => open(p, '/a/ZZZZZZZ') },

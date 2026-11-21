@@ -258,7 +258,11 @@ test('6. delete removes the photo file, and a new photo removes the one it repla
   assert.deepEqual([w.row().photo_path, w.row().photo_mime, w.row().photo_added_at], [null, null, null]);
   assert.equal((await w.mine()).body.photo, null);
   assert.equal((await w.realtor(view, { linkId: 'J1' })).body.photo, null);
-  assert.deepEqual(w.log().filter((l) => l.actor_type === 'tenant' && /^document_/.test(l.action)).map((l) => l.action), ['document_added', 'document_added', 'document_deleted']);
+  assert.deepEqual(w.log().filter((l) => l.actor_type === 'tenant' && /^photo_/.test(l.action)).map((l) => l.action), ['photo_added', 'photo_added', 'photo_removed']);
+  assert.deepEqual(w.log().filter((l) => /^document_/.test(l.action)), [], 'a photo is never written as a document');
+  // The tenant's page is sent their own photo lines, newest first, and says them in plain words.
+  assert.deepEqual((await w.mine()).body.photoLog.map((l) => [l.action, l.by]).sort(), [['photo_added', 'you'], ['photo_added', 'you'], ['photo_removed', 'you']]);
+  assert.match(code('components/tenant/ProfilePersonal.js'), /l\.action === 'photo_added' \? 'Photo added' : 'Photo removed'/);
   assert.equal((await w.mine({ action: 'photo-delete' })).code, 200, 'deleting again is not an error');
   // What is refused, before anything is kept: not an image to its own bytes, too large, another type.
   assert.equal((await w.mine({ action: 'photo', type: 'image/jpeg', data: Buffer.from('%PDF-1.4 not a photo at all').toString('base64') })).code, 400);
@@ -381,4 +385,56 @@ test('10. before db/022 has run the app works, and the migration opens nothing t
   assert.match(src('pages/privacy.js'), /\*\*What you choose to add about yourself\.\*\* A tenant may add a photo of themselves, a few words about themselves and an offer to prepay rent\. Each is optional and the tenant's own choice/);
   assert.match(src('docs/design/profile-and-circle.md'), /^22\. A photo on a rental profile\./m);
   assert.match(src('docs/design/profile-and-circle.md'), /^23\. Voluntary prepaid rent\./m);
+});
+
+test('11. the photo expires with the profile: the twelve month rule removes the file, clears its columns and logs it', async () => {
+  const V = await import('../../lib/tenantVault.js');
+  const cron = (await import('../../pages/api/cron/expire-vault.js')).default;
+  const w = await setup();
+  assert.equal((await w.mine({ action: 'photo', type: 'image/jpeg', data: JPEG.toString('base64') })).code, 200);
+  const path = w.row().photo_path;
+  // A second profile with a photo that was here last week, and a third nobody can place.
+  const other = async (email) => { const p = S.blankProfile(email); p.facts = { fullName: 'Other Tenant' }; await S.saveProfile(p); const file = `${p.id}/photo-11111111-1111-4111-8111-111111111111.jpg`; await w.stack.db.storage.from('tenant-vault').upload(file, JPEG2, { contentType: 'image/jpeg' }); Object.assign(w.t.tenant_profiles.find((r) => r.id === p.id), { photo_path: file, photo_mime: 'image/jpeg', photo_added_at: '2026-01-01T00:00:00.000Z' }); return { id: p.id, file }; };
+  const active = await other('active@example.com'); const unknown = await other('unknown@example.com');
+  const now = new Date('2028-01-15T12:00:00Z');
+  const activityFor = async () => ({ [w.p.id]: '2026-11-01T00:00:00.000Z', [active.id]: '2028-01-08T00:00:00.000Z' }); // 14 months ago; last week; the third unknown
+  const photos = { holders: S.photoHolders, clear: S.clearPhoto };
+  const before = w.log().length;
+  const out = await V.expireIdleVaults(w.stack.db, { now, activityFor, photos });
+  assert.deepEqual(out, { profiles: 1, documents: 0, checks: 0, photos: 1, absent: false }, 'a profile that holds only a photo still expires');
+  assert.equal(w.bucket().includes(path), false, 'the file is gone');
+  assert.deepEqual([w.row().photo_path, w.row().photo_mime, w.row().photo_added_at], [null, null, null], 'and its three columns are empty');
+  assert.deepEqual(w.log().slice(before).map((l) => [l.tenant_profile_id, l.actor_type, l.action]), [[w.p.id, 'system', 'photo_removed']], 'said in the tenant\'s log, by the system');
+  assert.deepEqual((await w.mine()).body.photoLog[0].by, 'system');
+  assert.equal((await w.mine()).body.photo, null);
+  // Active, and unknown, are not idle: untouched.
+  assert.deepEqual(w.bucket().sort(), [active.file, unknown.file].sort());
+  assert.equal(w.t.tenant_profiles.find((r) => r.id === active.id).photo_path, active.file);
+  assert.equal(w.t.tenant_profiles.find((r) => r.id === unknown.id).photo_path, unknown.file);
+  // Again: nothing more to do. And without the photo store handed in, photos are left alone.
+  assert.deepEqual(await V.expireIdleVaults(w.stack.db, { now, activityFor, photos }), { profiles: 0, documents: 0, checks: 0, photos: 0, absent: false });
+  // A file the bucket would not remove is not forgotten: the profile keeps pointing at it for the next run.
+  const w2 = await setup(); await w2.mine({ action: 'photo', type: 'image/jpeg', data: JPEG.toString('base64') });
+  const real = w2.stack.db.storage.from; w2.stack.db.storage.from = (b) => ({ ...real(b), remove: async () => ({ data: null, error: { message: 'storage down' } }) });
+  const stuck = await V.expireIdleVaults(w2.stack.db, { now, activityFor: async () => ({ [w2.p.id]: '2026-11-01T00:00:00.000Z' }), photos });
+  w2.stack.db.storage.from = real;
+  assert.equal(stuck.photos, 0); assert.ok(w2.row().photo_path, 'still recorded'); assert.equal(w2.log().some((l) => l.action === 'photo_removed'), false);
+  // The daily job hands the photo store in, and the route is the cron's alone.
+  assert.match(code('pages/api/cron/expire-vault.js'), /idle = await expireIdleVaults\(admin, \{ activityFor: profileActivity, photos: \{ holders: photoHolders, clear: clearPhoto \} \}\);/);
+  const res = fakeRes(); await cron(fakeReq({ method: 'GET' }), res); assert.ok([401, 503].includes(res.code), 'no bearer, no run');
+  // The vault library still never reads the profile table itself.
+  assert.doesNotMatch(code('lib/tenantVault.js'), /from\('tenant_profiles'\)/);
+});
+
+test('12. db/023: the log\'s action list gains photo_added and photo_removed, and only that constraint is rewritten', () => {
+  const sql = src('db/023-photo-log-actions.sql'); const old = src('db/018-profile-vault.sql');
+  const list = (text) => [...text.split('CHECK (action IN (')[1].split('))')[0].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+  assert.deepEqual(list(sql), [...list(old), 'photo_added', 'photo_removed'], 'every action db/018 listed, in order, and the two new ones');
+  assert.match(sql, /IF to_regclass\('public\.profile_access_log'\) IS NULL THEN RETURN; END IF;/);
+  assert.match(sql, /IF cdef IS NOT NULL AND cdef LIKE '%photo_removed%' THEN RETURN; END IF;/);
+  assert.doesNotMatch(code('db/023-photo-log-actions.sql'), /CREATE POLICY|GRANT |CREATE TABLE|ADD COLUMN|UPDATE |DELETE |INSERT /);
+  assert.equal((code('db/023-photo-log-actions.sql').match(/ADD CONSTRAINT/g) || []).length, 1);
+  // Every place a photo is logged uses the two words.
+  for (const f of ['pages/api/tenant/personal.js', 'lib/tenantVault.js']) assert.doesNotMatch(code(f).split('\n').filter((l) => /photo/i.test(l)).join('\n'), /document_added|document_deleted/, f);
+  assert.match(code('pages/api/tenant/personal.js'), /action: 'photo_added', at \}\);/); assert.match(code('pages/api/tenant/personal.js'), /action: 'photo_removed' \}\);/);
 });

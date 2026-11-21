@@ -13,7 +13,7 @@
 // (components/tenant/ProfileFacts.js ProfileStyles); the few rules of its own are at the foot.
 // Before db/022 has run the route answers not available and the page says so in one line.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { noWidow } from '../../lib/typeset';
+import { noWidow, dateLong } from '../../lib/typeset';
 import { C } from '../theme';
 import { StatusPills } from '../ui';
 import { Pending } from '../brand/Loader';
@@ -138,6 +138,12 @@ export default function ProfilePersonal({ profile }) {
                 </div>
               )}
               {said('photo')}
+              {/* The tenant's own photo lines from their log: added, removed. */}
+              {Array.isArray(data.photoLog) && data.photoLog.length > 0 && (
+                <ul className="pp-photo-log" data-photo-log="">
+                  {data.photoLog.map((l, i) => <li key={`${l.at}-${i}`} className="mp-source" data-photo-line={l.action}>{noWidow(`${l.action === 'photo_added' ? 'Photo added' : 'Photo removed'}${dateLong(l.at) ? ` on ${dateLong(l.at)}` : ''}${l.action === 'photo_removed' && l.by === 'system' ? ', after 12 months away' : ''}`)}</li>)}
+                </ul>
+              )}
             </div>
 
             {/* About me. */}
@@ -213,6 +219,7 @@ export default function ProfilePersonal({ profile }) {
         .pp-photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-top: var(--gap-line); min-width: 0; }
         .pp-photo { width: 84px; height: 84px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--rule); background: ${C.paperDeep}; display: block; }
         .pp-photo-note { flex: 1 1 200px; min-width: 0; }
+        .pp-photo-log { list-style: none; margin: var(--gap-line) 0 0; padding: 0; display: grid; gap: 2px; }
         .pp-area { height: auto; min-height: 132px; padding: var(--s-3); line-height: var(--lh-body); resize: vertical; margin-top: var(--gap-line); font-family: inherit; }
         .pp-suggestion { margin-top: var(--gap-card); padding: var(--s-3); background: ${C.paperDeep}; border-radius: var(--card-radius); }
         .pp-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); width: 100%; min-height: 44px; padding: 0; background: transparent; border: none; border-radius: 12px; color: ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: var(--lh-body); text-align: left; cursor: pointer; }

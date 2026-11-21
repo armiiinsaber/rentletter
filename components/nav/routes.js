@@ -25,8 +25,8 @@ export function routeOf(href) {
   for (const r of ROUTES) {
     const m = u.pathname.match(r.re); if (!m) continue;
     if (r.kind === 'demo') {
-      const listing = u.searchParams.get('listing'); const profile = u.searchParams.get('profile') === '1';
-      return { kind: 'demo', demo: listing ? 'listing' : profile ? 'profile' : 'dashboard', depth: listing || profile ? 1 : 0, listingId: listing || null, path: u.pathname + u.search };
+      const listing = u.searchParams.get('listing'); const profile = u.searchParams.get('profile') === '1'; const circle = u.searchParams.get('circle') === '1';
+      return { kind: 'demo', demo: listing ? 'listing' : profile ? 'profile' : circle ? 'circle' : 'dashboard', depth: listing || profile || circle ? 1 : 0, listingId: listing || null, path: u.pathname + u.search };
     }
     return { kind: r.kind, depth: r.depth, listingId: r.kind === 'listing' ? decodeURIComponent(m[1]) : null, path: u.pathname + u.search };
   }
