@@ -20,6 +20,7 @@ import AssistantBell from './AssistantBell';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { linkProps } from '../nav/routes';
 import MainNav from './MainNav';
+import { logoProps } from './logoNav';
 
 function initialsOf(profile) {
   const n = (profile?.full_name || '').trim();
@@ -40,8 +41,9 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
     <>
       <AppHead />
       <ScrollHeader maxWidth={1100}>
-        {/* LEFT, wordmark: the dashboard. First beat of the reveal. */}
-        <a {...linkProps(adapter.paths.home)} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">
+        {/* LEFT, wordmark: Listings from any other view; on Listings, the top of the page, or nothing
+            when already there (components/dashboard/logoNav.js). */}
+        <a {...logoProps(adapter.paths.home)} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">
           <Wordmark />
         </a>
         {/* CENTER, account status (trial countdown / lapsed / subscribed). Founders get no badge
