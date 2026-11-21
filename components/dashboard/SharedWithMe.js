@@ -4,7 +4,8 @@
 // /api/profile-shares/shared-with-me { action: 'list' }: which unit and since when, and nothing
 // of the tenant until the realtor opens the view, which the tenant sees in their log. Each row
 // opens the same shared view a tenant's own realtor has (components/dashboard/SharedProfile.js).
-// With nothing shared, before db/024 has run, or in the sandbox, nothing is drawn.
+// With nothing shared, or before db/024 has run, nothing is drawn. The sandbox answers through its
+// own adapter with one sample share (lib/demoAdapter.js, lib/demoFixture.js demoSharedWithMe).
 import { useEffect, useState } from 'react';
 import { C } from '../theme';
 import { dateLong, noWidow } from '../../lib/typeset';
@@ -25,7 +26,6 @@ export default function SharedWithMe() {
   const adapter = useAdapter();
   const [shares, setShares] = useState(null);
   useEffect(() => {
-    if (adapter.kind !== 'real') { publish([]); return undefined; }
     let live = true;
     (async () => {
       try {

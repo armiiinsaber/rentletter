@@ -63,6 +63,10 @@ async function walk(browserType, launch) {
     assert.equal(await desk.locator('[data-shell-place="pipeline"]').getAttribute('aria-current'), 'page');
     await desk.locator('[data-shell-place="shared"]').click();
     await desk.waitForURL((u) => u.searchParams.get('view') === 'shared', { timeout: 10000 }); await desk.waitForTimeout(400);
+    // The sandbox's one sample share: the listing agent's view opens on a tap.
+    await desk.locator('[data-shared-with-me-row] [data-shared-view]').first().click();
+    await desk.locator('[data-shared-with-me] [data-shared-screening]').first().waitFor({ timeout: 15000 });
+    assert.ok(await visible(desk, '[data-shared-with-me] [data-shared-facts]'), 'the shared facts');
     await desk.locator('[data-shell-place="listings"]').click();
     await desk.waitForURL((u) => !u.search, { timeout: 10000 }); await desk.waitForTimeout(400);
     assert.deepEqual(await desk.evaluate(() => [window.__shellMark, window.__navMarks]), [1, 0], 'no reload and no transition between the views');
