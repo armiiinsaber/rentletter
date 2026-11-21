@@ -17,7 +17,7 @@ import { C } from '../theme';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { rememberProfile, rememberScreenView, useTakeOver } from '../nav/routes';
 import { Reveal, Pending } from '../brand/Loader';
-import DashboardHeader from './DashboardHeader';
+import DashShell from './DashShell';
 import InviteRealtor, { joinedOn, writeClipboard } from './InviteRealtor';
 import Paywall from './Paywall';
 import { setCirclePending } from './MainNav';
@@ -175,7 +175,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
       </Head>
       <GlobalStyle />
       <div className="cv" style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
-        <DashboardHeader profile={profile} nav="circle" />
+        <DashShell profile={profile} nav="circle" current="circle">
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--s-2) var(--s-4) 64px' }}>
           <h1 className="t-d1" style={{ color: C.ink, margin: 'var(--s-3) 0 var(--gap-line)' }}>Circle</h1>
           <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--gap-card)' }}>The realtors you work with.</p>
@@ -358,6 +358,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
           ) : null}
         </div>
         <ConfirmSheet open={!!ask} danger busy={!!busy} title={ask ? (ask.kind === 'block' ? 'Block this realtor?' : 'Remove from your circle?') : ''} body={ask ? (ask.kind === 'block' ? `${ask.name} leaves your circle and cannot send you requests. They are not told.` : `${ask.name} leaves your circle, and you leave theirs. They are not told.`) : ''} confirmLabel={ask && ask.kind === 'block' ? 'Block' : 'Remove'} cancelLabel="Keep" onConfirm={confirmAsk} onCancel={() => setAsk(null)} />
+        </DashShell>
       </div>
 
       <style jsx>{`

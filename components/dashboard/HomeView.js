@@ -3,7 +3,6 @@
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
 import { useEffect, useMemo, useState } from 'react';
-import { isWithdrawn } from '../../lib/listingApplicantsVocabulary';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, StatusPills } from '../../components/ui';
@@ -13,14 +12,19 @@ import Paywall from './Paywall';
 import { C, R, FONT } from '../../components/theme';
 import { formatUnit } from '../../lib/unitType';
 import { listingStatePills } from '../../lib/listingStateLine.js';
-import DashboardHeader from '../../components/dashboard/DashboardHeader';
+import DashShell, { viewOf, viewHref } from './DashShell';
+import { DeskStats, ListingsTable, FILTERS } from './ListingsTable';
+import NeedsYou from './NeedsYou';
+import { standingOf, rowOf, needsYouItems } from './homeData';
+import { useCirclePending } from './MainNav';
+import { navigateToAction } from './actionNav';
 import InstallHint from '../../components/dashboard/InstallHint';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
-import SharedWithMe from './SharedWithMe';
+import SharedWithMe, { useSharedWithMe } from './SharedWithMe';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
-import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
+import { go, goView, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
 import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
 import { Reveal } from '../brand/Loader';
 import { useAdapter } from '../../lib/dashboardAdapter';
@@ -132,8 +136,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const [loadRound, setLoadRound] = useState(0);
   const listingsLoaded = Array.isArray(listings);
   const hasListings = listingsLoaded && listings.length > 0;
-  const openListings = listings.filter((l) => listingOpen(l));
-  const closedListings = listings.filter((l) => !listingOpen(l));
+  const openListings = (listings || []).filter((l) => listingOpen(l));
+  const closedListings = (listings || []).filter((l) => !listingOpen(l));
   // Client retry when the server-side listings query failed (an expired access token being
   // refreshed under RLS is the usual reason). Until it resolves the page shows the door Loader,
   // never the empty state.
@@ -220,7 +224,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // The listings could not be read: said in the door's place, with a way to try again.
   const listingsFailed = (
     <section className="dash-card dash-block" style={{ padding: 'var(--s-4)' }} role="alert">
-      <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your listings</div>
+      <div className="dash-eyebrow">Your listings</div>
       <h2 className="dash-h2" style={{ marginBottom: 'var(--s-1)' }}>We couldn’t load your listings.</h2>
       <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
       <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
@@ -251,25 +255,44 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const greeting = clientHour == null ? '' : greetingFor(clientHour);
   // The bell receives one stable object per signals change: a fresh object every render would make
   // the bell's setSignals effect re render this page forever.
-  // The one line of standing: the listings that take applications, the applicants on them, and the
-  // listings whose report has not gone yet. A zero item is dropped; all three zero reads as nothing
-  // waiting. Counted from the signals already loaded, never a new call.
+  // The standing: the listings that take applications, the applicants on them, and the listings
+  // whose report has not gone yet (components/dashboard/homeData.js standingOf). On a phone the ink
+  // card says the non zero ones as plain numbers; all three zero reads as nothing waiting. On a
+  // desktop they are the three numbers that filter the table. Counted from the signals already
+  // loaded, never a new call.
   const standing = useMemo(() => {
-    if (!signals.loaded || !hasListings) return { line: '', items: [] };
-    const by = signals.applicantsByListing || {};
-    let applicants = 0, toSend = 0;
-    for (const l of openListings) {
-      const live = (by[l.id] || []).filter((a) => a && !isWithdrawn(a));
-      applicants += live.length;
-      if (live.length && !live.some((a) => a.lastSentAt || a.last_sent_at)) toSend++;
-    }
-    const bits = [
-      openListings.length ? `${openListings.length} listing${openListings.length === 1 ? '' : 's'}` : null,
-      applicants ? `${applicants} applicant${applicants === 1 ? '' : 's'}` : null,
-      toSend ? `${toSend} report${toSend === 1 ? '' : 's'} to send` : null,
+    if (!signals.loaded || !hasListings) return { listings: 0, applicants: 0, toSend: 0, items: [] };
+    const n = standingOf(openListings, signals.applicantsByListing || {});
+    const items = [
+      n.listings ? [n.listings, n.listings === 1 ? 'listing' : 'listings'] : null,
+      n.applicants ? [n.applicants, n.applicants === 1 ? 'applicant' : 'applicants'] : null,
+      n.toSend ? [n.toSend, n.toSend === 1 ? 'report to send' : 'reports to send'] : null,
     ].filter(Boolean);
-    return { line: bits.join(' · '), items: bits };
+    return { ...n, items };
   }, [signals.loaded, signals.applicantsByListing, openListings, hasListings]);
+  // The desktop views (components/dashboard/DashShell.js): Listings, Pipeline, Shared with you.
+  const view = viewOf(router.query);
+  // The stat a desktop realtor clicked: the rows it counts, or all of them.
+  const [filter, setFilter] = useState('all');
+  // The client's clock for the relative times, after mount (the server's render and the first
+  // client render agree), once a minute after that.
+  const [now, setNow] = useState(null);
+  useEffect(() => { setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(t); }, []);
+  const circlePending = useCirclePending();
+  const shared = useSharedWithMe();
+  const byListing = signals.applicantsByListing || {};
+  const rows = useMemo(() => openListings.map((l) => rowOf(l, byListing[l.id] || [])), [openListings, byListing]);
+  const closedRows = useMemo(() => closedListings.map((l) => rowOf(l, byListing[l.id] || [])), [closedListings, byListing]);
+  const shownRows = FILTERS[filter] ? rows.filter(FILTERS[filter]) : rows;
+  const needs = useMemo(() => (signals.loaded ? needsYouItems({ listings: listings || [], applicantsByListing: byListing, people: signals.people || [], shares: shared || [], circlePending, now: now || Date.now(), paths: adapter.paths }) : []),
+    // now is left out on purpose: the items change with the data, the times with the clock.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [signals.loaded, listings, byListing, signals.people, shared, circlePending, adapter.paths]);
+  const onNeed = (it) => {
+    if (it.go.kind === 'action') navigateToAction(it.go.item, adapter.paths);
+    else if (it.go.kind === 'view') goView(viewHref(adapter.paths.home, it.go.view));
+    else go(it.go.href);
+  };
   const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: listings || [] } : null), [signals, listings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
@@ -285,9 +308,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // generated, both land in logo_url). Complete → the brand card leaves the dashboard; branding
   // is reached from the avatar menu instead.
   const brandComplete = !!((profile?.full_name || '').trim() && brokerage && profile?.logo_url);
-  // Logo-derived accent for the brand card only; product red when absent/too light.
+  // Logo-derived accent for the brand card only; the soft ink when absent or too light (red is
+  // the one main action on the view).
   const logoAccent = useLogoAccent(profile?.logo_url || '');
-  const brandAccent = logoAccent || C.red;
+  const brandAccent = logoAccent || C.inkSoft;
 
   // Header note: the dashboard header is a plain in-flow element (position: static, see .dash-bg
   // override) that scrolls away with the page. Because nothing is fixed/sticky, there is no floating
@@ -309,40 +333,41 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           The canvas comes from the root (components/ui.js), so this wrapper paints no tone of its
           own; it only stretches to the viewport so a short page still reads as one surface. */}
       <div className="dash-bg" style={{ overflowX: 'clip' }}>
-        {/* Static, in-flow header (see .dash-bg .rl-header below), it scrolls away with the page; its
-            solid canvas background + safe-area padding cover the notch region at the top. */}
-        <DashboardHeader profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} />
+        {/* The shell (components/dashboard/DashShell.js): under 1024px the header as it always was,
+            static and in flow (see .dash-bg .rl-header below), with the Listings and Circle tabs; at
+            1024 and wider the sidebar and the main area. */}
+        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={() => setModalOpen(true)}>
 
         {locked && (
-          <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
+          <div className="hv-lock" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
             <Paywall entitlement={entitlement} profile={profile} pending={checkoutFlag === 'success'} />
           </div>
         )}
-        {!locked && <div style={{
-          maxWidth: 1100, margin: '0 auto',
-          // The header is now in normal flow directly above, so it takes its own space — content just
-          // follows below it. No measured offset needed; a small top gap is all that's required.
+        {!locked && <div className="hv" data-view={view} style={{
+          // The header is in normal flow directly above, so it takes its own space; a small top gap
+          // is all that is needed. Ordinary bottom breathing room plus the home indicator inset.
           paddingTop: 'var(--s-2)',
-          paddingRight: 'clamp(16px, 4vw, 32px)',
-          paddingLeft: 'clamp(16px, 4vw, 32px)',
-          // Ordinary bottom breathing room plus the home indicator inset. The "?" launcher is
-          // position: fixed and overlaps the bottom right corner; it never pushes the page taller.
           paddingBottom: 'max(var(--s-6), env(safe-area-inset-bottom, 0px))',
         }}>
 
           {/* One screen, shown in one step (components/brand/Loader.js Reveal): the door until the
               listings and the signals are both in hand, then everything at once. */}
           <Reveal ready={ready} label="Loading your workspace" failed={listingsError && !listingsLoaded ? listingsFailed : loadWatch.failed ? <LoadFailed onRetry={loadWatch.again} /> : null}>
-          {/* 1. THE INK CARD: the greeting (the hour from the client, lib/greeting.js) over one line of
-              standing, counted from the loaded signals. No rows, no verbs, no links: what is next lives
-              in the bell. Then the one red action on the page: New listing. */}
+          <div className="hv-cols">
+          <div className="hv-primary">
+          {/* PHONE. 1. THE INK CARD: the greeting (the hour from the client, lib/greeting.js) over the
+              standing as plain numbers, counted from the loaded signals. No rows, no verbs, no links:
+              what is next lives in the bell. Then the one red action on the page: New listing. */}
+          <div className="hv-phone">
           <section className="dash-ink" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
             <h1 className="dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d1) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
-            {standing.line ? (
-              <StatusPills tone="ink" label="Your workspace" items={standing.items} style={{ marginTop: 'var(--s-3)' }} />
+            {standing.items.length ? (
+              <ul className="dash-standing" aria-label="Your workspace">
+                {standing.items.map(([n, label]) => <li key={label}><span className="dash-standing-n">{n}</span> {label}</li>)}
+              </ul>
             ) : (
               <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)' }}>
-                <Icon name="check" size={15} color={C.red} strokeWidth={2.5} /> Nothing waiting on you.
+                <Icon name="check" size={15} color={C.instText} strokeWidth={2.5} /> Nothing waiting on you.
               </div>
             )}
           </section>
@@ -354,19 +379,26 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           {listingsLoaded && !hasListings && (
             <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5, marginTop: 'var(--s-3)', maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
           )}
+          </div>
+
+          {/* DESKTOP. The greeting, quiet, on the page; under it the three numbers that filter the table. */}
+          <div className="hv-desk hv-part-listings">
+            <h1 className="hv-greet" style={{ visibility: greeting ? 'visible' : 'hidden' }}>{greeting || '\u00A0'}</h1>
+            {hasListings ? <DeskStats standing={standing} filter={filter} onFilter={setFilter} /> : null}
+          </div>
           {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
-          {/* 2. YOUR LISTINGS: each card is its address, rent, beds and its state line. */}
+          {/* 2. YOUR LISTINGS. On a phone each card is its address, rent, beds and its state; on a
+              desktop, one row a listing in the table. */}
           {error && (
-            <div className="dash-block" style={{ padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>
+            <div className="dash-block" role="alert" style={{ padding: 'var(--s-3) var(--s-4)', background: C.dangerTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.danger}`, fontSize: 'var(--t-body-2)', color: C.ink }}>
               {error}
             </div>
           )}
           {hasListings && (
-            <div className="dash-block">
+            <div className="dash-block hv-part-listings hv-phone">
               <div className="dash-section-head">
                 <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s-2)', minWidth: 0 }}>
-                  <span className="dash-dash" style={{ height: 15, alignSelf: 'center' }} />
                   <h2 className="dash-h2">Your listings</h2>
                   <span className="dash-count">{openListings.length}</span>
                 </span>
@@ -384,9 +416,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                     <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>
                       {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? `, ${formatUnit(l.bedrooms)}` : ''}
                     </div>
-                    {/* The state as pills: the applicants by what they need, then the report; the one
-                        fact that needs the realtor is the filled pill (lib/listingStateLine.js). */}
-                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || [])} />
+                    {/* The state as pills, all in the one status style: the applicants by what they
+                        need, then the report (lib/listingStateLine.js). */}
+                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
                   </div>
                 ))}
                 {/* Rented and closed listings, below the active ones under one muted word. */}
@@ -402,25 +434,55 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                       <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
                       <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
-                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || [])} />
+                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
                   </a>
                 ))}
               </div>
             </div>
           )}
+          {hasListings && (
+            <div className="hv-desk hv-part-listings hv-section" data-listings-view="">
+              <div className="hv-head">
+                <h2 className="dash-h2">Your listings</h2>
+                <span className="hv-count" aria-label={`${shownRows.length} shown`}>{shownRows.length}</span>
+                {filter !== 'all' ? (
+                  <span className="hv-filter">
+                    {filter === 'applicants' ? 'With applicants' : 'With a report to send'}
+                    <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button>
+                  </span>
+                ) : null}
+              </div>
+              {shownRows.length ? <ListingsTable rows={shownRows} now={now} paths={adapter.paths} /> : <p className="hv-quiet">No listing matches. <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button></p>}
+              {filter === 'all' && closedRows.length > 0 && (
+                <div className="hv-rented">
+                  <div className="hv-head"><h3 className="hv-h3">Rented</h3><span className="hv-count">{closedRows.length}</span></div>
+                  <ListingsTable rows={closedRows} now={now} paths={adapter.paths} label="Rented listings" />
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* 3. PIPELINE, under the listings (components/dashboard/PeopleList.js). */}
-          {hasListings && <div style={{ marginTop: 'var(--gap-section)' }}><PeopleList people={signals.people || []} /></div>}
+          {/* 3. PIPELINE (components/dashboard/PeopleList.js): under the listings on a phone; on a
+              desktop its own view, and its soonest items feed Needs you. */}
+          {(hasListings || view === 'pipeline') && <div className="hv-part-pipeline hv-section-phone"><PeopleList people={signals.people || []} /></div>}
 
           {/* Profiles tenants shared with this realtor as listing agent (components/dashboard/SharedWithMe.js): nothing when there are none. */}
-          <SharedWithMe />
+          <div className="hv-part-shared">
+            <SharedWithMe />
+            {Array.isArray(shared) && shared.length === 0 ? (
+              <div className="hv-desk" data-shared-empty="">
+                <h2 className="dash-h2">Shared with you</h2>
+                <p className="hv-quiet">No tenant has shared a profile with you yet.</p>
+              </div>
+            ) : null}
+          </div>
 
           {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
               listing state is one card, nothing else). Whole card opens the profile. */}
           {hasListings && !brandComplete && (
-            <a {...linkProps(adapter.paths.profile)} data-press="card" className="dash-card dash-card-int dash-brand dash-block" style={{ borderLeft: `3px solid ${brandAccent}` }}
+            <a {...linkProps(adapter.paths.profile)} data-press="card" className="dash-card dash-card-int dash-brand dash-block hv-part-listings" style={{ borderLeft: `3px solid ${brandAccent}` }}
               title="You and your brand" aria-label="Set up your profile and branding">
-              <div className="dash-eyebrow"><span className="dash-dash" style={{ height: 11 }} /> Your brand</div>
+              <div className="dash-eyebrow">Your brand</div>
               <div className="dash-brand-identity">
                 {profile?.logo_url
                   ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
@@ -436,10 +498,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </span>
             </a>
           )}
+          </div>
 
+          {/* DESKTOP. NEEDS YOU: the next things to do, newest first (components/dashboard/NeedsYou.js). */}
+          <div className="hv-aside hv-desk">
+            <NeedsYou items={needs} now={now} onGo={onNeed} />
+          </div>
+          </div>
           </Reveal>
         </div>}
 
+        </DashShell>
         <ListingSetupModal open={modalOpen} mode="create" askProvince={needsProvince(profile)} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
       </div>
 
@@ -487,8 +556,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           border-radius: var(--card-radius);
           box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05);
         }
-        /* Red-dash brand motif for section eyebrows/heads. */
-        .dash-dash { display: inline-block; width: 3px; height: 1em; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
 
         /* ── Type scale: three tiers on this screen ──
            display  (.dash-greet at --t-d1, .dash-h2 at --t-d3)  Fraunces serif
@@ -499,8 +566,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .dash-eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; line-height: var(--lh-eyebrow); text-transform: uppercase; color: ${C.inkMute}; margin-bottom: var(--s-2); }
 
-        /* ── The one red action on the page: New listing, a full width 44px row ── */
-        .dash-new { width: 100%; min-height: 44px; background: ${C.red}; color: ${C.paper}; border: none; border-radius: 12px; padding: 0 var(--s-4); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); font-family: inherit; }
+        /* ── The one red action on the page: New listing, a full width 44px row, the radius and
+           padding every dashboard button has (components/dashboard/DashShell.js .ds-btn) ── */
+        .dash-new { width: 100%; min-height: 44px; background: ${C.red}; color: ${C.paper}; border: none; border-radius: var(--btn-radius); padding: 0 var(--gap-card); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); font-family: inherit; }
+        /* The standing on the ink card: plain numbers with their words, no pills. */
+        .dash-standing { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--t-body-2); color: ${C.instText}; line-height: var(--lh-body); }
+        .dash-standing li { white-space: nowrap; }
+        .dash-standing-n { font-weight: 800; color: ${C.paper}; font-variant-numeric: tabular-nums; }
 
         /* ── Branding tile — identity moment, whole card → /profile. The card's 3px left edge
            (inline style) carries the colour sampled from the uploaded logo, red otherwise. ── */
@@ -518,7 +590,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* Below 345px a long name takes the body size (16px), so it holds two words a line at 320. */
         @media (max-width: 344.98px) { .dash-brand-name { font-size: var(--t-body); } }
         .dash-brand-desc { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.5; margin-top: var(--s-1); text-wrap: balance; white-space: normal; }
-        .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); font-weight: 700; color: ${C.red}; }
+        .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; }
 
         /* ── Section rhythm: one gap between blocks, and a short note under the greeting ── */
         .dash-block { margin-top: var(--gap-card); }
@@ -532,8 +604,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
         /* ── Section head + ghost button ── */
         .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin: var(--gap-section) 0 var(--s-4); }
-        .dash-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; background: ${C.card}; border: 1px solid #ece5d6; border-radius: 999px; padding: var(--s-1) var(--s-2); font-variant-numeric: tabular-nums; }
-        .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: 11px; padding: var(--s-2) var(--s-4); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-1); }
+        .dash-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
+        .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: var(--btn-radius); min-height: 44px; padding: 0 var(--gap-card); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-1); }
 
         /* Instant (motion-independent) hover colour states — safe for reduced-motion */
         .dash-ghost:hover { background: ${C.paperDeep}; border-color: ${C.ink}; }
@@ -542,6 +614,39 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
         /* The press is the shared one (lib/motion.js installPress); a pointer that hovers gets a shadow, at once. */
         @media (hover: hover) { .dash-new:hover { box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); } }
+
+        /* ── Phone and desktop: both are in the markup, the width picks one ── */
+        .hv { max-width: 1100px; margin: 0 auto; padding-left: clamp(16px, 4vw, 32px); padding-right: clamp(16px, 4vw, 32px); }
+        .hv-desk { display: none; }
+        .hv-section-phone { margin-top: var(--gap-section); }
+        @media (min-width: 1024px) {
+          .hv { max-width: none; padding-left: var(--s-5); padding-right: var(--s-5); }
+          .hv-phone { display: none; }
+          .hv-desk { display: block; }
+          .hv-cols { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-section); }
+          .hv-primary { min-width: 0; }
+          .hv-section-phone { margin-top: 0; }
+          /* The views: Listings, Pipeline, Shared with you (components/dashboard/DashShell.js). */
+          .hv:not([data-view='listings']) .hv-part-listings { display: none; }
+          .hv:not([data-view='pipeline']) .hv-part-pipeline { display: none; }
+          .hv:not([data-view='shared']) .hv-part-shared { display: none; }
+          .hv-greet { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; letter-spacing: -0.015em; line-height: var(--lh-display); color: ${C.inkSoft}; margin: 0; }
+          .hv-section { margin-top: var(--gap-section); }
+          .hv-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
+          .hv-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
+          .hv-filter { display: inline-flex; align-items: center; gap: var(--s-2); margin-left: auto; font-size: var(--t-body-2); color: ${C.inkSoft}; }
+          .hv-quiet { font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); margin: 0; }
+          .hv-rented { margin-top: var(--gap-section); }
+          .hv-h3 { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; margin: 0; }
+          .hv-part-shared :global([data-shared-with-me]) { margin-top: 0; }
+          .dash-brand { margin-top: var(--gap-section); max-width: 720px; }
+        }
+        @media (min-width: 1280px) {
+          .hv { padding-left: var(--s-6); padding-right: var(--s-6); }
+          .hv-cols { grid-template-columns: minmax(0, 1fr) 320px; column-gap: var(--s-5); align-items: start; }
+          .hv-aside { position: sticky; top: var(--s-4); }
+        }
+        @media (min-width: 1600px) { .hv-cols { grid-template-columns: minmax(0, 1fr) 360px; column-gap: var(--s-6); } }
       `}</style>
     </>
   );

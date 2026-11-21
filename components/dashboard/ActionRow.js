@@ -88,7 +88,7 @@ export function ActionRows({ items, onGo, onDismiss, tone = 'paper', dismissable
   if (!rows.length) {
     return (
       <p className="al-empty" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, fontSize: 'var(--t-body)', color: p.text, fontWeight: 600, lineHeight: 'var(--lh-body)', margin: 0 }}>
-        <Icon name="check" size={16} color={C.red} strokeWidth={2.5} /> Nothing waiting on you.
+        <Icon name="check" size={16} color={C.ink} strokeWidth={2.5} /> Nothing waiting on you.
       </p>
     );
   }

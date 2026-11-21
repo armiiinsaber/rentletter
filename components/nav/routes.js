@@ -225,6 +225,15 @@ export function go(href, { back = null, replace = false } = {}) {
   if (replace) Router.replace(target); else Router.push(target);
 }
 
+// Another view of the screen on view (the dashboard's Listings, Pipeline and Shared with you): the
+// address changes through the router with no data request and no transition (the frame skips a
+// shallow change on the same screen, components/nav/RouteFrame.js), and the page keeps its scroll.
+export function goView(href) {
+  if (typeof window === 'undefined') return;
+  const u = parse(href); if (!u) return;
+  Router.push(u.pathname + u.search + u.hash, undefined, { shallow: true, scroll: false });
+}
+
 // Props for anything that takes the realtor to a realtor screen: a real link (it still opens in a
 // new tab, and works before the script loads), routed through go() on a plain tap, and prefetched
 // on the touch or press that starts the tap.

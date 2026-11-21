@@ -54,7 +54,8 @@ test('every pill reads at 4.5 or better on its own background', async () => {
   assert.match(ui, /height: 28px; max-width: 100%; padding: 0 12px;\s*border-radius: 999px;/);
   // The transparent pill sits on the ink surfaces that use tone="ink": the Pipeline and welcome
   // cards (C.inst) and the tenant's applying banner (.mp-ink, C.ink).
-  assert.match(src('components/dashboard/PeopleList.js'), /id="people"[^>]*background: C\.inst\b/);
+  // The Pipeline card is a white card now (one dark block a view at most: the greeting's on a phone).
+  assert.match(src('components/dashboard/PeopleList.js'), /id="people"[^>]*background: C\.card\b/);
   assert.match(src('components/dashboard/HomeView.js'), /className="dash-ink"[^>]*background: C\.inst\b/);
   assert.match(src('components/tenant/ProfileFacts.js'), /\.mp-ink \{ background: \$\{C\.ink\};/);
   const rows = [

@@ -50,6 +50,8 @@ import { isStandalone } from '../../lib/standalone';
 // Tenant and landlord pages: no press feedback, no motion.
 export const QUIET = /^\/(apply|upload|my-application|keep|ref|refer|a|r)(\/|$)/;
 const samePath = (a, b) => { const x = routeOf(a); const y = routeOf(b); return !!x && !!y && x.path === y.path; };
+// The same screen with another view of it: the same route, and in the sandbox the same view.
+const sameScreen = (a, b) => { const x = routeOf(a); const y = routeOf(b); return !!x && !!y && x.kind === y.kind && x.demo === y.demo && x.listingId === y.listingId && x.path.split('?')[0] === y.path.split('?')[0]; };
 // Every view transition goes through here. Its ready promise rejects when it is skipped before it
 // animates (a tap during it, or the next navigation's transition), and its finished promise when
 // its update fails: neither is an error of the page, so both are handled, and `after` runs once it
@@ -90,6 +92,9 @@ export default function RouteFrame({ children }) {
     // The pill: the same screen again, in place, with the watch from the start.
     retryRoute.current = (url) => { retrying = { url, round: 1 }; Router.replace(url, undefined, { scroll: false }); };
     const start = (url, opts = {}) => {
+      // A view of the same screen chosen in place (components/nav/routes.js goView: Listings,
+      // Pipeline and Shared with you on the dashboard): no transition, no Loader, nothing moves.
+      if (opts.shallow && sameScreen(at.current, url)) return;
       markNavStart();
       const from = routeOf(at.current); const to = routeOf(url);
       if (!from || !to || QUIET.test(window.location.pathname)) return;

@@ -11,18 +11,29 @@ import { dateLong, noWidow } from '../../lib/typeset';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import SharedProfile from './SharedProfile';
 
+// What the list last read, for the dashboard's Needs you column and its Shared with you view
+// (components/dashboard/HomeView.js): null until read, then the shares. One read, here.
+let held = null; const listeners = new Set();
+const publish = (list) => { held = list; for (const l of listeners) l(held); };
+export function useSharedWithMe() {
+  const [shares, setShares] = useState(held);
+  useEffect(() => { listeners.add(setShares); setShares(held); return () => { listeners.delete(setShares); }; }, []);
+  return shares;
+}
+
 export default function SharedWithMe() {
   const adapter = useAdapter();
   const [shares, setShares] = useState(null);
   useEffect(() => {
-    if (adapter.kind !== 'real') return undefined;
+    if (adapter.kind !== 'real') { publish([]); return undefined; }
     let live = true;
     (async () => {
       try {
         const r = await adapter.fetch('/api/profile-shares/shared-with-me', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'list' }) });
         const j = await r.json().catch(() => ({}));
-        if (live && r.ok && j && j.available && Array.isArray(j.shares)) setShares(j.shares);
-      } catch (e) { /* the section stays out of the page */ }
+        if (live && r.ok && j && j.available && Array.isArray(j.shares)) { setShares(j.shares); publish(j.shares); }
+        else if (live) publish([]);
+      } catch (e) { if (live) publish([]); /* the section stays out of the page */ }
     })();
     return () => { live = false; };
   }, [adapter]);

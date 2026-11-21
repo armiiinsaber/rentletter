@@ -111,13 +111,13 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
         }
 
         /* ── Instant (motion-independent) states: colour + focus ring, safe for reduced-motion ── */
-        .rl-hdr-avatar:hover { box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px rgba(215, 32, 39, 0.32); }
-        .rl-hdr-avatar:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.red}; }
+        .rl-hdr-avatar:hover { box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px rgba(15, 15, 16, 0.18); }
+        .rl-hdr-avatar:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         /* Bell: halo + focus ring drawn on its own button via box-shadow only — no transform, so
            the dropdown's measured position is never affected. */
         .rl-hdr-bellwrap :global(button) { border-radius: 50%; }
         .rl-hdr-bellwrap :global(button):hover { box-shadow: 0 0 0 4px rgba(15, 15, 16, 0.05); }
-        .rl-hdr-bellwrap :global(button):focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.red}; }
+        .rl-hdr-bellwrap :global(button):focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
 
         /* No movement of its own: the press is the shared one (lib/motion.js installPress). */
         }

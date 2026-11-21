@@ -1,5 +1,5 @@
 // The Rentletter logo in the realtor dashboard, tapped for real in WebKit and in Chrome, each at 390
-// by 844 with an iPhone user agent and at 1440 by 900 with a mouse, on the sandbox:
+// by 844 with an iPhone user agent and at 1440 by 620 with a mouse (short enough that Listings scrolls), on the sandbox:
 //   a. from a listing, the profile and the Circle it lands on the Listings view;
 //   b. on Listings, scrolled down, it scrolls smoothly to the top with no route change and no reload;
 //   c. on Listings at the top it does nothing: no route change, no reload, no transition, no
@@ -54,6 +54,13 @@ async function walk(browserType, launch, viewport, phone) {
   const ctx = await browser.newContext(phone ? { viewport, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const press = (l) => (phone ? l.tap() : l.click());
+  // A press where the logo is on screen now, with nothing scrolled first: Playwright's own tap and
+  // click scroll their target into view, which on Listings would be the very scroll under test.
+  const pressInPlace = async () => {
+    const r = await page.evaluate((sel) => { const el = [...document.querySelectorAll(sel.replace(':visible', ''))].find((e) => e.getClientRects().length); const b = el.getBoundingClientRect(); const top = Math.max(b.top, 0); return { x: b.left + b.width / 2, y: top + (Math.min(b.bottom, window.innerHeight) - top) / 2, shown: b.bottom - top }; }, LOGO);
+    assert.ok(r.shown >= 4, `the logo is on screen where it is pressed (${JSON.stringify(r)})`);
+    if (phone) await page.touchscreen.tap(r.x, r.y); else await page.mouse.click(r.x, r.y);
+  };
   try {
     // c. Listings at the top: the logo does nothing at all.
     await page.goto(HOME, { waitUntil: 'networkidle' });
@@ -61,7 +68,7 @@ async function walk(browserType, launch, viewport, phone) {
     await page.waitForTimeout(600);
     assert.equal(await page.evaluate(() => window.scrollY), 0, 'the walk starts at the top');
     const marker = await page.evaluate(WATCH);
-    await press(page.locator(LOGO).first());
+    await pressInPlace();
     await page.waitForTimeout(1200);
     const c = await page.evaluate(READ);
     assert.ok(c, 'c: the page is the same page (no reload)');
@@ -74,14 +81,16 @@ async function walk(browserType, launch, viewport, phone) {
     assert.equal(c.requests, 0, 'c: no request');
     assert.equal(c.url, '/demo/dashboard', 'c: the address is unchanged');
 
-    // b. Listings scrolled down: a smooth scroll to the top, nothing else.
+    // b. Listings scrolled down: a smooth scroll to the top, nothing else. On a desktop the sidebar's
+    // logo stays on screen however far down the page is; on a phone the header scrolls away with
+    // the page, so the logo can be pressed only while some of it still shows.
     const height = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
     assert.ok(height > 200, `b: the page is tall enough to scroll (${height})`);
-    const from = Math.min(height, 900);
+    const from = phone ? 40 : Math.min(height, 900);
     await page.evaluate((y) => window.scrollTo({ top: y, left: 0, behavior: 'instant' }), from);
     await page.waitForTimeout(400);
     const marker2 = await page.evaluate(WATCH);
-    await press(page.locator(LOGO).first());
+    await pressInPlace();
     await page.waitForFunction(() => window.scrollY === 0, null, { timeout: 5000 });
     await page.waitForTimeout(300);
     const b = await page.evaluate(READ);
@@ -90,8 +99,8 @@ async function walk(browserType, launch, viewport, phone) {
     assert.equal(b.transitions, 0, 'b: no view transition');
     assert.equal(b.nav, 0, 'b: the frame never marked a navigation');
     assert.equal(b.url, '/demo/dashboard', 'b: the address is unchanged');
-    const between = b.ys.filter((y) => y > 0 && y < from - 2);
-    assert.ok(between.length >= 2, `b: the scroll passed through the positions between, smoothly (${[...new Set(b.ys)].slice(0, 12).join(', ')})`);
+    const between = b.ys.filter((y) => y > 0 && y < from - 1);
+    assert.ok(between.length >= (phone ? 1 : 2), `b: the scroll passed through the positions between, smoothly (${[...new Set(b.ys)].slice(0, 12).join(', ')})`);
     assert.equal(b.ys[b.ys.length - 1], 0, 'b: it ends at the top');
 
     // a. Any other view: the logo lands on Listings.
@@ -109,13 +118,13 @@ async function walk(browserType, launch, viewport, phone) {
   } finally { await browser.close(); }
 }
 
-test('the logo in WebKit at 390 by 844 with an iPhone user agent, and at 1440 by 900: a, b and c', async () => {
+test('the logo in WebKit at 390 by 844 with an iPhone user agent, and at 1440 by 620: a, b and c', async () => {
   requireWebkit(); // fails with the install line when the binary is missing, never skips
   await walk(pw.webkit, {}, { width: 390, height: 844 }, true);
-  await walk(pw.webkit, {}, { width: 1440, height: 900 }, false);
+  await walk(pw.webkit, {}, { width: 1440, height: 620 }, false);
 });
 
 test('the same logo walk in Chrome at 390 and at 1440', { skip: haveChrome ? false : 'Chrome binary absent' }, async () => {
   await walk(pw.chromium, { executablePath: chromeBin }, { width: 390, height: 844 }, true);
-  await walk(pw.chromium, { executablePath: chromeBin }, { width: 1440, height: 900 }, false);
+  await walk(pw.chromium, { executablePath: chromeBin }, { width: 1440, height: 620 }, false);
 });

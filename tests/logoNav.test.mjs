@@ -36,5 +36,5 @@ test('c. on Listings at the top it does nothing', () => {
   assert.doesNotMatch(header, /linkProps\(adapter\.paths\.home\)/);
   const nav = src('components/dashboard/logoNav.js');
   assert.match(nav, /e\.preventDefault\(\);\s*const act = logoAction/);
-  assert.match(nav, /if \(act === 'go'\) \{ go\(home\); return; \}/);
+  assert.match(nav, /if \(act === 'go'\) \{ if \(onDashboard\(here\(\)\)\) goView\(home\); else go\(home\); return; \}/, 'another view of the dashboard is chosen in place');
 });

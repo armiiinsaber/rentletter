@@ -135,7 +135,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
                 {g.items.map((e) => { const u = unread(e); return (
                   <li key={e.id} className={entering[e.id] ? 'm-tl-enter' : ''}>
                     <button type="button" onClick={() => goEvent(e)} style={{ width: '100%', textAlign: 'left', display: 'flex', gap: 'var(--s-2)', alignItems: 'flex-start', padding: 'var(--s-2) var(--s-1)', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.rule}`, cursor: 'pointer', minHeight: 44 }}>
-                      <span aria-hidden="true" style={{ marginTop: 'var(--s-2)', width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: u ? C.red : C.rule }} />
+                      <span aria-hidden="true" style={{ marginTop: 'var(--s-2)', width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: u ? C.ink : C.rule }} />
                       <span style={{ minWidth: 0, flex: 1 }}>
                         <span style={{ display: 'block', fontSize: 'var(--t-body)', color: C.ink, fontWeight: u ? 700 : 500, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere', textWrap: 'balance' }}>{eventTitle(e)}</span>
                         <span style={{ display: 'block', fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-1)' }}>{timeOf(e.created_at)}</span>

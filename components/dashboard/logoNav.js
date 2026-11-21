@@ -8,7 +8,7 @@
 // It used to be a plain link to the dashboard, so on the dashboard a tap pushed the same route:
 // the router ran, the frame (components/nav/RouteFrame.js) started a push transition, and the
 // screen slid in and came back to the same page.
-import { routeOf, go, prefetch } from '../nav/routes';
+import { routeOf, go, goView, prefetch } from '../nav/routes';
 import { prefersReducedMotion } from '../../lib/motion';
 
 // The Listings view: the dashboard (or the sandbox's) with no other view chosen.
@@ -29,6 +29,9 @@ export function logoAction({ onListings, scrollY }) {
 }
 
 const here = () => (typeof window === 'undefined' ? '' : window.location.pathname + window.location.search);
+// The dashboard itself, on any of its views (components/dashboard/DashShell.js): Listings is then
+// another view of the same screen, chosen in place.
+const onDashboard = (href) => { const r = routeOf(href); return !!r && (r.kind === 'dashboard' || (r.kind === 'demo' && r.demo === 'dashboard')); };
 
 // Props for the logo link. It stays a real link to the dashboard, so it works before the script
 // loads and opens in a new tab with a modifier key.
@@ -39,7 +42,7 @@ export function logoProps(home) {
       if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       e.preventDefault();
       const act = logoAction({ onListings: onListingsView(here()), scrollY: window.scrollY });
-      if (act === 'go') { go(home); return; }
+      if (act === 'go') { if (onDashboard(here())) goView(home); else go(home); return; }
       if (act === 'top') window.scrollTo({ top: 0, left: 0, behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
     },
     onPointerDown: () => { if (!onListingsView(here())) prefetch(home); },

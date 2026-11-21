@@ -120,7 +120,7 @@ const AUDIT = () => {
 
 // Where the task names a pill row, it is there.
 const NAMED = [
-  { screen: 'dashboard', rows: [['.dash-grid .rl-pills', 'the dashboard listing cards'], ['#people .rl-pills.rl-pills-ink', 'the Pipeline card']] },
+  { screen: 'dashboard', rows: [['.dash-grid .rl-pills', 'the dashboard listing cards'], ['#people .rl-pills', 'the Pipeline card']] },
   { screen: 'listing', rows: [['section:has(h1) .rl-pills', 'the listing header card'], ['[id^="applicant-"] .rl-pills', 'the applicant cards']] },
   { screen: 'landlord report', rows: [['main .rl-pills', 'the landlord report']] },
   { screen: 'my application', rows: [['.mp-wrap .rl-pills', 'the tenant application page']] },

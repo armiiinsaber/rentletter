@@ -9,7 +9,7 @@ import { GlobalStyle, Icon } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { linkProps, rememberProfile, rememberScreenView, useTakeOver } from '../nav/routes';
 import { C, R } from '../theme';
-import DashboardHeader from './DashboardHeader';
+import DashShell from './DashShell';
 import ProfileEditorBody from './ProfileEditorBody';
 import InviteRealtor from './InviteRealtor';
 
@@ -34,7 +34,7 @@ export default function ProfileView({ initialProfile }) {
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
-        <DashboardHeader profile={profile} />
+        <DashShell profile={profile} current="profile">
         <div style={{ maxWidth: 720, margin: '0 auto', padding: 'var(--gap-section) var(--s-4) 64px' }}>
           {/* The same row the listing page carries at its top. */}
           <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none' }}>
@@ -53,6 +53,7 @@ export default function ProfileView({ initialProfile }) {
             <button type="button" onClick={signOut} style={{ minHeight: 44, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', border: `1.5px solid ${C.ink}`, background: 'transparent', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Sign out</button>
           </div>
         </div>
+        </DashShell>
       </div>
     </>
   );

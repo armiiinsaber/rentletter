@@ -150,7 +150,9 @@ test('the wiring: installed once for every page, every destructive control marke
 
 test('Pipeline: Applied is a status pill, Remove a 44px quiet control, the header opens and closes', () => {
   const s = src('components/dashboard/PeopleList.js');
-  assert.match(s, /items=\{\[fitText\(f\), f\.listingName, f\.applied \? 'Applied' : null\]\}/);
+  // Applied, Invited and Waiting for their yes are each a status pill; only Invite is a button.
+  assert.match(s, /items=\{\[fitText\(f\), f\.listingName, f\.applied \? 'Applied' : f\.invitedAt \? `Invited \$\{shortDate\(f\.invitedAt\)\}` : pending\(p\) \? 'Waiting for their yes' : null\]\}/);
+  assert.doesNotMatch(s, /<button type="button" disabled/, 'no status drawn as a disabled control');
   assert.doesNotMatch(s, />Applied<\/span>/, 'no longer a control lookalike');
   assert.match(s, /<button type="button" data-destructive="" onClick=\{\(\) => setConfirm\(p\)\} style=\{\{ display: 'inline-flex', alignItems: 'center', minHeight: 44, minWidth: 44,/);
   assert.match(s, /data-tap-card=\{rows\.length \? '' : undefined\}/);

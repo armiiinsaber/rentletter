@@ -8,7 +8,7 @@ import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, TickMeter, ConfirmSheet, StatusPills, StackedLines } from '../../components/ui';
 import { isStandalone } from '../../lib/standalone';
 import { C, R, SH } from '../../components/theme';
-import DashboardHeader from '../../components/dashboard/DashboardHeader';
+import DashShell from './DashShell';
 import Sheet from '../Sheet';
 import { go, linkProps, takeWarm, forgetWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
 import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
@@ -1202,7 +1202,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <GlobalStyle />
       <MotionStyles />
       <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
-        <DashboardHeader profile={profile} onAssistantAction={onNoticeAction} />
+        {/* The shell (components/dashboard/DashShell.js): a listing has red actions of its own, so New listing is outlined here. */}
+        <DashShell profile={profile} onAssistantAction={onNoticeAction} current="listings" newPrimary={false} locked={locked}>
 
         {locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: '0 var(--page-gutter)' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
         {!locked && <div style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) var(--page-gutter) var(--s-7)' }}>
@@ -1638,6 +1639,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </div>
         ) : null}
       </Sheet>
+      </DashShell>
       </div>
       <DocumentViewer doc={viewer} onClose={() => setViewer(null)} />
       {/* A quick action that failed on the server: the screen already went back; this says so,
