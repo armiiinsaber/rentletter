@@ -8,7 +8,9 @@
 // Listings, Pipeline and Shared with you are views of the dashboard (?view=pipeline, ?view=shared):
 // between them the address changes in place (components/nav/routes.js goView) with no data request
 // and no transition. Circle and Profile are their own screens. Both layouts are in the markup and
-// the width picks one in CSS, so the server's HTML is the first paint at any width.
+// the width picks one in CSS, so the server's HTML is the first paint at any width. The main column
+// comes first in the page and the grid sets the sidebar to its left: on a phone the header's
+// wordmark is the first in the page, as it always was.
 // locked (the soft paywall): the sidebar keeps only the logo, as the header does today.
 // newPrimary: whether New listing is the one red action of this view. A view with a red action of
 // its own (a listing) passes false and the button is outlined.
@@ -50,6 +52,10 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
   const newListing = (e) => { if (onNewListing) onNewListing(e); else go(`${home}${home.includes('?') ? '&' : '?'}new=1`); };
   return (
     <div className="ds" data-shell="">
+      <div className="ds-main">
+        <DashboardHeader profile={profile} signals={signals} onAssistantAction={onAssistantAction} nav={nav} />
+        {children}
+      </div>
       <aside className="ds-side" data-shell-side="">
         {/* The same 44px wordmark link as the header's (.rl-mark); on a phone it is hidden with the
             sidebar and the header's is the one on screen. */}
@@ -70,16 +76,13 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           </nav>
         )}
       </aside>
-      <div className="ds-main">
-        <DashboardHeader profile={profile} signals={signals} onAssistantAction={onAssistantAction} nav={nav} />
-        {children}
-      </div>
       <style jsx>{`
         .ds-side { display: none; }
         .ds-main { min-width: 0; }
         @media (min-width: 1024px) {
-          .ds { display: grid; grid-template-columns: 240px minmax(0, 1fr); align-items: start; max-width: 1800px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; }
-          .ds-side { display: flex; flex-direction: column; gap: var(--s-5); position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; padding: var(--s-5) var(--s-4); background: ${C.paperDeep}; border-right: 1px solid ${C.rule}; }
+          .ds { display: grid; grid-template-columns: 240px minmax(0, 1fr); grid-template-areas: 'side main'; align-items: start; max-width: 1800px; margin: 0 auto; min-height: 100vh; min-height: 100dvh; }
+          .ds-main { grid-area: main; }
+          .ds-side { grid-area: side; display: flex; flex-direction: column; gap: var(--s-5); position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; padding: var(--s-5) var(--s-4); background: ${C.paperDeep}; border-right: 1px solid ${C.rule}; }
           .ds-logo { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-2); text-decoration: none; color: inherit; }
           .ds-nav { display: flex; flex-direction: column; gap: var(--s-1); }
           .ds-place { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); min-height: 44px; padding: 0 var(--s-3); border-radius: var(--btn-radius); border: 1px solid transparent; color: ${C.inkSoft}; font-size: var(--t-body-2); font-weight: 600; text-decoration: none; white-space: nowrap; }

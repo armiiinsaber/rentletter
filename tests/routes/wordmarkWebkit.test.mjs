@@ -26,8 +26,7 @@ after(() => server.stop(), { timeout: STOP_TIMEOUT });
 const warm = () => Promise.all(['/', '/demo/dashboard', '/demo/dashboard?profile=1', '/demo/dashboard?listing=demo-carlaw', '/apply/demo0000000000000001'].map((u) => fetch(`${BASE}${u}`).catch(() => null)));
 
 const markBox = (page) => page.evaluate(() => {
-  // The one on screen: a realtor page carries the header's and the desktop sidebar's (hidden on a phone).
-  const a = [...document.querySelectorAll('a.rl-mark')].find((e) => e.getClientRects().length);
+  const a = document.querySelector('a.rl-mark');
   if (!a) return null;
   const r = a.getBoundingClientRect();
   return { href: a.getAttribute('href'), height: Math.round(r.height), width: Math.round(r.width) };
@@ -61,7 +60,7 @@ async function walk(browserType, launch, tag) {
 
     // 2. A listing page: the wordmark is the way back to the dashboard.
     await page.goto(`${BASE}/demo/dashboard?listing=demo-carlaw`, { waitUntil: 'networkidle' });
-    await page.locator('a.rl-mark:visible').first().waitFor({ timeout: 30000 });
+    await page.locator('a.rl-mark').first().waitFor({ timeout: 30000 });
     const listingMark = await markBox(page);
     assert.equal(listingMark.href, '/demo/dashboard', 'the realtor wordmark points at the dashboard');
     assert.ok(listingMark.height >= 44, `a 44px tap target (${JSON.stringify(listingMark)})`);
@@ -69,11 +68,11 @@ async function walk(browserType, launch, tag) {
     // Under parallel walks the dev server can reload the page as it drops an idle route, and a tap
     // that lands inside that reload is lost: the tap is made once more before the walk gives up.
     const onDashboard = (u) => u.pathname === '/demo/dashboard' && !u.searchParams.has('listing');
-    await page.locator('a.rl-mark:visible').first().tap();
+    await page.locator('a.rl-mark').first().tap();
     try { await page.waitForURL(onDashboard, { timeout: 10000 }); }
     catch (e) {
-      await page.locator('a.rl-mark:visible').first().waitFor({ timeout: 30000 });
-      await page.locator('a.rl-mark:visible').first().tap();
+      await page.locator('a.rl-mark').first().waitFor({ timeout: 30000 });
+      await page.locator('a.rl-mark').first().tap();
       await page.waitForURL(onDashboard, { timeout: 30000 });
     }
     await page.locator('.dash-ink').waitFor({ timeout: 30000 });

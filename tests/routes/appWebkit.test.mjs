@@ -85,7 +85,7 @@ async function standaloneWays(browser, tag) {
     await open(page, DEMO);
     assert.equal(await page.evaluate(() => navigator.standalone), true);
     assert.equal(await page.locator('[data-install-hint]').count(), 0, `${tag}: no hint in the installed app`);
-    const mark = page.locator('a.rl-mark:visible').first(); // the header's: the desktop sidebar's is hidden on a phone
+    const mark = page.locator('a.rl-mark').first();
     assert.equal(await mark.getAttribute('href'), DEMO, `${tag}: the header logo goes home`);
     assert.ok((await mark.boundingBox()).height >= 44, `${tag}: the header logo is a 44px target`);
     await way('dashboard: a listing card, forward', async () => { await tap(page, page.locator('[role=link][aria-label*="Carlaw"]')); assert.match(path(page), /listing=demo-carlaw/); });
