@@ -1,5 +1,5 @@
 // The realtor's Listings on the real pages over the fake stack (tests/helpers/fakeNextServer.mjs on
-// 3181), in WebKit and in Chrome:
+// 3153), in WebKit and in Chrome:
 //   the empty dashboard (no listing yet): one heading, one line, New listing right there and three
 //   steps; on a phone at 390 by 844 all of it on one screen with nothing to scroll and the greeting
 //   and the button together; at 1440 the start fills the main area beside Needs you's empty line,
@@ -29,7 +29,9 @@ import { reap } from '../helpers/reap.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const ROOT = new URL('../..', import.meta.url).pathname;
-const S = { port: 3181 };
+// The port, and so the compiled dev folder (.next-fake-3153), of tests/routes/tapsWebkit.test.mjs:
+// the walks take turns, so the two servers never run at once and the second compiles little.
+const S = { port: 3153 };
 // The office walk signs in with a password made up for this run.
 const OFFICE = randomBytes(18).toString('hex');
 const BASE = `http://localhost:${S.port}`;

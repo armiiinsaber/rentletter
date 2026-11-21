@@ -107,7 +107,7 @@ async function standaloneWays(browser, tag) {
     });
     await way('delete sheet: Keep it', async () => { await tap(page, page.getByRole('button', { name: /Delete listing/ })); await tap(page, page.locator('[role=alertdialog]').getByRole('button', { name: /Keep it|Cancel/ })); assert.equal(await page.locator('[role=alertdialog]').count(), 0); });
     await open(page, DEMO);
-    await way('new listing: Cancel', async () => { await tap(page, page.getByRole('button', { name: /New listing|Add your first listing/ })); await tap(page, page.getByRole('button', { name: /^Cancel$/ })); assert.equal(await page.getByText('New listing', { exact: true }).count() <= 1, true); });
+    await way('new listing: Cancel', async () => { await tap(page, page.getByRole('button', { name: /New listing|Add your first listing/ })); await tap(page, page.getByRole('button', { name: /^Cancel$/ })); assert.equal(await page.getByText('New listing', { exact: true }).filter({ visible: true }).count() <= 1, true); });
     await way('the bell panel: Close', async () => { await tap(page, page.getByRole('button', { name: /^Next,/ })); await tap(page, page.locator('[role=dialog]').getByRole('button', { name: 'Close' })); assert.equal(await page.locator('[role=dialog]').count(), 0); });
     await way('profile: Dashboard, back', async () => { await tap(page, page.getByRole('link', { name: 'Your profile' })); assert.match(path(page), /profile=1/); await tap(page, page.getByRole('link', { name: /^Dashboard$/ })); assert.equal(path(page), DEMO); });
     await open(page, '/signin');
