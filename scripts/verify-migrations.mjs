@@ -59,6 +59,7 @@ const FILES = {
   m022: 'db/022-full-tenant-profile.sql',
   m023: 'db/023-photo-log-actions.sql',
   m024: 'db/024-share-roles.sql',
+  m025: 'db/025-listing-archive.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -1110,6 +1111,46 @@ async function run024(db, tag) {
   check((await one(db, 'SELECT count(*)::int FROM public.profile_shares WHERE tenant_profile_id = $1', [SR])) === 0 && (await one(db, 'SELECT count(*)::int FROM public.profile_share_invites WHERE tenant_profile_id = $1', [SR])) === 0, `${tag}2: removing the profile removes its shares and its invites`);
 }
 
+// ── db/025-listing-archive.sql ─────────────────────────────────────────────────────────────
+// listings gains archived_at, nullable timestamptz with no default. Run with the listings in place,
+// then again: the column is that and nothing more, every listing keeps every value and reads as
+// not archived, a time is written and cleared, and the policies, row level security, indexes,
+// constraints and triggers of listings are exactly what they were. A second run changes nothing.
+const archiveCatalog = (db) => rows(db, "SELECT column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' ORDER BY ordinal_position");
+const listingsGuard = async (db) => ({
+  policies: await rows(db, "SELECT policyname, cmd, qual, with_check FROM pg_policies WHERE schemaname = 'public' AND tablename = 'listings' ORDER BY 1"),
+  rls: await one(db, "SELECT relrowsecurity FROM pg_class WHERE oid = 'public.listings'::regclass"),
+  indexes: await rows(db, "SELECT indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'listings' ORDER BY 1"),
+  constraints: await rows(db, "SELECT conname, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conrelid = 'public.listings'::regclass ORDER BY 1"),
+  triggers: await rows(db, "SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.listings'::regclass AND NOT tgisinternal ORDER BY 1"),
+});
+async function run025(db, tag) {
+  const before = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
+  const guard = await listingsGuard(db); const shape0 = await archiveCatalog(db);
+  check(before.length > 0, `${tag}0: listings are in place before the file`);
+  await step(db, `${tag}1`, FILES.m025);
+  const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'listings' AND column_name = 'archived_at'"))[0];
+  check(col && col.data_type === 'timestamp with time zone' && col.is_nullable === 'YES' && col.column_default === null, `${tag}1: listings.archived_at is a nullable timestamptz with no default`, JSON.stringify(col));
+  check(same((await archiveCatalog(db)).filter((c) => c.column_name !== 'archived_at'), shape0), `${tag}1: it is the only column added, and no other column changed`);
+  check(same((await rows(db, 'SELECT * FROM public.listings ORDER BY id')).map(({ archived_at, ...r }) => r), before), `${tag}1: every listing keeps every value`);
+  check((await one(db, 'SELECT count(*)::int FROM public.listings WHERE archived_at IS NOT NULL')) === 0, `${tag}1: and reads as not archived`);
+  check(same(await listingsGuard(db), guard), `${tag}1: the policies, row level security, indexes, constraints and triggers of listings are as they were`);
+  const id = before[0].id;
+  await db.query('UPDATE public.listings SET archived_at = now() WHERE id = $1', [id]);
+  check((await one(db, 'SELECT archived_at IS NOT NULL FROM public.listings WHERE id = $1', [id])) === true, `${tag}1: a listing is archived`);
+  await db.query('UPDATE public.listings SET archived_at = NULL WHERE id = $1', [id]);
+  check((await one(db, 'SELECT archived_at IS NULL FROM public.listings WHERE id = $1', [id])) === true, `${tag}1: and restored`);
+  // Again: nothing changes.
+  const shape = await archiveCatalog(db); const held = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
+  await db.query('UPDATE public.listings SET archived_at = $2 WHERE id = $1', [id, '2026-11-21T15:00:00Z']);
+  const archived = await rows(db, 'SELECT * FROM public.listings ORDER BY id');
+  await step(db, `${tag}2 (025 again)`, FILES.m025);
+  check(same(await archiveCatalog(db), shape) && same(await listingsGuard(db), guard), `${tag}2: a second run leaves every column, policy, index, constraint and trigger as they were`);
+  check(same(await rows(db, 'SELECT * FROM public.listings ORDER BY id'), archived), `${tag}2: and every listing, an archived one too`);
+  await db.query('UPDATE public.listings SET archived_at = NULL WHERE id = $1', [id]);
+  check(same(await rows(db, 'SELECT * FROM public.listings ORDER BY id'), held), `${tag}2: this check's own archive is undone`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -1218,6 +1259,7 @@ async function pathA() {
   await run022(db, 'A18');
   await run023(db, 'A19');
   await run024(db, 'A20');
+  await run025(db, 'A21');
   await db.close();
 }
 
@@ -1386,6 +1428,7 @@ async function pathB() {
   await run022(db, 'B24');
   await run023(db, 'B25');
   await run024(db, 'B26');
+  await run025(db, 'B27');
   return { db, before };
 }
 

@@ -97,7 +97,7 @@ test('the visual rules: red only for the main action, one dark block, statuses a
   assert.doesNotMatch(code('components/dashboard/MainNav.js'), /\.mn-badge\) \{[^}]*background/, 'the Circle count is a plain number');
   assert.doesNotMatch(code('components/dashboard/PeopleList.js'), /<button type="button" disabled/, 'no status drawn as a button');
   // Every dashboard button: one height, one radius, one padding.
-  assert.match(code('components/dashboard/DashShell.js'), /\.ds :global\(\.ds-btn\) \{ display: inline-flex;[^}]*min-height: 44px; padding: 0 var\(--gap-card\); border-radius: var\(--btn-radius\);/);
+  assert.match(code('components/dashboard/DashShell.js'), /:global\(\.ds-btn\) \{ display: inline-flex;[^}]*min-height: 44px; padding: 0 var\(--gap-card\); border-radius: var\(--btn-radius\);/);
   assert.match(code('components/dashboard/HomeView.js'), /\.dash-new \{ width: 100%; min-height: 44px;[^\n]*border-radius: var\(--btn-radius\); padding: 0 var\(--gap-card\);/);
   // Motion: only transform and opacity, behind the reduced motion query.
   for (const f of ['components/dashboard/NeedsYou.js', 'components/dashboard/ListingsTable.js']) {

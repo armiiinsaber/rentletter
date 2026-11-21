@@ -39,7 +39,24 @@ import Loader, { Pending, ScreenLoader } from '../../components/brand/Loader';
 // or expired token renders the ordinary empty form. The first open claims the token into a cookie
 // scoped to this path (48 hours); it is deleted after the submission (/api/pipeline/prefill). The
 // sandbox token demoprefill fills from the fixture.
+// An archived listing (db/025-listing-archive.sql) takes no applications: its link says so on a
+// short page of its own and shows no form. Read on the server through the service role, the
+// archived time alone (lib/listingArchive.js archivedByInvite); before db/025 has run, or on any
+// error, the link opens as it always has.
+async function listingArchived(ctx) {
+  const token = String(ctx.params?.token || '');
+  if (!/^[a-f0-9]{20}$/.test(token)) return false;
+  try {
+    const { isSupabaseConfigured } = await import('../../lib/supabase/server');
+    if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) return false;
+    const { getSupabaseAdminClient } = await import('../../lib/supabase/admin');
+    const { archivedByInvite } = await import('../../lib/listingArchive');
+    return await archivedByInvite(getSupabaseAdminClient(), token);
+  } catch (e) { return false; }
+}
+
 export async function getServerSideProps(ctx) {
+  if (await listingArchived(ctx)) return { props: { invited: null, archived: true } };
   const from = String(ctx.query?.from || '');
   if (!from) return { props: { invited: null } };
   try {
@@ -102,12 +119,12 @@ const STEPS = [
   { id: 'review', title: 'Review', keys: [] },
 ];
 
-export default function ApplyPage({ invited = null }) {
+export default function ApplyPage({ invited = null, archived = false }) {
   const router = useRouter();
-  // status: 'loading' | 'invalid' | 'ready' | 'submitting' | 'saving' | 'done'
+  // status: 'loading' | 'invalid' | 'archived' | 'ready' | 'submitting' | 'saving' | 'done'
   // saving: the number exists and the tag and mirror are on their way (lib/submitChain.js); the
   // done page shows only once the mirror answered. saveHeld: every try failed, Try again shows.
-  const [status, setStatus] = useState('loading');
+  const [status, setStatus] = useState(archived ? 'archived' : 'loading');
   const [saveHeld, setSaveHeld] = useState(false);
   // The single use ticket the server handed over when the form was filled from somewhere
   // (lib/prefillRecord.js): sent with the submission, so the record of where the answers came from
@@ -342,7 +359,7 @@ export default function ApplyPage({ invited = null }) {
 
   // Resolve the invite token once the router has the param.
   useEffect(() => {
-    if (!router.isReady) return;
+    if (!router.isReady || archived) return;
     const token = String(router.query.token || '');
     // Sandbox tokens (demo…) are answered by the resolver without an invite record.
     if (!/^[a-f0-9]{20}$/.test(token) && !/^demo\d{16}$/.test(token)) {
@@ -761,6 +778,13 @@ export default function ApplyPage({ invited = null }) {
                   <p className="mp-note">{noWidow('No account is created. Once you confirm from your email, it is kept for 60 days for this purpose only.')}</p>
                 </form>
               )}
+            </div>
+          )}
+
+          {status === 'archived' && (
+            <div className="rl-card mp-card" data-apply-archived="">
+              <h1 className="mp-h1">{noWidow('This listing is no longer taking applications.')}</h1>
+              <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Ask the realtor who sent you the link about their other listings.')}</p>
             </div>
           )}
 

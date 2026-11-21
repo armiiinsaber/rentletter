@@ -52,6 +52,7 @@ const EXPECTED_ROUTES = [
   'pages/api/applications/mirror.js',
   'pages/api/listings/add-applicant.js',
   'pages/api/listings/delete.js',
+  'pages/api/listings/remove.js', // a listing with no real application, deleted through lib/realtorWrites.js deleteListing
   'pages/api/listings/status.js',
   'pages/api/party/self.js',
   'pages/api/referrals/assign.js',

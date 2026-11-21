@@ -362,8 +362,8 @@ http.createServer(async (req, res) => {
   // The wrapped text walks: GET /__fake/state?plan=founding|trial|lapsed|paid|past_due&days=3 sets
   // the signed in realtor's plan (a trial with days left, one ended two days ago, a payment past
   // due with days of grace); listings=0 takes their listings away (the empty dashboard) and
-  // listings=1 puts them back; name=0 blanks their name (onboarding) and name=1 puts it back.
-  // Answers the profile's plan fields.
+  // listings=1 puts them back; name=0 blanks their name (onboarding) and name=1 puts it back;
+  // archive=1|0 and testlisting=1|0 as said below. Answers the profile's plan fields.
   if (req.url.startsWith('/__fake/state')) {
     const q = new URL(req.url, 'http://localhost').searchParams; const p = t.profiles[0]; const days = Number(q.get('days') || 3);
     const plan = q.get('plan');
@@ -378,6 +378,18 @@ http.createServer(async (req, res) => {
     if (q.get('name') === '1' && t.__name) { p.full_name = t.__name; t.__name = null; }
     if (q.get('listings') === '0' && !t.__stashed) { t.__stashed = t.listings.filter((l) => l.profile_id === USER.id); t.listings = t.listings.filter((l) => l.profile_id !== USER.id); }
     if (q.get('listings') === '1' && t.__stashed) { t.listings = [...t.__stashed, ...t.listings]; t.__stashed = null; }
+    // archive=1: db/025-listing-archive.sql has run, so every listing row carries archived_at (null:
+    // on Active); archive=0 takes the column away again (the app before the file).
+    if (q.get('archive') === '1') for (const l of t.listings) { if (!('archived_at' in l)) l.archived_at = null; }
+    if (q.get('archive') === '0') for (const l of t.listings) delete l.archived_at;
+    // testlisting=1: a listing of the realtor's holding only +test applications, which can be deleted
+    // (lib/listingArchiveRule.js); testlisting=0 takes it and its applications away.
+    if (q.get('testlisting') === '1' && !t.listings.some((l) => l.id === 'L3')) {
+      t.listings.push({ id: 'L3', profile_id: USER.id, name: '9 Test Lane, Unit 1', address: '9 Test Lane, Unit 1, Toronto', monthly_rent: 1900, bedrooms: '1', status: 'active', created_at: new Date().toISOString(), ...(t.listings.some((l) => 'archived_at' in l) ? { archived_at: null } : {}) });
+      t.applications.push({ id: 'AT1', application_number: 'RL-2026-TEST-T1T1', full_name: 'Test Applicant', email: 'sarah+test@example.com', created_at: new Date().toISOString() });
+      t.listing_applicants.push({ id: 'JT1', listing_id: 'L3', application_id: 'AT1', decision_status: 'none', decision_priority: null, decision_notes: '', added_via: 'invite', created_at: new Date().toISOString(), doc_verifications: null, reviewed_at: null, withdrawn_at: null, confirmations: {}, last_sent_at: null });
+    }
+    if (q.get('testlisting') === '0') { t.listings = t.listings.filter((l) => l.id !== 'L3'); t.listing_applicants = t.listing_applicants.filter((k) => k.listing_id !== 'L3'); t.applications = t.applications.filter((x) => x.id !== 'AT1'); }
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ plan: p.plan, trial_ends_at: p.trial_ends_at, subscription_status: p.subscription_status || null, listings: t.listings.filter((l) => l.profile_id === USER.id).length })); return;
   }
   if (req.url.startsWith('/__fake/kpi')) {

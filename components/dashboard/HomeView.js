@@ -5,7 +5,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, StatusPills } from '../../components/ui';
+import { GlobalStyle, Icon, StatusPills, ConfirmSheet } from '../../components/ui';
+import Sheet from '../Sheet';
+import { deleteCheck, archiveAvailable, isArchived, NOT_DELETABLE_LINE, skipLine } from '../../lib/listingArchiveRule';
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
 import Paywall from './Paywall';
@@ -149,8 +151,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const hasListings = listingsLoaded && listings.length > 0;
   // No listing yet, known (never while the listings could not be read): the start.
   const empty = listingsLoaded && !hasListings;
-  const openListings = (listings || []).filter((l) => listingOpen(l));
-  const closedListings = (listings || []).filter((l) => !listingOpen(l));
+  // Archive (db/025-listing-archive.sql): the controls show only once the column exists. An archived
+  // listing leaves Active (and the numbers, Needs you and the bell) and shows under Archived.
+  const canArchive = archiveAvailable(listings);
+  const liveListings = useMemo(() => (listings || []).filter((l) => !isArchived(l)), [listings]);
+  const archivedListings = useMemo(() => (listings || []).filter((l) => isArchived(l)), [listings]);
+  const openListings = liveListings.filter((l) => listingOpen(l));
+  const closedListings = liveListings.filter((l) => !listingOpen(l));
   // Client retry when the server-side listings query failed (an expired access token being
   // refreshed under RLS is the usual reason). Until it resolves the page shows the door Loader,
   // never the empty state.
@@ -297,16 +304,82 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const rows = useMemo(() => openListings.map((l) => rowOf(l, byListing[l.id] || [])), [openListings, byListing]);
   const closedRows = useMemo(() => closedListings.map((l) => rowOf(l, byListing[l.id] || [])), [closedListings, byListing]);
   const shownRows = FILTERS[filter] ? rows.filter(FILTERS[filter]) : rows;
-  const needs = useMemo(() => (signals.loaded ? needsYouItems({ listings: listings || [], applicantsByListing: byListing, people: signals.people || [], shares: shared || [], circlePending, now: now || Date.now(), paths: adapter.paths }) : []),
+  const needs = useMemo(() => (signals.loaded ? needsYouItems({ listings: liveListings, applicantsByListing: byListing, people: signals.people || [], shares: shared || [], circlePending, now: now || Date.now(), paths: adapter.paths }) : []),
     // now is left out on purpose: the items change with the data, the times with the clock.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [signals.loaded, listings, byListing, signals.people, shared, circlePending, adapter.paths]);
+    [signals.loaded, liveListings, byListing, signals.people, shared, circlePending, adapter.paths]);
+  // ── Archive and delete. The shelf on view (Active or Archived), the rows picked for the bar,
+  // the delete asked, the card whose menu is open (a phone), and the line that says what happened.
+  const [shelf, setShelf] = useState('active');
+  const [picked, setPicked] = useState(() => new Set());
+  const [ask, setAsk] = useState(null); // { ids } a delete waiting for its yes
+  const [menuFor, setMenuFor] = useState(null); // a listing, its card's menu open
+  const [acting, setActing] = useState(false);
+  const [actNote, setActNote] = useState('');
+  const switchShelf = (to) => { setShelf(to); setPicked(new Set()); setFilter('all'); setActNote(''); };
+  const togglePick = (id) => setPicked((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+  // The same check the route makes (lib/listingArchiveRule.js), from the applicants already loaded:
+  // a listing whose applicants are not loaded is left to the route to decide.
+  const blocked = (id) => (byListing[id] ? !deleteCheck(byListing[id].map((a) => a.application || {})).deletable : false);
+  const post = async (url, body) => { const r = await adapter.fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return { r, j: await r.json().catch(() => ({})) }; };
+  const archiveIds = async (ids, archived) => {
+    setActing(true); setActNote('');
+    try {
+      const { r, j } = await post('/api/listings/archive', { listingIds: ids, archived });
+      if (!r.ok) { setActNote(j.error || 'Could not save that. Try again.'); return; }
+      setListings((cur) => (cur || []).map((l) => (ids.includes(l.id) ? { ...l, archived_at: j.archivedAt || null } : l)));
+      setPicked(new Set());
+      setActNote(archived ? `Archived ${count(ids.length, 'listing', 'listings')}.` : `Restored ${count(ids.length, 'listing', 'listings')}.`);
+    } catch (e) { setActNote('Could not save that. Try again.'); } finally { setActing(false); setAsk(null); setMenuFor(null); }
+  };
+  const deleteIds = async (ids) => {
+    setActing(true); setActNote('');
+    try {
+      const { r, j } = await post('/api/listings/remove', { listingIds: ids });
+      if (!r.ok) { setActNote(j.error || 'Could not delete that. Try again.'); return; }
+      const gone = j.deleted || [];
+      setListings((cur) => (cur || []).filter((l) => !gone.includes(l.id)));
+      setPicked(new Set());
+      setActNote([gone.length ? `Deleted ${count(gone.length, 'listing', 'listings')}.` : '', j.line || ''].filter(Boolean).join(' '));
+    } catch (e) { setActNote('Could not delete that. Try again.'); } finally { setActing(false); setAsk(null); setMenuFor(null); }
+  };
+  // The delete asked for: what goes, what is skipped and why, or for one listing that cannot go,
+  // the line and Archive in its place.
+  const askInfo = ask ? (() => {
+    const skip = ask.ids.filter(blocked); const n = ask.ids.length;
+    if (n === 1 && skip.length === 1) return { title: 'This listing cannot be deleted', body: NOT_DELETABLE_LINE, confirm: canArchive && !isArchived((listings || []).find((l) => l.id === ask.ids[0])) ? 'Archive it' : 'Keep it', run: () => (canArchive && !isArchived((listings || []).find((l) => l.id === ask.ids[0])) ? archiveIds(ask.ids, true) : setAsk(null)), danger: false };
+    return { title: n === 1 ? 'Delete this listing?' : `Delete ${n} listings?`, body: [n === 1 ? 'Its link stops working and any test applications go with it. This cannot be undone.' : 'Their links stop working and any test applications go with them. This cannot be undone.', skipLine(skip.length)].filter(Boolean).join(' '), confirm: 'Delete', run: () => deleteIds(ask.ids), danger: true };
+  })() : null;
+  const archivedRows = useMemo(() => archivedListings.map((l) => rowOf(l, byListing[l.id] || [])), [archivedListings, byListing]);
+  // The Active and Archived switch, above the listings at every width (only once archive is set up).
+  const shelfSwitch = (
+    <div className="hv-shelf" role="group" aria-label="Show listings" data-shelf="">
+      {[['active', 'Active'], ['archived', 'Archived']].map(([key, label]) => (
+        <button key={key} type="button" aria-pressed={shelf === key ? 'true' : 'false'} onClick={() => switchShelf(key)} data-shelf-to={key}>{label}</button>
+      ))}
+    </div>
+  );
+  // The table's checkboxes: one a row, and the header's for all the rows shown.
+  const rowSelect = (list) => ({
+    header: <input type="checkbox" aria-label="Select all" checked={list.length > 0 && list.every((r) => picked.has(r.id))} onChange={(e) => setPicked((cur) => { const next = new Set(cur); for (const r of list) { if (e.target.checked) next.add(r.id); else next.delete(r.id); } return next; })} className="hv-check" />,
+    cell: (r) => <input type="checkbox" aria-label={`Select ${r.label}`} checked={picked.has(r.id)} onChange={() => togglePick(r.id)} className="hv-check" data-row-check={r.id} />,
+  });
+  // A phone card's menu: a 44px button that opens the sheet with the card's actions; the tap is
+  // the button's own, never the card's.
+  const stop = (e) => { e.stopPropagation(); };
+  const cardMenu = (l) => (
+    <button type="button" className="dash-card-menu" aria-label={`Actions for ${displayLabel(l, 'this listing')}`} data-own-action="" data-card-menu={l.id}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActNote(''); setMenuFor(l); }} onKeyDown={stop} onPointerDown={stop} onTouchStart={stop}>
+      <Icon name="more" size={20} />
+    </button>
+  );
   const onNeed = (it) => {
     if (it.go.kind === 'action') navigateToAction(it.go.item, adapter.paths);
     else if (it.go.kind === 'view') goView(viewHref(adapter.paths.home, it.go.view));
     else go(it.go.href);
   };
-  const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: listings || [] } : null), [signals, listings]);
+  const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: liveListings } : null), [signals, liveListings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
   const entitlement = initialEntitlement || getEntitlement(profile);
@@ -431,9 +504,30 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               <div className="dash-section-head">
                 <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s-2)', minWidth: 0 }}>
                   <h2 className="dash-h2">Your listings</h2>
-                  <span className="dash-count">{openListings.length}</span>
+                  <span className="dash-count">{shelf === 'archived' ? archivedListings.length : openListings.length}</span>
                 </span>
+                {canArchive ? shelfSwitch : null}
               </div>
+              {actNote ? <p className="hv-act-note" role="status">{actNote}</p> : null}
+              {shelf === 'archived' ? (
+                <div className="dash-grid" data-archived-cards="">
+                  {archivedListings.length === 0 ? <p className="hv-quiet-phone">Nothing archived.</p> : null}
+                  {archivedListings.map((l) => (
+                    <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} data-press="card" className="dash-card dash-card-int"
+                      {...cardProps(adapter.paths.listing(l.id))}
+                      style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
+                        <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
+                        <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
+                      </div>
+                      <div className="dash-card-foot">
+                        <StatusPills label="Listing status" items={['Archived']} />
+                        {cardMenu(l)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
               <div className="dash-grid">
                 {openListings.map((l) => (
                   <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} className="dash-card dash-card-int" data-press="card"
@@ -448,8 +542,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                       {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? `, ${formatUnit(l.bedrooms)}` : ''}
                     </div>
                     {/* The state as pills, all in the one status style: the applicants by what they
-                        need, then the report (lib/listingStateLine.js). */}
-                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
+                        need, then the report (lib/listingStateLine.js); beside them the card's menu. */}
+                    <div className="dash-card-foot">
+                      <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
+                      {cardMenu(l)}
+                    </div>
                   </div>
                 ))}
                 {/* Rented and closed listings, below the active ones under one muted word. */}
@@ -459,36 +556,59 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                   </div>
                 )}
                 {closedListings.map((l) => (
-                  <a key={l.id} {...linkProps(adapter.paths.listing(l.id))} data-press="card" className="dash-card dash-card-int"
-                    style={{ textDecoration: 'none', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
+                  <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} data-press="card" className="dash-card dash-card-int"
+                    {...cardProps(adapter.paths.listing(l.id))}
+                    style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
                       <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
                       <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
                     </div>
-                    <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
-                  </a>
+                    <div className="dash-card-foot">
+                      <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
+                      {cardMenu(l)}
+                    </div>
+                  </div>
                 ))}
+                {openListings.length === 0 && closedListings.length === 0 ? <p className="hv-quiet-phone">No active listings.</p> : null}
               </div>
+              )}
             </div>
           )}
           {hasListings && (
             <div className="hv-desk hv-part-listings hv-section" data-listings-view="">
               <div className="hv-head">
                 <h2 className="dash-h2">Your listings</h2>
-                <span className="hv-count" aria-label={`${shownRows.length} shown`}>{shownRows.length}</span>
-                {filter !== 'all' ? (
+                <span className="hv-count" aria-label={`${shelf === 'archived' ? archivedListings.length : shownRows.length} shown`}>{shelf === 'archived' ? archivedListings.length : shownRows.length}</span>
+                {canArchive ? shelfSwitch : null}
+                {filter !== 'all' && shelf === 'active' ? (
                   <span className="hv-filter">
                     {filter === 'applicants' ? 'With applicants' : 'With a report to send'}
                     <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button>
                   </span>
                 ) : null}
               </div>
-              {shownRows.length ? <ListingsTable rows={shownRows} now={now} paths={adapter.paths} /> : <p className="hv-quiet">No listing matches. <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button></p>}
-              {filter === 'all' && closedRows.length > 0 && (
-                <div className="hv-rented">
-                  <div className="hv-head"><h3 className="hv-h3">Rented</h3><span className="hv-count">{closedRows.length}</span></div>
-                  <ListingsTable rows={closedRows} now={now} paths={adapter.paths} label="Rented listings" />
+              {/* The bar for the rows picked: archive (or restore) them, or delete the ones that can go. */}
+              {picked.size ? (
+                <div className="hv-bulk" role="region" aria-label="Selected listings" data-bulk-bar="">
+                  <span className="hv-bulk-n">{picked.size} selected</span>
+                  {canArchive ? <button type="button" className="ds-btn ds-btn-line" disabled={acting} onClick={() => archiveIds([...picked], shelf !== 'archived')}>{shelf === 'archived' ? 'Restore' : 'Archive'}</button> : null}
+                  <button type="button" className="ds-btn ds-btn-line hv-danger" disabled={acting} onClick={() => setAsk({ ids: [...picked] })} data-bulk-delete="">Delete</button>
+                  <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setPicked(new Set())}>Clear</button>
                 </div>
+              ) : null}
+              {actNote ? <p className="hv-act-note" role="status" data-act-note="">{actNote}</p> : null}
+              {shelf === 'archived' ? (
+                archivedRows.length ? <ListingsTable rows={archivedRows} now={now} paths={adapter.paths} label="Archived listings" select={rowSelect(archivedRows)} /> : <p className="hv-quiet" data-archived-empty="">Nothing archived.</p>
+              ) : (
+                <>
+                  {shownRows.length ? <ListingsTable rows={shownRows} now={now} paths={adapter.paths} select={rowSelect(shownRows)} /> : <p className="hv-quiet">{rows.length ? <>No listing matches. <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button></> : 'No active listings.'}</p>}
+                  {filter === 'all' && closedRows.length > 0 && (
+                    <div className="hv-rented">
+                      <div className="hv-head"><h3 className="hv-h3">Rented</h3><span className="hv-count">{closedRows.length}</span></div>
+                      <ListingsTable rows={closedRows} now={now} paths={adapter.paths} label="Rented listings" select={rowSelect(closedRows)} />
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
@@ -540,6 +660,18 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         </div>}
 
         </DashShell>
+        {/* A phone card's actions, in the one sheet (components/Sheet.js). */}
+        <Sheet open={!!menuFor} onClose={() => setMenuFor(null)} label={menuFor ? displayLabel(menuFor, 'This listing') : 'Listing'} maxWidth={480}>
+          {menuFor ? (
+            <div className="hv-menu" data-card-menu-sheet="">
+              <h3 data-sheet-drag="" className="hv-menu-t">{displayLabel(menuFor, 'This listing')}</h3>
+              {canArchive ? <button type="button" className="ds-btn ds-btn-line" disabled={acting} onClick={() => archiveIds([menuFor.id], !isArchived(menuFor))}>{isArchived(menuFor) ? 'Restore' : 'Archive'}</button> : null}
+              <button type="button" className="ds-btn ds-btn-line hv-danger" disabled={acting} onClick={() => { const id = menuFor.id; setMenuFor(null); setAsk({ ids: [id] }); }}>Delete</button>
+              <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setMenuFor(null)}>Cancel</button>
+            </div>
+          ) : null}
+        </Sheet>
+        <ConfirmSheet open={!!askInfo} danger={askInfo ? askInfo.danger : false} title={askInfo ? askInfo.title : ''} body={askInfo ? askInfo.body : ''} confirmLabel={askInfo ? askInfo.confirm : 'Delete'} cancelLabel="Keep it" busy={acting} busyLabel="Working" onConfirm={() => askInfo && askInfo.run()} onCancel={() => setAsk(null)} />
         <ListingSetupModal open={modalOpen} mode="create" askProvince={needsProvince(profile)} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
       </div>
 
@@ -664,6 +796,30 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-step-t { font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; margin-top: var(--s-2); }
         .hv-step-l { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); text-wrap: balance; }
         @media (min-width: 1920px) { .hv-start-h { font-size: 48px; } .hv-start-line { font-size: 18px; } }
+
+        /* ── Archive and delete: the Active and Archived switch, the line that says what happened,
+           the bar for the picked rows, the checkboxes, a card's menu button and its sheet. ── */
+        /* The switch, the checkboxes and the card's menu are built outside the returned tree, so
+           their classes are global (and unique to this screen). */
+        .dash-section-head :global(.hv-shelf), .hv-head :global(.hv-shelf) { margin-left: auto; }
+        :global(.hv-shelf) { display: inline-flex; padding: 2px; border-radius: var(--btn-radius); border: 1px solid ${C.ruleDark}; background: ${C.card}; }
+        :global(.hv-shelf button) { min-height: 40px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
+        :global(.hv-shelf button[aria-pressed='true']) { background: ${C.paperDeep}; color: ${C.ink}; font-weight: 700; }
+        :global(.hv-shelf button:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
+        .hv-act-note { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0 0 var(--s-3); text-wrap: balance; }
+        .hv-bulk { position: sticky; top: var(--s-2); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); background: ${C.card}; border: 1px solid ${C.ink}; border-radius: var(--card-radius); }
+        .hv-bulk-n { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; margin-right: auto; font-variant-numeric: tabular-nums; }
+        :global(.ds-btn.hv-danger) { color: ${C.danger}; }
+        :global(.hv-check) { width: 18px; height: 18px; margin: 0; accent-color: ${C.ink}; cursor: pointer; }
+        .dash-card-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-2); }
+        .dash-card-foot :global(.rl-pills) { flex: 1 1 auto; min-width: 0; }
+        :global(.dash-card-menu) { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -8px -10px -10px 0; border-radius: 50%; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
+        :global(.dash-card-menu:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
+        .hv-quiet-phone { font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); margin: 0; grid-column: 1 / -1; }
+        :global(.hv-menu) { display: grid; gap: var(--s-2); padding: 4px 20px 20px; }
+        :global(.hv-menu-t) { font-size: 18px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.015em; margin: 0 0 var(--s-2); overflow-wrap: anywhere; text-wrap: balance; }
+        :global(.hv-menu .ds-btn) { width: 100%; }
+        @media (min-width: 1024px) { .hv-head { align-items: center; } }
 
         /* ── Phone and desktop: both are in the markup, the width picks one ── */
         .hv { max-width: 1100px; margin: 0 auto; padding-left: clamp(16px, 4vw, 32px); padding-right: clamp(16px, 4vw, 32px); }

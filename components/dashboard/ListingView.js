@@ -42,6 +42,7 @@ import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
 import { patchSignalsListing, patchSignalsListingRow } from '../../lib/assistantStore';
+import { deleteCheck, archiveAvailable, isArchived, NOT_DELETABLE_LINE } from '../../lib/listingArchiveRule';
 import { statePills } from '../../lib/listingStateLine.js';
 import { noWidow } from '../../lib/typeset.js';
 import { duplicateLine } from '../../lib/duplicates.js';
@@ -398,17 +399,34 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [withdrawFor, setWithdrawFor] = useState(null); // the applicant object
+  // Delete only a listing with no real application (lib/listingArchiveRule.js deleteCheck, the check
+  // the route makes again): a +test application is a test. One with applications can be archived
+  // instead (db/025-listing-archive.sql), which keeps everything readable and closes its link.
+  const delCheck = deleteCheck(applicants.map((a) => a.application || {}));
+  const archivable = archiveAvailable([listing]);
+  const archived = isArchived(listing);
   const remove = async () => {
     setDeleteBusy(true);
     try {
       // The route closes the listing first (the invite link answers rented from then on), then deletes.
-      const r = await adapter.fetch('/api/listings/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: listing.id }) });
+      const r = await adapter.fetch('/api/listings/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingIds: [listing.id] }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j?.error) { setError(j?.error || 'Could not delete the listing.'); setDeleteOpen(false); return; }
       go(adapter.paths.home, { back: true, replace: true });
     } catch (e) {
       setError('Could not delete the listing.'); setDeleteOpen(false);
     } finally { setDeleteBusy(false); }
+  };
+  const [archiveBusy, setArchiveBusy] = useState(false);
+  const setArchived = async (to) => {
+    setArchiveBusy(true); setError('');
+    try {
+      const r = await adapter.fetch('/api/listings/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingIds: [listing.id], archived: to }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j?.error) { setError(j?.error || 'Could not save that. Try again.'); return; }
+      setListing((cur) => ({ ...cur, archived_at: j.archivedAt || null }));
+    } catch (e) { setError('Could not save that. Try again.'); }
+    finally { setArchiveBusy(false); setDeleteOpen(false); }
   };
 
   const getInvite = async (regenerate = false) => {
@@ -1228,6 +1246,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--gap-card)', marginTop: -6, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
             </div>
             {/* The listing's facts, then its criteria: one pill each (components/ui.js StatusPills). */}
+            {/* Archived (db/025): its link takes no applications; everything on it stays readable. */}
+            {archived ? (
+              <div data-listing-archived="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-2) var(--s-3)', marginTop: 'var(--s-3)', padding: 'var(--s-2) var(--s-2) var(--s-2) var(--s-3)', borderRadius: 'var(--card-radius)', background: C.paperDeep }}>
+                <span style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>Archived. Its link takes no applications.</span>
+                <button type="button" onClick={() => setArchived(false)} disabled={archiveBusy} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={archiveBusy} label="Restoring the listing">Restore</Pending></button>
+              </div>
+            ) : null}
             <StatusPills label="The listing" style={{ marginTop: 'var(--s-3)' }} items={[
               !listingOpen(l) ? [listingStanding(l).withdrawn ? 'Closed' : 'Rented', listingStanding(l).closedAt ? new Date(listingStanding(l).closedAt).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : null].filter(Boolean).join(' ') : null,
               l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString('en-CA')} per month` : 'Rent not set',
@@ -1430,8 +1455,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                         style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={statusBusy} label="Reopening the listing">Reopen listing</Pending></button>
                     )}
                   </div>
-                  {/* Delete, last and alone, in the danger colour; the confirm sheet below asks first. */}
-                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                  {/* Archive (once db/025 has run), then Delete, last and alone, in the danger colour;
+                      the confirm sheet below asks first. */}
+                  <div style={{ marginTop: 'var(--s-4)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}`, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-2) var(--gap-card)' }}>
+                    {archivable ? (
+                      <button type="button" onClick={() => setArchived(!archived)} disabled={archiveBusy} data-listing-archive=""
+                        style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}><Pending busy={archiveBusy} label={archived ? 'Restoring the listing' : 'Archiving the listing'}>{archived ? 'Restore listing' : 'Archive listing'}</Pending></button>
+                    ) : null}
                     <button data-destructive="" onClick={() => setDeleteOpen(true)} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.danger, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer', fontFamily: 'inherit' }}>Delete listing</button>
                   </div>
                 </div>
@@ -1484,8 +1514,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             )} />
 
           {/* DELETE and WITHDRAW: the confirm sheet, destructive wording, the danger red on the action. */}
-          <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} busyLabel="Deleting the listing" onConfirm={remove} onCancel={() => setDeleteOpen(false)}
-            body="Every applicant on it is removed with it, and the invite link stops working. This cannot be undone." />
+          {delCheck.deletable ? (
+            <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} busyLabel="Deleting the listing" onConfirm={remove} onCancel={() => setDeleteOpen(false)}
+              body={delCheck.tests ? 'Its test applications go with it, and the invite link stops working. This cannot be undone.' : 'The invite link stops working. This cannot be undone.'} />
+          ) : (
+            <ConfirmSheet open={deleteOpen} title="This listing cannot be deleted" confirmLabel={archivable && !archived ? 'Archive it' : 'Keep it'} cancelLabel="Cancel" busy={archiveBusy} busyLabel="Archiving the listing" onConfirm={() => (archivable && !archived ? setArchived(true) : setDeleteOpen(false))} onCancel={() => setDeleteOpen(false)}
+              body={NOT_DELETABLE_LINE} />
+          )}
           <ConfirmSheet open={!!withdrawFor} danger title={`Mark ${withdrawFor?.application?.full_name || 'this applicant'} as withdrawn?`} confirmLabel="Mark withdrawn" cancelLabel="Cancel" onConfirm={confirmWithdraw} onCancel={() => setWithdrawFor(null)}
             body="Only when the tenant told you they withdrew. It removes them from your ranked list." />
 

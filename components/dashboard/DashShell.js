@@ -101,16 +101,17 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         /* Past 1800px the shell centres, framed by a hairline each side, so a wide screen reads as
            the app set in the middle, not stretched to the edges. */
         @media (min-width: 1801px) { .ds { border-left: 1px solid ${C.rule}; border-right: 1px solid ${C.rule}; } }
-        /* The buttons of the dashboard: one height, one radius, one padding. */
-        .ds :global(.ds-btn) { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; text-decoration: none; cursor: pointer; white-space: nowrap; }
-        .ds :global(.ds-btn-primary) { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
-        .ds :global(.ds-btn-line) { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; }
-        .ds :global(.ds-btn-quiet) { background: transparent; color: ${C.ink}; border: 1px solid transparent; }
-        .ds :global(.ds-btn:disabled) { opacity: 0.55; cursor: default; }
-        .ds :global(.ds-btn:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
+        /* The buttons of the dashboard: one height, one radius, one padding. Global, so a sheet the
+           dashboard opens (components/Sheet.js renders on the body) carries the same buttons. */
+        :global(.ds-btn) { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; text-decoration: none; cursor: pointer; white-space: nowrap; }
+        :global(.ds-btn-primary) { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
+        :global(.ds-btn-line) { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; }
+        :global(.ds-btn-quiet) { background: transparent; color: ${C.ink}; border: 1px solid transparent; }
+        :global(.ds-btn:disabled) { opacity: 0.55; cursor: default; }
+        :global(.ds-btn:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         @media (hover: hover) {
-          .ds :global(.ds-btn-line:hover) { border-color: ${C.ink}; }
-          .ds :global(.ds-btn-quiet:hover) { background: rgba(15, 15, 16, 0.045); }
+          :global(.ds-btn-line:hover) { border-color: ${C.ink}; }
+          :global(.ds-btn-quiet:hover) { background: rgba(15, 15, 16, 0.045); }
         }
       `}</style>
     </div>
