@@ -278,6 +278,23 @@ export const STATES = [
     await p.locator('[data-photo="yes"]').getByRole('button', { name: 'Remove photo' }).click(); await p.locator('[data-photo-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
     yield 'tenant profile, photo removal asked';
   } },
+  // Sharing with the listing agent (db/024): the tenant's share list with both roles and an invite
+  // waiting; then the search for a listing agent, the confirm that says what they see, and the
+  // share made. And the listing agent's own view of a shared profile, on their dashboard.
+  { name: 'tenant profile, shares with both roles', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=9&docs=1&share=new&agent=1&personal=1'); await p.locator('[data-share-role="listing_agent"]').waitFor({ timeout: 15000 }); await p.locator('[data-agent-invited]').waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-agent-search]').fill('Guadalupe'); await p.locator('[data-agent-result]').first().waitFor({ timeout: 15000 }); await wait(p, 300);
+    yield 'tenant profile, a listing agent found';
+    await p.locator('[data-agent-pick]').first().click(); await p.locator('[data-agent-sees]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    yield 'tenant profile, share with the listing agent asked';
+    await p.locator('[data-agent-share]').click(); await p.locator('[data-agent-note="ok"]').waitFor({ timeout: 15000 }); await wait(p, 400);
+    if (await p.locator('[data-share-role="listing_agent"]').count() !== 2) throw new Error('the share with the listing agent is not on the list');
+    yield 'tenant profile, shared with a second listing agent';
+  } },
+  { name: 'dashboard, a profile shared with the listing agent', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=10&docs=1&personal=1&asagent=1'); await open(p, '/dashboard'); await p.locator('[data-shared-with-me]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-shared-with-me] [data-shared-view]').first().click(); await p.locator('[data-shared-screening]').waitFor({ timeout: 30000 }); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await wait(p, 400);
+    if (await p.locator('[data-shared-with-me] [data-shared-open="id"]').count()) throw new Error('the ID is offered to a listing agent');
+    yield 'dashboard, the listing agent\'s view of a shared profile';
+  } },
   { name: 'tenant profile, a share the tenant stopped', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=5&docs=1&share=new&stopped=1'); await p.locator('[data-share="revoked"]').waitFor({ timeout: 15000 }); } },
   { name: 'listing, a shared profile', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=4&docs=1&share=new&personal=1'); await open(p, '/listing/L1'); await expand(p, 'Maximiliano Castellanos Ruiz'); await p.locator('[data-shared-view]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
     await p.locator('[data-shared-view]').click(); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await p.locator('[data-shared-photo]').waitFor({ timeout: 30000 }); await p.locator('[data-shared-about]').waitFor({ timeout: 30000 }); await wait(p, 400);

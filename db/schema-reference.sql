@@ -309,3 +309,12 @@
 -- ── photo log actions (db/023-photo-log-actions.sql) ───────────────────────────────────────────
 --   profile_access_log.action also accepts 'photo_added' and 'photo_removed'
 --   (profile_access_log_action_check, the db/018 list and these two).
+--
+-- ── share roles (db/024-share-roles.sql) ───────────────────────────────────────────────────────
+--   profile_shares.role     text, nullable: realtor or listing_agent (profile_shares_role_known).
+--                           Null reads as realtor.
+--   profile_share_invites   a listing agent a tenant invited by email who has no account yet:
+--                           tenant_profile_id (CASCADE), listing_id (CASCADE), email (lower case),
+--                           status (sent, shared, cancelled), created_at, ended_at. One live invite
+--                           per tenant, listing and address. It shares nothing.
+--   Row level security is on with no policy, and nothing is granted to anon or authenticated.

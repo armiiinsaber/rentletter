@@ -58,6 +58,7 @@ const FILES = {
   m021: 'db/021-realtor-circle.sql',
   m022: 'db/022-full-tenant-profile.sql',
   m023: 'db/023-photo-log-actions.sql',
+  m024: 'db/024-share-roles.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -1059,6 +1060,56 @@ async function run023(db, tag) {
   check((await one(db, 'SELECT count(*)::int FROM public.profile_access_log WHERE tenant_profile_id = $1', [PL])) === 0, `${tag}2: this check's own profile and its lines are gone`);
 }
 
+// ── db/024-share-roles.sql ─────────────────────────────────────────────────────────────────
+// profile_shares gains a nullable role (realtor, listing_agent; null reads as realtor), and the
+// table profile_share_invites is made. Run with a share from before the file in place, then
+// again: that share keeps every value and reads no role, both roles are accepted and no other,
+// a tenant holds a share with their realtor and one with a listing agent for the same listing,
+// and the invites table is closed to the browser.
+const SR = 'eeeeeeee-0000-4000-8000-0000000000e1';
+const roleConstraints = (db) => rows(db, "SELECT c.relname AS t, k.conname, pg_get_constraintdef(k.oid) AS def FROM pg_constraint k JOIN pg_class c ON c.oid = k.conrelid WHERE c.relname IN ('profile_shares', 'profile_share_invites') ORDER BY 1, 2");
+const roleIndexes = (db) => rows(db, "SELECT tablename, indexname, indexdef FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('profile_shares', 'profile_share_invites') ORDER BY 1, 2");
+const roleCatalog = (db) => rows(db, "SELECT table_name, column_name, data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name IN ('profile_shares', 'profile_share_invites') ORDER BY table_name, ordinal_position");
+async function run024(db, tag) {
+  const realtors = (await rows(db, 'SELECT id FROM public.profiles ORDER BY id LIMIT 2')).map((r) => r.id);
+  const listing = await one(db, 'SELECT id FROM public.listings ORDER BY id LIMIT 1');
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts) VALUES ($1, 'roles@mail.ca', 'sr1', '{}'::jsonb)", [SR]);
+  const old = await one(db, "INSERT INTO public.profile_shares (tenant_profile_id, recipient_profile_id, purpose, listing_id, status, approved_at, approved_via) VALUES ($1, $2, 'application', $3, 'approved', '2026-11-19T15:00:00Z', 'session') RETURNING id", [SR, realtors[0], listing]);
+  const before = await rows(db, 'SELECT * FROM public.profile_shares ORDER BY id');
+  const triggers = await rows(db, "SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.profile_shares'::regclass AND NOT tgisinternal ORDER BY 1");
+  await step(db, `${tag}1`, FILES.m024);
+  const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profile_shares' AND column_name = 'role'"))[0];
+  check(col && col.data_type === 'text' && col.is_nullable === 'YES' && col.column_default === null, `${tag}1: profile_shares.role is nullable text with no default`, JSON.stringify(col));
+  check(same((await rows(db, 'SELECT * FROM public.profile_shares ORDER BY id')).map(({ role, ...r }) => r), before) && (await one(db, 'SELECT count(*)::int FROM public.profile_shares WHERE role IS NOT NULL')) === 0, `${tag}1: every share made before the file keeps every value and has no role, so it reads as the tenant's realtor`);
+  check(same(await rows(db, "SELECT tgname FROM pg_trigger WHERE tgrelid = 'public.profile_shares'::regclass AND NOT tgisinternal ORDER BY 1"), triggers), `${tag}1: the trigger that keeps a share's tenant and recipient is untouched`);
+  check((await constraintCount(db, 'profile_shares_role_known')) === 1, `${tag}1: the role check exists once`);
+  check(/profile_shares_role_known/.test(await refused(db, "UPDATE public.profile_shares SET role = 'landlord' WHERE id = $1", [old]) || ''), `${tag}1: a role off the list is refused`);
+  check((await refused(db, "UPDATE public.profile_shares SET role = 'realtor' WHERE id = $1", [old])) == null, `${tag}1: realtor is kept`);
+  // Both at once for the same listing: another recipient, as listing agent.
+  const agent = await one(db, "INSERT INTO public.profile_shares (tenant_profile_id, recipient_profile_id, purpose, listing_id, role, status, approved_at, approved_via) VALUES ($1, $2, 'application', $3, 'listing_agent', 'approved', now(), 'session') RETURNING id", [SR, realtors[1], listing]);
+  check(!!agent && (await one(db, "SELECT count(*)::int FROM public.profile_shares WHERE tenant_profile_id = $1 AND listing_id = $2 AND status = 'approved'", [SR, listing])) === 2, `${tag}1: a tenant holds a share with their realtor and one with a listing agent for the same listing`);
+  check(/profile_shares_one_live_idx/.test(await refused(db, "INSERT INTO public.profile_shares (tenant_profile_id, recipient_profile_id, purpose, listing_id, role, status, approved_at, approved_via) VALUES ($1, $2, 'application', $3, 'listing_agent', 'approved', now(), 'session')", [SR, realtors[1], listing]) || ''), `${tag}1: and still one live share per tenant, realtor and listing`);
+  check(/never change/.test(await refused(db, 'UPDATE public.profile_shares SET recipient_profile_id = $2 WHERE id = $1', [agent, realtors[0]]) || ''), `${tag}1: a listing agent's share cannot be pointed at another realtor`);
+  // The invites: closed to the browser, a lower case address, one live invite per tenant, listing and address.
+  check(await hasTable(db, 'profile_share_invites'), `${tag}1: the table profile_share_invites exists`);
+  check((await one(db, "SELECT relrowsecurity FROM pg_class WHERE oid = 'public.profile_share_invites'::regclass")) === true && (await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profile_share_invites'")) === 0, `${tag}1: row level security is on for it, with no policy`);
+  for (const role of ['anon', 'authenticated']) for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) check((await one(db, 'SELECT has_table_privilege($1, $2, $3)', [role, 'public.profile_share_invites', priv])) === false, `${tag}1: ${role} holds no ${priv} on it`);
+  const invite = (email, status = 'sent') => refused(db, 'INSERT INTO public.profile_share_invites (tenant_profile_id, listing_id, email, status) VALUES ($1, $2, $3, $4)', [SR, listing, email, status]);
+  check((await invite('agent@lakeshore.ca')) == null, `${tag}1: an invite is written`);
+  check(/profile_share_invites_one_live_idx/.test(await invite('agent@lakeshore.ca') || ''), `${tag}1: one live invite per tenant, listing and address`);
+  check(/email/.test(await invite('Agent@Lakeshore.ca') || ''), `${tag}1: the address is stored in lower case`);
+  check(/status/.test(await invite('b@lakeshore.ca', 'approved') || ''), `${tag}1: an invite has no status that shares anything`);
+  check((await one(db, "SELECT count(*)::int FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profile_share_invites' AND column_name ~ '(recipient|share|scope|facts|token)'")) === 0, `${tag}1: an invite names no recipient and holds no share, scope, fact or token`);
+  // Again: nothing changes.
+  const shape = await roleCatalog(db); const constraints = await roleConstraints(db); const indexes = await roleIndexes(db);
+  const held = await rows(db, 'SELECT * FROM public.profile_shares ORDER BY id'); const invites = await rows(db, 'SELECT * FROM public.profile_share_invites ORDER BY id');
+  await step(db, `${tag}2 (024 again)`, FILES.m024);
+  check(same(await roleCatalog(db), shape) && same(await roleConstraints(db), constraints) && same(await roleIndexes(db), indexes), `${tag}2: a second run leaves every column, constraint and index of both tables as they were`);
+  check(same(await rows(db, 'SELECT * FROM public.profile_shares ORDER BY id'), held) && same(await rows(db, 'SELECT * FROM public.profile_share_invites ORDER BY id'), invites), `${tag}2: and every share and every invite`);
+  await dropProfiles(db, [SR]);
+  check((await one(db, 'SELECT count(*)::int FROM public.profile_shares WHERE tenant_profile_id = $1', [SR])) === 0 && (await one(db, 'SELECT count(*)::int FROM public.profile_share_invites WHERE tenant_profile_id = $1', [SR])) === 0, `${tag}2: removing the profile removes its shares and its invites`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -1166,6 +1217,7 @@ async function pathA() {
   await run021(db, 'A17');
   await run022(db, 'A18');
   await run023(db, 'A19');
+  await run024(db, 'A20');
   await db.close();
 }
 
@@ -1333,6 +1385,7 @@ async function pathB() {
   await run021(db, 'B23');
   await run022(db, 'B24');
   await run023(db, 'B25');
+  await run024(db, 'B26');
   return { db, before };
 }
 

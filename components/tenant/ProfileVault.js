@@ -19,6 +19,7 @@ import { sharePayload, sourceLine, SOURCE } from '../../lib/profileFacts';
 import { KIND_LABEL, VAULT_MIME, checkText, agreesText } from '../../lib/tenantVaultRules';
 import { Pending } from '../brand/Loader';
 import { Chevron, LinesText } from './ProfileFacts';
+import ShareWithAgent from './ShareWithAgent';
 
 const MAX_CLIENT_BYTES = 3 * 1024 * 1024;
 const readBase64 = (file) => new Promise((resolve, reject) => {
@@ -38,10 +39,11 @@ export default function ProfileVault({ profile }) {
   const input = useRef(null);
 
   const [shares, setShares] = useState([]);
+  const [agents, setAgents] = useState(null); // sharing with a listing agent: the tenant's units and waiting invites
   const load = useCallback(async () => {
     try { const r = await fetch('/api/tenant/vault'); if (r.ok) setVault(await r.json()); else setVault({ failed: true }); } catch (e) { setVault({ failed: true }); }
     // Who can see the profile, and each realtor's views of it (pages/api/tenant/shares.js).
-    try { const r = await fetch('/api/tenant/shares'); const j = r.ok ? await r.json() : null; setShares(j && Array.isArray(j.shares) ? j.shares : []); } catch (e) { setShares([]); }
+    try { const r = await fetch('/api/tenant/shares'); const j = r.ok ? await r.json() : null; setShares(j && Array.isArray(j.shares) ? j.shares : []); setAgents(j && j.agents ? j.agents : null); } catch (e) { setShares([]); }
   }, []);
   useEffect(() => { load(); }, [load]);
 
@@ -167,7 +169,9 @@ export default function ProfileVault({ profile }) {
           <ul className="mp-list" style={{ marginTop: 'var(--gap-line)' }}>
             {shares.map((sh) => (
               <li key={sh.id} data-share={sh.live ? 'live' : sh.status} style={{ display: 'block' }}>
-                <div className="mp-value" style={{ marginTop: 0 }}>{noWidow(sh.realtorName)}</div>
+                {/* Which kind of share: with their realtor, or with the listing agent (db/024). */}
+                <div className="mp-label" data-share-role={sh.role || 'realtor'}>{sh.roleLabel || 'Your realtor'}</div>
+                <div className="mp-value">{noWidow(sh.realtorName)}</div>
                 {sh.realtorBrokerage && <div className="mp-source">{noWidow(sh.realtorBrokerage)}</div>}
                 {sh.listingName && <div className="mp-source">{noWidow(`For ${sh.listingName}`)}</div>}
                 <div className="mp-source" data-share-since="">{noWidow(sh.live ? `Sharing since ${dateLong(sh.approvedAt)}` : sh.status === 'revoked' ? `You stopped sharing on ${dateLong(sh.endedAt)}` : `Ended on ${dateLong(sh.endedAt)}`)}</div>
@@ -186,6 +190,8 @@ export default function ProfileVault({ profile }) {
             ))}
           </ul>
         )}
+        {/* Share with the listing agent of a unit: the tenant's own choice (components/tenant/ShareWithAgent.js). */}
+        <ShareWithAgent agents={agents} onChanged={load} />
         <button type="button" onClick={() => setSeeOpen((v) => !v)} aria-expanded={seeOpen} className="mp-fold">
           <span>{noWidow('What a realtor would see')}</span><Chevron open={seeOpen} />
         </button>

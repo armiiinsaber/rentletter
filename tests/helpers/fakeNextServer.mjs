@@ -82,7 +82,7 @@ if (long) {
 t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_applicant_id: 'J9', profile_id: 'realtor-2', storage_path: 'realtor-2/J9/d9.pdf', kind: 'credit report', mime: 'application/pdf', bytes: 1200, uploaded_by: 'tenant', uploaded_at: new Date(Date.now() - 86400000).toISOString(), expires_at: new Date(Date.now() + 13 * 86400000).toISOString(), deleted_at: null, deleted_by: null, opened_count: 0, last_opened_at: null }];
 // The tenant's own profile and vault (db/tenant-profiles.sql, db/018-profile-vault.sql): empty
 // until a walk asks for a tenant (GET /__fake/tenant below).
-for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log', 'profile_shares', 'tenant_profile_shareable']) if (!t[name]) t[name] = [];
+for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log', 'profile_shares', 'profile_share_invites', 'tenant_profile_shareable']) if (!t[name]) t[name] = [];
 // The full tenant profile (db/022-full-tenant-profile.sql): the view the share reader uses holds
 // the same rows as the table (GET /__fake/tenant?personal=1 fills them, below).
 t.tenant_profile_personal = t.tenant_profiles;
@@ -313,6 +313,35 @@ http.createServer(async (req, res) => {
         t.profile_access_log.push(line('share_approved', -3)); t.profile_access_log.push(line('profile_viewed', -2));
         t.profile_access_log.push(line('document_opened', -2, `vault-${who}-2`));
         if (stopped) t.profile_access_log.push(line('share_revoked', -1));
+      }
+    }
+    // agent=1 (with share=new): the tenant also shared with the listing agent of that unit
+    // (db/024-share-roles.sql), who has viewed it once, and invited another by email who has not
+    // joined; the application is on the tenant's own list, so the unit can be shared for.
+    if (q.get('agent') === '1') {
+      const mine = t.profile_shares.find((s) => s.tenant_profile_id === row.id && s.recipient_profile_id === USER.id);
+      const app = mine && t.applications.find((a) => a.prefill_profile_id === row.id);
+      if (mine && app && !t.profile_shares.some((s) => s.tenant_profile_id === row.id && s.role === 'listing_agent')) {
+        const day = 86400000; const at = (n) => new Date(Date.now() + n * day).toISOString();
+        mine.role = 'realtor';
+        row.applications = [{ applicationNumber: app.application_number, ownerToken: null }];
+        if (!t.profiles.some((p) => p.id === 'listing-agent-1')) t.profiles.push({ id: 'listing-agent-1', email: 'b.whitfield@lakeshorehumber.ca', full_name: 'Bartholomew Nakamura Whitfield', brokerage: 'Lakeshore and Humber Valley Realty Ltd., Brokerage', plan: 'founding', province: 'ON', created_at: at(-200), circle_findable: null });
+        if (!t.profiles.some((p) => p.id === 'listing-agent-2')) t.profiles.push({ id: 'listing-agent-2', email: 'g.thana@northwindrealty.ca', full_name: 'Guadalupe Thanabalasingham', brokerage: 'Northwind Residential Realty Inc., Brokerage', plan: 'founding', province: 'ON', created_at: at(-200), circle_findable: null });
+        const share = { id: `share-agent-${who}`, tenant_profile_id: row.id, recipient_profile_id: 'listing-agent-1', purpose: 'application', requested_by: null, listing_id: mine.listing_id, role: 'listing_agent', status: 'approved', scope: ['facts', 'checks', 'documents'], approved_at: at(-2), approved_via: 'session', documents_until: at(12), expires_at: null, ended_at: null, created_at: at(-2) };
+        t.profile_shares.push(share);
+        t.profile_access_log.push({ id: t.profile_access_log.length + 1, tenant_profile_id: row.id, share_id: share.id, actor_type: 'realtor', actor_profile_id: 'listing-agent-1', actor_label: 'Bartholomew Nakamura Whitfield, Lakeshore and Humber Valley Realty Ltd., Brokerage, listing agent', action: 'profile_viewed', document_id: null, at: at(-1) });
+        t.profile_share_invites.push({ id: `invite-${who}`, tenant_profile_id: row.id, listing_id: mine.listing_id, email: 'a.konstantinopoulou@harbourfront.ca', status: 'sent', created_at: at(-1), ended_at: null });
+      }
+    }
+    // asagent=1: this tenant applied to ANOTHER realtor's listing (L9, applicant J9) and shared their
+    // profile with the signed in realtor as its listing agent: the dashboard's "Shared with you".
+    if (q.get('asagent') === '1' && !t.profile_shares.some((s) => s.tenant_profile_id === row.id && s.recipient_profile_id === USER.id && s.role === 'listing_agent')) {
+      const day = 86400000; const at = (n) => new Date(Date.now() + n * day).toISOString();
+      const j9 = t.listing_applicants.find((x) => x.id === 'J9'); const a9 = j9 && t.applications.find((a) => a.id === j9.application_id);
+      if (a9) {
+        Object.assign(a9, { tenant_profile_id: row.id, prefill_profile_id: row.id });
+        if (!t.tenant_profile_shareable.some((v) => v.id === row.id)) t.tenant_profile_shareable.push({ id: row.id, facts: row.facts, facts_updated_at: row.facts_updated_at, email_verified_at: row.email_verified_at });
+        t.profile_shares.push({ id: `share-asagent-${who}`, tenant_profile_id: row.id, recipient_profile_id: USER.id, purpose: 'application', requested_by: null, listing_id: 'L9', role: 'listing_agent', status: 'approved', scope: ['facts', 'checks', 'documents'], approved_at: at(-1), approved_via: 'session', documents_until: at(13), expires_at: null, ended_at: null, created_at: at(-1) });
       }
     }
     // personal=1: the tenant added a photo, a few words about themselves (long ones) and an offer

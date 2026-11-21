@@ -18,6 +18,7 @@ import InstallHint from '../../components/dashboard/InstallHint';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
+import SharedWithMe from './SharedWithMe';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import { go, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
 import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
@@ -410,6 +411,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
           {/* 3. PIPELINE, under the listings (components/dashboard/PeopleList.js). */}
           {hasListings && <div style={{ marginTop: 'var(--gap-section)' }}><PeopleList people={signals.people || []} /></div>}
+
+          {/* Profiles tenants shared with this realtor as listing agent (components/dashboard/SharedWithMe.js): nothing when there are none. */}
+          <SharedWithMe />
 
           {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
               listing state is one card, nothing else). Whole card opens the profile. */}

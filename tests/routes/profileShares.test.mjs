@@ -370,7 +370,8 @@ test('11. the realtor\'s timeline says the tenant shared their profile, and that
   assert.deepEqual(events().map((e) => e.type), ['profile_share_approved'], 'one event when the one tap apply makes the share');
   const made = events()[0];
   assert.deepEqual([made.profile_id, made.listing_id, made.application_id], [USER.id, 'L1', 'A1'], 'on the realtor\'s timeline, on that applicant');
-  assert.deepEqual(Object.keys(made.payload).sort(), ['applicantName', 'linkId', 'listingName'], 'it names the tenant and the listing and where to go, nothing else');
+  assert.deepEqual(Object.keys(made.payload).sort(), ['applicantName', 'linkId', 'listingName', 'role'], 'it names the tenant and the listing, where to go and which kind of share, nothing else');
+  assert.equal(made.payload.role, 'realtor');
   assert.deepEqual([made.payload.applicantName, made.payload.listingName, made.payload.linkId], [w.a1.full_name, '210 Carlaw Ave, Unit 4', 'J1']);
   assert.equal(E.eventTitle(made), `${w.a1.full_name} shared their profile with you for 210 Carlaw Ave, Unit 4`);
   // A second tap makes no second share and no second event.
@@ -381,7 +382,8 @@ test('11. the realtor\'s timeline says the tenant shared their profile, and that
   assert.deepEqual(events().map((e) => e.type), ['profile_share_approved', 'profile_share_revoked']);
   const stopped = events()[1];
   assert.deepEqual([stopped.profile_id, stopped.listing_id, stopped.application_id], [USER.id, 'L1', 'A1']);
-  assert.deepEqual(Object.keys(stopped.payload).sort(), ['applicantName', 'linkId', 'listingName']);
+  assert.deepEqual(Object.keys(stopped.payload).sort(), ['applicantName', 'linkId', 'listingName', 'role']);
+  assert.equal(stopped.payload.role, 'realtor');
   assert.equal(E.eventTitle(stopped), `${w.a1.full_name} stopped sharing their profile for 210 Carlaw Ave, Unit 4`);
   // No fact of the profile, no planted key and no token is in either event.
   const sent = JSON.stringify(events());
