@@ -8,7 +8,14 @@
 //   else changes; after it, rows picked with their checkboxes are archived from the bar and leave
 //   Active for Archived, the apply link of an archived listing says it takes no applications, and a
 //   restore brings it back; a bulk delete asks in the page, deletes the listing with only test
-//   applications and says how many it skipped; on a phone the same from each card's menu.
+//   applications and says how many it skipped; on a phone the same from each card's menu;
+//   the new listing form: on a phone at 390 and 320 one step a screen with the progress line, Back
+//   that keeps the answers, an error beside a field once it is left, the rent formatted as typed,
+//   Continue above the keyboard (WebKit headless has no software keyboard: the visual viewport is
+//   shrunk the way iOS shrinks it), then the apply link with Copy, and the draft cleared; at 1440
+//   one panel with no steps, what tenants see beside the form and following it, Enter to the next
+//   field, Tab kept inside, Escape closing with the draft kept and the focus back on New listing;
+//   and a listing's Duplicate opening the form filled from it with the unit empty.
 // The fake stack server is this file's own, started in its turn (tests/helpers/devServer.mjs).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -160,6 +167,114 @@ async function archiveWalk(type, launch) {
 
 test('archive, restore and delete in WebKit at 1440 and 390', async () => { requireWebkit(); await archiveWalk(pw.webkit, {}); });
 test('archive, restore and delete in Chrome at 1440 and 390', { skip: haveChrome ? false : 'Chrome binary absent' }, () => archiveWalk(pw.chromium, { executablePath: chromeBin }));
+
+// The keyboard, as iOS opens it: the visual viewport shrinks and the layout viewport stays.
+const KEYBOARD = () => {
+  const fake = new EventTarget(); let cover = 0;
+  for (const [k, get] of [['height', () => window.innerHeight - cover], ['width', () => window.innerWidth], ['offsetTop', () => 0], ['offsetLeft', () => 0], ['scale', () => 1], ['pageTop', () => window.scrollY], ['pageLeft', () => 0]]) Object.defineProperty(fake, k, { get });
+  Object.defineProperty(window, 'visualViewport', { get: () => fake, configurable: true });
+  window.__keyboard = (px) => { cover = px; fake.dispatchEvent(new Event('resize')); };
+};
+const primaryBox = (page) => page.evaluate(() => { const b = document.querySelector('[data-lf-primary]'); const r = b.getBoundingClientRect(); return { bottom: Math.round(r.bottom), top: Math.round(r.top), text: b.textContent.trim(), disabled: b.disabled }; });
+async function phoneForm(browser, width) {
+  const ctx = await context(browser, width, 844, true); await ctx.route(/supabase\.co\//, (r) => r.abort()); await ctx.addInitScript(KEYBOARD);
+  const page = await ctx.newPage();
+  try {
+    await page.goto('/dashboard', { waitUntil: 'load' }); await page.locator('.dash-new').waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+    await page.locator('.dash-new').tap();
+    const panel = page.locator('.lf-panel'); await panel.waitFor({ timeout: 15000 }); await page.waitForTimeout(500);
+    const now = () => page.locator('[role=progressbar]').getAttribute('aria-valuenow');
+    assert.equal(await now(), '1', 'step 1, with the progress line');
+    assert.equal((await primaryBox(page)).disabled, true, 'Continue waits for the address');
+    // An error beside the field once it is left, in plain words.
+    await page.locator('#lf-address').focus(); await page.locator('#lf-unit').focus(); await page.waitForTimeout(150);
+    assert.equal(await page.locator('#lf-address-err').textContent(), 'Enter the street address.');
+    for (const [id, type, mode, auto] of [['lf-address', 'text', 'text', 'street-address'], ['lf-unit', 'text', 'text', 'address-line2']]) {
+      const a = await page.locator(`#${id}`).evaluate((el) => [el.type, el.inputMode, el.autocomplete]); assert.deepEqual(a, [type, mode, auto], id);
+    }
+    await page.locator('#lf-address').fill('7 Walk Street');
+    assert.equal(await page.locator('#lf-address-err').count(), 0, 'the error goes once it is right');
+    await page.getByRole('button', { name: 'Continue' }).tap(); await page.waitForTimeout(300);
+    assert.equal(await now(), '2');
+    await page.getByRole('button', { name: 'Back' }).tap(); await page.waitForTimeout(300);
+    assert.equal(await now(), '1'); assert.equal(await page.locator('#lf-address').inputValue(), '7 Walk Street', 'Back keeps the answers');
+    await page.getByRole('button', { name: 'Continue' }).tap(); await page.waitForTimeout(300);
+    // The rent: one large field, the $ shown, numbers only, formatted as typed.
+    await page.locator('#lf-rent').fill('24000');
+    assert.equal(await page.locator('#lf-rent').inputValue(), '24,000');
+    assert.deepEqual(await page.locator('#lf-rent').evaluate((el) => [el.inputMode, el.autocomplete]), ['numeric', 'off']);
+    await page.locator('#lf-rent').fill('2400');
+    assert.equal(await page.locator('select').count(), 0, 'no dropdown in the steps');
+    await page.locator('[data-chips="lf-beds"] [data-chip="1"]').tap();
+    assert.equal(await page.locator('[data-chips="lf-beds"] [data-chip="1"]').getAttribute('aria-checked'), 'true');
+    await page.locator('[data-chips="lf-move"] [role=radio]').first().tap();
+    await page.getByRole('button', { name: 'Continue' }).tap(); await page.waitForTimeout(300);
+    assert.equal(await now(), '3');
+    // The keyboard opens: Create listing sits right above it.
+    await page.locator('#lf-landlord-name').focus();
+    const kb = 336;
+    await page.evaluate((px) => window.__keyboard(px), kb); await page.waitForTimeout(250);
+    const lifted = await primaryBox(page);
+    assert.ok(Math.abs(lifted.bottom - (844 - kb)) <= 24 && lifted.bottom <= 844 - kb, `the button above the keyboard (${lifted.bottom} for ${844 - kb})`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), width, 'nothing sideways');
+    await page.locator('#lf-landlord-name').fill('Pat Owner');
+    await page.locator('#lf-landlord-email').fill('owner@example.com');
+    await page.evaluate(() => window.__keyboard(0)); await page.waitForTimeout(200);
+    if (width === 320) { await page.locator('.lf-panel').getByRole('button', { name: 'Cancel', exact: true }).count(); await ctx.close(); return; }
+    // Saved: the screen is the apply link, one large Copy.
+    await page.getByRole('button', { name: 'Create listing' }).tap();
+    await page.locator('[data-listing-done] [data-apply-link]').waitFor({ timeout: 30000 });
+    assert.match(await page.locator('[data-apply-link]').textContent(), /^https?:\/\/\S+$/, 'the link itself');
+    await page.locator('[data-copy-link]').tap();
+    await page.locator('[data-copy-link]', { hasText: 'Copied' }).waitFor({ timeout: 5000 });
+    await page.locator('[data-listing-done]').getByRole('button', { name: 'Done' }).tap(); await page.waitForTimeout(600);
+    // The draft went with the save.
+    await page.locator('.dash-new').tap(); await panel.waitFor({ timeout: 15000 }); await page.waitForTimeout(400);
+    assert.equal(await page.locator('#lf-address').inputValue(), ''); assert.equal(await page.locator('[data-draft-restored]').count(), 0, 'no draft after a save');
+  } finally { await ctx.close().catch(() => {}); }
+}
+async function deskForm(browser) {
+  const ctx = await context(browser, 1440, 900, false); await ctx.route(/supabase\.co\//, (r) => r.abort());
+  const page = await ctx.newPage();
+  try {
+    await page.goto('/dashboard', { waitUntil: 'load' }); await page.locator('[data-shell-new]').waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+    await page.locator('[data-shell-new]').click();
+    const panel = page.locator('.lf-panel'); await panel.waitFor({ timeout: 15000 }); await page.waitForTimeout(500);
+    assert.equal(await page.locator('[role=progressbar]').count(), 0, 'no steps on a desktop');
+    const form = await page.locator('.lf-col').boundingBox(); const aside = await page.locator('.lf-aside').boundingBox();
+    assert.ok(form.width >= 480 && form.width <= 600, `the form about 520px wide (${form.width})`);
+    assert.ok(aside.x >= form.x + form.width - 1, 'what tenants see, on the right');
+    await page.locator('#lf-address').fill('19 Preview Lane');
+    assert.equal(await page.locator('.lf-aside [data-preview-address]').textContent(), '19 Preview Lane', 'the preview follows the typing');
+    // Enter moves to the next field.
+    await page.locator('#lf-address').press('Enter');
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'lf-unit');
+    // Tab stays inside the panel.
+    for (let i = 0; i < 30; i++) { await page.keyboard.press('Tab'); assert.ok(await page.evaluate(() => !!document.activeElement.closest('.lf-panel')), `Tab ${i + 1} stays in the panel`); }
+    // Escape closes, the draft is kept, and the focus is back on New listing.
+    await page.keyboard.press('Escape'); await panel.waitFor({ state: 'detached', timeout: 10000 }); await page.waitForTimeout(200);
+    assert.equal(await page.evaluate(() => document.activeElement.hasAttribute('data-shell-new')), true, 'the focus is back on New listing');
+    await page.locator('[data-shell-new]').click(); await panel.waitFor({ timeout: 15000 }); await page.waitForTimeout(400);
+    assert.equal(await page.locator('#lf-address').inputValue(), '19 Preview Lane', 'the draft was kept');
+    await page.getByRole('button', { name: 'Start over' }).click();
+    await page.keyboard.press('Escape'); await panel.waitFor({ state: 'detached', timeout: 10000 });
+    // Duplicate: from a listing, the form filled from it, the unit empty.
+    await page.goto('/listing/L1', { waitUntil: 'load' }); await page.locator('[data-duplicate-listing]').waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+    await page.locator('[data-duplicate-listing]').click();
+    await panel.waitFor({ timeout: 30000 }); await page.waitForTimeout(500);
+    assert.equal(new URL(page.url()).searchParams.get('duplicate'), null, 'the address is clean again');
+    assert.match(await page.locator('#lf-address').inputValue(), /Carlaw/);
+    assert.equal(await page.locator('#lf-unit').inputValue(), '', 'the unit is empty');
+    assert.equal(await page.locator('#lf-rent').inputValue(), '2,600');
+    assert.equal(await page.locator('[data-chips="lf-beds"] [data-chip="2"]').getAttribute('aria-checked'), 'true');
+  } finally { await ctx.close().catch(() => {}); }
+}
+async function formWalk(type, launch) {
+  const browser = await type.launch(launch);
+  try { await phoneForm(browser, 390); await phoneForm(browser, 320); await deskForm(browser); } finally { await browser.close(); }
+}
+test('the new listing form in WebKit at 390, 320 and 1440', async () => { requireWebkit(); await formWalk(pw.webkit, {}); });
+test('the new listing form in Chrome at 390, 320 and 1440', { skip: haveChrome ? false : 'Chrome binary absent' }, () => formWalk(pw.chromium, { executablePath: chromeBin }));
 
 test('the empty dashboard in WebKit at 390 and 1440', async () => { requireWebkit(); await emptyWalk(pw.webkit, {}); });
 test('the empty dashboard in Chrome at 390 and 1440', { skip: haveChrome ? false : 'Chrome binary absent' }, () => emptyWalk(pw.chromium, { executablePath: chromeBin }));

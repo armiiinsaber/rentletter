@@ -47,7 +47,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
       go(href, { back: key === 'listings' });
     },
   });
-  const newListing = () => { if (onNewListing) onNewListing(); else go(`${home}${home.includes('?') ? '&' : '?'}new=1`); };
+  const newListing = (e) => { if (onNewListing) onNewListing(e); else go(`${home}${home.includes('?') ? '&' : '?'}new=1`); };
   return (
     <div className="ds" data-shell="">
       <aside className="ds-side" data-shell-side="">

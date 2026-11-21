@@ -2,7 +2,7 @@
 // The realtor dashboard HOME: extracted verbatim from pages/dashboard.js so the real page
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, StatusPills, ConfirmSheet } from '../../components/ui';
@@ -25,7 +25,7 @@ import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import SharedWithMe, { useSharedWithMe } from './SharedWithMe';
-import ListingSetupModal from '../../components/listings/ListingSetupModal';
+import ListingSetupModal, { DRAFT_KEY, clearListingDraft } from '../../components/listings/ListingSetupModal';
 import { go, goView, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
 import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
 import { Reveal } from '../brand/Loader';
@@ -111,7 +111,33 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   useEffect(() => { rememberListings(listings || []); }, [listings]);
   const [listingsError, setListingsError] = useState(initialListingsError);
   const [modalOpen, setModalOpen] = useState(false);
-  useEffect(() => { try { if (new URLSearchParams(window.location.search).get('new') === '1') setModalOpen(true); } catch (e) { /* ignore */ } }, []);
+  // The listing just made (its apply link is the screen after the save), the listing a Duplicate
+  // starts from, and the button that opened the form, which takes the focus back when it closes.
+  const [created, setCreated] = useState(null); // { id, url, label }
+  const [dupe, setDupe] = useState(null);
+  const opener = useRef(null);
+  const draftKey = `${DRAFT_KEY}:${userId || 'me'}`;
+  const openNew = (e) => { opener.current = (e && e.currentTarget) || null; setCreated(null); setDupe(null); setModalOpen(true); };
+  const closeModal = () => {
+    setModalOpen(false); setCreated(null); setDupe(null);
+    const back = opener.current && document.contains(opener.current) && opener.current.getClientRects().length ? opener.current : [...document.querySelectorAll('[data-shell-new], .dash-new')].find((b) => b.getClientRects().length);
+    if (back) setTimeout(() => back.focus({ preventScroll: true }), 0);
+  };
+  // ?new=1 opens the form (the sidebar on another screen); ?duplicate={id} opens it filled from
+  // that listing with the unit left empty (a listing's Duplicate). Either is taken off the address.
+  useEffect(() => {
+    let q = null; try { q = new URLSearchParams(window.location.search); } catch (e) { return; }
+    const dup = q.get('duplicate');
+    if (q.get('new') === '1') { setCreated(null); setDupe(null); setModalOpen(true); }
+    else if (dup) {
+      const from = (listings || []).find((l) => String(l.id) === dup);
+      if (!from) return;
+      setCreated(null); setDupe({ ...from, unit: '' }); setModalOpen(true);
+    } else return;
+    q.delete('new'); q.delete('duplicate');
+    const rest = q.toString(); goView(`${window.location.pathname}${rest ? `?${rest}` : ''}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.query.new, router.query.duplicate, listings]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -134,10 +160,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j?.error || !j?.listing?.id) { setError(j?.error || 'Could not create the listing. Please try again.'); setSaving(false); return; }
       const data = j.listing;
-      try { await adapter.fetch('/api/listings/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: data.id }) }); } catch (e) { /* the listing page offers the link */ }
+      // Its apply link, made at once: the screen after the save is that link (the listing page
+      // offers it too, should this fail).
+      let url = '';
+      try { const ir = await adapter.fetch('/api/listings/invite', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: data.id }) }); const ij = await ir.json().catch(() => ({})); url = (ir.ok && (ij.shortUrl || ij.url)) || ''; } catch (e) { /* the listing page offers the link */ }
+      clearListingDraft(draftKey);
+      setListings((cur) => [data, ...(cur || []).filter((l) => l.id !== data.id)]);
       setSaving(false);
-      setModalOpen(false);
-      go(adapter.paths.listing(data.id));
+      setCreated({ id: data.id, url, label: displayLabel(data, 'Your listing') });
     } catch (e) {
       setError('Could not create the listing. Please try again.');
       setSaving(false);
@@ -422,7 +452,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         {/* The shell (components/dashboard/DashShell.js): under 1024px the header as it always was,
             static and in flow (see .dash-bg .rl-header below), with the Listings and Circle tabs; at
             1024 and wider the sidebar and the main area. */}
-        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={() => setModalOpen(true)} newPrimary={!empty}>
+        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={openNew} newPrimary={!empty}>
 
         {locked && (
           <div className="hv-lock" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
@@ -464,7 +494,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </div>
             )}
           </section>
-          <button type="button" onClick={() => setModalOpen(true)} className="dash-new" style={{ marginTop: 'var(--s-3)' }}>
+          <button type="button" onClick={openNew} className="dash-new" style={{ marginTop: 'var(--s-3)' }}>
             <Icon name="plus" size={17} /> New listing
           </button>
           {/* The three steps, under the button, while there is no listing. */}
@@ -483,7 +513,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               <div className="hv-start" data-get-started="desktop">
                 <h2 className="hv-start-h">{START.heading}</h2>
                 <p className="hv-start-line">{START.line}</p>
-                <button type="button" onClick={() => setModalOpen(true)} className="ds-btn ds-btn-primary hv-start-new" data-get-started-new="">
+                <button type="button" onClick={openNew} className="ds-btn ds-btn-primary hv-start-new" data-get-started-new="">
                   <Icon name="plus" size={16} /> New listing
                 </button>
                 <ol className="hv-steps">{START.steps.map(([title, line], i) => <li key={title}><span className="hv-step-n" aria-hidden="true">{i + 1}</span><span className="hv-step-t">{title}</span><span className="hv-step-l">{line}</span></li>)}</ol>
@@ -672,7 +702,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           ) : null}
         </Sheet>
         <ConfirmSheet open={!!askInfo} danger={askInfo ? askInfo.danger : false} title={askInfo ? askInfo.title : ''} body={askInfo ? askInfo.body : ''} confirmLabel={askInfo ? askInfo.confirm : 'Delete'} cancelLabel="Keep it" busy={acting} busyLabel="Working" onConfirm={() => askInfo && askInfo.run()} onCancel={() => setAsk(null)} />
-        <ListingSetupModal open={modalOpen} mode="create" askProvince={needsProvince(profile)} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setModalOpen(false)} onSave={createListing} saving={saving} />
+        <ListingSetupModal open={modalOpen} mode="create" initial={dupe} askProvince={needsProvince(profile)} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={closeModal} onSave={createListing} saving={saving}
+          draftKey={draftKey} realtor={{ name: profile?.full_name || '', brokerage: profile?.brokerage || '' }}
+          done={created ? { url: created.url, label: created.label, onOpen: () => { const id = created.id; closeModal(); go(adapter.paths.listing(id)); } } : null} />
       </div>
 
       <style jsx>{`

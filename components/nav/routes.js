@@ -228,10 +228,11 @@ export function go(href, { back = null, replace = false } = {}) {
 // Another view of the screen on view (the dashboard's Listings, Pipeline and Shared with you): the
 // address changes through the router with no data request and no transition (the frame skips a
 // shallow change on the same screen, components/nav/RouteFrame.js), and the page keeps its scroll.
-export function goView(href) {
+export function goView(href, { replace = false } = {}) {
   if (typeof window === 'undefined') return;
   const u = parse(href); if (!u) return;
-  Router.push(u.pathname + u.search + u.hash, undefined, { shallow: true, scroll: false });
+  const to = u.pathname + u.search + u.hash;
+  if (replace) Router.replace(to, undefined, { shallow: true, scroll: false }); else Router.push(to, undefined, { shallow: true, scroll: false });
 }
 
 // Props for anything that takes the realtor to a realtor screen: a real link (it still opens in a

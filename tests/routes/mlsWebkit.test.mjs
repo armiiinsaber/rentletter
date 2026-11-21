@@ -170,6 +170,9 @@ const expected = (r) => [
 
 // Fill the Board details section of an open setup sheet (New listing or Listing setup).
 async function fillBoard(sheet, page) {
+  // Everything optional sits behind Add details on a new listing.
+  const more = sheet.locator('[data-add-details][aria-expanded="false"]');
+  if (await more.count()) await more.click();
   await sheet.getByRole('button', { name: 'Board details (optional)' }).click();
   await sheet.locator('[data-board-details]').waitFor({ timeout: 30000 });
   await sheet.getByLabel('MLS number').fill(BOARD.mls);
@@ -178,7 +181,10 @@ async function fillBoard(sheet, page) {
   await sheet.getByLabel('Brokerage phone').fill(BOARD.phone);
   await sheet.getByLabel('Cooperating brokerage', { exact: true }).fill(BOARD.coop);
   await sheet.getByLabel('Commission to the cooperating brokerage').fill(BOARD.commission);
-  await sheet.getByLabel('Possession date').fill(BOARD.possession);
+  // The possession date is asked with the basics now, as the move in date: set here where those
+  // chips are on screen (Listing setup), in its own step on a new listing.
+  const move = sheet.locator('[data-chips="lf-move"]');
+  if (await move.isVisible()) { await move.locator('[data-chip="__other"]').click(); await sheet.getByLabel('Move in date').fill(BOARD.possession); }
   await sheet.getByLabel('Lease term (months)').fill(BOARD.term);
   await sheet.getByLabel('Parking spaces').fill(BOARD.parking);
   await sheet.getByLabel('Locker').fill(BOARD.locker);
@@ -204,9 +210,14 @@ async function walk(type, opts, tag) {
     const sheet = page.locator('.rl-sh-panel').filter({ hasText: 'New listing' }).first();
     await sheet.waitFor({ timeout: 30000 }); await page.waitForTimeout(500);
     assert.equal(await sheet.locator('[data-board-details]').count(), 0, 'Board details starts collapsed');
+    // A phone: three steps. The address; the rent, the bedrooms and the move in date; the landlord.
     await sheet.getByPlaceholder('88 Bay Street').fill(`${tag === 'wk' ? '12' : '14'} Board St, Toronto`);
+    await sheet.getByRole('button', { name: 'Continue' }).click();
     await sheet.getByPlaceholder('2400').fill('2600');
-    await sheet.locator('select').first().selectOption('2');
+    await sheet.locator('[data-chips="lf-beds"] [data-chip="2"]').click();
+    await sheet.locator('[data-chips="lf-move"] [data-chip="__other"]').click();
+    await sheet.getByLabel('Move in date').fill(BOARD.possession);
+    await sheet.getByRole('button', { name: 'Continue' }).click();
     await sheet.getByPlaceholder('Pat Owner').fill('Pat Owner');
     await sheet.getByPlaceholder('owner@email.com').fill('owner@example.com');
     await fillBoard(sheet, page);
@@ -217,7 +228,9 @@ async function walk(type, opts, tag) {
     assert.match(plain(await sheet.innerText()), /At most \$2,600 on this rent\./);
     await sheet.getByLabel('Last month’s rent deposit (CAD)').fill('2600');
     await sheet.getByRole('button', { name: 'Create listing' }).click();
-    await page.locator('[role=alertdialog]').getByRole('button', { name: /Confirm & create/ }).click();
+    // After the save the screen is the apply link; the listing opens from it.
+    await page.locator('[data-listing-done] [data-apply-link]').waitFor({ timeout: 60000 });
+    await page.locator('[data-listing-done]').getByRole('button', { name: 'Open the listing' }).click();
     await page.waitForURL(/\/listing\//, { timeout: 60000 }); await page.waitForTimeout(600);
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
     const rows = plain(await page.locator('[data-board-rows]').innerText());

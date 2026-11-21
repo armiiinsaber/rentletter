@@ -1243,7 +1243,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 {displayLabel(l, 'Untitled listing')}
               </h1>
               {/* Centred on the first line of the address: the line box is 28 * 1.15, the button 44. */}
-              <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--gap-card)', marginTop: -6, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
+              {/* Edit, and Duplicate: the new listing form filled from this one, the unit left empty. */}
+              <span style={{ display: 'inline-flex', gap: 'var(--s-2)', flexShrink: 0, marginTop: -6 }}>
+                <button onClick={() => setEditOpen(true)} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Edit</button>
+                <button type="button" data-duplicate-listing="" onClick={() => go(`${adapter.paths.home}${adapter.paths.home.includes('?') ? '&' : '?'}duplicate=${encodeURIComponent(listing.id)}`, { back: true })} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>Duplicate</button>
+              </span>
             </div>
             {/* The listing's facts, then its criteria: one pill each (components/ui.js StatusPills). */}
             {/* Archived (db/025): its link takes no applications; everything on it stays readable. */}
@@ -1518,7 +1522,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} busyLabel="Deleting the listing" onConfirm={remove} onCancel={() => setDeleteOpen(false)}
               body={delCheck.tests ? 'Its test applications go with it, and the invite link stops working. This cannot be undone.' : 'The invite link stops working. This cannot be undone.'} />
           ) : (
-            <ConfirmSheet open={deleteOpen} title="This listing cannot be deleted" confirmLabel={archivable && !archived ? 'Archive it' : 'Keep it'} cancelLabel="Cancel" busy={archiveBusy} busyLabel="Archiving the listing" onConfirm={() => (archivable && !archived ? setArchived(true) : setDeleteOpen(false))} onCancel={() => setDeleteOpen(false)}
+            <ConfirmSheet open={deleteOpen} title="This listing cannot be deleted" confirmLabel={archivable && !archived ? 'Archive it' : 'Close'} cancelLabel="Keep it" busy={archiveBusy} busyLabel="Archiving the listing" onConfirm={() => (archivable && !archived ? setArchived(true) : setDeleteOpen(false))} onCancel={() => setDeleteOpen(false)}
               body={NOT_DELETABLE_LINE} />
           )}
           <ConfirmSheet open={!!withdrawFor} danger title={`Mark ${withdrawFor?.application?.full_name || 'this applicant'} as withdrawn?`} confirmLabel="Mark withdrawn" cancelLabel="Cancel" onConfirm={confirmWithdraw} onCancel={() => setWithdrawFor(null)}

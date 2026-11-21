@@ -207,18 +207,25 @@ async function sheets(browser, tag) {
   await page.mouse.click(195, 10); await page.waitForTimeout(450);
   assert.equal(await panel.count(), 0, `${tag}: a tap on the dimmed page closes a clean sheet`);
   assert.deepEqual(await page.evaluate(() => [window.scrollY, document.body.getAttribute('style') || '', document.documentElement.classList.contains('rl-sheet-open')]), [y0, '', false], `${tag}: the page is exactly where it was`);
-  // Typed input: the dimmed page asks first; Keep editing keeps it, Discard drops it.
+  // Typed input is never lost: the dimmed page closes the sheet with nothing asked and the input is
+  // kept as a draft; opened again it is back, a long drag closes it the same way, and Start over
+  // clears it.
   await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
   await panel.locator('input').first().fill('88 Harbour St');
   await page.mouse.click(195, 10); await page.waitForTimeout(450);
-  const ask = page.locator('[role=alertdialog][aria-label="Discard this listing?"]');
-  assert.equal(await ask.count(), 1, `${tag}: it asks before dropping typed input`);
-  await ask.getByRole('button', { name: 'Keep editing' }).click(); await page.waitForTimeout(450);
-  assert.equal(await panel.locator('input').first().inputValue(), '88 Harbour St', `${tag}: Keep editing keeps it`);
-  await DRAG(page, 420); await page.waitForTimeout(450);
-  assert.equal(await ask.count(), 1, `${tag}: a long drag asks too`);
-  await ask.getByRole('button', { name: 'Discard' }).click(); await page.waitForTimeout(500);
-  assert.equal(await panel.count(), 0, `${tag}: Discard closes it`);
+  assert.equal(await page.locator('[role=alertdialog]').count(), 0, `${tag}: nothing asked, nothing to lose`);
+  assert.equal(await panel.count(), 0, `${tag}: the dimmed page closes it`);
+  await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
+  assert.equal(await panel.locator('input').first().inputValue(), '88 Harbour St', `${tag}: the draft is back`);
+  assert.equal(await panel.locator('[data-draft-restored]').count(), 1, `${tag}: and it says so`);
+  await DRAG(page, 420); await page.waitForTimeout(600);
+  assert.equal(await panel.count(), 0, `${tag}: a long drag closes it too`);
+  await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
+  assert.equal(await panel.locator('input').first().inputValue(), '88 Harbour St', `${tag}: kept again`);
+  await panel.getByRole('button', { name: 'Start over' }).click(); await page.waitForTimeout(300);
+  assert.equal(await panel.locator('input').first().inputValue(), '', `${tag}: Start over clears it`);
+  await page.mouse.click(195, 10); await page.waitForTimeout(500);
+  assert.equal(await panel.count(), 0, `${tag}: and a clean sheet closes`);
   // A long drag dismisses a clean sheet.
   await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
   await DRAG(page, 420); await page.waitForTimeout(600);
