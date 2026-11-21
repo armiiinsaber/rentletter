@@ -1,6 +1,6 @@
 // The wrapped text on every page and state a person can reach (tests/helpers/typesetStates.mjs:
 // public, realtor, billing, tenant, landlord, the founder office), in WebKit (Safari's engine) and in Chrome, at 390
-// and at 320, with the long values (tests/helpers/fakeNextServer.mjs, FAKE_LONG=1), on the real
+// and at 320 (the desktop shell, the listing form and the homepage at 1024, 1440, 1920 and 2560 too), with the long values (tests/helpers/fakeNextServer.mjs, FAKE_LONG=1), on the real
 // pages over the fake stack in two production builds: billing off on 3177, as production runs
 // today, and billing on (BILLING_OFF=false) on 3178 for the trial, paywall and billing screens.
 // Every block of text is measured word by word (tests/helpers/textLines.mjs): no line of one word
@@ -22,7 +22,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
 import { readPage, pageProblems } from '../helpers/textLines.mjs';
-import { sweep, STATES } from '../helpers/typesetStates.mjs';
+import { sweep, STATES, NARROW } from '../helpers/typesetStates.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -84,10 +84,13 @@ async function walk(type, opts, engine) {
     ctx.on('weberror', (e) => heard(e.page() ? e.page().url() : 'a page', String((e.error() && e.error().message) || e.error())));
   };
   try {
-    const measure = async (page, state) => {
-      for (const width of [390, 320]) {
-        if (width !== 390) await page.setViewportSize({ width, height: 844 });
+    const measure = async (page, state, kind, widths = [390, 320]) => {
+      for (const width of widths) {
+        // Every width set, 390 too: a state may have been set up at a desktop width.
+        await page.setViewportSize({ width, height: width >= 1024 ? 900 : 844 });
         await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(350);
+        const iw = await page.evaluate(() => window.innerWidth);
+        if (iw !== width) breaks.push(`${state} at ${width}: the page laid out at ${iw}`);
         const problems = [...pageProblems(await readPage(page)), ...(await page.evaluate(PILLS_INSIDE))];
         measured++;
         for (const p of problems) breaks.push(`${state} at ${width}: ${p}`);
@@ -96,11 +99,13 @@ async function walk(type, opts, engine) {
       await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(150);
     };
     const failed = await sweep({ browser, bases, concurrency: 4, measure, onContext, contextOptions: { viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, serviceWorkers: 'block', reducedMotion: 'reduce' } });
-    console.log(`${engine}: ${STATES.length} pages, ${measured} measurements at 390 and 320, ${breaks.length} breaks, ${hydration.length} hydration messages, ${Math.round((Date.now() - t0) / 1000)}s`);
+    console.log(`${engine}: ${STATES.length} pages, ${measured} measurements (390 and 320; the desktop shell, the listing form and the homepage at 1024, 1440, 1920 and 2560 too), ${breaks.length} breaks, ${hydration.length} hydration messages, ${Math.round((Date.now() - t0) / 1000)}s`);
+    // The breaks named before any assertion, so a state that did not open hides none of them.
+    if (breaks.length) console.log(`${engine} breaks:\n  ${breaks.join('\n  ')}`);
     assert.deepEqual(failed, [], `${engine}: every state opens`);
     assert.deepEqual(breaks, [], `${engine}: no wrapped text breaks the rule`);
     assert.deepEqual(hydration, [], `${engine}: no page logs a hydration warning or error`);
-    assert.ok(measured >= STATES.length * 2, `${engine}: every state measured at both widths (${measured})`);
+    assert.ok(measured >= STATES.reduce((n, st) => n + (st.widths || NARROW).length, 0), `${engine}: every state measured at each of its widths (${measured})`);
   } finally { await browser.close(); }
 }
 

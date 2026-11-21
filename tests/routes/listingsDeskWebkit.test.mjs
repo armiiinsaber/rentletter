@@ -229,7 +229,9 @@ async function phoneForm(browser, width) {
     // Saved: the screen is the apply link, one large Copy.
     await page.getByRole('button', { name: 'Create listing' }).tap();
     await page.locator('[data-listing-done] [data-apply-link]').waitFor({ timeout: 30000 });
-    assert.match(await page.locator('[data-apply-link]').textContent(), /^https?:\/\/\S+$/, 'the link itself');
+    assert.match(await page.locator('[data-apply-link]').getAttribute('data-url'), /^https?:\/\/\S+$/, 'the link itself');
+    const shownLink = await page.locator('[data-apply-link]').evaluate((el) => ({ h: el.clientHeight, sw: el.scrollWidth, cw: el.clientWidth, text: el.textContent }));
+    assert.ok(shownLink.sw <= shownLink.cw && !/^https?:/.test(shownLink.text), `on one line, whole (${JSON.stringify(shownLink)})`);
     await page.locator('[data-copy-link]').tap();
     await page.locator('[data-copy-link]', { hasText: 'Copied' }).waitFor({ timeout: 5000 });
     await page.locator('[data-listing-done]').getByRole('button', { name: 'Done' }).tap(); await page.waitForTimeout(600);

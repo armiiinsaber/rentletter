@@ -10,9 +10,12 @@
 //   phase         'read' (the default) changes nothing another state shows, so these run side by
 //                 side; 'write' adds what only its own page shows, after every read; 'alone' takes
 //                 the realtor's listings or name away for a moment and runs last, by itself.
+//   widths        the widths a state is measured at: 390 and 320 unless it names its own (WIDE:
+//                 390, 320, 1024, 1440, 1920 and 2560, for the desktop shell, the listing form and
+//                 the homepage).
 //   sweep({ browser, bases, concurrency, measure, onContext })   opens every state at 390, calls
-//                 measure(page, name, kind) after each, and answers the names that did not open;
-//                 onContext(context, key) is called once for each browser context it opens.
+//                 measure(page, name, kind, widths) after each, and answers the names that did not
+//                 open; onContext(context, key) is called once for each browser context it opens.
 const wait = (p, ms = 400) => p.waitForTimeout(ms);
 const settle = async (p) => { await p.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}); await wait(p, 400); };
 export const open = async (p, path) => { await p.goto(path, { waitUntil: 'load', timeout: 60000 }); await settle(p); };
@@ -52,6 +55,13 @@ const card = (p, name) => p.locator(CARD).filter({ hasText: name }).first();
 const expand = async (p, name) => { const c = card(p, name); await c.waitFor({ timeout: 30000 }); await c.scrollIntoViewIfNeeded(); await c.click(); await wait(p, 600); };
 const LONG = { a1: 'Oluwaseun Adebayo Fitzgerald', a2: 'Anastasia Konstantinopoulou', a3: 'Bartholomew Nakamura Whitfield' };
 export const INVITE = 'a1b2c3d4e5f6a7b8c9d0';
+export const NARROW = [390, 320];
+export const WIDE = [390, 320, 1024, 1440, 1920, 2560];
+// The new listing form keeps a draft in the browser (components/listings/ListingSetupModal.js):
+// each form state starts and ends with none, so no other state finds it.
+const noDraft = (p) => p.evaluate(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('rl-listing-draft')) localStorage.removeItem(k); } catch (e) { /* none */ } });
+const desk = async (p) => { await p.setViewportSize({ width: 1440, height: 900 }); await wait(p, 300); };
+const vis = (p, sel) => p.locator(`${sel}:visible`).first();
 const NEW_LISTING = /^(\+\s*)?(New listing|Add a listing|Add listing)/i;
 // The tenant's apply flow: each step filled with the long values, then Continue.
 const STEPS = [
@@ -128,7 +138,7 @@ async function tenantProfile(p, f, query) {
 }
 export const STATES = [
   // ── public ──
-  { name: 'home', kind: 'public', go: (p) => open(p, '/') },
+  { name: 'home', kind: 'public', widths: WIDE, go: (p) => open(p, '/') },
   { name: 'sign in', kind: 'public', go: (p) => open(p, '/signin') },
   { name: 'sign in, an error', kind: 'public', go: (p) => open(p, '/signin?error=Sign-in%20is%20temporarily%20unavailable.') },
   { name: 'sign up', kind: 'public', go: (p) => open(p, '/signup') },
@@ -205,6 +215,46 @@ export const STATES = [
   { name: 'listing, rented', kind: 'realtor', phase: 'write', go: async (p, f) => { await rentL2(p, f); await open(p, '/listing/L2'); await openAll(p); }, steps: (p) => eachOpen(p, CARD, 'listing, rented, applicant') },
   { name: 'dashboard, a listing rented', kind: 'realtor', phase: 'write', go: async (p, f) => { await rentL2(p, f); await open(p, '/dashboard'); await openAll(p); } },
   { name: 'dashboard, empty', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/state?listings=0'); try { await open(p, '/dashboard'); } finally { await f('/__fake/state?listings=1'); } } },
+  // ── the desktop dashboard (components/dashboard/DashShell.js) and the listing form, at every width ──
+  { name: 'dashboard, the desktop shell with listings', kind: 'realtor', widths: WIDE, go: (p) => open(p, '/dashboard') },
+  { name: 'dashboard, Pipeline view', kind: 'realtor', widths: WIDE, go: (p) => open(p, '/dashboard?view=pipeline') },
+  { name: 'dashboard, empty, the start', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => { await f('/__fake/state?listings=0'); await open(p, '/dashboard'); await p.locator('[data-get-started]').first().waitFor({ state: 'attached', timeout: 30000 }); }, after: (f) => f('/__fake/state?listings=1') },
+  { name: 'dashboard, Archived', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await f('/__fake/state?archive=1'); await open(p, '/dashboard');
+    await p.evaluate(async () => { await fetch('/api/listings/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingIds: ['L2'], archived: true }) }); });
+    await open(p, '/dashboard'); await vis(p, '[data-shelf-to="archived"]').click(); await wait(p, 400);
+  }, after: async (f, p) => { try { await p.evaluate(async () => { await fetch('/api/listings/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingIds: ['L2'], archived: false }) }); }); } catch (e) { /* the page is gone */ } await f('/__fake/state?archive=0'); } },
+  { name: 'dashboard, the bulk bar', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await f('/__fake/state?archive=1'); await desk(p); await open(p, '/dashboard');
+    await p.locator('[data-row-check="L1"]').check(); await p.locator('[data-row-check="L2"]').check(); await p.locator('[data-bulk-bar]').waitFor({ timeout: 15000 });
+    await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300);
+  }, after: (f) => f('/__fake/state?archive=0') },
+  { name: 'new listing form, step 1 on a phone', kind: 'realtor', widths: NARROW, go: async (p) => { await open(p, '/dashboard'); await noDraft(p); await p.locator('.dash-new').click(); await p.locator('.lf-panel').waitFor({ timeout: 15000 }); await wait(p, 500); }, steps: async function* (p) {
+    try {
+      await p.locator('#lf-address').fill('2150 Lake Shore Boulevard West'); await p.locator('#lf-unit').fill('Penthouse 4512');
+      await p.locator('#lf-unit').focus(); await p.locator('#lf-address').focus(); await wait(p, 200);
+      await p.getByRole('button', { name: 'Continue' }).click(); await wait(p, 400);
+      yield 'new listing form, step 2 on a phone';
+      await p.locator('#lf-rent').fill('3450'); await p.locator('[data-chips="lf-beds"] [data-chip="__more"]').click(); await p.locator('[data-chips="lf-beds-more"] [data-chip="2-storey loft"]').click();
+      await p.locator('[data-chips="lf-move"] [data-chip="__other"]').click(); await wait(p, 300);
+      yield 'new listing form, step 2 with every choice open';
+      await p.getByRole('button', { name: 'Continue' }).click(); await wait(p, 400);
+      await p.locator('#lf-landlord-name').focus(); await p.locator('#lf-landlord-email').focus(); await p.locator('#lf-landlord-name').focus(); await wait(p, 200);
+      yield 'new listing form, step 3 on a phone, an error beside a field';
+      await p.locator('[data-add-details]').click(); await openAll(p, '[role=dialog]'); await wait(p, 300);
+      yield 'new listing form, step 3 with every detail open';
+    } finally { await noDraft(p); }
+  } },
+  { name: 'new listing form, the desktop panel', kind: 'realtor', widths: WIDE, go: async (p) => { await desk(p); await open(p, '/dashboard'); await noDraft(p); await p.locator('[data-shell-new]').click(); await p.locator('.lf-panel').waitFor({ timeout: 15000 }); await p.locator('#lf-address').fill('2150 Lake Shore Boulevard West'); await p.locator('#lf-rent').fill('3450'); await p.locator('[data-chips="lf-beds"] [data-chip="2"]').click(); await wait(p, 300); await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300); }, steps: async function* (p) {
+    try { await desk(p); await p.locator('[data-add-details]').click(); await openAll(p, '[role=dialog]'); await wait(p, 300); await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300); yield 'new listing form, the desktop panel with every detail open'; } finally { await noDraft(p); }
+  } },
+  { name: 'new listing form, the apply link after the save', kind: 'realtor', phase: 'write', widths: WIDE, go: async (p) => {
+    await desk(p); await open(p, '/dashboard'); await noDraft(p); await p.locator('[data-shell-new]').click(); await p.locator('.lf-panel').waitFor({ timeout: 15000 });
+    await p.locator('#lf-address').fill('2150 Lake Shore Boulevard West, Penthouse 4512'); await p.locator('#lf-rent').fill('3450'); await p.locator('[data-chips="lf-beds"] [data-chip="2"]').click();
+    await p.locator('#lf-landlord-name').fill('Bartholomew Castellanos Whitfield'); await p.locator('#lf-landlord-email').fill('b.castellanos.whitfield@outlook.com');
+    await p.getByRole('button', { name: 'Create listing' }).click(); await p.locator('[data-listing-done] [data-apply-link]').waitFor({ timeout: 30000 });
+    await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300);
+  } },
   { name: 'onboarding', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/state?name=0'); try { await open(p, '/onboarding'); } finally { await f('/__fake/state?name=1'); } } },
   // ── billing (billing on) ──
   { name: 'dashboard, founding member', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=founding'); await open(p, '/dashboard'); } },
@@ -348,9 +398,11 @@ export async function sweep({ browser, bases, contextOptions, concurrency = 4, m
     const f = (path) => fetch(`${bases[key]}${path}`).then((r) => r.json());
     const page = await ctx[key].newPage();
     try {
-      await s.go(page, f); await measure(page, s.name, s.kind);
-      if (s.steps) for await (const name of s.steps(page, f)) await measure(page, name, s.kind);
+      await s.go(page, f); await measure(page, s.name, s.kind, s.widths || NARROW);
+      if (s.steps) for await (const name of s.steps(page, f)) await measure(page, name, s.kind, s.widths || NARROW);
     } catch (e) { failed.push({ name: s.name, error: String(e.message).split('\n')[0] }); }
+    // A state that changed what the fake stack holds puts it back, whether it opened or not.
+    if (s.after) { try { await s.after(f, page); } catch (e) { /* the next state starts from the fixture as it can */ } }
     await page.close();
   };
   const pool = async (list, n) => { const queue = [...list]; await Promise.all(Array.from({ length: Math.min(n, queue.length) }, async () => { while (queue.length) await one(queue.shift()); })); };

@@ -203,7 +203,8 @@ function DoneScreen({ done, onClose }) {
       <p className="lf-done-p">Send this link to applicants.</p>
       {link ? (
         <>
-          <div className="lf-done-link" data-apply-link="">{link}</div>
+          {/* The link on one line, without its scheme: Copy and Share carry it whole. */}
+      <div className="lf-done-link" data-apply-link="" data-url={link}>{link.replace(/^https?:\/\//, '')}</div>
           <button type="button" className="lf-btn lf-btn-red lf-btn-big" onClick={copy} data-copy-link="">
             <Icon name={copied ? 'check' : 'copy'} size={18} strokeWidth={copied ? 2.5 : 1.75} /> {copied ? 'Copied' : 'Copy link'}
           </button>
@@ -681,7 +682,8 @@ const LF_CSS = `
   .lf-warn { color: ${C.danger}; }
   .lf-chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: var(--s-2); }
   .lf-chips-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .lf-chips-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .lf-chips-3 { grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 400px) { .lf-chips-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .lf-chips-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .lf-chips-6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   @media (min-width: 400px) { .lf-chips-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
@@ -740,7 +742,7 @@ const LF_CSS = `
   .lf-done { padding: 4px clamp(20px, 4vw, 28px) clamp(20px, 4vw, 28px); display: flex; flex-direction: column; gap: var(--s-3); }
   .lf-done-h { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; margin: 0; overflow-wrap: anywhere; text-wrap: balance; }
   .lf-done-p { font-size: var(--t-body); color: ${C.inkSoft}; margin: 0; }
-  .lf-done-link { font-size: 20px; font-weight: 700; color: ${C.ink}; padding: var(--s-4); background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; user-select: all; -webkit-user-select: all; }
+  .lf-done-link { font-size: clamp(16px, 5vw, 22px); font-weight: 700; color: ${C.ink}; padding: var(--s-4); background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); white-space: nowrap; overflow-x: auto; font-variant-numeric: tabular-nums; user-select: all; -webkit-user-select: all; }
   .lf-done-more { display: flex; justify-content: space-between; gap: var(--s-2); }
 `;
 
