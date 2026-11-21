@@ -152,6 +152,19 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             {/* Fit v2 (docs/fit-v2.md): what was assessed, then the facts the number rests on. A report frozen before v2 has neither. */}
             {fitLines(a.fit).map((line) => <div key={line} data-fit-line="" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>{noWidow(line)}</div>)}
             {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'balance' }}>{a.sentence}</p> : null}
+            {/* What the tenant chose to say (lib/reportSnapshot.js tenant): their own words and their own offer to prepay rent. Shown, never scored. */}
+            {a.tenant && a.tenant.about ? (
+              <div data-tenant-about="" style={{ marginTop: 'var(--s-3)', minWidth: 0 }}>
+                <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>In their own words</div>
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{a.tenant.about}</p>
+              </div>
+            ) : null}
+            {a.tenant && a.tenant.offer ? (
+              <div data-tenant-offer="" style={{ marginTop: 'var(--s-3)', minWidth: 0 }}>
+                <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>{a.tenant.offerLabel}</div>
+                <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>{noWidow(a.tenant.offer)}</div>
+              </div>
+            ) : null}
             {a.confirmedLine ? <div style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, marginTop: 'var(--s-2)', textWrap: 'balance' }}>{noWidow(String(a.confirmedLine).replace(/ · (\S+ \S+)$/, ' ($1)'))}</div> : null}
             {a.rank > 1 && a.reason ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-2)', textWrap: 'balance' }}>{noWidow(`Below the one above: ${String(a.reason.charAt(0).toLowerCase() + a.reason.slice(1)).split(' · ').join(', ')}.`)}</div> : null}
             <div className="num rl-nums" style={{ display: 'grid', gap: 'var(--s-2)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>

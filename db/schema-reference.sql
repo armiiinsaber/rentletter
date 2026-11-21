@@ -295,3 +295,13 @@
 --                       GREATEST of the two ids). Never the same realtor twice.
 --   Row level security is on for the three tables with no policy, and nothing is granted to anon
 --   or authenticated: lib/circle.js and lib/brokerage.js reach them with the service role.
+--
+-- ── the full tenant profile (db/022-full-tenant-profile.sql) ───────────────────────────────────
+--   tenant_profiles.about_me            text, nullable, 1 to 600 characters (tenant_profiles_about_me_length)
+--   tenant_profiles.prepay_months       smallint, nullable, 1 to 12 (tenant_profiles_prepay_months_range)
+--   tenant_profiles.landlord_report_ok  boolean, nullable. False: never on a landlord report.
+--   tenant_profiles.photo_path, photo_mime, photo_added_at   all null or all set; the path is
+--                                       {id}/photo-..., the type JPEG or PNG (tenant_profiles_photo_whole)
+--   VIEW tenant_profile_personal (security_invoker, nothing granted to anon or authenticated):
+--     id and the six columns above. Never facts, applications or an email. Read for a realtor
+--     only by lib/profileShareStore.js, behind a share the tenant approved.

@@ -56,6 +56,7 @@ const FILES = {
   m019: 'db/019-profile-shares.sql',
   m020: 'db/020-share-events.sql',
   m021: 'db/021-realtor-circle.sql',
+  m022: 'db/022-full-tenant-profile.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -957,6 +958,71 @@ async function run021(db, tag) {
   check(same(stripCircle(await rows(db, 'SELECT * FROM public.profiles ORDER BY id')), before), `${tag}2: this check's own realtors removed, every profile is what it was`);
 }
 
+// ── db/022-full-tenant-profile.sql ─────────────────────────────────────────────────────────
+// Six nullable columns on tenant_profiles (the tenant's own words, their offer to prepay rent,
+// the landlord report switch, the photo's path, type and date), three checks, and the view
+// tenant_profile_personal. Run, exercised with a profile of the verifier's own, then run again.
+const PP = 'eeeeeeee-0000-4000-8000-0000000000c1'; const PP2 = 'eeeeeeee-0000-4000-8000-0000000000c2';
+const PERSONAL_COLUMNS = [['about_me', 'text'], ['prepay_months', 'smallint'], ['landlord_report_ok', 'boolean'], ['photo_path', 'text'], ['photo_mime', 'text'], ['photo_added_at', 'timestamp with time zone']];
+const PERSONAL_CONSTRAINTS = ['tenant_profiles_about_me_length', 'tenant_profiles_prepay_months_range', 'tenant_profiles_photo_whole'];
+const stripPersonal = (list) => list.map((r) => { const o = { ...r }; for (const [c] of PERSONAL_COLUMNS) delete o[c]; return o; });
+const personalViewDef = (db) => one(db, "SELECT pg_get_viewdef('public.tenant_profile_personal'::regclass)");
+async function check022(db, label) {
+  for (const [c, type] of PERSONAL_COLUMNS) {
+    const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tenant_profiles' AND column_name = $1", [c]))[0];
+    check(col && col.data_type === type && col.is_nullable === 'YES' && col.column_default === null, `${label}: tenant_profiles.${c} is nullable ${type} with no default`, JSON.stringify(col));
+  }
+  for (const name of PERSONAL_CONSTRAINTS) check((await constraintCount(db, name)) === 1, `${label}: the constraint ${name} exists once`);
+  const cols = (await rows(db, "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tenant_profile_personal' ORDER BY ordinal_position")).map((r) => r.column_name);
+  check(same(cols, ['id', ...PERSONAL_COLUMNS.map(([c]) => c)]), `${label}: the view holds the id and the six columns, and nothing else of the profile`, cols.join(','));
+  check(/security_invoker=true/.test(String(await one(db, "SELECT array_to_string(reloptions, ',') FROM pg_class WHERE oid = 'public.tenant_profile_personal'::regclass"))), `${label}: the view reads as its caller (security_invoker)`);
+  for (const role of ['anon', 'authenticated']) for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) check((await one(db, 'SELECT has_table_privilege($1, $2, $3)', [role, 'public.tenant_profile_personal', priv])) === false, `${label}: ${role} holds no ${priv} on the view`);
+  const as = async (role, fn) => { await db.exec(`SET ROLE ${role}`); try { return await fn(); } finally { await db.exec('RESET ROLE'); } };
+  for (const role of ['anon', 'authenticated']) check(/permission denied/.test(await as(role, () => refused(db, 'SELECT * FROM public.tenant_profile_personal')) || ''), `${label}: ${role} cannot read the view`);
+  check((await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tenant_profiles'")) === 0, `${label}: no policy opens tenant_profiles`);
+  for (const c of ['facts', 'applications', 'email']) check(/does not exist/.test(await refused(db, `SELECT ${c} FROM public.tenant_profile_personal`) || ''), `${label}: the view has no ${c} column to ask for`);
+}
+async function run022(db, tag) {
+  const before = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  const shareable = await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)");
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts) VALUES ($1, 'personal@mail.ca', 'pp1', '{\"fullName\":\"Probe Tenant\"}'::jsonb), ($2, 'personal2@mail.ca', 'pp2', '{}'::jsonb)", [PP, PP2]);
+  const withMine = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  await step(db, `${tag}1`, FILES.m022);
+  check(same(stripPersonal(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id')), withMine), `${tag}1: no other column of any tenant profile moved`);
+  check((await one(db, 'SELECT count(*)::int FROM public.tenant_profiles WHERE about_me IS NOT NULL OR prepay_months IS NOT NULL OR landlord_report_ok IS NOT NULL OR photo_path IS NOT NULL OR photo_mime IS NOT NULL OR photo_added_at IS NOT NULL')) === 0, `${tag}1: every existing profile reads null in the six new columns`);
+  check((await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)")) === shareable, `${tag}1: the view of shareable facts is exactly what it was`);
+  await check022(db, `${tag}1`);
+  // The tenant's own words: 1 to 600 characters, counted as characters.
+  const set = (sql, params) => refused(db, `UPDATE public.tenant_profiles SET ${sql} WHERE id = $1`, [PP, ...(params || [])]);
+  check(/tenant_profiles_about_me_length/.test(await set('about_me = $2', ['x'.repeat(601)]) || ''), `${tag}1: 601 characters are refused`);
+  check(/tenant_profiles_about_me_length/.test(await set("about_me = ''") || ''), `${tag}1: an empty note is refused: none is null`);
+  check((await set('about_me = $2', ['é'.repeat(600)])) == null, `${tag}1: 600 characters are kept, counted as characters`);
+  // The offer: 1 to 12 months, or none.
+  for (const bad of [0, 13, -1]) check(/tenant_profiles_prepay_months_range/.test(await set('prepay_months = $2', [bad]) || ''), `${tag}1: an offer of ${bad} months is refused`);
+  for (const ok of [1, 12]) check((await set('prepay_months = $2', [ok])) == null, `${tag}1: an offer of ${ok} is kept`);
+  // The photo: its path, type and date together, under the profile's own id, JPEG or PNG.
+  check(/tenant_profiles_photo_whole/.test(await set("photo_path = $2", [`${PP}/photo-1.jpg`]) || ''), `${tag}1: a path without its type and date is refused`);
+  check(/tenant_profiles_photo_whole/.test(await set("photo_path = $2, photo_mime = 'image/gif', photo_added_at = now()", [`${PP}/photo-1.gif`]) || ''), `${tag}1: a type that is not JPEG or PNG is refused`);
+  check(/tenant_profiles_photo_whole/.test(await set("photo_path = $2, photo_mime = 'image/jpeg', photo_added_at = now()", [`${PP2}/photo-1.jpg`]) || ''), `${tag}1: a path under another profile's id is refused`);
+  check(/tenant_profiles_photo_whole/.test(await set("photo_path = 'maya@mail.ca/selfie.jpg', photo_mime = 'image/jpeg', photo_added_at = now()") || ''), `${tag}1: a path that is not the profile's own photo path is refused`);
+  check((await set("photo_path = $2, photo_mime = 'image/jpeg', photo_added_at = now(), landlord_report_ok = false", [`${PP}/photo-1.jpg`])) == null, `${tag}1: a whole photo under the profile's own id is kept`);
+  const seen = (await rows(db, 'SELECT * FROM public.tenant_profile_personal WHERE id = $1', [PP]))[0];
+  check(seen.prepay_months === 12 && seen.landlord_report_ok === false && seen.photo_path === `${PP}/photo-1.jpg` && [...seen.about_me].length === 600, `${tag}1: through the view the realtor's reader sees what the tenant chose, and the switch`, JSON.stringify({ ...seen, about_me: '…' }));
+  check((await one(db, 'SELECT count(*)::int FROM public.tenant_profile_personal WHERE id = $1 AND about_me IS NULL AND prepay_months IS NULL AND photo_path IS NULL', [PP2])) === 1, `${tag}1: a profile that added nothing reads null in all of them`);
+  check((await set('photo_path = NULL, photo_mime = NULL, photo_added_at = NULL')) == null && (await one(db, 'SELECT photo_path IS NULL FROM public.tenant_profiles WHERE id = $1', [PP])) === true, `${tag}1: a removed photo leaves nothing behind`);
+  await db.query("UPDATE public.tenant_profiles SET photo_path = $2, photo_mime = 'image/png', photo_added_at = now() WHERE id = $1", [PP, `${PP}/photo-2.png`]);
+  // Again: nothing changes.
+  const shape = await profileCatalog(db); const constraints = await profileConstraints(db); const def = await personalViewDef(db);
+  const held = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  await step(db, `${tag}2 (022 again)`, FILES.m022);
+  check(same(await profileCatalog(db), shape), `${tag}2: a second run leaves every column of tenant_profiles and its views, its type, NOT NULL and default as they were`);
+  check(same(await profileConstraints(db), constraints) && (await personalViewDef(db)) === def && (await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)")) === shareable, `${tag}2: and every constraint and both views`);
+  check(same(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id'), held), `${tag}2: and every row: the words, the offer and the photo written before it are still there`);
+  await check022(db, `${tag}2`);
+  await dropProfiles(db, [PP, PP2]);
+  check(same(stripPersonal(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id')), before), `${tag}2: this check's own profiles removed, every tenant profile is what it was`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -1062,6 +1128,7 @@ async function pathA() {
   await run019(db, 'A15');
   await run020(db, 'A16');
   await run021(db, 'A17');
+  await run022(db, 'A18');
   await db.close();
 }
 
@@ -1227,6 +1294,7 @@ async function pathB() {
   await run019(db, 'B21');
   await run020(db, 'B22');
   await run021(db, 'B23');
+  await run022(db, 'B24');
   return { db, before };
 }
 

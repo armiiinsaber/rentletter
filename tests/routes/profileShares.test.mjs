@@ -124,7 +124,7 @@ test('2. a realtor with a share sees only the whitelist and the checks, each wit
   const res = await w.realtor(view, { linkId: 'J1' });
   assert.equal(res.code, 200);
   const body = res.body;
-  assert.deepEqual(Object.keys(body).sort(), ['checks', 'documents', 'documentsUntil', 'ended', 'facts', 'shared', 'sharedAt']);
+  assert.deepEqual(Object.keys(body).sort(), ['about', 'checks', 'documents', 'documentsUntil', 'ended', 'facts', 'photo', 'prepayMonths', 'shared', 'sharedAt']);
   assert.ok(body.facts.length >= 8 && body.facts.every((f) => PROFILE_FACT_KEYS.includes(f.key)), 'every fact is on the whitelist');
   assert.deepEqual(body.facts.map((f) => f.key), PROFILE_FACT_KEYS.filter((k) => TYPED[k] !== undefined), 'and they are exactly the whitelisted answers the tenant gave');
   assert.ok(body.facts.every((f) => /^Typed by the tenant on November 1, 2026$/.test(f.line) && f.source === 'typed'), 'each typed fact with its source and date');

@@ -262,10 +262,20 @@ export const STATES = [
     await p.locator('[data-share="live"]').getByRole('button', { name: /^Stop sharing/ }).click(); await p.locator('[data-vault-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
     yield 'tenant profile, stop sharing asked';
   } },
+  // The full profile (db/022): strength with its checklist, a photo, the tenant's own words, an
+  // offer to prepay rent and the landlord report switch, all filled; then the photo's removal asked.
+  { name: 'tenant profile, about you filled', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=7&docs=1&personal=1'); await p.locator('[data-photo="yes"]').waitFor({ timeout: 15000 }); await p.locator('[data-strength-steps]').waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-photo="yes"]').getByRole('button', { name: 'Remove photo' }).click(); await p.locator('[data-photo-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    yield 'tenant profile, photo removal asked';
+  } },
   { name: 'tenant profile, a share the tenant stopped', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=5&docs=1&share=new&stopped=1'); await p.locator('[data-share="revoked"]').waitFor({ timeout: 15000 }); } },
-  { name: 'listing, a shared profile', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=4&docs=1&share=new'); await open(p, '/listing/L1'); await expand(p, 'Maximiliano Castellanos Ruiz'); await p.locator('[data-shared-view]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
-    await p.locator('[data-shared-view]').click(); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await wait(p, 400);
+  { name: 'listing, a shared profile', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=4&docs=1&share=new&personal=1'); await open(p, '/listing/L1'); await expand(p, 'Maximiliano Castellanos Ruiz'); await p.locator('[data-shared-view]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-shared-view]').click(); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await p.locator('[data-shared-photo]').waitFor({ timeout: 30000 }); await p.locator('[data-shared-about]').waitFor({ timeout: 30000 }); await wait(p, 400);
     yield 'listing, the shared profile viewed';
+    // The landlord's report for the same listing now carries that tenant's own words and offer, and no photo.
+    const token = await report(p); await open(p, `/r/${token}`); await p.locator('[data-tenant-about]').waitFor({ timeout: 30000 }); await p.locator('[data-tenant-offer]').waitFor({ timeout: 30000 });
+    if (await p.locator('img[src^="data:image"]').count()) throw new Error('a photo is on the landlord report');
+    yield 'landlord report, a tenant\'s own words and offer';
   } },
   // The checklist line "Co applicant: {long name}": the label stands above the name where both
   // do not fit on one line (components/ui.js LabelValue), so no word is left alone.

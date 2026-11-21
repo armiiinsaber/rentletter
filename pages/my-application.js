@@ -22,6 +22,7 @@ import { C } from '../components/theme';
 import { GlobalStyle, Wordmark, StatusPills } from '../components/ui';
 import { ProfileStyles, FactSections, FactSourceContext, Eyebrow, Lines, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
 import ProfileVault, { youLine } from '../components/tenant/ProfileVault';
+import ProfilePersonal from '../components/tenant/ProfilePersonal';
 import { SOURCE } from '../lib/profileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 import { Pending, ScreenLoader } from '../components/brand/Loader';
@@ -262,6 +263,9 @@ export default function MyProfile() {
           <div className="rl-card mp-card"><p className="mp-p">{noWidow('No details saved yet. They appear here after your first application, or add an application you already sent, below.')}</p></div>
         )}
       </div>
+
+      {/* Profile strength (private to the tenant), then what they choose to add about themselves. */}
+      <ProfilePersonal profile={profile} />
 
       <ProfileVault profile={profile} />
 

@@ -61,7 +61,9 @@ test('1. a realtor cannot read any vault document or fact, through any route', a
   // With shares (db/019), a realtor reads the vault only through the one share reader: that
   // reader, the share lifecycle and the tenant's own shares route join the list, and nothing else.
   const SHARE = ['lib/profileShareStore.js', 'lib/profileShares.js', 'pages/api/tenant/shares.js'];
-  assert.deepEqual(namers.sort(), [...OWN, ...SHARE].sort(), 'only the vault, its rules, the tenant routes, the expiry job, and the one share reader with the share lifecycle');
+  // With the full profile (db/022), the tenant's own two routes for their photo and their download join it.
+  const PERSONAL = ['pages/api/tenant/personal.js', 'pages/api/tenant/export.js'];
+  assert.deepEqual(namers.sort(), [...OWN, ...SHARE, ...PERSONAL].sort(), 'only the vault, its rules, the tenant routes, the expiry job, and the one share reader with the share lifecycle');
   const route = src('pages/api/tenant/vault.js');
   assert.match(route, /const p = await sessionProfile\(req\);\s*\n\s*if \(!p\) return res\.status\(401\)/, 'the tenant session first');
   assert.doesNotMatch(route, /requireEntitlement|withRealtor|getSupabaseServerClient|req\.body\??\.profileId|req\.query/, 'no realtor session, and the profile id never comes from the request');

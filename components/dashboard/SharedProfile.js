@@ -20,6 +20,7 @@ import { StackedLines } from '../ui';
 import { noWidow, dateLong, money } from '../../lib/typeset';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { checkText, KIND_LABEL } from '../../lib/tenantVaultRules';
+import { prepayLine, PREPAY_LABEL } from '../../lib/profilePersonal';
 import { Pending } from '../brand/Loader';
 
 const line = { fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance', margin: 0 };
@@ -74,6 +75,24 @@ export default function SharedProfile({ linkId }) {
       {!state.ended && read && (
         <>
           <p style={line}>{noWidow(`Shared with you on ${dateLong(state.sharedAt)}. The tenant sees this view in their log.`)}</p>
+          {/* A one page profile: the photo and the name, the tenant's own words, their own offer, then the facts with their dates and the document checks. */}
+          <div data-shared-head="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-3)', minWidth: 0 }}>
+            {state.photo ? <img data-shared-photo="" src={state.photo} alt="" width={72} height={72} style={{ width: 72, height: 72, borderRadius: 12, objectFit: 'cover', flexShrink: 0, border: `1px solid ${C.rule}` }} /> : null}
+            <div style={{ flex: '1 1 260px', minWidth: 0, fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, lineHeight: 1.3, overflowWrap: 'anywhere', textWrap: 'balance' }}>{noWidow((state.facts.find((f) => f.key === 'fullName') || {}).value || 'Shared profile')}</div>
+          </div>
+          {state.about ? (
+            <div data-shared-about="" style={{ display: 'grid', gap: 2 }}>
+              <div style={label}>About me, in the tenant’s words</div>
+              <p style={{ ...line, whiteSpace: 'pre-line', textWrap: 'wrap' }}>{state.about}</p>
+            </div>
+          ) : null}
+          {prepayLine(state.prepayMonths) ? (
+            <div data-shared-prepay="" style={{ display: 'grid', gap: 2 }}>
+              <div style={label}>{PREPAY_LABEL}</div>
+              <div style={value}>{noWidow(prepayLine(state.prepayMonths))}</div>
+              <p style={source}>{noWidow('Their own offer. It cannot be required.')}</p>
+            </div>
+          ) : null}
           <ul data-shared-facts="" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
             {state.facts.map((f, i) => (
               <li key={f.key} data-shared-fact={f.key} style={{ padding: 'var(--s-2) 0', borderTop: i ? `1px solid ${C.rule}` : 'none', display: 'grid', gap: 2 }}>

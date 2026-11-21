@@ -83,6 +83,9 @@ t.applicant_documents = [...(t.applicant_documents || []), { id: 'D9', listing_a
 // The tenant's own profile and vault (db/tenant-profiles.sql, db/018-profile-vault.sql): empty
 // until a walk asks for a tenant (GET /__fake/tenant below).
 for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profile_checks', 'profile_access_log', 'profile_shares', 'tenant_profile_shareable']) if (!t[name]) t[name] = [];
+// The full tenant profile (db/022-full-tenant-profile.sql): the view the share reader uses holds
+// the same rows as the table (GET /__fake/tenant?personal=1 fills them, below).
+t.tenant_profile_personal = t.tenant_profiles;
 // The realtor circle and the brokerage record (db/021-realtor-circle.sql): empty until a walk
 // asks for a circle (GET /__fake/circle below).
 for (const name of ['circle_connections', 'brokerages', 'brokerage_members']) if (!t[name]) t[name] = [];
@@ -311,6 +314,19 @@ http.createServer(async (req, res) => {
         t.profile_access_log.push(line('document_opened', -2, `vault-${who}-2`));
         if (stopped) t.profile_access_log.push(line('share_revoked', -1));
       }
+    }
+    // personal=1: the tenant added a photo, a few words about themselves (long ones) and an offer
+    // to prepay three months of rent (db/022). The photo is a real PNG, so the screens draw it.
+    if (q.get('personal') === '1' && !row.photo_path) {
+      const zlib = await import('node:zlib');
+      const chunk = (type, data) => { const body = Buffer.concat([Buffer.from(type, 'ascii'), data]); const len = Buffer.alloc(4); len.writeUInt32BE(data.length); const crc = Buffer.alloc(4); crc.writeUInt32BE(zlib.crc32(body) >>> 0); return Buffer.concat([len, body, crc]); };
+      const side = 96; const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(side, 0); ihdr.writeUInt32BE(side, 4); ihdr[8] = 8; ihdr[9] = 2;
+      const raw = Buffer.alloc((side * 3 + 1) * side);
+      for (let y = 0; y < side; y++) for (let x = 0; x < side; x++) { const o = y * (side * 3 + 1) + 1 + x * 3; const head = (x - 48) ** 2 + (y - 36) ** 2 < 18 ** 2 || (x - 48) ** 2 + (y - 104) ** 2 < 44 ** 2; raw[o] = head ? 58 : 214; raw[o + 1] = head ? 58 : 207; raw[o + 2] = head ? 60 : 190; }
+      const png = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+      const path = `${row.id}/photo-${randomUUID()}.png`;
+      await stack.db.storage.from('tenant-vault').upload(path, png, { contentType: 'image/png' });
+      Object.assign(row, { photo_path: path, photo_mime: 'image/png', photo_added_at: now, prepay_months: 3, landlord_report_ok: null, about_me: 'I coordinate operations at a pediatric rehabilitation clinic and have been there four years. I am looking for a quiet home near the lake, close to the streetcar, where I can stay for a long time.\n\nMost evenings I cook, read and go to bed early. On weekends I cycle the waterfront trail. I look after the places I live in and I get on well with neighbours.' });
     }
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ token, vault: process.env.TENANT_VAULT_ENABLED === 'false' ? 'off' : 'on', documents: t.tenant_profile_documents.filter((d) => d.tenant_profile_id === row.id && !d.deleted_at).length })); return;
   }
