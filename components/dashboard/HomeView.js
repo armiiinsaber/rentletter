@@ -87,6 +87,17 @@ function useLogoAccent(logoUrl) {
   return accent;
 }
 
+// The start, for a realtor with no listing yet: one heading, one line, the button, three steps.
+const START = {
+  heading: 'Start with one listing.',
+  line: 'Each listing gets a link. Tenants apply through it, and you read their applications here.',
+  steps: [
+    ['Add a listing', 'The address, the rent and your landlord client.'],
+    ['Send the link', 'By text, by email or in your listing post.'],
+    ['Read the applications', 'They arrive here as tenants apply.'],
+  ],
+};
+
 export default function HomeView({ userId, userEmail, initialProfile, initialListings, listingsError: initialListingsError = null, entitlement: initialEntitlement = null, initialSignals = null }) {
   const adapter = useAdapter();
   const router = useRouter();
@@ -136,6 +147,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const [loadRound, setLoadRound] = useState(0);
   const listingsLoaded = Array.isArray(listings);
   const hasListings = listingsLoaded && listings.length > 0;
+  // No listing yet, known (never while the listings could not be read): the start.
+  const empty = listingsLoaded && !hasListings;
   const openListings = (listings || []).filter((l) => listingOpen(l));
   const closedListings = (listings || []).filter((l) => !listingOpen(l));
   // Client retry when the server-side listings query failed (an expired access token being
@@ -336,7 +349,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         {/* The shell (components/dashboard/DashShell.js): under 1024px the header as it always was,
             static and in flow (see .dash-bg .rl-header below), with the Listings and Circle tabs; at
             1024 and wider the sidebar and the main area. */}
-        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={() => setModalOpen(true)}>
+        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={() => setModalOpen(true)} newPrimary={!empty}>
 
         {locked && (
           <div className="hv-lock" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)' }}>
@@ -357,11 +370,18 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           <div className="hv-primary">
           {/* PHONE. 1. THE INK CARD: the greeting (the hour from the client, lib/greeting.js) over the
               standing as plain numbers, counted from the loaded signals. No rows, no verbs, no links:
-              what is next lives in the bell. Then the one red action on the page: New listing. */}
+              what is next lives in the bell. Then the one red action on the page: New listing.
+              With no listing yet it is the start: the heading and its line on the card, the button
+              right under it, and the three steps; all of it on one screen at 390. */}
           <div className="hv-phone">
           <section className="dash-ink" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
             <h1 className="dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d1) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
-            {standing.items.length ? (
+            {empty ? (
+              <div data-get-started="phone">
+                <h2 className="dash-start-h">{START.heading}</h2>
+                <p className="dash-start-line">{START.line}</p>
+              </div>
+            ) : standing.items.length ? (
               <ul className="dash-standing" aria-label="Your workspace">
                 {standing.items.map(([n, label]) => <li key={label}><span className="dash-standing-n">{n}</span> {label}</li>)}
               </ul>
@@ -372,19 +392,30 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             )}
           </section>
           <button type="button" onClick={() => setModalOpen(true)} className="dash-new" style={{ marginTop: 'var(--s-3)' }}>
-            <Icon name="plus" size={17} /> {listingsLoaded && !hasListings ? 'Add your first listing' : 'New listing'}
+            <Icon name="plus" size={17} /> New listing
           </button>
-          {/* iOS Safari only, until dismissed once on this device (components/dashboard/InstallHint.js). */}
-          <InstallHint />
-          {listingsLoaded && !hasListings && (
-            <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5, marginTop: 'var(--s-3)', maxWidth: 520, textWrap: 'balance' }}>Add a listing and you get a link to send applicants; their applications land&nbsp;here.</p>
-          )}
+          {/* The three steps, under the button, while there is no listing. */}
+          {empty ? <ol className="dash-steps" data-get-started-steps="">{START.steps.map(([title, line], i) => <li key={title}><span className="dash-step-n" aria-hidden="true">{i + 1}</span><span><span className="dash-step-t">{title}</span><span className="dash-step-l">{line}</span></span></li>)}</ol> : null}
+          {/* iOS Safari only, until dismissed once on this device (components/dashboard/InstallHint.js).
+              Held back while there is no listing, so the start fits one screen. */}
+          {!empty && <InstallHint />}
           </div>
 
-          {/* DESKTOP. The greeting, quiet, on the page; under it the three numbers that filter the table. */}
+          {/* DESKTOP. The greeting, quiet, on the page; under it the three numbers that filter the
+              table, or with no listing yet the start, filling the main area. */}
           <div className="hv-desk hv-part-listings">
             <h1 className="hv-greet" style={{ visibility: greeting ? 'visible' : 'hidden' }}>{greeting || '\u00A0'}</h1>
             {hasListings ? <DeskStats standing={standing} filter={filter} onFilter={setFilter} /> : null}
+            {empty ? (
+              <div className="hv-start" data-get-started="desktop">
+                <h2 className="hv-start-h">{START.heading}</h2>
+                <p className="hv-start-line">{START.line}</p>
+                <button type="button" onClick={() => setModalOpen(true)} className="ds-btn ds-btn-primary hv-start-new" data-get-started-new="">
+                  <Icon name="plus" size={16} /> New listing
+                </button>
+                <ol className="hv-steps">{START.steps.map(([title, line], i) => <li key={title}><span className="hv-step-n" aria-hidden="true">{i + 1}</span><span className="hv-step-t">{title}</span><span className="hv-step-l">{line}</span></li>)}</ol>
+              </div>
+            ) : null}
           </div>
           {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
 
@@ -614,6 +645,25 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
 
         /* The press is the shared one (lib/motion.js installPress); a pointer that hovers gets a shadow, at once. */
         @media (hover: hover) { .dash-new:hover { box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); } }
+
+        /* ── The start (no listing yet): on the ink card the heading and its line; the steps under
+           the button, numbered, each a title and a short line. ── */
+        .dash-start-h { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; letter-spacing: -0.015em; line-height: var(--lh-display); color: ${C.paper}; margin: var(--s-3) 0 0; text-wrap: balance; }
+        .dash-start-line { font-size: var(--t-body-2); color: ${C.instText}; line-height: var(--lh-body); margin: var(--s-2) 0 0; text-wrap: balance; }
+        .dash-steps { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: var(--s-3); }
+        .dash-steps li { display: flex; align-items: flex-start; gap: var(--s-3); }
+        .dash-step-n, .hv-step-n { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.ruleDark}; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+        .dash-step-t { display: block; font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; padding-top: 3px; }
+        .dash-step-l { display: block; font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.4; margin-top: 2px; text-wrap: balance; }
+        .hv-start { margin-top: var(--s-2); }
+        .hv-start-h { font-family: var(--f-display); font-size: 40px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: ${C.ink}; margin: 0; text-wrap: balance; }
+        .hv-start-line { font-size: var(--t-body); color: ${C.inkSoft}; line-height: var(--lh-body); margin: var(--s-3) 0 0; max-width: 34em; text-wrap: balance; }
+        .hv-start-new { margin-top: var(--s-5); }
+        .hv-steps { list-style: none; margin: var(--gap-section) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); }
+        .hv-steps li { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-5); background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); }
+        .hv-step-t { font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; margin-top: var(--s-2); }
+        .hv-step-l { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); text-wrap: balance; }
+        @media (min-width: 1920px) { .hv-start-h { font-size: 48px; } .hv-start-line { font-size: 18px; } }
 
         /* ── Phone and desktop: both are in the markup, the width picks one ── */
         .hv { max-width: 1100px; margin: 0 auto; padding-left: clamp(16px, 4vw, 32px); padding-right: clamp(16px, 4vw, 32px); }
