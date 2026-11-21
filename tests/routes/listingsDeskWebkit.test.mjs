@@ -15,11 +15,14 @@
 //   shrunk the way iOS shrinks it), then the apply link with Copy, and the draft cleared; at 1440
 //   one panel with no steps, what tenants see beside the form and following it, Enter to the next
 //   field, Tab kept inside, Escape closing with the draft kept and the focus back on New listing;
-//   and a listing's Duplicate opening the form filled from it with the unit empty.
+//   and a listing's Duplicate opening the form filled from it with the unit empty;
+//   the office list at 320 with an email far longer than the screen: one line, cut short, the
+//   whole address on hover, nothing sideways.
 // The fake stack server is this file's own, started in its turn (tests/helpers/devServer.mjs).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
@@ -27,12 +30,14 @@ import { reap } from '../helpers/reap.mjs';
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const ROOT = new URL('../..', import.meta.url).pathname;
 const S = { port: 3181 };
+// The office walk signs in with a password made up for this run.
+const OFFICE = randomBytes(18).toString('hex');
 const BASE = `http://localhost:${S.port}`;
 let turn = false;
 const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
 const down = () => { if (S.proc) { try { process.kill(-S.proc.pid); } catch (e) { /* gone */ } S.proc = null; } for (const pid of listeners(S.port)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } };
 const start = () => new Promise((res, rej) => {
-  S.proc = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(S.port), 'dev', '3'], { cwd: ROOT, env: { ...process.env }, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(S.proc, 'the fake stack server');
+  S.proc = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(S.port), 'dev', '3'], { cwd: ROOT, env: { ...process.env, ADMIN_PASSWORD: OFFICE }, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(S.proc, 'the fake stack server');
   const t = setTimeout(() => rej(new Error(`the fake stack server on ${S.port} did not start`)), 180000);
   S.proc.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } });
   S.proc.on('exit', (code) => { clearTimeout(t); rej(new Error(`the fake stack server on ${S.port} exited ${code}`)); });
@@ -275,6 +280,33 @@ async function formWalk(type, launch) {
 }
 test('the new listing form in WebKit at 390, 320 and 1440', async () => { requireWebkit(); await formWalk(pw.webkit, {}); });
 test('the new listing form in Chrome at 390, 320 and 1440', { skip: haveChrome ? false : 'Chrome binary absent' }, () => formWalk(pw.chromium, { executablePath: chromeBin }));
+
+async function officeWalk(type, launch) {
+  const browser = await type.launch(launch);
+  await fake('/__fake/state?longemail=1');
+  try {
+    const ctx = await context(browser, 320, 800, false);
+    const page = await ctx.newPage();
+    const r = await page.request.post('/api/admin/login', { data: { password: OFFICE } });
+    assert.ok(r.ok(), `office sign in (${r.status()})`);
+    const m = /rl_admin=([^;]+)/.exec(r.headers()['set-cookie'] || '');
+    await ctx.addCookies([{ name: 'rl_admin', value: decodeURIComponent(m[1]), url: BASE, httpOnly: true, sameSite: 'Strict' }]);
+    await page.goto('/admin', { waitUntil: 'load' });
+    const email = 'alexandria.konstantinopoulou.residential.leasing@harbourfrontresidentialrealty.ca';
+    const cell = page.locator('.ad-list .ad-email', { hasText: 'alexandria.konstantinopoulou' }).first();
+    await cell.waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+    const got = await cell.evaluate((el) => ({ h: Math.round(el.getBoundingClientRect().height), lh: parseFloat(getComputedStyle(el).lineHeight) || parseFloat(getComputedStyle(el).fontSize) * 1.3, title: el.title, cut: el.scrollWidth > el.clientWidth, text: el.textContent }));
+    assert.ok(got.h <= got.lh + 2, `one line (${got.h}px for a ${got.lh}px line)`);
+    assert.equal(got.title, email, 'the whole address on hover'); assert.equal(got.text, email, 'and in the text, cut by the box alone');
+    assert.equal(got.cut, true, 'cut short at 320');
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth), 320, 'nothing sideways');
+    const short = await page.locator('.ad-list .ad-email', { hasText: 'sarah@example.com' }).first().evaluate((el) => el.scrollWidth > el.clientWidth);
+    assert.equal(short, false, 'an email that fits is whole');
+    await ctx.close();
+  } finally { await fake('/__fake/state?longemail=0'); await browser.close(); }
+}
+test('the office list with a very long email in WebKit at 320', async () => { requireWebkit(); await officeWalk(pw.webkit, {}); });
+test('the office list with a very long email in Chrome at 320', { skip: haveChrome ? false : 'Chrome binary absent' }, () => officeWalk(pw.chromium, { executablePath: chromeBin }));
 
 test('the empty dashboard in WebKit at 390 and 1440', async () => { requireWebkit(); await emptyWalk(pw.webkit, {}); });
 test('the empty dashboard in Chrome at 390 and 1440', { skip: haveChrome ? false : 'Chrome binary absent' }, () => emptyWalk(pw.chromium, { executablePath: chromeBin }));

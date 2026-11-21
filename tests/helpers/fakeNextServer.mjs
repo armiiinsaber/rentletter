@@ -363,7 +363,7 @@ http.createServer(async (req, res) => {
   // the signed in realtor's plan (a trial with days left, one ended two days ago, a payment past
   // due with days of grace); listings=0 takes their listings away (the empty dashboard) and
   // listings=1 puts them back; name=0 blanks their name (onboarding) and name=1 puts it back;
-  // archive=1|0 and testlisting=1|0 as said below. Answers the profile's plan fields.
+  // archive=1|0, testlisting=1|0 and longemail=1|0 as said below. Answers the profile's plan fields.
   if (req.url.startsWith('/__fake/state')) {
     const q = new URL(req.url, 'http://localhost').searchParams; const p = t.profiles[0]; const days = Number(q.get('days') || 3);
     const plan = q.get('plan');
@@ -389,6 +389,10 @@ http.createServer(async (req, res) => {
       t.applications.push({ id: 'AT1', application_number: 'RL-2026-TEST-T1T1', full_name: 'Test Applicant', email: 'sarah+test@example.com', created_at: new Date().toISOString() });
       t.listing_applicants.push({ id: 'JT1', listing_id: 'L3', application_id: 'AT1', decision_status: 'none', decision_priority: null, decision_notes: '', added_via: 'invite', created_at: new Date().toISOString(), doc_verifications: null, reviewed_at: null, withdrawn_at: null, confirmations: {}, last_sent_at: null });
     }
+    // longemail=1: a realtor whose email is far longer than a 320 screen (the office list holds it
+    // on one line, cut short, the whole address on hover); longemail=0 takes them away.
+    if (q.get('longemail') === '1' && !t.profiles.some((x) => x.id === 'long-email-realtor')) t.profiles.push({ id: 'long-email-realtor', email: 'alexandria.konstantinopoulou.residential.leasing@harbourfrontresidentialrealty.ca', full_name: 'Alexandria Konstantinopoulou', brokerage: 'Harbourfront Residential Realty Inc., Brokerage', plan: 'founding', province: 'ON', created_at: new Date(Date.now() - 86400000).toISOString(), signup_source: 'direct' });
+    if (q.get('longemail') === '0') t.profiles = t.profiles.filter((x) => x.id !== 'long-email-realtor');
     if (q.get('testlisting') === '0') { t.listings = t.listings.filter((l) => l.id !== 'L3'); t.listing_applicants = t.listing_applicants.filter((k) => k.listing_id !== 'L3'); t.applications = t.applications.filter((x) => x.id !== 'AT1'); }
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ plan: p.plan, trial_ends_at: p.trial_ends_at, subscription_status: p.subscription_status || null, listings: t.listings.filter((l) => l.profile_id === USER.id).length })); return;
   }

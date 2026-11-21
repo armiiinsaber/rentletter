@@ -203,7 +203,7 @@ export default function Admin({ authed: initialAuthed }) {
               {rows.map((r) => (
                 <tr key={r.id} className={sel.has(r.id) ? 'sel' : ''}>
                   <td><input type="checkbox" aria-label={`Select ${r.email || r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} /></td>
-                  <td className="ad-mono" style={{ overflowWrap: 'anywhere' }}>{r.email || '—'}</td>
+                  <td className="ad-mono"><span className="ad-email" title={r.email || undefined}>{r.email || '—'}</span></td>
                   <td style={{ fontWeight: 700 }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>—</span>} <FounderPill r={r} />{r.promoCodeUsed && <span className="ad-mono" style={{ color: C.instMute, marginLeft: 6 }} title="Promo code used">{r.promoCodeUsed}</span>}</td>
                   <td>{r.brokerage || '—'}</td>
                   <td>{r.province || '—'}</td>
@@ -224,7 +224,7 @@ export default function Admin({ authed: initialAuthed }) {
             <label key={r.id} className={`ad-card ad-row ${sel.has(r.id) ? 'sel' : ''}`}>
               <input type="checkbox" aria-label={`Select ${r.email || r.name}`} checked={sel.has(r.id)} onChange={() => toggle(r.id)} />
               <div style={{ minWidth: 0, flex: 1, display: 'grid', gap: 4 }}>
-                <div className="ad-mono ad-row-email" style={{ color: C.instText, fontSize: 13.5, overflowWrap: 'anywhere' }}>{r.email || '—'}</div>
+                <div className="ad-mono ad-row-email ad-email" title={r.email || undefined} style={{ color: C.instText, fontSize: 13.5 }}>{r.email || '—'}</div>
                 <div style={{ fontSize: 14, fontWeight: 700, overflowWrap: 'anywhere' }}>{r.name || <span style={{ color: C.instMute, fontWeight: 500 }}>No name</span>}{r.brokerage ? <span style={{ color: C.instMute, fontWeight: 500 }}> · {r.brokerage}</span> : ''}</div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}><StatusPill r={r} /><FounderPill r={r} /></div>
                 <div className="ad-quiet ad-num" style={{ fontSize: 12.5, textWrap: 'balance' }}>{`${r.listings}\u00a0listing${r.listings === 1 ? '' : 's'}\u00a0·\u00a0${r.applications}\u00a0app${r.applications === 1 ? '' : 's'}\u00a0·\u00a0joined ${fmtDate(r.signupAt)}\u00a0·\u00a0seen\u00a0${ago(r.lastActivity)}`}</div>
@@ -320,6 +320,10 @@ export default function Admin({ authed: initialAuthed }) {
         .ad-table input[type="checkbox"], .ad-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: ${C.red}; }
         .ad-list { display: none; gap: 8px; }
         .ad-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
+        /* An email is one line: whole where it fits, cut short where it cannot (a very long one at
+           320), the whole address on hover, and in the checkbox's name. */
+        .ad-email { display: block; min-width: 0; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .ad-table .ad-email { max-width: 280px; }
         .ad-row input[type="checkbox"] { margin-top: 2px; flex-shrink: 0; }
         .ad-row.sel { border-color: ${C.redBright}; }
         /* Below 345px an email stays on one line: the row's own face at 13px, where the fixed width one runs out of room. */
