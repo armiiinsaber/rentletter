@@ -877,7 +877,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           .hv-rented { margin-top: var(--gap-section); }
           .hv-h3 { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; margin: 0; }
           .hv-part-shared :global([data-shared-with-me]) { margin-top: 0; }
-          .dash-brand { margin-top: var(--gap-section); max-width: 720px; }
+          .dash-brand { margin-top: var(--gap-section); }
         }
         @media (min-width: 1280px) {
           .hv { padding-left: var(--s-6); padding-right: var(--s-6); }

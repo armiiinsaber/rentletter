@@ -614,6 +614,11 @@ export default function Home() {
           .lp-foot div[style*="uppercase"] { font-size: 13px !important; }
         }
         @supports (font-size: 1cqi) { @media (min-width: 1920px) { .lp-h1 { font-size: clamp(24px, 9.2cqi, 96px); } } }
+        /* The product shot scales as one picture. Its browser bar is a drawing that grows with the
+           frame (about 600px wide at 1440, 776 from 1920, 980 from 2560); the dashboard inside it
+           grows by the same ratio, so the two keep the proportion they have at 1440. */
+        @media (min-width: 1920px) { .lp-laptop .df-content > * { zoom: 1.28; } }
+        @media (min-width: 2560px) { .lp-laptop .df-content > * { zoom: 1.62; } }
         @media (min-width: 2560px) {
           .lp-w { max-width: 1960px; } .lp-w-wide { max-width: 2080px; } .lp-w-fit { max-width: 1440px; }
           .lp-shell .rl-header-inner { max-width: 2080px !important; }
