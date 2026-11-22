@@ -7,11 +7,20 @@
 // wider than its card, the Pipeline under it); at 1024 Needs you under the table; at 390 the phone
 // as it was.
 // Skipped when playwright-core or the browser binary is absent; the WebKit walk fails instead.
+// The pages are served from the run's one production build (tests/helpers/fakeBuild.mjs), in this
+// walk's own copy, on its own port, with service workers blocked: a production build registers one
+// (lib/serviceWorker.js) that the dev server never did.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { spawn, execSync } from 'node:child_process';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
+import { reap } from '../helpers/reap.mjs';
+
+const PORT = 3188; const BASE = `http://localhost:${PORT}`;
+const ROOT = new URL('../..', import.meta.url).pathname;
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 let pw = null; try { pw = await import('playwright-core'); } catch (e) { pw = null; }
@@ -21,9 +30,26 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const HOME = `${BASE}/demo/dashboard`;
-const server = devServer(HOME);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
-after(() => server.stop(), { timeout: STOP_TIMEOUT });
+let fake = null; let turn = false;
+const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
+before(async () => {
+  if (!(haveWebkit || haveChrome)) return;
+  if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+  turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  // Stuck past the walk limit (devServer.mjs): the fake stack server goes with the file.
+  onStuck(() => { if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } } for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } });
+  walkStep('building the fake stack for production');
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  await fakeBuild(PORT); // one build a run, copied to this walk's own folder (tests/helpers/fakeBuild.mjs)
+  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '3'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
+  await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('the fake stack server did not start')), 180000); fake.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } }); });
+}, { timeout: START_TIMEOUT + 600000 });
+after(async () => {
+  leaveTurn();
+  if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } }
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  if (turn) giveTurn();
+}, { timeout: STOP_TIMEOUT });
 
 const box = (page, sel) => page.evaluate((s) => { const el = [...document.querySelectorAll(s)].find((e) => e.getClientRects().length); if (!el) return null; const r = el.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top + window.scrollY), bottom: Math.round(r.bottom + window.scrollY), width: Math.round(r.width) }; }, sel);
 const visible = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(s)].some((e) => e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden'), sel);
@@ -56,7 +82,7 @@ async function walk(browserType, launch) {
   const browser = await browserType.launch(launch);
   try {
     // 1440: the desktop app.
-    const desk = await (await browser.newContext({ viewport: { width: 1440, height: 900 } })).newPage();
+    const desk = await (await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1440, height: 900 } })).newPage();
     await open(desk);
     await desk.locator('[data-listings-table]').first().waitFor({ timeout: 30000 });
     assert.ok(await visible(desk, '[data-shell-side]'), 'the sidebar');
@@ -134,7 +160,7 @@ async function walk(browserType, launch) {
     await desk.context().close();
 
     // 1024: Needs you drops under the table.
-    const mid = await (await browser.newContext({ viewport: { width: 1024, height: 800 } })).newPage();
+    const mid = await (await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1024, height: 800 } })).newPage();
     await open(mid);
     const t2 = await box(mid, '[data-listings-table]'); const n2 = await box(mid, '[data-needs-you]');
     assert.ok(n2.top > t2.bottom, `under the table at 1024 (${JSON.stringify({ t2, n2 })})`);
@@ -146,7 +172,7 @@ async function walk(browserType, launch) {
     await mid.context().close();
 
     // 390: the phone as it was, no sidebar.
-    const phone = await (await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true })).newPage();
+    const phone = await (await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true })).newPage();
     await open(phone);
     assert.equal(await visible(phone, '[data-shell-side]'), false);
     assert.ok(await visible(phone, '[data-main-nav]'), 'the tabs');
