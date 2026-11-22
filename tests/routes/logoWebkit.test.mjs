@@ -4,13 +4,21 @@
 //   b. on Listings, scrolled down, it scrolls smoothly to the top with no route change and no reload;
 //   c. on Listings at the top it does nothing: no route change, no reload, no transition, no
 //      movement of the page and no request.
-// Skipped when playwright-core or the browser binary is absent; the WebKit walk fails instead. The
-// dev server (tests/helpers/devServer.mjs) is shared with the other browser walk files.
+// Skipped when playwright-core or the browser binary is absent; the WebKit walk fails instead.
+// The pages are served from the run's one production build (tests/helpers/fakeBuild.mjs), in this
+// walk's own copy, on its own port, with service workers blocked: a production build registers one
+// (lib/serviceWorker.js) that the dev server never did.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { spawn, execSync } from 'node:child_process';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
+import { reap } from '../helpers/reap.mjs';
+
+const PORT = 3184; const BASE = `http://localhost:${PORT}`;
+const ROOT = new URL('../..', import.meta.url).pathname;
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 let pw = null; try { pw = await import('playwright-core'); } catch (e) { pw = null; }
@@ -20,9 +28,26 @@ const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
 const HOME = `${BASE}/demo/dashboard`;
-const server = devServer(HOME);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
-after(() => server.stop(), { timeout: STOP_TIMEOUT });
+let fake = null; let turn = false;
+const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
+before(async () => {
+  if (!(haveWebkit || haveChrome)) return;
+  if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+  turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  // Stuck past the walk limit (devServer.mjs): the fake stack server goes with the file.
+  onStuck(() => { if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } } for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } });
+  walkStep('building the fake stack for production');
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  await fakeBuild(PORT); // one build a run, copied to this walk's own folder (tests/helpers/fakeBuild.mjs)
+  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '3'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
+  await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('the fake stack server did not start')), 180000); fake.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } }); });
+}, { timeout: START_TIMEOUT + 600000 });
+after(async () => {
+  leaveTurn();
+  if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } }
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  if (turn) giveTurn();
+}, { timeout: STOP_TIMEOUT });
 const warm = () => Promise.all(['/demo/dashboard', '/demo/dashboard?profile=1', '/demo/dashboard?circle=1', '/demo/dashboard?listing=demo-carlaw'].map((u) => fetch(`${BASE}${u}`).catch(() => null)));
 
 // The logo on screen: the header's on a phone, the sidebar's on a desktop.
@@ -51,7 +76,7 @@ const READ = () => { const w = window.__logoWatch; return w ? { routes: w.routes
 async function walk(browserType, launch, viewport, phone) {
   await warm();
   const browser = await browserType.launch(launch);
-  const ctx = await browser.newContext(phone ? { viewport, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { viewport, deviceScaleFactor: 1 });
+  const ctx = await browser.newContext(phone ? { serviceWorkers: 'block', viewport, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { serviceWorkers: 'block', viewport, deviceScaleFactor: 1 });
   const page = await ctx.newPage();
   const press = (l) => (phone ? l.tap() : l.click());
   // A press where the logo is on screen now, with nothing scrolled first: Playwright's own tap and
