@@ -23,6 +23,7 @@ import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
 import { SCREENS, SMALL_FIELDS, WIDER_THAN_VIEWPORT, VIEWPORT_META } from '../helpers/screens.mjs';
+import { WATCH, SHORT_TIMER, watchRequests, atRest } from '../helpers/atRest.mjs';
 
 const PORT = 3190; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -53,7 +54,8 @@ const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
 const jwt = () => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'u-1', role: 'authenticated', exp: Math.floor(Date.now() / 1000) + 3600 })}.stub`;
 const USER = { id: 'u-1', aud: 'authenticated', role: 'authenticated', email: 'realtor@example.com', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
 const session = () => ({ access_token: jwt(), refresh_token: 'refresh-stub', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user: USER });
-const context = (browser, width, height) => browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width, height }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 3 });
+// Each page is measured at rest (tests/helpers/atRest.mjs): loaded, hydrated, nothing moving, no request open.
+const context = async (browser, width, height) => { const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width, height }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 3 }); await ctx.addInitScript(WATCH, SHORT_TIMER); return ctx; };
 
 // What a focused field looks like: its size, its ring, the page scale.
 const focusState = (page) => page.evaluate(() => {
@@ -64,15 +66,15 @@ const focusState = (page) => page.evaluate(() => {
 async function signIn(browserType, launch, tag) {
   const browser = await browserType.launch(launch);
   const ctx = await context(browser, 390, 844);
-  const page = await ctx.newPage();
+  const page = watchRequests(await ctx.newPage());
   const calls = [];
   await page.route('**/auth/v1/**', (route) => { const path = new URL(route.request().url()).pathname.replace('/auth/v1/', ''); calls.push(`${route.request().method()} ${path}`); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(path === 'token' ? session() : USER) }); });
   // The dashboard's server side read needs a real session; the sandbox dashboard renders the same components.
   await page.route('**/_next/data/**/dashboard.json*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ pageProps: { __N_REDIRECT: '/demo/dashboard', __N_REDIRECT_STATUS: 307 }, __N_SSP: true }) }));
   try {
-    await page.goto('/signin', { waitUntil: 'networkidle' });
+    await page.goto('/signin'); await atRest(page, { afterIdle: 0 });
     for (const [id, value] of [['email', 'realtor@example.com'], ['password', 'a-long-password']]) {
-      await page.locator(`#${id}`).tap(); await page.waitForTimeout(300);
+      await page.locator(`#${id}`).tap(); await page.waitForTimeout(300); // watched 300ms for a zoom on focus
       const f = await focusState(page);
       assert.equal(f.id, id, `${tag}: the ${id} field has focus`);
       assert.ok(f.size >= 16, `${tag}: the focused ${id} field is ${f.size}px, 16px or more`);
@@ -83,7 +85,7 @@ async function signIn(browserType, launch, tag) {
     }
     await page.getByRole('button', { name: /Sign in/ }).tap();
     await page.waitForURL('**/demo/dashboard**', { timeout: 30000 });
-    await page.locator('.dash-grid').first().waitFor({ timeout: 20000 }); await page.waitForTimeout(600);
+    await page.locator('.dash-grid').first().waitFor({ timeout: 20000 }); await atRest(page, { within: 600 });
     assert.ok(calls.some((c) => /^POST token/.test(c)), `${tag}: the password was sent to the auth stub (${calls.join(', ')})`);
     const landed = await page.evaluate(() => {
       const iw = window.innerWidth; const right = (el) => (el ? Math.round(el.getBoundingClientRect().right) : null);
@@ -107,9 +109,9 @@ async function sweep(browserType, launch, tag) {
     for (const width of [390, 360]) {
       const ctx = await context(browser, width, width === 390 ? 844 : 780);
       for (const s of SCREENS) {
-        const page = await ctx.newPage();
+        const page = watchRequests(await ctx.newPage());
         try {
-          await s.go(page); await page.waitForLoadState('networkidle').catch(() => {}); await page.waitForTimeout(700);
+          await s.go(page); await atRest(page, { afterIdle: 700 });
           const small = await page.evaluate(SMALL_FIELDS);
           const w = await page.evaluate(WIDER_THAN_VIEWPORT);
           visited++;

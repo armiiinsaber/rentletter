@@ -23,6 +23,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { WATCH, SHORT_TIMER, watchRequests, atRest } from '../helpers/atRest.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 const PORT = 3157; const BASE = process.env.BACK_BASE || `http://localhost:${PORT}`;
@@ -56,7 +57,10 @@ after(async () => {
 async function phone(browser) {
   const ctx = await browser.newContext({ baseURL: BASE, viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, serviceWorkers: 'block' });
   await ctx.route(/supabase\.co\//, (r) => r.abort());
-  const page = await ctx.newPage();
+  // Where a step waits for the page to land, it waits for the page at rest (tests/helpers/atRest.mjs):
+  // every request answered, React done, nothing moving. The waits the walk is about stay as they are.
+  await ctx.addInitScript(WATCH, SHORT_TIMER);
+  const page = watchRequests(await ctx.newPage());
   // WebKit reports a request cancelled by a navigation as an error; that is the browser leaving a page.
   const errors = []; page.on('pageerror', (e) => { if (!/due to access control checks/.test(e.message)) errors.push(e.message); });
   return { ctx, page, errors };
@@ -88,7 +92,7 @@ const tapBox = async (page, box) => page.touchscreen.tap(box.x + box.width / 2, 
 async function backAtAnySpeed(browser, tag) {
   const { ctx, page, errors } = await phone(browser);
   await slowNetwork(ctx);
-  await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
   const failures = []; let rounds = 0;
   for (let rep = 0; rep < REPS; rep++) {
     for (const how of ['app', 'history']) {
@@ -96,7 +100,7 @@ async function backAtAnySpeed(browser, tag) {
         rounds++;
         // A round that failed may have left another screen, or another document: start from the dashboard.
         let start = await waitFor(page, dashboardReal, 4000);
-        if (!start.ok) { await page.goto('/dashboard', { waitUntil: 'networkidle' }).catch(() => {}); start = await waitFor(page, dashboardReal, 8000); }
+        if (!start.ok) { await page.goto('/dashboard').catch(() => {}); await atRest(page, { afterIdle: 0 }); start = await waitFor(page, dashboardReal, 8000); }
         if (!start.ok) { failures.push(`no dashboard to start round ${rounds} from: ${JSON.stringify(start.s)}`); continue; }
         const card = await page.locator('.dash-card-int').first().boundingBox({ timeout: 5000 }).catch(() => null);
         if (!card) { failures.push(`no listing card in round ${rounds}`); continue; }
@@ -127,7 +131,7 @@ async function failTwice(browser, tag, { name, re, from, go, real }) {
   const { ctx, page, errors } = await phone(browser);
   let seen = 0; let armed = false;
   await slowNetwork(ctx, (url) => armed && re.test(url) && ++seen <= 2);
-  await page.goto(from, { waitUntil: 'networkidle' });
+  await page.goto(from); await atRest(page, { afterIdle: 0 });
   armed = true;
   const before = seen;
   const t0 = Date.now();
@@ -196,10 +200,10 @@ async function takeOver(browser, tag) {
   const card = () => page.locator('.dash-card-int').first();
   const tapOn = async (loc) => tapBox(page, await loc.boundingBox({ timeout: 5000 }));
   const gone = () => page.evaluate(() => window.__gone);
-  await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
   await tapOn(card()); assert.ok((await waitFor(page, listingReal, 5000)).ok, `${tag}: the listing`);
   await tapOn(page.getByText('All listings', { exact: true }).first()); assert.ok((await waitFor(page, dashboardReal, 5000)).ok, `${tag}: the dashboard`);
-  await page.waitForTimeout(1500);
+  await atRest(page, { within: 1500 });
   for (let i = 0; i < 3; i++) {
     await tapOn(card()); await page.waitForTimeout(1000); await page.evaluate(() => history.back());
     await page.waitForTimeout(60);
@@ -210,11 +214,11 @@ async function takeOver(browser, tag) {
     assert.equal(none, 0, `${tag}: ${none} of ${calls} looks found no card while the page took over (try ${i + 1})`);
     assert.equal(await gone() - was, 0, `${tag}: no card was drawn again when the page took over (try ${i + 1})`);
     assert.ok((await waitFor(page, dashboardReal, 3000)).ok);
-    await page.waitForTimeout(1500);
+    await atRest(page, { within: 1500 });
   }
   // The dashboard takes the server's signals: its first card's status says what the read said. From
   // a full load, so the read on the return is a new one (a touch's read serves 20 seconds).
-  await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
   assert.ok((await waitFor(page, dashboardReal, 5000)).ok);
   const status = () => card().locator('[aria-label="Listing status"]').innerText().catch(() => '');
   const before = await status();
@@ -229,7 +233,7 @@ async function takeOver(browser, tag) {
   assert.equal(await gone() - was, 0, `${tag}: the dashboard took the server's answers without drawing a card again`);
   // A listing takes the server's applicants: seen from a full load (no read started yet), then a tap.
   change = false;
-  await page.goto('/listing/L2', { waitUntil: 'networkidle' });
+  await page.goto('/listing/L2'); await atRest(page, { afterIdle: 0 });
   assert.ok((await waitFor(page, listingReal, 5000)).ok);
   await tapOn(page.getByText('All listings', { exact: true }).first()); assert.ok((await waitFor(page, dashboardReal, 8000)).ok);
   change = true;
@@ -251,7 +255,7 @@ async function takeOver(browser, tag) {
 async function skippedTransitions(browser, tag) {
   const { ctx, page, errors } = await phone(browser);
   await slowNetwork(ctx);
-  await page.goto('/dashboard', { waitUntil: 'networkidle' });
+  await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
   if (!(await page.evaluate(() => typeof document.startViewTransition === 'function'))) { await ctx.close(); return; }
   await page.evaluate(() => { window.__ended = 0; const start = document.startViewTransition.bind(document); document.startViewTransition = (cb) => { const vt = start(cb); vt.skipTransition(); window.__ended++; return vt; }; });
   for (let i = 0; i < 3; i++) {
@@ -262,13 +266,13 @@ async function skippedTransitions(browser, tag) {
   }
   assert.ok(await page.evaluate(() => window.__ended) >= 6, `${tag}: every transition was ended as it started`);
   // The seen dashboard counts as real before its page lands: let that land before leaving the page.
-  await page.waitForTimeout(1500);
+  await atRest(page, { within: 1500 });
   for (let i = 0; i < 5; i++) {
-    await page.goto('/dashboard', { waitUntil: 'networkidle' });
+    await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
     await tapBox(page, await page.locator('.dash-card-int').first().boundingBox({ timeout: 5000 }));
     await page.waitForTimeout(20);
     await page.touchscreen.tap(195, 800);
-    await page.waitForTimeout(1500);
+    await atRest(page, { within: 1500 }); // the push and its ended transition played out, any error they raise raised
   }
   assert.deepEqual(errors, [], `${tag}: a view transition ended before it animated is no page error`);
   await ctx.close();

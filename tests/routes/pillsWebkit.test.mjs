@@ -27,6 +27,7 @@ import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
 import { SCREENS, APPLY } from '../helpers/screens.mjs';
+import { WATCH, SHORT_TIMER, watchRequests, atRest } from '../helpers/atRest.mjs';
 
 const PORT = 3185; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -56,7 +57,8 @@ after(async () => {
 const DEMO = '/demo/dashboard';
 const REPORT = '/r/demo-demo-carlaw';
 const warm = () => Promise.all([DEMO, APPLY, REPORT, '/my-application/DEMO', '/'].map((u) => fetch(`${BASE}${u}`).catch(() => null)));
-const open = async (page, url) => { await page.goto(url, { waitUntil: 'networkidle' }); await page.waitForTimeout(500); };
+// A page opened and at rest (tests/helpers/atRest.mjs): loaded, hydrated, nothing moving, no request open.
+const open = async (page, url) => { await page.goto(url); await atRest(page, { afterIdle: 500 }); };
 
 // Before any script: record every animation and transition that starts, with its target.
 const RECORD = () => {
@@ -161,10 +163,13 @@ async function pillsWalk(browserType, launch, tag) {
     for (const width of [390, 360]) {
       const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width, height: width === 390 ? 844 : 780 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'no-preference' });
       await ctx.addInitScript(RECORD);
+      await ctx.addInitScript(WATCH, SHORT_TIMER);
       for (const s of SCREENS.filter((x) => x.kind !== 'public')) {
-        const page = await ctx.newPage();
+        const page = watchRequests(await ctx.newPage());
         try {
-          await s.go(page); await page.waitForLoadState('networkidle').catch(() => {}); await page.waitForTimeout(1500);
+          // Audited once the screen is at rest: every timeout it set has fired (the first run swipe hint on
+          // a listing runs until about 1.9 seconds), so every move it makes is in the record first.
+          await s.go(page); await atRest(page, { afterIdle: 1500 });
           const r = await page.evaluate(AUDIT);
           assert.deepEqual(r.problems, [], `${tag} ${width} ${s.name}`);
           Object.assign(ratios, r.ratios);
@@ -186,13 +191,14 @@ async function uprightWalk(browserType, launch, tag) {
   const make = async (standalone) => {
     const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'no-preference' });
     if (standalone) await ctx.addInitScript(() => { Object.defineProperty(window.navigator, 'standalone', { get: () => true }); });
+    await ctx.addInitScript(WATCH, SHORT_TIMER);
     return ctx;
   };
   const upright = (page) => page.setViewportSize({ width: 390, height: 844 });
   const landscape = (page) => page.setViewportSize({ width: 844, height: 390 });
   try {
     // Installed: the dashboard with the new listing sheet open and an address typed.
-    const ctx = await make(true); const page = await ctx.newPage();
+    const ctx = await make(true); const page = watchRequests(await ctx.newPage());
     await open(page, DEMO);
     const add = page.getByRole('button', { name: /New listing|Add your first listing/ }).first(); await add.scrollIntoViewIfNeeded(); await add.click();
     const modal = page.locator('.rl-modal').last(); await modal.waitFor({ timeout: 10000 });
@@ -203,7 +209,7 @@ async function uprightWalk(browserType, launch, tag) {
     const overlay = page.locator('[data-upright]');
     assert.equal(await overlay.count(), 1, `${tag}: the overlay is on the realtor page`);
     assert.equal(await overlay.isVisible(), false, `${tag}: hidden while upright`);
-    await landscape(page); await page.waitForTimeout(200);
+    await landscape(page); await overlay.waitFor({ state: 'visible', timeout: 200 }).catch(() => {});
     assert.equal(await overlay.isVisible(), true, `${tag}: shown in landscape`);
     const cover = await page.evaluate(() => {
       const o = document.querySelector('[data-upright]'); const r = o.getBoundingClientRect(); const cs = getComputedStyle(o);
@@ -225,18 +231,18 @@ async function uprightWalk(browserType, launch, tag) {
     assert.equal(cover.still, true, `${tag}: no motion`);
     assert.equal(cover.mark, true, `${tag}: the small mark`);
     assert.equal(cover.centred, true, `${tag}: centred`);
-    await upright(page); await page.waitForTimeout(200);
+    await upright(page); await overlay.waitFor({ state: 'hidden', timeout: 200 }).catch(() => {});
     assert.equal(await overlay.isVisible(), false, `${tag}: gone the moment it is upright`);
     assert.equal(await page.evaluate(() => window.__rlSameDocument), 'kept', `${tag}: not reloaded`);
     assert.equal(page.url(), url, `${tag}: same page`);
     assert.equal(await modal.isVisible(), true, `${tag}: the sheet is still open`);
     assert.equal(await field.inputValue(), '88 Harbour St', `${tag}: the typed address is kept`);
     // Installed, the listing page too; tenant and landlord pages never carry the overlay.
-    await open(page, '/demo/dashboard?listing=demo-carlaw'); await landscape(page); await page.waitForTimeout(200);
+    await open(page, '/demo/dashboard?listing=demo-carlaw'); await landscape(page); await overlay.waitFor({ state: 'visible', timeout: 200 }).catch(() => {});
     assert.equal(await overlay.isVisible(), true, `${tag}: the listing page, installed, landscape`);
     await upright(page);
     for (const u of [APPLY, REPORT, '/my-application/DEMO']) {
-      await open(page, u); await landscape(page); await page.waitForTimeout(200);
+      await open(page, u); await landscape(page); await page.waitForTimeout(200); // watched 200ms for an overlay that must not come
       assert.equal(await page.locator('[data-upright]').count(), 0, `${tag}: ${u} carries no overlay`);
       await upright(page);
     }
@@ -246,8 +252,8 @@ async function uprightWalk(browserType, launch, tag) {
     // interrupt the next navigation in a shared tab.
     const safari = await make(false);
     for (const u of [DEMO, '/', '/faq']) {
-      const sp = await safari.newPage();
-      await open(sp, u); await landscape(sp); await sp.waitForTimeout(200);
+      const sp = watchRequests(await safari.newPage());
+      await open(sp, u); await landscape(sp); await sp.waitForTimeout(200); // watched 200ms for an overlay that must not show
       assert.equal(await sp.locator('[data-upright]').isVisible(), false, `${tag}: ${u} in Safari, landscape`);
       await sp.close();
     }

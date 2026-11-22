@@ -1,14 +1,17 @@
 // Every realtor, tenant and landlord screen the sandbox opens, plus sign in and the public pages,
 // and the two checks the zoom walk runs on each (tests/routes/zoomWebkit.test.mjs). go(page) takes
-// a page whose context has baseURL set to the dev server.
+// a page whose context has baseURL set to the walk's server and the rest watch installed (WATCH on
+// the context, watchRequests on the page, tests/helpers/atRest.mjs): each step waits for the page at
+// rest before the next.
+import { atRest } from './atRest.mjs';
+
 export const APPLY = '/apply/demo0000000000000001';
-const wait = (p, ms = 500) => p.waitForTimeout(ms);
-const tapButton = async (p, re) => { const l = p.getByRole('button', { name: re }).first(); await l.scrollIntoViewIfNeeded(); await l.click(); await wait(p, 500); };
+const tapButton = async (p, re) => { const l = p.getByRole('button', { name: re }).first(); await l.scrollIntoViewIfNeeded(); await l.click(); await atRest(p, { within: 500 }); };
 const openDetails = async (p) => { if (!(await p.getByRole('button', { name: /Delete listing/ }).count())) await tapButton(p, /^Details/); };
-const openListing = async (p) => { await p.goto('/demo/dashboard?listing=demo-carlaw'); await wait(p, 1200); };
-const expand = async (p, name) => { await p.locator('[role=button][aria-controls]').filter({ hasText: name }).first().click(); await wait(p, 700); };
+const openListing = async (p) => { await p.goto('/demo/dashboard?listing=demo-carlaw'); await atRest(p, { within: 1200 }); };
+const expand = async (p, name) => { await p.locator('[role=button][aria-controls]').filter({ hasText: name }).first().click(); await atRest(p, { within: 700 }); };
 const applyTo = async (p, step) => {
-  await p.goto(APPLY, { waitUntil: 'networkidle' }); await p.getByLabel('Email').waitFor({ timeout: 20000 });
+  await p.goto(APPLY); await atRest(p, { afterIdle: 0 }); await p.getByLabel('Email').waitFor({ timeout: 20000 });
   const fill = [
     async () => { await p.getByLabel('Email').fill('priya@example.com'); },
     async () => { await p.getByLabel('Full name').fill('Priya Sharma'); await p.getByLabel('Date of birth').fill('1994-08-14'); await p.getByLabel('Phone').fill('4165550142'); },
@@ -17,7 +20,7 @@ const applyTo = async (p, step) => {
     async () => { await p.getByLabel('Desired move in date').fill('2026-11-01'); },
     async () => {}, async () => {},
   ];
-  for (let i = 0; i < step - 1; i++) { await fill[i](); await p.getByRole('button', { name: 'Continue' }).click(); await wait(p, 300); }
+  for (let i = 0; i < step - 1; i++) { await fill[i](); await p.getByRole('button', { name: 'Continue' }).click(); await atRest(p, { within: 300 }); }
 };
 
 export const SCREENS = [
@@ -26,7 +29,7 @@ export const SCREENS = [
   { name: 'forgot password', kind: 'auth', go: (p) => p.goto('/forgot-password') },
   { name: 'reset password', kind: 'auth', go: (p) => p.goto('/reset-password?token_hash=x&type=recovery') },
   { name: 'dashboard', kind: 'realtor', go: (p) => p.goto('/demo/dashboard') },
-  { name: 'new listing modal', kind: 'realtor', go: async (p) => { await p.goto('/demo/dashboard'); await wait(p, 1200); await tapButton(p, /New listing|Add a listing|Create a listing/); } },
+  { name: 'new listing modal', kind: 'realtor', go: async (p) => { await p.goto('/demo/dashboard'); await atRest(p, { within: 1200 }); await tapButton(p, /New listing|Add a listing|Create a listing/); } },
   { name: 'listing', kind: 'realtor', go: (p) => openListing(p) },
   { name: 'listing, details open', kind: 'realtor', go: async (p) => { await openListing(p); await openDetails(p); } },
   { name: 'listing, card expanded', kind: 'realtor', go: async (p) => { await openListing(p); await expand(p, 'David Kowalski'); } },
