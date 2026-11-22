@@ -3,13 +3,21 @@
 // fragment form (access_token and refresh_token), an expired link shows its one line with a way to
 // ask for another, and a saved password lands on /dashboard. Every Supabase auth call is answered
 // by the harness, so nothing leaves the machine and no account is touched. Skipped when
-// playwright-core or the browser binary is absent. The dev server (tests/helpers/devServer.mjs) is
-// shared with the other browser walk files.
+// playwright-core or the browser binary is absent. The page is served from the run's one
+// production build (tests/helpers/fakeBuild.mjs), in this walk's own copy, on its own port, with
+// service workers blocked: a production build registers one (lib/serviceWorker.js) that the dev
+// server never did.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { spawn, execSync } from 'node:child_process';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
+import { reap } from '../helpers/reap.mjs';
+
+const PORT = 3187; const BASE = `http://localhost:${PORT}`;
+const ROOT = new URL('../..', import.meta.url).pathname;
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 let pw = null; try { pw = await import('playwright-core'); } catch (e) { pw = null; }
@@ -18,9 +26,26 @@ const chromeBin = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
-const server = devServer(`${BASE}/reset-password`);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
-after(() => server.stop(), { timeout: STOP_TIMEOUT });
+let fake = null; let turn = false;
+const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
+before(async () => {
+  if (!(haveWebkit || haveChrome)) return;
+  if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+  turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  // Stuck past the walk limit (devServer.mjs): the fake stack server goes with the file.
+  onStuck(() => { if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } } for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } });
+  walkStep('building the fake stack for production');
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  await fakeBuild(PORT); // one build a run, copied to this walk's own folder (tests/helpers/fakeBuild.mjs)
+  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '3'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
+  await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('the fake stack server did not start')), 180000); fake.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } }); });
+}, { timeout: START_TIMEOUT + 600000 });
+after(async () => {
+  leaveTurn();
+  if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } }
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  if (turn) giveTurn();
+}, { timeout: STOP_TIMEOUT });
 
 // A token shaped like the JWT supabase-js reads the expiry from, valid for an hour.
 const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
@@ -54,7 +79,7 @@ async function open(page, suffix) {
 
 async function walk(browserType, launch, tag) {
   const browser = await browserType.launch(launch);
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const calls = [];
   const shots = [];
