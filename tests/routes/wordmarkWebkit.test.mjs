@@ -2,13 +2,21 @@
 // sandbox: from the profile page the back row lands on the dashboard with what was typed still
 // there, the wordmark on a listing page lands on the dashboard, and the wordmark on the apply form
 // lands on the homepage. Every wordmark is a link with a 44px tap target. Skipped when
-// playwright-core or the browser binary is absent. The dev server (tests/helpers/devServer.mjs) is
-// shared with the other browser walk files.
+// playwright-core or the browser binary is absent. The pages are served from the run's one
+// production build (tests/helpers/fakeBuild.mjs), in this walk's own copy, on its own port, with
+// service workers blocked: a production build registers one (lib/serviceWorker.js) that the dev
+// server never did.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
-import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { spawn, execSync } from 'node:child_process';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
+import { reap } from '../helpers/reap.mjs';
+
+const PORT = 3189; const BASE = `http://localhost:${PORT}`;
+const ROOT = new URL('../..', import.meta.url).pathname;
 
 const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
 let pw = null; try { pw = await import('playwright-core'); } catch (e) { pw = null; }
@@ -17,12 +25,29 @@ const chromeBin = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
 const haveWebkit = !!pw && !!webkitBin && existsSync(webkitBin);
 const haveChrome = !!pw && existsSync(chromeBin);
 
-const server = devServer(`${BASE}/demo/dashboard`);
-before(() => ((haveWebkit || haveChrome) ? server.start() : undefined), { timeout: START_TIMEOUT });
-after(() => server.stop(), { timeout: STOP_TIMEOUT });
+let fake = null; let turn = false;
+const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
+before(async () => {
+  if (!(haveWebkit || haveChrome)) return;
+  if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+  turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  // Stuck past the walk limit (devServer.mjs): the fake stack server goes with the file.
+  onStuck(() => { if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } } for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } });
+  walkStep('building the fake stack for production');
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  await fakeBuild(PORT); // one build a run, copied to this walk's own folder (tests/helpers/fakeBuild.mjs)
+  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '3'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
+  await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('the fake stack server did not start')), 180000); fake.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } }); });
+}, { timeout: START_TIMEOUT + 600000 });
+after(async () => {
+  leaveTurn();
+  if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } }
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  if (turn) giveTurn();
+}, { timeout: STOP_TIMEOUT });
 
-// The routes the walk opens, compiled by the dev server before any tap: a first compile in dev
-// otherwise lands inside the navigation the walk is waiting for.
+// The routes the walk opens, each asked for once before any tap: the server loads a page's code
+// on its first request, which would otherwise land inside the navigation the walk is waiting for.
 const warm = () => Promise.all(['/', '/demo/dashboard', '/demo/dashboard?profile=1', '/demo/dashboard?listing=demo-carlaw', '/apply/demo0000000000000001'].map((u) => fetch(`${BASE}${u}`).catch(() => null)));
 
 const markBox = (page) => page.evaluate(() => {
@@ -35,7 +60,7 @@ const markBox = (page) => page.evaluate(() => {
 async function walk(browserType, launch, tag) {
   await warm();
   const browser = await browserType.launch(launch);
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
   const shots = [];
   const shot = async (name) => { const p = `/tmp/wordmark-${tag}-${name}.png`; await page.screenshot({ path: p }); shots.push(p); };
@@ -65,8 +90,8 @@ async function walk(browserType, launch, tag) {
     assert.equal(listingMark.href, '/demo/dashboard', 'the realtor wordmark points at the dashboard');
     assert.ok(listingMark.height >= 44, `a 44px tap target (${JSON.stringify(listingMark)})`);
     await shot('2-listing');
-    // Under parallel walks the dev server can reload the page as it drops an idle route, and a tap
-    // that lands inside that reload is lost: the tap is made once more before the walk gives up.
+    // A tap that lands inside a reload is lost (the dev server this walk used to run on reloaded a
+    // page as it dropped an idle route): the tap is made once more before the walk gives up.
     const onDashboard = (u) => u.pathname === '/demo/dashboard' && !u.searchParams.has('listing');
     await page.locator('a.rl-mark').first().tap();
     try { await page.waitForURL(onDashboard, { timeout: 10000 }); }
