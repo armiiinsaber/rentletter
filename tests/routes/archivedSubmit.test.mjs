@@ -194,6 +194,50 @@ test('the realtor\'s own routes refuse an archived listing: add by number and a 
   } finally { w.s.restore(); }
 });
 
+// Archived during a submit: the number exists (generate answered before the realtor archived), and
+// the save to the listing is refused. The tag refuses; with the tag already written, the mirror
+// refuses. Nothing reaches the listing, and the page shows the closed line with no Try again.
+test('archived between the submit and its save: the tag and the mirror refuse, and the page shows the closed line, not Try again', async (tc) => {
+  const { runSubmitChain, SAVING_COPY } = await import('../../lib/submitChain.js');
+  const w = world(tc);
+  try {
+    const g = await w.call(generate, FORM);
+    assert.equal(g.code, 200, JSON.stringify(g.body));
+    const applicationNumber = g.body.applicationNumber;
+    assert.ok(await until(() => w.s.kv.values[`app:${applicationNumber}`]));
+    assert.equal((await w.as(USER, archive, { listingIds: ['L1'], archived: true })).code, 200, 'the realtor archives while the tenant\'s save is on its way');
+    const before = w.snap();
+    // The chain as the page runs it, over the real routes: every try of the tag is refused.
+    const answers = [];
+    const post = async (url, body) => { const res = await w.call(url === '/api/invite/tag' ? tag : mirror, body); answers.push({ url, code: res.code, body: res.body }); return { ok: res.code >= 200 && res.code < 300, status: res.code, json: res.body }; };
+    const out = await runSubmitChain({ post, token: INVITE_TOKEN, applicationNumber, sleep: async () => {} });
+    assert.equal(out.ok, false); assert.equal(out.step, 'tag'); assert.equal(out.error.message, LINE);
+    assert.ok(answers.length && answers.every((a) => a.url === '/api/invite/tag' && a.code === 409), 'the mirror is never asked');
+    assert.deepEqual(answers[0].body, REFUSED, 'the answer the page reads: the line and its code');
+    // Archived after the tag was written: the mirror refuses the same way.
+    w.s.kv.lists[`invite_submissions:${INVITE_TOKEN}`] = [applicationNumber];
+    const m = await w.call(mirror, { token: INVITE_TOKEN, applicationNumber });
+    assert.equal(m.code, 409); assert.deepEqual(m.body, REFUSED);
+    assert.equal(w.snap(), before, 'no application row, no link, no event');
+    assert.deepEqual(w.stored().filter((k) => /^docreq/.test(k)), [], 'no document request');
+    assert.equal(w.s.resend.sent.length, 0, 'no mail');
+  } finally { w.s.restore(); }
+
+  // The page: the refusal's code decides, it is final (nothing asked again, no pause), and the form
+  // comes back with the line above the tenant's answers. Try again is for a save that only failed.
+  const page = code('pages/apply/[token].js');
+  assert.match(page, /import \{ ARCHIVED_LINE, ARCHIVED_CODE \} from '\.\.\/\.\.\/lib\/listingArchiveRule';/);
+  assert.match(page, /if \(closed\) return closed;/, 'once refused, no further request is sent');
+  assert.match(page, /if \(!r\.ok && answer\.json && answer\.json\.code === ARCHIVED_CODE\) closed = answer;/);
+  const closedAt = page.indexOf('if (!out.ok && closed) {'); const heldAt = page.indexOf('setSaveHeld(true)');
+  assert.ok(closedAt > 0 && heldAt > closedAt, 'the closed answer is read before the page holds with Try again');
+  assert.match(page.slice(closedAt, heldAt), /setError\(ARCHIVED_LINE\);\s*setStatus\('ready'\);\s*window\.scrollTo\(\{ top: 0, behavior: 'smooth' \}\);\s*return;/, 'the line, the form with its answers, and out before Try again');
+  assert.doesNotMatch(page.slice(closedAt, heldAt), /setForm\(|setStep\(/, 'the answers and the step stay as they were');
+  // Try again shows only while the page is held on the saving card, which the closed answer never reaches.
+  assert.match(page, /\{saveHeld\s*\? <button type="button" onClick=\{saveToListing\} className="mp-btn mp-btn-red"[^>]*>\{SAVING_COPY\.tryAgain\}<\/button>/);
+  assert.equal(SAVING_COPY.tryAgain, 'Try again');
+});
+
 test('every route that creates an application asks before it writes, and the page shows the line', () => {
   // The five routes, each with the refusal ahead of its first write.
   const order = (p, check, write) => { const text = code(p); const at = text.indexOf(check); assert.ok(at > 0, `${p} asks`); const w = text.indexOf(write); assert.ok(w > at, `${p} asks before it writes`); assert.match(text, /res\.status\(ARCHIVED_REFUSAL\.status\)\.json\(ARCHIVED_REFUSAL\.body\)/, p); };
@@ -234,6 +278,9 @@ test('the old delete route is gone: nothing answers at its path and nothing call
   // No page, component or script asks for it; the only delete is the one behind the rule.
   const callers = [...walk('pages/'), ...walk('components/'), ...walk('scripts/'), ...walk('public/').filter((p) => /\.(js|html)$/.test(p))].filter((p) => /\.(js|mjs|html)$/.test(p) && /listings\/delete/.test(src(p)));
   assert.deepEqual(callers, []);
+  // Nor does the dashboard's seam name it: not in the routes the UI can hit, not in the sandbox.
+  assert.deepEqual(walk('lib/').filter((p) => /listings\/delete/.test(src(p))), [], 'no entry for the removed route under lib');
+  assert.match(code('lib/demoAdapter.js'), /'POST \/api\/listings\/archive': /); assert.match(code('lib/demoAdapter.js'), /'POST \/api\/listings\/remove': /);
   assert.match(code('components/dashboard/HomeView.js'), /post\('\/api\/listings\/remove', \{ listingIds: ids \}\)/);
   assert.match(code('components/dashboard/ListingView.js'), /adapter\.fetch\('\/api\/listings\/remove',/);
   assert.match(code('pages/api/listings/remove.js'), /removeListings\(/);

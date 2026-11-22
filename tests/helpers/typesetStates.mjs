@@ -87,6 +87,20 @@ const inBC = (p, path) => p.route((url) => url.pathname === path, async (route) 
 const yearsAgo = (n) => { const d = new Date(); d.setFullYear(d.getFullYear() - n); d.setDate(d.getDate() - 30); const z = (v) => String(v).padStart(2, '0'); return `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`; };
 const BC_UNDER_AGE = 'Applications in British Columbia are open to people 19 or older.';
 async function applyTo(p, step) { await applyStart(p); for (let i = 0; i < step - 1; i++) { await STEPS[i](p); await tap(p, 'Continue'); } }
+// L1 archived or restored by its realtor (POST /api/listings/archive), from this page.
+const setArchived = async (p, archived) => { const status = await p.evaluate(async (a) => (await fetch('/api/listings/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingIds: ['L1'], archived: a }) })).status, archived); if (status !== 200) throw new Error(`archive ${archived} answered ${status}`); };
+// The apply form after an archived refusal: the closed line in the alert above the answers, the
+// form still there with what was typed, and no Try again.
+const CLOSED_LINE = 'This listing is no longer taking applications.';
+async function closedLine(p) {
+  const alert = p.locator('p[role=alert].mp-alert');
+  await alert.waitFor({ timeout: 30000 }); await wait(p, 400);
+  const seen = await p.evaluate(() => ({ alert: [...document.querySelectorAll('p[role=alert].mp-alert')].map((e) => e.textContent.replace(/\u00a0/g, ' ').trim()), text: document.body.innerText.replace(/\u00a0/g, ' '), buttons: [...document.querySelectorAll('button')].filter((b) => b.getClientRects().length).map((b) => b.textContent.trim()) }));
+  if (seen.alert.length !== 1 || seen.alert[0] !== CLOSED_LINE) throw new Error(`the alert reads ${JSON.stringify(seen.alert)}`);
+  if (seen.buttons.some((b) => /try again/i.test(b)) || /not on the listing yet/i.test(seen.text)) throw new Error('Try again shows after the archived refusal');
+  if (!seen.buttons.includes('Submit')) throw new Error('the form is not back on its review step');
+  for (const kept of ['Maximiliano Castellanos Ruiz', 'Northwind Pediatric Rehabilitation Clinic Inc.']) if (!seen.text.includes(kept)) throw new Error(`the tenant's answer "${kept}" is not on the page`);
+}
 // The landlord's report for L1, sent from the realtor's session on this page.
 async function report(p) {
   await open(p, '/dashboard');
@@ -280,6 +294,23 @@ export const STATES = [
   { name: 'apply, British Columbia, under 19', kind: 'tenant', go: async (p) => { await inBC(p, '/api/invite/resolve'); await applyStart(p); await STEPS[0](p); await tap(p, 'Continue'); await p.getByLabel('Full name').fill('Maximiliano Castellanos Ruiz'); await p.getByLabel('Date of birth').fill(yearsAgo(18)); await p.getByLabel('Phone').fill('4165550142'); await tap(p, 'Continue'); await p.getByText(BC_UNDER_AGE).first().waitFor({ timeout: 15000 }); } },
   { name: 'apply, a field left empty', kind: 'tenant', go: async (p) => { await applyStart(p); await tap(p, 'Continue'); } },
   { name: 'apply, sent', kind: 'tenant', phase: 'write', go: async (p) => { await applyTo(p, 8); await p.getByRole('checkbox').first().check().catch(() => {}); await tap(p, /^(Send|Submit)/); await p.getByText('Application submitted').first().waitFor({ timeout: 30000 }); await wait(p, 400); } },
+  // A real archived submit, twice on one page (tests/routes/archivedSubmit.test.mjs has the routes):
+  // the realtor archives L1 while the form is open and the submit is refused; then, restored, the
+  // realtor archives it between the tenant's submit and its save to the listing (the tag request
+  // is held until the archive answered, then goes to the server as it was). Both times the server's
+  // own refusal puts the closed line above the answers, with no Try again.
+  { name: 'apply, archived while the form is open', kind: 'tenant', phase: 'alone', go: async (p, f) => {
+    await f('/__fake/state?archive=1'); await applyTo(p, 8);
+    await setArchived(p, true); await tap(p, /^(Send|Submit)/); await closedLine(p);
+  }, steps: async function* (p) {
+    await setArchived(p, false);
+    let tags = 0;
+    await p.route('**/api/invite/tag', async (route) => { tags += 1; await setArchived(p, true); await route.continue(); });
+    await tap(p, /^(Send|Submit)/); await closedLine(p);
+    await p.unroute('**/api/invite/tag');
+    if (tags !== 1) throw new Error(`the tag was asked ${tags} times; the archived refusal is final`);
+    yield 'apply, archived during the submit';
+  }, after: async (f, p) => { try { await setArchived(p, false); } catch (e) { /* the page is gone */ } await f('/__fake/state?archive=0'); } },
   { name: 'apply, the unit is rented', kind: 'tenant', go: (p) => open(p, '/apply/demo0000000000000009') },
   { name: 'apply, a link that is not valid', kind: 'tenant', go: (p) => open(p, '/apply/ffffffffffffffffffff') },
   { name: 'upload', kind: 'tenant', phase: 'write', go: async (p, f) => { const { token } = await f('/__fake/docreq?link=J4'); await open(p, `/upload/${token}`); } },

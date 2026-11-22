@@ -31,6 +31,7 @@ import { RETENTION_DAYS } from '../../lib/documentRetention';
 import { rowToForm } from '../../lib/pipelinePrefill';
 import { ageRuleFor, AGE_ROLE, ageStepValid, ageForSubmit, withdrawnForSubmit, ageReviewLine, ageHint, ageProblem, asksWithdrawn, startStep, WITHDRAWN_QUESTION } from '../../lib/applyAge';
 import { runSubmitChain, SAVING_COPY } from '../../lib/submitChain';
+import { ARCHIVED_LINE, ARCHIVED_CODE } from '../../lib/listingArchiveRule';
 import Loader, { Pending, ScreenLoader } from '../../components/brand/Loader';
 
 // ?from={prefillToken}: the invite from Pipeline (pages/api/pipeline/invite.js). Resolved on the
@@ -475,18 +476,34 @@ export default function ApplyPage({ invited = null, archived = false }) {
   // 2. Tag the invite (KV), then 3. mirror into Supabase so the application appears under the
   // listing; the mirror also mints the document request whose token drives the upload card and
   // the email line. Done only after both answered; held with Try again otherwise.
+  // A listing archived after the number was made (the realtor archived it during the submit): the
+  // tag or the mirror answers the archived refusal (lib/listingArchive.js ARCHIVED_REFUSAL). That
+  // answer is final, so nothing is asked again and no Try again shows: the form comes back with
+  // the tenant's answers and the closed line above them, as when the submit itself is refused.
   const saveToListing = async () => {
     const g = generated.current;
     if (!g) return;
     setSaveHeld(false);
     setStatus('saving');
+    let closed = null; // the archived refusal, once the server gave it
     const post = async (url, body) => {
+      if (closed) return closed;
       // The mirror writes the application's row: the ticket rides with it and nowhere else.
       const sent = url === '/api/applications/mirror' && prefillTicket.current ? { ...body, prefillTicket: prefillTicket.current } : body;
       const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(sent) });
-      return { ok: r.ok, status: r.status, json: await r.json().catch(() => ({})) };
+      const answer = { ok: r.ok, status: r.status, json: await r.json().catch(() => ({})) };
+      if (!r.ok && answer.json && answer.json.code === ARCHIVED_CODE) closed = answer;
+      return answer;
     };
-    const out = await runSubmitChain({ post, token: g.token, applicationNumber: g.applicationNumber });
+    // The chain's pauses between tries, skipped once the listing is known to be closed.
+    const sleep = (ms) => (closed ? Promise.resolve() : new Promise((r) => setTimeout(r, ms)));
+    const out = await runSubmitChain({ post, token: g.token, applicationNumber: g.applicationNumber, sleep });
+    if (!out.ok && closed) {
+      setError(ARCHIVED_LINE);
+      setStatus('ready');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (!out.ok) { console.warn(`[apply] ${out.step} failed after ${out.attempts} tries: ${out.error?.message || out.error}`); setSaveHeld(true); return; }
     if (out.docRequest) setDocRequest(out.docRequest);
     // One tap apply: the share for this listing's realtor, approved by this submission. The
