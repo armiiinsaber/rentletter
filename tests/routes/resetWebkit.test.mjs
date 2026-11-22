@@ -15,6 +15,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 
 const PORT = 3187; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -60,6 +61,7 @@ async function stub(page, calls) {
     const url = new URL(req.url());
     const path = url.pathname.replace('/auth/v1/', '');
     calls.push(`${req.method()} ${path}`);
+    if (page.context().__noSupabase) page.context().__noSupabase.answered(req); // answered here, in the browser
     const json = (body) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
     if (path === 'user' && req.method() === 'GET') return json(USER);
     if (path === 'user' && req.method() === 'PUT') return json(USER);
@@ -80,6 +82,7 @@ async function open(page, suffix) {
 async function walk(browserType, launch, tag) {
   const browser = await browserType.launch(launch);
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await blockSupabase(ctx);
   const page = await ctx.newPage();
   const calls = [];
   const shots = [];
@@ -121,6 +124,7 @@ async function walk(browserType, launch, tag) {
     await page.waitForURL(/\/dashboard/, { timeout: 15000 });
     assert.ok(calls.some((c) => c.startsWith('PUT user')), `the password was set (${calls.join(', ')})`);
     await shot('4-saved');
+    noSupabaseLeft(ctx, tag);
     return shots;
   } finally { await browser.close(); }
 }

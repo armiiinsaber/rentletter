@@ -14,6 +14,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 
 const PORT = 3189; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -61,6 +62,7 @@ async function walk(browserType, launch, tag) {
   await warm();
   const browser = await browserType.launch(launch);
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await blockSupabase(ctx);
   const page = await ctx.newPage();
   const shots = [];
   const shot = async (name) => { const p = `/tmp/wordmark-${tag}-${name}.png`; await page.screenshot({ path: p }); shots.push(p); };
@@ -114,6 +116,7 @@ async function walk(browserType, launch, tag) {
     await tenant.locator('a.rl-mark').first().tap();
     await tenant.waitForURL((u) => u.pathname === '/', { timeout: 30000 });
     await tenant.locator('h1').first().waitFor({ timeout: 30000 });
+    noSupabaseLeft(ctx, tag);
     return shots;
   } finally { await browser.close(); }
 }

@@ -18,6 +18,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 
 const PORT = 3188; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -83,6 +84,7 @@ async function walk(browserType, launch) {
   try {
     // 1440: the desktop app.
     const desk = await (await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1440, height: 900 } })).newPage();
+    await blockSupabase(desk.context());
     await open(desk);
     await desk.locator('[data-listings-table]').first().waitFor({ timeout: 30000 });
     assert.ok(await visible(desk, '[data-shell-side]'), 'the sidebar');
@@ -157,10 +159,12 @@ async function walk(browserType, launch) {
     await desk.locator('[data-pipeline-open]').click();
     await desk.waitForURL((u) => u.searchParams.get('view') === 'pipeline', { timeout: 10000 }); await desk.waitForTimeout(300);
     assert.ok(await visible(desk, '#people'), 'the Pipeline view from its section');
+    noSupabaseLeft(desk.context(), '1440');
     await desk.context().close();
 
     // 1024: Needs you drops under the table.
     const mid = await (await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1024, height: 800 } })).newPage();
+    await blockSupabase(mid.context());
     await open(mid);
     const t2 = await box(mid, '[data-listings-table]'); const n2 = await box(mid, '[data-needs-you]');
     assert.ok(n2.top > t2.bottom, `under the table at 1024 (${JSON.stringify({ t2, n2 })})`);
@@ -169,15 +173,18 @@ async function walk(browserType, launch) {
     await mid.evaluate(() => window.scrollTo({ top: 400, behavior: 'instant' })); await mid.waitForTimeout(300);
     const stuck = await mid.evaluate(() => { const r = document.querySelector('[data-shell-side]').getBoundingClientRect(); return { y: window.scrollY, top: Math.round(r.top), height: Math.round(r.height), vh: window.innerHeight }; });
     assert.ok(stuck.y > 0 && stuck.top === 0 && stuck.height === stuck.vh, `the sidebar stays, full height (${JSON.stringify(stuck)})`);
+    noSupabaseLeft(mid.context(), '1024');
     await mid.context().close();
 
     // 390: the phone as it was, no sidebar.
     const phone = await (await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true })).newPage();
+    await blockSupabase(phone.context());
     await open(phone);
     assert.equal(await visible(phone, '[data-shell-side]'), false);
     assert.ok(await visible(phone, '[data-main-nav]'), 'the tabs');
     assert.ok(await visible(phone, '.dash-ink'), 'the greeting card');
     assert.equal(await visible(phone, '[data-needs-you]'), false);
+    noSupabaseLeft(phone.context(), '390');
     await phone.context().close();
   } finally { await browser.close(); }
 }

@@ -16,6 +16,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 
 const PORT = 3184; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -77,6 +78,7 @@ async function walk(browserType, launch, viewport, phone) {
   await warm();
   const browser = await browserType.launch(launch);
   const ctx = await browser.newContext(phone ? { serviceWorkers: 'block', viewport, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { serviceWorkers: 'block', viewport, deviceScaleFactor: 1 });
+  await blockSupabase(ctx);
   const page = await ctx.newPage();
   const press = (l) => (phone ? l.tap() : l.click());
   // A press where the logo is on screen now, with nothing scrolled first: Playwright's own tap and
@@ -140,6 +142,7 @@ async function walk(browserType, launch, viewport, phone) {
       catch (e) { await page.locator(LOGO).first().waitFor({ timeout: 30000 }); await press(page.locator(LOGO).first()); await page.waitForURL(onHome, { timeout: 30000 }); }
       await listingsShown(page);
     }
+    noSupabaseLeft(ctx, phone ? 'phone' : 'desk');
   } finally { await browser.close(); }
 }
 

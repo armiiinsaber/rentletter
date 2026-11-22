@@ -26,6 +26,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 import { SCREENS, APPLY } from '../helpers/screens.mjs';
 import { WATCH, SHORT_TIMER, watchRequests, atRest } from '../helpers/atRest.mjs';
 
@@ -162,6 +163,7 @@ async function pillsWalk(browserType, launch, tag) {
   try {
     for (const width of [390, 360]) {
       const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width, height: width === 390 ? 844 : 780 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'no-preference' });
+      await blockSupabase(ctx);
       await ctx.addInitScript(RECORD);
       await ctx.addInitScript(WATCH, SHORT_TIMER);
       for (const s of SCREENS.filter((x) => x.kind !== 'public')) {
@@ -178,6 +180,7 @@ async function pillsWalk(browserType, launch, tag) {
           }
         } finally { await page.close(); }
       }
+      noSupabaseLeft(ctx, `${tag} ${width}`);
       await ctx.close();
     }
   } finally { await browser.close(); }
@@ -190,6 +193,7 @@ async function uprightWalk(browserType, launch, tag) {
   const browser = await browserType.launch(launch);
   const make = async (standalone) => {
     const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'no-preference' });
+    await blockSupabase(ctx);
     if (standalone) await ctx.addInitScript(() => { Object.defineProperty(window.navigator, 'standalone', { get: () => true }); });
     await ctx.addInitScript(WATCH, SHORT_TIMER);
     return ctx;
@@ -246,6 +250,7 @@ async function uprightWalk(browserType, launch, tag) {
       assert.equal(await page.locator('[data-upright]').count(), 0, `${tag}: ${u} carries no overlay`);
       await upright(page);
     }
+    noSupabaseLeft(ctx, tag);
     await ctx.close();
     // In Safari (not installed): landscape shows nothing, on a realtor or a marketing page.
     // A fresh tab for each page: the home page can replace its own URL after load, which would
@@ -257,6 +262,7 @@ async function uprightWalk(browserType, launch, tag) {
       assert.equal(await sp.locator('[data-upright]').isVisible(), false, `${tag}: ${u} in Safari, landscape`);
       await sp.close();
     }
+    noSupabaseLeft(safari, tag);
     await safari.close();
   } finally { await browser.close(); }
 }

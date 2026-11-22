@@ -19,6 +19,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 
 const PORT = 3186; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -58,6 +59,7 @@ async function session(browserType, launch) {
   await warm();
   const browser = await browserType.launch(launch);
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+  await blockSupabase(ctx);
   const p = await ctx.newPage();
   await p.goto(LISTING, { waitUntil: 'networkidle' });
   await p.locator('[role=button][aria-controls]').first().waitFor({ timeout: 30000 });
@@ -121,6 +123,7 @@ async function fullPath(browserType, launch, tag) {
     await p.getByRole('button', { name: /Reopen/ }).first().waitFor({ timeout: 10000 });
     assert.equal(await p.getByText('Reconsider them first.').count(), 0, 'no dead end');
     assert.equal(await p.getByText(/Could not/).count(), 0, 'no error');
+    noSupabaseLeft(p.context(), tag);
   } finally { await browser.close(); }
 }
 
@@ -138,6 +141,7 @@ async function undoPath(browserType, launch, tag) {
     assert.equal(await card.getByRole('button', { name: 'Undo', exact: true }).count(), 0, 'the Undo goes');
     assert.equal(await card.getByRole('button', { name: 'Reconsider', exact: true }).count(), 1, 'Reconsider is back');
     await shot(p, tag, 'card-undone', card);
+    noSupabaseLeft(p.context(), tag);
   } finally { await browser.close(); }
 }
 
@@ -156,6 +160,7 @@ async function deadEnd(browserType, launch, tag) {
     await line.getByRole('button', { name: 'Reconsider' }).click();
     await p.waitForTimeout(400);
     assert.equal(await sheet(p).getAttribute('aria-label'), 'Why look again?', 'the pill opens the reason sheet');
+    noSupabaseLeft(p.context(), tag);
   } finally { await browser.close(); }
 }
 

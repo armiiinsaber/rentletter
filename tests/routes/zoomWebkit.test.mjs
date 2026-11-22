@@ -22,6 +22,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 import { SCREENS, SMALL_FIELDS, WIDER_THAN_VIEWPORT, VIEWPORT_META } from '../helpers/screens.mjs';
 import { WATCH, SHORT_TIMER, watchRequests, atRest } from '../helpers/atRest.mjs';
 
@@ -55,7 +56,7 @@ const jwt = () => `${b64({ alg: 'HS256', typ: 'JWT' })}.${b64({ sub: 'u-1', role
 const USER = { id: 'u-1', aud: 'authenticated', role: 'authenticated', email: 'realtor@example.com', app_metadata: {}, user_metadata: {}, created_at: new Date().toISOString() };
 const session = () => ({ access_token: jwt(), refresh_token: 'refresh-stub', token_type: 'bearer', expires_in: 3600, expires_at: Math.floor(Date.now() / 1000) + 3600, user: USER });
 // Each page is measured at rest (tests/helpers/atRest.mjs): loaded, hydrated, nothing moving, no request open.
-const context = async (browser, width, height) => { const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width, height }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 3 }); await ctx.addInitScript(WATCH, SHORT_TIMER); return ctx; };
+const context = async (browser, width, height) => { const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width, height }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 3 }); await blockSupabase(ctx); await ctx.addInitScript(WATCH, SHORT_TIMER); return ctx; };
 
 // What a focused field looks like: its size, its ring, the page scale.
 const focusState = (page) => page.evaluate(() => {
@@ -68,7 +69,7 @@ async function signIn(browserType, launch, tag) {
   const ctx = await context(browser, 390, 844);
   const page = watchRequests(await ctx.newPage());
   const calls = [];
-  await page.route('**/auth/v1/**', (route) => { const path = new URL(route.request().url()).pathname.replace('/auth/v1/', ''); calls.push(`${route.request().method()} ${path}`); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(path === 'token' ? session() : USER) }); });
+  await page.route('**/auth/v1/**', (route) => { const path = new URL(route.request().url()).pathname.replace('/auth/v1/', ''); calls.push(`${route.request().method()} ${path}`); ctx.__noSupabase.answered(route.request()); return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(path === 'token' ? session() : USER) }); });
   // The dashboard's server side read needs a real session; the sandbox dashboard renders the same components.
   await page.route('**/_next/data/**/dashboard.json*', (route) => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ pageProps: { __N_REDIRECT: '/demo/dashboard', __N_REDIRECT_STATUS: 307 }, __N_SSP: true }) }));
   try {
@@ -99,6 +100,7 @@ async function signIn(browserType, launch, tag) {
     const wide = await page.evaluate(WIDER_THAN_VIEWPORT);
     assert.deepEqual(wide.out, [], `${tag}: nothing on the dashboard sticks out of the viewport`); assert.ok(wide.lifted <= wide.iw, `${tag}: not wider with the masks lifted`);
     await page.screenshot({ path: `/tmp/zoom-${tag}-dashboard.png` });
+    noSupabaseLeft(ctx, tag);
   } finally { await browser.close(); }
 }
 
@@ -123,6 +125,7 @@ async function sweep(browserType, launch, tag) {
         } catch (e) { problems.push(`${s.name} at ${width}: did not open (${String(e.message).split('\n')[0]})`); }
         await page.close();
       }
+      noSupabaseLeft(ctx, `${tag} ${width}`);
       await ctx.close();
     }
   } finally { await browser.close(); }

@@ -22,6 +22,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 
 const PORT = 3180; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -55,6 +56,7 @@ const warm = () => Promise.all(['/signin', '/signup', '/forgot-password', DEMO, 
 
 async function context(browser, { standalone = false, ua = UA_PHONE, width = 390 } = {}) {
   const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: BASE, viewport: { width, height: 844 }, userAgent: ua, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+  await blockSupabase(ctx);
   if (standalone) await ctx.addInitScript(() => { Object.defineProperty(window.navigator, 'standalone', { get: () => true }); });
   return ctx;
 }
@@ -100,6 +102,7 @@ async function headAndAssets(browser, tag) {
       assert.equal(await p.locator('[data-install-hint]').count(), 0, `${tag}: no hint on ${url}`);
       await p.close();
     }
+    noSupabaseLeft(ctx, tag);
   } finally { await ctx.close(); }
 }
 
@@ -142,6 +145,7 @@ async function standaloneWays(browser, tag) {
     await way('forgot password: Back to sign in', async () => { await tap(page, page.getByRole('link', { name: /Forgot your password/ })); assert.equal(path(page), '/forgot-password'); await tap(page, page.getByRole('link', { name: 'Back to sign in' })); assert.equal(path(page), '/signin'); });
     console.log(`${tag}: ways taken in standalone:\n  ${took.join('\n  ')}`);
     assert.equal(took.length, 14);
+    noSupabaseLeft(ctx, tag);
   } finally { await ctx.close(); }
 }
 
@@ -156,9 +160,10 @@ async function hint(browser, tag) {
     assert.equal(await card.count(), 0, `${tag}: dismissed`);
     await open(page, DEMO);
     assert.equal(await card.count(), 0, `${tag}: remembered on this device`);
+    noSupabaseLeft(ctx, tag);
   } finally { await ctx.close(); }
   const desk = await context(browser, { ua: UA_DESK }); const p2 = await desk.newPage();
-  try { await open(p2, DEMO); assert.equal(await p2.locator('[data-install-hint]').count(), 0, `${tag}: not in another browser`); } finally { await desk.close(); }
+  try { await open(p2, DEMO); assert.equal(await p2.locator('[data-install-hint]').count(), 0, `${tag}: not in another browser`); noSupabaseLeft(desk, tag); } finally { await desk.close(); }
 }
 
 async function wordmark(browser, tag) {
@@ -181,6 +186,7 @@ async function wordmark(browser, tag) {
         if (url === DEMO) console.log(`${tag}: header logo at ${width}: ${r.w} by ${r.h} px`);
         await page.close();
       }
+      noSupabaseLeft(ctx, `${tag} ${width}`);
     } finally { await ctx.close(); }
   }
 }

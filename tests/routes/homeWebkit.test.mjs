@@ -14,6 +14,7 @@ import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_T
 import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
+import { blockSupabase, noSupabaseLeft } from '../helpers/noSupabase.mjs';
 
 const PORT = 3183; const BASE = `http://localhost:${PORT}`;
 const ROOT = new URL('../..', import.meta.url).pathname;
@@ -56,6 +57,7 @@ async function landing(browserType, launch, tag, width) {
   const browser = await browserType.launch(launch);
   const phone = width < 900;
   const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width, height: phone ? 844 : 800 }, userAgent: phone ? UA_PHONE : UA_DESK, isMobile: phone, hasTouch: phone, deviceScaleFactor: phone ? 2 : 1 });
+  await blockSupabase(ctx);
   const page = await ctx.newPage();
   const out = { tag, width };
   try {
@@ -89,6 +91,7 @@ async function landing(browserType, launch, tag, width) {
     const visible = await signIn.isVisible();
     out.signInVisible = visible;
     await follow(() => (visible ? (phone ? signIn.tap() : signIn.click()) : page.evaluate(() => document.querySelector('a[href="/signin"]').click())), /\/signin/, 'Sign in');
+    noSupabaseLeft(ctx, `${tag} ${width}`);
     return out;
   } finally { await browser.close(); }
 }
