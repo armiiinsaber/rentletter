@@ -1,5 +1,5 @@
 // Smart taps, in WebKit (Safari's engine) and in Chrome, with an iPhone user agent.
-// On the sandbox (the walks' dev server):
+// On the sandbox:
 //   1. Every target is at least 44 by 44: every button, link, checkbox, switch and tappable row on
 //      the dashboard, a listing, an open applicant, the open Pipeline, the New listing sheet, the
 //      profile and the tenant form, at 390 and at 360, its area grown invisibly where needed and
@@ -8,38 +8,49 @@
 //      ambiguous tap activates nothing; a near miss beside Delete listing, or beside Remove in its
 //      confirm sheet, activates nothing; a tap that was part of a drag or a scroll activates
 //      nothing; a near miss beside a text field on the tenant form leaves the field alone.
-// On the real pages over the fake stack (tests/helpers/fakeNextServer.mjs, its own dev server):
+// On the real pages over the fake stack (tests/helpers/fakeNextServer.mjs). Both are served by one
+// server from the run's one production build, with service workers blocked as on the dev servers
+// this walk used to run on (a production build registers one, lib/serviceWorker.js).
 //   3. The Pipeline header: with one person, a tap on the header or anywhere on the card opens and
 //      closes that person; with two, the header opens and closes the list and each row its person.
 // A WebKit walk fails, never skips, when the binary is missing (tests/helpers/browsers.mjs).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
-import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
-const server = devServer(`${BASE}/signin`);
-const FAKE_PORT = 3153; const FAKE = `http://localhost:${FAKE_PORT}`;
-let fake = null;
+// One production server for both: the sandbox and the real pages over the fake stack, from the
+// run's one build (tests/helpers/fakeBuild.mjs) in this walk's own copy, on its own port.
+const PORT = 3153; const BASE = `http://localhost:${PORT}`; const FAKE = BASE;
+const ROOT = new URL('../..', import.meta.url).pathname;
+let fake = null; let turn = false;
 const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
 before(async () => {
   if (!(haveWebkit || haveChrome)) return;
-  await server.start();
-  for (const pid of listeners(FAKE_PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
-  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(FAKE_PORT), 'dev', '3'], { cwd: new URL('../..', import.meta.url).pathname, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
+  if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+  turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  // Stuck past the walk limit (devServer.mjs): the fake stack server goes with the file.
+  onStuck(() => { if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } } for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } });
+  walkStep('building the fake stack for production');
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  await fakeBuild(PORT); // one build a run, copied to this walk's own folder (tests/helpers/fakeBuild.mjs)
+  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '3'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
   await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('the fake stack server did not start')), 180000); fake.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } }); });
   await fetch(`${FAKE}/dashboard`).catch(() => null);
-}, { timeout: START_TIMEOUT });
+}, { timeout: START_TIMEOUT + 600000 });
 after(async () => {
+  leaveTurn();
   if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } }
-  for (const pid of listeners(FAKE_PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
-  await server.stop();
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  if (turn) giveTurn();
 }, { timeout: STOP_TIMEOUT });
 
 async function phone(browser, { base = BASE, width = 390 } = {}) {
-  const ctx = await browser.newContext({ baseURL: base, viewport: { width, height: width === 390 ? 844 : 780 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
+  const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: base, viewport: { width, height: width === 390 ? 844 : 780 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: 'reduce' });
   await ctx.route(/fake\.supabase\.co|supabase\.co\//, (r) => r.abort());
   const page = await ctx.newPage();
   const errors = []; page.on('pageerror', (e) => { if (!/due to access control checks/.test(e.message)) errors.push(e.message); });
