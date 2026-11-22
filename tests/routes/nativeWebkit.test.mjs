@@ -1,5 +1,5 @@
 // The native feel, in WebKit (Safari's engine) and in Chrome, at 390 by 844 with an iPhone user agent.
-// On the sandbox (the walks' dev server):
+// On the sandbox:
 //   1. Realtor navigation never reloads: the dashboard to a listing and back stays one document, the
 //      push and the back run as view transitions with their direction (a crossfade under reduced
 //      motion), and nothing is left transformed afterwards.
@@ -13,7 +13,9 @@
 //      snaps back and a long one dismisses; a tap on the dimmed page closes a clean sheet and asks
 //      first when something was typed. The confirm sheet, the set aside sheet and the Next panel
 //      are the same sheet.
-// On the real pages over the fake stack (tests/helpers/fakeNextServer.mjs, its own dev server):
+// On the real pages over the fake stack (tests/helpers/fakeNextServer.mjs). Both are served by one
+// server from the run's one production build, with service workers blocked as on the dev servers
+// this walk used to run on (a production build registers one, lib/serviceWorker.js).
 //   5. A tap on a listing shows the destination at once (its Loader, or the listing itself when it
 //      lands within DOOR.loaderDelayMs), the applicants start loading on the touch,
 //      the page's own data comes without them, and the ownership check still redirects.
@@ -22,31 +24,40 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, execSync } from 'node:child_process';
-import { devServer, BASE, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { takeTurn, giveTurn, leaveTurn, onStuck, walkStep, START_TIMEOUT, STOP_TIMEOUT } from '../helpers/devServer.mjs';
+import { fakeBuild } from '../helpers/fakeBuild.mjs';
 import { requireWebkit, playwright as pw, haveWebkit, haveChrome, chromeBin } from '../helpers/browsers.mjs';
 import { reap } from '../helpers/reap.mjs';
 
 const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';
-const server = devServer(`${BASE}/signin`);
-const FAKE_PORT = 3152; const FAKE = `http://localhost:${FAKE_PORT}`;
-let fake = null;
+// One production server for both: the sandbox and the real pages over the fake stack, from the
+// run's one build (tests/helpers/fakeBuild.mjs) in this walk's own copy, on its own port.
+const PORT = 3152; const BASE = `http://localhost:${PORT}`; const FAKE = BASE;
+const ROOT = new URL('../..', import.meta.url).pathname;
+let fake = null; let turn = false;
 const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
 before(async () => {
   if (!(haveWebkit || haveChrome)) return;
-  await server.start();
-  for (const pid of listeners(FAKE_PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
-  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(FAKE_PORT), 'dev', '30'], { cwd: new URL('../..', import.meta.url).pathname, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
+  if (!(await takeTurn())) return; // the file is leaving: its hook already gave up
+  turn = true; // one walk at a time (tests/helpers/devServer.mjs)
+  // Stuck past the walk limit (devServer.mjs): the fake stack server goes with the file.
+  onStuck(() => { if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } } for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } } });
+  walkStep('building the fake stack for production');
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  await fakeBuild(PORT); // one build a run, copied to this walk's own folder (tests/helpers/fakeBuild.mjs)
+  fake = spawn(process.execPath, ['tests/helpers/fakeNextServer.mjs', String(PORT), 'prod', '30'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'ignore'], detached: true }); reap(fake, 'the fake stack server');
   await new Promise((res, rej) => { const t = setTimeout(() => rej(new Error('the fake stack server did not start')), 180000); fake.stdout.on('data', (d) => { if (/ready/.test(String(d))) { clearTimeout(t); res(); } }); });
   for (const u of ['/dashboard', '/listing/L1', '/profile']) await fetch(`${FAKE}${u}`).catch(() => null);
-}, { timeout: START_TIMEOUT });
+}, { timeout: START_TIMEOUT + 600000 });
 after(async () => {
+  leaveTurn();
   if (fake) { try { process.kill(-fake.pid); } catch (e) { /* gone */ } }
-  for (const pid of listeners(FAKE_PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
-  await server.stop();
+  for (const pid of listeners(PORT)) { try { process.kill(pid, 'SIGKILL'); } catch (e) { /* gone */ } }
+  if (turn) giveTurn();
 }, { timeout: STOP_TIMEOUT });
 
 async function phone(browser, { base = BASE, reduced = false } = {}) {
-  const ctx = await browser.newContext({ baseURL: base, viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: reduced ? 'reduce' : 'no-preference' });
+  const ctx = await browser.newContext({ serviceWorkers: 'block', baseURL: base, viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, reducedMotion: reduced ? 'reduce' : 'no-preference' });
   await ctx.route(/fake\.supabase\.co|supabase\.co\//, (r) => r.abort());
   await ctx.addInitScript(() => {
     window.__vt = [];
