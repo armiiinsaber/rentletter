@@ -1,5 +1,5 @@
 // tests/helpers/typesetStates.mjs  Every page and state a person can reach, for the wrapped text
-// walks (tests/typeset/typesetWebkit.test.mjs) and the audit behind them: public, realtor, billing,
+// walks (tests/helpers/typesetWalk.mjs, in parts) and the audit behind them: public, realtor, billing,
 // tenant and landlord, on the fake stack with the long values (tests/helpers/fakeNextServer.mjs,
 // FAKE_LONG=1). Each state opens on a page of its own: go(page, f), where f(path) answers a GET on
 // the fake server as JSON; a state with steps(page, f) then yields the name of each further state
@@ -14,9 +14,10 @@
 //                 390, 320, 1024, 1280, 1440, 1920 and 2560, for the desktop shell, the listing form
 //                 and the homepage; DESK: the five desktop widths alone, for a screen whose phone
 //                 widths another state measures).
-//   sweep({ browser, bases, concurrency, measure, onContext })   opens every state at 390, calls
-//                 measure(page, name, kind, widths) after each, and answers the names that did not
-//                 open; onContext(context, key) is called once for each browser context it opens.
+//   sweep({ browser, bases, states, concurrency, measure, onContext })   opens every state (of
+//                 states, STATES unless given) at 390, calls measure(page, name, kind, widths) after
+//                 each, and answers the names that did not open; onContext(context, key) is called
+//                 once for each browser context it opens.
 const wait = (p, ms = 400) => p.waitForTimeout(ms);
 const settle = async (p) => { await p.waitForLoadState('networkidle', { timeout: 8000 }).catch(() => {}); await wait(p, 400); };
 export const open = async (p, path) => { await p.goto(path, { waitUntil: 'load', timeout: 60000 }); await settle(p); };
@@ -425,9 +426,9 @@ export const STATES = [
   { name: 'office, the commitment before its table exists', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?history=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?history=1'); } } },
 ];
 
-// Every state, in its phase, concurrency at a time; measure(page, name, kind) after each state
-// and each step. Answers [{ name, error }] for the states that did not open.
-export async function sweep({ browser, bases, contextOptions, concurrency = 4, measure, onContext }) {
+// Every state (of states), in its phase, concurrency at a time; measure(page, name, kind) after
+// each state and each step. Answers [{ name, error }] for the states that did not open.
+export async function sweep({ browser, bases, states = STATES, contextOptions, concurrency = 4, measure, onContext }) {
   const ctx = {};
   for (const [k, base] of Object.entries(bases)) { ctx[k] = await browser.newContext({ ...contextOptions, baseURL: base }); await ctx[k].route(/supabase\.co\//, (r) => r.abort()); if (onContext) await onContext(ctx[k], k); }
   const failed = [];
@@ -444,8 +445,8 @@ export async function sweep({ browser, bases, contextOptions, concurrency = 4, m
     await page.close();
   };
   const pool = async (list, n) => { const queue = [...list]; await Promise.all(Array.from({ length: Math.min(n, queue.length) }, async () => { while (queue.length) await one(queue.shift()); })); };
-  const billing = STATES.filter((s) => s.server === 'on');
-  const rest = STATES.filter((s) => s.server !== 'on');
+  const billing = states.filter((s) => s.server === 'on');
+  const rest = states.filter((s) => s.server !== 'on');
   const on = pool(billing, 1); // each sets the plan: one after another, beside the rest
   await pool(rest.filter((s) => !s.phase || s.phase === 'read'), concurrency);
   await pool(rest.filter((s) => s.phase === 'write'), concurrency);

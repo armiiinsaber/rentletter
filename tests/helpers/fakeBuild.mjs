@@ -7,7 +7,9 @@
 // .next-fake-<port>, without the build cache, so each server still reads and writes its own folder
 // alone. The copy is a clone on APFS (copy on write), a plain copy elsewhere. A walk file run on its
 // own, outside a run, builds into its own folder as before. A shared build left by a run that has
-// ended is removed.
+// ended is removed. fakeBuild(port, env) builds with env over the run's environment (the wrapped
+// text walks, tests/helpers/typesetWalk.mjs, build once with billing on as well): a setting of its
+// own is a shared build of its own.
 import { spawn } from 'node:child_process';
 import { cpSync, existsSync, readdirSync, rmSync, writeFileSync, constants } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -16,24 +18,24 @@ const ROOT = new URL('../..', import.meta.url).pathname;
 const NEXT = `${ROOT}node_modules/next/dist/bin/next`;
 const DONE = '.walk-build-done';
 
-const build = (dist) => new Promise((res, rej) => {
-  const p = spawn(process.execPath, [NEXT, 'build'], { cwd: ROOT, env: { ...process.env, NEXT_DIST_DIR: dist, FAKE_STACK_BUILD: '1' }, stdio: 'ignore' });
+const build = (dist, env = {}) => new Promise((res, rej) => {
+  const p = spawn(process.execPath, [NEXT, 'build'], { cwd: ROOT, env: { ...process.env, ...env, NEXT_DIST_DIR: dist, FAKE_STACK_BUILD: '1' }, stdio: 'ignore' });
   p.on('exit', (code) => (code === 0 ? res() : rej(new Error(`next build into ${dist} exited ${code}`))));
 });
 const running = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return false; } };
 // What a build takes from the environment besides the code: BILLING_OFF (next.config.js env) and
 // every NEXT_PUBLIC_ variable. Two runs or two settings never share a build. Only a short digest is
 // kept, in the folder's name; no value is written or printed.
-const inlined = () => createHash('sha256')
-  .update(JSON.stringify(Object.keys(process.env).filter((k) => k === 'BILLING_OFF' || k.startsWith('NEXT_PUBLIC_')).sort().map((k) => [k, process.env[k]])))
+const inlined = (env) => createHash('sha256')
+  .update(JSON.stringify(Object.keys(env).filter((k) => k === 'BILLING_OFF' || k.startsWith('NEXT_PUBLIC_')).sort().map((k) => [k, env[k]])))
   .digest('hex').slice(0, 12);
 
-export const sharedBuildDir = (run = process.env.RENTLETTER_RUN) => (run ? `.next-fake-shared-${run}-${inlined()}` : null);
+export const sharedBuildDir = (run = process.env.RENTLETTER_RUN, env = {}) => (run ? `.next-fake-shared-${run}-${inlined({ ...process.env, ...env })}` : null);
 
-export async function fakeBuild(port) {
+export async function fakeBuild(port, env = {}) {
   const own = `.next-fake-${port}`;
-  const shared = sharedBuildDir();
-  if (!shared) { await build(own); return { shared: false }; }
+  const shared = sharedBuildDir(undefined, env);
+  if (!shared) { await build(own, env); return { shared: false }; }
   // Shared builds of runs that have ended (a run is named run-<pid>, scripts/test-run.mjs).
   for (const d of readdirSync(ROOT)) {
     const m = d.match(/^\.next-fake-shared-run-(\d+)-/);
@@ -44,7 +46,7 @@ export async function fakeBuild(port) {
   let built = false;
   if (!existsSync(`${ROOT}${shared}/${DONE}`)) {
     rmSync(`${ROOT}${shared}`, { recursive: true, force: true });
-    await build(shared);
+    await build(shared, env);
     writeFileSync(`${ROOT}${shared}/${DONE}`, String(Date.now()));
     built = true;
   }

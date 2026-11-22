@@ -40,6 +40,18 @@ export function reap(child, what = '') {
   child.once('exit', forget);
   return () => { takeDown(child.pid); forget(); };
 }
+// A server that outlives the walk file that started it (the wrapped text walk's parts run one after
+// another on the same servers, tests/helpers/typesetWalk.mjs): written down for the run like any
+// other, so the runner takes it down when the run ends however it ends, but left running when this
+// process ends, and not keeping this process alive. The part that comes last takes it down.
+export function reapWithRun(child, what = '') {
+  if (!child || !child.pid) return () => {};
+  const dir = runFolder(); mkdirSync(dir, { recursive: true });
+  const file = `${dir}/${child.pid}`;
+  writeFileSync(file, JSON.stringify({ pid: child.pid, started: startedAt(child.pid), what, by: process.pid }));
+  child.unref();
+  return () => { takeDown(child.pid); try { unlinkSync(file); } catch (e) { /* gone */ } };
+}
 
 
 // The run is over: every server still written down for it is taken down, and the folder goes.
