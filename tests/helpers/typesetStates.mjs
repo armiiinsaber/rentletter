@@ -363,7 +363,7 @@ export const STATES = [
   } },
   // The full profile (db/022): strength with its checklist, a photo, the tenant's own words, an
   // offer to prepay rent and the landlord report switch, all filled; then the photo's removal asked.
-  { name: 'tenant profile, about you filled', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=7&docs=1&personal=1'); await p.locator('[data-photo="yes"]').waitFor({ timeout: 15000 }); await p.locator('[data-strength-steps]').waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
+  { name: 'tenant profile, about you filled', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=7&docs=1&personal=1'); await p.locator('[data-photo="yes"]').waitFor({ timeout: 15000 }); await p.locator('[data-strength-bar]').waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
     await p.locator('[data-photo="yes"]').getByRole('button', { name: 'Remove photo' }).click(); await p.locator('[data-photo-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
     yield 'tenant profile, photo removal asked';
   } },
@@ -413,6 +413,18 @@ export const STATES = [
     if (mirrors !== 1) throw new Error(`the application was sent ${mirrors} times; the retry must send the share alone`);
     yield 'one tap apply, the share went through on the retry';
   } },
+  // The profile laid out to be filled in (pages/my-application.js): the section menu, the sections
+  // and the strength panel at every width; empty (no facts yet, no document, nothing about them),
+  // about half filled and then one section open for editing, complete (every step of the strength
+  // done, a share and an application), and on a phone the checklist as a sheet (it is there only
+  // below 1024: the slim bar that opens it is the phone's).
+  { name: 'tenant profile, empty', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=11&facts=none&consent=0'); await p.locator('[data-section-invite="employment"]').waitFor({ timeout: 15000 }); await wait(p, 300); } },
+  { name: 'tenant profile, half filled', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=12&facts=half&docs=id'); await p.locator('[data-section-invite="rental"]').waitFor({ timeout: 15000 }); await p.locator('[data-strength-bar]').waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
+    await p.locator('[data-section-edit="employment"]').click(); await p.locator('[data-section-form="employment"]').waitFor({ timeout: 15000 }); await wait(p, 400);
+    yield 'tenant profile, a section open for editing';
+  } },
+  { name: 'tenant profile, complete', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=13&facts=full&docs=1&personal=1&share=new&agent=1'); await p.locator('[data-strength-next="none"]').first().waitFor({ state: 'attached', timeout: 15000 }); await p.locator('[data-share="live"]').first().waitFor({ timeout: 15000 }); await wait(p, 300); } },
+  { name: 'tenant profile, the checklist sheet on a phone', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=12&facts=half&docs=id'); await p.locator('[data-strength-bar]').click(); await p.locator('[data-strength-sheet] [data-strength-steps]').waitFor({ timeout: 15000 }); await wait(p, 500); } },
   { name: 'tenant profile, documents paused', kind: 'tenant', phase: 'alone', go: async (p, f) => { try { await tenantProfile(p, f, 'who=3&docs=1&paused=1'); await p.locator('[data-vault-paused]').waitFor({ timeout: 15000 }); } finally { await f('/__fake/tenant?who=3&paused=0'); } } },
   // ── landlord ──
   { name: 'landlord report', kind: 'landlord', phase: 'write', go: async (p) => { const t = await report(p); await open(p, `/r/${t}`); }, steps: async function* (p) { await tap(p, /meet/i); await wait(p, 400); yield 'landlord report, answered'; await tap(p, /Tap to change/); yield 'landlord report, changing an answer'; } },

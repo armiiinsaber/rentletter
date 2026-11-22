@@ -15,12 +15,14 @@ const Under = ({ error, hint }) => (error
   ? <div role="alert" className="mp-alert" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(error)}</div>
   : hint ? <div className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(hint)}</div> : null);
 
-export function Field({ label, value, onChange, onBlur, placeholder, type = 'text', required, error, hint, inputMode }) {
+// autoComplete, enterKeyHint and field (the input's data-field, so a page can focus one field by
+// its name) are optional: left out, the input is as it always was.
+export function Field({ label, value, onChange, onBlur, placeholder, type = 'text', required, error, hint, inputMode, autoComplete, enterKeyHint, field }) {
   const id = useId();
   return (
     <div>
       <Label required={required} htmlFor={id}>{label}</Label>
-      <input id={id} type={type} inputMode={inputMode} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} onBlur={onBlur}
+      <input id={id} type={type} inputMode={inputMode} autoComplete={autoComplete} enterKeyHint={enterKeyHint} data-field={field} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} onBlur={onBlur}
         aria-required={required || undefined} aria-invalid={error ? true : undefined} className="mp-input"
         style={{ marginTop: 'var(--gap-line)', borderColor: error ? C.danger : undefined }} />
       <Under error={error} hint={hint} />
@@ -39,12 +41,12 @@ export function Textarea({ label, value, onChange, placeholder }) {
   );
 }
 
-export function SelectField({ label, value, onChange, options }) {
+export function SelectField({ label, value, onChange, options, field }) {
   const id = useId();
   return (
     <div>
       <Label htmlFor={id}>{label}</Label>
-      <select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="mp-input" style={{ marginTop: 'var(--gap-line)', appearance: 'none', cursor: 'pointer' }}>
+      <select id={id} data-field={field} value={value} onChange={(e) => onChange(e.target.value)} className="mp-input" style={{ marginTop: 'var(--gap-line)', appearance: 'none', cursor: 'pointer' }}>
         {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
       </select>
     </div>

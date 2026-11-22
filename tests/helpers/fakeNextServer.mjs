@@ -253,7 +253,10 @@ http.createServer(async (req, res) => {
   // answers { token }, the value of the rl_tenant session cookie. docs=1 stores an ID, a pay
   // stub and an employment letter in its vault with the facts read from them; consent=0 leaves
   // the consent to keep documents ungiven; paused=1 turns the vault off for the whole server
-  // (TENANT_VAULT_ENABLED=false) and paused=0 turns it back on.
+  // (TENANT_VAULT_ENABLED=false) and paused=0 turns it back on. facts=none makes the profile with no
+  // facts yet (the empty profile), facts=half with about half of them (a name, a phone, a job and an
+  // employer, a move in date; no income, no rental, no reference), facts=full with every one the
+  // page asks for (the occupants too); docs=id stores the ID alone.
   if (req.url.startsWith('/__fake/tenant')) {
     const q = new URL(req.url, 'http://localhost').searchParams;
     if (q.get('paused') === '1') process.env.TENANT_VAULT_ENABLED = 'false';
@@ -267,24 +270,26 @@ http.createServer(async (req, res) => {
     let row = t.tenant_profiles.find((r) => r.email === email);
     if (!row) {
       const facts = { fullName: 'Maximiliano Castellanos Ruiz', email, phone: '4165550142', employmentType: 'full-time', jobTitle: 'Senior Clinical Operations Coordinator', employer: 'Northwind Pediatric Rehabilitation Clinic Inc.', yearsAtJob: '4', annualIncome: '118000', netIncome: '84500', netIncomeSource: 'estimated', rentalStatus: 'renting', previousAddress: '4100 Yonge Street, Unit 1907, North York', yearsAtPrevious: '3.5', currentRent: '2650', previousLandlordName: 'Harbourfront Holdings Ltd.', previousLandlordContact: 'leasing@harbourfrontholdings.ca · 416 555 0188', moveInDate: '2026-12-01', ageConfirmed: true, reference1Name: 'Bartholomew Nakamura Whitfield', reference1Relationship: 'Manager', reference1Contact: 'b.whitfield@northwindclinic.ca' };
-      row = { id: randomUUID(), email, email_key: createHash('sha256').update(email).digest('hex').slice(0, 32), facts, applications: [], facts_updated_at: new Date(Date.now() - 12 * 86400000).toISOString(), profile_revision: 0, created_at: now, updated_at: now, email_verified_at: now, last_active_at: now, vault_consent_at: null };
+      const shape = q.get('facts');
+      const half = { fullName: facts.fullName, email, phone: facts.phone, employmentType: facts.employmentType, jobTitle: facts.jobTitle, employer: facts.employer, moveInDate: facts.moveInDate, ageConfirmed: true };
+      row = { id: randomUUID(), email, email_key: createHash('sha256').update(email).digest('hex').slice(0, 32), facts: shape === 'none' ? null : shape === 'half' ? half : shape === 'full' ? { ...facts, numberOfOccupants: '1' } : facts, applications: [], facts_updated_at: new Date(Date.now() - 12 * 86400000).toISOString(), profile_revision: 0, created_at: now, updated_at: now, email_verified_at: now, last_active_at: now, vault_consent_at: null };
       t.tenant_profiles.push(row);
     }
     const token = randomBytes(32).toString('base64url');
     await kvSetJson(`tsession:${createHash('sha256').update(token).digest('hex')}`, { profileId: row.id, createdAt: now }, 30 * 24 * 3600);
     if (q.get('consent') !== '0' && !row.vault_consent_at) row.vault_consent_at = now;
-    if (q.get('docs') === '1' && !t.tenant_profile_documents.some((d) => d.tenant_profile_id === row.id)) {
+    if ((q.get('docs') === '1' || q.get('docs') === 'id') && !t.tenant_profile_documents.some((d) => d.tenant_profile_id === row.id)) {
       const day = 86400000; const at = (n) => new Date(Date.now() + n * day).toISOString();
-      const docs = [['id', -3, 11], ['income', -9, 81], ['employment', -9, 81]].map(([kind, up, exp], i) => ({ id: `vault-${who}-${i + 1}`, tenant_profile_id: row.id, storage_path: `${row.id}/vault-${who}-${i + 1}.pdf`, kind, mime: 'application/pdf', bytes: 1200, content_hash: null, uploaded_at: at(up), read_at: at(up), expires_at: at(exp), renewed_at: null, deleted_at: null, deleted_by: null, object_removed: false }));
+      const docs = [['id', -3, 11], ['income', -9, 81], ['employment', -9, 81]].slice(0, q.get('docs') === 'id' ? 1 : 3).map(([kind, up, exp], i) => ({ id: `vault-${who}-${i + 1}`, tenant_profile_id: row.id, storage_path: `${row.id}/vault-${who}-${i + 1}.pdf`, kind, mime: 'application/pdf', bytes: 1200, content_hash: null, uploaded_at: at(up), read_at: at(up), expires_at: at(exp), renewed_at: null, deleted_at: null, deleted_by: null, object_removed: false }));
       t.tenant_profile_documents.push(...docs);
       for (const d of docs) await stack.db.storage.from('tenant-vault').upload(d.storage_path, Buffer.from('%PDF-1.4 a tenant document'), { contentType: 'application/pdf' });
       const check = (kind, value, agrees, source, doc) => ({ id: `check-${who}-${kind}`, tenant_profile_id: row.id, kind, value, agrees_with_typed: agrees, source_kind: source, source_document_id: doc, read_at: at(source === 'id' ? -3 : -9), fresh_until: at(80), created_at: at(-9) });
-      t.tenant_profile_checks.push(
+      t.tenant_profile_checks.push(...[
         check('identity_name_matches', { matches: true }, true, 'id', docs[0].id),
-        check('income_annual_gross', { cents: 11800000 }, true, 'income', docs[1].id),
-        check('employer_name', { name: 'Northwind Pediatric Rehabilitation Clinic Inc.' }, true, 'employment', docs[2].id),
-        check('employment_start', { month: '2022-09' }, null, 'employment', null),
-      );
+        docs[1] && check('income_annual_gross', { cents: 11800000 }, true, 'income', docs[1].id),
+        docs[2] && check('employer_name', { name: 'Northwind Pediatric Rehabilitation Clinic Inc.' }, true, 'employment', docs[2].id),
+        docs[2] && check('employment_start', { month: '2022-09' }, null, 'employment', null),
+      ].filter(Boolean));
     }
     // share=J2: this tenant applied to the realtor's listing with their profile (db/019): the
     // application behind that applicant row is recorded as made from this profile, the share is

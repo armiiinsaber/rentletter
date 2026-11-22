@@ -39,6 +39,12 @@ export const C = {
   dangerTint: '#fdf0ef',
   // Status: no green, amber or gold token exists. A done state is ink or the red tick, a
   // notice is a paper well (info below), an error is danger.
+  // Done, on the tenant's own profile only (components/tenant/ProfileLayout.js): a deep teal,
+  // hue 187, outside the green range tests/noGreenAmber.test.mjs scans for. 6.19 to 1 on paper,
+  // 6.58 on the card and 5.64 on paperDeep (tests/profileLayout.test.mjs). Used for a done state
+  // and nothing else: never a control, never a notice.
+  done: '#1e6670',
+  doneTint: '#e9f1f2',
   // Info/notice wells (policy boxes, preference blocks) — paper-toned, no off-brand blue
   info: '#f2eee3',       // = paperDeep
   infoBorder: '#e3ddd0', // = rule

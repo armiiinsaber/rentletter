@@ -315,8 +315,15 @@ test('10. every fact on the page shows its source and its date', async () => {
   const shown = (html.match(/class="mp-value(?! mp-empty)[^"]*"/g) || []).length;
   const sourced = (html.match(/data-fact-source=""/g) || []).length;
   assert.ok(shown >= 8, `the facts are shown (${shown})`);
-  assert.equal(sourced, shown, 'each fact that holds a value carries its source line');
-  assert.equal((html.replace(/ /g, ' ').match(/Typed by you on November 1, 2026/g) || []).length, shown);
+  // Said once a section, under its heading, not under every fact (pages/my-application.js): each
+  // of the six sections holds a value here, so each carries the line once, and no fact carries it.
+  const text = html.replace(/ /g, ' ');
+  const sections = text.split('<section ').slice(1);
+  assert.equal(sections.length, 6, 'the six sections of typed facts');
+  assert.equal(sourced, sections.length, 'each section that holds a value carries its source line, once');
+  assert.equal((text.match(/Typed by you on November 1, 2026/g) || []).length, sections.length);
+  for (const sec of sections) assert.match(sec, /^[^>]*data-state="(?:done|started)"[^>]*><div class="mp-head tp-head"><h2 [^>]*>[^<]*<\/h2><div class="tp-head-side">(?:(?!<\/section>).)*?<\/div><\/div><p class="tp-source" data-fact-source="">Typed by you on November 1, 2026<\/p><div class="tp-fields">/, 'the line sits directly under the heading, before the facts');
+  for (const field of text.split('class="tp-field').slice(1)) assert.doesNotMatch(field.split('</section>')[0].split('class="tp-field')[0], /Typed by you/, 'no fact carries the line');
   assert.equal((renderToStaticMarkup(React.createElement(F.FactSections, { facts, canEdit: false, onEdit() {}, onCancel() {}, onSave() {}, setDraft() {} })).match(/data-fact-source/g) || []).length, 0, 'a page that names no source shows none');
   const vault = src('components/tenant/ProfileVault.js');
   assert.match(vault, /<div className="mp-source" data-fact-source="">\{noWidow\(youLine\(SOURCE\.DOCUMENT, c\.readAt\)\)\}<\/div>/, 'each fact read from a document carries "Read from a document on DATE"');

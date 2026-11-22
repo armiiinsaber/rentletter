@@ -1,8 +1,9 @@
 // components/tenant/ProfilePersonal.js
 // On the tenant's profile page (pages/my-application.js), under their own session and one route,
 // /api/tenant/personal (lib/profilePersonal.js, db/022-full-tenant-profile.sql):
-//   · Profile strength: a percent and a checklist of next steps, each with what it adds in one
-//     line. Only the tenant ever sees it; no realtor, landlord or score reads it;
+//   · Profile strength is read here (usePersonal) and shown by components/tenant/ProfileStrength.js:
+//     a percent and a checklist of next steps. Only the tenant ever sees it; no realtor, landlord
+//     or score reads it;
 //   · About you: one photo (optional, replaceable, removable), a few words in the tenant's own
 //     voice (up to 600 characters, with "Help me write this", which only suggests wording from
 //     what they typed and changes nothing until they accept it), an offer to prepay rent (their
@@ -16,6 +17,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { noWidow, dateLong } from '../../lib/typeset';
 import { C } from '../theme';
 import { StatusPills } from '../ui';
+import { StateTag } from './ProfileLayout';
 import { Pending } from '../brand/Loader';
 import { ABOUT_MAX, PREPAY_MIN, PREPAY_MAX, PHOTO_NOTE, ABOUT_PROMPTS, ABOUT_NOTE, PREPAY_FIELD, PREPAY_NOTE, LANDLORD_SWITCH, PHOTO_MAX_BYTES, aboutLength } from '../../lib/profilePersonal';
 
@@ -40,19 +42,27 @@ const Switch = ({ on, onChange, label, busy, ...rest }) => (
   </button>
 );
 
-export default function ProfilePersonal({ profile }) {
+// The one read of /api/tenant/personal for the page: the strength (components/tenant/
+// ProfileStrength.js), the section states and this card all show the same answer. It is read again
+// whenever the facts change (a save) or the page says so (again: a document added or deleted), so
+// the strength is current without a reload.
+export function usePersonal(profile, again = 0) {
   const [data, setData] = useState(null);
+  const load = useCallback(async () => {
+    try { const r = await fetch('/api/tenant/personal'); if (!r.ok) { setData({ failed: true }); return; } const j = await r.json(); setData(j); } catch (e) { setData({ failed: true }); }
+  }, []);
+  useEffect(() => { load(); }, [load, profile && profile.factsUpdatedAt, again]);
+  return { data, load };
+}
+
+export default function ProfilePersonal({ data, load, state = 'empty' }) {
   const [busy, setBusy] = useState('');
   const [note, setNote] = useState(null); // { where, tone, text }
   const [text, setText] = useState('');
   const [suggestion, setSuggestion] = useState('');
   const [asking, setAsking] = useState(false); // remove the photo?
   const file = useRef(null);
-
-  const load = useCallback(async () => {
-    try { const r = await fetch('/api/tenant/personal'); if (!r.ok) { setData({ failed: true }); return; } const j = await r.json(); setData(j); setText((t) => t || j.about || ''); } catch (e) { setData({ failed: true }); }
-  }, []);
-  useEffect(() => { load(); }, [load, profile && profile.factsUpdatedAt]);
+  useEffect(() => { if (data && !data.failed) setText((t) => t || data.about || ''); }, [data]);
 
   const post = async (body) => {
     const r = await fetch('/api/tenant/personal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
@@ -83,36 +93,18 @@ export default function ProfilePersonal({ profile }) {
   };
 
   if (!data || data.failed) return null;
-  const s = data.strength; const available = !!data.available;
+  const available = !!data.available;
   const said = (where) => (note && note.where === where ? <p role="status" className={note.tone === 'ok' ? 'mp-note' : 'mp-alert'} style={{ marginTop: 'var(--gap-line)' }}>{noWidow(note.text)}</p> : null);
   const count = aboutLength(text);
   const changed = text.trim() !== String(data.about || '').trim();
 
   return (
     <div className="mp-stack" data-personal="" data-personal-available={available ? 'yes' : 'no'}>
-      {/* Profile strength: the tenant's own, never shown to a realtor or a landlord. */}
-      {s && (
-        <section className="rl-card mp-card" data-strength="" aria-labelledby="pp-strength-h">
-          <h2 id="pp-strength-h" className="mp-h2">Profile strength</h2>
-          <div className="pp-percent" data-strength-percent="">{s.percent}%</div>
-          <div className="pp-bar" aria-hidden="true"><span style={{ width: `${s.percent}%` }} /></div>
-          <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Only you see this. It is never shown to a realtor or a landlord, and never used to score you.')}</p>
-          <ul className="pp-steps" data-strength-steps="">
-            {s.steps.map((step) => (
-              <li key={step.key} data-strength-step={step.key} data-done={step.done ? 'yes' : 'no'} className="pp-step">
-                <span className="pp-mark" data-done={step.done ? 'yes' : 'no'} aria-hidden="true" />
-                <div style={{ minWidth: 0 }}>
-                  <div className="pp-step-title">{noWidow(step.done ? `${step.title}: done` : step.title)}{step.optional && !step.done ? <span className="pp-optional"> (optional)</span> : null}</div>
-                  <div className="mp-source">{noWidow(step.adds)}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       <section className="rl-card mp-card" data-personal-card="" aria-labelledby="pp-about-h">
-        <h2 id="pp-about-h" className="mp-h2">About you</h2>
+        <div className="mp-head tp-head">
+          <h2 id="pp-about-h" className="mp-h2">About you</h2>
+          <div className="tp-head-side"><StateTag state={state} /></div>
+        </div>
         {!available ? <p role="status" data-personal-absent="" className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('A photo, a few words about you and an offer to prepay rent are not available yet.')}</p> : (
           <>
             <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('All of this is optional and yours to change. A realtor sees it only when you share your profile with them.')}</p>
@@ -133,7 +125,7 @@ export default function ProfilePersonal({ profile }) {
                 </div>
               ) : (
                 <div className="mp-actions">
-                  {!data.photosPaused && <button type="button" data-photo-add="" className="mp-btn" disabled={!!busy} onClick={() => file.current && file.current.click()}><Pending busy={busy === 'photo'} label="Saving your photo">{data.photo ? 'Replace photo' : 'Add a photo'}</Pending></button>}
+                  {!data.photosPaused && <button type="button" data-photo-add="" data-focus="photo" className="mp-btn" disabled={!!busy} onClick={() => file.current && file.current.click()}><Pending busy={busy === 'photo'} label="Saving your photo">{data.photo ? 'Replace photo' : 'Add a photo'}</Pending></button>}
                   {data.photo && <button type="button" data-destructive="" className="mp-link" disabled={!!busy} onClick={() => setAsking(true)}>Remove photo</button>}
                 </div>
               )}
@@ -151,7 +143,7 @@ export default function ProfilePersonal({ profile }) {
               <label htmlFor="pp-about" className="mp-label" style={{ display: 'block' }}>About me</label>
               <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('A few lines in your own words. You could say:')}</p>
               <StatusPills label="You could say" items={[...ABOUT_PROMPTS]} style={{ marginTop: 'var(--s-2)' }} />
-              <textarea id="pp-about" className="mp-input pp-area" data-about-text="" rows={6} value={text} onChange={(e) => { setText(e.target.value); setNote(null); }} style={{ fontSize: 'var(--t-body)' }} />
+              <textarea id="pp-about" className="mp-input pp-area" data-about-text="" data-focus="about" rows={6} value={text} onChange={(e) => { setText(e.target.value); setNote(null); }} style={{ fontSize: 'var(--t-body)' }} />
               <div className="mp-source" data-about-count="" style={{ marginTop: 'var(--s-1)', color: count > ABOUT_MAX ? C.danger : undefined }}>{`${count} of ${ABOUT_MAX}`}</div>
               <p className="mp-p" data-about-note="" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(ABOUT_NOTE)}</p>
               <div className="mp-actions">
@@ -173,7 +165,7 @@ export default function ProfilePersonal({ profile }) {
 
             {/* The tenant's own offer to prepay rent. */}
             <div className="pp-part" data-prepay={data.prepayMonths != null ? 'on' : 'off'}>
-              <Switch on={data.prepayMonths != null} busy={busy === 'prepay'} label={PREPAY_FIELD} data-prepay-switch="" onChange={(on) => act('prepay', 'prepay', { action: 'prepay', months: on ? 2 : null })} />
+              <Switch on={data.prepayMonths != null} busy={busy === 'prepay'} label={PREPAY_FIELD} data-prepay-switch="" data-focus="prepay" onChange={(on) => act('prepay', 'prepay', { action: 'prepay', months: on ? 2 : null })} />
               {data.prepayMonths != null && (
                 <div style={{ marginTop: 'var(--gap-line)' }}>
                   <label htmlFor="pp-months" className="mp-label" style={{ display: 'block' }}>How many months</label>
@@ -204,17 +196,6 @@ export default function ProfilePersonal({ profile }) {
       </section>
 
       <style jsx global>{`
-        .pp-percent { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; font-variant-numeric: tabular-nums; margin-top: var(--gap-line); }
-        .pp-bar { height: 4px; background: var(--rule); border-radius: 2px; margin-top: var(--gap-line); overflow: hidden; }
-        .pp-bar span { display: block; height: 100%; background: ${C.ink}; border-radius: 2px; }
-        .pp-steps { list-style: none; margin: var(--gap-card) 0 0; padding: 0; display: grid; gap: var(--gap-card); text-align: left; }
-        .pp-step { display: flex; align-items: flex-start; justify-content: flex-start; gap: var(--s-3); min-width: 0; text-align: left; }
-        .pp-step > div { flex: 1 1 auto; text-align: left; }
-        .pp-mark { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid ${C.ruleDark}; flex-shrink: 0; margin-top: 1px; }
-        .pp-mark[data-done='yes'] { background: ${C.ink}; border-color: ${C.ink}; }
-        .pp-step-title { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: var(--lh-body); text-wrap: balance; }
-        .pp-step[data-done='yes'] .pp-step-title { color: ${C.inkMute}; }
-        .pp-optional { font-weight: 500; color: ${C.inkMute}; }
         .pp-part { margin-top: var(--gap-card); padding-top: var(--gap-card); border-top: 1px solid var(--rule); min-width: 0; }
         .pp-photo-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); margin-top: var(--gap-line); min-width: 0; }
         .pp-photo { width: 84px; height: 84px; border-radius: 12px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--rule); background: ${C.paperDeep}; display: block; }
