@@ -60,6 +60,7 @@ const FILES = {
   m023: 'db/023-photo-log-actions.sql',
   m024: 'db/024-share-roles.sql',
   m025: 'db/025-listing-archive.sql',
+  m026: 'db/026-about-me-translation.sql',
   parity: 'db/state-parity-check.sql',
   m999: 'db/999-application-state-rollback.sql',
 };
@@ -1151,6 +1152,82 @@ async function run025(db, tag) {
   check(same(await rows(db, 'SELECT * FROM public.listings ORDER BY id'), held), `${tag}2: this check's own archive is undone`);
 }
 
+// ── db/026-about-me-translation.sql ────────────────────────────────────────────────────────
+// Three nullable columns on tenant_profiles (the English version of About me, the language the
+// tenant wrote in, when they approved the English), three checks, and the view
+// tenant_profile_about_english, which answers the English version only once it is approved. Run,
+// exercised with a profile of the verifier's own, then run again. The original, its limit and
+// the view of db/022 are exactly what they were, and db/022 still runs again after it.
+const AE = 'eeeeeeee-0000-4000-8000-0000000000e1'; const AE2 = 'eeeeeeee-0000-4000-8000-0000000000e2';
+const ENGLISH_COLUMNS = [['about_me_en', 'text'], ['about_me_lang', 'text'], ['about_me_en_approved_at', 'timestamp with time zone']];
+const ENGLISH_CONSTRAINTS = ['tenant_profiles_about_me_en_length', 'tenant_profiles_about_me_lang_code', 'tenant_profiles_about_me_en_approved_whole'];
+const stripEnglish = (list) => list.map((r) => { const o = { ...r }; for (const [c] of ENGLISH_COLUMNS) delete o[c]; return o; });
+const englishViewDef = (db) => one(db, "SELECT pg_get_viewdef('public.tenant_profile_about_english'::regclass)");
+async function check026(db, label) {
+  for (const [c, type] of ENGLISH_COLUMNS) {
+    const col = (await rows(db, "SELECT data_type, is_nullable, column_default FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tenant_profiles' AND column_name = $1", [c]))[0];
+    check(col && col.data_type === type && col.is_nullable === 'YES' && col.column_default === null, `${label}: tenant_profiles.${c} is nullable ${type} with no default`, JSON.stringify(col));
+  }
+  for (const name of ENGLISH_CONSTRAINTS) check((await constraintCount(db, name)) === 1, `${label}: the constraint ${name} exists once`);
+  const cols = (await rows(db, "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'tenant_profile_about_english' ORDER BY ordinal_position")).map((r) => r.column_name);
+  check(same(cols, ['id', 'about_me', 'about_me_lang', 'about_me_en', 'about_me_en_approved_at']), `${label}: the view holds the id, the original, the language, the English and its approval, and nothing else of the profile`, cols.join(','));
+  check(/security_invoker=true/.test(String(await one(db, "SELECT array_to_string(reloptions, ',') FROM pg_class WHERE oid = 'public.tenant_profile_about_english'::regclass"))), `${label}: the view reads as its caller (security_invoker)`);
+  for (const role of ['anon', 'authenticated']) for (const priv of ['SELECT', 'INSERT', 'UPDATE', 'DELETE']) check((await one(db, 'SELECT has_table_privilege($1, $2, $3)', [role, 'public.tenant_profile_about_english', priv])) === false, `${label}: ${role} holds no ${priv} on the view`);
+  const as = async (role, fn) => { await db.exec(`SET ROLE ${role}`); try { return await fn(); } finally { await db.exec('RESET ROLE'); } };
+  for (const role of ['anon', 'authenticated']) check(/permission denied/.test(await as(role, () => refused(db, 'SELECT * FROM public.tenant_profile_about_english')) || ''), `${label}: ${role} cannot read the view`);
+  check((await one(db, "SELECT count(*)::int FROM pg_policies WHERE schemaname = 'public' AND tablename = 'tenant_profiles'")) === 0, `${label}: no policy opens tenant_profiles`);
+  for (const c of ['facts', 'applications', 'email']) check(/does not exist/.test(await refused(db, `SELECT ${c} FROM public.tenant_profile_about_english`) || ''), `${label}: the view has no ${c} column to ask for`);
+}
+async function run026(db, tag) {
+  const before = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  const shareable = await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)"); const personal = await personalViewDef(db);
+  const constraints0 = await profileConstraints(db);
+  await db.query("INSERT INTO public.tenant_profiles (id, email, email_key, facts, about_me) VALUES ($1, 'english@mail.ca', 'ae1', '{\"fullName\":\"Probe Tenant\"}'::jsonb, 'من اینجا هستم.'), ($2, 'english2@mail.ca', 'ae2', '{}'::jsonb, NULL)", [AE, AE2]);
+  const withMine = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  await step(db, `${tag}1`, FILES.m026);
+  check(same(stripEnglish(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id')), withMine), `${tag}1: no other column of any tenant profile moved, the original among them`);
+  check((await one(db, 'SELECT count(*)::int FROM public.tenant_profiles WHERE about_me_en IS NOT NULL OR about_me_lang IS NOT NULL OR about_me_en_approved_at IS NOT NULL')) === 0, `${tag}1: every existing profile reads null in the three new columns`);
+  check((await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)")) === shareable && (await personalViewDef(db)) === personal, `${tag}1: the view of shareable facts and the view of db/022 are exactly what they were`);
+  check(same((await profileConstraints(db)).filter((c) => !ENGLISH_CONSTRAINTS.includes(c.conname)), constraints0), `${tag}1: every constraint that was on tenant_profiles is as it was, the 600 characters of the original among them`);
+  await check026(db, `${tag}1`);
+  const set = (sql, params) => refused(db, `UPDATE public.tenant_profiles SET ${sql} WHERE id = $1`, [AE, ...(params || [])]);
+  // The original keeps its 600 characters; the English version may be up to 900, counted as characters.
+  check(/tenant_profiles_about_me_length/.test(await set('about_me = $2', ['م'.repeat(601)]) || ''), `${tag}1: an original of 601 characters is still refused`);
+  check(/tenant_profiles_about_me_en_length/.test(await set('about_me_en = $2', ['x'.repeat(901)]) || ''), `${tag}1: an English version of 901 characters is refused`);
+  check(/tenant_profiles_about_me_en_length/.test(await set("about_me_en = ''") || ''), `${tag}1: an empty English version is refused: none is null`);
+  check((await set('about_me_en = $2', ['é'.repeat(900)])) == null, `${tag}1: 900 characters are kept, counted as characters`);
+  // The language: a short code.
+  for (const bad of ['Persian', 'FA', 'f', 'fa-IR']) check(/tenant_profiles_about_me_lang_code/.test(await set('about_me_lang = $2', [bad]) || ''), `${tag}1: the language ${bad} is refused`);
+  for (const ok of ['fa', 'fil']) check((await set('about_me_lang = $2', [ok])) == null, `${tag}1: the language ${ok} is kept`);
+  // An approval stands only beside an English version.
+  check(/tenant_profiles_about_me_en_approved_whole/.test(await set('about_me_en = NULL, about_me_en_approved_at = now()') || ''), `${tag}1: an approval with no English version is refused`);
+  check((await set("about_me_en = 'I am here.', about_me_lang = 'fa', about_me_en_approved_at = NULL")) == null, `${tag}1: an English version is kept, not approved`);
+  // Through the view: nothing of the English until it is approved.
+  const seen = async () => (await rows(db, 'SELECT * FROM public.tenant_profile_about_english WHERE id = $1', [AE]))[0];
+  let v = await seen();
+  check(v.about_me === 'من اینجا هستم.' && v.about_me_lang === 'fa' && v.about_me_en === null && v.about_me_en_approved_at === null, `${tag}1: before approval the view answers the original and its language, and null for the English`, JSON.stringify(v));
+  check((await set("about_me_en_approved_at = '2026-11-23T15:00:00Z'")) == null, `${tag}1: the tenant approves it`);
+  v = await seen();
+  check(v.about_me_en === 'I am here.' && v.about_me_en_approved_at !== null && v.about_me === 'من اینجا هستم.', `${tag}1: once approved the view answers the English, beside the original`, JSON.stringify(v));
+  check((await one(db, 'SELECT count(*)::int FROM public.tenant_profile_about_english WHERE id = $1 AND about_me IS NULL AND about_me_en IS NULL AND about_me_lang IS NULL', [AE2])) === 1, `${tag}1: a profile that wrote nothing reads null in all of them`);
+  // New words and the three columns emptied, in one write, as the application writes them.
+  check((await set("about_me = 'I am here now.', about_me_en = NULL, about_me_lang = NULL, about_me_en_approved_at = NULL")) == null && (await one(db, 'SELECT about_me_en IS NULL AND about_me_en_approved_at IS NULL FROM public.tenant_profiles WHERE id = $1', [AE])) === true, `${tag}1: a change to the original clears the English and its approval in the same write`);
+  await db.query("UPDATE public.tenant_profiles SET about_me = 'من اینجا هستم.', about_me_en = 'I am here.', about_me_lang = 'fa', about_me_en_approved_at = '2026-11-23T15:00:00Z' WHERE id = $1", [AE]);
+  // Again: nothing changes. And db/022 again after it: nothing changes either.
+  const shape = await profileCatalog(db); const constraints = await profileConstraints(db); const def = await englishViewDef(db);
+  const held = await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id');
+  await step(db, `${tag}2 (026 again)`, FILES.m026);
+  check(same(await profileCatalog(db), shape), `${tag}2: a second run leaves every column of tenant_profiles, its type, NOT NULL and default as they were`);
+  check(same(await profileConstraints(db), constraints) && (await englishViewDef(db)) === def && (await personalViewDef(db)) === personal && (await one(db, "SELECT pg_get_viewdef('public.tenant_profile_shareable'::regclass)")) === shareable, `${tag}2: and every constraint and all three views`);
+  check(same(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id'), held), `${tag}2: and every row: the English version approved before it is still there`);
+  await check026(db, `${tag}2`);
+  await step(db, `${tag}3 (022 again, after 026)`, FILES.m022);
+  check(same(await profileCatalog(db), shape) && same(await profileConstraints(db), constraints) && (await englishViewDef(db)) === def && (await personalViewDef(db)) === personal, `${tag}3: db/022 runs again after db/026 and changes nothing`);
+  check(same(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id'), held), `${tag}3: and no row`);
+  await dropProfiles(db, [AE, AE2]);
+  check(same(stripEnglish(await rows(db, 'SELECT * FROM public.tenant_profiles ORDER BY id')), before), `${tag}3: this check's own profiles removed, every tenant profile is what it was`);
+}
+
 // ── db/005 and db/state-parity-check.sql against lib/application-state.js ──────────────
 // The parity file is one read only statement; its rows are what it lists.
 const parityRows = async (db) => rows(db, statements(read(FILES.parity))[0].text);
@@ -1260,6 +1337,7 @@ async function pathA() {
   await run023(db, 'A19');
   await run024(db, 'A20');
   await run025(db, 'A21');
+  await run026(db, 'A22');
   await db.close();
 }
 
@@ -1429,6 +1507,7 @@ async function pathB() {
   await run023(db, 'B25');
   await run024(db, 'B26');
   await run025(db, 'B27');
+  await run026(db, 'B28');
   return { db, before };
 }
 

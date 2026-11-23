@@ -8,7 +8,8 @@
 //                              the date, nothing of the tenant. Reads no profile, writes no log.
 //   view { shareId }           the same view the tenant's realtor has: the whitelisted facts, the
 //                              facts read from documents, the photo, the tenant's own words and
-//                              offer, the files open for 14 days (never the ID), and the
+//                              offer (with the English version they approved, db/026), the
+//                              files open for 14 days (never the ID), and the
 //                              screening score the application holds on that unit. Written to
 //                              the tenant's log first; a read that cannot be logged is refused.
 //   open { shareId, documentId }   one income or employment document, for 60 seconds.
@@ -49,5 +50,5 @@ export default withRealtor(async ({ user, admin }, req, res) => {
   const read = await readSharedProfile(admin, { share, viewer });
   if (!read.ok) return res.status(read.reason === 'not logged' || read.reason === 'failed' ? 503 : 403).json({ error: 'The shared profile could not be opened. Try again.' });
   const screening = await screeningForShare(admin, share);
-  return res.status(200).json({ shared: true, role: ROLE.LISTING_AGENT, ended: null, sharedAt: share.approved_at, facts: read.payload.facts, checks: read.payload.checks, documents: read.documents, documentsUntil: read.documentsUntil, about: read.personal.about, prepayMonths: read.personal.prepayMonths, photo: read.personal.photo, screening });
+  return res.status(200).json({ shared: true, role: ROLE.LISTING_AGENT, ended: null, sharedAt: share.approved_at, facts: read.payload.facts, checks: read.payload.checks, documents: read.documents, documentsUntil: read.documentsUntil, about: read.personal.about, aboutEnglish: read.personal.aboutEnglish, prepayMonths: read.personal.prepayMonths, photo: read.personal.photo, screening });
 }, { label: '[profile-shares/shared-with-me]' });

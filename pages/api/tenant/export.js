@@ -7,6 +7,9 @@
 // sent; where the log is not set up yet the download still goes to its owner. A paragraph in
 // Persian or Arabic is set flush right and reads right to left, with the numbers and Latin words
 // inside it in their order (lib/pdfScripts.js withRightToLeftParagraphs).
+// About me written in another language (db/026, lib/aboutTranslation.js aboutForPdf): the English
+// version first once the tenant approved it, then their original; before that the original
+// alone, under the name of its language.
 import { sessionProfile, getPersonal, rateLimited } from '../../../lib/tenantProfileStore';
 import { getSupabaseAdminClient } from '../../../lib/supabase/admin';
 import { isSupabaseConfigured } from '../../../lib/supabase/server';
@@ -15,6 +18,7 @@ import { listVault, logVault, profilePhoto } from '../../../lib/tenantVault';
 import { shareableFacts } from '../../../lib/profileFacts';
 import { buildProfilePdf } from '../../../lib/profileExportPdf';
 import { withRightToLeftParagraphs } from '../../../lib/pdfScripts';
+import { aboutForPdf } from '../../../lib/aboutTranslation';
 
 export const config = { maxDuration: 30 };
 
@@ -31,7 +35,7 @@ export default async function handler(req, res) {
     const photo = admin && mine.available && mine.photo ? await profilePhoto(admin, { profileId: p.id, path: mine.photo.path, mime: mine.photo.mime }) : null;
     const now = new Date().toISOString();
     const facts = { ...shareableFacts(p.facts || {}), email: p.email };
-    const bytes = await withRightToLeftParagraphs(() => buildProfilePdf({ name: (p.facts && p.facts.fullName) || '', email: p.email, about: mine.available ? mine.about : null, prepayMonths: mine.available ? mine.prepayMonths : null, photo: photo && photo.ok ? { bytes: photo.bytes, mime: photo.mime } : null, facts, factsUpdatedAt: p.factsUpdatedAt || null, checks: vault.checks, documents: vault.documents, generatedAt: now }));
+    const bytes = await withRightToLeftParagraphs(() => buildProfilePdf({ name: (p.facts && p.facts.fullName) || '', email: p.email, about: mine.available ? aboutForPdf({ about: mine.about, ...(mine.english.available ? { english: mine.english.text, lang: mine.english.lang, approvedAt: mine.english.approvedAt } : {}) }) : null, prepayMonths: mine.available ? mine.prepayMonths : null, photo: photo && photo.ok ? { bytes: photo.bytes, mime: photo.mime } : null, facts, factsUpdatedAt: p.factsUpdatedAt || null, checks: vault.checks, documents: vault.documents, generatedAt: now }));
     if (admin) await logVault(admin, { profileId: p.id, action: 'profile_exported', at: now });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename="my-rentletter-profile.pdf"');

@@ -8,7 +8,12 @@
 //     voice (up to 600 characters, with "Help me write this", which only suggests wording from
 //     what they typed and changes nothing until they accept it), an offer to prepay rent (their
 //     own offer, never a deposit, never a requirement), and whether a realtor may put the words
-//     and the offer on a landlord report;
+//     and the offer on a landlord report. The words may be in any language: the box, the
+//     suggestion and the English version each read in the direction of their own text, and
+//     spelling is checked only for Latin letters. Words that are not English get an English
+//     version under the box, "How realtors will read it" (lib/aboutTranslation.js, db/026): the
+//     tenant approves it (Looks right), changes it or removes it, and until they approve it no
+//     realtor sees it;
 //   · Download my profile: a PDF of the profile (pages/api/tenant/export.js).
 // Every piece is the tenant's choice and none is required anywhere. On the realtor tokens
 // (components/tenant/ProfileFacts.js ProfileStyles); the few rules of its own are at the foot.
@@ -19,6 +24,8 @@ import { C } from '../theme';
 import { StatusPills } from '../ui';
 import { StateTag } from './ProfileLayout';
 import { Pending } from '../brand/Loader';
+import { ENGLISH_MAX, ENGLISH_HEAD, ENGLISH_NOTE, ENGLISH_UNSEEN, ENGLISH_NOT_READY, ENGLISH_NONE, textDirection, spellChecked, englishLength } from '../../lib/aboutTranslation';
+import AboutText from '../AboutText';
 import { ABOUT_MAX, PREPAY_MIN, PREPAY_MAX, PHOTO_NOTE, ABOUT_PROMPTS, ABOUT_NOTE, PREPAY_FIELD, PREPAY_NOTE, LANDLORD_SWITCH, PHOTO_MAX_BYTES, aboutLength } from '../../lib/profilePersonal';
 
 const MONTHS = Array.from({ length: PREPAY_MAX - PREPAY_MIN + 1 }, (_, i) => PREPAY_MIN + i);
@@ -61,13 +68,15 @@ export default function ProfilePersonal({ data, load, state = 'empty' }) {
   const [text, setText] = useState('');
   const [suggestion, setSuggestion] = useState('');
   const [asking, setAsking] = useState(false); // remove the photo?
+  const [englishFailed, setEnglishFailed] = useState(false); // the English version could not be prepared just now
+  const [englishDraft, setEnglishDraft] = useState(null); // the tenant's own change to the English version, while they type it
   const file = useRef(null);
   useEffect(() => { if (data && !data.failed) setText((t) => t || data.about || ''); }, [data]);
 
   const post = async (body) => {
     const r = await fetch('/api/tenant/personal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
-    if (!r.ok || j?.error) throw new Error(j?.error || 'Something went wrong. Please try again.');
+    if (!r.ok || j?.error) { const err = new Error(j?.error || 'Something went wrong. Please try again.'); err.code = j?.code || null; throw err; }
     return j;
   };
   const act = async (key, where, body, done) => {
@@ -88,13 +97,17 @@ export default function ProfilePersonal({ data, load, state = 'empty' }) {
     if (busy) return;
     setBusy('suggest'); setNote(null); setSuggestion('');
     try { const j = await post({ action: 'suggest', text }); setSuggestion(j.suggestion || ''); }
-    catch (e) { setNote({ where: 'about', tone: 'warn', text: e.message }); }
+    // The helper could not be reached: said calmly, as something to try again. It answered and
+    // had nothing to offer: said as before.
+    catch (e) { setNote({ where: 'about', tone: e.code === 'helper_unreachable' ? 'calm' : 'warn', text: e.message }); }
     setBusy('');
   };
 
   if (!data || data.failed) return null;
   const available = !!data.available;
-  const said = (where) => (note && note.where === where ? <p role="status" className={note.tone === 'ok' ? 'mp-note' : 'mp-alert'} style={{ marginTop: 'var(--gap-line)' }}>{noWidow(note.text)}</p> : null);
+  const said = (where) => (note && note.where === where ? <p role="status" data-note-tone={note.tone} className={note.tone === 'warn' ? 'mp-alert' : 'mp-note'} style={{ marginTop: 'var(--gap-line)' }}>{noWidow(note.text)}</p> : null);
+  const english = available ? data.english || null : null; // null: no English version is offered (before db/026)
+  const draftCount = englishLength(englishDraft || '');
   const count = aboutLength(text);
   const changed = text.trim() !== String(data.about || '').trim();
 
@@ -143,17 +156,17 @@ export default function ProfilePersonal({ data, load, state = 'empty' }) {
               <label htmlFor="pp-about" className="mp-label" style={{ display: 'block' }}>About me</label>
               <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('A few lines in your own words. You could say:')}</p>
               <StatusPills label="You could say" items={[...ABOUT_PROMPTS]} style={{ marginTop: 'var(--s-2)' }} />
-              <textarea id="pp-about" className="mp-input pp-area" data-about-text="" data-focus="about" rows={6} value={text} onChange={(e) => { setText(e.target.value); setNote(null); }} style={{ fontSize: 'var(--t-body)' }} />
+              <textarea id="pp-about" className="mp-input pp-area" data-about-text="" data-focus="about" rows={6} dir={textDirection(text)} spellCheck={spellChecked(text)} value={text} onChange={(e) => { setText(e.target.value); setNote(null); }} style={{ fontSize: 'var(--t-body)' }} />
               <div className="mp-source" data-about-count="" style={{ marginTop: 'var(--s-1)', color: count > ABOUT_MAX ? C.danger : undefined }}>{`${count} of ${ABOUT_MAX}`}</div>
               <p className="mp-p" data-about-note="" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(ABOUT_NOTE)}</p>
               <div className="mp-actions">
-                <button type="button" data-about-save="" className="mp-btn" disabled={!!busy || !changed || count > ABOUT_MAX} onClick={() => act('about', 'about', { action: 'about', text }, text.trim() ? 'Saved.' : 'Removed.')}><Pending busy={busy === 'about'} label="Saving">Save</Pending></button>
+                <button type="button" data-about-save="" className="mp-btn" disabled={!!busy || !changed || count > ABOUT_MAX} onClick={async () => { const j = await act('about', 'about', { action: 'about', text }, text.trim() ? 'Saved.' : 'Removed.'); if (j) { setEnglishFailed(!!j.englishFailed); setEnglishDraft(null); } }}><Pending busy={busy === 'about'} label="Saving">Save</Pending></button>
                 <button type="button" data-about-help="" className="mp-link" disabled={!!busy || count < 20 || count > ABOUT_MAX} onClick={suggest}><Pending busy={busy === 'suggest'} label="Writing a suggestion">Help me write this</Pending></button>
               </div>
               {suggestion ? (
                 <div className="pp-suggestion" data-about-suggestion="">
                   <div className="mp-label">A suggestion, from what you wrote</div>
-                  <p className="mp-p" style={{ marginTop: 'var(--gap-line)', whiteSpace: 'pre-line', textWrap: 'wrap' }}>{suggestion}</p>
+                  <div style={{ marginTop: 'var(--gap-line)' }}><AboutText data-about-suggested="" text={suggestion} className="mp-p" /></div>
                   <div className="mp-actions">
                     <button type="button" data-about-accept="" className="mp-btn" onClick={() => { setText(suggestion); setSuggestion(''); setNote({ where: 'about', tone: 'ok', text: 'In the box. Save it when it reads right.' }); }}>Use this</button>
                     <button type="button" className="mp-link" onClick={() => setSuggestion('')}>Keep mine</button>
@@ -161,6 +174,42 @@ export default function ProfilePersonal({ data, load, state = 'empty' }) {
                 </div>
               ) : null}
               {said('about')}
+              {/* The English version of words that are not English: read, approved, changed or removed by the tenant. */}
+              {english && english.text ? (
+                <div className="pp-suggestion" data-about-english={english.approvedAt ? 'approved' : 'review'}>
+                  <div className="mp-label">{ENGLISH_HEAD}</div>
+                  {englishDraft != null ? (
+                    <>
+                      <textarea id="pp-english" aria-label="The English version" className="mp-input pp-area" data-english-text="" rows={6} dir={textDirection(englishDraft)} spellCheck={spellChecked(englishDraft)} value={englishDraft} onChange={(e) => { setEnglishDraft(e.target.value); setNote(null); }} style={{ fontSize: 'var(--t-body)' }} />
+                      <div className="mp-source" data-english-count="" style={{ marginTop: 'var(--s-1)', color: draftCount > ENGLISH_MAX ? C.danger : undefined }}>{`${draftCount} of ${ENGLISH_MAX}`}</div>
+                      <div className="mp-actions">
+                        <button type="button" data-english-save="" className="mp-btn" disabled={!!busy || !englishDraft.trim() || draftCount > ENGLISH_MAX} onClick={async () => { const j = await act('english-edit', 'english', { action: 'english-edit', text: englishDraft }); if (j) setEnglishDraft(null); }}><Pending busy={busy === 'english-edit'} label="Saving">Save the English</Pending></button>
+                        <button type="button" className="mp-link" disabled={!!busy} onClick={() => { setEnglishDraft(null); setNote(null); }}>Cancel</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div style={{ marginTop: 'var(--gap-line)' }}><AboutText data-english-shown="" text={english.text} className="mp-p" /></div>
+                      <p className="mp-p" data-english-note="" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(ENGLISH_NOTE)}</p>
+                      <p className="mp-p" data-english-state="" style={{ marginTop: 'var(--gap-line)' }}>{noWidow(english.approvedAt ? `You approved it${dateLong(english.approvedAt) ? ` on ${dateLong(english.approvedAt)}` : ''}. Realtors you share with read it first, then your original.` : ENGLISH_UNSEEN)}</p>
+                      <div className="mp-actions">
+                        {!english.approvedAt && <button type="button" data-english-approve="" className="mp-btn" disabled={!!busy} onClick={() => act('english-approve', 'english', { action: 'english-approve', text: english.text })}><Pending busy={busy === 'english-approve'} label="Saving">Looks right</Pending></button>}
+                        <button type="button" data-english-edit="" className="mp-link" disabled={!!busy} onClick={() => { setEnglishDraft(english.text); setNote(null); }}>Edit the English</button>
+                        <button type="button" data-english-remove="" data-destructive="" className="mp-link" disabled={!!busy} onClick={async () => { const j = await act('english-remove', 'english', { action: 'english-remove' }); if (j) setEnglishFailed(false); }}>Remove the English</button>
+                      </div>
+                    </>
+                  )}
+                  {said('english')}
+                </div>
+              ) : english && (englishFailed || english.wanted) ? (
+                <div className="pp-suggestion" data-about-english="missing">
+                  <p role="status" className="mp-note" data-english-missing="">{noWidow(englishFailed ? ENGLISH_NOT_READY : ENGLISH_NONE)}</p>
+                  <div className="mp-actions">
+                    <button type="button" data-english-prepare="" className="mp-link" disabled={!!busy} onClick={async () => { const j = await act('english-prepare', 'english', { action: 'english-prepare' }); if (j) setEnglishFailed(!!j.englishFailed); }}><Pending busy={busy === 'english-prepare'} label="Preparing the English version">{englishFailed ? 'Try again' : 'Prepare the English version'}</Pending></button>
+                  </div>
+                  {said('english')}
+                </div>
+              ) : null}
             </div>
 
             {/* The tenant's own offer to prepay rent. */}

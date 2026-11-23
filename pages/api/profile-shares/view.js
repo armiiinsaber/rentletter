@@ -9,7 +9,9 @@
 //   otherwise      the whitelisted facts and the facts read from documents, each with its source
 //                  and date, the files the realtor may open for 14 days, and what the tenant
 //                  chose to add about themselves: a photo, their own words, an offer to
-//                  prepay rent (db/022). Never the tenant's profile strength. Every such read is
+//                  prepay rent (db/022), and for words written in another language the
+//                  English version the tenant approved and the name of the language (db/026,
+//                  aboutEnglish). Never the tenant's profile strength. Every such read is
 //                  written to the tenant's log first; a read that cannot be logged is refused.
 // Never the Fit score, a rank, a note, household size or any answer outside the whitelist: the
 // payload is built from lib/profileFacts.js alone and checked before it leaves.
@@ -33,5 +35,5 @@ export default withRealtor(async ({ user, admin }, req, res) => {
   if (req.body?.peek === true) return res.status(200).json({ shared: true, ended: null });
   const read = await readSharedProfile(admin, { share, viewer });
   if (!read.ok) return res.status(read.reason === 'not logged' || read.reason === 'failed' ? 503 : 403).json({ error: 'The shared profile could not be opened. Try again.' });
-  return res.status(200).json({ shared: true, ended: null, sharedAt: share.approved_at, facts: read.payload.facts, checks: read.payload.checks, documents: read.documents, documentsUntil: read.documentsUntil, about: read.personal.about, prepayMonths: read.personal.prepayMonths, photo: read.personal.photo });
+  return res.status(200).json({ shared: true, ended: null, sharedAt: share.approved_at, facts: read.payload.facts, checks: read.payload.checks, documents: read.documents, documentsUntil: read.documentsUntil, about: read.personal.about, aboutEnglish: read.personal.aboutEnglish, prepayMonths: read.personal.prepayMonths, photo: read.personal.photo });
 }, { label: '[profile-shares/view]' });

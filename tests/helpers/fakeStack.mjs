@@ -175,15 +175,38 @@ export const defaultExtraction = (filename) => {
   if (/netoff/.test(f)) return { filename, documentType: 'pay stub', unrecognized: false, extracted: { applicantName, employer: 'Northwind Sample Clinic Inc.', periodStart: longDaysAgo(22), periodEnd: longDaysAgo(8), payDate: longDaysAgo(5), grossForPeriod: 3541.67, deductionsForPeriod: 941.67, netForPeriod: 2912.0, payFrequency: 'semi-monthly', documentDate: longDaysAgo(5) }, notes: '' };
   return { filename, documentType: 'pay stub', unrecognized: false, extracted: { applicantName, employer: 'Northwind Sample Clinic Inc.', periodStart: 'July 1, 2026', periodEnd: 'July 15, 2026', payDate: 'July 20, 2026', grossForPeriod: 3541.67, regularRate: 40.86, hours: 86.67, payFrequency: null, documentDate: 'July 20, 2026' }, notes: 'No frequency word printed.' };
 };
+// About me in Persian, with a name and a street in Latin letters, a number in Persian digits and
+// one in Western digits; and the English version the fake prepares for it (lib/aboutTranslation.js).
+export const ABOUT_FA = 'من مایا هستم و ۴ سال است که در Northwind Clinic کار می‌کنم. الان در خیابان Yonge شماره 4100 زندگی می‌کنم و به دنبال خانه‌ای آرام نزدیک دریاچه هستم.\n\nبیشتر شب‌ها آشپزی می‌کنم و زود می‌خوابم.';
+export const ABOUT_FA_EN = 'I am Maya and I have worked at Northwind Clinic for 4 years. I live at 4100 Yonge Street now and I am looking for a quiet home near the lake.\n\nMost evenings I cook and go to bed early.';
+export const FAKE_TRANSLATIONS = { [ABOUT_FA]: { language: 'fa', english: ABOUT_FA_EN } };
+// The English version of About me (TRANSLATE_SYSTEM): the fake answers the one JSON object the
+// instruction asks for. A note it knows gets its English version; any other note that holds
+// letters of another script gets a line that keeps its numbers and its Latin words; a note in
+// Latin letters is answered as English.
+const WESTERN = (text) => Array.from(text, (ch) => { const cp = ch.codePointAt(0); const z = [0x660, 0x6f0].find((b) => cp >= b && cp <= b + 9); return z == null ? ch : String(cp - z); }).join('');
+export function fakeTranslation(note) {
+  if (FAKE_TRANSLATIONS[note]) return FAKE_TRANSLATIONS[note];
+  if (!/[^\p{Script=Latin}\P{L}]/u.test(note)) return { language: 'en', english: null };
+  return { language: 'fa', english: `A note in another language. ${(WESTERN(note).match(/[A-Za-z][A-Za-z'.&]*[A-Za-z]|\d[\d.,]*\d|\d/g) || []).join(' ')}`.trim() };
+}
+// fakeAnthropic().answer = (body) => message | undefined   lets a test answer one call itself
+// (a refusal, an empty answer, words of its own) or throw, as the provider failing; undefined
+// leaves the call to the fake.
 export function fakeAnthropic(extractionFor = defaultExtraction) {
   const calls = [];
-  return { calls, messages: { create: async (body) => {
+  const api = { calls, answer: null, messages: { create: async (body) => {
     calls.push(body);
+    if (api.answer) { const own = await api.answer(body); if (own !== undefined) return own; }
     const content = (body.messages && body.messages[0] && body.messages[0].content) || [];
+    if (typeof body.system === 'string' && body.system.startsWith('You translate a short note')) return { content: [{ type: 'text', text: JSON.stringify(fakeTranslation(content.filter((c) => c.type === 'text').map((c) => c.text).join(''))) }] };
+    // "Help me write this" on a note in another script: a rewording in the same language (its first paragraph).
+    if (typeof body.system === 'string' && body.system.startsWith('You help a person tidy')) { const note = content.filter((c) => c.type === 'text').map((c) => c.text).join(''); if (/[^\p{Script=Latin}\P{L}]/u.test(note)) return { content: [{ type: 'text', text: note.split('\n')[0] }] }; }
     const names = content.filter((c) => c.type === 'text' && /filename: "/.test(c.text)).map((c) => (c.text.match(/filename: "([^"]+)"/) || [])[1]);
     const documents = names.map((n) => extractionFor(n));
     return { content: [{ type: 'text', text: JSON.stringify({ documents, overallSummary: `${documents.length} document(s) read.`, confidence: 'high' }) }] };
   } } };
+  return api;
 }
 
 // ── the stack ───────────────────────────────────────────────────────────────────────────────────

@@ -318,3 +318,12 @@
 --                           status (sent, shared, cancelled), created_at, ended_at. One live invite
 --                           per tenant, listing and address. It shares nothing.
 --   Row level security is on with no policy, and nothing is granted to anon or authenticated.
+--
+-- ── About me in another language (db/026-about-me-translation.sql) ─────────────────────────────
+--   tenant_profiles.about_me_en              text, nullable, 1 to 900 characters (tenant_profiles_about_me_en_length)
+--   tenant_profiles.about_me_lang            text, nullable, a two or three letter code (tenant_profiles_about_me_lang_code)
+--   tenant_profiles.about_me_en_approved_at  timestamptz, nullable; set only beside an English
+--                                            version (tenant_profiles_about_me_en_approved_whole)
+--   VIEW tenant_profile_about_english (security_invoker, nothing granted to anon or authenticated):
+--     id, about_me, about_me_lang, about_me_en_approved_at, and about_me_en only once it is
+--     approved. Read for a realtor only by lib/profileShareStore.js, behind an approved share.

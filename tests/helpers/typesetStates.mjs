@@ -376,6 +376,22 @@ export const STATES = [
     await p.locator('[data-photo="yes"]').getByRole('button', { name: 'Remove photo' }).click(); await p.locator('[data-photo-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
     yield 'tenant profile, photo removal asked';
   } },
+  // About me in Persian (db/026): the box reads from the right and spelling is not checked, and
+  // under it the English version waits for the tenant's approval; then "Help me write this"
+  // answers in Persian, and the suggestion reads from the right too.
+  { name: 'tenant profile, about me in Persian with the approval box', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await tenantProfile(p, f, 'who=14&docs=1&personal=fa'); await p.locator('[data-about-english="review"]').waitFor({ timeout: 15000 }); await p.locator('[data-strength-bar]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    const box = await p.locator('[data-about-text]').evaluate((el) => ({ dir: getComputedStyle(el).direction, align: getComputedStyle(el).textAlign, spell: el.spellcheck }));
+    if (box.dir !== 'rtl' || box.spell !== false || !/^(start|right)$/.test(box.align)) throw new Error(`the About me box with Persian in it: ${JSON.stringify(box)}`);
+    const en = await p.locator('[data-english-shown] p').evaluateAll((els) => els.map((el) => getComputedStyle(el).direction));
+    if (en.length !== 2 || en.some((d) => d !== 'ltr')) throw new Error(`the English version reads ${JSON.stringify(en)}`);
+    if (await p.locator('[data-english-approve]').count() !== 1) throw new Error('Looks right is not offered');
+  }, steps: async function* (p) {
+    await p.locator('[data-about-help]').click(); await p.locator('[data-about-suggestion]').waitFor({ timeout: 15000 }); await wait(p, 400);
+    const said = await p.locator('[data-about-suggested] p').evaluateAll((els) => els.map((el) => ({ dir: getComputedStyle(el).direction, align: getComputedStyle(el).textAlign })));
+    if (!said.length || said.some((x) => x.dir !== 'rtl' || x.align !== 'right')) throw new Error(`the suggestion in Persian reads ${JSON.stringify(said)}`);
+    yield 'tenant profile, a suggestion in Persian';
+  } },
   // Sharing with the listing agent (db/024): the tenant's share list with both roles and an invite
   // waiting; then the search for a listing agent, the confirm that says what they see, and the
   // share made. And the listing agent's own view of a shared profile, on their dashboard.
@@ -401,6 +417,16 @@ export const STATES = [
     const token = await report(p); await open(p, `/r/${token}`); await p.locator('[data-tenant-about]').waitFor({ timeout: 30000 }); await p.locator('[data-tenant-offer]').waitFor({ timeout: 30000 });
     if (await p.locator('img[src^="data:image"]').count()) throw new Error('a photo is on the landlord report');
     yield 'landlord report, a tenant\'s own words and offer';
+  } },
+  // The realtor's view of a profile whose About me is in Persian, with the English version the
+  // tenant approved (db/026): the English first, its label, then the original, from the right.
+  { name: 'listing, a shared profile with an approved translation', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await f('/__fake/tenant?who=15&docs=1&share=new&personal=fa-approved'); await open(p, '/listing/L1'); await expand(p, 'Parisa Castellanos Ruiz'); await p.locator('[data-shared-view]').waitFor({ timeout: 30000 });
+    await p.locator('[data-shared-view]').click(); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await p.locator('[data-shared-about="translated"]').waitFor({ timeout: 30000 }); await wait(p, 400);
+    const read = await p.locator('[data-shared-about] p').evaluateAll((els) => els.map((el) => ({ dir: getComputedStyle(el).direction, align: getComputedStyle(el).textAlign, text: el.textContent.slice(0, 24), rtl: /[\u0600-\u06ff]/.test(el.textContent) })));
+    const order = read.map((x) => (x.rtl ? 'fa' : /^Translated from Persian, approved by the tenant$/.test(x.text.trim()) || x.text.startsWith('Translated from Persian') ? 'label' : 'en')).join(' ');
+    if (order !== 'en en label fa fa') throw new Error(`the shared About me reads ${order}`);
+    if (read.some((x) => (x.rtl ? x.dir !== 'rtl' || x.align !== 'right' : x.dir !== 'ltr'))) throw new Error(`the shared About me is set ${JSON.stringify(read)}`);
   } },
   // The checklist line "Co applicant: {long name}": the label stands above the name where both
   // do not fit on one line (components/ui.js LabelValue), so no word is left alone.

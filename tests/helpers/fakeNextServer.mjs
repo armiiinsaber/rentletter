@@ -39,7 +39,7 @@ registerHooks({ resolve(spec, ctx, next) { return FAKES[spec] ? { url: FAKES[spe
 const port = Number(process.argv[2] || 3150);
 const mode = process.argv[3] || 'dev';
 globalThis.__rlFakeLatencyMs = Number(process.argv[4] || 3);
-const { installFakeStack } = await import('./fakeStack.mjs');
+const { installFakeStack, ABOUT_FA, ABOUT_FA_EN } = await import('./fakeStack.mjs');
 const { tables, USER } = await import('../routes/fixture.mjs');
 // The real tables have every column; the fixture leaves out one the listing page passes on, which
 // the database would send as null (Next refuses undefined in props).
@@ -86,6 +86,9 @@ for (const name of ['tenant_profiles', 'tenant_profile_documents', 'tenant_profi
 // The full tenant profile (db/022-full-tenant-profile.sql): the view the share reader uses holds
 // the same rows as the table (GET /__fake/tenant?personal=1 fills them, below).
 t.tenant_profile_personal = t.tenant_profiles;
+// About me in another language (db/026-about-me-translation.sql): the view the share reader
+// uses for the English version holds the same rows too (GET /__fake/tenant?personal=fa, below).
+t.tenant_profile_about_english = t.tenant_profiles;
 // The realtor circle and the brokerage record (db/021-realtor-circle.sql): empty until a walk
 // asks for a circle (GET /__fake/circle below).
 for (const name of ['circle_connections', 'brokerages', 'brokerage_members']) if (!t[name]) t[name] = [];
@@ -320,7 +323,7 @@ http.createServer(async (req, res) => {
       // another state touches), named after this tenant.
       if (shareLink === 'new' && !t.listing_applicants.some((x) => x.id === `J-share-${who}`)) {
         const a2 = t.applications.find((a) => a.id === 'A2'); const j2 = t.listing_applicants.find((x) => x.id === 'J2');
-        const name = who === '5' ? 'Valentina Castellanos Ruiz' : 'Maximiliano Castellanos Ruiz';
+        const name = who === '5' ? 'Valentina Castellanos Ruiz' : who === '15' ? 'Parisa Castellanos Ruiz' : 'Maximiliano Castellanos Ruiz';
         t.applications.push({ ...a2, id: `A-share-${who}`, application_number: `RL-2026-SHR${who}-TEST`, full_name: name, email, phone: `41655501${who}7`, owner_token: null });
         t.listing_applicants.push({ ...j2, id: `J-share-${who}`, application_id: `A-share-${who}`, doc_verifications: null, reviewed_at: null, confirmations: {}, created_at: new Date(Date.now() - 3 * 86400000).toISOString() });
       }
@@ -368,6 +371,10 @@ http.createServer(async (req, res) => {
         t.profile_shares.push({ id: `share-asagent-${who}`, tenant_profile_id: row.id, recipient_profile_id: USER.id, purpose: 'application', requested_by: null, listing_id: 'L9', role: 'listing_agent', status: 'approved', scope: ['facts', 'checks', 'documents'], approved_at: at(-1), approved_via: 'session', documents_until: at(13), expires_at: null, ended_at: null, created_at: at(-1) });
       }
     }
+    // personal=fa: the tenant wrote About me in Persian and an English version was prepared, which
+    // they have not approved yet (db/026): the approval box. personal=fa-approved: they approved
+    // it, so a realtor they share with reads the English first and the original under it.
+    if (/^fa/.test(q.get('personal') || '') && !row.about_me) Object.assign(row, { about_me: ABOUT_FA, about_me_en: ABOUT_FA_EN, about_me_lang: 'fa', about_me_en_approved_at: q.get('personal') === 'fa-approved' ? now : null });
     // personal=1: the tenant added a photo, a few words about themselves (long ones) and an offer
     // to prepay three months of rent (db/022). The photo is a real PNG, so the screens draw it.
     if (q.get('personal') === '1' && !row.photo_path) {

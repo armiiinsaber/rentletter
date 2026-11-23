@@ -8,7 +8,8 @@
 //   /api/profile-shares/open  one stored document (proof of income or an employment letter,
 //                             never an ID), a 60 second link, for 14 days from the share.
 // What shows is the whitelist (lib/profileFacts.js) and the facts read from documents, each with
-// its source and date. Never the Fit score, a rank, a note or household size: the route sends
+// its source and date. About me written in another language shows the English version the
+// tenant approved, with their original under it (lib/aboutTranslation.js). Never the Fit score, a rank, a note or household size: the route sends
 // none and this component has nowhere to draw one. A share the tenant stopped says so, and
 // nothing else shows. Nothing is drawn where nothing was shared, or in the sandbox.
 // Values read as the rest of the realtor side writes them: money as "$118,000" (lib/typeset.js
@@ -21,6 +22,8 @@ import { noWidow, dateLong, money } from '../../lib/typeset';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { checkText, KIND_LABEL } from '../../lib/tenantVaultRules';
 import { prepayLine, PREPAY_LABEL } from '../../lib/profilePersonal';
+import { translatedLabel, writtenLabel } from '../../lib/aboutTranslation';
+import AboutText from '../AboutText';
 import { Pending } from '../brand/Loader';
 
 const line = { fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance', margin: 0 };
@@ -92,10 +95,19 @@ export default function SharedProfile({ linkId, shareId = null, initial = null }
               <p style={source}>{noWidow(`From their application${state.screening.listingName ? ` for ${state.screening.listingName}` : ''}${state.screening.assessed != null && state.screening.of != null ? `, on ${state.screening.assessed} of ${state.screening.of} assessed` : ''}.`)}</p>
             </div>
           ) : null}
+          {/* Written in another language (db/026): the English version the tenant approved first, then
+              their original under it; before they approve one, the original alone under the name of
+              its language. Each paragraph reads in its own direction (components/AboutText.js). */}
           {state.about ? (
-            <div data-shared-about="" style={{ display: 'grid', gap: 2 }}>
+            <div data-shared-about={state.aboutEnglish && state.aboutEnglish.text ? 'translated' : 'original'} style={{ display: 'grid', gap: 2 }}>
               <div style={label}>About me, in the tenant’s words</div>
-              <p style={{ ...line, whiteSpace: 'pre-line', textWrap: 'wrap' }}>{state.about}</p>
+              {state.aboutEnglish && state.aboutEnglish.text ? (
+                <>
+                  <AboutText data-shared-about-english="" text={state.aboutEnglish.text} style={line} />
+                  <p data-shared-about-label="" style={{ ...source, margin: 'var(--s-2) 0 0' }}>{noWidow(translatedLabel(state.aboutEnglish.language))}</p>
+                </>
+              ) : state.aboutEnglish && writtenLabel(state.aboutEnglish.language) ? <p data-shared-about-label="" style={{ ...source, margin: 0 }}>{noWidow(writtenLabel(state.aboutEnglish.language))}</p> : null}
+              <AboutText data-shared-about-original="" text={state.about} style={line} />
             </div>
           ) : null}
           {prepayLine(state.prepayMonths) ? (
