@@ -238,8 +238,17 @@ export const STATES = [
   // The other screens in the same shell: a view, a form and two reading columns, at the main area's left.
   { name: 'dashboard, Shared with you view, the desktop shell', kind: 'realtor', widths: DESK, go: (p) => open(p, '/dashboard?view=shared') },
   { name: 'profile, the desktop shell', kind: 'realtor', widths: DESK, go: async (p) => { await open(p, '/profile'); await p.locator('[data-invite-realtor]').waitFor({ timeout: 30000 }); } },
+  // The Profile in two columns from 1024px (components/dashboard/ProfileView.js): the form in its
+  // three groups, the preview beside it; one column with the back row under 1024px.
+  { name: 'profile, the form and the preview', kind: 'realtor', widths: WIDE, go: async (p) => { await open(p, '/profile'); await p.locator('[data-invite-realtor]').waitFor({ timeout: 30000 }); await p.locator('[data-profile-preview] [data-report-brand]').waitFor({ state: 'attached', timeout: 30000 }); } },
   { name: 'listing, the desktop shell', kind: 'realtor', widths: DESK, go: (p) => open(p, '/listing/L1') },
   { name: 'circle, the desktop shell', kind: 'realtor', phase: 'alone', widths: DESK, go: async (p, f) => { await f('/__fake/circle?seed=1&brokerage=sent'); await open(p, '/circle'); await p.locator('[data-circle-list]').waitFor({ timeout: 30000 }); await wait(p, 400); }, after: (f) => f('/__fake/circle?seed=0') },
+  // Circle in two columns from 1024px (components/dashboard/CircleView.js): empty, the invitation
+  // with its two ways to start; five realtors and a request, a grid of cards; and the brokerage
+  // form open over the view from its card (under 1024px the same form in the page).
+  { name: 'circle, empty', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => { await f('/__fake/circle?seed=0'); await open(p, '/circle'); await p.locator('[data-circle-empty]').waitFor({ timeout: 30000 }); await wait(p, 400); } },
+  { name: 'circle, five connections and a request', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => { await f('/__fake/circle?seed=5&brokerage=sent'); await open(p, '/circle'); await p.locator('[data-circle-connection]').first().waitFor({ timeout: 30000 }); await p.locator('[data-circle-request]').waitFor({ timeout: 30000 }); await wait(p, 400); }, after: (f) => f('/__fake/circle?seed=0') },
+  { name: 'circle, the brokerage panel open', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => { await f('/__fake/circle?seed=5&brokerage=sent'); await desk(p); await open(p, '/circle'); await p.locator('[data-brokerage-open]').click(); await p.locator('[data-brokerage-panel]').waitFor({ timeout: 15000 }); await wait(p, 500); }, after: (f) => f('/__fake/circle?seed=0') },
   { name: 'dashboard, empty, the start', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => { await f('/__fake/state?listings=0'); await open(p, '/dashboard'); await p.locator('[data-get-started]').first().waitFor({ state: 'attached', timeout: 30000 }); }, after: (f) => f('/__fake/state?listings=1') },
   { name: 'dashboard, Archived', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
     await f('/__fake/state?archive=1'); await open(p, '/dashboard');

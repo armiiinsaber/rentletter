@@ -7,8 +7,10 @@
 // everything to its right, with even side padding that grows a little with the width (--ds-pad:
 // about 32px at 1280, 56px at 2560) and the bell and the avatar at the window's top right. A view
 // may hand the header row a lead (the dashboard's greeting), set at its left, in line with them.
-// A reading column or a form (className ds-col: a listing, Circle, Profile) keeps its own width,
-// set against the main area's left padding rather than in the middle of the window.
+// A reading column (className ds-col: a listing) keeps its own width, set against the main area's
+// left padding rather than in the middle of the window. A view laid out in columns of its own
+// (className ds-fill: Circle, Profile) takes the main area's whole width inside the same padding,
+// so its right edge sits one page padding in from the window's.
 // Listings, Pipeline and Shared with you are views of the dashboard (?view=pipeline, ?view=shared):
 // between them the address changes in place (components/nav/routes.js goView) with no data request
 // and no transition. Circle and Profile are their own screens. Both layouts are in the markup and
@@ -103,6 +105,8 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           .ds-main :global(.rl-hdr-lead) { display: flex; align-items: center; min-width: 0; min-height: 44px; margin-right: auto; }
           /* A reading column or a form: its own width, against the main area's left padding. */
           .ds-main :global(.ds-col) { box-sizing: content-box !important; max-width: var(--ds-col, 688px) !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var(--ds-pad) !important; padding-right: var(--ds-pad) !important; }
+          /* A view in columns of its own: the main area's whole width, inside the same padding. */
+          .ds-main :global(.ds-fill) { box-sizing: border-box !important; max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var(--ds-pad) !important; padding-right: var(--ds-pad) !important; }
         }
         /* The sidebar stays on screen as the page scrolls. The page's own boxes (body, the Next root,
            the view's wrapper) are overflow-x hidden, which makes each a scroll box of its own that
@@ -117,6 +121,8 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         :global(.ds-btn) { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; text-decoration: none; cursor: pointer; white-space: nowrap; }
         :global(.ds-btn-primary) { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
         :global(.ds-btn-line) { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; }
+        /* The main button of a group that is not the view's one main action: ink, never red. */
+        :global(.ds-btn-ink) { background: ${C.ink}; color: ${C.paper}; border: 1px solid ${C.ink}; }
         :global(.ds-btn-quiet) { background: transparent; color: ${C.ink}; border: 1px solid transparent; }
         :global(.ds-btn:disabled) { opacity: 0.55; cursor: default; }
         :global(.ds-btn:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }

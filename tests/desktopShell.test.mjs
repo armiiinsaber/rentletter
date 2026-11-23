@@ -93,7 +93,10 @@ test('the shell: a sidebar of five places at 1024 and wider, the tabs gone, the 
   assert.match(s, /\.ds-main :global\(\.rl-hdr-lead\) \{ display: flex;[^}]*margin-right: auto; \}/, 'a lead at the left of the same row');
   assert.match(s, /\.ds-main :global\(\.ds-col\) \{[^}]*margin-left: 0 !important;[^}]*padding-left: var\(--ds-pad\) !important;/, 'a reading column at the main area\'s left');
   assert.match(code('components/dashboard/DashboardHeader.js'), /\.rl-hdr-lead \{ display: none; \}/, 'never a lead under 1024px');
-  for (const v of ['ProfileView', 'CircleView', 'ListingView']) assert.match(src(`components/dashboard/${v}.js`), /className="ds-col"/, `${v}: a column at the left`);
+  assert.match(src('components/dashboard/ListingView.js'), /className="ds-col"/, 'ListingView: a column at the left');
+  // Profile and Circle fill the main area in columns of their own, inside the same padding.
+  assert.match(s, /\.ds-main :global\(\.ds-fill\) \{[^}]*max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var\(--ds-pad\) !important; padding-right: var\(--ds-pad\) !important; \}/, 'a view in columns: the main area\'s whole width');
+  for (const v of ['ProfileView', 'CircleView']) assert.match(src(`components/dashboard/${v}.js`), /className="[^"]*\bds-fill\b[^"]*"/, `${v}: the main area's whole width, in columns of its own`);
   assert.match(code('components/dashboard/MainNav.js'), /@media \(min-width: 1024px\) \{ \.mn \{ display: none; \} \}/, 'the pill tabs are gone at this width');
   assert.match(s, /aria-current=\{current === key \? 'page' : undefined\}/, 'the current place is marked');
   // A view of the dashboard is chosen in place: a shallow route the frame does not animate.

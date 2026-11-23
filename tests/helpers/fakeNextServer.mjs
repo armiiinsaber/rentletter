@@ -178,20 +178,23 @@ http.createServer(async (req, res) => {
   // The Circle screen (pages/circle.js, components/dashboard/CircleView.js): GET /__fake/circle?seed=1
   // gives the signed in realtor a circle with the long values: one request waiting for them, one
   // realtor connected (with a confirmed brokerage record, rentals and areas), one request they
-  // sent, and two realtors a search finds, one of whom turned findable off. brokerage=sent adds
+  // sent, and two realtors a search finds, one of whom turned findable off. seed=5 gives a fuller
+  // circle instead: one request waiting and five realtors connected (one with a confirmed record),
+  // nothing sent. brokerage=sent adds
   // the realtor's own record, waiting for its broker of record. seed=0 takes it all away again.
   // GET /__fake/circle?rows=1 answers the connection rows; ?brokerage-link=1 mints a fresh
   // confirmation link for the realtor's own record and answers { token }.
   if (req.url.startsWith('/__fake/circle')) {
     const q = new URL(req.url, 'http://localhost').searchParams;
-    const ids = ['circle-r1', 'circle-r2', 'circle-r3', 'circle-r4', 'circle-r5'];
+    const ids = ['circle-r1', 'circle-r2', 'circle-r3', 'circle-r4', 'circle-r5', 'circle-r6', 'circle-r7'];
     const clear = () => {
       t.profiles = t.profiles.filter((p) => !ids.includes(p.id)); stack.db.tables.profiles = t.profiles;
       t.circle_connections.length = 0; t.brokerages.length = 0; t.brokerage_members.length = 0;
     };
     if (q.get('seed') === '0') clear();
-    if (q.get('seed') === '1') {
+    if (q.get('seed') === '1' || q.get('seed') === '5') {
       clear();
+      const full = q.get('seed') === '5';
       const day = 86400000; const at = (n) => new Date(Date.now() - n * day).toISOString();
       const realtor = (id, full_name, brokerage, over = {}) => ({ id, email: `${id}@example.com`, full_name, brokerage, phone: '416 555 0177', plan: 'founding', province: 'ON', created_at: at(200), signup_source: 'direct', invite_code: null, invited_by: null, circle_findable: null, does_rentals: null, service_areas: null, ...over });
       t.profiles.push(
@@ -201,11 +204,26 @@ http.createServer(async (req, res) => {
         realtor('circle-r4', 'Oluwaseun Adebayo Fitzgerald', 'Harbourfront Residential Realty Inc., Brokerage'),
         realtor('circle-r5', 'Guadalupe Hidden', 'Northwind Residential Realty Inc., Brokerage', { circle_findable: false }),
       );
-      t.circle_connections.push(
-        { id: 'cc-1', requester_id: 'circle-r1', addressee_id: USER.id, status: 'pending', blocked_by: null, created_at: at(1), answered_at: null },
-        { id: 'cc-2', requester_id: USER.id, addressee_id: 'circle-r2', status: 'accepted', blocked_by: null, created_at: at(40), answered_at: at(38) },
-        { id: 'cc-4', requester_id: USER.id, addressee_id: 'circle-r4', status: 'pending', blocked_by: null, created_at: at(3), answered_at: null },
-      );
+      if (full) {
+        t.profiles.push(
+          realtor('circle-r6', 'María Fernanda González Rodríguez', 'Lakeshore and Humber Valley Realty Ltd., Brokerage', { does_rentals: true, service_areas: ['Leslieville', 'Riverside'] }),
+          realtor('circle-r7', 'Konstantinos Papadopoulos', 'Harbourfront Residential Realty Inc., Brokerage', { does_rentals: false }),
+        );
+        t.circle_connections.push(
+          { id: 'cc-1', requester_id: 'circle-r1', addressee_id: USER.id, status: 'pending', blocked_by: null, created_at: at(1), answered_at: null },
+          { id: 'cc-2', requester_id: USER.id, addressee_id: 'circle-r2', status: 'accepted', blocked_by: null, created_at: at(40), answered_at: at(38) },
+          { id: 'cc-3', requester_id: 'circle-r3', addressee_id: USER.id, status: 'accepted', blocked_by: null, created_at: at(30), answered_at: at(29) },
+          { id: 'cc-4', requester_id: USER.id, addressee_id: 'circle-r4', status: 'accepted', blocked_by: null, created_at: at(20), answered_at: at(19) },
+          { id: 'cc-6', requester_id: USER.id, addressee_id: 'circle-r6', status: 'accepted', blocked_by: null, created_at: at(12), answered_at: at(11) },
+          { id: 'cc-7', requester_id: 'circle-r7', addressee_id: USER.id, status: 'accepted', blocked_by: null, created_at: at(6), answered_at: at(5) },
+        );
+      } else {
+        t.circle_connections.push(
+          { id: 'cc-1', requester_id: 'circle-r1', addressee_id: USER.id, status: 'pending', blocked_by: null, created_at: at(1), answered_at: null },
+          { id: 'cc-2', requester_id: USER.id, addressee_id: 'circle-r2', status: 'accepted', blocked_by: null, created_at: at(40), answered_at: at(38) },
+          { id: 'cc-4', requester_id: USER.id, addressee_id: 'circle-r4', status: 'pending', blocked_by: null, created_at: at(3), answered_at: null },
+        );
+      }
       t.brokerages.push({ id: 'bk-2', legal_name: 'Lakeshore and Humber Valley Realty Ltd., Brokerage', address: '3080 Lake Shore Boulevard West, Suite 410, Etobicoke', phone: '416 555 0188', broker_of_record_name: 'Maximiliano Castellanos Ruiz', broker_of_record_email: 'broker@lakeshorehumber.ca', hst_number: null, status: 'confirmed', confirm_token_hash: null, confirm_sent_at: at(60), confirm_expires_at: at(46), broker_confirmed_at: at(58), confirmed_at: at(57), created_by: 'circle-r2', created_at: at(60), updated_at: at(57) });
       t.brokerage_members.push({ id: 'bm-2', brokerage_id: 'bk-2', profile_id: 'circle-r2', status: 'active', joined_at: at(60), left_at: null });
       if (q.get('brokerage') === 'sent') {
@@ -255,8 +273,9 @@ http.createServer(async (req, res) => {
   // the consent to keep documents ungiven; paused=1 turns the vault off for the whole server
   // (TENANT_VAULT_ENABLED=false) and paused=0 turns it back on. facts=none makes the profile with no
   // facts yet (the empty profile), facts=half with about half of them (a name, a phone, a job and an
-  // employer, a move in date; no income, no rental, no reference), facts=full with every one the
-  // page asks for (the occupants too); docs=id stores the ID alone.
+  // employer, a move in date; no income, no rental, no reference), facts=noname with the same half
+  // and no name (a profile no save goes through for until it has one), facts=full with every one
+  // the page asks for (the occupants too); docs=id stores the ID alone.
   if (req.url.startsWith('/__fake/tenant')) {
     const q = new URL(req.url, 'http://localhost').searchParams;
     if (q.get('paused') === '1') process.env.TENANT_VAULT_ENABLED = 'false';
@@ -272,7 +291,7 @@ http.createServer(async (req, res) => {
       const facts = { fullName: 'Maximiliano Castellanos Ruiz', email, phone: '4165550142', employmentType: 'full-time', jobTitle: 'Senior Clinical Operations Coordinator', employer: 'Northwind Pediatric Rehabilitation Clinic Inc.', yearsAtJob: '4', annualIncome: '118000', netIncome: '84500', netIncomeSource: 'estimated', rentalStatus: 'renting', previousAddress: '4100 Yonge Street, Unit 1907, North York', yearsAtPrevious: '3.5', currentRent: '2650', previousLandlordName: 'Harbourfront Holdings Ltd.', previousLandlordContact: 'leasing@harbourfrontholdings.ca · 416 555 0188', moveInDate: '2026-12-01', ageConfirmed: true, reference1Name: 'Bartholomew Nakamura Whitfield', reference1Relationship: 'Manager', reference1Contact: 'b.whitfield@northwindclinic.ca' };
       const shape = q.get('facts');
       const half = { fullName: facts.fullName, email, phone: facts.phone, employmentType: facts.employmentType, jobTitle: facts.jobTitle, employer: facts.employer, moveInDate: facts.moveInDate, ageConfirmed: true };
-      row = { id: randomUUID(), email, email_key: createHash('sha256').update(email).digest('hex').slice(0, 32), facts: shape === 'none' ? null : shape === 'half' ? half : shape === 'full' ? { ...facts, numberOfOccupants: '1' } : facts, applications: [], facts_updated_at: new Date(Date.now() - 12 * 86400000).toISOString(), profile_revision: 0, created_at: now, updated_at: now, email_verified_at: now, last_active_at: now, vault_consent_at: null };
+      row = { id: randomUUID(), email, email_key: createHash('sha256').update(email).digest('hex').slice(0, 32), facts: shape === 'none' ? null : shape === 'half' ? half : shape === 'noname' ? { ...half, fullName: '' } : shape === 'full' ? { ...facts, numberOfOccupants: '1' } : facts, applications: [], facts_updated_at: new Date(Date.now() - 12 * 86400000).toISOString(), profile_revision: 0, created_at: now, updated_at: now, email_verified_at: now, last_active_at: now, vault_consent_at: null };
       t.tenant_profiles.push(row);
     }
     const token = randomBytes(32).toString('base64url');

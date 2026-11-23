@@ -54,7 +54,7 @@ export default function InviteRealtor({ full = false }) {
       <section id="invite-a-realtor" data-invite-realtor="" className="rl-card" aria-labelledby="invite-a-realtor-title" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
         <h2 id="invite-a-realtor-title" className="t-d3" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Invite a realtor</h2>
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-3)', textWrap: 'balance' }}>Your invite link is in Circle, with everyone who joined through it.</p>
-        <a {...linkProps('/circle#invite-a-realtor')} data-invite-open-circle="" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 var(--gap-card)', borderRadius: 'var(--btn-radius)', border: `1.5px solid ${C.ink}`, color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'none' }}>Open Circle</a>
+        <a {...linkProps('/circle#invite-a-realtor')} data-invite-open-circle="" className="ds-btn ds-btn-line">Open Circle</a>
       </section>
     );
   }

@@ -9,7 +9,9 @@
 //             right (at the head of the middle column from 1024 to 1279); on a phone one column, a
 //             slim bar with the percent and the next step that opens the checklist as a sheet, and
 //             the menu as chips under the header. The sections: Details (the name card, the move,
-//             the household), Employment and income, Contact (with the sign in email), Rental
+//             the household), Employment and income, Contact (the full name and the phone, edited
+//             in place, and the sign in email; a profile with no name says so at the top, with
+//             the button that opens the field, since no save goes through without one), Rental
 //             history, References (editable in place; edits apply to FUTURE applications only, with
 //             where they came from and when said once a section, "Typed by you on DATE"),
 //             Documents and the facts read from them, About you, Who can see your profile
@@ -230,6 +232,12 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
     focusNext.current = { id, field };
   };
   const cancelEdit = () => { returnTo.current = editing; setEditing(null); setDraft(null); setSaveError(''); };
+  // The name, asked for at the top when the profile has none. Mid edit of another section, the
+  // edit moves to Contact with what was typed kept in the draft, so one save keeps both.
+  const askName = () => {
+    if (!editing) { startEdit('contact', 'fullName'); return; }
+    setSaveError(''); focusNext.current = { id: 'contact', field: 'fullName' }; setEditing('contact');
+  };
   const saveEdit = async () => {
     if (!draft || saving) return;
     setSaving(true); setSaveError('');
@@ -268,6 +276,7 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
     if (key === 'details') {
       const miss = ['jobTitle', 'employer', 'annualIncome'].find((k) => !has(ff[k]));
       if (miss && f) return startEdit('employment', miss);
+      if (!has(ff.phone) && f) return startEdit('contact', 'phone');
       return goToSection(!has(ff.phone) ? 'contact' : f ? 'employment' : 'details');
     }
     if (key === 'reference') return f ? startEdit('rental', has(ff.previousLandlordName) ? 'prevLandlordEmail' : 'previousLandlordName') : goToSection('rental');
@@ -334,7 +343,7 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
   );
   const facts = (only) => (
     <FactSections facts={f || { email: profile.email }} draft={draft} editing={editing} setDraft={setDraft} canEdit={!!f && !editing} saving={saving} justSaved={justSaved} onEdit={startEdit} onCancel={cancelEdit} onSave={saveEdit}
-      contactEditable={false} saveLabel="Save to my profile" only={only} saveError={saveError}
+      contactName saveLabel="Save to my profile" only={only} saveError={saveError}
       onInvite={f ? null : openLink} invite={f ? null : { line: 'This fills in from your first application, or from one you already sent.', button: 'Add an application you sent before' }} />
   );
   const toSection = (key) => goToSection(key);
@@ -372,6 +381,14 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
                     <h1 className="mp-h1" data-profile-name="" style={{ marginTop: 'var(--gap-line)', whiteSpace: 'nowrap', overflowWrap: 'normal', fontSize: `min(var(--t-d1), calc(100cqi / ${Math.max(8, String(f?.fullName || 'Your profile').length) * 0.6}))` }}>{f?.fullName || 'Your profile'}</h1>
                     <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}><Lines items={[profile.email, f && (f.jobTitle || f.employer) ? [f.jobTitle, f.employer].filter(Boolean).join(' at ') : null, profile.factsUpdatedAt ? `Details updated ${dateLong(profile.factsUpdatedAt)}` : null]} /></p>
                     {noticeEl && <div style={{ marginTop: 'var(--gap-card)' }}>{noticeEl}</div>}
+                    {/* No name yet: every save asks for one (pages/api/tenant/profile.js), so the page
+                        says so here, with the one button that opens the field. */}
+                    {f && !has(f.fullName) && (
+                      <div className="tp-invite" data-name-missing="" style={{ marginTop: 'var(--gap-card)' }}>
+                        <p className="mp-p">{noWidow('Your profile has no name yet. Add it, and your changes can save.')}</p>
+                        <button type="button" className="mp-btn mp-btn-auto" data-name-add="" onClick={askName}>Add your name</button>
+                      </div>
+                    )}
                     {f
                       ? <p className="mp-p" data-details-note="" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Edits here reach the applications you send from now on. Anything you already sent keeps what you sent; open it below to change that one.')}</p>
                       : (

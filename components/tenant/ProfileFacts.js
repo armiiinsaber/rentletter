@@ -254,7 +254,9 @@ export const ProfileStyles = () => (
 // ── the six fact cards, read + edit, over the flat form ───────────────────────────────────
 // props: facts (flat form), draft (flat form | null), editing (section id | null), setDraft,
 //        canEdit, saving, justSaved, onEdit(id, field), onCancel(), onSave(), editFooter (node shown
-//        inside every edit form, e.g. the coherence checkbox), contactEditable (bool)
+//        inside every edit form, e.g. the coherence checkbox), contactEditable (bool), contactName
+//        (bool: Contact holds the full name and the phone, edited in place, and shows the email
+//        as it is; the tenant's profile, where the email changes through its own confirmation)
 // On the tenant's profile (FactSourceContext set) also: only (the sections to render, in order),
 //        saveError (shown beside the fields of the open section), onInvite (the button of an empty
 //        section when the facts cannot be edited yet) and invite (its words then).
@@ -266,7 +268,7 @@ const INVITES = {
   move: { line: 'Add the date you want to move in. A realtor checks it against the date a unit is free.', button: 'Add a move in date' },
   references: { line: 'Add someone who can speak for you, such as a manager. Realtors often ask for one.', button: 'Add a reference' },
 };
-export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, saving, justSaved, onEdit, onCancel, onSave, editFooter, contactEditable = true, saveLabel, only, saveError, onInvite, invite }) {
+export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, saving, justSaved, onEdit, onCancel, onSave, editFooter, contactEditable = true, contactName = false, saveLabel, only, saveError, onInvite, invite }) {
   const f = f0 || {};
   const selfEmp = f.employmentType === 'self-employed';
   const hasRental = !!(f.previousAddress || f.previousLandlordName || f.yearsAtPrevious);
@@ -318,7 +320,15 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
         </>}
       </Section>
     ),
-    contact: (
+    contact: contactName ? (
+      <Section key="contact" {...sec('contact')} title="Contact" canEdit={canEdit && contactEditable}
+        rows={<><Row label="Full name" field="fullName" value={f.fullName} /><Row label="Phone" field="phone" value={f.phone} /><Row label="Email" value={f.email} /></>}>
+        {draft && <>
+          <Field label="Full name" field="fullName" required value={d.fullName} onChange={(v) => set('fullName', v)} type="text" autoComplete="name" enterKeyHint="next" />
+          <Field label="Phone" field="phone" required value={d.phone} onChange={(v) => set('phone', formatPhone(v))} type="tel" inputMode="tel" autoComplete="tel" enterKeyHint="done" />
+        </>}
+      </Section>
+    ) : (
       <Section key="contact" {...sec('contact')} title="Contact" canEdit={canEdit && contactEditable}
         rows={<><Row label="Email" field="email" value={f.email} /><Row label="Phone" field="phone" value={f.phone} /></>}>
         {draft && <>

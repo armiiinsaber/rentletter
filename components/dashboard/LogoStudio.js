@@ -92,7 +92,7 @@ function ColorField({ label, value, onChange, disabled }) {
       <ColorWheel value={valid ? value : '#1f3a5f'} onChange={onChange} size={150} disabled={disabled} />
       <input type="text" value={hex} disabled={disabled} onChange={(e) => apply(e.target.value)} placeholder="#1f3a5f" spellCheck={false}
         aria-label={`${label} hex`}
-        style={{ width: 150, marginTop: 8, padding: '8px 10px', fontSize: 'var(--t-body)', fontFamily: 'monospace', textAlign: 'center', borderRadius: 'var(--card-radius)', border: `1px solid ${valid || !hex ? C.rule : C.red}`, background: C.paper, color: C.ink }} />
+        style={{ width: 150, marginTop: 8, padding: '8px 10px', fontSize: 'var(--t-body)', fontFamily: 'monospace', textAlign: 'center', borderRadius: 'var(--card-radius)', border: `1px solid ${valid || !hex ? C.rule : C.danger}`, background: C.paper, color: C.ink }} />
     </div>
   );
 }
@@ -280,8 +280,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         <div role="status" style={{ padding: '12px 14px', marginBottom: 12, background: C.info, borderRadius: R.ctrl, borderLeft: `3px solid ${C.ink}`, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>
           <div style={{ fontWeight: 800, marginBottom: 2 }}>Locked until we have {missing.join(' and ')}</div>
           <div style={{ color: C.inkSoft, marginBottom: 8 }}>The wordmark is built from your real name and brokerage, they’re the fields at the top of this form. Unlocks as soon as both are filled; no need to save first.</div>
-          <button type="button" onClick={onJumpToDetails}
-            style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <button type="button" onClick={onJumpToDetails} className="ds-btn ds-btn-ink">
             <span aria-hidden="true">↑</span> Go to those fields
           </button>
         </div>
@@ -295,7 +294,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         <>
           {/* STEP 1 · COLOURS */}
           <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'clamp(12px,3vw,16px)', marginBottom: 12, opacity: profileReady ? 1 : 0.55 }}>
-            <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 · Brand colours</div>
+            <div style={{ fontSize: 11, color: C.inkSoft, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 1 · Brand colours</div>
             <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
               <ColorField label="Primary" value={primary} onChange={onPrimary} disabled={!profileReady || busy} />
               <ColorField label="Secondary" value={secondary} onChange={onSecondary} disabled={!profileReady || busy} />
@@ -313,7 +312,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           {/* STEP 2 · DESCRIBE (revealed once colours are set) */}
           {colorsReady && (
             <div style={{ background: C.paper, border: `1px solid ${C.rule}`, borderRadius: R.ctrl, padding: 'clamp(12px,3vw,16px)', marginBottom: 12 }}>
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 2 · Describe <span style={{ color: C.inkMute, fontWeight: 600 }}>(optional)</span></div>
+              <div style={{ fontSize: 11, color: C.inkSoft, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 2 · Describe <span style={{ color: C.inkMute, fontWeight: 600 }}>(optional)</span></div>
               <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} disabled={busy}
                 placeholder="Describe your logo, a house, a key, your initials, a mood… or leave blank and we'll design from your name."
                 style={{ width: '100%', padding: '10px 12px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit' }} />
@@ -322,9 +321,8 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
 
           {/* STEP 3 · GENERATE */}
           {!busy && (
-            <button onClick={generate} disabled={!colorsReady}
-              title={colorsReady ? '' : 'Pick your two brand colours first'}
-              style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '12px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: !colorsReady ? 'not-allowed' : 'pointer', opacity: !colorsReady ? 0.5 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={generate} disabled={!colorsReady} className="ds-btn ds-btn-ink"
+              title={colorsReady ? '' : 'Pick your two brand colours first'}>
               {rounds.length ? 'Generate 3 again' : 'Generate 3 concepts'}
             </button>
           )}
@@ -338,7 +336,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </>
       )}
 
-      {error && <div role="alert" style={{ marginTop: 12, padding: '10px 14px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{error}</div>}
+      {error && <div role="alert" style={{ marginTop: 12, padding: '10px 14px', background: C.dangerTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink, lineHeight: 1.5 }}>{error}</div>}
       {/* Saving a logo: the pressed button turns pending, the door in its pill (Pending below). */}
 
       {/* ALL CONCEPTS, the 3-up grid (hidden while refining a single concept) */}
@@ -346,11 +344,9 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         <div style={{ marginTop: 16 }}>
           {rounds.length > 1 && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-              <button onClick={() => setRoundIdx((i) => Math.max(0, i - 1))} disabled={roundIdx === 0}
-                style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '4px var(--gap-card)', fontSize: 13, cursor: roundIdx === 0 ? 'default' : 'pointer', color: C.inkSoft, opacity: roundIdx === 0 ? 0.4 : 1 }}>‹</button>
+              <button onClick={() => setRoundIdx((i) => Math.max(0, i - 1))} disabled={roundIdx === 0} className="ds-btn ds-btn-line" aria-label="The attempt before">‹</button>
               <span style={{ fontSize: 11.5, color: C.inkMute }}>Attempt {roundIdx + 1} of {rounds.length}</span>
-              <button onClick={() => setRoundIdx((i) => Math.min(rounds.length - 1, i + 1))} disabled={roundIdx === rounds.length - 1}
-                style={{ background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '4px var(--gap-card)', fontSize: 13, cursor: roundIdx === rounds.length - 1 ? 'default' : 'pointer', color: C.inkSoft, opacity: roundIdx === rounds.length - 1 ? 0.4 : 1 }}>›</button>
+              <button onClick={() => setRoundIdx((i) => Math.min(rounds.length - 1, i + 1))} disabled={roundIdx === rounds.length - 1} className="ds-btn ds-btn-line" aria-label="The attempt after">›</button>
             </div>
           )}
 
@@ -369,12 +365,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                   <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`r${roundIdx}v${i}d`} />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
-                    style={{ background: isSaved ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    {isSaved ? '✓ Saved as your logo' : <Pending busy={usingKey === key} label="Saving your logo" tone="red">Use this logo</Pending>}
+                  <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy} className="ds-btn ds-btn-ink">
+                    {isSaved ? '✓ Saved as your logo' : <Pending busy={usingKey === key} label="Saving your logo" tone="ink">Use this logo</Pending>}
                   </button>
-                  <button onClick={() => startRefine(v)} disabled={busy || usingKey !== null}
-                    style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '9px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={() => startRefine(v)} disabled={busy || usingKey !== null} className="ds-btn ds-btn-line">
                     Refine this →
                   </button>
                 </div>
@@ -390,15 +384,13 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       {refineMode && refineCurrent && (
         <div ref={refineTopRef} style={{ marginTop: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-            <button onClick={exitRefine} disabled={busy}
-              style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '7px var(--gap-card)', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+            <button onClick={exitRefine} disabled={busy} className="ds-btn ds-btn-line">
               ‹ Back to all concepts
             </button>
             {refineHistory.length > 1 && (
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 11.5, color: C.inkMute }}>Version {refineHistory.length}</span>
-                <button onClick={stepBack} disabled={busy}
-                  style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '7px var(--gap-card)', fontSize: 12.5, fontWeight: 600, cursor: busy ? 'wait' : 'pointer' }}>
+                <button onClick={stepBack} disabled={busy} className="ds-btn ds-btn-line">
                   ↶ Undo last change
                 </button>
               </div>
@@ -416,9 +408,8 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               <BigSwatch svg={refineCurrent.svg} bg="#0f0f10" label="On dark" idKey={`cur-d-${refineHistory.length}`} />
             </div>
             <div style={{ marginTop: 12 }}>
-              <button onClick={() => saveLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy}
-                style={{ background: savedKey === 'refine-cur' ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '10px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== 'refine-cur' ? 0.6 : 1, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {savedKey === 'refine-cur' ? '✓ Saved as your logo' : <Pending busy={usingKey === 'refine-cur'} label="Saving your logo" tone="red">Use this version</Pending>}
+              <button onClick={() => saveLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy} className="ds-btn ds-btn-ink">
+                {savedKey === 'refine-cur' ? '✓ Saved as your logo' : <Pending busy={usingKey === 'refine-cur'} label="Saving your logo" tone="ink">Use this version</Pending>}
               </button>
               {savedKey === 'refine-cur' && <span style={{ fontSize: 12, color: C.ink, fontWeight: 600, marginLeft: 10 }}>This is now your branding.</span>}
             </div>
@@ -431,8 +422,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               onKeyDown={(e) => { if (e.key === 'Enter') doRefine(); }}
               placeholder="e.g. make it bolder · use the accent colour · tighter spacing · simpler"
               style={{ width: '100%', padding: '11px 13px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink }} />
-            <button onClick={doRefine} disabled={busy}
-              style={{ marginTop: 8, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13.5, fontWeight: 700, cursor: busy ? 'wait' : 'pointer', opacity: busy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <button onClick={doRefine} disabled={busy} className="ds-btn ds-btn-ink" style={{ marginTop: 8 }}>
               <Pending busy={busy} label="Refining your logo" tone="ink">Refine this concept</Pending>
             </button>
           </div>
@@ -453,12 +443,10 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                       <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`res${i}d-${refineHistory.length}`} />
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-                      <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy}
-                        style={{ background: isSaved ? C.ink : C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 700, cursor: usingKey !== null ? 'wait' : 'pointer', opacity: usingKey !== null && usingKey !== key ? 0.6 : 1 }}>
-                        {isSaved ? '✓ Saved' : <Pending busy={usingKey === key} label="Saving your logo" tone="red">Use this</Pending>}
+                      <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy} className="ds-btn ds-btn-ink">
+                        {isSaved ? '✓ Saved' : <Pending busy={usingKey === key} label="Saving your logo" tone="ink">Use this</Pending>}
                       </button>
-                      <button onClick={() => refineFurther(v)} disabled={busy || usingKey !== null}
-                        style={{ background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '8px var(--gap-card)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>
+                      <button onClick={() => refineFurther(v)} disabled={busy || usingKey !== null} className="ds-btn ds-btn-line">
                         Refine further →
                       </button>
                     </div>

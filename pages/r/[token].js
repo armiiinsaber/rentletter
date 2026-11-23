@@ -14,6 +14,7 @@ import { isReportToken } from '../../lib/applicationIds';
 import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot';
 import { fitLines } from '../../lib/fitScore';
 import { Pending } from '../../components/brand/Loader';
+import ReportBrand from '../../components/ReportBrand';
 
 
 export async function getServerSideProps(ctx) {
@@ -118,13 +119,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
       {/* Header card: the realtor's branding, the address in the display face. */}
       <section className="rl-card" style={card}>
         {/* The realtor's name and brokerage beside the logo while they keep 200px; on a narrow phone, under it. */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'var(--s-3)', marginBottom: 'var(--s-4)' }}>
-          {realtor.logoUrl ? <img src={realtor.logoUrl} alt="" style={{ height: 40, width: 'auto', maxWidth: 140, objectFit: 'contain' }} /> : null}
-          <div style={{ minWidth: 0, flex: '1 1 200px' }}>
-            <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, overflowWrap: 'anywhere' }}>{realtor.name}</div>
-            {realtor.brokerage ? <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, overflowWrap: 'anywhere' }}>{realtor.brokerage}</div> : null}
-          </div>
-        </div>
+        <ReportBrand realtor={realtor} />
         <h1 className="t-d1 rr-addr" style={{ color: C.ink, margin: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{listing.address}</h1>
         <StatusPills label="The unit" items={[listing.rent != null ? `${money(listing.rent)} per month` : null, listing.bedroomsLabel || null]} style={{ marginTop: 'var(--s-3)' }} />
         <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, marginTop: 'var(--s-2)', textWrap: 'balance' }}>
