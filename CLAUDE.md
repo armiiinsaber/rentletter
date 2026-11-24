@@ -6,8 +6,11 @@ standardized applications → realtor reviews/shortlists/documents decisions →
 realtor sends a co-branded shortlist to their landlord client, including fit
 against the landlord's stated preferences.
 
-**Positioning:** Rentletter is the applicant-funnel and presentation layer
-(12 applicants → top 3). Rentletter is building verification into the
+**Positioning:** Rentletter is a rental application platform for realtors and
+tenants in Ontario and BC. A tenant builds one profile and reuses it. A realtor
+gets the application, the documents read and matched, and a report for the
+landlord. Realtors connect through the Circle. Verification is being added.
+Rentletter is building verification into the
 product. Until it ships, no screen inside the app may tell a realtor, a
 landlord or a tenant that a specific applicant has been verified or background
 checked unless that check actually happened for that applicant. Marketing copy
@@ -15,8 +18,8 @@ may describe the product direction.
 
 **Audiences:** Realtors are primary; everything is built for them. Solo
 landlords/PMs are a quiet secondary audience reachable via one small footer
-link, never in the hero. Tenants only ever see the application form via
-invite links.
+link, never in the hero. Tenants have a profile page, a document vault, their
+applications and sharing controls, as well as the application form.
 
 ## Stack rules (hard constraints)
 
@@ -31,17 +34,36 @@ invite links.
 
 ## Do-not-touch list
 
-- **`pages/api/**` and `lib/**`** — never modify.
-- Any **fetch call's payload shape**, any **state field name**, any data
-  structure. `listing.preferences.*` field names are load-bearing (share
-  tokens and workspace sync depend on them) — never rename.
+- **`lib/**` and `pages/api/**`**: a prompt names the files there that may be
+  edited. Any file there that the prompt does not name needs the user's
+  approval first: stop and ask.
+- **Data shapes and field names** change only when the prompt says so.
+- **Database changes** are new idempotent files in `db/` that the user runs by
+  hand, verified in `scripts/verify-migrations.mjs`, and the app must work
+  when a file has not run.
 - **Business model logic in `pages/dashboard.js`** must stay functionally
   identical: first 50 realtor signups are founders (free forever, green
   badge); later signups get a 7-day trial (amber countdown banner); lapsed
   trials see a red banner and a soft paywall hiding dashboard content.
   Restyle freely; never remove or weaken.
-- If a change would touch an API file, a data shape, or a field name — stop
-  and tell the user instead.
+
+## Standing rules
+
+- Never print secrets or `.env` values, and never read `.env` files.
+- Tests never touch real Supabase, real mail or the real Anthropic API.
+- `owner_token` never reaches the realtor side.
+- The strength score never reaches a realtor.
+- The ID is never shown back.
+- `lib/tenantProfileStore.js` is the only file that touches `tenant_profiles`
+  (the founder office's count in `lib/adminData.js` reads no row), and
+  `lib/profileShareStore.js` is the only realtor reader of a profile.
+- Never loosen a test or raise a timeout.
+- No em dash, en dash or hyphen as punctuation, in copy, comments or commit
+  messages.
+- Layout: no line break may leave one word or a few words alone on the next
+  line. Check changed copy at 320 and 390 and at the desktop widths 1440 and
+  1920, in WebKit and in Chrome.
+- Never delete anything outside `.next-fake-*` and `.next-walk-*`.
 
 ## OHRC compliance (legal red line)
 
