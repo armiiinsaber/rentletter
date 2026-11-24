@@ -158,7 +158,7 @@ export const GlobalStyle = () => (
        that needs the realtor's action is filled ink. On ink surfaces, transparent with a paper
        border at 24 percent. Never animated: no transition, no animation, full opacity. */
     .rl-pills { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; margin: 0; padding: 0; list-style: none; }
-    .rl-pill { box-sizing: border-box; display: inline-flex; align-items: center; height: 28px; max-width: 100%; padding: 0 12px;
+    .rl-pill { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 28px; max-width: 100%; padding: 0 12px;
       border-radius: 999px; border: 1px solid ${C.rule}; background: ${C.paper}; color: ${C.ink};
       font-family: ${FONT.sans}; font-size: 14px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; transition: none; animation: none; }

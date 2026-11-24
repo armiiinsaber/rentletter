@@ -36,6 +36,7 @@ import ProfilePersonal, { usePersonal } from '../components/tenant/ProfilePerson
 import { ProfileLayoutStyles, SECTIONS, sectionStates, SectionMenu, SectionChips, StateTag, useCurrentSection, goToSection } from '../components/tenant/ProfileLayout';
 import { StrengthPanel, StrengthBar, StrengthSheet } from '../components/tenant/ProfileStrength';
 import { pageLocked } from '../components/Sheet';
+import { cardTap } from '../lib/motion';
 import { SOURCE } from '../lib/profileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 import { Pending, ScreenLoader } from '../components/brand/Loader';
@@ -343,6 +344,13 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
       onInvite={f ? null : openLink} invite={f ? null : { line: 'This fills in from your first application, or from one you already sent.', button: 'Add an application you sent before' }} />
   );
   const toSection = (key) => goToSection(key);
+  // Copy an application number, said in the toast.
+  const copyNumber = async (n) => {
+    let ok = false;
+    try { await navigator.clipboard.writeText(n); ok = true; } catch (e) { ok = false; }
+    setToast(ok ? 'Application number copied' : 'Could not copy the number');
+    clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setToast(''), 3000);
+  };
 
   return (
     <>
@@ -433,19 +441,33 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
                   <div className="tp-head-side"><StateTag state={states.applications} /></div>
                 </div>
                 {apps.length === 0 ? <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('No applications yet. When you apply through a realtor’s invite link, it shows up here.')}</p> : (
-                  <ul className="mp-list" style={{ marginTop: 'var(--gap-card)' }}>
-                    {apps.map((a) => (
-                      <li key={a.applicationNumber}>
-                        <a href={`/my-application/${a.applicationNumber}`} style={{ textDecoration: 'none', color: C.ink, minWidth: 0, flex: 1 }}>
-                          <span className="mp-value" style={{ marginTop: 0, display: 'block' }}>{noWidow(a.listingName || 'Rental unit')}</span>
-                          {a.realtorName || a.realtorBrokerage ? <span className="mp-note" style={{ display: 'block' }}>{noWidow(`Sent to ${[a.realtorName, a.realtorBrokerage].filter(Boolean).join(', ')}`)}</span> : null}
-                          <StatusPills label="This application" items={[a.submittedAt ? dateLong(a.submittedAt) : null, a.updatedAt ? `Edited ${dateLong(a.updatedAt)}` : null, a.revoked ? 'Revoked' : (a.status?.label || null)]} style={{ margin: 'var(--s-2) 0' }} />
-                          {a.referral && <span className="mp-note" style={{ display: 'block' }}>{noWidow(`Shared with ${a.referral.toName || 'another realtor'} by ${a.referral.fromName || 'your realtor'} with your approval.`)}</span>}
-                          <span className="mp-note mp-mono" style={{ display: 'block' }}>{a.applicationNumber}</span>
-                        </a>
-                        <Chevron />
-                      </li>
-                    ))}
+                  <ul className="mp-list tp-apps" data-applications="" style={{ marginTop: 'var(--gap-card)' }}>
+                    {apps.map((a) => {
+                      // One row an application: the address and its status, then when it was sent
+                      // and to whom, then its number with Copy. The whole row opens it (lib/motion.js
+                      // cardTap: anywhere on it but Copy); the address is its link for the keyboard.
+                      const status = a.revoked ? 'Revoked' : (a.status?.label || null);
+                      const to = [a.realtorName, a.realtorBrokerage].filter(Boolean).join(', ');
+                      const sent = a.submittedAt ? `Sent ${dateLong(a.submittedAt)}${to ? ` to ${to}` : ''}` : to ? `Sent to ${to}` : null;
+                      return (
+                        <li key={a.applicationNumber} className="tp-app" data-application-row={a.applicationNumber} data-tap-card="" onClick={cardTap(() => { window.location.href = `/my-application/${a.applicationNumber}`; })}>
+                          <div className="tp-app-top">
+                            <a href={`/my-application/${a.applicationNumber}`} className="mp-value tp-app-link">{noWidow(a.listingName || 'Rental unit')}</a>
+                            <span className="tp-app-side">
+                              {status ? <StatusPills label="This application" items={[status]} className="tp-app-status" /> : null}
+                              <span className="tp-app-go" aria-hidden="true"><Chevron /></span>
+                            </span>
+                          </div>
+                          {sent ? <span className="tp-app-line">{noWidow(sent)}</span> : null}
+                          {a.updatedAt ? <span className="tp-app-line">{`Edited ${dateLong(a.updatedAt)}`}</span> : null}
+                          {a.referral && <span className="tp-app-line">{noWidow(`Shared with ${a.referral.toName || 'another realtor'} by ${a.referral.fromName || 'your realtor'} with your approval.`)}</span>}
+                          <span className="tp-app-num">
+                            <span data-application-number="">{a.applicationNumber}</span>
+                            <button type="button" className="tp-app-copy" onClick={() => copyNumber(a.applicationNumber)} aria-label={`Copy application number ${a.applicationNumber}`} data-copy-number="">Copy</button>
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
                 <button type="button" onClick={() => setLinkOpen((v) => !v)} aria-expanded={linkOpen} className="mp-fold" data-link-fold="">
@@ -478,6 +500,21 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
         }
         .tp-apply { container-type: inline-size; padding-top: 14px; padding-bottom: 14px; }
         .tp-row-form { container-type: inline-size; }
+        /* Your applications: one tidy row each, the whole row opening its application. */
+        .mp-list > li.tp-app { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; padding: var(--s-3) 0; cursor: pointer; }
+        /* The address and the status on one line; where a long status would leave the address too
+           narrow to read, the status goes under it, at the right. */
+        .tp-app-top { display: flex; flex-wrap: wrap; align-items: flex-start; column-gap: var(--s-3); row-gap: var(--s-1); }
+        .tp-app-link { flex: 1 1 10em; margin: 0 !important; color: ${C.ink}; text-decoration: none; min-width: 0; padding-top: 2px; }
+        .tp-app-side { flex: none; display: inline-flex; align-items: center; gap: var(--s-2); margin-left: auto; }
+        .tp-app-link:focus-visible { outline: none; border-radius: 4px; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
+        .tp-app-status { flex-wrap: nowrap; }
+        .tp-app-go { display: inline-flex; align-items: center; height: 28px; color: ${C.inkSoft}; }
+        .tp-app-line { display: block; font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; }
+        .tp-app-num { display: flex; align-items: center; gap: var(--s-2); font-size: 13px; line-height: 1.4; color: ${C.inkSoft}; }
+        .tp-app-copy { min-height: 28px; padding: 0; background: transparent; border: none; font: inherit; font-weight: 700; color: ${C.ink}; text-decoration: underline; cursor: pointer; }
+        .tp-app-copy:focus-visible { outline: none; border-radius: 4px; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
+        @media (hover: hover) { .tp-app:hover .tp-app-link { text-decoration: underline; } }
       `}</style>
     </>
   );

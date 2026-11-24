@@ -83,7 +83,7 @@ const UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/6
 // (418 text or markup, 423 recovered by rendering on the client, 425 text content).
 const HYDRATION = /hydrat|did not match|didn't match|server rendered|Minified React error #(418|423|425)\b/i;
 // Run in the page after readPage: every pill a person can see (marked data-tl-block) inside its
-// row, its row inside the box that holds it, and both on the screen.
+// row, its row inside the box that holds it, and both on the screen; and each the one pill.
 const PILLS_INSIDE = () => {
   const iw = window.innerWidth; const out = []; const px = (n) => Math.round(n);
   for (const p of document.querySelectorAll('.rl-pill[data-tl-block]')) {
@@ -92,6 +92,15 @@ const PILLS_INSIDE = () => {
     if (r.left < -0.5 || r.right > iw + 0.5) out.push(`the pill "${t}" past the screen edge (${px(r.left)} to ${px(r.right)} on a ${iw}px screen)`);
     else if (rr && (r.left < rr.left - 0.5 || r.right > rr.right + 0.5)) out.push(`the pill "${t}" past its row (${px(r.left)} to ${px(r.right)}, row ${px(rr.left)} to ${px(rr.right)})`);
     else if (rr && hr && (rr.left < hr.left - 0.5 || rr.right > hr.right + 0.5)) out.push(`the row of the pill "${t}" past its box (${px(rr.left)} to ${px(rr.right)}, box ${px(hr.left)} to ${px(hr.right)})`);
+    // The one pill (components/ui.js .rl-pill): the same padding on both sides, one line high,
+    // its text centred both ways. A pill that wraps its text (.rl-pills-wrap) grows with its
+    // lines, a mockup's is scaled down, and a pill whose text runs past it is named above.
+    if (p.closest('.rl-pills-wrap, .rl-pills-mock')) continue;
+    const cs = getComputedStyle(p); const pl = parseFloat(cs.paddingLeft); const pr = parseFloat(cs.paddingRight);
+    const range = document.createRange(); range.selectNodeContents(p); const tr = range.getBoundingClientRect();
+    if (tr.width > r.width - pl - pr + 1) continue;
+    const dx = Math.abs((tr.left - r.left) - (r.right - tr.right)); const dy = Math.abs((tr.top - r.top) - (r.bottom - tr.bottom));
+    if (pl < 8 || Math.abs(pl - pr) > 0.5 || r.height > 30.5 || dx > 1.5 || dy > 2.5) out.push(`the pill "${t}" is not the one pill (padding ${pl} and ${pr}, ${px(r.height)}px high, its text ${px(dx)}px off centre across and ${px(dy)}px down)`);
   }
   return out;
 };

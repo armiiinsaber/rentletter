@@ -213,8 +213,10 @@ export const ProfileStyles = () => (
     .mp-stat-v { margin-top: var(--gap-line); font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; text-wrap: balance; }
     .mp-fold { width: 100%; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); margin-top: var(--gap-card); background: transparent; border: none; border-top: 1px solid var(--rule); border-radius: 0; padding: 0; font: inherit; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; cursor: pointer; text-align: left; }
     .mp-list { list-style: none; margin: 0; padding: 0; }
-    .mp-list li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); min-height: 44px; padding: var(--s-2) 0; border-top: 1px solid var(--rule); font-size: var(--t-body-2); line-height: var(--lh-body); }
-    .mp-list li:first-child { border-top: none; }
+    /* The list's own rows only (>): a row may hold a row of status pills (components/ui.js
+       StatusPills), whose items are list items too and keep the one pill style. */
+    .mp-list > li { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); min-height: 44px; padding: var(--s-2) 0; border-top: 1px solid var(--rule); font-size: var(--t-body-2); line-height: var(--lh-body); }
+    .mp-list > li:first-child { border-top: none; }
     .mp-step { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: var(--lh-body); }
     .mp-progress { height: 2px; background: var(--rule); border-radius: 1px; margin-top: var(--gap-line); overflow: hidden; }
     .mp-progress > span { display: block; height: 100%; background: ${C.ink}; }

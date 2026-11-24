@@ -22,6 +22,10 @@
 //   2d. Every piece of text on glass keeps 4.5 to 1 over black and over white.
 //   2e. Reduced motion: no fade. Reduced transparency (Chrome) and the fallbacks' rules: solid.
 //   2f. The bar at 390 and 320, with a field brought into view, before, during and after a sheet.
+//   3.  Your applications, three rows at 390, 320 and 1440: the address and the status pill on one
+//       line (on a phone a long status goes right under the address rather than crush it; the
+//       product's one pill, its text centred both ways), the date as text, the number in
+//       the body face with Copy under it, the whole row opening the application.
 //   2g. The frames while a long page scrolls under the glass, against the same scroll with the
 //       glass taken off: at most 4ms more a frame at the median, 8ms at the 95th percentile.
 // Each database call waits 60ms on the fake stack, so a screen not seen recently shows its Loader
@@ -427,6 +431,58 @@ async function glassFallbacks(browser, tag) {
   } finally { await ctx.close(); }
 }
 
+// ── 3. Your applications (pages/my-application.js) ──────────────────────────────────────────
+// Each row: the address and the status on one line, the date and the number under it, the whole
+// row opening the application. The status is the product's one pill: side padding, one line high,
+// its text centred both ways; the date is text, not a pill; the number is in the body face.
+const ROWS = () => [...document.querySelectorAll('[data-application-row]')].map((row) => {
+  const link = row.querySelector('.tp-app-link'); const lr = link.getBoundingClientRect();
+  const pills = [...row.querySelectorAll('.rl-pill')].map((p) => {
+    const r = p.getBoundingClientRect(); const cs = getComputedStyle(p); const range = document.createRange(); range.selectNodeContents(p); const t = range.getBoundingClientRect();
+    return { text: p.textContent.trim(), height: Math.round(r.height), padL: parseFloat(cs.paddingLeft), padR: parseFloat(cs.paddingRight), dx: Math.round(Math.abs((t.left - r.left) - (r.right - t.right))), dy: Math.round(Math.abs((t.top - r.top) - (r.bottom - t.bottom))), top: Math.round(r.top - lr.top), under: Math.round(r.top - lr.bottom) };
+  });
+  const lines = [...row.querySelectorAll('.tp-app-line')].map((e) => e.textContent.trim());
+  const num = row.querySelector('[data-application-number]');
+  return { id: row.getAttribute('data-application-row'), pills, lines, numFont: getComputedStyle(num).fontFamily, bodyFont: getComputedStyle(document.body).fontFamily, numLine: Math.round(num.getBoundingClientRect().top - lr.top), copy: !!row.querySelector('[data-copy-number]') };
+});
+async function applications(browser, tag) {
+  for (const width of [390, 320, 1440]) {
+    const phone = width < 1024;
+    const ctx = await browser.newContext(phone ? { serviceWorkers: 'block', viewport: { width, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 } : { serviceWorkers: 'block', viewport: { width, height: 900 } });
+    await blockSupabase(ctx);
+    if (tag === 'cr') await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
+    const page = await ctx.newPage();
+    try {
+      await tenantIn(ctx, page, `${tag === 'wk' ? 40 : 50}${width}`, 'docs=1&apps=3');
+      await page.evaluate(() => document.getElementById('applications').scrollIntoView({ block: 'start', behavior: 'instant' })); await page.waitForTimeout(400);
+      const rows = await page.evaluate(ROWS); const at = `${tag} 3 at ${width}`;
+      assert.equal(rows.length, 3, `${at}: three rows`);
+      for (const r of rows) {
+        assert.equal(r.pills.length, 1, `${at}: ${r.id}, the status alone is a pill (${JSON.stringify(r.pills)})`);
+        const p = r.pills[0];
+        assert.doesNotMatch(p.text, /\b(19|20)\d\d\b|January|February|March|April|May|June|July|August|September|October|November|December/, `${at}: ${r.id}, no date in a pill`);
+        assert.ok(p.height <= 30 && p.padL >= 8 && p.padL === p.padR && p.dx <= 1 && p.dy <= 2, `${at}: ${r.id}, the pill: side padding, one line high, its text centred (${JSON.stringify(p)})`);
+        // On the address's first line; or, where a long status leaves the address too narrow, right under it.
+        assert.ok(p.top <= 6 || (p.under >= -1 && p.under <= 8 && phone), `${at}: ${r.id}, the status on the address's line (${JSON.stringify(p)})`);
+        assert.match(r.lines[0] || '', /^Sent\s(January|February|March|April|May|June|July|August|September|October|November|December)\s\d{1,2},\s\d{4}\b/, `${at}: ${r.id}, the date as text (${JSON.stringify(r.lines)})`);
+        assert.ok(!/mono|menlo|courier/i.test(r.numFont) && r.numFont === r.bodyFont, `${at}: ${r.id}, the number in the body face (${r.numFont})`);
+        assert.ok(r.copy && r.numLine > 0, `${at}: ${r.id}, the number under the date with Copy`);
+      }
+      // Copy copies, and opens nothing; the row opens its application from anywhere on it.
+      const first = rows[0].id;
+      await page.locator(`[data-application-row="${first}"] [data-copy-number]`).click();
+      await page.locator('.mp-toast').waitFor({ timeout: 5000 });
+      const toast = (await page.locator('.mp-toast').innerText()).trim();
+      if (tag === 'cr') { assert.equal(toast, 'Application number copied'); assert.equal(await page.evaluate(() => navigator.clipboard.readText()), first, `${at}: the number copied`); }
+      else assert.match(toast, /^(Application number copied|Could not copy the number)$/, `${at}: Copy says what it did`);
+      assert.match(page.url(), /\/my-application$/, `${at}: Copy opens nothing`);
+      await page.locator(`[data-application-row="${first}"] .tp-app-line`).first().click();
+      await page.waitForURL((u) => u.pathname === `/my-application/${first}`, { timeout: 15000 });
+      noSupabaseLeft(ctx, `${at}`);
+    } finally { await ctx.close(); }
+  }
+}
+
 async function walk(browserType, launch, tag) {
   const browser = await browserType.launch(launch);
   try {
@@ -435,11 +491,12 @@ async function walk(browserType, launch, tag) {
     await glassPhone(browser, tag);
     await glassDesk(browser, tag);
     await glassFallbacks(browser, tag);
+    await applications(browser, tag);
     // g: how long each frame took while a long page scrolled under the glass.
     console.log(`# ${tag} frames while scrolling, with the glass and without: ${smooth.filter((x) => x.tag === tag).map((x) => `${x.page} median ${x.on.median} and ${x.off.median}ms, p95 ${x.on.p95} and ${x.off.p95}ms (${x.on.frames} frames)`).join('; ')}`);
     for (const x of smooth.filter((v) => v.tag === tag)) assert.ok(x.on.frames > 40 && x.on.median <= x.off.median + 4 && x.on.p95 <= x.off.p95 + 8, `${tag} 2g: ${x.page} scrolls as smoothly with the glass as without it (${JSON.stringify(x)})`);
   } finally { await browser.close(); }
 }
 
-test('the dashboard as one place, and the glass, in WebKit at 1440, 390 and 320', { timeout: 600000 }, async () => { requireWebkit(); await walk(pw.webkit, {}, 'wk'); });
+test('the dashboard as one place, the glass and Your applications, in WebKit at 1440, 390 and 320', { timeout: 600000 }, async () => { requireWebkit(); await walk(pw.webkit, {}, 'wk'); });
 test('the same walk in Chrome', { skip: haveChrome ? false : 'Chrome binary absent', timeout: 600000 }, () => walk(pw.chromium, { executablePath: chromeBin }, 'cr'));

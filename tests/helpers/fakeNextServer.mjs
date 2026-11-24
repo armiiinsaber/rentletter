@@ -278,7 +278,8 @@ http.createServer(async (req, res) => {
   // facts yet (the empty profile), facts=half with about half of them (a name, a phone, a job and an
   // employer, a move in date; no income, no rental, no reference), facts=noname with the same half
   // and no name (a profile no save goes through for until it has one), facts=full with every one
-  // the page asks for (the occupants too); docs=id stores the ID alone.
+  // the page asks for (the occupants too); docs=id stores the ID alone; apps=3 gives it three
+  // applications sent (below).
   if (req.url.startsWith('/__fake/tenant')) {
     const q = new URL(req.url, 'http://localhost').searchParams;
     if (q.get('paused') === '1') process.env.TENANT_VAULT_ENABLED = 'false';
@@ -297,6 +298,11 @@ http.createServer(async (req, res) => {
       row = { id: randomUUID(), email, email_key: createHash('sha256').update(email).digest('hex').slice(0, 32), facts: shape === 'none' ? null : shape === 'half' ? half : shape === 'noname' ? { ...half, fullName: '' } : shape === 'full' ? { ...facts, numberOfOccupants: '1' } : facts, applications: [], facts_updated_at: new Date(Date.now() - 12 * 86400000).toISOString(), profile_revision: 0, created_at: now, updated_at: now, email_verified_at: now, last_active_at: now, vault_consent_at: null };
       t.tenant_profiles.push(row);
     }
+    // apps=3: three applications sent from this profile (the fixture's A1, A2 and A3, on the listing
+    // L1), newest first, so Your applications has three rows with the listing, the realtor and the
+    // status the profile route reads for each; apps=0 takes them away again.
+    if (q.get('apps') === '3') row.applications = [['A1A1', '2026-09-23T15:04:00.000Z'], ['B2B2', '2026-09-12T18:30:00.000Z'], ['C3C3', '2026-08-30T13:10:00.000Z']].map(([n, at]) => ({ applicationNumber: `RL-2026-TEST-${n}`, ownerToken: null, submittedAt: at, listingAddress: null, listingDescription: null }));
+    if (q.get('apps') === '0') row.applications = [];
     const token = randomBytes(32).toString('base64url');
     await kvSetJson(`tsession:${createHash('sha256').update(token).digest('hex')}`, { profileId: row.id, createdAt: now }, 30 * 24 * 3600);
     if (q.get('consent') !== '0' && !row.vault_consent_at) row.vault_consent_at = now;
