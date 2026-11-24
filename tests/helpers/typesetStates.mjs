@@ -55,6 +55,11 @@ async function* eachOpen(p, selector, label) {
 const CARD = '[role=button][aria-controls$="-body"]';
 const card = (p, name) => p.locator(CARD).filter({ hasText: name }).first();
 const expand = async (p, name) => { const c = card(p, name); await c.waitFor({ timeout: 30000 }); await c.scrollIntoViewIfNeeded(); await c.click(); await wait(p, 600); };
+// A press on a control in an open applicant card, which runs over 1000px tall: html scrolls
+// smoothly (components/ui.js, whatever the reduced motion setting), so scrollIntoViewIfNeeded
+// animates and a press can land where the control was, retried until it times out. The control
+// is scrolled to the middle at once, then pressed.
+const press = async (p, l) => { await l.waitFor({ timeout: 30000 }); await l.evaluate((n) => n.scrollIntoView({ block: 'center', behavior: 'instant' })); await wait(p, 300); await l.click(); };
 const LONG = { a1: 'Oluwaseun Adebayo Fitzgerald', a2: 'Anastasia Konstantinopoulou', a3: 'Bartholomew Nakamura Whitfield' };
 export const INVITE = 'a1b2c3d4e5f6a7b8c9d0';
 export const NARROW = [390, 320];
@@ -261,11 +266,11 @@ export const STATES = [
   { name: 'listing, the Fit of an applicant whose employer you confirmed', kind: 'realtor', widths: [390, 320, 1440, 1920], go: async (p) => {
     await open(p, '/listing/L1');
     const head = p.locator('#applicant-J1 [role=button][aria-controls$="-body"]').first();
-    await head.waitFor({ timeout: 30000 }); await head.scrollIntoViewIfNeeded();
-    if ((await head.getAttribute('aria-expanded')) !== 'true') { await head.click(); await wait(p, 600); }
+    await head.waitFor({ timeout: 30000 });
+    if ((await head.getAttribute('aria-expanded')) !== 'true') { await press(p, head); await wait(p, 600); }
     const fold = p.locator('#applicant-J1 button[aria-controls$="-fit"]').first();
     await fold.waitFor({ timeout: 15000 });
-    if ((await fold.getAttribute('aria-expanded')) !== 'true') { await fold.click(); await wait(p, 400); }
+    if ((await fold.getAttribute('aria-expanded')) !== 'true') { await press(p, fold); await wait(p, 400); }
     const section = p.locator('#applicant-J1 [data-fit-section]');
     await section.waitFor({ timeout: 15000 });
     const text = await section.innerText();
@@ -486,8 +491,8 @@ export const STATES = [
     const status = await p.evaluate(async () => (await fetch('/api/applicants/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ linkId: 'J1', key: 'party:P-co-J1:employer', on: true }) })).status);
     if (status !== 200) throw new Error(`the confirmation answered ${status}`);
     await open(p, '/listing/L1');
-    const c = p.locator('[aria-controls="applicant-J1-body"]').first(); await c.waitFor({ timeout: 30000 }); await c.scrollIntoViewIfNeeded(); await c.click(); await wait(p, 600);
-    const fold = p.locator('[aria-controls="applicant-J1-party-P-co-J1"]').first(); await fold.waitFor({ timeout: 30000 }); await fold.scrollIntoViewIfNeeded(); await fold.click(); await wait(p, 400);
+    await press(p, p.locator('[aria-controls="applicant-J1-body"]').first()); await wait(p, 600);
+    await press(p, p.locator('[aria-controls="applicant-J1-party-P-co-J1"]').first()); await wait(p, 400);
     const row = await p.locator('[data-party="P-co-J1"]').first().innerText();
     // The last two words are joined by a no break space (lib/typeset.js noWidow): \s matches it.
     if (!/employer\s+confirmed/i.test(row) || /verified/i.test(row)) throw new Error(`the co applicant's row reads ${JSON.stringify(row)}`);
