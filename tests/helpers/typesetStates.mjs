@@ -255,6 +255,24 @@ export const STATES = [
   // three groups, the preview beside it; one column with the back row under 1024px.
   { name: 'profile, the form and the preview', kind: 'realtor', widths: WIDE, go: async (p) => { await open(p, '/profile'); await p.locator('[data-invite-realtor]').waitFor({ timeout: 30000 }); await p.locator('[data-profile-preview] [data-report-brand]').waitFor({ state: 'attached', timeout: 30000 }); } },
   { name: 'listing, the desktop shell', kind: 'realtor', widths: DESK, go: (p) => open(p, '/listing/L1') },
+  // The Fit section of an applicant whose employer you confirmed (Applicant A1A1, lib/fitScore.js):
+  // the basis, the Ability fact and the Truth line say Employer confirmed, the Truth line once.
+  // Measured at the phone widths and at 1440 and 1920.
+  { name: 'listing, the Fit of an applicant whose employer you confirmed', kind: 'realtor', widths: [390, 320, 1440, 1920], go: async (p) => {
+    await open(p, '/listing/L1');
+    const head = p.locator('#applicant-J1 [role=button][aria-controls$="-body"]').first();
+    await head.waitFor({ timeout: 30000 }); await head.scrollIntoViewIfNeeded();
+    if ((await head.getAttribute('aria-expanded')) !== 'true') { await head.click(); await wait(p, 600); }
+    const fold = p.locator('#applicant-J1 button[aria-controls$="-fit"]').first();
+    await fold.waitFor({ timeout: 15000 });
+    if ((await fold.getAttribute('aria-expanded')) !== 'true') { await fold.click(); await wait(p, 400); }
+    const section = p.locator('#applicant-J1 [data-fit-section]');
+    await section.waitFor({ timeout: 15000 });
+    const text = await section.innerText();
+    const truth = await section.locator('[data-fit-pillar="truth"]').innerText();
+    if (!/Employer\s+confirmed\./.test(text) || /income\s+confirmed|confirmed\s+income/i.test(text) || (truth.match(/Employer\s+confirmed\s+by\s+you/g) || []).length !== 1) throw new Error(`the Fit section reads: ${text.replace(/\s+/g, ' ')}`);
+    await section.scrollIntoViewIfNeeded();
+  } },
   { name: 'circle, the desktop shell', kind: 'realtor', phase: 'alone', widths: DESK, go: async (p, f) => { await f('/__fake/circle?seed=1&brokerage=sent'); await open(p, '/circle'); await p.locator('[data-circle-list]').waitFor({ timeout: 30000 }); await wait(p, 400); }, after: (f) => f('/__fake/circle?seed=0') },
   // Circle in two columns from 1024px (components/dashboard/CircleView.js): empty, the invitation
   // with its two ways to start; five realtors and a request, a grid of cards; and the brokerage

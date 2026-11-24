@@ -144,8 +144,12 @@ async function walk(type, opts, tag) {
     assert.equal(await section.locator('[data-fit-pillar]').count(), 3, 'three pillars');
     assert.deepEqual(await section.locator('[data-fit-pillar]').evaluateAll((els) => els.map((e) => [e.dataset.fitPillar, e.dataset.fitAssessed])), [['ability', 'yes'], ['truth', 'yes'], ['conduct', 'yes']]);
     const sectionText = plain(await section.innerText());
-    assert.match(sectionText, /Current income confirmed\. Tenancy of 2 years stated\./, 'the basis line from named facts');
-    assert.match(sectionText, /Income confirmed by you, \w{3} 2026/, 'a dated fact');
+    assert.match(sectionText, /Employer confirmed\. Tenancy of 2 years stated\./, 'the basis line from named facts');
+    // The income fact and the employer fact both read Employer confirmed by you after the call: the
+    // Truth column prints the line once, dated.
+    const truthText = plain(await section.locator('[data-fit-pillar="truth"]').innerText());
+    assert.equal((truthText.match(/Employer\s+confirmed\s+by\s+you,\s+\w{3}\s+2026/g) || []).length, 1, 'a dated fact, printed once');
+    assert.doesNotMatch(sectionText, /income confirmed|confirmed income/i, 'nothing says the income was confirmed');
     assert.match(sectionText, /Tenancy of 2 years stated, \w{3} 2026/);
     assert.doesNotMatch(sectionText, /Identity matches documents/, 'a document adds nothing to a confirmed Truth');
     const titles = plain(await card1.locator('button[aria-controls$="-fit"]').innerText());
@@ -186,7 +190,7 @@ async function walk(type, opts, tag) {
     const first = page.locator('section.rl-card').nth(1);
     const firstText = plain(await first.innerText());
     assert.match(firstText, /Applicant A1A1/); assert.match(firstText, /4\.6\s*verified/i);
-    assert.match(firstText, /Fit 4\.6 on 3 of 3\nCurrent income confirmed\. Tenancy of 2 years stated\./);
+    assert.match(firstText, /Fit 4\.6 on 3 of 3\nEmployer confirmed\. Tenancy of 2 years stated\./);
     const b2 = plain(await page.locator('section.rl-card', { hasText: 'Applicant B2B2' }).first().innerText());
     assert.match(b2, /3\.9\s*stated/i); assert.match(b2, /Fit 3\.9 on 2 of 3, Conduct not assessed\nStated income\./);
     if (tag === 'wk') { await first.scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -60)); await shot(page, 'landlord-report-390'); }

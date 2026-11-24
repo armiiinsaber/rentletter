@@ -76,3 +76,54 @@ test('the pages that describe what is true today stay word for word', () => {
   assert.match(read('pages/compliance.js'), /Rentletter does not perform credit checks, criminal record checks, or background verification\./);
   assert.match(read('pages/terms.js'), /Automated output is not a background check, credit check, or guarantee/);
 });
+
+// The Fit words after a call to the employer (lib/fitScore.js): the basis, the Ability fact and the
+// income fact in Truth say Employer confirmed; matching documents and a stated income keep their words.
+const { computeFit } = await import('../lib/fitScore.js');
+const { reportText, verifiedLine } = await import('../lib/reportText.js');
+const FIT_NOW = Date.parse('2026-10-01T00:00:00Z');
+const fitOf = (confirmations, verification = null) => computeFit({ application: { annual_income: 90000, employer: 'Acme Ltd', prev_landlord_name: 'A. Patel', years_at_previous: '4', created_at: '2026-09-01T00:00:00Z' }, listing: { monthly_rent: 2500 }, verification, confirmations, now: FIT_NOW });
+const texts = (f) => f.pillars.flatMap((p) => p.facts.map((x) => x.text));
+
+test('after a call to the employer the Fit words say Employer confirmed, never that the income was', () => {
+  const called = fitOf({ employer: { at: '2026-09-20T00:00:00Z', by: 'Armin' } });
+  assert.equal(called.label, 'verified');
+  assert.equal(called.basis, 'Employer confirmed. Tenancy of 4 years stated.');
+  assert.deepEqual(called.pillars.find((p) => p.name === 'ability').facts.map((x) => x.text), ['Employer confirmed, rent share 33%']);
+  assert.deepEqual(called.pillars.find((p) => p.name === 'truth').facts.map((x) => x.text), ['Employer confirmed by you', 'Employer confirmed by you']);
+  for (const line of [called.basis, ...texts(called)]) assert.doesNotMatch(line, /income confirmed|confirmed income|income verified|verified income/i, line);
+  const docs = fitOf({}, { analyzedAt: '2026-08-01T00:00:00Z', nameMatch: 'match', documents: [{ documentType: 'pay stub' }], comparisons: [{ field: 'Income', stated: '$90,000', found: '$90,000', status: 'match' }, { field: 'Employer', stated: 'Acme Ltd', found: 'Acme', status: 'match' }] });
+  assert.equal(docs.basis, 'Current income matches documents. Tenancy of 4 years stated.', 'documents keep their words');
+  assert.ok(texts(docs).includes('Income matches documents'));
+  const stated = fitOf({});
+  assert.equal(stated.basis, 'Stated income. Tenancy of 4 years stated.'); assert.ok(texts(stated).includes('Income stated'));
+});
+
+test('the two Fit phrases are printed nowhere on the realtor, landlord or public side', () => {
+  const sources = [...files('components'), ...files('pages'), ...files('lib'), ...files('scripts')];
+  for (const p of sources) assert.doesNotMatch(read(p), /Current income confirmed|Income confirmed by you/, `${p} prints the old phrase`);
+});
+
+test('the pasted text carries what VERIFIED means once, under the list, with the date of the call', () => {
+  const payload = demoSnapshot('demo-carlaw');
+  const priya = payload.applicants.find((a) => a.fit && a.fit.label === 'verified');
+  const line = `${MEANING} on ${shortDate(priya.confirmations.employer.at)}.`;
+  const text = reportText(payload, { pageUrl: 'https://rentletter.ca/r/x' });
+  assert.match(text, /\(VERIFIED\)/);
+  assert.equal(text.split(MEANING).length - 1, 1, 'once per report');
+  assert.ok(text.includes(`\n\n${line}\n\n`), 'a line of its own under the list');
+  assert.ok(text.indexOf(line) > text.lastIndexOf(`${payload.applicants.length}. `), 'after the last applicant');
+  // No applicant reads VERIFIED: no line.
+  const none = { ...payload, applicants: payload.applicants.map((a) => ({ ...a, fit: a.fit && a.fit.label === 'verified' ? { ...a.fit, label: 'docs match' } : a.fit })) };
+  assert.doesNotMatch(reportText(none), /\(VERIFIED\)/); assert.ok(!reportText(none).includes(MEANING));
+  // A verified Fit without a number prints no VERIFIED, so no line.
+  const incomplete = { ...payload, applicants: [{ ...priya, fit: { ...priya.fit, score: null, incomplete: 'Not enough to score yet' } }] };
+  assert.ok(!reportText(incomplete).includes(MEANING));
+  // Two called the same day: one date. Different days: each with their name. A call without its date: none.
+  const twin = (at, name) => ({ ...priya, name, confirmations: { ...priya.confirmations, employer: { ...priya.confirmations.employer, at } } });
+  assert.equal(verifiedLine([twin('2026-11-20T15:00:00Z', 'A'), twin('2026-11-20T18:00:00Z', 'B')]), `${MEANING} on ${shortDate('2026-11-20T15:00:00Z')}.`);
+  assert.equal(verifiedLine([twin('2026-11-20T15:00:00Z', 'Ana Ruiz'), twin('2026-11-12T15:00:00Z', 'Ben Ode')]), `${MEANING}: Ana Ruiz on ${shortDate('2026-11-20T15:00:00Z')}, Ben Ode on ${shortDate('2026-11-12T15:00:00Z')}.`);
+  assert.equal(verifiedLine([twin(null, 'A')]), `${MEANING}.`);
+  // The line reads the frozen payload only: nothing is added to the report's data.
+  assert.doesNotMatch(read('lib/reportSnapshot.js'), /verifiedLine|VERIFIED_MEANING/);
+});

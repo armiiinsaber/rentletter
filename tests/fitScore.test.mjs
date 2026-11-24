@@ -45,7 +45,7 @@ test('Truth: stated alone reads 2.0 and is assessed; documents read 4.0 and docs
   assert.equal(pillar(s, 'truth').assessed, true); assert.equal(s.E, 2.0); assert.equal(s.label, 'stated');
   assert.equal(d.E, 4.0); assert.equal(d.label, 'docs match', 'documents matching is not verification'); assert.equal(d.incomeSource, 'verified'); assert.equal(d.incomeUsed, 90000);
   assert.equal(d.assessed, 3); assert.equal(d.score, 4.5); assert.equal(d.basis, 'Current income matches documents. Tenancy of 4 years stated.');
-  assert.equal(c.E, 5.0); assert.equal(c.label, 'verified'); assert.equal(c.score, 4.8); assert.equal(c.basis, 'Current income confirmed. Tenancy of 4 years stated.');
+  assert.equal(c.E, 5.0); assert.equal(c.label, 'verified'); assert.equal(c.score, 4.8); assert.equal(c.basis, 'Employer confirmed. Tenancy of 4 years stated.');
   assert.equal(c.confirmations.employer.by, 'Armin');
   assert.deepEqual(pillar(d, 'truth').facts.map((f) => [f.text, f.date, f.weight]), [['Income matches documents', 'Aug 2026', 1], ['Employer matches documents', 'Aug 2026', 1], ['Identity matches documents', 'Aug 2026', 1]]);
 });

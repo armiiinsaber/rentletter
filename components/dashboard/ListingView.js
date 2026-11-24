@@ -848,6 +848,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   };
   // The work behind the number (docs/fit-v2.md): the basis line, the three pillars with assessed or
   // not assessed and each dated fact, then the check docs items, which never moved the number.
+  // A fact line that reads the same as one above it is printed once: after a call to the employer
+  // the income fact and the employer fact both say Employer confirmed by you. The number still
+  // counts each fact (lib/fitScore.js).
+  const factLine = (f) => noWidow([f.text, f.date].filter(Boolean).join(', ') + (f.context ? ', context' : ''));
+  const factLines = (facts) => (facts || []).filter((f, i, all) => all.findIndex((g) => factLine(g) === factLine(f)) === i);
   const renderFit = (fit) => (
     <div data-fit-section="">
       {fit.basis ? <div data-fit-basis="" style={{ fontSize: 'var(--t-body-2)', color: C.ink, fontWeight: 600, lineHeight: 1.4, textWrap: 'balance' }}>{noWidow(fit.basis)}</div> : null}
@@ -859,10 +864,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           <div key={p.name} className="lv-pillar" data-fit-pillar={p.name} data-fit-assessed={p.assessed ? 'yes' : 'no'} style={{ minWidth: 0 }}>
             <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{p.label}</div>
             <div className="num lv-pillar-value" style={{ fontSize: 'var(--t-body-2)', color: p.assessed ? C.ink : C.inkMute, fontWeight: 600 }}>{p.assessed ? Number(p.value).toFixed(1) : 'Not assessed'}</div>
-            {(p.facts || []).slice(0, 4).map((f, i) => (
-              <div key={`${f.text}-${i}`} style={{ fontSize: 'var(--t-eyebrow)', color: f.weight > 0 ? C.inkSoft : C.inkMute, lineHeight: 1.4, marginTop: 2, overflowWrap: 'anywhere', textWrap: 'balance' }}>{noWidow([f.text, f.date].filter(Boolean).join(', ') + (f.context ? ', context' : ''))}</div>
+            {factLines(p.facts).slice(0, 4).map((f, i) => (
+              <div key={`${f.text}-${i}`} style={{ fontSize: 'var(--t-eyebrow)', color: f.weight > 0 ? C.inkSoft : C.inkMute, lineHeight: 1.4, marginTop: 2, overflowWrap: 'anywhere', textWrap: 'balance' }}>{factLine(f)}</div>
             ))}
-            {(p.facts || []).length > 4 ? <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, marginTop: 2 }}>{`${(p.facts || []).length - 4} more`}</div> : null}
+            {factLines(p.facts).length > 4 ? <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, marginTop: 2 }}>{`${factLines(p.facts).length - 4} more`}</div> : null}
           </div>
         ))}
       </div>
