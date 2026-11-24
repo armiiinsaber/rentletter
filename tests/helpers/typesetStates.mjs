@@ -156,6 +156,10 @@ async function tenantProfile(p, f, query) {
 export const STATES = [
   // ── public ──
   { name: 'home', kind: 'public', widths: WIDE, go: (p) => open(p, '/') },
+  // The homepage scrolled under its navigation, which is glass then (components/ui.js .rl-glass).
+  { name: 'home, the navigation scrolled', kind: 'public', widths: WIDE, go: async (p) => { await open(p, '/'); await p.evaluate(() => window.scrollTo({ top: 900, behavior: 'instant' })); await wait(p, 500); } },
+  // Where we fit: the black sentence line one and the grey one line two from 1024, each balanced under it.
+  { name: 'home, the Where we fit line', kind: 'public', widths: WIDE, go: async (p) => { await open(p, '/'); await p.locator('[data-where-we-fit]').scrollIntoViewIfNeeded(); await wait(p, 400); } },
   { name: 'sign in', kind: 'public', go: (p) => open(p, '/signin') },
   { name: 'sign in, an error', kind: 'public', go: (p) => open(p, '/signin?error=Sign-in%20is%20temporarily%20unavailable.') },
   { name: 'sign up', kind: 'public', go: (p) => open(p, '/signup') },
@@ -234,6 +238,13 @@ export const STATES = [
   { name: 'dashboard, empty', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/state?listings=0'); try { await open(p, '/dashboard'); } finally { await f('/__fake/state?listings=1'); } } },
   // ── the desktop dashboard (components/dashboard/DashShell.js) and the listing form, at every width ──
   { name: 'dashboard, the desktop shell with listings', kind: 'realtor', widths: WIDE, go: (p) => open(p, '/dashboard') },
+  // A navigation inside the dashboard (components/nav/RouteFrame.js): at 1440 through the sidebar,
+  // Pipeline then Circle; at 390 through the Circle tab. Nothing slides; the screen is measured
+  // where the navigation left it.
+  { name: 'dashboard, a navigation through the sidebar', kind: 'realtor', widths: WIDE, go: async (p) => { await desk(p); await open(p, '/dashboard'); await p.locator('[data-shell-place="pipeline"]').click(); await p.waitForURL((u) => u.searchParams.get('view') === 'pipeline', { timeout: 15000 }); await p.locator('[data-shell-place="circle"]').click(); await p.waitForURL((u) => u.pathname === '/circle', { timeout: 15000 }); await p.locator('[data-circle-list], [data-circle-empty]').first().waitFor({ timeout: 30000 }); await wait(p, 400); } },
+  { name: 'dashboard, a navigation through the phone tabs', kind: 'realtor', widths: WIDE, go: async (p) => { await open(p, '/dashboard'); await p.locator('[data-main-nav] [data-nav="circle"]').click(); await p.waitForURL((u) => u.pathname === '/circle', { timeout: 15000 }); await p.locator('[data-circle-list], [data-circle-empty]').first().waitFor({ timeout: 30000 }); await wait(p, 400); } },
+  // A sheet open: New listing over Circle, opened from the sidebar where it is, the view behind as it was.
+  { name: 'circle, New listing open over it', kind: 'realtor', widths: WIDE, go: async (p) => { await desk(p); await open(p, '/circle'); await noDraft(p); await p.locator('[data-shell-new]').click(); await p.locator('.lf-panel').waitFor({ timeout: 15000 }); await wait(p, 500); }, after: async (f, p) => { if (p) await noDraft(p); } },
   { name: 'dashboard, Pipeline view', kind: 'realtor', widths: WIDE, go: (p) => open(p, '/dashboard?view=pipeline') },
   // The other screens in the same shell: a view, a form and two reading columns, at the main area's left.
   { name: 'dashboard, Shared with you view, the desktop shell', kind: 'realtor', widths: DESK, go: (p) => open(p, '/dashboard?view=shared') },
@@ -360,6 +371,11 @@ export const STATES = [
     await p.locator('[data-vault-check="employer_name"]').getByRole('button', { name: /^Remove/ }).click(); await p.locator('[data-vault-confirm]').waitFor({ timeout: 15000 }); await wait(p, 300);
     yield 'tenant profile, a fact removal asked';
   } },
+  // The tenant's top bar (components/tenant/TenantBar.js): solid at the very top, glass scrolled.
+  { name: 'tenant profile, the top bar at the top', kind: 'tenant', phase: 'alone', widths: WIDE, go: (p, f) => tenantProfile(p, f, 'who=21&docs=1') },
+  { name: 'tenant profile, the top bar scrolled', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=21&docs=1'); await p.evaluate(() => window.scrollTo({ top: 900, behavior: 'instant' })); await wait(p, 500); } },
+  // Your applications with three rows: the address and the status, the date and the number.
+  { name: 'tenant profile, Your applications with three rows', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=22&docs=1&apps=3'); await p.locator('[data-application-row]').first().waitFor({ timeout: 15000 }); await p.evaluate(() => document.getElementById('applications').scrollIntoView({ block: 'start', behavior: 'instant' })); await wait(p, 400); } },
   { name: 'tenant profile, before the first document', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=2&consent=0'); await p.locator('[data-vault-consent]').waitFor({ timeout: 15000 }); }, steps: async function* (p) {
     await tap(p, 'Agree and continue'); await p.locator('[data-vault-add]').waitFor({ timeout: 15000 }); await wait(p, 300); yield 'tenant profile, agreed, no documents yet';
   } },
@@ -427,6 +443,16 @@ export const STATES = [
     const order = read.map((x) => (x.rtl ? 'fa' : /^Translated from Persian, approved by the tenant$/.test(x.text.trim()) || x.text.startsWith('Translated from Persian') ? 'label' : 'en')).join(' ');
     if (order !== 'en en label fa fa') throw new Error(`the shared About me reads ${order}`);
     if (read.some((x) => (x.rtl ? x.dir !== 'rtl' || x.align !== 'right' : x.dir !== 'ltr'))) throw new Error(`the shared About me is set ${JSON.stringify(read)}`);
+  }, steps: async function* (p) {
+    // The landlord's report for the same listing: the English first, its label, then the original
+    // from the right (lib/listingReportData.js, pages/r/[token].js).
+    const token = await report(p); await open(p, `/r/${token}`); await p.locator('[data-tenant-about="translated"]').waitFor({ timeout: 30000 });
+    // The translated block (another applicant on this listing may carry words of their own in English).
+    const read = await p.locator('[data-tenant-about="translated"] p').evaluateAll((els) => els.map((el) => ({ dir: getComputedStyle(el).direction, align: getComputedStyle(el).textAlign, text: el.textContent, rtl: /[\u0600-\u06ff]/.test(el.textContent) })));
+    const order = read.map((x) => (x.rtl ? 'fa' : /^Translated from Persian, approved by the tenant$/.test(x.text.replace(/\s+/g, ' ').trim()) ? 'label' : 'en')).join(' ');
+    if (order !== 'en en label fa fa') throw new Error(`the landlord report's About me reads ${order}`);
+    if (read.some((x) => (x.rtl ? x.dir !== 'rtl' || x.align !== 'right' : x.dir !== 'ltr'))) throw new Error(`the landlord report's About me is set ${JSON.stringify(read.map(({ dir, align, rtl }) => ({ dir, align, rtl })))}`);
+    yield 'landlord report, About me translated and approved';
   } },
   // The checklist line "Co applicant: {long name}": the label stands above the name where both
   // do not fit on one line (components/ui.js LabelValue), so no word is left alone.
