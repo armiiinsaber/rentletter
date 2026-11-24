@@ -471,11 +471,12 @@ export const STATES = [
     const c = p.locator('[aria-controls="applicant-J1-body"]').first(); await c.waitFor({ timeout: 30000 }); await c.scrollIntoViewIfNeeded(); await c.click(); await wait(p, 600);
     const fold = p.locator('[aria-controls="applicant-J1-party-P-co-J1"]').first(); await fold.waitFor({ timeout: 30000 }); await fold.scrollIntoViewIfNeeded(); await fold.click(); await wait(p, 400);
     const row = await p.locator('[data-party="P-co-J1"]').first().innerText();
-    if (!/employer confirmed/i.test(row) || /verified/i.test(row)) throw new Error(`the co applicant's row reads ${JSON.stringify(row)}`);
+    // The last two words are joined by a no break space (lib/typeset.js noWidow): \s matches it.
+    if (!/employer\s+confirmed/i.test(row) || /verified/i.test(row)) throw new Error(`the co applicant's row reads ${JSON.stringify(row)}`);
   }, steps: async function* (p) {
     const token = await report(p); await open(p, `/r/${token}`); await p.locator('[data-verified-meaning]').first().waitFor({ timeout: 30000 });
     const people = await p.locator('[data-parties-row]').filter({ hasText: 'Jordan Lee' }).first().innerText();
-    if (!/Employer confirmed/.test(people) || /verified/i.test(people)) throw new Error(`the landlord report's people read ${JSON.stringify(people)}`);
+    if (!/Employer\s+confirmed/.test(people) || /verified/i.test(people)) throw new Error(`the landlord report's people read ${JSON.stringify(people)}`);
     yield 'landlord report, a co applicant whose employer you confirmed';
   } },
   // After the realtor's shared profile states: its last steps send an application to L1 under the same sample name.
