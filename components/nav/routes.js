@@ -6,7 +6,7 @@
 // data starts loading on the touch that begins the tap (prefetch), so it is usually in hand by the
 // time the page opens. The session, entitlement and ownership checks stay on the server,
 // in getServerSideProps and in each API route; nothing here decides who may see what.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useSyncExternalStore } from 'react';
 import Router from 'next/router';
 
 // The realtor routes, the live app and the sandbox, with how deep each sits (a push goes deeper,
@@ -33,6 +33,37 @@ export function routeOf(href) {
   return null;
 }
 export const isRealtorHref = (href) => !!routeOf(href);
+
+// ── The main sections and the place each screen marks ────────────────────────────────────────
+// The five places of the shell (components/dashboard/DashShell.js): Listings, Pipeline and Shared
+// with you (views of the dashboard), Circle and Profile. A listing marks Listings, its section.
+// Between two main sections nothing slides at any width (components/nav/RouteFrame.js); the slide
+// is only for going into one thing, a listing, and back out, and only under 1024px.
+const VIEWS = ['pipeline', 'shared'];
+export function placeOf(href) {
+  const r = routeOf(href); if (!r) return null;
+  const u = parse(href); const v = u ? u.searchParams.get('view') : null;
+  const page = r.kind === 'demo' ? r.demo : r.kind;
+  if (page === 'dashboard') return VIEWS.includes(v) ? v : 'listings';
+  if (page === 'listing') return 'listings';
+  if (page === 'profile' || page === 'circle') return page;
+  return null;
+}
+export const isMainSection = (route) => !!route && (route.kind === 'demo' ? route.demo !== 'listing' : ['dashboard', 'profile', 'circle'].includes(route.kind));
+// The address on view, path and query: a tap on the place already on view does nothing.
+export const isHere = (href) => {
+  if (typeof window === 'undefined') return false;
+  const u = parse(href); return !!u && u.pathname + u.search === window.location.pathname + window.location.search;
+};
+
+// ── Where the realtor is going: the place they tapped, marked at once ─────────────────────────
+// The frame sets it when a navigation starts and clears it when it ends (components/nav/
+// RouteFrame.js); the sidebar and the phone tabs mark that place the moment it is tapped, while
+// the screen before it is still on view.
+let heading = null; const headingSubs = new Set();
+export function setHeading(url) { if (heading === url) return; heading = url; for (const fn of headingSubs) fn(); }
+const subscribeHeading = (fn) => { headingSubs.add(fn); return () => headingSubs.delete(fn); };
+export const useHeading = () => useSyncExternalStore(subscribeHeading, () => heading, () => null);
 
 // ── What the realtor has already seen this session, so the next screen can draw it at once. ────
 const seen = { profile: null, listings: new Map(), signals: null, signalsAt: 0, applicants: new Map() };
@@ -221,6 +252,7 @@ export function go(href, { back = null, replace = false } = {}) {
   nextDirection = back == null ? null : back ? 'back' : 'push';
   const u = parse(href);
   const target = u.pathname + u.search + u.hash;
+  setHeading(target); // marked in the same moment as the tap, before the router starts
   if (!replace && r.kind !== 'demo') writeAhead(target);
   if (replace) Router.replace(target); else Router.push(target);
 }
@@ -232,6 +264,7 @@ export function goView(href, { replace = false } = {}) {
   if (typeof window === 'undefined') return;
   const u = parse(href); if (!u) return;
   const to = u.pathname + u.search + u.hash;
+  if (!replace) setHeading(to);
   if (replace) Router.replace(to, undefined, { shallow: true, scroll: false }); else Router.push(to, undefined, { shallow: true, scroll: false });
 }
 

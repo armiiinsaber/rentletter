@@ -1,7 +1,7 @@
 // components/Sheet.js
 // The one sheet: every modal, confirm and panel on the realtor side is this iOS style bottom
 // sheet. It rises from the bottom over 320ms on the iOS curve (lib/motion.js), the page behind
-// dims and scales back a little, a grab handle sits at the top, and dragging the handle or the
+// dims (and on a phone scales back a little), a grab handle sits at the top, and dragging the handle or the
 // header (anything marked data-sheet-drag) down dismisses it: the sheet follows the finger, resists
 // an upward pull, and snaps back unless dragged far enough or flicked. Tapping the dimmed area or
 // pressing Escape dismisses it too, except while busy; with unsaved input (dirty) it asks first.
@@ -28,9 +28,18 @@ export function lockPage() {
   const html = document.documentElement; const body = document.body;
   if (locks === 0) {
     const y = window.scrollY || html.scrollTop || 0;
-    saved = { y, body: body.getAttribute('style'), behavior: html.style.scrollBehavior };
+    // What stays on screen as the page scrolls (data-stuck: the sidebar, the tenant's top bar, the
+    // phone's strength bar, a side column): pinning the body drops each to where it sits in the
+    // page, so each is moved back by exactly that much while the sheet is up, and nothing behind
+    // the sheet shifts.
+    const stuck = [...document.querySelectorAll('[data-stuck]')].map((el) => [el, el.getBoundingClientRect().top]);
+    saved = { y, body: body.getAttribute('style'), behavior: html.style.scrollBehavior, stuck: [] };
     html.style.setProperty('--rl-sheet-y', `${y}px`);
     body.style.position = 'fixed'; body.style.top = `-${y}px`; body.style.left = '0'; body.style.right = '0'; body.style.width = '100%'; body.style.overflow = 'hidden';
+    for (const [el, top] of stuck) {
+      const shift = top - el.getBoundingClientRect().top;
+      if (Math.abs(shift) > 0.5) { el.style.setProperty('translate', `0 ${shift}px`); saved.stuck.push(el); }
+    }
   }
   locks += 1;
   let released = false;
@@ -38,11 +47,12 @@ export function lockPage() {
     if (released) return; released = true;
     locks -= 1;
     if (locks > 0 || !saved) return;
-    const { y, body: style, behavior } = saved; saved = null;
+    const { y, body: style, behavior, stuck } = saved; saved = null;
     // The page is at full size again by now (sinkPage below); any last fraction of the scale is
     // dropped before the position comes back, or WebKit would shift it while the scale finished.
     clearTimeout(closingTimer); html.classList.remove('rl-sheet-open', 'rl-sheet-closing');
     if (style == null) body.removeAttribute('style'); else body.setAttribute('style', style);
+    for (const el of stuck) el.style.removeProperty('translate');
     // Never a smooth scroll back: the page is simply where it was. The page's own smooth scrolling
     // is switched off first and the style flushed, then the jump is explicitly instant.
     html.style.scrollBehavior = 'auto';
@@ -211,11 +221,13 @@ export default function Sheet({
   );
 }
 
-// The page behind an open sheet dims (the scrim) and scales back a little, about the middle of
-// what was on screen. Rendered once by GlobalStyle (components/ui.js) through SHEET_PAGE_CSS.
+// The page behind an open sheet dims (the scrim) and, on a phone, scales back a little, about the
+// middle of what was on screen. From 1024px a sheet is a panel over the view and nothing behind it
+// moves: the sidebar and the header stay exactly where they were. Rendered once by GlobalStyle
+// (components/ui.js) through SHEET_PAGE_CSS.
 export const SHEET_PAGE_CSS = `
   html.rl-sheet-open { overscroll-behavior: none; }
-  @media (prefers-reduced-motion: no-preference) {
+  @media (prefers-reduced-motion: no-preference) and (max-width: 1023.98px) {
     html.rl-sheet-open #__next, html.rl-sheet-closing #__next { transition: scale ${NATIVE.sheet}ms ${CURVE.ios}, border-radius ${NATIVE.sheet}ms ${CURVE.ios}; transform-origin: 50% calc(var(--rl-sheet-y, 0px) + 50vh); }
     html.rl-sheet-open #__next { scale: 0.97; border-radius: ${R.modal}px; overflow: hidden; }
   }

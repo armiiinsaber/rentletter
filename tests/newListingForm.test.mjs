@@ -70,7 +70,7 @@ test('the draft: this browser only, cleared on save, and a storage that throws b
     assert.equal(F.readListingDraft('k'), null); F.writeListingDraft('k', { form: {} }); F.clearListingDraft('k');
   } finally { delete globalThis.window; }
   assert.match(src, /clearListingDraft/); assert.doesNotMatch(src, /fetch\(|sessionStorage|document\.cookie/, 'the draft never leaves the browser');
-  assert.match(readFileSync(new URL('../components/dashboard/HomeView.js', import.meta.url), 'utf8'), /clearListingDraft\(draftKey\);/, 'cleared on save');
+  assert.match(readFileSync(new URL('../components/listings/NewListingPanel.js', import.meta.url), 'utf8'), /clearListingDraft\(draftKey\);/, 'cleared on save');
 });
 
 test('no address service: no vendor, no key, no network call', () => {

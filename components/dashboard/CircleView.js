@@ -374,7 +374,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
 
                 {/* 4. Beside the work from 1024px, on screen as the page scrolls: Invite a realtor
                     (the link, and who joined through it), then the realtor's own brokerage record. */}
-                <aside className="cv-aside" aria-label="Invite a realtor and your brokerage">
+                <aside className="cv-aside" aria-label="Invite a realtor and your brokerage" data-stuck="">
                   <InviteRealtor full />
                   {form && (
                     <>

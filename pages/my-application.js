@@ -358,13 +358,13 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
           <button type="button" onClick={signOut} className="mp-link">Sign out</button>
         </header>
         {/* The phone: the strength bar and the section chips, under the header and stuck there. */}
-        <div className="tp-top" data-tp-top="">
+        <div className="tp-top" data-tp-top="" data-stuck="">
           <StrengthBar strength={strength} onOpen={() => setSheet(true)} />
           <SectionChips states={states} current={current} onGo={toSection} />
         </div>
         <div className="tp-grid">
           <SectionMenu states={states} current={current} onGo={toSection} />
-          <aside className="tp-aside" aria-label="Profile strength and applying">
+          <aside className="tp-aside" aria-label="Profile strength and applying" data-stuck="">
             <StrengthPanel strength={strength} onStep={goStep} />
             {applyBox('side')}
           </aside>

@@ -20,13 +20,15 @@
 // locked (the soft paywall): the sidebar keeps only the logo, as the header does today.
 // newPrimary: whether New listing is the one red action of this view. A view with a red action of
 // its own (a listing) passes false and the button is outlined.
+import { useState } from 'react';
 import { C } from '../theme';
 import { Wordmark, Icon } from '../ui';
 import DashboardHeader from './DashboardHeader';
 import { useCirclePending, CIRCLE_PATH } from './MainNav';
 import { logoProps } from './logoNav';
 import { useAdapter } from '../../lib/dashboardAdapter';
-import { go, goView, linkProps, routeOf } from '../nav/routes';
+import { go, goView, linkProps, routeOf, isHere, placeOf, useHeading } from '../nav/routes';
+import NewListingPanel from '../listings/NewListingPanel';
 
 export const HOME_VIEWS = ['listings', 'pipeline', 'shared'];
 export const viewHref = (home, view) => (view === 'listings' ? home : `${home}${home.includes('?') ? '&' : '?'}view=${view}`);
@@ -34,10 +36,18 @@ export const viewOf = (query) => { const v = query && typeof query.view === 'str
 const onDashboard = () => { const r = routeOf(window.location.pathname + window.location.search); return !!r && (r.kind === 'dashboard' || (r.kind === 'demo' && r.demo === 'dashboard')); };
 const plainClick = (e) => !(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey);
 
-export default function DashShell({ profile, signals = null, onAssistantAction, nav = null, current = null, locked = false, onNewListing = null, newPrimary = true, newRef = null, lead = null, children }) {
+export default function DashShell({ profile, signals = null, onAssistantAction, nav = null, current: onView = null, locked = false, onNewListing = null, newPrimary = true, newRef = null, lead = null, children }) {
   const adapter = useAdapter();
   const home = adapter.paths.home;
   const pending = useCirclePending();
+  // The place marked: the one tapped, from the moment it is tapped (components/nav/RouteFrame.js
+  // marks it while the screen before is still on view), else the one on view.
+  const heading = useHeading();
+  const current = (heading && placeOf(heading)) || onView;
+  // New listing over this view, where the view has no form of its own (Circle, Profile, a listing):
+  // the panel opens here and nothing behind it moves (components/listings/NewListingPanel.js).
+  const [newOpen, setNewOpen] = useState(false);
+  const [newError, setNewError] = useState('');
   const places = [
     ['listings', home, 'Listings'],
     ['pipeline', viewHref(home, 'pipeline'), 'Pipeline'],
@@ -50,19 +60,22 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
     onClick: (e) => {
       if (!plainClick(e)) return;
       e.preventDefault();
+      // The place already on view: nothing at all, no route, no reload, no scroll.
+      if (isHere(href)) return;
       // A view of the dashboard while on the dashboard: in place.
       if (HOME_VIEWS.includes(key) && onDashboard()) { if (current !== key) goView(href); return; }
       go(href, { back: key === 'listings' });
     },
   });
-  const newListing = (e) => { if (onNewListing) onNewListing(e); else go(`${home}${home.includes('?') ? '&' : '?'}new=1`); };
+  const newListing = (e) => { if (onNewListing) onNewListing(e); else { setNewError(''); setNewOpen(true); } };
   return (
     <div className="ds" data-shell="">
       <div className="ds-main">
         <DashboardHeader profile={profile} signals={signals} onAssistantAction={onAssistantAction} nav={nav} lead={lead} />
+        {newError ? <div role="alert" className="ds-alert">{newError}</div> : null}
         {children}
       </div>
-      <aside className="ds-side" data-shell-side="">
+      <aside className="ds-side" data-shell-side="" data-stuck="">
         {/* The same 44px wordmark link as the header's (.rl-mark); on a phone it is hidden with the
             sidebar and the header's is the one on screen. */}
         <a {...logoProps(home)} aria-label="Rentletter dashboard" className="rl-mark ds-logo"><Wordmark /></a>
@@ -82,7 +95,12 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           </nav>
         )}
       </aside>
+      {!onNewListing && !locked ? (
+        <NewListingPanel open={newOpen} profile={profile} userId={profile && profile.id} onError={setNewError}
+          onClose={() => { setNewOpen(false); const b = [...document.querySelectorAll('[data-shell-new]')].find((x) => x.getClientRects().length); if (b) setTimeout(() => b.focus({ preventScroll: true }), 0); }} />
+      ) : null}
       <style jsx>{`
+        .ds-alert { margin: 0 var(--ds-pad, clamp(16px, 4vw, 32px)) var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.dangerTint}; border-left: 3px solid ${C.danger}; border-radius: var(--btn-radius); font-size: var(--t-body-2); color: ${C.ink}; }
         .ds-side { display: none; }
         .ds-main { min-width: 0; }
         @media (min-width: 1024px) {

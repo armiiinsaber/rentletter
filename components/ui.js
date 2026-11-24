@@ -290,7 +290,7 @@ export const ScrollHeader = ({ children, maxWidth = 1200 }) => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
   return (
-    <header ref={ref} className="rl-header">
+    <header ref={ref} className="rl-header" data-stuck="">
       <div className="rl-header-inner" style={{ maxWidth }}>{children}</div>
     </header>
   );

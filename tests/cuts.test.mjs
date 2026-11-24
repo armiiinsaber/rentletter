@@ -66,7 +66,8 @@ test('just in time: province at the first listing, signing name at the first sen
   assert.equal(`${BRANDING_HINT} ${BRANDING_HINT_LINK}`, 'The report carries your name only. Add a logo and brokerage on your profile.');
   const modal = read(`${root}components/listings/ListingSetupModal.js`);
   assert.match(modal, /askProvince = false/); assert.match(modal, /\.\.\.\(askProvince && province \? \{ province \} : \{\}\)/); assert.match(modal, /const provinceOk = !askProvince \|\| !!province;/);
-  const home = read(`${root}components/dashboard/HomeView.js`);
+  // The new listing form and its saves, wherever it opens (components/listings/NewListingPanel.js).
+  const home = read(`${root}components/listings/NewListingPanel.js`);
   assert.match(home, /askProvince=\{needsProvince\(profile\)\}/);
   assert.match(home, /const \{ province, \.\.\.values \} = input \|\| \{\};/);
   assert.match(home, /body: JSON\.stringify\(\{ province \}\)/, 'the province goes to the profile through its route');

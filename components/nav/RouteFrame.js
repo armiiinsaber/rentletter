@@ -8,8 +8,11 @@
 //   the tap, and otherwise the door Loader holds its place, with the header and the way back
 //   live, until the page lands. The page then shows itself in one step once its own data is in
 //   (components/brand/Loader.js Reveal).
-// The sandbox has its data in memory, so its next view is simply drawn. Either way the screen
-// pushes in from the right, or back from the left (lib/motion.js NAV_CSS, slideIn). It also
+// The sandbox has its data in memory, so its next view is simply drawn. The dashboard is one place:
+// at 1024 and wider no navigation slides (the sidebar and the header controls never move, only the
+// main area changes, at once), and under 1024 nothing slides between two main sections. Only going
+// into a listing and back out of it, under 1024, pushes in from the right or back from the left
+// (lib/motion.js NAV_CSS, slideIn). The place tapped is marked at once (routes.js setHeading). It also
 // installs the one press mechanism (lib/motion.js installPress, switched off on the tenant and
 // landlord pages, where nothing animates), the 44 by 44 hit areas (installHitAreas) and the tap
 // resolver (installTapResolver), which work on every page, and hosts the opening screen
@@ -38,7 +41,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import Router, { useRouter } from 'next/router';
-import { routeOf, takeDirection, forgetData, settleAhead, alignAhead, trailLanded, trailFix, trailPopped, trailBack, rememberScreen, seenScreen, seenScreenView } from './routes';
+import { routeOf, takeDirection, forgetData, settleAhead, alignAhead, trailLanded, trailFix, trailPopped, trailBack, rememberScreen, seenScreen, seenScreenView, isMainSection, setHeading } from './routes';
 import RouteLoader, { LOAD_WAIT } from './RouteLoader';
 import { installEdgeBack, captureScreen, Snapshot, PARALLAX, DIM } from './EdgeBack';
 import AppStart from '../brand/AppStart';
@@ -57,6 +60,8 @@ const sameScreen = (a, b) => { const x = routeOf(a); const y = routeOf(b); retur
 // its update fails: neither is an error of the page, so both are handled, and `after` runs once it
 // is over. A failure inside the update itself still surfaces, through updateCallbackDone.
 const settled = (vt, after) => { vt.ready.catch(() => {}); vt.finished.catch(() => {}).finally(after); };
+// The desktop shell's width (components/dashboard/DashShell.js): the sidebar is on screen.
+const wideScreen = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(min-width: 1024px)').matches;
 
 export default function RouteFrame({ children }) {
   const { pathname } = useRouter();
@@ -92,6 +97,8 @@ export default function RouteFrame({ children }) {
     // The pill: the same screen again, in place, with the watch from the start.
     retryRoute.current = (url) => { retrying = { url, round: 1 }; Router.replace(url, undefined, { scroll: false }); };
     const start = (url, opts = {}) => {
+      // The place tapped is marked at once, in the sidebar and the phone tabs (routes.js setHeading).
+      if (!QUIET.test(window.location.pathname)) setHeading(url);
       // A view of the same screen chosen in place (components/nav/routes.js goView: Listings,
       // Pipeline and Shared with you on the dashboard): no transition, no Loader, nothing moves.
       if (opts.shallow && sameScreen(at.current, url)) return;
@@ -106,6 +113,13 @@ export default function RouteFrame({ children }) {
       const id = ++seq; active = { id, url };
       const again = retrying && samePath(retrying.url, url) ? retrying : null; retrying = null;
       const dir = takeDirection() || (to.depth < from.depth ? 'back' : 'push');
+      // Nothing slides at 1024 and wider, on any navigation: the sidebar and the header controls
+      // stay exactly where they are and only the main area changes, at once. Under 1024 nothing
+      // slides between two main sections either (routes.js isMainSection); the push and the back
+      // are only for going into one thing, a listing, and back out of it. A still navigation starts
+      // no view transition: rendering never pauses, so the place tapped is marked at once while
+      // the screen before it stays live until the next one (or its Loader) takes its place.
+      const still = wideScreen() || (isMainSection(from) && isMainSection(to));
       // Back to the screen still underneath: that screen, at once.
       const underneath = samePath(url, at.current);
       const holds = to.kind !== 'demo' && !opts.shallow && !underneath; // the frame holds this screen's place until its page lands
@@ -127,7 +141,7 @@ export default function RouteFrame({ children }) {
       if (holds && shown && samePath(shown, url)) { show(); return; }
       // Not seen recently: the page itself if it lands within DOOR.loaderDelayMs, else the Loader.
       const brief = holds && !cached ? new Promise((res) => { landed = res; setTimeout(res, DOOR.loaderDelayMs); }) : null;
-      if (typeof document.startViewTransition === 'function') {
+      if (!still && typeof document.startViewTransition === 'function') {
         html.dataset.nav = prefersReducedMotion() ? 'fade' : dir;
         // The sandbox's next view lands in a frame or two; the transition waits for it (at most 600ms).
         const ready = holds || underneath ? null : new Promise((res) => { landed = res; setTimeout(res, 600); });
@@ -135,14 +149,16 @@ export default function RouteFrame({ children }) {
         moving = vt;
         settled(vt, () => { if (moving === vt) moving = null; delete html.dataset.nav; });
       } else if (brief) {
-        later = dir;
-        brief.then(() => { if (!active || active.id !== id) return; later = null; show(); slideIn(document.getElementById('__next'), dir); });
+        later = still ? null : dir;
+        brief.then(() => { if (!active || active.id !== id) return; later = null; show(); if (!still) slideIn(document.getElementById('__next'), dir); });
       } else {
         show();
-        if (holds || underneath) slideIn(document.getElementById('__next'), dir); else later = dir;
+        if (still) later = null;
+        else if (holds || underneath) slideIn(document.getElementById('__next'), dir); else later = dir;
       }
     };
     const done = (url) => {
+      setHeading(null);
       active = null; shown = null; retrying = null; clearTimeout(watch); clearTimeout(clearing);
       settleAhead(); trailLanded(url);
       at.current = url; scope(new URL(url, window.location.href).pathname);
@@ -159,6 +175,8 @@ export default function RouteFrame({ children }) {
     const failed = (err, url) => {
       clearTimeout(watch); active = null;
       if (url) forgetData(url);
+      // A cancelled navigation is usually followed at once by the next, which marks its own place.
+      setHeading(null);
       if (landed) { landed(); landed = null; } later = null;
       if (err && err.cancelled) {
         if (retrying && samePath(retrying.url, url)) return; // a retry of this screen takes over the Loader

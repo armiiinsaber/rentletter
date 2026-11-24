@@ -15,8 +15,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import { C } from '../theme';
 import { GlobalStyle, Icon } from '../ui';
-import DashboardHeader from '../dashboard/DashboardHeader';
-import { seenListing, seenProfile, linkProps } from './routes';
+import DashShell from '../dashboard/DashShell';
+import { seenListing, seenProfile, linkProps, placeOf } from './routes';
 import { Snapshot } from './EdgeBack';
 import { ScreenLoader } from '../brand/Loader';
 import { displayLabel } from '../../lib/listingAddress';
@@ -50,20 +50,25 @@ export function LoadFailed({ onRetry, style }) {
   );
 }
 
-// The frame each screen has: the realtor's header, then the page's own width and paddings.
-const Page = ({ maxWidth, padding, children, label, waiting = true, nav = null }) => (
+// The frame each screen has: the realtor's shell (components/dashboard/DashShell.js), so under
+// 1024px the header and the tabs and from 1024px the sidebar with the place on its way marked and
+// the header controls, exactly where the screen draws them; then the page's own width and paddings.
+const Page = ({ maxWidth, padding, children, label, waiting = true, nav = null, place = null }) => (
   <>
     <GlobalStyle />
+    <style>{'@media (min-width: 1024px) { .rl-ld-narrow { display: none !important; } }'}</style>
     <div style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }} data-route-loading={waiting ? label : undefined}>
-      <DashboardHeader profile={seenProfile() || {}} nav={nav} />
-      <div style={{ maxWidth, margin: '0 auto', padding }}>{children}</div>
+      <DashShell profile={seenProfile() || {}} nav={nav} current={place}>
+        <div style={{ maxWidth, margin: '0 auto', padding }}>{children}</div>
+      </DashShell>
     </div>
   </>
 );
 // The way back, where the screen has it, exactly as the screen draws it (components/dashboard/
 // ListingView.js, ProfileView.js), so it does not move when the screen appears.
-const Back = ({ label, tight = false }) => (
-  <a {...linkProps('/dashboard', { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: tight ? undefined : 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: tight ? 'var(--s-4)' : undefined }}>
+// From 1024px a screen whose way back is the sidebar's (the profile) draws none, so neither does this.
+const Back = ({ label, tight = false, wide = true }) => (
+  <a {...linkProps('/dashboard', { back: true })} className={wide ? undefined : 'rl-ld-narrow'} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: tight ? undefined : 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: tight ? 'var(--s-4)' : undefined }}>
     <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> {label}
   </a>
 );
@@ -88,9 +93,9 @@ export default function RouteLoader({ route, onRetry }) {
   if (route.shot && !route.failed) return <Snapshot shot={route.shot} />;
   const f = FRAMES[route.kind] || FRAMES.page;
   return (
-    <Page label={route.failed ? 'failed' : route.kind} waiting={!route.failed} maxWidth={f.maxWidth} padding={f.padding} nav={route.kind === 'dashboard' ? 'listings' : route.kind === 'circle' ? 'circle' : null}>
+    <Page label={route.failed ? 'failed' : route.kind} waiting={!route.failed} maxWidth={f.maxWidth} padding={f.padding} nav={route.kind === 'dashboard' ? 'listings' : route.kind === 'circle' ? 'circle' : null} place={placeOf(route.url || route.path)}>
       <Head><title>{titleOf(route)}</title></Head>
-      {f.back ? <Back label={f.back} tight={route.kind === 'listing'} /> : null}
+      {f.back ? <Back label={f.back} tight={route.kind === 'listing'} wide={route.kind === 'listing'} /> : null}
       {route.failed ? <LoadFailed onRetry={onRetry} /> : <ScreenLoader label={f.label} />}
     </Page>
   );

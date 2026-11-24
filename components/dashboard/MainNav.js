@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { C } from '../theme';
 import { useAdapter } from '../../lib/dashboardAdapter';
-import { linkProps } from '../nav/routes';
+import { linkProps, isHere, placeOf, useHeading } from '../nav/routes';
 
 export const CIRCLE_PATH = '/circle';
 // The count as last read this session, so the number does not blink between the two screens.
@@ -41,16 +41,27 @@ export function useCirclePending() {
   return pending;
 }
 
-export default function MainNav({ current }) {
+// The tab a place belongs to: Circle, or Listings for the dashboard's views and a listing.
+const tabOf = (place) => (place === 'circle' ? 'circle' : place === 'listings' || place === 'pipeline' || place === 'shared' ? 'listings' : null);
+
+export default function MainNav({ current: onView }) {
   const adapter = useAdapter();
   const pending = useCirclePending();
+  // The tab tapped is marked at once (components/nav/RouteFrame.js), else the one on view.
+  const heading = useHeading();
+  const current = (heading && tabOf(placeOf(heading))) || onView;
   // In the sandbox the Circle is the sandbox's own screen (lib/demoAdapter.js DEMO_PATHS.circle).
   const to = (key, href) => (key === 'circle' && adapter.paths.circle ? adapter.paths.circle : href);
-  const item = (key, href, label, extra = null) => (
-    <a {...linkProps(to(key, href), { back: key === 'listings' })} aria-current={current === key ? 'page' : undefined} className="mn-item" data-nav={key}>
-      {label}{extra}
-    </a>
-  );
+  const item = (key, href, label, extra = null) => {
+    const link = linkProps(to(key, href), { back: key === 'listings' });
+    // The tab already on view: nothing at all, no route, no reload, no scroll.
+    const onClick = (e) => { if (!e.defaultPrevented && e.button === 0 && !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) && isHere(link.href)) { e.preventDefault(); return; } link.onClick(e); };
+    return (
+      <a {...link} onClick={onClick} aria-current={current === key ? 'page' : undefined} className="mn-item" data-nav={key}>
+        {label}{extra}
+      </a>
+    );
+  };
   return (
     <nav aria-label="Main" className="mn" data-main-nav="">
       {item('listings', adapter.paths.home, 'Listings')}

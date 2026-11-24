@@ -121,7 +121,7 @@ export function goToSection(key, { instant = false } = {}) {
 
 export function SectionMenu({ states, current, onGo }) {
   return (
-    <nav className="tp-menu" aria-label="Profile sections" data-tp-menu="">
+    <nav className="tp-menu" aria-label="Profile sections" data-tp-menu="" data-stuck="">
       <ul className="tp-menu-list">
         {SECTIONS.map((s) => (
           <li key={s.key}>

@@ -91,7 +91,7 @@ export default function ProfileView({ initialProfile }) {
               </div>
             </div>
             {/* From 1024px: how others see the realtor, live, on screen as the page scrolls. */}
-            <aside className="pv-aside" aria-labelledby="pv-preview-title" data-profile-preview="">
+            <aside className="pv-aside" aria-labelledby="pv-preview-title" data-profile-preview="" data-stuck="">
               <div className="pv-stage">
                 <h2 id="pv-preview-title" className="pv-h">How others see you</h2>
                 <div className="pv-shows">
