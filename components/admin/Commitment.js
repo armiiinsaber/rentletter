@@ -11,6 +11,9 @@ import { C, R, FONT } from '../theme';
 import { adminFetch } from './adminFetch';
 import Loader from '../brand/Loader';
 import { TRIGGER_SENTENCE, TARGETS, monthName, monthShort, sharePct } from '../../lib/kpis';
+// The commitment's two sentences, each on lines of its own, so neither begins or ends with a word or
+// two on the other's line (tests/helpers/textLines.mjs). The words are TRIGGER_SENTENCE exactly.
+const TRIGGER_PARTS = TRIGGER_SENTENCE.split(/(?<=\.) (?=[A-Z])/);
 import { partnerTiles, partnerStartLine } from './partnerTiles';
 
 const nb = (s) => String(s).replace(/ /g, ' ');
@@ -107,7 +110,7 @@ export default function Commitment() {
   return (
     <section className="cm" aria-label="Commitment" data-commitment="">
       <div className="ad-eyebrow">Commitment</div>
-      <p className="cm-trigger">{TRIGGER_SENTENCE}</p>
+      <p className="cm-trigger">{TRIGGER_PARTS.map((t, i) => <span key={i} className="cm-trigger-s">{i ? ' ' : ''}{t}</span>)}</p>
       {err && <div role="alert" className="ad-alert" style={{ marginBottom: 14 }}><span>{err}</span><button type="button" className="ad-btn secondary sm" onClick={load}>Try again</button></div>}
       {!k && !err && <div className="ad-quiet" style={{ marginBottom: 14 }}><Loader label="Counting the commitment" tone="ink" /></div>}
       {k && (
@@ -165,6 +168,7 @@ export default function Commitment() {
         .cm-partner { margin-top: 30px; padding-top: 26px; border-top: 1px solid ${C.instRule}; }
         .cm { margin-bottom: 34px; padding-bottom: 30px; border-bottom: 1px solid ${C.instRule}; }
         .cm-trigger { font-family: ${FONT.serif}; font-weight: 500; font-size: clamp(19px, 2.5vw, 27px); line-height: 1.3; letter-spacing: -0.015em; color: ${C.instText}; margin: 0 0 20px; max-width: 980px; text-wrap: balance; }
+        .cm-trigger-s { display: block; text-wrap: balance; }
         .cm-tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }
         @media (max-width: 899px) { .cm-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (max-width: 599px) { .cm-tiles { grid-template-columns: minmax(0, 1fr); } }

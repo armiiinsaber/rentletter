@@ -362,7 +362,10 @@ test('vercel.json runs each cron in the two UTC hours that are 06:00 and 08:00 i
 
 test('the trigger sentence, word for word', () => {
   assert.equal(K.TRIGGER_SENTENCE, 'When 30 realtors close 50 rentals a month through Rentletter for three straight months, and 100 tenants have reused their profile, I go full time and raise. If not by November 17, 2027, I decide again on purpose.');
-  assert.match(src('components/admin/Commitment.js'), /<p className="cm-trigger">\{TRIGGER_SENTENCE\}<\/p>/);
+  // Shown as its two sentences, each on lines of its own, made from the constant and nothing else.
+  assert.match(src('components/admin/Commitment.js'), /const TRIGGER_PARTS = TRIGGER_SENTENCE\.split\(\/\(\?<=\\\.\) \(\?=\[A-Z\]\)\/\);/);
+  assert.match(src('components/admin/Commitment.js'), /<p className="cm-trigger">\{TRIGGER_PARTS\.map\(\(t, i\) => <span key=\{i\} className="cm-trigger-s">\{i \? ' ' : ''\}\{t\}<\/span>\)\}<\/p>/);
+  assert.deepEqual(K.TRIGGER_SENTENCE.split(/(?<=\.) (?=[A-Z])/), ['When 30 realtors close 50 rentals a month through Rentletter for three straight months, and 100 tenants have reused their profile, I go full time and raise.', 'If not by November 17, 2027, I decide again on purpose.'], 'two sentences, the words unchanged');
 });
 
 // ── 1d, counted from the record (db/014-prefill-record.sql, lib/prefillRecord.js) ─────────────
