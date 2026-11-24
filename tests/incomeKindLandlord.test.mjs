@@ -141,3 +141,52 @@ test('the landlord page, the PDF route and the text route show a payload only th
   assert.match(src('lib/reportText.js'), /const facts = landlordFacts\(p\.facts\)/);
   for (const file of ['pages/r/[token].js', 'lib/reportSnapshot.js', 'lib/reportText.js', 'lib/landlordReportPdf.js', 'lib/reportSentence.js']) assert.doesNotMatch(src(file), /INCOME_KIND|incomeKind|incomeSources|employmentType|employment_type|incomeFigure/, `${file} reads no kind of income`);
 });
+
+// The single applicant document summary, as pasted text (lib/listingReportData.js) and as a PDF
+// (lib/landlordReportPdf.js buildVerificationPdf): the income line says that it matched, and the
+// words that name the document the figure was read from are left out of both.
+const { landlordVerification, verificationText, verificationConfirmText } = await import('../lib/listingReportData.js');
+const { buildVerificationPdf } = await import('../lib/landlordReportPdf.js');
+const DOCUMENT_WORDS = /employment letter|on the letter|pay stubs?|\bstubs?\b|\bT4\b|notice of assessment|annualize|bank statement|benefit/i;
+const FIGURES = [
+  '$85,000 a year as printed on the employment letter',
+  '$85,000 a year on the letter, pay stubs annualize to $85,200 (letter and pay stubs agree)',
+  '$3,269 biweekly × 26 from 2 of 2 stubs',
+  '$85,000 employment income on the T4 or notice of assessment',
+];
+const summaryFor = (found) => landlordVerification({ active: {
+  analyzedAt: '2026-09-01T00:00:00Z', nameMatch: 'match',
+  documents: [{ filename: 'letter.pdf', documentType: 'employment letter', unrecognized: false, extracted: { applicantName: 'Test Person', employer: 'Northwind' } }],
+  comparisons: [{ field: 'Income', stated: '$85,000', found, annual: 85000, status: 'match' }, { field: 'Employer', stated: 'Northwind', found: 'Northwind', status: 'match' }],
+}, archived: [] });
+const confirmText = (verification) => verificationConfirmText({ realtorName: 'Sarah Chen', brokerage: 'Harbour Realty', phone: '416 555 0100', unitName: '210 Carlaw Ave, Unit 4', applicantName: 'Test Person', verification });
+
+test('the pasted document summary names no document type, whatever document the income was read from', async () => {
+  for (const found of FIGURES) {
+    const v = summaryFor(found);
+    assert.equal(v.verified, true); assert.equal(v.incomeVerified, true); assert.equal(v.incomeFigure, found, 'the figure is still read, and not printed');
+    const pasted = confirmText(v);
+    assert.doesNotMatch(pasted, DOCUMENT_WORDS, `the pasted summary: ${found}`);
+    assert.match(pasted, /^ {3}Income \.+ matched documents$/m, 'the income line ends at matched documents');
+    assert.match(pasted, /^ {3}Employer \.+ matched documents$/m);
+    assert.equal(verificationText(v), 'Docs match · income matched documents · employer matched documents');
+    assert.equal(confirmText(v), confirmText(summaryFor(FIGURES[0])), 'the same summary for every document');
+    assert.equal(pasted.includes(found), false);
+  }
+  // The PDF of the same summary says the same and no more.
+  const pdf = await textOf(await buildVerificationPdf({ profile: { id: 'P1', full_name: 'Sarah Chen' }, listing: { id: 'L1', address: '210 Carlaw Ave, Unit 4, Toronto' }, applicantName: 'Test Person', verification: summaryFor(FIGURES[1]), fonts: null }));
+  assert.match(pdf, /Income matched documents/); assert.doesNotMatch(pdf, DOCUMENT_WORDS, 'the PDF');
+  assert.doesNotMatch(src('lib/listingReportData.js').split('export function verificationText')[1], /\$\{v\.incomeFigure\}/, 'no text prints the figure');
+});
+
+test('the rule line of the pasted document summary is a plain line with no words in it', () => {
+  for (const v of [summaryFor(FIGURES[0]), { verified: false, reason: 'name_mismatch', message: 'Check docs, the document name does not match the applicant' }, null]) {
+    const lines = confirmText(v).split('\n');
+    const rules = lines.filter((l) => l.length >= 20 && new Set(l).size === 1);
+    assert.equal(rules.length, 2, 'one rule above the facts and one below');
+    for (const rule of rules) { assert.equal(rule, '_'.repeat(28)); assert.doesNotMatch(rule, /[A-Za-z0-9]/, 'no words'); assert.doesNotMatch(rule, /[—–-]/, 'no dash'); }
+    assert.doesNotMatch(confirmText(v), /not set/i, 'the words not set are printed nowhere');
+    // Every other line is words: the rule is the only line made of one repeated character.
+    assert.equal(lines[lines.indexOf(rules[0]) - 1], ''); assert.equal(lines[lines.indexOf(rules[0]) + 1], '');
+  }
+});

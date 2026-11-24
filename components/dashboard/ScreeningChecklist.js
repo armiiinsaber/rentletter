@@ -133,14 +133,15 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
     // check docs item with its document and one tap for a new copy. Shown only when there is one.
     ...((() => { const ic = integrityOf(report); return ic.flags.length || ic.notes.length ? [{ key: null, title: 'Document checks', integrity: true }] : []; })()),
     // One row per party (lib/parties.js): what they stated, what their documents said, and the
-    // realtor's own call to their employer, the one way a party reads verified.
+    // realtor's own call to their employer. The mark reads Called with its date, as the Income
+    // row's does: only the Employer row says Confirmed.
     ...(Array.isArray(applicant.parties) ? applicant.parties.map((p) => {
       const pv = readVerification(p.docVerifications && p.docVerifications[0] ? p.docVerifications[0] : null);
       const pDocs = pv.state === 'none' ? 'none' : pv.state !== 'ok' ? 'name did not match' : pv.incomeMatched ? `${pv.incomeExplanation || 'income'} matches` : pv.incomeClose ? `${pv.incomeExplanation}, close to stated` : pv.incomeMismatch ? 'did not match' : 'nothing matched';
       const notIn = p.status !== 'submitted';
       // That party's document checks, the same as the primary's, read from the party's own report.
       const pic = notIn ? { flags: [], notes: [] } : integrityOf(p.docVerifications && p.docVerifications[0] ? p.docVerifications[0] : null);
-      return { key: notIn ? null : partyConfirmKey(p.id), title: `${p.roleLabel}: ${p.name}`, label: `${p.roleLabel}:`, name: p.name, said: notIn ? (p.status === 'declined' ? 'declined' : p.status === 'withdrawn' ? 'withdrew' : 'form not in yet') : (partyFacts(p, conf).slice(0, 3).join(', ') || 'no income given'), docs: notIn ? null : pDocs, verb: 'Called employer', party: p.id, partyChecks: pic.flags.length || pic.notes.length ? p : null };
+      return { key: notIn ? null : partyConfirmKey(p.id), title: `${p.roleLabel}: ${p.name}`, label: `${p.roleLabel}:`, name: p.name, said: notIn ? (p.status === 'declined' ? 'declined' : p.status === 'withdrawn' ? 'withdrew' : 'form not in yet') : (partyFacts(p, conf).slice(0, 3).join(', ') || 'no income given'), docs: notIn ? null : pDocs, verb: 'Called employer', done: 'Called', party: p.id, partyChecks: pic.flags.length || pic.notes.length ? p : null };
     }) : []),
   ];
 
