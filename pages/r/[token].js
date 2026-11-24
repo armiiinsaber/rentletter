@@ -11,7 +11,7 @@ import { GlobalStyle, Wordmark, Icon, StatusPills } from '../../components/ui';
 import { noWidow } from '../../lib/typeset.js';
 import { C, R } from '../../components/theme';
 import { isReportToken } from '../../lib/applicationIds';
-import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot';
+import { forLandlordPage, answerLine, FIT_LINE, shortDate } from '../../lib/reportSnapshot';
 import { fitLines } from '../../lib/fitScore';
 import { Pending } from '../../components/brand/Loader';
 import ReportBrand from '../../components/ReportBrand';
@@ -58,6 +58,15 @@ const eyebrow = { fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 70
 // English above them is a translation the tenant approved.
 const tenantWords = { fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' };
 const tenantLabel = { fontSize: 12, color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-1) 0 var(--s-2)', textWrap: 'balance' };
+// Beside the Fit word verified, one small line saying what it means, with the date of the call
+// when the report froze it (confirmations.employer.at). The PDF prints the same line
+// (lib/landlordReportPdf.js reportLines).
+const verifiedMeaning = (a) => {
+  if (!a || !a.fit || a.fit.score == null || a.fit.label !== 'verified') return null;
+  const at = a.confirmations && a.confirmations.employer ? a.confirmations.employer.at : null;
+  const on = at && !Number.isNaN(new Date(at).getTime()) ? ` on ${shortDate(at)}` : '';
+  return `Verified means the realtor confirmed the employer by phone${on}.`;
+};
 
 export default function ReportPage({ token, payload, answers: initial, state, sandbox }) {
   const [answers, setAnswers] = useState(initial || {});
@@ -152,6 +161,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             </div>
             {/* Fit v2 (docs/fit-v2.md): what was assessed, then the facts the number rests on. A report frozen before v2 has neither. */}
             {fitLines(a.fit).map((line) => <div key={line} data-fit-line="" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>{noWidow(line)}</div>)}
+            {verifiedMeaning(a) ? <div data-verified-meaning="" style={{ fontSize: 12, color: C.inkMute, lineHeight: 'var(--lh-body)', marginTop: 'var(--s-1)', textWrap: 'balance' }}>{noWidow(verifiedMeaning(a))}</div> : null}
             {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'balance' }}>{a.sentence}</p> : null}
             {/* What the tenant chose to say (lib/reportSnapshot.js tenant): their own words and their own offer to prepay rent. Shown, never scored.
                 Written in another language: the English version the tenant approved first, its label, then their original under it; not approved

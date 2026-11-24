@@ -14,8 +14,11 @@ const applicant = (app = {}, docVerifications = []) => ({ linkId: 'l1', applicat
 test('documented income with a landlord reference and a ratio; verified once the employer is confirmed', () => {
   const a = applicant({ annual_income: 90000, rent_to_income_ratio: 34, prev_landlord_name: 'J. Wong', references: [{}, {}] }, [verifiedReport()]);
   assert.equal(synthesisLine(a), 'Documented income at 2.9x rent, landlord reference on file');
-  assert.equal(synthesisLine({ ...a, confirmations: { employer: { at: '2026-09-02T14:00:00Z', by: 'Armin' } } }), 'Verified income at 2.9x rent, landlord reference on file');
-  assert.equal(synthesisLine({ ...applicant({ annual_income: 90000, rent_to_income_ratio: 34 }), confirmations: { employer: { at: 'x', by: 'Armin' } } }), 'Verified income at 2.9x rent, no reference yet');
+  assert.equal(synthesisLine({ ...a, confirmations: { employer: { at: '2026-09-02T14:00:00Z', by: 'Armin' } } }), 'Employer confirmed, income at 2.9x rent, landlord reference on file');
+  assert.equal(synthesisLine({ ...applicant({ annual_income: 90000, rent_to_income_ratio: 34 }), confirmations: { employer: { at: 'x', by: 'Armin' } } }), 'Employer confirmed, income at 2.9x rent, no reference yet');
+  // The call confirmed the employer, not the income: the line says what was recorded and no more.
+  assert.equal(synthesisLine({ ...applicant({}), confirmations: { employer: { at: 'x', by: 'Armin' } } }), 'Employer confirmed, no reference yet');
+  assert.doesNotMatch(synthesisLine({ ...a, confirmations: { employer: { at: 'x', by: 'Armin' } } }), /verified/i);
   assert.equal(synthesisFacts(a).incomeVerified, true);
 });
 

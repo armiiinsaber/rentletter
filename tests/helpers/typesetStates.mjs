@@ -168,7 +168,8 @@ export const STATES = [
   { name: 'reset password, no link', kind: 'public', go: (p) => open(p, '/reset-password') },
   { name: 'privacy', kind: 'public', go: (p) => open(p, '/privacy') },
   { name: 'terms', kind: 'public', go: (p) => open(p, '/terms') },
-  { name: 'faq', kind: 'public', go: (p) => open(p, '/faq'), steps: async function* (p) { await openAll(p); yield 'faq, every answer open'; } },
+  // The answer on background checks changed (pages/faq.js): measured at the desktop widths too.
+  { name: 'faq', kind: 'public', widths: [390, 320, 1440, 1920], go: (p) => open(p, '/faq'), steps: async function* (p) { await openAll(p); yield 'faq, every answer open'; } },
   { name: 'compliance', kind: 'public', go: (p) => open(p, '/compliance') },
   { name: 'sandbox dashboard', kind: 'public', go: (p) => open(p, '/demo/dashboard') },
   // The sandbox Circle: the real screen over sample realtors, with a request waiting, connections
@@ -459,6 +460,24 @@ export const STATES = [
   // do not fit on one line (components/ui.js LabelValue), so no word is left alone.
   { name: 'listing, checklist with a long co applicant name', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f(`/__fake/seed-parties?link=J2&status=invited&co=${encodeURIComponent(LONG.a2)}`); await open(p, '/listing/L1'); await expand(p, LONG.a2); await p.locator('[data-checklist-title="party"]').first().waitFor({ timeout: 30000 }); await p.locator('[data-checklist-title="party"]').first().scrollIntoViewIfNeeded(); await wait(p, 300); } },
   { name: 'listing, a profile the tenant stopped sharing', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=5&docs=1&share=new&stopped=1'); await open(p, '/listing/L1'); await expand(p, 'Valentina Castellanos Ruiz'); await p.locator('[data-shared-ended]').waitFor({ timeout: 30000 }); await wait(p, 300); } },
+  // A co applicant whose employer the realtor confirmed (lib/parties.js): their row on the card reads
+  // employer confirmed, never verified, and so do the landlord report's facts; the report's Fit word
+  // verified carries the line saying what it means (pages/r/[token].js). At 390, 320, 1440 and 1920.
+  { name: 'listing, a co applicant whose employer you confirmed', kind: 'realtor', phase: 'alone', widths: [390, 320, 1440, 1920], go: async (p, f) => {
+    await f('/__fake/seed-parties?link=J1'); await open(p, '/listing/L1');
+    const status = await p.evaluate(async () => (await fetch('/api/applicants/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ linkId: 'J1', key: 'party:P-co-J1:employer', on: true }) })).status);
+    if (status !== 200) throw new Error(`the confirmation answered ${status}`);
+    await open(p, '/listing/L1');
+    const c = p.locator('[aria-controls="applicant-J1-body"]').first(); await c.waitFor({ timeout: 30000 }); await c.scrollIntoViewIfNeeded(); await c.click(); await wait(p, 600);
+    const fold = p.locator('[aria-controls="applicant-J1-party-P-co-J1"]').first(); await fold.waitFor({ timeout: 30000 }); await fold.scrollIntoViewIfNeeded(); await fold.click(); await wait(p, 400);
+    const row = await p.locator('[data-party="P-co-J1"]').first().innerText();
+    if (!/employer confirmed/i.test(row) || /verified/i.test(row)) throw new Error(`the co applicant's row reads ${JSON.stringify(row)}`);
+  }, steps: async function* (p) {
+    const token = await report(p); await open(p, `/r/${token}`); await p.locator('[data-verified-meaning]').first().waitFor({ timeout: 30000 });
+    const people = await p.locator('[data-parties-row]').filter({ hasText: 'Jordan Lee' }).first().innerText();
+    if (!/Employer confirmed/.test(people) || /verified/i.test(people)) throw new Error(`the landlord report's people read ${JSON.stringify(people)}`);
+    yield 'landlord report, a co applicant whose employer you confirmed';
+  } },
   // After the realtor's shared profile states: its last steps send an application to L1 under the same sample name.
   { name: 'one tap apply, the offer', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=6&docs=1'); await open(p, `/apply/${INVITE}`); await p.locator('[data-one-tap]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
     await p.locator('[data-one-tap-apply]').click(); await p.locator('[data-one-tap-share]').waitFor({ timeout: 30000 }); await wait(p, 500);
@@ -490,7 +509,8 @@ export const STATES = [
   { name: 'tenant profile, documents paused', kind: 'tenant', phase: 'alone', go: async (p, f) => { try { await tenantProfile(p, f, 'who=3&docs=1&paused=1'); await p.locator('[data-vault-paused]').waitFor({ timeout: 15000 }); } finally { await f('/__fake/tenant?who=3&paused=0'); } } },
   // ── landlord ──
   { name: 'landlord report', kind: 'landlord', phase: 'write', go: async (p) => { const t = await report(p); await open(p, `/r/${t}`); }, steps: async function* (p) { await tap(p, /meet/i); await wait(p, 400); yield 'landlord report, answered'; await tap(p, /Tap to change/); yield 'landlord report, changing an answer'; } },
-  { name: 'landlord report, sandbox', kind: 'landlord', go: (p) => open(p, '/r/demo-demo-carlaw') },
+  // The sandbox's first applicant is verified: the line under the Fit lines says what that means.
+  { name: 'landlord report, sandbox', kind: 'landlord', widths: [390, 320, 1440, 1920], go: async (p) => { await open(p, '/r/demo-demo-carlaw'); await p.locator('[data-verified-meaning]').first().waitFor({ timeout: 30000 }); } },
   // ── the founder office: the Commitment section first, and the poster ──
   { name: 'office, the commitment counted', kind: 'office', phase: 'write', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await p.locator('.cm-svg').waitFor({ timeout: 15000 }); await wait(p, 400); } },
   { name: 'office, the Lead Realtor Partner counted', kind: 'office', phase: 'write', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await f('/__fake/kpi?partner=1'); await office(p); await open(p, '/admin'); await p.locator('[data-partner-tile="active"]').waitFor({ timeout: 30000 }); await p.locator('[data-partner-start]:not([data-partner-start=""])').waitFor({ timeout: 30000 }); await wait(p, 400); } },

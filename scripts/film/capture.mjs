@@ -272,7 +272,7 @@ async function main() {
     await movePlan(p2, 'b3-in', 0.5, windowOn(name, PHONE_W, 26), tight);
     await hold(p2, 'b3-name', 1.7, tight);
     note(3, 'The name, a number,', 'the name, the meter and the number', 'phone', 'push', 2.2);
-    const line = await box(p, 'div', '^Verified income at');
+    const line = await box(p, 'div', '^Employer confirmed, income at');
     await hold(p, 'b3-line', 1.9, windowOn(line, PHONE_W));
     note(3, 'and one line saying where that person stands.', 'the state line under the name', 'phone', 'cut', 1.9);
   });

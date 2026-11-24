@@ -135,7 +135,11 @@ test('the party: their own token opens their own page and nothing else; submit w
     const c = await call(confirm, { linkId: 'J4', key: P.partyConfirmKey(row.id), on: true });
     assert.equal(c.code, 200, JSON.stringify(c.body));
     const again = await attachDocVerifications(s.db, 'L1', await fetchListingApplicants(s.db, 'L1'));
-    assert.equal(again.find((a) => a.linkId === 'J4').parties[0].label, 'verified');
+    assert.equal(again.find((a) => a.linkId === 'J4').parties[0].label, 'employer confirmed');
+    // The call confirmed the employer, not the income: the facts the landlord reads say so.
+    const confirmed = again.find((a) => a.linkId === 'J4');
+    assert.equal(P.partyFacts(confirmed.parties[0], confirmed.confirmations).at(-1), 'Employer confirmed');
+    assert.doesNotMatch(P.partyFacts(confirmed.parties[0], confirmed.confirmations).join(' '), /verified/i);
     assert.equal((await call(confirm, { linkId: 'J4', key: 'party:x:income', on: true })).code, 400, 'only the employer key');
     // Withdraw from their own page: the primary is told, the row stays.
     const w = await call(self, { token, action: 'withdraw' });
