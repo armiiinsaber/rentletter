@@ -25,6 +25,8 @@ const S = await import('../../lib/tenantProfileStore.js');
 const T = await import('../../lib/aboutTranslation.js');
 const PP = await import('../../lib/profilePersonal.js');
 const R = await import('../../lib/listingReportData.js');
+const { buildSnapshot } = await import('../../lib/reportSnapshot.js');
+const { reportLines, buildLandlordReportPdf } = await import('../../lib/landlordReportPdf.js');
 const { paragraphDirection } = await import('../../lib/pdfScripts.js');
 const personal = (await import('../../pages/api/tenant/personal.js')).default;
 const { SUGGEST_SYSTEM, HELPER_UNREACHABLE } = await import('../../pages/api/tenant/personal.js');
@@ -369,15 +371,71 @@ test('8. the English version is never scored: Fit is what it was, and no scoring
   assert.equal(JSON.stringify(ctx.active.map((a) => a.application)).includes('Most evenings I cook'), false);
   assert.deepEqual(findKeys(S.clientProfile(await S.getProfileById(w.p.id)), ['about_me_en', 'aboutEnglish', 'english', 'about_me_lang']), [], 'not in facts, so not in the next application');
   // It is read by the tenant's own routes, the one share reader and the two routes that pass its
-  // answer on. No other file under lib or pages/api names it.
+  // answer on, and by the landlord report (its data, its frozen copy and its PDF), which reads it
+  // through the share reader. No other file under lib or pages/api names it.
   const NAMES = /about_me_en|about_me_lang|aboutEnglish|sharedEnglish|aboutTranslation|aboutForPdf|TRANSLATE_SYSTEM|tenant_profile_about_english/;
   const readers = [...walk('lib/'), ...walk('pages/api/')].filter((f) => NAMES.test(code(f))).sort();
-  assert.deepEqual(readers, ['lib/aboutTranslation.js', 'lib/profileShareStore.js', 'lib/tenantProfileStore.js', 'pages/api/profile-shares/shared-with-me.js', 'pages/api/profile-shares/view.js', 'pages/api/tenant/export.js', 'pages/api/tenant/personal.js']);
-  for (const f of ['lib/fitScore.js', 'lib/deriveScorecard.js', 'lib/applicantAnalysis.js', 'lib/applicantSynthesis.js', 'lib/documentIntegrity.js', 'lib/kpis.js', 'lib/kpiStore.js', 'lib/kpiEmail.js', 'lib/profileStrength.js', 'lib/profileFacts.js', 'lib/listingReportData.js', 'lib/submitChain.js']) assert.doesNotMatch(code(f), NAMES, f);
+  assert.deepEqual(readers, ['lib/aboutTranslation.js', 'lib/landlordReportPdf.js', 'lib/listingReportData.js', 'lib/profileShareStore.js', 'lib/reportSnapshot.js', 'lib/tenantProfileStore.js', 'pages/api/profile-shares/shared-with-me.js', 'pages/api/profile-shares/view.js', 'pages/api/tenant/export.js', 'pages/api/tenant/personal.js']);
+  for (const f of ['lib/fitScore.js', 'lib/deriveScorecard.js', 'lib/applicantAnalysis.js', 'lib/applicantSynthesis.js', 'lib/documentIntegrity.js', 'lib/kpis.js', 'lib/kpiStore.js', 'lib/kpiEmail.js', 'lib/profileStrength.js', 'lib/profileFacts.js', 'lib/submitChain.js']) assert.doesNotMatch(code(f), NAMES, f);
+  // The landlord report's data (lib/listingReportData.js) ranks the applicants and then reads the
+  // tenant's words for the report: it names the English only in attachTenantWords, which runs after
+  // the ranking and puts it beside the application, never in it.
+  const data = code('lib/listingReportData.js');
+  const words = data.slice(data.indexOf('export async function attachTenantWords'), data.indexOf('export async function loadReportContext'));
+  assert.match(words, /readAboutEnglish\(adminClient/);
+  assert.doesNotMatch(data.replace(words, ''), NAMES, 'nowhere else in the report data');
+  assert.ok(data.indexOf('const { active, setAside } = rankApplicants(applicants);') < data.indexOf('await attachTenantWords(adminClient'), 'read after the ranking');
   // The translation is asked for in one place, the tenant's own route.
   assert.deepEqual([...walk('lib/'), ...walk('pages/'), ...walk('components/')].filter((f) => /TRANSLATE_SYSTEM/.test(code(f))).sort(), ['lib/aboutTranslation.js', 'pages/api/tenant/personal.js']);
   // Profile strength counts the tenant's own words, as before, and nothing of the English.
   assert.doesNotMatch(code('pages/api/tenant/personal.js'), /hasAbout: [^,]*english/);
+});
+
+test('13. the landlord report: the English the tenant approved first with its label, then the original; before approval the original under its language; an unapproved English never reaches it', async () => {
+  const report = async (w) => { const ctx = await w.report(); const snap = buildSnapshot({ listing: ctx.listing, applicants: ctx.active, profile: { full_name: 'Sarah Chen', brokerage: 'Harbourfront Realty' } }); return { ctx, snap, maya: snap.applicants.find((a) => a.tenant && a.tenant.about) }; };
+  // Written in Persian, its English prepared and not approved: the original alone, under the name of its language.
+  const w = await setup();
+  await w.mine({ action: 'about', text: ABOUT_FA });
+  assert.deepEqual(english(w), [ABOUT_FA_EN, 'fa', null], 'an English version waits for the tenant');
+  let r = await report(w);
+  assert.deepEqual(r.ctx.active.find((a) => a.tenantWords).tenantWords.aboutEnglish, { text: null, language: 'Persian' });
+  assert.deepEqual({ about: r.maya.tenant.about, english: r.maya.tenant.english ?? null, language: r.maya.tenant.language }, { about: ABOUT_FA, english: null, language: 'Persian' });
+  assert.equal('english' in r.maya.tenant, false, 'no English key at all before approval');
+  assert.equal(JSON.stringify(r.snap).includes('Most evenings I cook'), false, 'the unapproved English is nowhere in the report');
+  let lines = reportLines(r.snap).blocks.find((b) => (b.tenant || []).length).tenant;
+  assert.deepEqual(lines, ['In their own words, written in Persian:', ABOUT_FA.replace(/\s+/g, ' ')]);
+  // Approved: the English first, its label, then the original.
+  await w.mine({ action: 'english-approve', text: ABOUT_FA_EN });
+  r = await report(w);
+  assert.deepEqual({ english: r.maya.tenant.english, language: r.maya.tenant.language, about: r.maya.tenant.about }, { english: ABOUT_FA_EN, language: 'Persian', about: ABOUT_FA });
+  lines = reportLines(r.snap).blocks.find((b) => (b.tenant || []).length).tenant;
+  assert.deepEqual(lines, [`In their own words: ${ABOUT_FA_EN.replace(/\s+/g, ' ')}`, 'Translated from Persian, approved by the tenant.', ABOUT_FA.replace(/\s+/g, ' ')]);
+  assert.equal(paragraphDirection(lines[2]), 'rtl');
+  // In the PDF: the English and its label from the left margin, the Persian original from the right.
+  const pdf = await pdfLines(await buildLandlordReportPdf({ payload: r.snap }));
+  const at = (re) => pdf.findIndex((l) => re.test(l.text));
+  const en = at(/^In their own words: I am Maya/); const label = at(/^Translated from Persian, approved by the tenant\.$/); const fa = pdf.findIndex((l, i) => i > label && ARABIC.test(l.text));
+  assert.ok(en >= 0 && en < label && label < fa, `the English, its label, then the original (${[en, label, fa]})`);
+  const persian = pdf.filter((l, i) => i >= fa && ARABIC.test(l.text));
+  assert.ok(persian[persian.length - 1].left > pdf[label].left + 40, 'the original is set from the right');
+  // The tenant takes the English back: the report reads the original alone again, under its language.
+  assert.equal((await w.mine({ action: 'english-remove' })).code, 200);
+  r = await report(w);
+  assert.deepEqual({ english: r.maya.tenant.english ?? null, language: r.maya.tenant.language }, { english: null, language: 'Persian' });
+  // Words written in English: no language, no label, the report as it always was.
+  const e = await setup();
+  await e.mine({ action: 'about', text: ENGLISH });
+  r = await report(e);
+  assert.deepEqual(r.maya.tenant, { about: ENGLISH, offer: null, offerLabel: null }, 'words in English: the report exactly as it was');
+  assert.deepEqual(reportLines(r.snap).blocks.find((b) => (b.tenant || []).length).tenant, [`In their own words: ${ENGLISH}`]);
+  // The landlord's page: the English, then its label, then the original; not approved, the label then the original.
+  const page = code('pages/r/[token].js');
+  assert.match(page, /<AboutText data-tenant-about-english="" text=\{a\.tenant\.english\} style=\{tenantWords\} \/>\s*<p data-tenant-about-label=""[^>]*>\{noWidow\(translatedLabel\(a\.tenant\.language\)\)\}<\/p>/, 'the English, then its label');
+  assert.match(page, /\{noWidow\(writtenLabel\(a\.tenant\.language\)\)\}<\/p> : null\}\s*<AboutText data-tenant-about-original="" text=\{a\.tenant\.about\} style=\{tenantWords\} \/>/, 'the original under it, in both states');
+  // The report reads the English through the share reader, after its share check and its log.
+  const data = code('lib/listingReportData.js');
+  assert.ok(data.indexOf('readForLandlordReport(adminClient') < data.indexOf('readAboutEnglish(adminClient'), 'the English only after the share check and the log');
+  assert.doesNotMatch(data, /tenant_profile_about_english|about_me_en/, 'never the view or the columns directly');
 });
 
 test('9. before db/026 has run: saving works, no translation is offered and nothing else changes', async () => {

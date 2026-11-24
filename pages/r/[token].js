@@ -15,6 +15,8 @@ import { forLandlordPage, answerLine, FIT_LINE } from '../../lib/reportSnapshot'
 import { fitLines } from '../../lib/fitScore';
 import { Pending } from '../../components/brand/Loader';
 import ReportBrand from '../../components/ReportBrand';
+import AboutText from '../../components/AboutText';
+import { translatedLabel, writtenLabel } from '../../lib/aboutTranslation';
 
 
 export async function getServerSideProps(ctx) {
@@ -52,6 +54,10 @@ const money = (n) => (n != null ? `$${Number(n).toLocaleString('en-CA')}` : null
 const longDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { year: 'numeric', month: 'long', day: 'numeric' }) : '');
 const card = { padding: 'var(--card-pad)', marginBottom: 'var(--gap-card)' };
 const eyebrow = { fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase' };
+// The tenant's own words, and the line that says which language they are in and whether the
+// English above them is a translation the tenant approved.
+const tenantWords = { fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', overflowWrap: 'anywhere' };
+const tenantLabel = { fontSize: 12, color: C.inkMute, lineHeight: 'var(--lh-body)', margin: 'var(--s-1) 0 var(--s-2)', textWrap: 'balance' };
 
 export default function ReportPage({ token, payload, answers: initial, state, sandbox }) {
   const [answers, setAnswers] = useState(initial || {});
@@ -147,11 +153,19 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             {/* Fit v2 (docs/fit-v2.md): what was assessed, then the facts the number rests on. A report frozen before v2 has neither. */}
             {fitLines(a.fit).map((line) => <div key={line} data-fit-line="" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>{noWidow(line)}</div>)}
             {a.sentence ? <p style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', textWrap: 'balance' }}>{a.sentence}</p> : null}
-            {/* What the tenant chose to say (lib/reportSnapshot.js tenant): their own words and their own offer to prepay rent. Shown, never scored. */}
+            {/* What the tenant chose to say (lib/reportSnapshot.js tenant): their own words and their own offer to prepay rent. Shown, never scored.
+                Written in another language: the English version the tenant approved first, its label, then their original under it; not approved
+                yet, the original under the name of its language. Each paragraph reads in its own direction (components/AboutText.js). */}
             {a.tenant && a.tenant.about ? (
-              <div data-tenant-about="" style={{ marginTop: 'var(--s-3)', minWidth: 0 }}>
+              <div data-tenant-about={a.tenant.english ? 'translated' : 'original'} style={{ marginTop: 'var(--s-3)', minWidth: 0 }}>
                 <div style={{ ...eyebrow, fontSize: 10, marginBottom: 2 }}>In their own words</div>
-                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 0, whiteSpace: 'pre-line', overflowWrap: 'anywhere' }}>{a.tenant.about}</p>
+                {a.tenant.english ? (
+                  <>
+                    <AboutText data-tenant-about-english="" text={a.tenant.english} style={tenantWords} />
+                    <p data-tenant-about-label="" style={tenantLabel}>{noWidow(translatedLabel(a.tenant.language))}</p>
+                  </>
+                ) : writtenLabel(a.tenant.language) ? <p data-tenant-about-label="" style={{ ...tenantLabel, margin: '0 0 var(--s-1)' }}>{noWidow(writtenLabel(a.tenant.language))}</p> : null}
+                <AboutText data-tenant-about-original="" text={a.tenant.about} style={tenantWords} />
               </div>
             ) : null}
             {a.tenant && a.tenant.offer ? (
