@@ -171,7 +171,7 @@ async function walk(type, opts, tag) {
     await page.goto(`/r/${sent.body.snapshot.token}`, { waitUntil: 'load', timeout: 120000 });
     await page.locator('[data-parties-row]').first().waitFor({ timeout: 60000 });
     const landlord = plain(await page.locator('[data-parties-row]').first().innerText());
-    assert.match(landlord, /Jordan Lee, co applicant, submitted/); assert.match(landlord, /Income \$64,000 a year \(Employment\)/); assert.match(landlord, /Household income is shown, not scored\./);
+    assert.match(landlord, /Jordan Lee, co applicant, submitted/); assert.match(landlord, /^Income \$64,000 a year$/m, 'the amount alone'); assert.doesNotMatch(landlord, /\((Employment|Self employment|Other)\)/, 'never the kind of income (tests/incomeKindLandlord.test.mjs)'); assert.match(landlord, /Household income is shown, not scored\./);
     assert.doesNotMatch(landlord, /jordan@|verified/);
     if (tag === 'wk') { await page.locator('[data-parties-row]').first().scrollIntoViewIfNeeded(); await page.evaluate(() => window.scrollBy(0, -100)); await shot(page, 'landlord-report-390'); }
     // 6. Mark rented emails every party once.

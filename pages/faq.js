@@ -21,7 +21,7 @@ const FAQS = [
   {
     category: 'General',
     q: 'What is Rentletter?',
-    a: 'Rentletter is a tenant screening dashboard for Canadian realtors, landlords, and property managers. You create a listing, share one application link, and standardized applications land in your dashboard. From there you compare candidates, shortlist your top picks, document each decision, and send a co branded shortlist to your landlord client. Built in Toronto, available across Canada.',
+    a: 'Rentletter is a tenant screening dashboard for Canadian realtors, landlords, and property managers. You create a listing, share one application link, and standardized applications land in your dashboard. From there you compare candidates, shortlist your top picks, document each decision, and send a co branded shortlist to your landlord client. Built in Toronto, for Ontario and British Columbia.',
   },
   {
     category: 'General',
@@ -31,7 +31,7 @@ const FAQS = [
   {
     category: 'General',
     q: 'Is it only for Ontario?',
-    a: 'No. Ontario is our primary market, but realtors and landlords anywhere in Canada can use it.',
+    a: 'No. Ontario and British Columbia.',
   },
   {
     category: 'General',

@@ -118,7 +118,11 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
 
   const rows = [
     { key: 'id', title: 'Identity', said: app.full_name || 'no name given', docs: nameFact, verb: 'Saw ID' },
-    { key: 'employer', title: 'Income', said: app.annual_income ? `${money(householdIncomeOf(app))} a year${incomeIsJoint(app) ? ' (joint)' : ''}` : 'no income given', docs: incomeFact, verb: 'Called employer' },
+    // The tap records a call to the employer and nothing about the income, so under the title Income
+    // the mark reads Called with its date, never Confirmed: what was confirmed is the employer, and
+    // the Employer row below says so. (Employer confirmed with a date is 191px wide and the button
+    // has 162px on a 320 screen, where it wrapped with one word alone on a line.)
+    { key: 'employer', title: 'Income', said: app.annual_income ? `${money(householdIncomeOf(app))} a year${incomeIsJoint(app) ? ' (joint)' : ''}` : 'no income given', docs: incomeFact, verb: 'Called employer', done: 'Called' },
     { key: 'employer', title: 'Employer', said: said([app.employer, app.job_title]) || 'no employer given', docs: employerFact, verb: 'Called employer', sameAsAbove: true, also: alsoSeen, note: GUIDANCE },
     { key: 'landlord', title: 'Previous landlord', said: app.prev_landlord_name || 'none given', second: app.prev_landlord_name && app.prev_landlord_contact ? contactLines(app.prev_landlord_contact) : null, docs: null, verb: 'Called landlord' , note: GUIDANCE },
     { key: 'reference', title: 'References', said: notShared(app, 'references') ? 'not shared' : refs ? `${refs} on file` : 'none', docs: null, verb: 'Called a reference' },
@@ -203,7 +207,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                   <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                     aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                     style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                    <Pending busy={busy === row.key} label={`Saving ${row.verb}`}>{on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}</Pending>
+                    <Pending busy={busy === row.key} label={`Saving ${row.verb}`}>{on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>{row.done || 'Confirmed'} {shortDate(c.at)}</span></> : row.verb}</Pending>
                   </button>
                   {row.key === 'landlord' && landlordEmail && !asking && (!refResp || refResp.status !== 'pending') ? (
                     <button type="button" onClick={() => setAsking(true)} style={{ ...btn(false), minWidth: 0 }}>Ask by email</button>
@@ -219,7 +223,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
                 <button type="button" onClick={() => toggle(row.key)} disabled={busy === row.key} aria-pressed={on}
                   aria-label={on ? `${row.verb}, confirmed ${shortDate(c.at)}. Tap to undo.` : row.verb}
                   style={{ ...btn(on), opacity: busy === row.key ? 0.7 : 1 }}>
-                  <Pending busy={busy === row.key} label={`Saving ${row.verb}`}>{on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>Confirmed {shortDate(c.at)}</span></> : row.verb}</Pending>
+                  <Pending busy={busy === row.key} label={`Saving ${row.verb}`}>{on ? <><Icon name="check" size={14} color={C.red} strokeWidth={2.5} /><span>{row.done || 'Confirmed'} {shortDate(c.at)}</span></> : row.verb}</Pending>
                 </button>
               ) : null}
               {row.partyChecks ? (

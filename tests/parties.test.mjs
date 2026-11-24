@@ -178,15 +178,15 @@ test('Fit is byte identical with zero, one or two parties attached, and the part
   assert.equal(zero.incomeUsed, 85000, 'the primary\'s income alone');
   assert.doesNotMatch(src('lib/fitScore.js'), /parties|income_sources|application_parties/, 'Fit reads no party');
   assert.doesNotMatch(src('lib/deriveScorecard.js'), /parties/);
-  // The landlord surfaces carry the parties in the same words.
+  // The landlord surfaces carry the parties in the same words, with the amount of income and never its kind.
   const applicants = [{ linkId: 'J1', decisionStatus: 'none', confirmations: {}, docVerifications: [], parties: [{ ...party('guarantor'), name: 'Pat Guarantor', roleLabel: 'Guarantor', statusLabel: 'Submitted', employer: 'Acme', jobTitle: 'Clerk', yearsAtJob: '2', incomeKind: 'employment' }, { ...party('co_applicant'), name: 'Jordan Lee', roleLabel: 'Co applicant', status: 'invited', statusLabel: 'Invited', annualIncome: null }], application: { ...application, fit: { score: 4.1, scoreExact: 4.1, label: 'stated', ratio: 37, incomeUsed: 85000, parts: {}, evidence: {}, criteria: [] } } }];
   const p = buildSnapshot({ listing: { id: 'L1', address: '210 Carlaw Ave, Unit 4, Toronto', monthly_rent: 2600 }, applicants, profile: { id: 'P1', full_name: 'Sarah Chen' }, now: new Date('2026-09-06T12:00:00Z') });
   assert.deepEqual(p.applicants[0].parties.map((x) => [x.name, x.roleLabel, x.statusLabel]), [['Pat Guarantor', 'Guarantor', 'Submitted'], ['Jordan Lee', 'Co applicant', 'Invited']]);
-  assert.deepEqual(p.applicants[0].parties[0].facts, ['Acme, Clerk', '2 yrs at job', 'Income $200,000 a year (Employment)', 'Income stated']);
+  assert.deepEqual(p.applicants[0].parties[0].facts, ['Acme, Clerk', '2 yrs at job', 'Income $200,000 a year', 'Income stated'], 'the amount, never the kind of income (tests/incomeKindLandlord.test.mjs)');
   assert.deepEqual(p.applicants[0].parties[1].facts, []);
   assert.equal(JSON.stringify(p.applicants).includes('email'), false); assert.equal(JSON.stringify(p.applicants).includes('token'), false);
   const text = reportText(p, { pageUrl: 'https://rentletter.ca/r/x' });
-  assert.match(text, /   Pat Guarantor, guarantor, submitted: Acme, Clerk, 2 yrs at job, Income \$200,000 a year \(Employment\), Income stated/); assert.match(text, /   Household income is shown, not scored\./);
+  assert.match(text, /   Pat Guarantor, guarantor, submitted: Acme, Clerk, 2 yrs at job, Income \$200,000 a year, Income stated/); assert.match(text, /   Household income is shown, not scored\./);
   assert.match(reportLines(p).blocks[0].parties[0], /^Pat Guarantor, guarantor, submitted: Acme/); assert.equal(reportLines(p).blocks[0].parties.at(-1), 'Household income is shown, not scored.');
   assert.doesNotMatch(text, /[\u2014\u2013]/);
   assert.match(src('pages/r/[token].js'), /data-parties-row/); assert.match(src('components/dashboard/ListingView.js'), /INVITE_CARD\.householdLine/);

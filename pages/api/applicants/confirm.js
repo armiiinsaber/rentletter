@@ -13,8 +13,9 @@ import { ownedApplicant, realtorName } from '../../../lib/ownApplicant';
 import { logServerError } from '../../../lib/serverLog';
 import { isPartyConfirmKey } from '../../../lib/parties';
 
-// The four facts, plus a party's employer: party:<id>:employer (lib/parties.js), the one way a
-// party's income reads verified.
+// The four facts, plus a party's employer: party:<id>:employer (lib/parties.js). The tap records
+// that the realtor called that employer, so the party reads employer confirmed, never that the
+// income was.
 const KEYS = ['id', 'employer', 'landlord', 'reference'];
 const knownKey = (k) => KEYS.includes(k) || isPartyConfirmKey(k);
 
