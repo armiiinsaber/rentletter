@@ -1,20 +1,19 @@
-# Rentletter — context for every session
+# Rentletter: context for every session
 
-Rental application screening platform for Canadian realtors (Toronto launch).
-Flow: realtor creates a listing → shares an invite link → tenants submit
-standardized applications → realtor reviews/shortlists/documents decisions →
-realtor sends a co-branded shortlist to their landlord client, including fit
-against the landlord's stated preferences.
+Rental application platform for Canadian realtors and tenants (Ontario and
+BC). A tenant builds one profile and applies to listings with it. A realtor
+creates a listing, shares an invite link, reviews the applications with the
+documents read and matched, and sends the landlord a report under their own
+brand.
 
 **Positioning:** Rentletter is a rental application platform for realtors and
 tenants in Ontario and BC. A tenant builds one profile and reuses it. A realtor
 gets the application, the documents read and matched, and a report for the
-landlord. Realtors connect through the Circle. Verification is being added.
-Rentletter is building verification into the
-product. Until it ships, no screen inside the app may tell a realtor, a
-landlord or a tenant that a specific applicant has been verified or background
-checked unless that check actually happened for that applicant. Marketing copy
-may describe the product direction.
+landlord. Realtors connect through the Circle. Rentletter is building
+verification into the product. Until it ships, no screen inside the app may
+tell a realtor, a landlord or a tenant that a specific applicant has been
+verified or background checked unless that check actually happened for that
+applicant. Marketing copy may describe the product direction.
 
 **Audiences:** Realtors are primary; everything is built for them. Solo
 landlords/PMs are a quiet secondary audience reachable via one small footer
@@ -77,13 +76,13 @@ shortlist page reference only legally screenable criteria.
 - Paper `#faf8f3` (deep variant `#f2eee3`)
 - Ink `#0f0f10` (soft `#3a3a3c`, mute `#86868b`)
 - Rule `#e3ddd0`
-- Signal red `#d72027` — brand accent and primary actions ONLY; errors and
+- Signal red `#d72027`: brand accent and primary actions ONLY; errors and
   destructive actions use danger `#a8161c` (never brand red)
 - Green `#2d7d4a` (founder badge, success, document-verified states)
-- Instrument surfaces (`#101012` family in `components/theme.js`) — ink-black
+- Instrument surfaces (`#101012` family in `components/theme.js`): ink-black
   panels reserved for AI/verification/live-data moments; paper = human,
   instrument = machine, red = signal between them
-- Identity: paper/ink/red, editorial confidence — Time-magazine-style red bar
+- Identity: paper/ink/red, editorial confidence. Time-magazine-style red bar
   wordmark; the red tick-mark motif is the score/divider language (see
   `TickMeter` in `components/ui.js`)
 
@@ -96,7 +95,7 @@ shortlist page reference only legally screenable criteria.
   you close sooner with confidence." The ban holds everywhere else.
 - Every sentence states something the realtor concretely gets. Prefer fewer
   words.
-- Design-target realtor: young and tech-savvy, 25–45 — uses ChatGPT/Claude
+- Design-target realtor: young and tech-savvy, 25 to 45, uses ChatGPT/Claude
   casually and expects an AI-forward, fast product. Clarity fundamentals stay
   (obvious UX, generous tap targets, readable sizes); speed and density are
   tuned for this user.
