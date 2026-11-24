@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { C, R, SH, EASE } from '../components/theme';
-import { GlobalStyle, Wordmark, Icon, ScrollHeader } from '../components/ui';
+import { GlobalStyle, Wordmark, Icon, ScrollHeader, usePageScrolled } from '../components/ui';
 import AppHead from '../components/AppHead';
 import DeviceFrame, { DEVICE_BREAKPOINT } from '../components/DeviceFrame';
 import { noWidow } from '../lib/typeset';
@@ -207,39 +207,10 @@ export default function Home() {
 
   const updateResume = (text) => { setResume(text); localStorage.setItem('rentletter_resume', text); };
 
-  // ── Landing header scroll-parallax + fade ────────────────────────────────────────────────
-  // As the page scrolls, the left zone (wordmark) drifts further LEFT, the right zone (CTA) drifts
-  // further RIGHT, and the whole header fades out — so it dissolves elegantly instead of hard-
-  // cutting against content passing under it. Eases back on scroll up. Transforms/opacity only;
-  // gated behind prefers-reduced-motion (static fallback: header stays put, still seamless via CSS).
-  useEffect(() => {
-    if (step !== 'landing') return;
-    if (typeof window === 'undefined') return;
-    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return;
-    const header = document.querySelector('.lp-shell .rl-header');
-    if (!header) return;
-    const left = header.querySelector('.lh-left');
-    const right = header.querySelector('.lh-right');
-    const DIST = 190;
-    let raf = 0;
-    const apply = () => {
-      raf = 0;
-      const t = Math.min(Math.max(window.scrollY / DIST, 0), 1);
-      header.style.opacity = String(1 - t * 0.86);      // eases to ~0.14, fades back in on scroll up
-      if (left) left.style.transform = `translate3d(${(-t * 30).toFixed(1)}px, 0, 0)`;
-      if (right) right.style.transform = `translate3d(${(t * 30).toFixed(1)}px, 0, 0)`;
-      header.style.pointerEvents = t > 0.9 ? 'none' : 'auto';
-    };
-    const onScroll = () => { if (!raf) raf = requestAnimationFrame(apply); };
-    apply();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', onScroll);
-      if (raf) cancelAnimationFrame(raf);
-      header.style.opacity = ''; header.style.pointerEvents = '';
-      if (left) left.style.transform = ''; if (right) right.style.transform = '';
-    };
-  }, [step]);
+  // ── Landing header: solid at the very top, glass once the page scrolls under it ──────────
+  // (components/ui.js .rl-glass-auto, usePageScrolled). It stays fully visible and in place: the
+  // drift and the fade it once had would leave nothing of the glass to read.
+  usePageScrolled();
 
   // ════════════════════════════════════════════════════════════
   // LANDING — minimal, confident, sparingly red
@@ -265,7 +236,7 @@ export default function Home() {
         <div className="lp-shell" style={{ minHeight: '100vh', background: C.paper }}>
 
           {/* ── HEADER, balanced 3-zone: wordmark left · nav center · CTA right ── */}
-          <ScrollHeader>
+          <ScrollHeader glass="auto">
             {/* LEFT, wordmark (drifts left + fades on scroll). Its door swings once after the page
                 loads (components/brand/HomeDoor.js), never on scroll. */}
             <div className="lh-left">
@@ -646,20 +617,12 @@ export default function Home() {
         .lp-legal > span + span::before { content: '·'; position: absolute; left: -0.9em; width: 0.9em; text-align: center; }
       `}</style>
       <style jsx>{`
-        /* Landing header — seamless like the dashboard: drop the translucent tint + backdrop-filter
-           and the divider/shadow so it blends into the flat paper page (no colour/saturation seam),
-           and let the scroll-fade dissolve it instead of hard-cutting against content underneath. */
-        .lp-shell :global(.rl-header) {
-          background: transparent !important;
-          -webkit-backdrop-filter: none !important;
-          backdrop-filter: none !important;
-          border-bottom-color: transparent !important;
-          box-shadow: none !important;
-          transition: opacity 160ms linear !important;
-          will-change: opacity;
-        }
-        .lp-shell :global(.lh-left),
-        .lp-shell :global(.lh-right) { will-change: transform; }
+        /* Landing header: the shared glass (components/ui.js), solid at the very top so it reads
+           as the flat paper page, glass once the page scrolls under it. It stays at the top: the
+           page's own boxes are overflow-x hidden (components/ui.js), which makes each a scroll box
+           that never scrolls, so a sticky header inside never stuck; clip holds the same sideways
+           edge without making one (as components/dashboard/DashShell.js does). */
+        :global(body:has(.lp-shell)), :global(#__next:has(.lp-shell)) { overflow-x: clip !important; }
         /* Small screens: collapse the secondary nav (still in the footer) so the top bar is a single
            tidy row, wordmark + primary CTA, with no wrap or overflow at 360/390. */
         @media (max-width: 599px) {

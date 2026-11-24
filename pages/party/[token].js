@@ -9,7 +9,8 @@
 import { useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Wordmark, StatusPills } from '../../components/ui';
+import { GlobalStyle, StatusPills } from '../../components/ui';
+import TenantBar from '../../components/tenant/TenantBar';
 import { C } from '../../components/theme';
 import { Field, SelectField } from '../../components/apply/fields';
 import { ProfileStyles, Eyebrow, LinesText, EMP_LABEL, noWidow } from '../../components/tenant/ProfileFacts';
@@ -103,12 +104,7 @@ export default function PartyPage() {
     finally { setBusy(false); }
   };
 
-  const header = (
-    <header className="mp-header">
-      <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-      <span className="mp-note">{isGuarantor ? 'Guarantor form' : 'Co applicant form'}</span>
-    </header>
-  );
+  const header = <TenantBar label={isGuarantor ? 'Guarantor form' : 'Co applicant form'} />;
   const shell = (inner) => (
     <>
       <Head><title>{isGuarantor ? 'Guarantor' : 'Co applicant'} · Rentletter</title><meta name="robots" content="noindex" /></Head>

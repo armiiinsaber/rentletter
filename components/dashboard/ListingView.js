@@ -1684,11 +1684,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <DocumentViewer doc={viewer} onClose={() => setViewer(null)} />
       {/* A quick action that failed on the server: the screen already went back; this says so,
           wherever the realtor is on the page. */}
-      <div role="status" aria-live="polite" className="lv-toast" data-toast={toast ? '' : undefined}>{toast}</div>
+      <div role="status" aria-live="polite" className="lv-toast rl-glass rl-glass-ink" data-toast={toast ? '' : undefined}>{toast}</div>
       <style jsx>{`
         @media (max-width: 344.98px) { :global(.lv-party-title) { --lv-title-ls: 0.03em; } }
         .lv-toast:empty { display: none; }
-        .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; background: ${C.inst}; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); box-shadow: ${SH.raised}; text-wrap: balance; }
+        .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); text-wrap: balance; }
+        /* A toast floats over the page: the ink glass (components/ui.js), with its own lift. */
+        .lv-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), ${SH.raised}; }
         .lv-fold { display: grid; grid-template-rows: 0fr; }
         .lv-fold.lv-fold-open { grid-template-rows: 1fr; }
         .lv-fold > div { overflow: hidden; min-height: 0; }

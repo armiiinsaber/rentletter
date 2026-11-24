@@ -12,6 +12,18 @@
 //   e. Back and forward move between the views, each at its own address.
 //   f. At 390 no transition between Listings and Circle; into a listing and back out still pushes
 //      and goes back.
+// And the glass (components/ui.js .rl-glass), on the floating layer only:
+//   2a. The tenant's top bar (components/tenant/TenantBar.js) at the top of the page: solid, 69px;
+//       scrolled: glass, still at the top, the phone's strength bar and chips under it and glass
+//       too, the desktop's section menu and strength panel below it and never covered.
+//   2b. The area behind a sheet, the bulk bar: glass.
+//   2c. The homepage's navigation: solid at the top, glass once the page scrolls under it, fully
+//       visible.
+//   2d. Every piece of text on glass keeps 4.5 to 1 over black and over white.
+//   2e. Reduced motion: no fade. Reduced transparency (Chrome) and the fallbacks' rules: solid.
+//   2f. The bar at 390 and 320, with a field brought into view, before, during and after a sheet.
+//   2g. The frames while a long page scrolls under the glass, against the same scroll with the
+//       glass taken off: at most 4ms more a frame at the median, 8ms at the 95th percentile.
 // Each database call waits 60ms on the fake stack, so a screen not seen recently shows its Loader
 // first (DOOR.loaderDelayMs, lib/motion.js), which is drawn inside the shell
 // (components/nav/RouteLoader.js). The pages are served from the run's one production build
@@ -232,13 +244,202 @@ async function phone(browser, tag) {
   } finally { await ctx.close(); }
 }
 
+// ── The glass (components/ui.js .rl-glass) ─────────────────────────────────────────────────
+// Every piece of text on a glass surface, against the glass laid over pure black and over pure
+// white (the two ends of anything that can pass underneath; the fill, then any painted box of its
+// own between the text and the glass): its contrast at the worse of the two.
+const CONTRAST = () => {
+  const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+  const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+  const ratio = (a, b) => { const x = L(a); const y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const rgba = (str) => { const m = String(str).match(/rgba?\(([^)]+)\)/); if (!m) return null; const v = m[1].split(/[\s,/]+/).filter(Boolean).map(Number); return [v[0], v[1], v[2], v.length > 3 ? v[3] : 1]; };
+  const over = (top, under) => [0, 1, 2].map((i) => top[i] * top[3] + under[i] * (1 - top[3]));
+  const out = [];
+  for (const g of document.querySelectorAll('.rl-glass')) {
+    if (!g.getClientRects().length) continue;
+    const glass = rgba(getComputedStyle(g).backgroundColor);
+    for (const el of [g, ...g.querySelectorAll('*')]) {
+      if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+      if (!el.getClientRects().length || getComputedStyle(el).visibility === 'hidden') continue;
+      let painted = null;
+      for (let a = el; a && a !== g; a = a.parentElement) { const b = rgba(getComputedStyle(a).backgroundColor); if (b && b[3] > 0) { painted = b; break; } }
+      const fg = rgba(getComputedStyle(el).color);
+      const at = (backdrop) => { const base = over(glass, backdrop); return ratio(fg, painted ? over(painted, base) : base); };
+      out.push({ text: el.textContent.trim().slice(0, 40), ratio: Math.round(Math.min(at([0, 0, 0]), at([255, 255, 255])) * 100) / 100 });
+    }
+  }
+  return out;
+};
+async function readable(page, tag) {
+  const c = await page.evaluate(CONTRAST);
+  const low = c.filter((x) => x.ratio < 4.5);
+  assert.deepEqual(low, [], `${tag}: text on glass keeps 4.5 to 1 over black and over white (${JSON.stringify(c)})`);
+  return c.length;
+}
+// A glass surface as it stands: its solid layer's opacity, whether it blurs, its box.
+const SURFACE = (sel) => {
+  const el = [...document.querySelectorAll(sel)].find((e) => e.getClientRects().length); if (!el) return null;
+  const cs = getComputedStyle(el); const before = getComputedStyle(el, '::before'); const r = el.getBoundingClientRect();
+  const filter = cs.backdropFilter || cs.webkitBackdropFilter || 'none';
+  return { solid: el.classList.contains('rl-glass-auto') ? Number(before.opacity) : 0, blur: /blur/.test(filter), top: Math.round(r.top), bottom: Math.round(r.bottom), height: Math.round(r.height), fade: before.transitionDuration, scrolled: document.documentElement.hasAttribute('data-scrolled') };
+};
+const scrollTo = async (page, y) => { await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y); await page.waitForTimeout(500); };
+// The frames of a long scroll, one step a frame: how long each frame took, in ms.
+const FRAMES = () => new Promise((res) => {
+  const ts = []; let y = 0; const max = document.documentElement.scrollHeight - window.innerHeight;
+  const f = (t) => { ts.push(t); y += 40; window.scrollTo({ top: Math.min(y, max), behavior: 'instant' }); if (y < max && ts.length < 120) requestAnimationFrame(f); else { const d = ts.slice(1).map((v, i) => v - ts[i]).sort((a, b) => a - b); res({ frames: d.length, median: Math.round(d[Math.floor(d.length / 2)] || 0), p95: Math.round(d[Math.floor(d.length * 0.95)] || 0) }); } };
+  requestAnimationFrame(f);
+});
+const smooth = [];
+// The same long scroll with the glass and then with it taken off the page: the glass may cost at
+// most 4ms a frame at the median and 8ms at the 95th percentile. (Headless Chrome draws at most
+// 30 frames a second however light the page, so a fixed bound would only measure that.)
+async function frames(page, tag, label) {
+  const on = await page.evaluate(FRAMES);
+  await page.evaluate(() => { document.querySelectorAll('.rl-glass').forEach((e) => e.classList.remove('rl-glass')); window.scrollTo({ top: 0, behavior: 'instant' }); });
+  await page.waitForTimeout(300);
+  const off = await page.evaluate(FRAMES);
+  smooth.push({ tag, page: label, on, off });
+}
+async function tenantIn(ctx, page, who, query = 'docs=1') {
+  const { token } = await fetch(`${BASE}/__fake/tenant?who=${who}&${query}`).then((r) => r.json());
+  await page.goto(`${BASE}/my-application`, { waitUntil: 'networkidle' });
+  await ctx.addCookies([{ name: 'rl_tenant', value: encodeURIComponent(token), url: BASE, httpOnly: true, sameSite: 'Lax' }]);
+  await page.goto(`${BASE}/my-application`, { waitUntil: 'networkidle' });
+  await page.locator('[data-tenant-bar]').waitFor({ timeout: 30000 });
+  await page.locator('[data-vault-documents]').waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+}
+
+async function glassPhone(browser, tag) {
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, userAgent: UA_PHONE, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
+  await blockSupabase(ctx);
+  const page = await ctx.newPage();
+  try {
+    await tenantIn(ctx, page, tag === 'wk' ? 31 : 32);
+    // At the very top: solid, as it always was, 69px tall, the strength bar right under it.
+    let bar = await page.evaluate(SURFACE, '[data-tenant-bar]'); let top = await page.evaluate(SURFACE, '[data-tp-top]');
+    assert.deepEqual({ solid: bar.solid, blur: bar.blur, top: bar.top, height: bar.height, scrolled: bar.scrolled }, { solid: 1, blur: false, top: 0, height: 69, scrolled: false }, `${tag} 2a: the bar at the top is solid (${JSON.stringify(bar)})`);
+    assert.equal(top.top, 69, `${tag} 2a: the strength bar starts under the top bar (${JSON.stringify(top)})`);
+    // Scrolled: glass, still at the top, the strength bar and chips stuck right under it, glass too.
+    await scrollTo(page, 700);
+    bar = await page.evaluate(SURFACE, '[data-tenant-bar]'); top = await page.evaluate(SURFACE, '[data-tp-top]');
+    assert.deepEqual({ solid: bar.solid, blur: bar.blur, top: bar.top, scrolled: bar.scrolled }, { solid: 0, blur: true, top: 0, scrolled: true }, `${tag} 2a: scrolled, the bar is glass at the top (${JSON.stringify(bar)})`);
+    assert.deepEqual({ solid: top.solid, blur: top.blur, top: top.top }, { solid: 0, blur: true, top: 69 }, `${tag} 2b: the strength bar and chips stuck under it, glass (${JSON.stringify(top)})`);
+    assert.ok(await readable(page, `${tag} 2d phone profile`) >= 3, `${tag}: the bar's text was read`);
+    // A field brought into view (as a focus with the keyboard does) stops under both bars.
+    const field = await page.evaluate(() => { const el = document.querySelector('[data-sign-in-email] input'); el.scrollIntoView({ block: 'start', behavior: 'instant' }); el.focus({ preventScroll: true }); const r = el.getBoundingClientRect(); const hit = document.elementFromPoint(r.left + 8, r.top + r.height / 2); return { top: Math.round(r.top), clear: hit === el }; });
+    const under = (await page.evaluate(SURFACE, '[data-tp-top]')).bottom;
+    assert.ok(field.top >= under && field.clear, `${tag} 2f: the field is never under the bars (${JSON.stringify({ field, under })})`);
+    // A sheet over the scrolled page: the bar never drops to where it sits in the page, in any
+    // frame while the sheet rises, while it is up, or after it closes.
+    await scrollTo(page, 900);
+    await page.evaluate(() => { window.__bars = []; const f = () => { const b = document.querySelector('[data-tenant-bar]').getBoundingClientRect(); window.__bars.push(Math.round(b.top)); window.__barRaf = requestAnimationFrame(f); }; window.__barRaf = requestAnimationFrame(f); });
+    await page.evaluate(() => document.querySelector('[data-strength-bar]').click()); // opens without scrolling the page
+    await page.locator('[data-strength-sheet]').waitFor({ timeout: 15000 }); await page.waitForTimeout(600);
+    const scrim = await page.evaluate(SURFACE, '.rl-sh-scrim');
+    assert.ok(scrim && scrim.blur, `${tag} 2b: the area behind the sheet is the dim glass (${JSON.stringify(scrim)})`);
+    await page.keyboard.press('Escape'); await page.locator('[data-strength-sheet]').waitFor({ state: 'detached', timeout: 15000 }); await page.waitForTimeout(500);
+    const bars = await page.evaluate(() => { cancelAnimationFrame(window.__barRaf); return window.__bars; });
+    assert.ok(bars.length > 10 && bars.every((y) => y >= 0 && y <= 32), `${tag} 2f: with a sheet open the bar stays at the top, only scaled back with the page (${[...new Set(bars)].join(', ')})`);
+    assert.deepEqual(await page.evaluate(() => [Math.round(window.scrollY), document.querySelector('[data-tenant-bar]').style.translate || '', Math.round(document.querySelector('[data-tenant-bar]').getBoundingClientRect().top)]), [900, '', 0], `${tag} 2f: after the sheet, where it was`);
+    // 320: the same bar, one row.
+    await page.setViewportSize({ width: 320, height: 640 }); await page.waitForTimeout(400);
+    const narrow = await page.evaluate(() => { const b = document.querySelector('[data-tenant-bar]'); const r = b.getBoundingClientRect(); const out = [...b.children].filter((c) => c.getClientRects().length).map((c) => c.getBoundingClientRect()); return { height: Math.round(r.height), top: Math.round(r.top), inside: out.every((c) => c.left >= 0 && c.right <= 320 && c.top >= r.top && c.bottom <= r.bottom) }; });
+    assert.deepEqual(narrow, { height: 69, top: 0, inside: true }, `${tag} 2f: at 320 one row of 69px`);
+    await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
+    await frames(page, tag, 'tenant profile 390');
+    noSupabaseLeft(ctx, `${tag} glass 390`);
+  } finally { await ctx.close(); }
+}
+
+async function glassDesk(browser, tag) {
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 1440, height: 900 } });
+  await blockSupabase(ctx);
+  const page = await ctx.newPage();
+  try {
+    await tenantIn(ctx, page, tag === 'wk' ? 33 : 34);
+    await scrollTo(page, 900);
+    const bar = await page.evaluate(SURFACE, '[data-tenant-bar]');
+    assert.deepEqual({ solid: bar.solid, blur: bar.blur, top: bar.top }, { solid: 0, blur: true, top: 0 }, `${tag} 2a: 1440 scrolled, glass at the top`);
+    // The menu and the strength panel sit below it and are never covered.
+    const beside = await page.evaluate(() => ['[data-tp-menu]', '.tp-aside'].map((s) => { const el = document.querySelector(s); const r = el.getBoundingClientRect(); const first = el.querySelector('a, button, h2, .pp-percent') || el; const fr = first.getBoundingClientRect(); const hit = document.elementFromPoint(fr.left + 4, fr.top + Math.min(8, fr.height / 2)); return { s, top: Math.round(r.top), clear: !!hit && el.contains(hit) }; }));
+    for (const b of beside) assert.ok(b.top >= bar.bottom && b.clear, `${tag} 2a: ${b.s} below the bar and never covered (${JSON.stringify({ b, bar })})`);
+    await readable(page, `${tag} 2d desk profile`);
+    await frames(page, tag, 'tenant profile 1440');
+    // The homepage: solid at the very top, glass once it scrolls under, fully visible.
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' }); await page.waitForTimeout(500);
+    let nav = await page.evaluate(SURFACE, '.lp-shell .rl-header');
+    assert.deepEqual({ solid: nav.solid, blur: nav.blur }, { solid: 1, blur: false }, `${tag} 2c: the homepage navigation at the top is solid`);
+    await scrollTo(page, 800);
+    nav = await page.evaluate(SURFACE, '.lp-shell .rl-header');
+    assert.deepEqual({ solid: nav.solid, blur: nav.blur, top: nav.top }, { solid: 0, blur: true, top: 0 }, `${tag} 2c: scrolled, the homepage navigation is glass`);
+    assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.lp-shell .rl-header')).opacity), '1', `${tag} 2c: and fully visible`);
+    await readable(page, `${tag} 2d homepage`);
+    await frames(page, tag, 'homepage 1440');
+    // The bulk bar: glass, stuck over the rows as the page scrolls.
+    await fetch(`${BASE}/__fake/state?archive=1`);
+    try {
+      await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' }); await page.locator('[data-listings-table]').first().waitFor({ timeout: 30000 });
+      await page.locator('[data-row-check="L1"]').check(); await page.locator('[data-row-check="L2"]').check();
+      await page.locator('[data-bulk-bar]').waitFor({ timeout: 15000 });
+      const bulk = await page.evaluate(SURFACE, '[data-bulk-bar]');
+      assert.ok(bulk.blur, `${tag} 2b: the bulk bar is glass (${JSON.stringify(bulk)})`);
+      await readable(page, `${tag} 2d bulk bar`);
+    } finally { await fetch(`${BASE}/__fake/state?archive=0`); }
+    noSupabaseLeft(ctx, `${tag} glass 1440`);
+  } finally { await ctx.close(); }
+}
+
+// e. Reduced motion: the change from solid to glass is instant. Reduced transparency and no
+// backdrop-filter: solid. Chrome can be told the reduced transparency preference; WebKit cannot,
+// so there the rule itself is read from the page's own style sheets.
+async function glassFallbacks(browser, tag) {
+  const ctx = await browser.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+  await blockSupabase(ctx);
+  const page = await ctx.newPage();
+  try {
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' }); await page.waitForTimeout(400);
+    assert.equal((await page.evaluate(SURFACE, '.lp-shell .rl-header')).fade, '0s', `${tag} 2e: reduced motion, no fade`);
+    const rules = await page.evaluate(() => {
+      const found = { transparency: false, supports: false };
+      const walk = (list, inMedia, inSupports) => { for (const r of list) {
+        // A style rule first: with CSS nesting every style rule has a cssRules list of its own.
+        if (r.selectorText !== undefined) {
+          if (!/\.rl-glass\b/.test(r.selectorText)) continue;
+          const solid = /var\(--glass-solid\)/.test(r.style.backgroundColor) || /var\(--glass-solid\)/.test(r.cssText);
+          if (inMedia && solid && /none/.test(r.style.backdropFilter || r.style.webkitBackdropFilter || r.cssText)) found.transparency = true;
+          if (inSupports && solid) found.supports = true;
+        } else if (r.media && /prefers-reduced-transparency:\s*reduce/.test(r.media.mediaText)) walk(r.cssRules, true, inSupports);
+        else if (r.conditionText !== undefined && /not\s*\(\(-webkit-backdrop-filter|not\s*\(\(backdrop-filter/.test(r.conditionText)) walk(r.cssRules, inMedia, true);
+        else if (r.cssRules) walk(r.cssRules, inMedia, inSupports);
+      } };
+      for (const sh of document.styleSheets) { try { walk(sh.cssRules, false, false); } catch (e) { /* another origin */ } }
+      return found;
+    });
+    assert.deepEqual(rules, { transparency: true, supports: true }, `${tag} 2e: the solid fallbacks are in the page's style`);
+    if (tag === 'cr') {
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-transparency', value: 'reduce' }] });
+      await scrollTo(page, 800);
+      const solid = await page.evaluate(() => { const cs = getComputedStyle(document.querySelector('.lp-shell .rl-header')); return { bg: cs.backgroundColor, filter: cs.backdropFilter || 'none' }; });
+      assert.deepEqual(solid, { bg: 'rgb(250, 248, 243)', filter: 'none' }, `${tag} 2e: reduced transparency, solid`);
+    }
+  } finally { await ctx.close(); }
+}
+
 async function walk(browserType, launch, tag) {
   const browser = await browserType.launch(launch);
   try {
     await desk(browser, tag);
     await phone(browser, tag);
+    await glassPhone(browser, tag);
+    await glassDesk(browser, tag);
+    await glassFallbacks(browser, tag);
+    // g: how long each frame took while a long page scrolled under the glass.
+    console.log(`# ${tag} frames while scrolling, with the glass and without: ${smooth.filter((x) => x.tag === tag).map((x) => `${x.page} median ${x.on.median} and ${x.off.median}ms, p95 ${x.on.p95} and ${x.off.p95}ms (${x.on.frames} frames)`).join('; ')}`);
+    for (const x of smooth.filter((v) => v.tag === tag)) assert.ok(x.on.frames > 40 && x.on.median <= x.off.median + 4 && x.on.p95 <= x.off.p95 + 8, `${tag} 2g: ${x.page} scrolls as smoothly with the glass as without it (${JSON.stringify(x)})`);
   } finally { await browser.close(); }
 }
 
-test('the dashboard as one place in WebKit at 1440 and 390', { timeout: 600000 }, async () => { requireWebkit(); await walk(pw.webkit, {}, 'wk'); });
+test('the dashboard as one place, and the glass, in WebKit at 1440, 390 and 320', { timeout: 600000 }, async () => { requireWebkit(); await walk(pw.webkit, {}, 'wk'); });
 test('the same walk in Chrome', { skip: haveChrome ? false : 'Chrome binary absent', timeout: 600000 }, () => walk(pw.chromium, { executablePath: chromeBin }, 'cr'));

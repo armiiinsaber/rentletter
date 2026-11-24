@@ -13,7 +13,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Wordmark, StatusPills } from '../../components/ui';
+import { GlobalStyle, StatusPills } from '../../components/ui';
+import TenantBar from '../../components/tenant/TenantBar';
 import { C, R } from '../../components/theme';
 import { isValidEmail } from '../../lib/validation';
 import { normalizeProvince, provinceName, humanRightsCodeName } from '../../lib/provinces';
@@ -760,10 +761,7 @@ export default function ApplyPage({ invited = null, archived = false }) {
       </Head>
       <GlobalStyle /><ProfileStyles />
       <div className="mp-page">
-        <header className="mp-header">
-          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-          <span className="mp-note">Rental application</span>
-        </header>
+        <TenantBar label="Rental application" />
 
         <div className="mp-wrap mp-sections">
           {status === 'loading' && <ScreenLoader label="Loading your application" />}

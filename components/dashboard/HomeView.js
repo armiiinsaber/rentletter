@@ -588,7 +588,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               </div>
               {/* The bar for the rows picked: archive (or restore) them, or delete the ones that can go. */}
               {picked.size ? (
-                <div className="hv-bulk" role="region" aria-label="Selected listings" data-bulk-bar="" data-stuck="">
+                <div className="hv-bulk rl-glass" role="region" aria-label="Selected listings" data-bulk-bar="" data-stuck="">
                   <span className="hv-bulk-n">{picked.size} selected</span>
                   {canArchive ? <button type="button" className="ds-btn ds-btn-line" disabled={acting} onClick={() => archiveIds([...picked], shelf !== 'archived')}>{shelf === 'archived' ? 'Restore' : 'Archive'}</button> : null}
                   <button type="button" className="ds-btn ds-btn-line hv-danger" disabled={acting} onClick={() => setAsk({ ids: [...picked] })} data-bulk-delete="">Delete</button>
@@ -814,7 +814,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         :global(.hv-shelf button[aria-pressed='true']) { background: ${C.paperDeep}; color: ${C.ink}; font-weight: 700; }
         :global(.hv-shelf button:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
         .hv-act-note { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0 0 var(--s-3); text-wrap: balance; }
-        .hv-bulk { position: sticky; top: var(--s-2); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); background: ${C.card}; border: 1px solid ${C.ink}; border-radius: var(--card-radius); }
+        .hv-bulk { position: sticky; top: var(--s-2); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); border-radius: var(--card-radius); }
+        /* It floats over the rows as the page scrolls: the glass (components/ui.js), its text ink. */
         .hv-bulk-n { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; margin-right: auto; font-variant-numeric: tabular-nums; }
         :global(.ds-btn.hv-danger) { color: ${C.danger}; }
         :global(.hv-check) { width: 18px; height: 18px; margin: 0; accent-color: ${C.ink}; cursor: pointer; }

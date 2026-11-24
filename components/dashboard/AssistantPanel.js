@@ -29,6 +29,9 @@ const TABS = [['next', 'Next'], ['history', 'History']];
 
 // The rows are components/dashboard/ActionRow.js (ActionRows), shared with any surface that lists items.
 
+// The panel's header over the list: the title row (44px) and the tabs (45px with their rule).
+const HEAD = 89;
+
 export default function AssistantPanel({ open, onClose, signals, items = [], profile }) {
   const adapter = useAdapter();
   const store = useAssistantStore();
@@ -102,21 +105,26 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
 
   return (
     <Sheet open={open} onClose={onClose} label="Next" tall flush maxWidth={720} panelClassName="al-panel">
-      <div data-sheet-drag="" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', padding: '0 clamp(14px, 4vw, 24px)', flexShrink: 0 }}>
-        <span className="t-d3" style={{ color: C.ink }}>Next{items.length ? <span className="num" style={{ color: C.inkMute, fontWeight: 500, marginLeft: 'var(--s-2)' }}>{items.length}</span> : null}</span>
-        <button type="button" onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.pill, color: C.ink, cursor: 'pointer' }}><Icon name="x" size={16} /></button>
-      </div>
-      <div role="tablist" aria-label="Next and History" style={{ display: 'flex', gap: 0, padding: '0 clamp(14px, 4vw, 24px)', borderBottom: `1px solid ${C.rule}`, flexShrink: 0 }}>
-        {TABS.map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
-            style={{ minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.ink : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkMute, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
-            {label}{id === 'next' && items.length ? <span aria-hidden="true" style={{ marginLeft: 'var(--s-1)', fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.ink, borderRadius: 9, padding: 'var(--s-1) var(--s-1)' }}>{items.length}</span> : null}
-          </button>
-        ))}
+      {/* The panel's own header: the title and the tabs, glass, over the top of the list, which
+          passes under it as it scrolls (components/ui.js .rl-glass). 44px and 45px tall, so the
+          list starts under them (HEAD below). Its text is ink and inkSoft: on glass never inkMute. */}
+      <div className="al-head rl-glass" data-panel-head="">
+        <div data-sheet-drag="" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', height: 44, padding: '0 clamp(14px, 4vw, 24px)', flexShrink: 0 }}>
+          <span className="t-d3" style={{ color: C.ink }}>Next{items.length ? <span className="num" style={{ color: C.inkSoft, fontWeight: 500, marginLeft: 'var(--s-2)' }}>{items.length}</span> : null}</span>
+          <button type="button" onClick={onClose} aria-label="Close" style={{ width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: R.pill, color: C.ink, cursor: 'pointer' }}><Icon name="x" size={16} /></button>
+        </div>
+        <div role="tablist" aria-label="Next and History" style={{ display: 'flex', gap: 0, height: 45, padding: '0 clamp(14px, 4vw, 24px)', borderBottom: `1px solid ${C.rule}`, flexShrink: 0 }}>
+          {TABS.map(([id, label]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)}
+              style={{ minHeight: 44, padding: '0 var(--s-3)', background: 'transparent', border: 'none', borderBottom: `2px solid ${tab === id ? C.ink : 'transparent'}`, marginBottom: -1, color: tab === id ? C.ink : C.inkSoft, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0, display: 'inline-flex', alignItems: 'center' }}>
+              {label}{id === 'next' && items.length ? <span aria-hidden="true" style={{ marginLeft: 'var(--s-1)', fontSize: 'var(--t-eyebrow)', fontWeight: 800, color: C.paper, background: C.ink, borderRadius: 9, padding: 'var(--s-1) var(--s-1)' }}>{items.length}</span> : null}
+            </button>
+          ))}
+        </div>
       </div>
 
       {tab === 'next' && (
-        <section role="tabpanel" aria-label="Next" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch', padding: '6px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
+        <section role="tabpanel" aria-label="Next" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch', padding: `${HEAD + 6}px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))` }}>
           <ActionRows items={items} onGo={go} onDismiss={dismiss} />
           {note ? <div role="alert" style={{ fontSize: 'var(--t-body-2)', color: C.danger, marginTop: 'var(--s-2)' }}>{note}</div> : null}
           {referralsEnabled() && ( // lib/features.js: no inbox block while referrals are paused
@@ -125,7 +133,7 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
         </section>
       )}
       {tab === 'history' && (
-        <section role="tabpanel" aria-label="History" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch', padding: '14px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))' }}>
+        <section role="tabpanel" aria-label="History" style={{ flex: 1, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'none', WebkitOverflowScrolling: 'touch', padding: `${HEAD + 14}px clamp(14px, 4vw, 24px) max(24px, env(safe-area-inset-bottom, 0px))` }}>
           {!events.length && loading && <ScreenLoader label="Loading your history" fill={false} />}
           {!events.length && !loading && <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.5 }}>Nothing yet. From here on, what happens on your listings is recorded here.</p>}
           {groups.map((g) => (
@@ -150,6 +158,8 @@ export default function AssistantPanel({ open, onClose, signals, items = [], pro
         </section>
       )}
       <style jsx global>{`
+        .al-head { position: absolute; top: 0; left: 0; right: 0; z-index: 1; --glass-edge: transparent; }
+        .al-panel .rl-sh-flush { position: relative; }
         .al-leave { opacity: 0; transform: translateX(-24px); pointer-events: none; }
         @media (prefers-reduced-motion: no-preference) {
           .al-row { transition: opacity ${DURATION.base}ms ${CURVE.settle}, transform ${DURATION.base}ms ${CURVE.settle}; }

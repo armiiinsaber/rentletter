@@ -28,7 +28,8 @@ import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../components/theme';
-import { GlobalStyle, Wordmark, StatusPills } from '../components/ui';
+import { GlobalStyle, StatusPills } from '../components/ui';
+import TenantBar from '../components/tenant/TenantBar';
 import { ProfileStyles, FactSections, FactSourceContext, FieldStatusContext, Eyebrow, Lines, Chevron, noWidow, dateLong } from '../components/tenant/ProfileFacts';
 import ProfileVault, { youLine, useVault } from '../components/tenant/ProfileVault';
 import ProfilePersonal, { usePersonal } from '../components/tenant/ProfilePersonal';
@@ -106,12 +107,7 @@ export default function MyProfile() {
 
   const signOut = async () => { try { await post({ action: 'sign-out' }); } catch (e) { /* ignore */ } setProfile(null); setPhase('entry'); };
 
-  const header = (right) => (
-    <header className="mp-header">
-      <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-      {right}
-    </header>
-  );
+  const header = (right) => <TenantBar>{right}</TenantBar>;
   const noticeEl = notice && <p role="status" className={notice.tone === 'ok' ? 'mp-note' : 'mp-alert'}>{noWidow(notice.text)}</p>;
   const shell = (title, right, body) => (
     <>
@@ -353,12 +349,9 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
       <Head><title>{f?.fullName ? `${f.fullName}, Profile · Rentletter` : 'My profile · Rentletter'}</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle /><ProfileStyles /><ProfileLayoutStyles />
       <div className="mp-page tp" data-tp-shell="">
-        <header className="mp-header tp-header">
-          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-          <button type="button" onClick={signOut} className="mp-link">Sign out</button>
-        </header>
+        <TenantBar><button type="button" onClick={signOut} className="mp-link">Sign out</button></TenantBar>
         {/* The phone: the strength bar and the section chips, under the header and stuck there. */}
-        <div className="tp-top" data-tp-top="" data-stuck="">
+        <div className="tp-top rl-glass rl-glass-auto" data-tp-top="" data-stuck="">
           <StrengthBar strength={strength} onOpen={() => setSheet(true)} />
           <SectionChips states={states} current={current} onGo={toSection} />
         </div>
@@ -472,7 +465,7 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
         </div>
       </div>
       <StrengthSheet open={sheet} onClose={() => setSheet(false)} strength={strength} onStep={goStep} />
-      {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
+      {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast rl-glass rl-glass-ink">{toast}</div>}
       <style jsx global>{`
         .tp-name { container-type: inline-size; }
         .tp-name .mp-head { align-items: center; }

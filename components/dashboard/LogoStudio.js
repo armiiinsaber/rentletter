@@ -461,8 +461,8 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
 
       {/* Toast, fixed to the viewport so it's visible no matter which card was saved or how far down the realtor scrolled */}
       {toast && (
-        <div role="status" data-tap="" onClick={() => setToast('')}
-          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, background: C.ink, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: '0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
+        <div role="status" data-tap="" onClick={() => setToast('')} className="rl-glass rl-glass-ink"
+          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: 'inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
           <span style={{ fontSize: 15 }}>✓</span> {toast}
         </div>
       )}

@@ -6,7 +6,8 @@
 // Sandbox tokens: demo-ok, demo-email, demo-expired.
 import Head from 'next/head';
 import { isSandboxToken } from '../../lib/features';
-import { GlobalStyle, Wordmark } from '../../components/ui';
+import { GlobalStyle } from '../../components/ui';
+import TenantBar from '../../components/tenant/TenantBar';
 import { C } from '../../components/theme';
 import { ProfileStyles, Eyebrow, noWidow } from '../../components/tenant/ProfileFacts';
 
@@ -40,10 +41,7 @@ export default function ConfirmPage({ t, kind, state }) {
       <Head><title>Confirm · Rentletter</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle /><ProfileStyles />
       <div className="mp-page">
-        <header className="mp-header">
-          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-          <span className="mp-note">Profile</span>
-        </header>
+        <TenantBar label="Profile" />
         <main className="mp-wrap">
           <div className="rl-card mp-card">
             <Eyebrow>{kind === 'email' ? 'Email change' : 'Your profile'}</Eyebrow>

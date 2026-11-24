@@ -7,7 +7,7 @@ import { useEffect, useRef } from 'react';
 import { C, R, SH, EASE, FONT } from './theme';
 import { noWidow } from '../lib/typeset';
 import { LOGO } from '../lib/brand/logoPaths';
-import { PRESS_CSS, NAV_CSS, HIT_CSS } from '../lib/motion';
+import { PRESS_CSS, NAV_CSS, HIT_CSS, DURATION, CURVE } from '../lib/motion';
 import Sheet, { SHEET_PAGE_CSS } from './Sheet';
 import { Pending } from './brand/Loader';
 
@@ -42,6 +42,36 @@ export const GlobalStyle = () => (
          sets its own (components/admin/AdminShell.js). */
       --focus-ring: ${C.ink};
     }
+    /* ── GLASS: the one surface for what floats above content (the tenant's top bar, the phone's
+       strength bar and chips, the bulk bar, the area behind a sheet and a sheet's own header, the
+       notification panel's header, toasts, the homepage's navigation once the page scrolls under
+       it). Never on a card, a button, a field or a table. A translucent fill, a backdrop blur, a
+       soft hairline edge and a faint highlight along the top. Three tones of the one surface:
+       paper (the default), ink (a toast) and dim (the page behind a sheet). Text on glass is ink
+       or inkSoft only: with the paper tone at 86 percent, inkSoft keeps 7.8 to 1 over black and
+       10.8 to 1 over white, ink 13.1 and 18.2, and paper text on the ink tone 18.2 and 11.3, so
+       anything that passes underneath keeps it above 4.5 to 1 (tests/glass.test.mjs). inkMute
+       would fall to 3.6 to 1 over black, so it is never set on glass. With
+       prefers-reduced-transparency, or where backdrop-filter is not supported, the surface is
+       solid. Playwright's WebKit draws no backdrop blur at all (Safari does), so the fill alone
+       must already keep what passes under it faint. ── */
+    :root {
+      --glass-bg: rgba(250, 248, 243, 0.86); --glass-solid: ${C.paper};
+      --glass-blur: saturate(170%) blur(20px);
+      --glass-edge: rgba(15, 15, 16, 0.1); --glass-hi: rgba(255, 255, 255, 0.6);
+    }
+    .rl-glass { background-color: var(--glass-bg); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge); }
+    .rl-glass.rl-glass-ink { --glass-bg: rgba(16, 16, 18, 0.84); --glass-solid: ${C.inst}; --glass-edge: rgba(250, 248, 243, 0.12); --glass-hi: rgba(250, 248, 243, 0.08); }
+    .rl-glass.rl-glass-dim { --glass-bg: rgba(15, 15, 16, 0.38); --glass-solid: rgba(15, 15, 16, 0.45); --glass-blur: saturate(120%) blur(6px); --glass-edge: transparent; --glass-hi: transparent; }
+    /* Solid at the very top of the page and glass once the page scrolls under it (usePageScrolled
+       below): a solid layer over the glass that fades out, and the blur only from then on. */
+    .rl-glass.rl-glass-auto { -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .rl-glass.rl-glass-auto::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--glass-solid); opacity: 1; pointer-events: none; }
+    html[data-scrolled] .rl-glass.rl-glass-auto { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+    html[data-scrolled] .rl-glass.rl-glass-auto::before { opacity: 0; }
+    @media (prefers-reduced-motion: no-preference) { .rl-glass.rl-glass-auto::before { transition: opacity ${DURATION.base}ms ${CURVE.settle}; } }
+    @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { .rl-glass { background-color: var(--glass-solid); } }
+    @media (prefers-reduced-transparency: reduce) { .rl-glass, html[data-scrolled] .rl-glass.rl-glass-auto { background-color: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none; } }
     /* The page's side gutter: 16px on a phone to 32px wide. Below 345px (a 320 screen) the gutter
        and a card's padding are 12px, not 16: the text inside gains 16px. */
     :root { --page-gutter: clamp(16px, 4vw, 32px); }
@@ -161,11 +191,13 @@ export const GlobalStyle = () => (
     .rl-modal { border-radius: ${R.modal}px; background: ${C.paper}; box-shadow: ${SH.modal}; overflow: hidden; }
 
     /* ── Sticky scroll-shrink header — site-wide ── */
-    .rl-header { position: sticky; top: 0; z-index: 60; background: rgba(250,248,243,0.72); padding-top: env(safe-area-inset-top, 0px);
-      -webkit-backdrop-filter: saturate(180%) blur(14px); backdrop-filter: saturate(180%) blur(14px);
+    /* It floats over the page as it scrolls, so it is the glass (.rl-glass above); the homepage's is
+       solid at the very top (.rl-glass-auto). The dashboard's own is static and solid (HomeView.js). */
+    .rl-header { position: sticky; top: 0; z-index: 60; padding-top: env(safe-area-inset-top, 0px);
       border-bottom: 1px solid transparent;
-      transition: box-shadow 280ms ease, border-color 280ms ease, background 280ms ease; }
-    .rl-header.rl-shrink { border-bottom-color: ${C.rule}; box-shadow: 0 1px 0 rgba(15,15,16,.03), 0 8px 24px rgba(15,15,16,.05); background: rgba(250,248,243,0.86); }
+      transition: box-shadow 280ms ease, border-color 280ms ease; }
+    .rl-header.rl-glass { box-shadow: none; }
+    .rl-header.rl-shrink { border-bottom-color: ${C.rule}; box-shadow: inset 0 1px 0 var(--glass-hi), 0 1px 0 rgba(15,15,16,.03), 0 8px 24px rgba(15,15,16,.05); }
     .rl-header-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
       padding: 18px clamp(18px, 4vw, 32px); transition: padding 280ms ${EASE}; }
     .rl-header.rl-shrink .rl-header-inner { padding: 11px clamp(18px, 4vw, 32px); }
@@ -274,10 +306,35 @@ export const Wordmark = ({ size = 'header', onDark = false, style }) => {
   );
 };
 
+// ─── THE PAGE HAS SCROLLED: html[data-scrolled] ──────────────
+// Set once the page has scrolled a few pixels, cleared at the very top, for the glass that is
+// solid at the top (.rl-glass-auto above). One probe of 8px at the top of the page, watched by an
+// IntersectionObserver, however many components ask; no scroll listener. While a sheet pins the
+// page (components/Sheet.js) the probe moves with it, so the state holds.
+let scrolledUsers = 0; let scrolledStop = null;
+export function usePageScrolled() {
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') return undefined;
+    scrolledUsers += 1;
+    if (scrolledUsers === 1) {
+      const html = document.documentElement;
+      const probe = document.createElement('div');
+      probe.setAttribute('aria-hidden', 'true'); probe.setAttribute('data-scroll-probe', '');
+      probe.style.cssText = 'position:absolute;top:0;left:0;width:1px;height:8px;pointer-events:none;visibility:hidden;';
+      document.body.prepend(probe);
+      const io = new IntersectionObserver((entries) => { const e = entries[entries.length - 1]; if (e.isIntersecting) html.removeAttribute('data-scrolled'); else html.setAttribute('data-scrolled', ''); });
+      io.observe(probe);
+      scrolledStop = () => { io.disconnect(); probe.remove(); html.removeAttribute('data-scrolled'); };
+    }
+    return () => { scrolledUsers -= 1; if (scrolledUsers === 0 && scrolledStop) { scrolledStop(); scrolledStop = null; } };
+  }, []);
+}
+
 // ─── SCROLL-SHRINK STICKY HEADER ─────────────────────────────
 // Sticky header that gains a hairline + shadow and tightens its padding once
 // the page scrolls. Pass header content as children (left + right groups).
-export const ScrollHeader = ({ children, maxWidth = 1200 }) => {
+// glass 'auto': solid at the very top of the page and glass once it scrolls under (the homepage).
+export const ScrollHeader = ({ children, maxWidth = 1200, glass = 'always' }) => {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
@@ -290,7 +347,7 @@ export const ScrollHeader = ({ children, maxWidth = 1200 }) => {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
   return (
-    <header ref={ref} className="rl-header" data-stuck="">
+    <header ref={ref} className={`rl-header rl-glass${glass === 'auto' ? ' rl-glass-auto' : ''}`} data-stuck="">
       <div className="rl-header-inner" style={{ maxWidth }}>{children}</div>
     </header>
   );

@@ -5,7 +5,8 @@
 // expired code renders the invalid link state here. Sandbox codes (DEMO1, DEMO001) open the
 // sandbox invite and never touch KV. The resolve itself is lib/shortLink.js resolveShortCode.
 import Head from 'next/head';
-import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
+import { GlobalStyle, Icon } from '../../components/ui';
+import TenantBar from '../../components/tenant/TenantBar';
 import { C, R } from '../../components/theme';
 import { kvGet, kvIncr, kvExpire } from '../../lib/kv';
 import { resolveShortCode } from '../../lib/shortLink';
@@ -24,10 +25,7 @@ export default function ShortLinkPage({ invalidMsg }) {
       <Head><title>Rentletter</title><meta name="robots" content="noindex" /></Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper }}>
-        <header style={{ borderBottom: `1px solid ${C.rule}`, padding: 'clamp(16px, 4vw, 22px) clamp(16px, 4vw, 32px)', paddingTop: 'calc(clamp(16px, 4vw, 22px) + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
-          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-          <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>Rental application</span>
-        </header>
+        <TenantBar label="Rental application" />
         <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(24px, 6vw, 56px) clamp(16px, 4vw, 32px) 80px' }}>
           <div className="rl-card" style={{ padding: 'clamp(28px, 6vw, 44px)', textAlign: 'center' }}>
             <div style={{ display: 'inline-flex', marginBottom: 14, color: C.inkMute }}><Icon name="link" size={30} /></div>

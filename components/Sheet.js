@@ -175,10 +175,13 @@ export default function Sheet({
   const shown = phase === 'open';
   return createPortal(
     <div className={`rl-sh-root${reduced ? ' rl-sh-reduced' : ''}${shown ? ' rl-sh-shown' : ''}`} role="presentation" data-sheet="">
-      <div className="rl-sh-scrim" data-tap="" onClick={() => requestClose()} aria-hidden="true" />
-      <div ref={panelRef} id={id} className={`rl-sh-panel${tall ? ' rl-sh-tall' : ''}${tone === 'ink' ? ' rl-sh-ink' : ''}${panelClassName ? ` ${panelClassName}` : ''}`} role={role} aria-modal="true" aria-label={kept.current.label} tabIndex={-1}
+      <div className="rl-sh-scrim rl-glass rl-glass-dim" data-tap="" onClick={() => requestClose()} aria-hidden="true" />
+      <div ref={panelRef} id={id} className={`rl-sh-panel${tall ? ' rl-sh-tall' : ''}${tone === 'ink' ? ' rl-sh-ink' : ''}${flush ? ' rl-sh-flushed' : ''}${panelClassName ? ` ${panelClassName}` : ''}`} role={role} aria-modal="true" aria-label={kept.current.label} tabIndex={-1}
         style={{ maxWidth }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
-        <div className="rl-sh-grab" aria-hidden="true"><span className="rl-sh-handle" /></div>
+        {/* The sheet's own header: the grab strip. Where the content scrolls in the sheet it lies
+            over the top of it, glass, and the content passes under it; a flush sheet lays out its
+            own parts below it, so nothing passes under and it stays the panel's own paper. */}
+        <div className={`rl-sh-grab${flush ? '' : ` rl-glass${tone === 'ink' ? ' rl-glass-ink' : ''}`}`} aria-hidden="true"><span className="rl-sh-handle" /></div>
         <div className={`rl-sh-scroll${padSafe ? '' : ' rl-sh-nosafe'}${flush ? ' rl-sh-flush' : ''}`} data-sheet-scroll={flush ? undefined : ''}>{kept.current.children}</div>
       </div>
       {asking && (
@@ -195,7 +198,9 @@ export default function Sheet({
       )}
       <style jsx global>{`
         .rl-sh-root { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; }
-        .rl-sh-scrim { position: absolute; inset: 0; background: rgba(15, 15, 16, 0.45); opacity: 0; transition: opacity ${ms}ms ${CURVE.ios}; touch-action: none; }
+        /* The page behind: the dim glass (components/ui.js .rl-glass-dim), the page blurred under a
+           dark tint; solid dim with reduced transparency. Only its opacity moves. */
+        .rl-sh-scrim { position: absolute; inset: 0; opacity: 0; transition: opacity ${ms}ms ${CURVE.ios}; touch-action: none; }
         .rl-sh-shown .rl-sh-scrim { opacity: 1; }
         .rl-sh-root .rl-sh-panel { position: relative; width: 100%; max-height: calc(100dvh - max(24px, env(safe-area-inset-top, 0px))); display: flex; flex-direction: column;
           background: ${C.paper}; border-radius: ${R.modal}px ${R.modal}px 0 0; box-shadow: ${SH.modal}; outline: none;
@@ -205,6 +210,8 @@ export default function Sheet({
         .rl-sh-root.rl-sh-reduced .rl-sh-panel { transform: none; opacity: 0; transition: opacity ${NATIVE.fade}ms linear; }
         .rl-sh-root.rl-sh-reduced.rl-sh-shown .rl-sh-panel { opacity: 1; }
         .rl-sh-grab { flex: none; display: flex; justify-content: center; align-items: center; height: 24px; touch-action: none; cursor: grab; }
+        .rl-sh-panel:not(.rl-sh-flushed) > .rl-sh-grab { position: absolute; top: 0; left: 0; right: 0; z-index: 2; border-radius: ${R.modal}px ${R.modal}px 0 0; --glass-edge: transparent; }
+        .rl-sh-panel:not(.rl-sh-flushed) > .rl-sh-scroll { padding-top: 24px; border-radius: ${R.modal}px ${R.modal}px 0 0; }
         .rl-sh-handle { width: 36px; height: 5px; border-radius: 3px; background: ${C.ruleDark}; }
         .rl-sh-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: none; -webkit-overflow-scrolling: touch;
           padding-bottom: env(safe-area-inset-bottom, 0px); }

@@ -179,9 +179,8 @@ export const ProfileLayoutStyles = () => (
     /* A sticky box never sticks inside a box that is overflow-x hidden (components/ui.js sets it on
        the page's own boxes); clip holds the same sideways edge without making a scroll box. */
     :root:has([data-tp-shell]) body, #__next:has([data-tp-shell]), :has(> [data-tp-shell]) { overflow-x: clip !important; }
-    .tp { --tp-pad: var(--s-4); }
+    .tp { --tp-pad: var(--s-4); --tbar-pad: var(--tp-pad); }
     .tp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-    .tp-header { padding-left: var(--tp-pad); padding-right: var(--tp-pad); }
     .tp-grid { padding: var(--gap-card) var(--s-4) var(--s-7); max-width: 760px; margin: 0 auto; }
     .tp-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); min-width: 0; }
     .tp-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); min-width: 0; }
@@ -200,11 +199,14 @@ export const ProfileLayoutStyles = () => (
     .tp-tag[data-state='started'] { color: ${C.ink}; background: ${C.paperDeep}; }
     .tp-tag[data-state='empty'] { color: ${C.inkMute}; background: transparent; box-shadow: inset 0 0 0 1px ${C.rule}; }
 
-    /* The phone's top: the strength bar and the section chips, stuck under the window's top. */
-    .tp-top { position: sticky; top: 0; z-index: 30; background: ${C.paper}; border-bottom: 1px solid var(--rule); }
-    /* Anything scrolled to (a section from the menu, a focused field) stops under the phone's bar and
-       chips: one scroll padding on the page, no margin of the sections' own on top of it. */
-    :root:has([data-tp-shell]) { scroll-padding-top: var(--tp-top-pad, 112px); }
+    /* The phone's top: the strength bar and the section chips, stuck under the tenant's top bar
+       (components/tenant/TenantBar.js, --rl-tbar-h), glass like it once the page scrolls under them. */
+    .tp-top { position: sticky; top: var(--rl-tbar-h, 0px); z-index: 30; border-bottom: 1px solid var(--rule); }
+    .tp-top.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi); }
+    .tp-top .tp-bar-label, .tp-top .tp-bar-chev { color: ${C.inkSoft}; }
+    /* Anything scrolled to (a section from the menu, a focused field) stops under the top bar and
+       the phone's bar and chips: one scroll padding on the page, no margin of the sections' own. */
+    html:root:has([data-tp-shell]) { scroll-padding-top: calc(var(--rl-tbar-h, 0px) + var(--tp-top-pad, 112px)); }
     .tp-chips-row { list-style: none; margin: 0; padding: 0 var(--s-4) var(--s-2); display: flex; gap: var(--s-2); overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; -webkit-overflow-scrolling: touch; }
     .tp-chips-row::-webkit-scrollbar { display: none; }
     .tp-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px 0 10px; border-radius: 999px; border: 1px solid var(--rule); background: ${C.card}; color: ${C.inkSoft}; font-size: var(--t-body-2); font-weight: 600; white-space: nowrap; text-decoration: none; }
@@ -213,11 +215,11 @@ export const ProfileLayoutStyles = () => (
 
     @media (min-width: 1024px) {
       .tp { --tp-pad: clamp(24px, calc(8px + 1.875vw), 56px); --tp-gap: clamp(24px, 2.5vw, 64px); --tp-menu: clamp(240px, calc(14vw + 40px), 400px); }
-      :root:has([data-tp-shell]) { --tp-top-pad: var(--s-4); }
+      html:root:has([data-tp-shell]) { --tp-top-pad: var(--s-4); }
       .tp-top, .tp-phone-only { display: none !important; }
       .tp-grid { max-width: none; margin: 0; padding: var(--s-5) var(--tp-pad) var(--s-7); display: grid; column-gap: var(--tp-gap); row-gap: var(--gap-section);
         grid-template-columns: var(--tp-menu) minmax(0, 1fr); grid-template-areas: 'menu aside' 'menu main'; align-items: start; }
-      .tp-menu { display: block; grid-area: menu; position: sticky; top: var(--s-4); max-height: calc(100vh - 2 * var(--s-4)); max-height: calc(100dvh - 2 * var(--s-4)); overflow-y: auto; }
+      .tp-menu { display: block; grid-area: menu; position: sticky; top: calc(var(--rl-tbar-h, 0px) + var(--s-4)); max-height: calc(100vh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); max-height: calc(100dvh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); overflow-y: auto; }
       .tp-aside { display: grid; grid-area: aside; gap: var(--s-3); min-width: 0; container-type: inline-size; }
       .tp-main { grid-area: main; }
       .tp-menu-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-1); }
@@ -234,7 +236,7 @@ export const ProfileLayoutStyles = () => (
     @media (min-width: 1280px) {
       .tp { --tp-main: clamp(500px, calc(44vw - 63px), 1120px); }
       .tp-grid { grid-template-columns: var(--tp-menu) minmax(0, var(--tp-main)) minmax(300px, 1fr); grid-template-areas: 'menu main aside'; }
-      .tp-aside { position: sticky; top: var(--s-4); max-height: calc(100vh - 2 * var(--s-4)); max-height: calc(100dvh - 2 * var(--s-4)); overflow-y: auto; overscroll-behavior: contain; }
+      .tp-aside { position: sticky; top: calc(var(--rl-tbar-h, 0px) + var(--s-4)); max-height: calc(100vh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); max-height: calc(100dvh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); overflow-y: auto; overscroll-behavior: contain; }
     }
     @media ${MOTION_QUERY} {
       .tp-bump { animation: tp-bump ${DURATION.base}ms ${CURVE.enter} both; }

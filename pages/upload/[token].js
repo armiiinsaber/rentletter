@@ -15,7 +15,8 @@ import { useState, useEffect } from 'react';
 import { RETENTION_DAYS } from '../../lib/documentRetention';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Wordmark, Icon } from '../../components/ui';
+import { GlobalStyle, Icon } from '../../components/ui';
+import TenantBar from '../../components/tenant/TenantBar';
 import { C, R } from '../../components/theme';
 import { noWidow } from '../../lib/typeset.js';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
@@ -71,10 +72,7 @@ export default function UploadPage() {
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
-        <header style={{ borderBottom: `1px solid ${C.rule}`, padding: 'clamp(16px, 4vw, 22px) clamp(16px, 4vw, 32px)', paddingTop: 'calc(clamp(16px, 4vw, 22px) + env(safe-area-inset-top, 0px))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-          <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-          <span style={{ fontSize: 12, color: C.inkMute, fontWeight: 600 }}>Document request</span>
-        </header>
+        <TenantBar label="Document request" />
 
         <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(24px, 6vw, 56px) clamp(16px, 4vw, 32px) 80px' }}>
 

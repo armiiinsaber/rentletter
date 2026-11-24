@@ -9,7 +9,8 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { C } from '../../components/theme';
-import { GlobalStyle, Wordmark, StatusPills } from '../../components/ui';
+import { GlobalStyle, StatusPills } from '../../components/ui';
+import TenantBar from '../../components/tenant/TenantBar';
 import { formFromApplication, buildApplicationFromForm } from '../../lib/tenantProfile';
 import { ProfileStyles, FactSections, Eyebrow, Chevron, noWidow, dateLong } from '../../components/tenant/ProfileFacts';
 import { TENANT_LINES } from '../../lib/applicantState';
@@ -132,12 +133,7 @@ export default function ApplicationPage() {
   const realtorFirst = meta?.realtorName ? meta.realtorName.trim().split(/\s+/)[0] : 'the realtor';
   const lastLookup = data?.lookups?.length ? data.lookups[data.lookups.length - 1].at : null;
 
-  const header = (
-    <header className="mp-header">
-      <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
-      <a href="/my-application" className="mp-link">{cred?.via === 'profile' ? 'My profile' : 'Profile'}</a>
-    </header>
-  );
+  const header = <TenantBar><a href="/my-application" className="mp-link">{cred?.via === 'profile' ? 'My profile' : 'Profile'}</a></TenantBar>;
 
   if (phase !== 'ready') {
     return (
@@ -236,7 +232,7 @@ export default function ApplicationPage() {
             {showLog && <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Viewer identifiers are hashed. We do not store IP addresses.')}</p>}
           </section>
         </div>
-        {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast">{toast}</div>}
+        {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast rl-glass rl-glass-ink">{toast}</div>}
       </div>
     </>
   );
