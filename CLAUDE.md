@@ -7,10 +7,11 @@ realtor sends a co-branded shortlist to their landlord client, including fit
 against the landlord's stated preferences.
 
 **Positioning:** Rentletter is the applicant-funnel and presentation layer
-(12 applicants → top 3). It is NOT a verification or credit-check product, and
-nothing may imply it replaces credit checks. The differentiator line —
-"Rentletter organizes your applicants. Run credit checks wherever you already
-do." — must survive in meaning on the homepage.
+(12 applicants → top 3). Rentletter is building verification into the
+product. Until it ships, no screen inside the app may tell a realtor, a
+landlord or a tenant that a specific applicant has been verified or background
+checked unless that check actually happened for that applicant. Marketing copy
+may describe the product direction.
 
 **Audiences:** Realtors are primary; everything is built for them. Solo
 landlords/PMs are a quiet secondary audience reachable via one small footer
@@ -67,7 +68,10 @@ shortlist page reference only legally screenable criteria.
 ## Copy tone rules
 
 - Factual, trust-first, zero SaaS jargon, zero hype. Banned: "close faster",
-  "supercharge", "win more" and the like.
+  "supercharge", "win more" and the like. One approved exception, the owner's
+  decision of November 23, 2026: the homepage's Where we fit line, "A full
+  background check on every applicant." then, in grey, "Read and organized, so
+  you close sooner with confidence." The ban holds everywhere else.
 - Every sentence states something the realtor concretely gets. Prefer fewer
   words.
 - Design-target realtor: young and tech-savvy, 25–45 — uses ChatGPT/Claude
