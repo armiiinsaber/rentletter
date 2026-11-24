@@ -1,6 +1,9 @@
 // tests/helpers/textLines.mjs  The rule wrapped text is held to on every page: no line holds one
 // word, no line runs under 60% of the block's longest line, no word (a link included) is split
-// across two lines, and every line sits inside its block. Measured in the page word by word.
+// across two lines, and every line sits inside its block; and in a heading (h1 to h6, or text in
+// the display face) of two colours or two sentences, no sentence begins with one or two words
+// stranded at the end of the line before, or ends with one or two at the start of the line after.
+// Measured in the page word by word.
 //   readLines(locator, { own })   -> [{ text, data, box: { left, right }, lines: [{ words, left, right }], split }]
 //                                 own: only the words whose nearest block is the element itself; a
 //                                 block nested inside it is measured as a block of its own (inline,
@@ -20,21 +23,29 @@ export function readLines(locator, { own = false } = {}) {
     const INLINE = /^(inline|contents|inline-block|inline-flex|inline-grid|inline-table|ruby)$/;
     const blockOf = (node) => { let e = node.parentElement; while (e && e !== el && INLINE.test(getComputedStyle(e).display)) e = e.parentElement; return e; };
     const ws = []; const texts = []; const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT); let n;
+    // Each word's run: a new run starts where the colour changes or a new sentence begins.
+    let run = 0; let prev = null;
     while ((n = walker.nextNode())) {
       if (mine && (blockOf(n) !== el || n.parentElement.closest('script,style,noscript,template,svg,option,select,textarea'))) continue;
       texts.push(n.data);
+      const color = getComputedStyle(n.parentElement).color;
       const re = /\S+/g; let x;
       while ((x = re.exec(n.data))) {
+        // A number with its point ("5." of a numbered heading) ends no sentence.
+        if (prev && (color !== prev.color || (/[.!?]["'\u2019\u201D)]*$/.test(prev.w) && !/^\d+\.$/.test(prev.w) && /^["'\u2018\u201C(]*[A-Z0-9]/.test(x[0])))) run++;
+        prev = { w: x[0], color };
         const r = document.createRange(); r.setStart(n, x.index); r.setEnd(n, x.index + x[0].length);
         const q = [...r.getClientRects()].filter((c) => c.width > 0);
-        if (q.length) ws.push({ w: x[0], top: Math.min(...q.map((c) => c.top)), left: Math.min(...q.map((c) => c.left)), right: Math.max(...q.map((c) => c.right)), split: new Set(q.map((c) => Math.round(c.top))).size > 1 });
+        if (q.length) ws.push({ w: x[0], run, top: Math.min(...q.map((c) => c.top)), left: Math.min(...q.map((c) => c.left)), right: Math.max(...q.map((c) => c.right)), split: new Set(q.map((c) => Math.round(c.top))).size > 1 });
       }
     }
     const lines = [];
-    for (const w of ws) { const l = lines.find((b) => Math.abs(b.top - w.top) < 2); if (l) { l.words.push(w.w); l.left = Math.min(l.left, w.left); l.right = Math.max(l.right, w.right); } else lines.push({ top: w.top, left: w.left, right: w.right, words: [w.w] }); }
+    for (const w of ws) { const l = lines.find((b) => Math.abs(b.top - w.top) < 2); if (l) { l.words.push(w.w); l.runs.push(w.run); l.left = Math.min(l.left, w.left); l.right = Math.max(l.right, w.right); } else lines.push({ top: w.top, left: w.left, right: w.right, words: [w.w], runs: [w.run] }); }
     lines.sort((a, b) => a.top - b.top);
     const box = el.getBoundingClientRect();
-    return { text: (mine ? texts.join('') : el.textContent).replace(/\s+/g, ' ').trim(), data: { ...el.dataset }, box: { left: box.left, right: box.right }, lines: lines.map(({ words, left, right }) => ({ words, left, right })), split: ws.filter((w) => w.split).map((w) => w.w) };
+    // A heading: h1 to h6, a heading role, or text set in the display face (Fraunces, var(--f-display)).
+    const heading = /^H[1-6]$/.test(el.tagName) || el.getAttribute('role') === 'heading' || /Fraunces/i.test(getComputedStyle(el).fontFamily);
+    return { text: (mine ? texts.join('') : el.textContent).replace(/\s+/g, ' ').trim(), data: { ...el.dataset }, heading, box: { left: box.left, right: box.right }, lines: lines.map(({ words, runs, left, right }) => ({ words, runs, left, right })), split: ws.filter((w) => w.split).map((w) => w.w) };
   }), own);
 }
 
@@ -44,6 +55,19 @@ export function assertBalanced(b, name, { link = false } = {}) {
   for (const l of b.lines) assert.ok(l.left >= b.box.left - 0.5 && l.right <= b.box.right + 0.5, `${name}: "${l.words.join(' ')}" inside its block (${Math.round(l.left)} to ${Math.round(l.right)}, block ${Math.round(b.box.left)} to ${Math.round(b.box.right)})`);
   if (link) { assert.equal(b.lines.length, 1, `${name}: the link on one line (${all})`); return; }
   if (b.lines.length < 2) return;
+  // In a heading of two colours or two sentences, no sentence (or colour) has only one or two of its
+  // words on a line it shares with the one before or after it: it begins on the line where it has
+  // the rest of its words, and ends there too.
+  if (b.heading && b.lines.some((l) => l.runs && new Set(l.runs).size > 1)) {
+    b.lines.forEach((l, i) => {
+      const parts = []; for (const r of l.runs) { if (!parts.length || parts[parts.length - 1].run !== r) parts.push({ run: r, n: 0 }); parts[parts.length - 1].n++; }
+      if (parts.length < 2) return;
+      const first = parts[0]; const last = parts[parts.length - 1];
+      const words = (p) => l.words.slice(l.runs.indexOf(p.run), l.runs.indexOf(p.run) + p.n).join(' ');
+      if (i + 1 < b.lines.length && b.lines[i + 1].runs[0] === last.run && last.n <= 2) assert.fail(`${name}: "${words(last)}" begins a sentence alone at the end of a line (${all})`);
+      if (i > 0 && b.lines[i - 1].runs[b.lines[i - 1].runs.length - 1] === first.run && first.n <= 2) assert.fail(`${name}: "${words(first)}" ends a sentence alone at the start of a line (${all})`);
+    });
+  }
   const widest = Math.max(...b.lines.map((l) => l.right - l.left));
   for (const l of b.lines) {
     assert.ok(l.words.length >= 2, `${name}: "${l.words.join(' ')}" alone on a line (${all})`);

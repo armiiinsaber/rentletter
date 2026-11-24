@@ -355,8 +355,10 @@ export default function Home() {
             <div className="lp-w lp-pricing" style={{ padding: 'clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px)' }}>
               <div>
                 <div className="lp-eyebrow" style={{ color: C.red }}>Pricing</div>
-                <h2 className="rl-serif lp-h2-a" style={{ lineHeight: 1.08, letterSpacing: '-0.02em', color: C.ink, margin: '0 0 var(--gap-line)', maxWidth: 760, textWrap: 'balance' }}>
-                  {noWidow('Free to join. Pay only when a rental lands.')}
+                {/* Two sentences, each on lines of its own, so the second never begins at the end of the first's line. */}
+                <h2 className="rl-serif lp-h2-a" style={{ lineHeight: 1.08, letterSpacing: '-0.02em', color: C.ink, margin: '0 0 var(--gap-line)', maxWidth: 760 }}>
+                  <span className="lp-fit-s">{noWidow('Free to join.')}</span>{' '}
+                  <span className="lp-fit-s">{noWidow('Pay only when a rental lands.')}</span>
                 </h2>
                 {/* The price line goes here, under the headline and above this line, once per rental
                     billing ships. Until then nobody pays (lib/billingOff.js). */}
@@ -376,9 +378,12 @@ export default function Home() {
           <section style={{ borderTop: `1px solid ${C.rule}`, borderBottom: `1px solid ${C.rule}`, background: C.card }}>
             <div className="lp-w-fit" style={{ padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px)', textAlign: 'center' }}>
               <div className="lp-eyebrow">Where we fit</div>
-              <p className="rl-serif lp-fit" style={{ lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0, textWrap: 'balance' }}>
-                {noWidow('Rentletter organizes your applicants.')}{' '}
-                <span style={{ color: C.inkMute }}>{noWidow('Run credit checks wherever you already do.')}</span>
+              {/* Two sentences, two colours, each its own line: from 1024px the black one is line
+                  one and the grey one line two, each whole; under it each wraps balanced on its
+                  own lines, so a colour never changes in the middle of a line. */}
+              <p className="rl-serif lp-fit" style={{ lineHeight: 1.32, letterSpacing: '-0.015em', color: C.ink, margin: 0 }} data-where-we-fit="">
+                <span className="lp-fit-s">{noWidow('A full background check on every applicant.')}</span>{' '}
+                <span className="lp-fit-s" style={{ color: C.inkMute }}>{noWidow('Read and organized, so you close sooner with confidence.')}</span>
               </p>
             </div>
           </section>
@@ -541,6 +546,12 @@ export default function Home() {
         .lp-h2-b { font-size: clamp(26px, 3.6vw, 38px); }
         .lp-h2-c { font-size: clamp(32px, 5vw, 52px); }
         .lp-fit { font-size: clamp(21px, 3vw, 30px); }
+        .lp-fit-s { display: block; text-wrap: balance; }
+        @media (min-width: 1024px) {
+          /* Each sentence whole on its line: the column a little wider than the longer one. */
+          .lp-w-fit { max-width: 1040px; }
+          .lp-fit .lp-fit-s { white-space: nowrap; }
+        }
         .lp-close { max-width: 620px; }
         .lp-close-sub { font-size: clamp(16px, 2vw, 18px); }
         .lp-how-head { max-width: 640px; }
@@ -558,12 +569,12 @@ export default function Home() {
           .lp-tenant-note { grid-area: note; }
         }
         @media (min-width: 1440px) {
-          .lp-w { max-width: 1240px; } .lp-w-wide { max-width: 1320px; } .lp-w-fit { max-width: 960px; }
+          .lp-w { max-width: 1240px; } .lp-w-wide { max-width: 1320px; } .lp-w-fit { max-width: 1100px; }
           .lp-hero-grid { grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: clamp(48px, 5vw, 96px); }
           .lp-shell .rl-header-inner { max-width: 1320px !important; }
         }
         @media (min-width: 1920px) {
-          .lp-w { max-width: 1560px; } .lp-w-wide { max-width: 1680px; } .lp-w-fit { max-width: 1200px; }
+          .lp-w { max-width: 1560px; } .lp-w-wide { max-width: 1680px; } .lp-w-fit { max-width: 1320px; }
           .lp-shell .rl-header-inner { max-width: 1680px !important; }
           .lp-sub { font-size: 24px; max-width: 30em; }
           .lp-small { font-size: 16px; }
@@ -591,7 +602,7 @@ export default function Home() {
         @media (min-width: 1920px) { .lp-laptop .df-content > * { zoom: 1.28; } }
         @media (min-width: 2560px) { .lp-laptop .df-content > * { zoom: 1.62; } }
         @media (min-width: 2560px) {
-          .lp-w { max-width: 1960px; } .lp-w-wide { max-width: 2080px; } .lp-w-fit { max-width: 1440px; }
+          .lp-w { max-width: 1960px; } .lp-w-wide { max-width: 2080px; } .lp-w-fit { max-width: 1600px; }
           .lp-shell .rl-header-inner { max-width: 2080px !important; }
           .lp-sub { font-size: 28px; }
           .lp-small { font-size: 18px; }

@@ -22,6 +22,8 @@
 //   2d. Every piece of text on glass keeps 4.5 to 1 over black and over white.
 //   2e. Reduced motion: no fade. Reduced transparency (Chrome) and the fallbacks' rules: solid.
 //   2f. The bar at 390 and 320, with a field brought into view, before, during and after a sheet.
+//   4b. Where we fit on the homepage, from 1024 to 2560: the black sentence line one and the grey
+//       sentence line two, each whole on its line and centred.
 //   3.  Your applications, three rows at 390, 320 and 1440: the address and the status pill on one
 //       line (on a phone a long status goes right under the address rather than crush it; the
 //       product's one pill, its text centred both ways), the date as text, the number in
@@ -379,6 +381,21 @@ async function glassDesk(browser, tag) {
     assert.deepEqual({ solid: nav.solid, blur: nav.blur, top: nav.top }, { solid: 0, blur: true, top: 0 }, `${tag} 2c: scrolled, the homepage navigation is glass`);
     assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.lp-shell .rl-header')).opacity), '1', `${tag} 2c: and fully visible`);
     await readable(page, `${tag} 2d homepage`);
+    // 4b: Where we fit, from 1024: the black sentence line one, the grey sentence line two, each
+    // whole on its line and centred (the wrapped text walk holds every width to the rule).
+    for (const width of [1024, 1280, 1440, 1920, 2560]) {
+      await page.setViewportSize({ width, height: 900 }); await page.waitForTimeout(300);
+      const fit = await page.evaluate(() => [...document.querySelectorAll('[data-where-we-fit] .lp-fit-s')].map((s) => {
+        const range = document.createRange(); range.selectNodeContents(s); const rects = [...range.getClientRects()].filter((r) => r.width > 0);
+        const box = s.parentElement.getBoundingClientRect(); const lines = new Set(rects.map((r) => Math.round(r.top))).size;
+        const left = Math.min(...rects.map((r) => r.left)); const right = Math.max(...rects.map((r) => r.right));
+        return { text: s.textContent, color: getComputedStyle(s).color, lines, off: Math.round(Math.abs((left - box.left) - (box.right - right))), inside: left >= box.left - 0.5 && right <= box.right + 0.5 };
+      }));
+      assert.deepEqual(fit.map((x) => x.text.replace(/\s/g, ' ')), ['A full background check on every applicant.', 'Read and organized, so you close sooner with confidence.'], `${tag} 4a at ${width}: the two sentences, in order`);
+      assert.ok(fit.length === 2 && fit.every((x) => x.lines === 1 && x.off <= 2 && x.inside), `${tag} 4b at ${width}: each sentence whole on its line, centred (${JSON.stringify(fit)})`);
+      assert.notEqual(fit[0].color, fit[1].color, `${tag} 4b at ${width}: black, then grey`);
+    }
+    await page.setViewportSize({ width: 1440, height: 900 }); await page.waitForTimeout(200);
     await frames(page, tag, 'homepage 1440');
     // The bulk bar: glass, stuck over the rows as the page scrolls.
     await fetch(`${BASE}/__fake/state?archive=1`);
