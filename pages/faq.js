@@ -26,7 +26,7 @@ const FAQS = [
   {
     category: 'General',
     q: 'Does it run credit or background checks?',
-    a: 'No. Rentletter organizes and presents your applicants, it standardizes applications, compares candidates, and documents your decisions. It is not a verification or credit check product. Run any checks through whatever service you already use.',
+    a: "Rentletter reads each applicant's documents, matches them against what the applicant wrote, and records the checks you make yourself, such as a call to the employer. Full background checks are being added to the product. Until then, run credit checks through the service you already use.",
   },
   {
     category: 'General',
