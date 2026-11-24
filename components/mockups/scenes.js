@@ -58,7 +58,7 @@ export function LandlordReportScene() {
           </div>
         ))}
         <div style={{ marginTop: 'auto', padding: 'clamp(7px, 2%, 10px) clamp(9px, 2.4%, 13px)', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 'clamp(8.5px, 2vw, 10px)', color: C.inkSoft, lineHeight: 1.45 }}>
-          Fit against your stated preferences: landlord reference ✓ · non smoker ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.
+          Fit against your stated preferences: landlord reference ✓ · non smoker ✓ · move in by Sept 1 ✓.
         </div>
       </div>
     </div>

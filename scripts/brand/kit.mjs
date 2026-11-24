@@ -212,7 +212,7 @@ function specimenScene(scale) {
     [scale.d1, 'f28', 'Fraunces 600', 'Your applicants, ranked.', -0.02],
     [scale.d2, 'f22', 'Fraunces 600', 'Shortlist for your landlord', -0.015],
     [scale.d3, 'f18', 'Fraunces 600', 'Pipeline', -0.01],
-    [scale.body, 'i400', 'Inter 400', 'Rentletter organizes your applicants.', 0],
+    [scale.body, 'i400', 'Inter 400', 'A full background check on every applicant.', 0],
     [scale['body-2'], 'i400', 'Inter 400', '8 applicants, 1 verified, report not sent', 0],
     [scale.eyebrow, 'i700', 'Inter 700, tracked', 'LISTING STATUS', 0.1],
   ];
@@ -323,8 +323,10 @@ function guidelinePages(scale) {
     items.push(T(PW / 2, ty, 'Inter', 'i600', 28, C.ink), T(PW / 2, ty + 22, `Text at ${scale.body} and ${scale['body-2']}, labels at ${scale.eyebrow}. Weights 400 to 700.`, 'i400', 11, C.inkSoft));
     items.push({ t: 'line', x1: M, y1: ty + 44, x2: PW - M, y2: ty + 44, stroke: C.rule, sw: 0.75 });
     items.push(T(M, ty + 84, 'Your applicants, ranked.', 'f28', 28, C.ink, { tracking: -0.02 }));
-    items.push(T(M, ty + 114, 'Rentletter organizes your applicants. Run credit checks wherever you already do.', 'i400', 16, C.ink));
-    items.push(T(M, ty + 144, 'LISTING STATUS', 'i700', 11, C.inkMute, { tracking: 0.1 }));
+    // The homepage line, its two sentences on lines of their own: together they are wider than the page.
+    items.push(T(M, ty + 114, 'A full background check on every applicant.', 'i400', 16, C.ink));
+    items.push(T(M, ty + 138, 'Read and organized, so you close sooner with confidence.', 'i400', 16, C.ink));
+    items.push(T(M, ty + 168, 'LISTING STATUS', 'i700', 11, C.inkMute, { tracking: 0.1 }));
     pages.push({ w: PW, h: PH, bg: C.paper, items });
   }
   // 5. Do not.

@@ -15,8 +15,8 @@
  "folder": "Rentletter-Brand-Kit",
  "zip": {
   "path": "Rentletter-Brand-Kit.zip",
-  "size": 3902970,
-  "sha256": "d31d6dd514b64aad4e6f560201de803675eb96557f54a50f7c172d3f39e48c0b"
+  "size": 3904504,
+  "sha256": "0dc257267f50bf16edea9de32c9ffcba16cd22103a90484528c00aa0cba3df9e"
  },
  "files": [
   {
@@ -46,8 +46,8 @@
   },
   {
    "path": "guidelines/rentletter-brand-guidelines.pdf",
-   "size": 257217,
-   "sha256": "30180bfab64371b46d219d58c31e482fb7718f0dcd4447fb1889a9962eac450c"
+   "size": 257281,
+   "sha256": "60833a3971aa02f12e86c742ba84956220f3dc433c5edde8f422723503a4c67c"
   },
   {
    "path": "logo/rentletter-logo-mono-ink-1x.png",
@@ -677,12 +677,12 @@
   {
    "path": "type/rentletter-type-specimen.pdf",
    "size": 240041,
-   "sha256": "16844564dfcddeba2be512fc25ba03afd4d5ad5d517ed40a95f7ade0ffdcb4f6"
+   "sha256": "4f3ec53e306da00b7bf092237d42b33ff1592f753645896617cd50ccdbcb7cb2"
   },
   {
    "path": "type/rentletter-type-specimen.png",
-   "size": 173157,
-   "sha256": "6b5edb9ca0fcb7528183e82c444a0d85d844d81481de0dca06fc3ee06922b482"
+   "size": 174729,
+   "sha256": "20cacf0b6a85325f290c100e0fdc033120038011584fb1ca2fa428d0b1598b5d"
   }
  ],
  "groups": [
@@ -1907,7 +1907,7 @@
          "label": "PNG",
          "path": "type/rentletter-type-specimen.png",
          "file": "rentletter-type-specimen.png",
-         "size": 173157
+         "size": 174729
         },
         {
          "label": "PDF",
@@ -2000,7 +2000,7 @@
          "label": "PDF",
          "path": "guidelines/rentletter-brand-guidelines.pdf",
          "file": "rentletter-brand-guidelines.pdf",
-         "size": 257217
+         "size": 257281
         }
        ]
       }

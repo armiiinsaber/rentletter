@@ -201,7 +201,8 @@ export const STATES = [
   { name: 'delete listing', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Details/); await tap(p, /Delete listing/); } },
   { name: 'request documents', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await expand(p, LONG.a2); await tap(p, /^Request documents/); } },
   { name: 'profile', kind: 'realtor', go: async (p) => { await open(p, '/profile'); await p.locator('[data-invite-realtor]').waitFor({ timeout: 30000 }); }, steps: async function* (p) { await openAll(p); yield 'profile, every fold open'; } },
-  { name: 'join, a realtor\'s invite link', kind: 'public', go: async (p) => { await open(p, '/join?invite=K7M2Q9XW4TPB3HNC'); await p.locator('[data-realtor-invite-landing]').waitFor({ timeout: 30000 }); } },
+  // Measured on the desktop too: its line is the homepage's (pages/join/index.js).
+  { name: 'join, a realtor\'s invite link', kind: 'public', widths: [390, 320, 1440, 1920], go: async (p) => { await open(p, '/join?invite=K7M2Q9XW4TPB3HNC'); await p.locator('[data-realtor-invite-landing]').waitFor({ timeout: 30000 }); } },
   // The Circle screen (pages/circle.js): a request waiting, the circle with a connection's
   // brokerage record, a request sent, the invite card, the realtor's own brokerage and settings;
   // then a search that finds a realtor, the same after Add (Requested), a search that finds

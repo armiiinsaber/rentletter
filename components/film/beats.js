@@ -251,7 +251,7 @@ export function ReportScreen({ b, brand = null, logo = 0 }) {
             <TickMeter value={a.score} size={10} />
           </div>
         ))}
-        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: landlord reference ✓ · 12 month lease ✓ · move in by Sept 1 ✓. Rentletter organizes applicants; run credit checks wherever you already do.</div>
+        <div style={{ padding: '7px 12px', background: C.paperDeep, borderRadius: R.ctrl, fontSize: 9.5, color: C.inkSoft, lineHeight: 1.45, ...fade(b.foot, 6) }}>Fit against your stated preferences: landlord reference ✓ · 12 month lease ✓ · move in by Sept 1 ✓.</div>
       </div>
     </Screen>
   );
