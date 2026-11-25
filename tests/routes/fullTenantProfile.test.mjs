@@ -329,6 +329,46 @@ test('8. "Help me write this" sends only what the tenant typed, suggests, and sa
   assert.equal(w.row().about_me, null);
 });
 
+test('8b. the guided start of "Help me write this": three answers go as the one note the suggest action takes, and a suggestion holds no fact the answers do not', async () => {
+  const G = await import('../../components/tenant/profileSteps.js');
+  const w = await setup(); await w.fill();
+  const answers = ['nurse at a children’s clinic', 'quiet street, near my work', 'i cook, read and go to bed early'];
+  // The three questions the chips name, one line each, the answers as typed.
+  assert.deepEqual([...G.GUIDE_QUESTIONS], [...PP.ABOUT_PROMPTS]);
+  const note = G.composeAnswers(answers);
+  assert.equal(note, 'What you do: nurse at a children’s clinic\nWhy this home: quiet street, near my work\nHow you live day to day: i cook, read and go to bed early');
+  assert.equal(G.composeAnswers(['', '  ', '']), '', 'no answer, no note');
+  assert.ok(PP.aboutLength(G.composeAnswers(['x'.repeat(400), 'y'.repeat(400), 'z'.repeat(400)])) <= PP.ABOUT_MAX, 'three long answers still fit the action');
+  // The route as it is: one call, the note and nothing else; nothing of the profile goes with it.
+  const res = await w.mine({ action: 'suggest', text: note });
+  assert.equal(res.code, 200);
+  assert.equal(w.stack.anthropic.calls.length, 1);
+  const sent = w.stack.anthropic.calls[0];
+  assert.equal(sent.system, SUGGEST_SYSTEM);
+  assert.deepEqual(sent.messages, [{ role: 'user', content: [{ type: 'text', text: note }] }], 'the answers, and nothing else');
+  const all = JSON.stringify(sent);
+  for (const secret of ['Maya Okafor', '4165550142', 'maya@example.com', '85000', 'Northwind', 'ABOUT-MARKER', 'OWNERTOKENSECRET']) assert.equal(all.includes(secret), false, `${secret} was not sent`);
+  // The suggestion made from them holds no fact they do not: every word in it is one the answers hold.
+  const suggestion = res.body.suggestion;
+  const words = (t) => String(t).toLowerCase().match(/[\p{L}’']+|\d+/gu) || [];
+  const said = new Set(words(answers.join(' ')));
+  assert.ok(words(suggestion).length >= 10, suggestion);
+  assert.deepEqual(words(suggestion).filter((x) => !said.has(x)), [], `nothing added: ${suggestion}`);
+  assert.equal(G.addsNothing(suggestion, answers), true, 'and the page shows it');
+  // A suggestion that brings a name or a number the answers never held is not shown; the page
+  // says the route's own words for no suggestion, and the box is left as it was.
+  for (const added of ['I am a nurse at Mount Sinai, close to my work.', 'I have been a nurse for 6 years and I cook.', 'Nurse at a children’s clinic in Toronto.'])
+    assert.equal(G.addsNothing(added, answers), false, added);
+  assert.equal(G.addsNothing('Nurse at a Children’s Clinic. I cook, read and go to bed early.', answers), true, 'a capital on a word they wrote is theirs');
+  const ui = code('components/tenant/ProfilePersonal.js');
+  assert.match(ui, /if \(made && !addsNothing\(j\.suggestion \|\| '', made\)\) \{ const held = new Error\(NO_SUGGESTION\); held\.code = 'no_suggestion'; throw held; \}\s*\n\s*setSuggestion\(j\.suggestion \|\| ''\);/, 'checked before it is shown');
+  assert.match(ui, /const NO_SUGGESTION = 'No suggestion this time\. Your own words are unchanged\.';/);
+  assert.match(src('pages/api/tenant/personal.js'), /'No suggestion this time\. Your own words are unchanged\.'/, 'the route\'s own words');
+  assert.match(ui, /ask\(composed, answers\);/, 'the guided start asks through the one ask');
+  // Nothing is saved: the stored words are the tenant's own until they save.
+  assert.equal((await w.mine()).body.about, ABOUT);
+});
+
 test('9. prepaying is the tenant\'s own offer: 1 to 12 months, never a deposit, never a requirement', async () => {
   const w = await setup({ shared: true });
   for (const bad of [0, 13, 2.5, -1, 'many']) assert.equal((await w.mine({ action: 'prepay', months: bad })).code, 400, String(bad));
@@ -347,10 +387,10 @@ test('9. prepaying is the tenant\'s own offer: 1 to 12 months, never a deposit, 
   assert.deepEqual([...PP.ABOUT_PROMPTS], ['What you do', 'Why this home', 'How you live day to day']);
   // The offer is never called a deposit, and nothing says a landlord may ask for it.
   for (const s of [PP.PREPAY_FIELD, PP.PREPAY_LABEL, PP.prepayLine(3), STRENGTH_STEPS.find((x) => x.key === 'prepay').title, STRENGTH_STEPS.find((x) => x.key === 'prepay').adds]) assert.doesNotMatch(s, /deposit|required|must|landlord may|landlords can/i, s);
-  const shown = [code('components/dashboard/SharedProfile.js'), code('pages/r/[token].js'), code('lib/landlordReportPdf.js'), code('lib/reportSnapshot.js')].join('\n');
+  const shown = [code('components/dashboard/SharedProfile.js'), code('components/dashboard/SharedProfileView.js'), code('pages/r/[token].js'), code('lib/landlordReportPdf.js'), code('lib/reportSnapshot.js')].join('\n');
   assert.doesNotMatch(shown, /prepa[^\n]{0,80}deposit|deposit[^\n]{0,80}prepa/i, 'never called a deposit where a realtor or a landlord reads it');
-  assert.match(code('components/dashboard/SharedProfile.js'), /<div style=\{label\}>\{PREPAY_LABEL\}<\/div>/);
-  assert.match(code('components/dashboard/SharedProfile.js'), /Their own offer\. It cannot be required\./);
+  assert.match(code('components/dashboard/SharedProfileView.js'), /<div style=\{label\}>\{PREPAY_LABEL\}<\/div>/);
+  assert.match(code('components/dashboard/SharedProfileView.js'), /Their own offer\. It cannot be required\./);
   // The screens draw the three notes from the one place they are written.
   const ui = code('components/tenant/ProfilePersonal.js');
   for (const name of ['PHOTO_NOTE', 'ABOUT_NOTE', 'PREPAY_NOTE', 'PREPAY_FIELD', 'LANDLORD_SWITCH']) assert.match(ui, new RegExp(`\\{noWidow\\(${name}\\)\\}|label=\\{${name}\\}`), name);

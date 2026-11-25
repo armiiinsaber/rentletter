@@ -349,7 +349,7 @@ test('9. a tenant can never approve or stop a share on another tenant\'s profile
   const touching = [...walk('pages/api/'), ...walk('lib/')].filter((f) => /from\(SHARES\)|from\('profile_shares'\)/.test(code(f)));
   assert.deepEqual(touching, ['lib/profileShares.js'], 'one file touches the table');
   assert.equal((code('lib/profileShares.js').match(/status: 'approved'/g) || []).filter(Boolean).length >= 1, true);
-  for (const f of ['lib/profileShares.js', 'lib/profileShareStore.js', 'lib/profileShareRoutes.js', 'pages/api/profile-shares/view.js', 'pages/api/profile-shares/open.js', 'pages/api/tenant/shares.js', 'components/dashboard/SharedProfile.js']) assert.doesNotMatch(code(f), /owner_token|ownerToken/, `${f}: no owner token`);
+  for (const f of ['lib/profileShares.js', 'lib/profileShareStore.js', 'lib/profileShareRoutes.js', 'pages/api/profile-shares/view.js', 'pages/api/profile-shares/open.js', 'pages/api/tenant/shares.js', 'components/dashboard/SharedProfile.js', 'components/dashboard/SharedProfileView.js']) assert.doesNotMatch(code(f), /owner_token|ownerToken/, `${f}: no owner token`);
   w.stack.restore();
 });
 

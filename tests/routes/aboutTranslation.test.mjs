@@ -191,7 +191,10 @@ test('3. no realtor sees the English version before the tenant approves it; appr
   }
   assert.deepEqual(agent.aboutEnglish, mine.aboutEnglish);
   assert.equal(T.translatedLabel('Persian'), 'Translated from Persian, approved by the tenant');
-  const ui = code('components/dashboard/SharedProfile.js');
+  // The realtor's view of a shared profile is drawn by components/dashboard/SharedProfileView.js,
+  // which components/dashboard/SharedProfile.js renders for the realtor and the listing agent.
+  assert.match(code('components/dashboard/SharedProfile.js'), /<SharedProfileView state=\{state\} onOpen=\{open\}/);
+  const ui = code('components/dashboard/SharedProfileView.js');
   assert.match(ui, /<AboutText data-shared-about-english="" text=\{state\.aboutEnglish\.text\} style=\{line\} \/>\s*<p data-shared-about-label=""[^>]*>\{noWidow\(translatedLabel\(state\.aboutEnglish\.language\)\)\}<\/p>/, 'the English, then its label');
   assert.match(ui, /<p data-shared-about-label=""[^>]*>\{noWidow\(writtenLabel\(state\.aboutEnglish\.language\)\)\}<\/p> : null\}\s*<AboutText data-shared-about-original="" text=\{state\.about\} style=\{line\} \/>/, 'the original under it, in both states');
   // The realtor reads the view, never the table, and only through the share.
@@ -531,8 +534,8 @@ test('11. direction comes from the text itself: right to left for Persian in the
   const shown = code('components/AboutText.js');
   assert.match(shown, /aboutParagraphs\(text\)\.map\(\(p, i\) => \(\s*<p key=\{i\} dir=\{p\.dir\}/);
   assert.match(shown, /textAlign: p\.dir === 'rtl' \? 'right' : 'left'/);
-  assert.equal((code('components/dashboard/SharedProfile.js').match(/<AboutText /g) || []).length, 2, 'the English and the original, in the realtor\'s and the listing agent\'s view');
-  assert.doesNotMatch(code('components/dashboard/SharedProfile.js'), /\{state\.about\}<\/p>/);
+  assert.equal((code('components/dashboard/SharedProfileView.js').match(/<AboutText /g) || []).length, 2, 'the English and the original, in the realtor\'s and the listing agent\'s view');
+  for (const f of ['components/dashboard/SharedProfile.js', 'components/dashboard/SharedProfileView.js']) assert.doesNotMatch(code(f), /\{state\.about\}<\/p>/, f);
 });
 
 test('12. db/026, the privacy page and the lawyer\'s question', () => {

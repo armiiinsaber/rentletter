@@ -315,16 +315,21 @@ test('10. every fact on the page shows its source and its date', async () => {
   const shown = (html.match(/class="mp-value(?! mp-empty)[^"]*"/g) || []).length;
   const sourced = (html.match(/data-fact-source=""/g) || []).length;
   assert.ok(shown >= 8, `the facts are shown (${shown})`);
-  // Said once a section, under its heading, not under every fact (pages/my-application.js): each
-  // of the six sections holds a value here, so each carries the line once, and no fact carries it.
+  // Said once a card, behind Details at its foot, not under every fact (pages/my-application.js):
+  // on the profile the move in date sits on Your move and household, so the five cards of typed
+  // facts each hold a value here and each carries the line once, and no fact carries it.
   const text = html.replace(/ /g, ' ');
   const sections = text.split('<section ').slice(1);
-  assert.equal(sections.length, 6, 'the six sections of typed facts');
+  assert.equal(sections.length, 5, 'the five cards of typed facts on the profile');
+  assert.equal(sections.filter((x) => /data-section="move"/.test(x)).length, 0, 'no card of its own for the move');
+  assert.match(sections.find((x) => /data-section="household"/.test(x)), /data-field-row="moveInDate"/, 'the move in date is on Your move and household');
   assert.equal(sourced, sections.length, 'each section that holds a value carries its source line, once');
   assert.equal((text.match(/Typed by you on November 1, 2026/g) || []).length, sections.length);
-  for (const sec of sections) assert.match(sec, /^[^>]*data-state="(?:done|started)"[^>]*><div class="mp-head tp-head"><h2 [^>]*>[^<]*<\/h2><div class="tp-head-side">(?:(?!<\/section>).)*?<\/div><\/div><p class="tp-source" data-fact-source="">Typed by you on November 1, 2026<\/p><div class="tp-fields">/, 'the line sits directly under the heading, before the facts');
-  for (const field of text.split('class="tp-field').slice(1)) assert.doesNotMatch(field.split('</section>')[0].split('class="tp-field')[0], /Typed by you/, 'no fact carries the line');
-  assert.equal((renderToStaticMarkup(React.createElement(F.FactSections, { facts, canEdit: false, onEdit() {}, onCancel() {}, onSave() {}, setDraft() {} })).match(/data-fact-source/g) || []).length, 0, 'a page that names no source shows none');
+  for (const sec of sections) assert.match(sec, /^[^>]*data-state="(?:done|started)"[^>]*><div class="mp-head tp-head"><h2 [^>]*>[^<]*<\/h2>(?:<button[^>]*>Edit<\/button>)?<\/div>(?:(?!<\/section>).)*<div class="tp-details"><button type="button" class="tp-details-btn" aria-expanded="false"[^>]*>Details(?:(?!<\/section>).)*?<\/button><p class="tp-source" data-fact-source="" hidden="">Typed by you on November 1, 2026<\/p><\/div><\/section>$/, 'the line sits behind Details at the foot of the card, after the facts');
+  for (const field of text.split('class="tp-field').slice(1)) assert.doesNotMatch(field.split('</section>')[0].split('<div class="tp-details">')[0].split('class="tp-field')[0], /Typed by you/, 'no fact carries the line');
+  const snapshot = renderToStaticMarkup(React.createElement(F.FactSections, { facts, canEdit: false, onEdit() {}, onCancel() {}, onSave() {}, setDraft() {} }));
+  assert.equal((snapshot.match(/data-fact-source/g) || []).length, 0, 'a page that names no source shows none');
+  assert.equal(snapshot.split('<section ').length - 1, 6, 'and the snapshot page keeps its six cards, the move among them');
   const vault = src('components/tenant/ProfileVault.js');
   assert.match(vault, /<div className="mp-source" data-fact-source="">\{noWidow\(youLine\(SOURCE\.DOCUMENT, c\.readAt\)\)\}<\/div>/, 'each fact read from a document carries "Read from a document on DATE"');
   assert.match(vault, /data-vault-expiry="">\{noWidow\(`Kept until \$\{dateLong\(d\.expiresAt\)\}`\)\}/, 'each document its expiry');

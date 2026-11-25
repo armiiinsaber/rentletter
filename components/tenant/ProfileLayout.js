@@ -5,7 +5,8 @@
 //   SECTIONS                 the nine sections, in page order: { key, label }
 //   factState(key, facts)    'done' | 'started' | 'empty' for a section of typed facts
 //   sectionStates(input)     { [key]: state } for all nine, from what the page already loaded
-//   StateMark, StateTag      the state as a mark, and as a mark with its word
+//   StateMark                the state as a mark (a finished card shows no state of its own: the
+//                            menu and the chips carry the three)
 //   SectionMenu, SectionChips   the menu at 1024 and wider, the chips under the header below it
 //   useCurrentSection(keys)  the section at the top of the window as the page scrolls
 //   goToSection(key)         scrolls a section to the top (instantly under reduced motion)
@@ -80,9 +81,6 @@ export const StateMark = ({ state, size = 16 }) => (
   <span className="tp-mark" data-state={state} aria-hidden="true" style={{ width: size, height: size }}>
     {state === 'done' && <svg width={size} height={size} viewBox="0 0 16 16"><path d="M4.5 8.4l2.3 2.3 4.7-5" fill="none" stroke={C.card} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>}
   </span>
-);
-export const StateTag = ({ state }) => (
-  <span className="tp-tag" data-state={state} data-section-state={state}><StateMark state={state} size={14} />{STATE_WORD[state]}</span>
 );
 
 // The section at the top of the window: the last one whose top has passed a line a little below
@@ -172,8 +170,10 @@ export function SectionChips({ states, current, onGo }) {
 // little with the width (--tp-pad, 32px at 1280 to 56px at 2560), the header's logo and Sign out
 // on the same edges. From 1280px three columns: the menu (240px at 1280 to 400px at 2560), the
 // sections (a reading column of about 500px at 1280, 570 at 1440, 780 at 1920 and 1060 at 2560,
-// its field grids two columns wide) and the strength panel with the apply box, which takes the rest
+// its field grids two columns wide) and the progress panel with the apply box, which takes the rest
 // (about 410px at 1280 to 860px at 2560); between 1024 and 1279 that panel heads the middle column.
+// The Edit and Preview switch (.tp-switch) sits at the top of the middle column at every width,
+// above the panel where the panel heads that column.
 export const ProfileLayoutStyles = () => (
   <style jsx global>{`
     /* A sticky box never sticks inside a box that is overflow-x hidden (components/ui.js sets it on
@@ -194,10 +194,6 @@ export const ProfileLayoutStyles = () => (
     .tp-mark[data-state='done'] { background: ${C.done}; }
     .tp-mark[data-state='started'] { border: 1.5px solid ${C.ink}; background: linear-gradient(90deg, ${C.ink} 50%, transparent 50%); }
     .tp-mark[data-state='empty'] { border: 1.5px dashed ${C.inkMute}; }
-    .tp-tag { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 0 10px 0 6px; border-radius: 999px; font-size: 12px; font-weight: 700; line-height: 1; white-space: nowrap; flex-shrink: 0; }
-    .tp-tag[data-state='done'] { color: ${C.done}; background: ${C.doneTint}; }
-    .tp-tag[data-state='started'] { color: ${C.ink}; background: ${C.paperDeep}; }
-    .tp-tag[data-state='empty'] { color: ${C.inkMute}; background: transparent; box-shadow: inset 0 0 0 1px ${C.rule}; }
 
     /* The phone's top: the strength bar and the section chips, stuck under the tenant's top bar
        (components/tenant/TenantBar.js, --rl-tbar-h), glass like it once the page scrolls under them. */
@@ -218,7 +214,8 @@ export const ProfileLayoutStyles = () => (
       html:root:has([data-tp-shell]) { --tp-top-pad: var(--s-4); }
       .tp-top, .tp-phone-only { display: none !important; }
       .tp-grid { max-width: none; margin: 0; padding: var(--s-5) var(--tp-pad) var(--s-7); display: grid; column-gap: var(--tp-gap); row-gap: var(--gap-section);
-        grid-template-columns: var(--tp-menu) minmax(0, 1fr); grid-template-areas: 'menu aside' 'menu main'; align-items: start; }
+        grid-template-columns: var(--tp-menu) minmax(0, 1fr); grid-template-areas: 'menu switch' 'menu aside' 'menu main'; align-items: start; }
+      .tp-grid > .tp-switch-row { grid-area: switch; margin-bottom: calc(var(--gap-card) - var(--gap-section)); }
       .tp-menu { display: block; grid-area: menu; position: sticky; top: calc(var(--rl-tbar-h, 0px) + var(--s-4)); max-height: calc(100vh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); max-height: calc(100dvh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); overflow-y: auto; }
       .tp-aside { display: grid; grid-area: aside; gap: var(--s-3); min-width: 0; container-type: inline-size; }
       .tp-main { grid-area: main; }
@@ -235,12 +232,29 @@ export const ProfileLayoutStyles = () => (
     @media (min-width: 1024px) and (hover: hover) { .tp-menu-item:hover { background: rgba(15, 15, 16, 0.045); color: ${C.ink}; } .tp-menu-item[aria-current]:hover { background: ${C.card}; } }
     @media (min-width: 1280px) {
       .tp { --tp-main: clamp(500px, calc(44vw - 63px), 1120px); }
-      .tp-grid { grid-template-columns: var(--tp-menu) minmax(0, var(--tp-main)) minmax(300px, 1fr); grid-template-areas: 'menu main aside'; }
+      .tp-grid { grid-template-columns: var(--tp-menu) minmax(0, var(--tp-main)) minmax(300px, 1fr); grid-template-areas: 'menu switch aside' 'menu main aside'; grid-template-rows: auto 1fr; }
       .tp-aside { position: sticky; top: calc(var(--rl-tbar-h, 0px) + var(--s-4)); max-height: calc(100vh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); max-height: calc(100dvh - var(--rl-tbar-h, 0px) - 2 * var(--s-4)); overflow-y: auto; overscroll-behavior: contain; }
     }
+    /* A mark that just filled (components/tenant/ProfileCard.js): the disc grows into place once,
+       and a number that changed rises into place (components/tenant/ProfileStrength.js). Only
+       transform and opacity, and nothing at all under reduced motion. */
     @media ${MOTION_QUERY} {
       .tp-bump { animation: tp-bump ${DURATION.base}ms ${CURVE.enter} both; }
       @keyframes tp-bump { from { transform: translateY(6px); opacity: 0.35; } to { transform: none; opacity: 1; } }
+      .tp-mark.tp-fresh { animation: tp-fill ${DURATION.long}ms ${CURVE.emphasis} both; }
+      @keyframes tp-fill { from { transform: scale(0.35); opacity: 0; } to { transform: none; opacity: 1; } }
     }
+    /* The Edit and Preview switch: two pills in one rail, the one that is on filled with ink. */
+    .tp-switch-row { display: grid; gap: var(--s-2); margin-bottom: var(--gap-card); min-width: 0; }
+    .tp-switch { display: inline-grid; grid-template-columns: 1fr 1fr; justify-self: start; padding: 3px; border-radius: var(--btn-radius); background: ${C.card}; border: 1px solid var(--rule); }
+    .tp-switch button { min-height: 38px; min-width: 104px; padding: 0 var(--s-4); border: none; border-radius: var(--btn-radius); background: transparent; color: ${C.inkSoft}; font: inherit; font-size: var(--t-body-2); font-weight: 700; cursor: pointer; }
+    .tp-switch button[aria-pressed='true'] { background: ${C.ink}; color: ${C.paper}; }
+    .tp-switch button:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.card}, 0 0 0 4px ${C.ink}; }
+    .tp-switch-line { margin: 0; font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: balance; max-width: 68ch; }
+    /* Preview: the sections, the progress and the apply box step aside; they stay in the page, so
+       nothing typed and not yet saved is lost. */
+    .tp[data-mode='preview'] .tp-edit-only { display: none !important; }
+    .tp-preview { display: grid; gap: var(--gap-line); }
+    .tp-preview-card { display: grid; gap: var(--gap-line); }
   `}</style>
 );

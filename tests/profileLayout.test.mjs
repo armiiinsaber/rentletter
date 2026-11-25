@@ -15,6 +15,7 @@ const src = (p) => readFileSync(new URL(p, ROOT), 'utf8');
 const { C } = await import('../components/theme.js');
 const L = await import('../components/tenant/ProfileLayout.js');
 const S = await import('../components/tenant/ProfileStrength.js');
+const P = await import('../components/tenant/profileSteps.js');
 const { profileStrength, STRENGTH_STEPS } = await import('../lib/profileStrength.js');
 const React = (await import('react')).default;
 const { renderToStaticMarkup } = await import('react-dom/server');
@@ -38,7 +39,9 @@ test('done is used for a done state and nothing else', () => {
     const walk = (d) => { for (const e of readdirSync(new URL(d, ROOT), { withFileTypes: true })) { if (e.isDirectory()) walk(`${d}${e.name}/`); else if (/\.js$/.test(e.name)) src(`${d}${e.name}`).split('\n').forEach((line, i) => { if (/C\.done(?:Tint)?\b/.test(line) && !/^\s*\/\//.test(line)) uses.push({ where: `${d}${e.name}:${i + 1}`, line: line.trim() }); }); } };
     walk(dir);
   }
-  assert.ok(uses.length >= 4, `${uses.length} uses`);
+  // Exactly where: the section marks (the menu, the chips, the card's marks and the document
+  // slots draw .tp-mark), the progress ticks and the checklist marks.
+  assert.deepEqual(uses.map((u) => u.where.split(':')[0]).sort(), ['components/tenant/ProfileLayout.js', 'components/tenant/ProfileStrength.js', 'components/tenant/ProfileStrength.js'], JSON.stringify(uses));
   for (const u of uses) {
     assert.match(u.where, /^components\/tenant\/(ProfileLayout|ProfileStrength)\.js:/, `${u.where}: only the profile's state marks`);
     assert.match(u.line, /data-state='done'|data-done='yes'/, `${u.where}: a done rule (${u.line})`);
@@ -62,17 +65,18 @@ test('the nine sections, in the menu\'s order, each done, started or empty', () 
   assert.equal(L.factState('rental', { rentalStatus: 'none' }), 'done', 'no rental to list is an answer');
 });
 
-test('the strength panel shows lib/profileStrength.js as it is, with the private line, the next step and every step', () => {
+test('the progress panel shows lib/profileStrength.js as it is: the count, never a percent, the private line, the next step with what it changes for a realtor, and every step', () => {
   for (const input of [{}, { facts: { fullName: 'A', phone: '1', employer: 'C', jobTitle: 'N', annualIncome: '1' }, hasPhoto: true }, { facts: { fullName: 'A', phone: '1', employer: 'C', jobTitle: 'N', annualIncome: '1', previousLandlordName: 'L', previousLandlordContact: 'x' }, documentKinds: ['id', 'income', 'employment'], hasPhoto: true, hasAbout: true }]) {
     const s = profileStrength(input);
     const html = renderToStaticMarkup(React.createElement(S.StrengthPanel, { strength: s, onStep() {} })).replace(/ /g, ' ');
-    assert.match(html, new RegExp(`data-strength-percent=""[^>]*><span[^>]*>${s.percent}%</span>`), `${s.percent}%`);
+    assert.match(html, new RegExp(`data-strength-count=""[^>]*><span[^>]*>${s.done}</span><span class="tp-count-of"> of ${s.total} added</span>`), `${s.done} of ${s.total}`);
+    assert.doesNotMatch(html.split('<style')[0], /\d\s*%|percent/i, 'no percent is shown');
     assert.ok(html.includes(S.PRIVATE_LINE), 'the line that says only the tenant sees it');
     assert.equal((html.match(/data-strength-step="/g) || []).length, s.steps.length, 'every step');
     for (const step of s.steps) assert.match(html, new RegExp(`data-strength-step="${step.key}" data-done="${step.done ? 'yes' : 'no'}"`));
     assert.equal((html.match(/<span data-done="yes"><\/span>/g) || []).length, s.done, 'a tick a done step');
     const next = S.nextStep(s);
-    if (next) assert.match(html, new RegExp(`data-strength-go="${next.key}"[^>]*>${next.title}</button>`)); else assert.ok(html.includes('Every step is done.'));
+    if (next) { assert.match(html, new RegExp(`data-strength-go="${next.key}"[^>]*>${next.title}</button>`)); assert.ok(html.includes(`data-strength-benefit="">${P.BENEFIT[next.key]}</p>`), `the benefit line of ${next.key}`); } else assert.ok(html.includes('Every step is done.'));
   }
   assert.equal(STRENGTH_STEPS.length, 8, 'the checklist that exists, unchanged');
   assert.equal(S.PRIVATE_LINE, 'Only you see this. It is never shown to a realtor or a landlord, and never used to score you.');

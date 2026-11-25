@@ -5,7 +5,7 @@
 // the realtor tokens (components/ui.js GlobalStyle): the card, the eyebrow, the text button, the
 // line and card gaps. A value made of several facts puts each on its own line (components/ui.js
 // StackedLines), with no dots between them; every prose line runs through noWidow (lib/typeset.js).
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useState } from 'react';
 import { C, R } from '../theme';
 import { Icon, StackedLines } from '../ui';
 import { Field, SelectField, ToggleField } from '../apply/fields';
@@ -14,7 +14,7 @@ import { estimateNetIncome, TAX_YEAR } from '../../lib/taxEstimate';
 import { NBSP, noWidow, dateLong, money, moneyYr, moneyMo, count } from '../../lib/typeset';
 import { DURATION, CURVE, MOTION_QUERY } from '../../lib/motion';
 import { Pending } from '../brand/Loader';
-import { StateTag, factState } from './ProfileLayout';
+import { factState } from './ProfileLayout';
 
 export { money, dateLong, noWidow };
 export const EMP_LABEL = { 'full-time': 'Full time', 'part-time': 'Part time', contract: 'Contract', 'self-employed': 'Self employed' };
@@ -57,7 +57,9 @@ const SectionContext = createContext(null);
 // One fact: the label over the value, on the line gap. Pairs sit in the two column .mp-facts grid.
 // field: the name of the input that edits it, so a tap on the value opens its section there.
 // span: on the profile, the full width of the grid (a name with an email under it).
-export function Row({ label, value, multiline, field, span = false }) {
+// lead: on the profile, one of the one or two values that matter most on its card, set large in the
+// display face (sub: the small words under it, "a year"); the rest of the card sits under them.
+export function Row({ label, value, multiline, field, span = false, lead = false, sub = null }) {
   const empty = value === null || value === undefined || value === '';
   // A long single value (an email, an address) takes the full row rather than breaking mid word.
   const wide = typeof value === 'string' && value.length > 16;
@@ -70,10 +72,12 @@ export function Row({ label, value, multiline, field, span = false }) {
     // came from somewhere else than its section. A tap on it opens the section, at this field.
     const status = field && statuses && !empty ? statuses[field] : null;
     const tap = sec && sec.canEdit && field ? () => sec.onEditField(field) : null;
+    const big = lead && !empty;
     return (
-      <div className={`tp-field${tap ? ' tp-field-tap' : ''}`} data-field-row={field || ''} onClick={tap || undefined} style={span || isAddress(value) ? { gridColumn: '1 / -1' } : undefined}>
+      <div className={`tp-field${big ? ' tp-field-lead' : ''}${tap ? ' tp-field-tap' : ''}`} data-field-row={field || ''} onClick={tap || undefined} style={span || isAddress(value) ? { gridColumn: '1 / -1' } : undefined}>
         <div className="mp-label">{noWidow(label)}</div>
-        {shown}
+        {big ? <div className="mp-value tp-lead-v">{value}</div> : shown}
+        {big && sub ? <div className="tp-lead-sub">{sub}</div> : null}
         {status && <div className="tp-status" data-field-status="">{noWidow(status)}</div>}
       </div>
     );
@@ -88,9 +92,9 @@ export function Row({ label, value, multiline, field, span = false }) {
 export function Empty({ children }) {
   return <p className="mp-p" style={{ marginTop: 'var(--gap-card)' }}>{typeof children === 'string' ? noWidow(children) : children}</p>;
 }
-export function Section({ id, title, rows, editing, onEdit, onCancel, onSave, saving, canEdit, children, justSaved, saveLabel = 'Save', footer, single = false, state, invite, error, onEditField }) {
+export function Section({ id, title, rows, lead, editing, onEdit, onCancel, onSave, saving, canEdit, children, justSaved, saveLabel = 'Save', footer, single = false, state, invite, need, error, onEditField }) {
   const source = useContext(FactSourceContext);
-  if (source !== null) return <ProfileSection {...{ id, title, rows, editing, onEdit, onCancel, onSave, saving, canEdit, children, justSaved, saveLabel, footer, state, invite, error, onEditField, source }} />;
+  if (source !== null) return <ProfileSection {...{ id, title, rows, lead, editing, onEdit, onCancel, onSave, saving, canEdit, children, justSaved, saveLabel, footer, state, invite, need, error, onEditField, source }} />;
   return (
     <section id={id} className="rl-card mp-card" aria-labelledby={`${id}-h`}>
       <div className="mp-head">
@@ -110,22 +114,21 @@ export function Section({ id, title, rows, editing, onEdit, onCancel, onSave, sa
     </section>
   );
 }
-// A section on the tenant's profile: its heading with its state (done, started, empty) and Edit;
-// the source line once, under the heading; the facts in a grid of two columns (one on a phone);
-// editing in place as a form (Enter saves, Escape cancels, the error beside the fields); and an
-// empty section as an invitation: one line, one button.
-function ProfileSection({ id, title, rows, editing, onEdit, onCancel, onSave, saving, canEdit, children, justSaved, saveLabel, footer, state = 'started', invite, error, onEditField, source }) {
+// A section on the tenant's profile: its heading and Edit; the one or two values that matter most
+// set large (lead), the rest under them in a grid of two columns (one on a phone); a card that
+// needs something says what in one line, with one button (need); a finished card says nothing of
+// its state (the section menu carries it); where the facts came from and when (the source line)
+// behind a small Details at its foot; editing in place as a form (Enter saves, Escape cancels,
+// the error beside the fields); and an empty section as an invitation: one line, one button.
+function ProfileSection({ id, title, rows, lead, editing, onEdit, onCancel, onSave, saving, canEdit, children, justSaved, saveLabel, footer, state = 'started', invite, need, error, onEditField, source }) {
+  const [details, setDetails] = useState(false);
   const empty = state === 'empty' && !!invite;
   return (
     <section id={id} className="rl-card mp-card tp-sec" data-section={id} data-state={state} aria-labelledby={`${id}-h`}>
       <div className="mp-head tp-head">
         <h2 id={`${id}-h`} className="mp-h2" style={{ minWidth: 0 }}>{title}{!editing && justSaved && <span className="mp-saved"> Saved</span>}</h2>
-        <div className="tp-head-side">
-          <StateTag state={state} />
-          {!editing && canEdit && !empty && <button type="button" onClick={onEdit} className="mp-link" data-section-edit={id} aria-label={`Edit ${title}`}>Edit</button>}
-        </div>
+        {!editing && canEdit && !empty && <button type="button" onClick={onEdit} className="mp-link tp-edit-link" data-section-edit={id} aria-label={`Edit ${title}`}>Edit</button>}
       </div>
-      {!editing && !empty && source && <p className="tp-source" data-fact-source="">{noWidow(source)}</p>}
       {editing ? (
         <form className="tp-edit" data-section-form={id} noValidate aria-describedby={error ? `${id}-err` : undefined}
           onSubmit={(e) => { e.preventDefault(); if (!saving) onSave(); }}
@@ -144,7 +147,22 @@ function ProfileSection({ id, title, rows, editing, onEdit, onCancel, onSave, sa
           <button type="button" className="mp-btn mp-btn-auto" data-section-add={id} onClick={invite.onClick}>{invite.button}</button>
         </div>
       ) : (
-        <SectionContext.Provider value={{ canEdit, onEditField }}><div className="tp-fields">{rows}</div></SectionContext.Provider>
+        <SectionContext.Provider value={{ canEdit, onEditField }}>
+          {lead ? <div className="tp-lead">{lead}</div> : null}
+          <div className="tp-fields">{rows}</div>
+        </SectionContext.Provider>
+      )}
+      {!editing && !empty && need && (
+        <div className="tp-need" data-section-need={id}>
+          <p className="mp-p">{noWidow(need.line)}</p>
+          <button type="button" className="mp-btn mp-btn-auto" data-section-fill={id} onClick={need.onClick}>{need.button}</button>
+        </div>
+      )}
+      {!editing && !empty && source && (
+        <div className="tp-details">
+          <button type="button" className="tp-details-btn" aria-expanded={details} onClick={() => setDetails((v) => !v)} data-section-details={id}>Details<Chevron open={details} /></button>
+          <p className="tp-source" data-fact-source="" hidden={!details}>{noWidow(source)}</p>
+        </div>
       )}
     </section>
   );
@@ -224,17 +242,39 @@ export const ProfileStyles = () => (
     /* A toast floats over the page: the ink glass (components/ui.js), with its own lift. */
     .mp-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(15,15,16,0.22); }
     .mp-sub { padding-left: var(--s-4); border-left: 2px solid var(--rule); display: grid; gap: var(--gap-card); }
-    /* The tenant's profile (FactSourceContext set, pages/my-application.js): each field its label with
-       the value directly under it, two columns once the card is 460px wide, one below; the source
-       line once under the heading; the edit form in place, two columns from 560px. */
+    /* The tenant's profile (FactSourceContext set, pages/my-application.js): the one or two values
+       that matter most set large at the head of the card (.tp-lead, side by side once the card is
+       460px wide), the rest under them, smaller, two columns from 460px; the source line behind
+       Details at the foot; the edit form in place, two columns from 560px. */
     .tp-sec { container-type: inline-size; }
     .tp-head { flex-wrap: wrap; row-gap: var(--s-1); }
     .tp-head-side { display: flex; align-items: center; gap: var(--s-3); margin-left: auto; }
+    .tp-edit-link { margin-left: auto; }
     .tp-source { margin: var(--s-1) 0 0; font-size: 13px; line-height: 1.4; color: ${C.inkMute}; text-wrap: balance; overflow-wrap: anywhere; }
+    .tp-lead { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card) var(--s-6); margin-top: var(--s-3); padding-bottom: var(--gap-card); border-bottom: 1px solid var(--rule); align-items: start; }
+    .tp-field-lead { gap: 4px; }
+    .tp-field-lead > .mp-value.tp-lead-v { font-family: var(--f-display); font-size: 30px; font-weight: 600; line-height: 1.05; letter-spacing: -0.02em; color: ${C.ink}; white-space: nowrap; overflow-wrap: normal; font-variant-numeric: tabular-nums; }
+    .tp-lead-sub { font-size: 13px; line-height: 1.3; color: ${C.inkSoft}; }
+    @media (max-width: 344.98px) { .tp-field-lead > .mp-value.tp-lead-v { font-size: 25px; } }
     .tp-fields { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card) var(--s-6); margin-top: var(--gap-card); align-items: start; }
-    @container (min-width: 460px) { .tp-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    .tp-fields:first-child { margin-top: var(--s-3); }
+    @container (min-width: 460px) {
+      .tp-lead, .tp-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      /* Two side by side: each as large as its half of the card holds, a long date whole on its line. */
+      .tp-field-lead > .mp-value.tp-lead-v { font-size: min(30px, calc(5.6cqi - 2px)); }
+    }
     .tp-field { display: grid; gap: 6px; align-content: start; justify-items: start; min-width: 0; text-align: left; }
     .tp-field > .mp-value { margin-top: 0; max-width: 100%; }
+    /* A name set as the head of its own block (a reference): one line, a long one a size down to fit. */
+    .tp-name-v { font-family: var(--f-display); font-weight: 600; line-height: 1.15; letter-spacing: -0.01em; color: ${C.ink}; white-space: nowrap; overflow-wrap: normal; }
+    /* What a card needs: one line and one button, on a paper well. */
+    .tp-need { display: grid; gap: var(--s-3); justify-items: start; margin-top: var(--gap-card); padding: var(--s-3) var(--s-4); border-radius: var(--card-radius); background: ${C.paperDeep}; }
+    .tp-need .mp-p { color: ${C.ink}; }
+    .tp-need .mp-btn { background: ${C.card}; }
+    .tp-details { margin-top: var(--s-2); }
+    .tp-details-btn { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 0; background: transparent; border: none; font: inherit; font-size: 13px; font-weight: 600; color: ${C.inkSoft}; cursor: pointer; }
+    .tp-details-btn:focus-visible { outline: none; border-radius: 4px; box-shadow: 0 0 0 2px ${C.card}, 0 0 0 4px ${C.ink}; }
+    .tp-details .tp-source { margin: 0 0 var(--s-1); }
     .tp-field-tap { cursor: pointer; border-radius: 10px; margin: -6px -8px; padding: 6px 8px; }
     @media (hover: hover) { .tp-field-tap:hover { background: ${C.paperDeep}; } }
     .tp-status { display: inline-block; max-width: 100%; padding: 3px 8px; border-radius: 999px; background: ${C.paperDeep}; color: ${C.inkSoft}; font-size: 12px; font-weight: 600; line-height: 1.35; text-wrap: balance; overflow-wrap: anywhere; }
@@ -272,8 +312,22 @@ const INVITES = {
   move: { line: 'Add the date you want to move in. A realtor checks it against the date a unit is free.', button: 'Add a move in date' },
   references: { line: 'Add someone who can speak for you, such as a manager. Realtors often ask for one.', button: 'Add a reference' },
 };
+// What a started card on the profile still needs, in the order its fields are asked for: the
+// field, one line that says what, the button, and the input the button opens (if not the field).
+const NEEDS = {
+  employment: [['jobTitle', 'Your job title is not added yet.', 'Add your job title'], ['employer', 'Your employer is not added yet.', 'Add your employer'], ['annualIncome', 'Your income before tax is not added yet.', 'Add your income']],
+  contact: [['phone', 'Your phone number is not added yet.', 'Add your phone']],
+  rental: [['previousAddress', 'The rental address is not added yet.', 'Add the address'], ['previousLandlordName', 'Your landlord’s name is not added yet.', 'Add your landlord'], ['previousLandlordContact', 'How to reach your landlord is not added yet.', 'Add their contact', 'prevLandlordEmail']],
+  household: [['moveInDate', 'Your move in date is not added yet.', 'Add a move in date'], ['numberOfOccupants', 'The number of people moving in is not added yet.', 'Add the number']],
+};
+const filled = (v) => v != null && String(v).trim() !== '';
+// A phone of ten digits reads as (416) 555-0142; anything else as it was typed.
+const phoneShown = (v) => (phoneDigits(v).length === 10 ? formatPhone(v) : v);
 export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, saving, justSaved, onEdit, onCancel, onSave, editFooter, contactEditable = true, contactName = false, saveLabel, only, saveError, onInvite, invite }) {
   const f = f0 || {};
+  // On the tenant's profile (a source line is set) the cards lead with what matters most, and the
+  // move in date joins Household and pets; the snapshot page draws every card as it always did.
+  const profile = useContext(FactSourceContext) !== null;
   const selfEmp = f.employmentType === 'self-employed';
   const hasRental = !!(f.previousAddress || f.previousLandlordName || f.yearsAtPrevious);
   const province = guessProvince(f);
@@ -287,30 +341,66 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
   const updateTenure = (patch) => setDraft((d) => { const n = { ...d, ...patch }; const y = parseInt(n.tenureYears, 10), m = parseInt(n.tenureMonths, 10); const t = (Number.isFinite(y) ? y : 0) + (Number.isFinite(m) ? m / 12 : 0); n.yearsAtPrevious = t > 0 ? String(Math.round(t * 10) / 10) : ''; return n; });
   const updatePets = (patch) => setDraft((d) => { const n = { ...d, ...patch }; n.pets = serializePets(n); return n; });
   const updateRentalStatus = (v) => setDraft((d) => { const n = { ...d, rentalStatus: v }; if (v === 'none') Object.assign(n, { previousAddress: '', yearsAtPrevious: '', previousLandlordName: '', previousLandlordContact: '', prevLandlordEmail: '', prevLandlordPhone: '', tenureYears: '', tenureMonths: '', currentRent: '' }); return n; });
-  const sec = (id) => {
+  const stateOf = (id) => {
     // With no facts yet (invite given), every section but Contact (the sign in email) is empty.
-    const state = invite && id !== 'contact' ? 'empty' : factState(id, f);
+    if (invite && id !== 'contact') return 'empty';
+    if (profile && id === 'household') return filled(f.moveInDate) && filled(f.numberOfOccupants) ? 'done' : 'started';
+    return factState(id, f);
+  };
+  // The first thing a started card is missing, as one line and one button.
+  const needOf = (id) => {
+    if (!profile || !canEdit || stateOf(id) !== 'started') return null;
+    if (id === 'references') {
+      for (const n of [1, 2]) {
+        const name = filled(f[`reference${n}Name`]); const reach = filled(f[`reference${n}Contact`]);
+        if (name && !reach) return { line: `Reference ${n} has no phone or email yet.`, button: 'Add their contact', onClick: () => onEdit(id, `reference${n}Contact`) };
+        if (reach && !name) return { line: `Reference ${n} has no name yet.`, button: 'Add their name', onClick: () => onEdit(id, `reference${n}Name`) };
+      }
+      return null;
+    }
+    const miss = (NEEDS[id] || []).find(([field]) => !filled(f[field]));
+    return miss ? { line: miss[1], button: miss[2], onClick: () => onEdit(id, miss[3] || miss[0]) } : null;
+  };
+  const sec = (id) => {
+    const state = stateOf(id);
     const words = invite || INVITES[id];
     return {
       id, editing: editing === id, canEdit, saving, justSaved: justSaved === id, onEdit: () => onEdit(id), onCancel, onSave, footer: editFooter, saveLabel,
-      state, error: editing === id ? saveError : '', onEditField: (field) => onEdit(id, field),
+      state, error: editing === id ? saveError : '', onEditField: (field) => onEdit(id, field), need: needOf(id),
       invite: words && (canEdit || onInvite) ? { ...words, onClick: () => (canEdit ? onEdit(id) : onInvite(id)) } : null,
     };
   };
   const d = draft || {};
   const contactParts = String(f.previousLandlordContact || '').split(' · ').filter(Boolean);
   const occupants = Number(f.numberOfOccupants) || 0;
+  const yrs = f.yearsAtJob ? `${f.yearsAtJob}${NBSP}yr${String(f.yearsAtJob) === '1' ? '' : 's'}` : null;
+  // A name at the head of its own block, on one line: a long one a size down to fit the card.
+  const nameHead = (name) => <span className="tp-name-v" style={{ display: 'block', fontSize: `min(var(--t-d2), calc(100cqi / ${(Math.max(8, String(name).length) * 0.56).toFixed(2)}))` }}>{name}</span>;
+
+  // The rows of each card. lead(true): the same fact set large at the head of its card (the profile).
+  const R = {
+    jobTitle: <Row key="jobTitle" label="Job title" field="jobTitle" value={f.jobTitle} />,
+    employer: <Row key="employer" label={selfEmp ? 'Business' : 'Employer'} field="employer" value={f.employer ? <Lines items={[f.employer, EMP_LABEL[f.employmentType]]} /> : null} />,
+    tenure: (lead) => <Row key="yearsAtJob" lead={lead} label={selfEmp ? 'Years in business' : 'Time in role'} field="yearsAtJob" value={yrs} />,
+    income: (lead) => <Row key="annualIncome" lead={lead} sub="a year" label="Income before tax" field="annualIncome" value={lead ? money(f.annualIncome) : moneyYr(f.annualIncome)} />,
+    net: <Row key="netIncome" label="After tax" field="netIncome" value={moneyYr(f.netIncome) ? <Lines items={[moneyYr(f.netIncome), f.netIncomeSource === 'stated' ? 'you entered' : 'estimate']} /> : null} />,
+    address: <Row key="previousAddress" label="Address" field="previousAddress" value={f.previousAddress} />,
+    timeThere: (lead) => <Row key="tenureYears" lead={lead} label="Time there" field="tenureYears" value={tenureLabel(f.yearsAtPrevious)} />,
+    rent: (lead) => <Row key="currentRent" lead={lead} sub="a month" label="Rent" field="currentRent" value={lead ? money(f.currentRent) : moneyMo(f.currentRent)} />,
+    landlord: <Row key="previousLandlordName" label="Landlord reference" field="previousLandlordName" span value={f.previousLandlordName ? <Lines items={[f.previousLandlordName, ...contactParts]} /> : null} />,
+    move: (lead) => <Row key="moveInDate" lead={lead} label="Move in date" field="moveInDate" value={dateLong(f.moveInDate)} />,
+    occupants: (lead) => <Row key="numberOfOccupants" lead={lead} label="Occupants" field="numberOfOccupants" value={occupants ? count(occupants, 'person', 'people') : null} />,
+    smoker: <Row key="smoker" label="Smoking or vaping" field="smoker" value={{ no: 'No', yes: 'Yes', outdoor: 'Outdoor only' }[f.smoker] || 'No'} />,
+    pets: <Row key="pets" label="Pets" field="pets" value={f.pets || 'None'} />,
+    coTenant: <Row key="coTenant" label="Co tenant" field="coTenant" value={f.hasCoApplicant ? <Lines items={[f.coApplicantName || 'Yes', [f.coApplicantJobTitle, f.coApplicantEmployer].filter(Boolean).join(' at '), moneyYr(f.coApplicantIncome)]} /> : 'Applying alone'} />,
+  };
+  const moveField = draft && <Field key="moveInDate" label="Desired move in date" field="moveInDate" value={d.moveInDate} onChange={(v) => set('moveInDate', v)} type="date" autoComplete="off" />;
 
   const cards = {
     employment: (
       <Section key="employment" {...sec('employment')} title="Employment and income"
-        rows={<>
-          <Row label="Job title" field="jobTitle" value={f.jobTitle} />
-          <Row label={selfEmp ? 'Business' : 'Employer'} field="employer" value={f.employer ? <Lines items={[f.employer, EMP_LABEL[f.employmentType]]} /> : null} />
-          <Row label={selfEmp ? 'Years in business' : 'Time in role'} field="yearsAtJob" value={f.yearsAtJob ? `${f.yearsAtJob}${NBSP}yr${String(f.yearsAtJob) === '1' ? '' : 's'}` : null} />
-          <Row label="Income before tax" field="annualIncome" value={moneyYr(f.annualIncome)} />
-          <Row label="After tax" field="netIncome" value={moneyYr(f.netIncome) ? <Lines items={[moneyYr(f.netIncome), f.netIncomeSource === 'stated' ? 'you entered' : 'estimate']} /> : null} />
-        </>}>
+        lead={profile ? <>{R.income(true)}{R.tenure(true)}</> : null}
+        rows={profile ? <>{R.jobTitle}{R.employer}{R.net}</> : <>{R.jobTitle}{R.employer}{R.tenure(false)}{R.income(false)}{R.net}</>}>
         {draft && <>
           <SelectField label="Employment type" field="employmentType" value={d.employmentType} onChange={(v) => updateEmployment({ employmentType: v })} options={[{ value: '', label: 'Select' }, { value: 'full-time', label: 'Full time' }, { value: 'part-time', label: 'Part time' }, { value: 'contract', label: 'Contract' }, { value: 'self-employed', label: 'Self employed (own or family business)' }]} />
           <Field label="Job title" field="jobTitle" required value={d.jobTitle} onChange={(v) => set('jobTitle', v)} autoComplete="organization-title" />
@@ -326,7 +416,8 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
     ),
     contact: contactName ? (
       <Section key="contact" {...sec('contact')} title="Contact" canEdit={canEdit && contactEditable}
-        rows={<><Row label="Full name" field="fullName" value={f.fullName} /><Row label="Phone" field="phone" value={f.phone} /><Row label="Email" value={f.email} /></>}>
+        lead={profile ? <Row label="Phone" field="phone" lead value={f.phone ? phoneShown(f.phone) : null} /> : null}
+        rows={profile ? <><Row label="Full name" field="fullName" value={f.fullName} /><Row label="Email" value={f.email} /></> : <><Row label="Full name" field="fullName" value={f.fullName} /><Row label="Phone" field="phone" value={f.phone} /><Row label="Email" value={f.email} /></>}>
         {draft && <>
           <Field label="Full name" field="fullName" required value={d.fullName} onChange={(v) => set('fullName', v)} type="text" autoComplete="name" enterKeyHint="next" />
           <Field label="Phone" field="phone" required value={d.phone} onChange={(v) => set('phone', formatPhone(v))} type="tel" inputMode="tel" autoComplete="tel" enterKeyHint="done" />
@@ -343,12 +434,8 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
     ),
     rental: (
       <Section key="rental" {...sec('rental')} title="Rental history" single={!hasRental}
-        rows={hasRental ? <>
-          <Row label="Address" field="previousAddress" value={f.previousAddress} />
-          <Row label="Time there" field="tenureYears" value={tenureLabel(f.yearsAtPrevious)} />
-          <Row label="Rent" field="currentRent" value={moneyMo(f.currentRent)} />
-          <Row label="Landlord reference" field="previousLandlordName" span value={f.previousLandlordName ? <Lines items={[f.previousLandlordName, ...contactParts]} /> : null} />
-        </> : <Row label="Previous rental" field="rentalStatus" value="None listed" />}>
+        lead={profile && hasRental ? <>{R.rent(true)}{R.timeThere(true)}</> : null}
+        rows={hasRental ? (profile ? <>{R.address}{R.landlord}</> : <>{R.address}{R.timeThere(false)}{R.rent(false)}{R.landlord}</>) : <Row label="Previous rental" field="rentalStatus" value="None listed" />}>
         {draft && <>
           <div className="tp-span"><SelectField label="Your rental situation" field="rentalStatus" value={d.rentalStatus} onChange={updateRentalStatus} options={[{ value: 'current', label: 'I am renting now' }, { value: 'previous', label: 'I have rented before, but not right now' }, { value: 'none', label: 'No previous rental to list' }]} /></div>
           {d.rentalStatus !== 'none' && <>
@@ -369,19 +456,16 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
     ),
     move: (
       <Section key="move" {...sec('move')} title="Your move" single
-        rows={<Row label="Move in date" field="moveInDate" value={dateLong(f.moveInDate)} />}>
-        {draft && <Field label="Desired move in date" field="moveInDate" value={d.moveInDate} onChange={(v) => set('moveInDate', v)} type="date" autoComplete="off" />}
+        rows={R.move(false)}>
+        {moveField}
       </Section>
     ),
     household: (
-      <Section key="household" {...sec('household')} title="Household and pets"
-        rows={<>
-          <Row label="Occupants" field="numberOfOccupants" value={occupants ? count(occupants, 'person', 'people') : null} />
-          <Row label="Smoking or vaping" field="smoker" value={{ no: 'No', yes: 'Yes', outdoor: 'Outdoor only' }[f.smoker] || 'No'} />
-          <Row label="Pets" field="pets" value={f.pets || 'None'} />
-          <Row label="Co tenant" field="coTenant" value={f.hasCoApplicant ? <Lines items={[f.coApplicantName || 'Yes', [f.coApplicantJobTitle, f.coApplicantEmployer].filter(Boolean).join(' at '), moneyYr(f.coApplicantIncome)]} /> : 'Applying alone'} />
-        </>}>
+      <Section key="household" {...sec('household')} title={profile ? 'Your move and household' : 'Household and pets'}
+        lead={profile ? <>{R.move(true)}{R.occupants(true)}</> : null}
+        rows={profile ? <>{R.smoker}{R.pets}{R.coTenant}</> : <>{R.occupants(false)}{R.smoker}{R.pets}{R.coTenant}</>}>
         {draft && <>
+          {profile && <div className="tp-span">{moveField}</div>}
           <div className="mp-grid2">
             <Field label="Total occupants" field="numberOfOccupants" value={d.numberOfOccupants} onChange={(v) => set('numberOfOccupants', v)} type="number" inputMode="numeric" autoComplete="off" hint="Used only to check the unit's occupancy limit. Not scored." />
             <SelectField label="Smoking or vaping" field="smoker" value={d.smoker} onChange={(v) => set('smoker', v)} options={[{ value: 'no', label: 'No' }, { value: 'outdoor', label: 'Outdoor only' }, { value: 'yes', label: 'Yes' }]} />
@@ -413,7 +497,7 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
     ),
     references: (
       <Section key="references" {...sec('references')} title="References" single={refs.length === 0}
-        rows={refs.length ? refs.map((n) => <Row key={n} label={`Reference ${n}`} field={`reference${n}Name`} span value={<Lines items={[f[`reference${n}Name`], f[`reference${n}Relationship`], f[`reference${n}Contact`]]} />} />)
+        rows={refs.length ? refs.map((n) => <Row key={n} label={`Reference ${n}`} field={`reference${n}Name`} span value={profile ? <>{nameHead(f[`reference${n}Name`])}<Lines items={[f[`reference${n}Relationship`], f[`reference${n}Contact`]]} /></> : <Lines items={[f[`reference${n}Name`], f[`reference${n}Relationship`], f[`reference${n}Contact`]]} />} />)
           : <Row label="References" field="reference1Name" value={count(0, 'provided', 'provided')} />}>
         {draft && [1, 2].map((n) => (
           <div key={n} className="mp-sub tp-pair">
@@ -428,6 +512,6 @@ export function FactSections({ facts: f0, draft, editing, setDraft, canEdit, sav
       </Section>
     ),
   };
-  return <>{(only || FACT_ORDER).map((k) => cards[k])}</>;
+  return <>{(only || FACT_ORDER).filter((k) => !(profile && k === 'move')).map((k) => cards[k])}</>;
 }
 export const Chevron = ({ open }) => <span aria-hidden="true" style={{ display: 'inline-flex', transform: open ? 'rotate(180deg)' : 'none', color: C.inkMute, flexShrink: 0 }}><Icon name="chevronD" size={16} /></span>;

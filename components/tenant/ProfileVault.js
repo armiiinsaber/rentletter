@@ -12,15 +12,21 @@
 //     stored still shows and can still be deleted, nothing new is added;
 //   · who can see the profile: every share (lib/profileShares.js), the realtor it is with, since
 //     when, each view of it with its date, and Stop sharing, which asks once, in the page.
+//   · each kind of document has its slot (ID, proof of income, employment letter), with its own add
+//     button (the one upload, the same route and payload: the read decides the kind) and one line
+//     on who can open it and when it is deleted, from lib/tenantVaultRules.js ID_DAYS and
+//     DOCUMENT_DAYS, the periods lib/tenantVault.js keeps;
+//   · the date each file was read and the source of each fact read from one sit behind Details.
 // "verified" is never said here: a fact is read from a document, on a date.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { noWidow, dateLong } from '../../lib/typeset';
 import { sharePayload, sourceLine, SOURCE } from '../../lib/profileFacts';
-import { KIND_LABEL, VAULT_MIME, checkText, agreesText } from '../../lib/tenantVaultRules';
+import { KIND_LABEL, VAULT_MIME, ID_DAYS, DOCUMENT_DAYS, IDLE_MONTHS, checkText, agreesText } from '../../lib/tenantVaultRules';
+import { C } from '../theme';
 import { Pending } from '../brand/Loader';
 import { Chevron, LinesText } from './ProfileFacts';
 import ShareWithAgent from './ShareWithAgent';
-import { StateTag } from './ProfileLayout';
+import { doneLabel } from './profileSteps';
 
 const MAX_CLIENT_BYTES = 3 * 1024 * 1024;
 const readBase64 = (file) => new Promise((resolve, reject) => {
@@ -29,7 +35,19 @@ const readBase64 = (file) => new Promise((resolve, reject) => {
   r.onerror = () => reject(new Error('That file could not be opened.'));
   r.readAsDataURL(file);
 });
+// Who can open each kind of document and when it is deleted, said beside the button that adds it.
+export const KEPT = Object.freeze({
+  id: `No realtor can open your ID, even one you share with. It is deleted ${ID_DAYS} days after you add it.`,
+  income: `Realtors you share with can open it for a limited time, and you see each time they do. It is deleted ${DOCUMENT_DAYS} days after you add it unless you renew it.`,
+  employment: `Realtors you share with can open it for a limited time, and you see each time they do. It is deleted ${DOCUMENT_DAYS} days after you add it unless you renew it.`,
+});
+const SLOTS = Object.freeze([['id', 'Add your ID'], ['income', 'Add proof of income'], ['employment', 'Add an employment letter']]);
 export const youLine = (source, at) => (source === SOURCE.DOCUMENT ? sourceLine(SOURCE.DOCUMENT, at) : (dateLong(at) ? `Typed by you on ${dateLong(at)}` : 'Typed by you'));
+
+// What a realtor would see once the tenant shares: the whitelisted facts and the facts read from
+// documents, each with its source and date (lib/profileFacts.js sharePayload). The fold below and
+// the page's Preview (pages/my-application.js) both read it.
+export const realtorSees = (profile, vault) => sharePayload({ id: profile.id, facts: profile.facts || {}, factsUpdatedAt: profile.factsUpdatedAt }, ((vault && vault.checks) || []).map((c) => ({ kind: c.kind, value: c.value, read_at: c.readAt })));
 
 // The vault and the shares, read once for the page (pages/my-application.js): the Documents
 // section, the Who can see your profile section and the page's section states all read the same
@@ -93,22 +111,23 @@ export function useVault(onChanged) {
 
 // show: 'documents' (Your documents, then Read from your documents) or 'shares' (Who can see your
 // profile). state: the section's state (components/tenant/ProfileLayout.js), shown by its heading.
-export default function ProfileVault({ profile, store, show, state = 'empty' }) {
+export default function ProfileVault({ profile, store, show }) {
   const { vault, shares, agents, busy, asking, setAsking, message, reload: load, act, stop, add } = store;
   const [seeOpen, setSeeOpen] = useState(false);
+  const [docDetails, setDocDetails] = useState(false);
+  const [checkDetails, setCheckDetails] = useState(false);
   const input = useRef(null);
 
   if (!vault || vault.failed) return null;
   const { enabled, available, consentAt, emailProved, documents = [], checks = [] } = vault;
   const canAdd = enabled && available && emailProved;
-  const payload = sharePayload({ id: profile.id, facts: profile.facts || {}, factsUpdatedAt: profile.factsUpdatedAt }, checks.map((c) => ({ kind: c.kind, value: c.value, read_at: c.readAt })));
+  const payload = realtorSees(profile, vault);
 
   if (show === 'shares') return (
     <div className="mp-stack" data-vault="" data-vault-enabled={enabled ? 'yes' : 'no'}>
       <section className="rl-card mp-card" data-vault-views="" aria-labelledby="vault-views-h">
         <div className="mp-head tp-head">
           <h2 id="vault-views-h" className="mp-h2">Who can see your profile</h2>
-          <div className="tp-head-side"><StateTag state={state} /></div>
         </div>
         {shares.length === 0 ? <p className="mp-p" data-shares-empty="" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('No one. A realtor sees your profile only when you apply with it or approve a share, and every view is listed here with its date.')}</p> : (
           <ul className="mp-list" style={{ marginTop: 'var(--gap-line)' }}>
@@ -154,54 +173,82 @@ export default function ProfileVault({ profile, store, show, state = 'empty' }) 
       </section>
     </div>
   );
+  // One document: its expiry, the date it was read behind Details, Renew where it may be renewed,
+  // and Delete, which asks once.
+  const docRow = (d) => (
+    <li key={d.id} data-vault-document={d.kind} className="tp-doc">
+      <div className="mp-source" data-vault-expiry="">{noWidow(`Kept until ${dateLong(d.expiresAt)}`)}</div>
+      <div className="mp-source" hidden={!docDetails}>{noWidow(`Read on ${dateLong(d.readAt || d.uploadedAt)}`)}</div>
+      {asking === d.id ? (
+        <div className="mp-actions" data-vault-confirm="">
+          <p className="mp-p" style={{ flex: '1 1 100%' }}>{noWidow('Delete this document? The file is removed now and cannot be brought back. The facts read from it stay until you remove them.')}</p>
+          <button type="button" data-destructive="" className="mp-btn" disabled={!!busy} onClick={() => act(`delete:${d.id}`, { action: 'delete', id: d.id }, 'Deleted. The file is gone.')}><Pending busy={busy === `delete:${d.id}`} label="Deleting">Delete</Pending></button>
+          <button type="button" className="mp-link" disabled={!!busy} onClick={() => setAsking('')}>Keep it</button>
+        </div>
+      ) : (
+        <div className="mp-actions tp-doc-actions">
+          {d.canRenew && enabled && <button type="button" className="mp-link" disabled={!!busy} onClick={() => act(`renew:${d.id}`, { action: 'renew', id: d.id }, `Renewed for ${DOCUMENT_DAYS} days from today.`)} aria-label={`Renew ${KIND_LABEL[d.kind] || 'document'}`}><Pending busy={busy === `renew:${d.id}`} label="Renewing">Renew</Pending></button>}
+          <button type="button" data-destructive="" className="mp-link" disabled={!!busy} onClick={() => setAsking(d.id)} aria-label={`Delete ${KIND_LABEL[d.kind] || 'document'}`}>Delete</button>
+        </div>
+      )}
+    </li>
+  );
+  const others = documents.filter((d) => !SLOTS.some(([k]) => k === d.kind));
+  const pick = () => input.current && input.current.click();
   return (
     <div className="mp-stack" data-vault="" data-vault-enabled={enabled ? 'yes' : 'no'}>
       <section className="rl-card mp-card" data-vault-documents="" aria-labelledby="vault-docs-h">
         <div className="mp-head tp-head">
           <h2 id="vault-docs-h" className="mp-h2">Your documents</h2>
-          <div className="tp-head-side"><StateTag state={state} /></div>
         </div>
         {!enabled && <p role="status" data-vault-paused="" className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Documents are paused. Nothing new is stored for now. What you already stored stays until its date, and you can delete it.')}</p>}
         {enabled && !available && <p role="status" data-vault-absent="" className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Documents are not available yet.')}</p>}
         {enabled && available && <p className="mp-p" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('Add your ID, a pay stub or an employment letter once. We read each one and keep the facts, so your next application needs no upload.')}</p>}
-        {documents.length > 0 && (
-          <ul className="mp-list" style={{ marginTop: 'var(--gap-card)' }}>
-            {documents.map((d) => (
-              <li key={d.id} data-vault-document={d.kind} style={{ display: 'block' }}>
-                <div className="mp-value" style={{ marginTop: 0 }}>{KIND_LABEL[d.kind] || 'Document'}</div>
-                <div className="mp-source" data-vault-expiry="">{noWidow(`Kept until ${dateLong(d.expiresAt)}`)}</div>
-                <div className="mp-source">{noWidow(`Read on ${dateLong(d.readAt || d.uploadedAt)}`)}</div>
-                {asking === d.id ? (
-                  <div className="mp-actions" data-vault-confirm="">
-                    <p className="mp-p" style={{ flex: '1 1 100%' }}>{noWidow('Delete this document? The file is removed now and cannot be brought back. The facts read from it stay until you remove them.')}</p>
-                    <button type="button" data-destructive="" className="mp-btn" disabled={!!busy} onClick={() => act(`delete:${d.id}`, { action: 'delete', id: d.id }, 'Deleted. The file is gone.')}><Pending busy={busy === `delete:${d.id}`} label="Deleting">Delete</Pending></button>
-                    <button type="button" className="mp-link" disabled={!!busy} onClick={() => setAsking('')}>Keep it</button>
+        {canAdd && !consentAt && (
+          <div data-vault-consent="" className="tp-need" style={{ display: 'grid', gap: 'var(--gap-line)' }}>
+            <p className="mp-p">{noWidow(`Before your first document: Rentletter keeps it in your profile and reads it with AI, once. An ID is kept ${ID_DAYS} days. A pay stub or an employment letter is kept ${DOCUMENT_DAYS} days, and you can renew it. The facts read from them stay until you remove them, or until your profile has been unused for ${IDLE_MONTHS} months.`)}</p>
+            <p className="mp-p">{noWidow('No realtor sees any of it unless you approve it. Delete removes a document at once.')}</p>
+            <button type="button" className="mp-btn mp-btn-auto" data-focus="documents" disabled={!!busy} onClick={() => act('consent', { action: 'consent' })}><Pending busy={busy === 'consent'} label="Saving">Agree and continue</Pending></button>
+          </div>
+        )}
+        {(available || documents.length > 0) && (
+          <ul className="tp-slots" data-vault-slots="">
+            {SLOTS.map(([kind, addLabel]) => {
+              const mine = documents.filter((d) => d.kind === kind);
+              const held = mine.length > 0;
+              return (
+                <li key={kind} className="tp-slot" data-vault-slot={kind} data-held={held ? 'yes' : 'no'}>
+                  <div className="tp-slot-head">
+                    <span className="tp-mark" data-state={held ? 'done' : 'empty'} aria-hidden="true" style={{ width: 20, height: 20 }}>{held ? <svg width="12" height="12" viewBox="0 0 16 16"><path d="M3.8 8.4l2.7 2.7 5.7-6" fill="none" stroke={C.card} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg> : null}</span>
+                    <div className="tp-slot-title">{noWidow(held ? doneLabel(kind, vault) : KIND_LABEL[kind])}</div>
                   </div>
-                ) : (
-                  <div className="mp-actions" style={{ marginTop: 0 }}>
-                    {d.canRenew && enabled && <button type="button" className="mp-link" disabled={!!busy} onClick={() => act(`renew:${d.id}`, { action: 'renew', id: d.id }, 'Renewed for 90 days from today.')} aria-label={`Renew ${KIND_LABEL[d.kind] || 'document'}`}><Pending busy={busy === `renew:${d.id}`} label="Renewing">Renew</Pending></button>}
-                    <button type="button" data-destructive="" className="mp-link" disabled={!!busy} onClick={() => setAsking(d.id)} aria-label={`Delete ${KIND_LABEL[d.kind] || 'document'}`}>Delete</button>
-                  </div>
-                )}
+                  <p className="pp-kept" data-kept={kind}>{noWidow(KEPT[kind])}</p>
+                  {held && <ul className="tp-docs">{mine.map(docRow)}</ul>}
+                  {!held && canAdd && consentAt && <button type="button" className="mp-btn mp-btn-auto tp-slot-add" data-vault-add-kind={kind} data-focus={`doc-${kind}`} disabled={!!busy} onClick={pick}><Pending busy={busy === 'upload'} label="Reading your document">{addLabel}</Pending></button>}
+                </li>
+              );
+            })}
+            {others.length > 0 && (
+              <li className="tp-slot" data-vault-slot="other" data-held="yes">
+                <div className="tp-slot-head"><div className="tp-slot-title">{KIND_LABEL.other}</div></div>
+                <ul className="tp-docs">{others.map(docRow)}</ul>
               </li>
-            ))}
+            )}
           </ul>
         )}
         {enabled && available && documents.length === 0 && <p data-vault-empty="" className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('No documents stored.')}</p>}
         {message && message.where !== 'shares' && <p role="status" className={message.tone === 'ok' ? 'mp-note' : 'mp-alert'} style={{ marginTop: 'var(--gap-card)' }}>{noWidow(message.text)}</p>}
         {enabled && available && !emailProved && <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Sign in with the link we email you before adding documents.')}</p>}
-        {canAdd && !consentAt && (
-          <div data-vault-consent="" style={{ marginTop: 'var(--gap-card)', display: 'grid', gap: 'var(--gap-line)' }}>
-            <p className="mp-p">{noWidow('Before your first document: Rentletter keeps it in your profile and reads it with AI, once. An ID is kept 14 days. A pay stub or an employment letter is kept 90 days, and you can renew it. The facts read from them stay until you remove them, or until your profile has been unused for 12 months.')}</p>
-            <p className="mp-p">{noWidow('No realtor sees any of it unless you approve it. Delete removes a document at once.')}</p>
-            <button type="button" className="mp-btn" data-focus="documents" disabled={!!busy} onClick={() => act('consent', { action: 'consent' })}><Pending busy={busy === 'consent'} label="Saving">Agree and continue</Pending></button>
+        {canAdd && consentAt && (
+          <div className="tp-add-other">
+            <input ref={input} type="file" accept={VAULT_MIME.join(',')} style={{ display: 'none' }} aria-label="Document file" onChange={(e) => { const file = e.target.files && e.target.files[0]; e.target.value = ''; add(file); }} />
+            <button type="button" data-vault-add="" data-focus="documents" className="mp-link" disabled={!!busy} onClick={pick}><Pending busy={busy === 'upload'} label="Reading your document">Add a document</Pending></button>
+            <p className="mp-note">{noWidow('PDF, JPG or PNG, under 3MB. A credit report is never kept here.')}</p>
           </div>
         )}
-        {canAdd && consentAt && (
-          <div style={{ marginTop: 'var(--gap-card)' }}>
-            <input ref={input} type="file" accept={VAULT_MIME.join(',')} style={{ display: 'none' }} aria-label="Document file" onChange={(e) => { const file = e.target.files && e.target.files[0]; e.target.value = ''; add(file); }} />
-            <button type="button" data-vault-add="" data-focus="documents" className="mp-btn" disabled={!!busy} onClick={() => input.current && input.current.click()}><Pending busy={busy === 'upload'} label="Reading your document">Add a document</Pending></button>
-            <p className="mp-note" style={{ marginTop: 'var(--gap-line)' }}>{noWidow('PDF, JPG or PNG, under 3MB. A credit report is never kept here.')}</p>
+        {documents.length > 0 && (
+          <div className="tp-details">
+            <button type="button" className="tp-details-btn" aria-expanded={docDetails} onClick={() => setDocDetails((v) => !v)} data-vault-details="">Details<Chevron open={docDetails} /></button>
           </div>
         )}
       </section>
@@ -209,14 +256,16 @@ export default function ProfileVault({ profile, store, show, state = 'empty' }) 
       {checks.length > 0 && (
         <section className="rl-card mp-card" data-vault-checks="" aria-labelledby="vault-checks-h">
           <h2 id="vault-checks-h" className="mp-h2">Read from your documents</h2>
-          <ul className="mp-list" style={{ marginTop: 'var(--gap-line)' }}>
+          <ul className="mp-list tp-checks" style={{ marginTop: 'var(--gap-line)' }}>
             {checks.map((c) => { const t = checkText(c); const agrees = agreesText(c); return (
-              <li key={c.id} data-vault-check={c.kind} style={{ display: 'block' }}>
+              <li key={c.id} data-vault-check={c.kind} data-lead={c.kind === 'income_annual_gross' ? 'yes' : 'no'} style={{ display: 'block' }}>
                 <div className="mp-label">{t.label}</div>
-                <div className="mp-value">{noWidow(t.value)}</div>
-                <div className="mp-source" data-fact-source="">{noWidow(youLine(SOURCE.DOCUMENT, c.readAt))}</div>
-                {agrees && <div className="mp-source">{noWidow(agrees)}</div>}
-                {!c.documentHeld && <div className="mp-source">{noWidow('The document is no longer held.')}</div>}
+                <div className="mp-value tp-check-v">{noWidow(t.value)}</div>
+                <div hidden={!checkDetails}>
+                  <div className="mp-source" data-fact-source="">{noWidow(youLine(SOURCE.DOCUMENT, c.readAt))}</div>
+                  {agrees && <div className="mp-source">{noWidow(agrees)}</div>}
+                  {!c.documentHeld && <div className="mp-source">{noWidow('The document is no longer held.')}</div>}
+                </div>
                 {asking === c.id ? (
                   <div className="mp-actions" data-vault-confirm="">
                     <p className="mp-p" style={{ flex: '1 1 100%' }}>{noWidow('Remove this fact from your profile? It is gone, not hidden.')}</p>
@@ -227,9 +276,25 @@ export default function ProfileVault({ profile, store, show, state = 'empty' }) 
               </li>
             ); })}
           </ul>
+          <div className="tp-details">
+            <button type="button" className="tp-details-btn" aria-expanded={checkDetails} onClick={() => setCheckDetails((v) => !v)} data-checks-details="">Details<Chevron open={checkDetails} /></button>
+          </div>
         </section>
       )}
-
+      <style jsx global>{`
+        .tp-slots { list-style: none; margin: var(--gap-card) 0 0; padding: 0; display: grid; gap: 0; }
+        .tp-slot { display: grid; gap: 6px; padding: var(--s-3) 0; border-top: 1px solid var(--rule); justify-items: start; min-width: 0; }
+        .tp-slot:last-child { padding-bottom: 0; }
+        .tp-slot-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .tp-slot-title { font-size: var(--t-body); font-weight: 700; line-height: 1.3; color: ${C.ink}; text-wrap: balance; overflow-wrap: anywhere; }
+        .tp-slot .pp-kept { margin: 0; font-size: 13px; line-height: 1.4; color: ${C.inkSoft}; text-wrap: balance; max-width: 62ch; }
+        .tp-slot-add { margin-top: var(--s-1); }
+        .tp-docs { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-1); width: 100%; }
+        .tp-doc .mp-actions { margin-top: 0; }
+        .tp-add-other { display: grid; gap: 2px; justify-items: start; margin-top: var(--s-3); padding-top: var(--s-2); border-top: 1px solid var(--rule); }
+        .tp-checks .mp-value.tp-check-v { margin-top: 4px; }
+        .tp-checks li[data-lead='yes'] .mp-value.tp-check-v { font-family: var(--f-display); font-size: 26px; font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; }
+      `}</style>
     </div>
   );
 }

@@ -140,7 +140,7 @@ test('2. the listing agent sees the same view as the tenant\'s realtor, with the
   // The tenant sees that view under the listing agent's share.
   const mineShare = (await w.tenant('GET')).body.shares.find((s) => s.role === 'listing_agent');
   assert.equal(mineShare.views.length, 1);
-  assert.match(code('components/dashboard/SharedProfile.js'), /<div style=\{label\}>Screening score<\/div>/);
+  assert.match(code('components/dashboard/SharedProfileView.js'), /<div style=\{label\}>Screening score<\/div>/);
 });
 
 test('3. the tenant\'s profile strength never reaches any realtor response', async () => {
@@ -163,7 +163,7 @@ test('3. the tenant\'s profile strength never reaches any realtor response', asy
   const users = [...walk('lib/'), ...walk('pages/')].filter((f) => /profileStrength|profileStrength\.js/.test(code(f)));
   assert.deepEqual(users.sort(), ['lib/profileStrength.js', 'pages/api/tenant/personal.js']);
   for (const f of ['pages/api/profile-shares/shared-with-me.js', 'pages/api/profile-shares/view.js', 'pages/api/profile-shares/open.js', 'lib/profileShares.js', 'lib/profileShareStore.js', 'lib/profileShareRoutes.js']) assert.doesNotMatch(code(f), /strength|tenant\/personal|getPersonal\(/i, f);
-  assert.doesNotMatch(code('components/dashboard/SharedProfile.js'), /strength/i);
+  for (const f of ['components/dashboard/SharedProfile.js', 'components/dashboard/SharedProfileView.js']) assert.doesNotMatch(code(f), /strength/i, f);
   assert.doesNotMatch(code('components/dashboard/SharedWithMe.js'), /strength/i);
   // The screening score is not the strength: it comes from the realtor's listing, never from the profile.
   assert.match(code('lib/profileShares.js'), /const fit = mine && mine\.application \? mine\.application\.fit : null;/);

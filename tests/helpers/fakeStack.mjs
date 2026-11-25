@@ -200,8 +200,15 @@ export function fakeAnthropic(extractionFor = defaultExtraction) {
     if (api.answer) { const own = await api.answer(body); if (own !== undefined) return own; }
     const content = (body.messages && body.messages[0] && body.messages[0].content) || [];
     if (typeof body.system === 'string' && body.system.startsWith('You translate a short note')) return { content: [{ type: 'text', text: JSON.stringify(fakeTranslation(content.filter((c) => c.type === 'text').map((c) => c.text).join(''))) }] };
-    // "Help me write this" on a note in another script: a rewording in the same language (its first paragraph).
-    if (typeof body.system === 'string' && body.system.startsWith('You help a person tidy')) { const note = content.filter((c) => c.type === 'text').map((c) => c.text).join(''); if (/[^\p{Script=Latin}\P{L}]/u.test(note)) return { content: [{ type: 'text', text: note.split('\n')[0] }] }; }
+    // "Help me write this" on a note in another script: a rewording in the same language (its first
+    // paragraph). On a note in Latin letters: each line a sentence, the question before an answer of
+    // the guided start (components/tenant/profileSteps.js composeAnswers) left out, no word added.
+    if (typeof body.system === 'string' && body.system.startsWith('You help a person tidy')) {
+      const note = content.filter((c) => c.type === 'text').map((c) => c.text).join('');
+      if (/[^\p{Script=Latin}\P{L}]/u.test(note)) return { content: [{ type: 'text', text: note.split('\n')[0] }] };
+      const lines = note.split('\n').map((l) => l.replace(/^(What you do|Why this home|How you live day to day):\s*/, '').trim()).filter(Boolean);
+      return { content: [{ type: 'text', text: lines.map((l) => { const x = l.charAt(0).toUpperCase() + l.slice(1); return /[.!?]$/.test(x) ? x : `${x}.`; }).join(' ') }] };
+    }
     const names = content.filter((c) => c.type === 'text' && /filename: "/.test(c.text)).map((c) => (c.text.match(/filename: "([^"]+)"/) || [])[1]);
     const documents = names.map((n) => extractionFor(n));
     return { content: [{ type: 'text', text: JSON.stringify({ documents, overallSummary: `${documents.length} document(s) read.`, confidence: 'high' }) }] };

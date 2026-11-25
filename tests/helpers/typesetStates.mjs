@@ -150,6 +150,15 @@ async function office(p) {
 // (/__fake/tenant, tests/helpers/fakeNextServer.mjs), with its session cookie. These states run
 // in the last phase, one at a time ('alone'): every state that needs a tenant signed out (the
 // sign in page, the apply flow, which fills from a signed in profile) has finished by then.
+// A tenant whose profile holds no facts: the page opens on the guided first run.
+async function tenantSetup(p, f, query) {
+  const { token } = await f(`/__fake/tenant?${query}`);
+  await open(p, '/my-application');
+  await p.context().addCookies([{ name: 'rl_tenant', value: encodeURIComponent(token), url: new URL(p.url()).origin, httpOnly: true, sameSite: 'Lax' }]);
+  await open(p, '/my-application');
+  await p.locator('[data-run-screen="name"]').waitFor({ timeout: 30000 });
+  await wait(p, 400);
+}
 async function tenantProfile(p, f, query) {
   const { token } = await f(`/__fake/tenant?${query}`);
   await open(p, '/my-application'); // signed out first: the page's own address gives the cookie its origin
@@ -432,6 +441,11 @@ export const STATES = [
     const said = await p.locator('[data-about-suggested] p').evaluateAll((els) => els.map((el) => ({ dir: getComputedStyle(el).direction, align: getComputedStyle(el).textAlign })));
     if (!said.length || said.some((x) => x.dir !== 'rtl' || x.align !== 'right')) throw new Error(`the suggestion in Persian reads ${JSON.stringify(said)}`);
     yield 'tenant profile, a suggestion in Persian';
+    // Used and saved: How realtors will read it follows directly under the words saved.
+    await p.locator('[data-about-accept]').click(); await p.locator('[data-about-save]').click();
+    await p.locator('[data-about-english]').waitFor({ timeout: 30000 }); await wait(p, 300);
+    const next = await p.evaluate(() => { const row = document.querySelector('[data-about-save]').closest('.mp-actions'); const n = row.nextElementSibling; return { next: n && n.dataset.aboutEnglish, saved: row.textContent.replace(/\s+/g, ' ').trim() }; });
+    if (!next.next || !/Saved\./.test(next.saved)) throw new Error(`after the Persian suggestion was saved: ${JSON.stringify(next)}`);
   } },
   // Sharing with the listing agent (db/024): the tenant's share list with both roles and an invite
   // waiting; then the search for a listing agent, the confirm that says what they see, and the
@@ -518,19 +532,148 @@ export const STATES = [
     if (mirrors !== 1) throw new Error(`the application was sent ${mirrors} times; the retry must send the share alone`);
     yield 'one tap apply, the share went through on the retry';
   } },
-  // The profile laid out to be filled in (pages/my-application.js): the section menu, the sections
-  // and the strength panel at every width; empty (no facts yet, no document, nothing about them),
-  // about half filled and then one section open for editing, complete (every step of the strength
-  // done, a share and an application), and on a phone the checklist as a sheet (it is there only
-  // below 1024: the slim bar that opens it is the phone's).
-  { name: 'tenant profile, empty', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=11&facts=none&consent=0'); await p.locator('[data-section-invite="employment"]').waitFor({ timeout: 15000 }); await wait(p, 300); } },
-  { name: 'tenant profile, half filled', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=12&facts=half&docs=id'); await p.locator('[data-section-invite="rental"]').waitFor({ timeout: 15000 }); await p.locator('[data-strength-bar]').waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
-    await p.locator('[data-section-edit="employment"]').click(); await p.locator('[data-section-form="employment"]').waitFor({ timeout: 15000 }); await wait(p, 400);
+  // The profile laid out to be filled in (pages/my-application.js): the tenant's card at the top
+  // (components/tenant/ProfileCard.js), the section menu, the cards with their lead values, and the
+  // progress panel at every width; empty (no facts yet: the first run, left at once), about half
+  // filled (two of seven steps added, a card that needs something and its button), complete (every
+  // step, a share and an application) and its Preview, and on a phone the checklist as a sheet (it
+  // is there only below 1024: the slim bar that opens it is the phone's).
+  { name: 'tenant profile, empty', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await tenantSetup(p, f, 'who=11&facts=none&consent=0');
+    await p.locator('[data-run-leave]').click(); await p.locator('[data-card-empty]').waitFor({ timeout: 15000 }); await p.locator('[data-section-invite="employment"]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    const card = await p.locator('[data-profile-card]').evaluate((el) => ({ buttons: el.querySelectorAll('[data-card-empty] button').length, marks: [...el.querySelectorAll('[data-mark]')].map((m) => m.dataset.done), photo: !!el.querySelector('[data-card-photo="no"]') }));
+    if (card.buttons !== 1 || card.marks.length !== 6 || card.marks.some((d) => d !== 'no') || !card.photo) throw new Error(`the empty card: ${JSON.stringify(card)}`);
+    if (await p.locator('[data-first-run]').count()) throw new Error('the first run is still open after Leave setup');
+  } },
+  { name: 'tenant profile, half filled', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await tenantProfile(p, f, 'who=12&facts=half&docs=2'); await p.locator('[data-section-invite="rental"]').waitFor({ timeout: 15000 }); await p.locator('[data-strength-bar]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    // The progress at 2 of 7, never a percent; the card fits the first screen of a phone.
+    const bar = (await p.locator('[data-strength-bar] [data-strength-count]').innerText()).replace(/\s+/g, ' ').trim();
+    if (bar !== '2 of 7 added') throw new Error(`the phone's bar reads "${bar}"`);
+    if (/\d\s*%/.test(await p.locator('[data-tp-top]').innerText())) throw new Error('a percent is shown');
+    const fit = await p.evaluate(() => { window.scrollTo({ top: 0, behavior: 'instant' }); const r = document.querySelector('[data-profile-card]').getBoundingClientRect(); return { bottom: Math.round(r.bottom), height: window.innerHeight }; });
+    if (fit.bottom > fit.height) throw new Error(`the card runs past the first screen at 390 (${JSON.stringify(fit)})`);
+    // A card that needs something: one line, one button.
+    const need = await p.locator('[data-section-need="employment"]').evaluate((el) => ({ lines: el.querySelectorAll('p').length, buttons: el.querySelectorAll('button').length, text: el.innerText.replace(/\s+/g, ' ').trim() }));
+    if (need.lines !== 1 || need.buttons !== 1) throw new Error(`what the employment card needs: ${JSON.stringify(need)}`);
+    if (await p.locator('[data-section="household"] [data-field-row="moveInDate"]').count() !== 1 || await p.locator('[data-section="move"]').count()) throw new Error('the move in date is not on Your move and household');
+    if (await p.locator('.tp-tag, [data-section-state]').count()) throw new Error('a Done pill is still drawn');
+  }, steps: async function* (p) {
+    // Its one button opens the card for editing, at the field it needs.
+    await p.locator('[data-section-fill="employment"]').click(); await p.locator('[data-section-form="employment"]').waitFor({ timeout: 15000 }); await wait(p, 400);
+    if (!(await p.evaluate(() => document.activeElement && document.activeElement.dataset.field === 'annualIncome'))) throw new Error('the button of what the card needs does not open its field');
     yield 'tenant profile, a section open for editing';
   } },
-  { name: 'tenant profile, complete', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=13&facts=full&docs=1&personal=1&share=new&agent=1'); await p.locator('[data-strength-next="none"]').first().waitFor({ state: 'attached', timeout: 15000 }); await p.locator('[data-share="live"]').first().waitFor({ timeout: 15000 }); await wait(p, 300); } },
-  { name: 'tenant profile, the checklist sheet on a phone', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=12&facts=half&docs=id'); await p.locator('[data-strength-bar]').click(); await p.locator('[data-strength-sheet] [data-strength-steps]').waitFor({ timeout: 15000 }); await wait(p, 500); } },
+  { name: 'tenant profile, complete', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=13&facts=full&docs=1&personal=1&share=new&agent=1'); await p.locator('[data-strength-next="none"]').first().waitFor({ state: 'attached', timeout: 15000 }); await p.locator('[data-share="live"]').first().waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
+    // Preview: the realtor's own view of the profile (components/dashboard/SharedProfileView.js),
+    // the facts "What a realtor would see" lists and nothing else: no progress, no document, no ID.
+    await p.locator('[data-mode-preview]').click(); await p.locator('[data-preview] [data-shared-facts]').waitFor({ timeout: 15000 }); await wait(p, 400);
+    const seen = await p.evaluate(async () => {
+      const profile = await (await fetch('/api/tenant/profile')).json(); const vault = await (await fetch('/api/tenant/vault')).json();
+      const box = document.querySelector('[data-preview]');
+      const shown = (sel) => [...document.querySelectorAll(sel)].some((el) => el.getClientRects().length > 0);
+      return { facts: [...box.querySelectorAll('[data-shared-fact]')].map((el) => el.dataset.sharedFact), checks: [...box.querySelectorAll('[data-shared-check]')].map((el) => el.dataset.sharedCheck), profile, vaultChecks: (vault.checks || []).map((c) => ({ kind: c.kind, value: c.value, read_at: c.readAt })),
+        line: !!document.querySelector('[data-preview-line]'), progress: shown('[data-strength]') || shown('[data-strength-bar]') || shown('[data-strength-count]'), counted: /of \d+ added|\d\s*%/.test(document.body.innerText),
+        documents: box.querySelectorAll('[data-shared-open], [data-shared-documents]').length, sections: shown('[data-section]') || shown('[data-vault-documents]'), photos: box.querySelectorAll('img').length };
+    });
+    // What a realtor reads, from the library the share reader uses (lib/profileFacts.js sharePayload).
+    const { sharePayload } = await import('../../lib/profileFacts.js');
+    const want = sharePayload(seen.profile, seen.vaultChecks);
+    if (JSON.stringify(seen.facts) !== JSON.stringify(want.facts.map((x) => x.key))) throw new Error(`Preview shows ${seen.facts} where a realtor reads ${want.facts.map((x) => x.key)}`);
+    if (JSON.stringify(seen.checks) !== JSON.stringify(want.checks.map((x) => x.kind))) throw new Error(`Preview shows the checks ${seen.checks} where a realtor reads ${want.checks.map((x) => x.kind)}`);
+    if (!seen.line || seen.progress || seen.counted || seen.documents || seen.sections || seen.photos !== 1) throw new Error(`Preview: ${JSON.stringify({ ...seen, profile: undefined })}`);
+    yield 'tenant profile, Preview';
+    await p.locator('[data-mode-edit]').click(); await p.locator('[data-profile-card]').waitFor({ timeout: 15000 });
+  } },
+  { name: 'tenant profile, the checklist sheet on a phone', kind: 'tenant', phase: 'alone', go: async (p, f) => { await tenantProfile(p, f, 'who=12&facts=half&docs=2'); await p.locator('[data-strength-bar]').click(); await p.locator('[data-strength-sheet] [data-strength-steps]').waitFor({ timeout: 15000 }); await wait(p, 500); } },
   { name: 'tenant profile, documents paused', kind: 'tenant', phase: 'alone', go: async (p, f) => { try { await tenantProfile(p, f, 'who=3&docs=1&paused=1'); await p.locator('[data-vault-paused]').waitFor({ timeout: 15000 }); } finally { await f('/__fake/tenant?who=3&paused=0'); } } },
+  // The guided first run (components/tenant/FirstRun.js): each screen, one question, saved as the
+  // tenant goes through the save route the page always used; it ends on the card filled in with the
+  // next step offered; it opens again from the card, and Leave setup keeps what is typed.
+  { name: 'tenant profile, the first run, the name', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    p.__saves = []; p.on('request', (r) => { if (r.method() === 'POST' && /\/api\/tenant\/profile$/.test(r.url())) p.__saves.push(JSON.parse(r.postData() || '{}')); });
+    await tenantSetup(p, f, 'who=41&facts=none&consent=0');
+  }, steps: async function* (p) {
+    const answer = async (fields, then, next) => {
+      for (const [field, value] of fields) await p.locator(`[data-run-screen] [data-field="${field}"]`).fill(value);
+      await p.locator(then).click(); await p.locator(`[data-run-screen="${next}"], [data-run-end]`).first().waitFor({ timeout: 15000 }); await wait(p, 300);
+    };
+    await answer([['fullName', 'Maximiliano Castellanos Ruiz']], '[data-run-continue]', 'move'); yield 'tenant profile, the first run, when to move in';
+    await answer([['moveInDate', '2026-12-01']], '[data-run-continue]', 'household'); yield 'tenant profile, the first run, the household';
+    await answer([['numberOfOccupants', '2']], '[data-run-continue]', 'work'); yield 'tenant profile, the first run, the work';
+    await answer([['jobTitle', 'Senior Clinical Operations Coordinator'], ['employer', 'Northwind Pediatric Rehabilitation Clinic Inc.']], '[data-run-continue]', 'income'); yield 'tenant profile, the first run, the income';
+    await answer([['annualIncome', '118000']], '[data-run-continue]', 'phone'); yield 'tenant profile, the first run, the phone';
+    await answer([], '[data-run-skip]', 'landlord'); yield 'tenant profile, the first run, the landlord';
+    await answer([['previousLandlordName', 'Harbourfront Holdings Ltd.'], ['prevLandlordEmail', 'leasing@harbourfrontholdings.ca']], '[data-run-continue]', 'end');
+    await p.locator('[data-run-end] [data-profile-card] [data-marks]').waitFor({ timeout: 15000 }); await p.locator('[data-run-next]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    const facts = await p.evaluate(async () => (await (await fetch('/api/tenant/profile')).json()).facts);
+    const saved = p.__saves.map((x) => x.action);
+    if (saved.length !== 6 || saved.some((a) => a !== 'update-facts')) throw new Error(`the first run saved ${JSON.stringify(saved)}: one update-facts a screen answered`);
+    const got = { fullName: facts.fullName, moveInDate: facts.moveInDate, numberOfOccupants: facts.numberOfOccupants, jobTitle: facts.jobTitle, annualIncome: facts.annualIncome, phone: facts.phone, previousLandlordName: facts.previousLandlordName };
+    if (JSON.stringify(got) !== JSON.stringify({ fullName: 'Maximiliano Castellanos Ruiz', moveInDate: '2026-12-01', numberOfOccupants: '2', jobTitle: 'Senior Clinical Operations Coordinator', annualIncome: '118000', phone: '', previousLandlordName: 'Harbourfront Holdings Ltd.' })) throw new Error(`the first run saved ${JSON.stringify(got)}`);
+    yield 'tenant profile, the first run, the card at the end';
+    // To the full page; open again from the card; a change typed and left is kept.
+    await p.locator('[data-run-finish]').click(); await p.locator('[data-setup-reopen]').waitFor({ timeout: 15000 });
+    await p.locator('[data-setup-reopen]').click(); await p.locator('[data-run-screen="name"]').waitFor({ timeout: 15000 });
+    await p.locator('[data-run-screen] [data-field="fullName"]').fill('Maximiliano Castellanos');
+    await p.locator('[data-run-leave]').click(); await p.locator('[data-profile-card]').waitFor({ timeout: 15000 }); await wait(p, 400);
+    const name = (await p.locator('[data-profile-name]').textContent()).trim();
+    const stored = await p.evaluate(async () => (await (await fetch('/api/tenant/profile')).json()).facts.fullName);
+    if (name !== 'Maximiliano Castellanos' || stored !== name) throw new Error(`Leave setup kept ${JSON.stringify({ name, stored })}`);
+  } },
+  // The writing helper (components/tenant/ProfilePersonal.js): its own card at the top of About me;
+  // with About me empty the three questions, one at a time, then a suggestion made from them alone
+  // with Use this and Keep mine. Write about me opens it from the progress panel, the phone's sheet
+  // and the card's mark; used and saved, its mark fills and the count moves on.
+  { name: 'tenant profile, the writing helper, About me empty', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await tenantProfile(p, f, 'who=42&facts=full&docs=1');
+    await p.locator('[data-about-helper="start"] [data-about-help-start]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    const helper = await p.locator('[data-about-helper]').evaluate((el) => { const box = el.closest('[data-about]'); return { first: box.querySelector('[data-about-helper]') === el, aboveBox: !!(el.compareDocumentPosition(box.querySelector('#pp-about')) & Node.DOCUMENT_POSITION_FOLLOWING), button: el.querySelector('button.mp-btn') && el.querySelector('button.mp-btn').textContent.trim(), lines: [...el.querySelectorAll('p')].map((x) => x.textContent.trim()) }; });
+    if (!helper.aboveBox || helper.button !== 'Help me write this' || helper.lines.length !== 2 || !/any language/i.test(helper.lines[1])) throw new Error(`the helper's card: ${JSON.stringify(helper)}`);
+    // Write about me opens the helper itself: from the panel at 1440, from the sheet on a phone, from the card's mark.
+    const opened = async (how) => { await p.locator('[data-about-guide="0"]').waitFor({ timeout: 15000 }); await wait(p, 300); const ok = await p.evaluate(() => document.activeElement && document.activeElement.dataset.guideAnswer === '0'); if (!ok) throw new Error(`${how}: the first question is not focused`); await p.locator('[data-guide-back]').click(); await p.locator('[data-about-helper="start"]').waitFor({ timeout: 15000 }); };
+    await p.setViewportSize({ width: 1440, height: 900 }); await wait(p, 300);
+    await p.locator('.tp-aside [data-strength-step="about"] button').click(); await opened('the progress panel');
+    await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300);
+    await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); await p.locator('[data-strength-bar]').click(); await p.locator('[data-strength-sheet] [data-strength-step="about"] button').waitFor({ timeout: 15000 }); await wait(p, 400);
+    await p.locator('[data-strength-sheet] [data-strength-step="about"] button').click(); await p.locator('[data-strength-sheet]').waitFor({ state: 'detached', timeout: 15000 }); await opened('the phone\'s sheet');
+    await p.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' })); await p.locator('[data-mark="about"]').click(); await opened('the card\'s mark');
+  }, steps: async function* (p) {
+    await p.locator('[data-about-help-start]').click(); await p.locator('[data-about-guide="0"]').waitFor({ timeout: 15000 });
+    await p.locator('[data-guide-answer="0"]').fill('I coordinate operations at a children’s clinic'); await p.locator('[data-guide-next]').click(); await p.locator('[data-about-guide="1"]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    yield 'tenant profile, the writing helper, mid questions';
+    await p.locator('[data-guide-answer="1"]').fill('a quiet street near the lake and my work'); await p.locator('[data-guide-next]').click(); await p.locator('[data-about-guide="2"]').waitFor({ timeout: 15000 });
+    await p.locator('[data-guide-answer="2"]').fill('i cook, read and go to bed early'); await p.locator('[data-guide-write]').click();
+    await p.locator('[data-about-suggestion]').waitFor({ timeout: 30000 }); await wait(p, 400);
+    const text = await p.locator('[data-about-suggested]').innerText();
+    const words = (t) => t.toLowerCase().match(/[\p{L}’']+|\d+/gu) || [];
+    const said = new Set(words('I coordinate operations at a children’s clinic a quiet street near the lake and my work i cook, read and go to bed early'));
+    if (words(text).filter((x) => !said.has(x)).length) throw new Error(`the suggestion adds to the answers: ${text}`);
+    yield 'tenant profile, the writing helper, a suggestion';
+    // Used and saved: About me is added, its mark fills (no motion under reduced motion) and the count moves on.
+    const before = (await p.locator('[data-strength-bar] [data-strength-count] .tp-num').innerText()).trim();
+    await p.locator('[data-about-accept]').click(); await p.locator('[data-about-save]').click();
+    await p.locator('[data-mark="about"][data-done="yes"]').waitFor({ timeout: 15000 });
+    const after = await p.evaluate(() => ({ count: document.querySelector('[data-strength-bar] [data-strength-count] .tp-num').textContent.trim(), fresh: !!document.querySelector('[data-mark="about"] .tp-mark.tp-fresh'), animation: getComputedStyle(document.querySelector('[data-mark="about"] .tp-mark')).animationName }));
+    if (Number(after.count) !== Number(before) + 1 || !after.fresh || after.animation !== 'none') throw new Error(`after About me was saved: ${JSON.stringify({ before, ...after })}`);
+  } },
+  // Each upload says who can open it and when it is deleted, right beside it, from the periods
+  // lib/tenantVaultRules.js holds; then a pay stub added, read, and its slot filled.
+  { name: 'tenant profile, an upload and who can open it', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await tenantProfile(p, f, 'who=43&facts=full&docs=id');
+    await p.locator('[data-vault-add-kind="income"]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    const { ID_DAYS, DOCUMENT_DAYS, IDLE_MONTHS } = await import('../../lib/tenantVaultRules.js');
+    const kept = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-kept]')].map((el) => [el.dataset.kept, { text: el.textContent.replace(/\s+/g, ' ').trim(), beside: !!(el.closest('[data-vault-slot]') || el.closest('[data-photo]')).querySelector('button') }])));
+    const want = { photo: `${IDLE_MONTHS} months`, id: `${ID_DAYS} days`, income: `${DOCUMENT_DAYS} days`, employment: `${DOCUMENT_DAYS} days` };
+    for (const [k, period] of Object.entries(want)) if (!kept[k] || !kept[k].text.includes(period) || !kept[k].beside) throw new Error(`the line beside ${k}: ${JSON.stringify(kept[k])}`);
+    if (!/No realtor can open your ID/.test(kept.id.text) || /verified|checked|confirmed/i.test(Object.values(kept).map((x) => x.text).join(' '))) throw new Error(`the lines: ${JSON.stringify(kept)}`);
+  }, steps: async function* (p) {
+    await p.locator('[data-vault-documents] input[type=file]').setInputFiles({ name: 'paystub.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 a pay stub') });
+    await p.locator('[data-vault-slot="income"][data-held="yes"]').waitFor({ timeout: 30000 }); await wait(p, 400);
+    const slot = (await p.locator('[data-vault-slot="income"]').innerText()).replace(/\s+/g, ' ');
+    if (!/Income read from your document/.test(slot) || !/Realtors you share with can open it/.test(slot)) throw new Error(`the income slot after the upload: ${slot}`);
+    yield 'tenant profile, a document added, who can open it';
+  } },
   // ── landlord ──
   { name: 'landlord report', kind: 'landlord', phase: 'write', go: async (p) => { const t = await report(p); await open(p, `/r/${t}`); }, steps: async function* (p) { await tap(p, /meet/i); await wait(p, 400); yield 'landlord report, answered'; await tap(p, /Tap to change/); yield 'landlord report, changing an answer'; } },
   // The sandbox's first applicant is verified: the line under the Fit lines says what that means.

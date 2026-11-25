@@ -278,7 +278,8 @@ http.createServer(async (req, res) => {
   // facts yet (the empty profile), facts=half with about half of them (a name, a phone, a job and an
   // employer, a move in date; no income, no rental, no reference), facts=noname with the same half
   // and no name (a profile no save goes through for until it has one), facts=full with every one
-  // the page asks for (the occupants too); docs=id stores the ID alone; apps=3 gives it three
+  // the page asks for (the occupants too); docs=id stores the ID alone, docs=2 the ID and a pay stub
+  // (two steps of the progress panel added); apps=3 gives it three
   // applications sent (below).
   if (req.url.startsWith('/__fake/tenant')) {
     const q = new URL(req.url, 'http://localhost').searchParams;
@@ -306,9 +307,9 @@ http.createServer(async (req, res) => {
     const token = randomBytes(32).toString('base64url');
     await kvSetJson(`tsession:${createHash('sha256').update(token).digest('hex')}`, { profileId: row.id, createdAt: now }, 30 * 24 * 3600);
     if (q.get('consent') !== '0' && !row.vault_consent_at) row.vault_consent_at = now;
-    if ((q.get('docs') === '1' || q.get('docs') === 'id') && !t.tenant_profile_documents.some((d) => d.tenant_profile_id === row.id)) {
+    if ((q.get('docs') === '1' || q.get('docs') === 'id' || q.get('docs') === '2') && !t.tenant_profile_documents.some((d) => d.tenant_profile_id === row.id)) {
       const day = 86400000; const at = (n) => new Date(Date.now() + n * day).toISOString();
-      const docs = [['id', -3, 11], ['income', -9, 81], ['employment', -9, 81]].slice(0, q.get('docs') === 'id' ? 1 : 3).map(([kind, up, exp], i) => ({ id: `vault-${who}-${i + 1}`, tenant_profile_id: row.id, storage_path: `${row.id}/vault-${who}-${i + 1}.pdf`, kind, mime: 'application/pdf', bytes: 1200, content_hash: null, uploaded_at: at(up), read_at: at(up), expires_at: at(exp), renewed_at: null, deleted_at: null, deleted_by: null, object_removed: false }));
+      const docs = [['id', -3, 11], ['income', -9, 81], ['employment', -9, 81]].slice(0, q.get('docs') === 'id' ? 1 : q.get('docs') === '2' ? 2 : 3).map(([kind, up, exp], i) => ({ id: `vault-${who}-${i + 1}`, tenant_profile_id: row.id, storage_path: `${row.id}/vault-${who}-${i + 1}.pdf`, kind, mime: 'application/pdf', bytes: 1200, content_hash: null, uploaded_at: at(up), read_at: at(up), expires_at: at(exp), renewed_at: null, deleted_at: null, deleted_by: null, object_removed: false }));
       t.tenant_profile_documents.push(...docs);
       for (const d of docs) await stack.db.storage.from('tenant-vault').upload(d.storage_path, Buffer.from('%PDF-1.4 a tenant document'), { contentType: 'application/pdf' });
       const check = (kind, value, agrees, source, doc) => ({ id: `check-${who}-${kind}`, tenant_profile_id: row.id, kind, value, agrees_with_typed: agrees, source_kind: source, source_document_id: doc, read_at: at(source === 'id' ? -3 : -9), fresh_until: at(80), created_at: at(-9) });
