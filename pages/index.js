@@ -638,6 +638,9 @@ export default function Home() {
            tidy row, wordmark + primary CTA, with no wrap or overflow at 360/390. */
         @media (max-width: 599px) {
           .lp-shell :global(.lh-nav) { display: none !important; }
+          /* With FAQ (inkSoft) hidden the bar shows ink alone, so it takes the glass's own strength,
+             not the inkSoft floor (components/ui.js, GLASS). */
+          .lp-shell :global(.rl-header.rl-glass) { --glass-alpha: var(--glass-fill); }
         }
       `}</style>
       </>

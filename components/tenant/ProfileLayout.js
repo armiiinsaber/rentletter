@@ -199,6 +199,8 @@ export const ProfileLayoutStyles = () => (
        (components/tenant/TenantBar.js, --rl-tbar-h), glass like it once the page scrolls under them. */
     .tp-top { position: sticky; top: var(--rl-tbar-h, 0px); z-index: 30; border-bottom: 1px solid var(--rule); }
     .tp-top.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi); }
+    /* The two bars are one band: the shadow once the page scrolls is under the lower one alone. */
+    @media (max-width: 1023.98px) { :root:has(.tp-top) .rl-tbar.rl-glass-auto::after { display: none; } }
     .tp-top .tp-bar-label, .tp-top .tp-bar-chev { color: ${C.inkSoft}; }
     /* Anything scrolled to (a section from the menu, a focused field) stops under the top bar and
        the phone's bar and chips: one scroll padding on the page, no margin of the sections' own. */

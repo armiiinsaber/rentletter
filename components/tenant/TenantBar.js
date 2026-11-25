@@ -8,7 +8,8 @@
 // safe area), and --rl-tbar-h carries that height to what sticks below it (the phone's strength
 // bar and chips, the desktop's section menu and strength panel, components/tenant/ProfileLayout.js),
 // so nothing is ever covered. While a sheet pins the page it is held in place (data-stuck,
-// components/Sheet.js). Its label is inkSoft: on glass, text is ink or inkSoft only.
+// components/Sheet.js). Its label is inkSoft: on glass, text is ink or inkSoft only, and a bar
+// with a label holds the inkSoft floor of the glass (components/ui.js, GLASS).
 import { Wordmark, usePageScrolled } from '../ui';
 import { C } from '../theme';
 

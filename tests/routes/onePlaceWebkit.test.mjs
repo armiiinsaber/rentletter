@@ -19,7 +19,8 @@
 //   2b. The area behind a sheet, the bulk bar: glass.
 //   2c. The homepage's navigation: solid at the top, glass once the page scrolls under it, fully
 //       visible.
-//   2d. Every piece of text on glass keeps 4.5 to 1 over black and over white.
+//   2d. Every piece of text, and every icon of a control, on glass keeps 4.5 to 1 over black and
+//       over white.
 //   2e. Reduced motion: no fade. Reduced transparency (Chrome) and the fallbacks' rules: solid.
 //   2f. The bar at 390 and 320, with a field brought into view, before, during and after a sheet.
 //   4b. Where we fit on the homepage, from 1024 to 2560: the black sentence line one and the grey
@@ -28,8 +29,12 @@
 //       line (on a phone a long status goes right under the address rather than crush it; the
 //       product's one pill, its text centred both ways), the date as text, the number in
 //       the body face with Copy under it, the whole row opening the application.
-//   2g. The frames while a long page scrolls under the glass, against the same scroll with the
-//       glass taken off: at most 4ms more a frame at the median, 8ms at the 95th percentile.
+//   2g. The frames while a long page scrolls under the glass (the tenant profile at 390 and 1440,
+//       the homepage at 390 and 1440), against the same scroll with the glass taken off: at most
+//       4ms more a frame at the median, 8ms at the 95th percentile.
+//   5.  The canvas: the tenant profile, the dashboard and the homepage at 390 and 1440, pulled up
+//       past their end as the bounce and a phone's bars do: the bottom row of the window is the
+//       page's own background, never a band of another tone.
 // Each database call waits 60ms on the fake stack, so a screen not seen recently shows its Loader
 // first (DOOR.loaderDelayMs, lib/motion.js), which is drawn inside the shell
 // (components/nav/RouteLoader.js). The pages are served from the run's one production build
@@ -265,13 +270,17 @@ const CONTRAST = () => {
     if (!g.getClientRects().length) continue;
     const glass = rgba(getComputedStyle(g).backgroundColor);
     for (const el of [g, ...g.querySelectorAll('*')]) {
-      if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+      // Text, and the icon of a control (its stroke, or its fill); the wordmark is the logo, not a control's icon.
+      const icon = el.tagName.toLowerCase() === 'svg' && !el.closest('.rl-mark, .rl-wordmark');
+      if (!icon && ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
       if (!el.getClientRects().length || getComputedStyle(el).visibility === 'hidden') continue;
       let painted = null;
-      for (let a = el; a && a !== g; a = a.parentElement) { const b = rgba(getComputedStyle(a).backgroundColor); if (b && b[3] > 0) { painted = b; break; } }
-      const fg = rgba(getComputedStyle(el).color);
+      for (let a = icon ? el.parentElement : el; a && a !== g; a = a.parentElement) { const b = rgba(getComputedStyle(a).backgroundColor); if (b && b[3] > 0) { painted = b; break; } }
+      // An icon's colour is what its shapes draw: the first shape's stroke, else its fill.
+      const drawn = icon ? [...el.querySelectorAll('path, circle, rect, line, polyline, polygon, ellipse')].map((s) => getComputedStyle(s)).map((s) => rgba(s.stroke) || rgba(s.fill)).find(Boolean) : null;
+      const fg = icon ? (drawn || rgba(getComputedStyle(el).color)) : rgba(getComputedStyle(el).color);
       const at = (backdrop) => { const base = over(glass, backdrop); return ratio(fg, painted ? over(painted, base) : base); };
-      out.push({ text: el.textContent.trim().slice(0, 40), ratio: Math.round(Math.min(at([0, 0, 0]), at([255, 255, 255])) * 100) / 100 });
+      out.push({ text: icon ? `icon in ${(el.closest('a, button, [role]') || el.parentElement).textContent.trim().slice(0, 30) || el.parentElement.className}` : el.textContent.trim().slice(0, 40), ratio: Math.round(Math.min(at([0, 0, 0]), at([255, 255, 255])) * 100) / 100 });
     }
   }
   return out;
@@ -306,6 +315,25 @@ async function frames(page, tag, label) {
   await page.waitForTimeout(300);
   const off = await page.evaluate(FRAMES);
   smooth.push({ tag, page: label, on, off });
+}
+// ── 5. The canvas (components/ui.js, THE CANVAS) ───────────────────────────────────────────────
+// The page pulled up past its end, the way the bounce and a phone's bars showing and hiding do:
+// what shows under it is the canvas, and every pixel of the window's bottom row must be the page's
+// own background. The tenant pages' deep paper used to end there over a paper canvas, a light band.
+const BG = { paper: [250, 248, 243], deep: [242, 238, 227] };
+async function canvasAtEnd(page, tag, label, want) {
+  const vp = page.viewportSize();
+  await page.evaluate(() => { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }); document.body.style.transform = `translateY(-${Math.round(window.innerHeight / 4)}px)`; });
+  await page.waitForTimeout(200);
+  let shot;
+  try { shot = await page.screenshot({ clip: { x: 0, y: vp.height - 1, width: vp.width, height: 1 } }); } finally { await page.evaluate(() => { document.body.style.transform = ''; }); }
+  const row = await page.evaluate(async (b64) => {
+    const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+    const c = document.createElement('canvas'); c.width = img.width; c.height = 1; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, img.width, 1).data; const px = []; for (let i = 0; i < d.length; i += 4) px.push([d[i], d[i + 1], d[i + 2]]); return px;
+  }, shot.toString('base64'));
+  const off = row.filter((p) => p.some((v, i) => Math.abs(v - want[i]) > 1));
+  assert.ok(row.length >= vp.width && off.length === 0, `${tag} 5: ${label} at ${vp.width}, the bottom of the window is the page's background ${JSON.stringify(want)} (${off.length} of ${row.length} pixels differ, the first ${JSON.stringify(off[0])})`);
 }
 async function tenantIn(ctx, page, who, query = 'docs=1') {
   const { token } = await fetch(`${BASE}/__fake/tenant?who=${who}&${query}`).then((r) => r.json());
@@ -353,7 +381,17 @@ async function glassPhone(browser, tag) {
     const narrow = await page.evaluate(() => { const b = document.querySelector('[data-tenant-bar]'); const r = b.getBoundingClientRect(); const out = [...b.children].filter((c) => c.getClientRects().length).map((c) => c.getBoundingClientRect()); return { height: Math.round(r.height), top: Math.round(r.top), inside: out.every((c) => c.left >= 0 && c.right <= 320 && c.top >= r.top && c.bottom <= r.bottom) }; });
     assert.deepEqual(narrow, { height: 69, top: 0, inside: true }, `${tag} 2f: at 320 one row of 69px`);
     await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(300);
+    await canvasAtEnd(page, tag, 'the tenant profile', BG.deep);
     await frames(page, tag, 'tenant profile 390');
+    // The homepage at 390: its navigation's text over anything, the canvas, the frames under it.
+    await page.goto(`${BASE}/`, { waitUntil: 'networkidle' }); await page.waitForTimeout(400);
+    await scrollTo(page, 800);
+    assert.ok(await readable(page, `${tag} 2d homepage 390`) >= 1, `${tag}: the homepage navigation's text was read`);
+    await canvasAtEnd(page, tag, 'the homepage', BG.paper);
+    await frames(page, tag, 'homepage 390');
+    // The dashboard at 390: the canvas.
+    await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' }); await page.locator('.dash-card').first().waitFor({ timeout: 30000 });
+    await canvasAtEnd(page, tag, 'the dashboard', BG.paper);
     noSupabaseLeft(ctx, `${tag} glass 390`);
   } finally { await ctx.close(); }
 }
@@ -371,6 +409,7 @@ async function glassDesk(browser, tag) {
     const beside = await page.evaluate(() => ['[data-tp-menu]', '.tp-aside'].map((s) => { const el = document.querySelector(s); const r = el.getBoundingClientRect(); const first = el.querySelector('a, button, h2, .pp-percent') || el; const fr = first.getBoundingClientRect(); const hit = document.elementFromPoint(fr.left + 4, fr.top + Math.min(8, fr.height / 2)); return { s, top: Math.round(r.top), clear: !!hit && el.contains(hit) }; }));
     for (const b of beside) assert.ok(b.top >= bar.bottom && b.clear, `${tag} 2a: ${b.s} below the bar and never covered (${JSON.stringify({ b, bar })})`);
     await readable(page, `${tag} 2d desk profile`);
+    await canvasAtEnd(page, tag, 'the tenant profile', BG.deep);
     await frames(page, tag, 'tenant profile 1440');
     // The homepage: solid at the very top, glass once it scrolls under, fully visible.
     await page.goto(`${BASE}/`, { waitUntil: 'networkidle' }); await page.waitForTimeout(500);
@@ -396,6 +435,7 @@ async function glassDesk(browser, tag) {
       assert.notEqual(fit[0].color, fit[1].color, `${tag} 4b at ${width}: black, then grey`);
     }
     await page.setViewportSize({ width: 1440, height: 900 }); await page.waitForTimeout(200);
+    await canvasAtEnd(page, tag, 'the homepage', BG.paper);
     await frames(page, tag, 'homepage 1440');
     // The bulk bar: glass, stuck over the rows as the page scrolls.
     await fetch(`${BASE}/__fake/state?archive=1`);
@@ -406,6 +446,7 @@ async function glassDesk(browser, tag) {
       const bulk = await page.evaluate(SURFACE, '[data-bulk-bar]');
       assert.ok(bulk.blur, `${tag} 2b: the bulk bar is glass (${JSON.stringify(bulk)})`);
       await readable(page, `${tag} 2d bulk bar`);
+      await canvasAtEnd(page, tag, 'the dashboard', BG.paper);
     } finally { await fetch(`${BASE}/__fake/state?archive=0`); }
     noSupabaseLeft(ctx, `${tag} glass 1440`);
   } finally { await ctx.close(); }

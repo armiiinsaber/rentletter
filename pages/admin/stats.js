@@ -61,10 +61,15 @@ export async function getServerSideProps({ query, req, res }) {
   };
 }
 
+// This page loads no shared stylesheet (components/ui.js), so it sets its own canvas: the browser's
+// white margin and the white past the end of the page are its ink, as the page is.
+const Canvas = () => <style jsx global>{`html, body { margin: 0; background: #0f0f10; }`}</style>;
+
 export default function AdminStats({ error, stats, recentSignups, recentShares, recentLetters, recentEmails, generatedAt }) {
   if (error) {
     return (
       <div style={{ padding: 40, fontFamily: 'monospace', background: '#0f0f10', color: '#faf8f3', minHeight: '100vh' }}>
+        <Canvas />
         <h1 style={{ fontSize: 18, marginBottom: 12 }}>Admin Stats</h1>
         <p style={{ color: '#d72027' }}>{error}</p>
       </div>
@@ -76,6 +81,7 @@ export default function AdminStats({ error, stats, recentSignups, recentShares, 
       padding: '32px 24px', fontFamily: "'Inter', -apple-system, sans-serif",
       background: '#0f0f10', color: '#faf8f3', minHeight: '100vh',
     }}>
+      <Canvas />
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>

@@ -27,9 +27,14 @@ export const GlobalStyle = () => (
       --lh-display: 1.15; --lh-body: 1.5; --lh-eyebrow: 1;
       --f-display: ${FONT.serif}; --f-body: ${FONT.sans};
       --card-pad: 16px; --card-radius: ${R.card}px; --rule: ${C.rule};
-      /* The one page canvas. Painted on html, body and the Next root below, so the area under short
-         content and the iOS overscroll region carry it too. */
       --paper: ${C.paper};
+      /* THE CANVAS: what the browser paints wherever no box of the page reaches: past the end of a
+         page shorter than the window, under a phone's bars as they show and hide, the bounce past
+         either end, behind the keyboard, around the page behind a sheet. Painted on html, body and
+         the Next root below. It is always the page's own background (below), never a tone of its
+         own: a page's box reaches only as far as its content or its own 100vh, and the visible
+         area can run past both, so a canvas of another tone showed there as a band. */
+      --canvas: var(--paper);
       /* Every control is a pill: buttons, text buttons, chips, the confirm pills, the Invite
          controls, every control on the tenant side. Cards, inputs, the drop zone, the meter and
          the ink blocks keep --card-radius. */
@@ -45,31 +50,48 @@ export const GlobalStyle = () => (
     /* ── GLASS: the one surface for what floats above content (the tenant's top bar, the phone's
        strength bar and chips, the bulk bar, the area behind a sheet and a sheet's own header, the
        notification panel's header, toasts, the homepage's navigation once the page scrolls under
-       it). Never on a card, a button, a field or a table. A translucent fill, a backdrop blur, a
-       soft hairline edge and a faint highlight along the top. Three tones of the one surface:
-       paper (the default), ink (a toast) and dim (the page behind a sheet). Text on glass is ink
-       or inkSoft only: with the paper tone at 86 percent, inkSoft keeps 7.8 to 1 over black and
-       10.8 to 1 over white, ink 13.1 and 18.2, and paper text on the ink tone 18.2 and 11.3, so
-       anything that passes underneath keeps it above 4.5 to 1 (tests/glass.test.mjs). inkMute
-       would fall to 3.6 to 1 over black, so it is never set on glass. With
-       prefers-reduced-transparency, or where backdrop-filter is not supported, the surface is
-       solid. Playwright's WebKit draws no backdrop blur at all (Safari does), so the fill alone
-       must already keep what passes under it faint. ── */
+       it). Never on a card, a button, a field or a table. Frosted, not tinted: a translucent fill
+       over a 24px backdrop blur with a modest saturation lift, a soft hairline edge, a faint light
+       along the top inner edge, and under a bar, once the page scrolls under it, a soft shadow.
+       Three tones of the one surface: paper (the default), ink (a toast) and dim (the page behind
+       a sheet).
+       THE STRENGTH is one number, --glass-fill below: how much of the fill covers what passes under
+       it. Every paper surface reads it, so changing it here changes them all. The ink tone reads
+       its own, --glass-fill-ink. The dim is not a surface anything is read on, only the page
+       dimmed behind a sheet, and keeps its own 38 percent.
+       Text on glass keeps 4.5 to 1 over black and over white, the darkest and the lightest that can
+       pass underneath (tests/glass.test.mjs; the walk, tests/routes/onePlaceWebkit.test.mjs). At
+       62 percent ink holds 6.79 to 1 over black and 18.47 over white, but inkSoft only 4.02 over
+       black. So a surface that shows inkSoft text never goes under --glass-fill-soft, 66 percent,
+       where inkSoft holds 4.54 and 10.91: the phone's strength bar and chips, the tenant bar with
+       a page label, the shared header (its inkSoft links and the bell; the homepage's shows none
+       below 600px and keeps the strength, pages/index.js) and the notification panel's header.
+       Paper text on the ink tone at 72 percent: 7.24 to 1 over white. inkMute would fall to 2.2
+       to 1 over black, so it is never set on glass. With prefers-reduced-transparency, or where
+       backdrop-filter is not supported, the surface is solid. Playwright's WebKit draws no
+       backdrop blur at all (Safari does): its screenshots show the fill alone. ── */
     :root {
-      --glass-bg: rgba(250, 248, 243, 0.86); --glass-solid: ${C.paper};
-      --glass-blur: saturate(170%) blur(20px);
-      --glass-edge: rgba(15, 15, 16, 0.1); --glass-hi: rgba(255, 255, 255, 0.6);
+      --glass-fill: 0.62; --glass-fill-ink: 0.72; --glass-fill-soft: 0.66;
+      --glass-solid: ${C.paper};
+      --glass-blur: saturate(140%) blur(24px);
+      --glass-edge: rgba(15, 15, 16, 0.08); --glass-hi: rgba(255, 255, 255, 0.55);
+      --glass-lift: 0 1px 0 rgba(15, 15, 16, 0.04), 0 8px 24px rgba(15, 15, 16, 0.06);
     }
-    .rl-glass { background-color: var(--glass-bg); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge); }
-    .rl-glass.rl-glass-ink { --glass-bg: rgba(16, 16, 18, 0.84); --glass-solid: ${C.inst}; --glass-edge: rgba(250, 248, 243, 0.12); --glass-hi: rgba(250, 248, 243, 0.08); }
-    .rl-glass.rl-glass-dim { --glass-bg: rgba(15, 15, 16, 0.38); --glass-solid: rgba(15, 15, 16, 0.45); --glass-blur: saturate(120%) blur(6px); --glass-edge: transparent; --glass-hi: transparent; }
+    .rl-glass { --glass-tone: 250, 248, 243; background-color: rgba(var(--glass-tone), var(--glass-alpha, var(--glass-fill))); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge); }
+    .rl-glass.rl-glass-ink { --glass-tone: 16, 16, 18; --glass-alpha: var(--glass-fill-ink); --glass-solid: ${C.inst}; --glass-edge: rgba(250, 248, 243, 0.12); --glass-hi: rgba(250, 248, 243, 0.08); }
+    .rl-glass.rl-glass-dim { --glass-tone: 15, 15, 16; --glass-alpha: 0.38; --glass-solid: rgba(15, 15, 16, 0.45); --glass-blur: saturate(120%) blur(6px); --glass-edge: transparent; --glass-hi: transparent; }
+    /* The surfaces that show inkSoft text: the strength, never under the inkSoft floor. */
+    .tp-top.rl-glass, .rl-tbar.rl-glass:has(.rl-tbar-label), .rl-header.rl-glass, .al-head.rl-glass { --glass-alpha: max(var(--glass-fill), var(--glass-fill-soft)); }
     /* Solid at the very top of the page and glass once the page scrolls under it (usePageScrolled
-       below): a solid layer over the glass that fades out, and the blur only from then on. */
+       below): a solid layer over the glass that fades out, and the blur only from then on. The
+       bar's shadow is a layer of its own that fades in at the same time. */
     .rl-glass.rl-glass-auto { -webkit-backdrop-filter: none; backdrop-filter: none; }
     .rl-glass.rl-glass-auto::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--glass-solid); opacity: 1; pointer-events: none; }
+    .rl-glass.rl-glass-auto::after { content: ''; position: absolute; inset: 0; z-index: -2; border-radius: inherit; box-shadow: var(--glass-lift); opacity: 0; pointer-events: none; }
     html[data-scrolled] .rl-glass.rl-glass-auto { -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
     html[data-scrolled] .rl-glass.rl-glass-auto::before { opacity: 0; }
-    @media (prefers-reduced-motion: no-preference) { .rl-glass.rl-glass-auto::before { transition: opacity ${DURATION.base}ms ${CURVE.settle}; } }
+    html[data-scrolled] .rl-glass.rl-glass-auto::after { opacity: 1; }
+    @media (prefers-reduced-motion: no-preference) { .rl-glass.rl-glass-auto::before, .rl-glass.rl-glass-auto::after { transition: opacity ${DURATION.base}ms ${CURVE.settle}; } }
     @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) { .rl-glass { background-color: var(--glass-solid); } }
     @media (prefers-reduced-transparency: reduce) { .rl-glass, html[data-scrolled] .rl-glass.rl-glass-auto { background-color: var(--glass-solid); -webkit-backdrop-filter: none; backdrop-filter: none; } }
     /* The page's side gutter: 16px on a phone to 32px wide. Below 345px (a 320 screen) the gutter
@@ -102,14 +124,20 @@ export const GlobalStyle = () => (
     .t-eyebrow { font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
     .num { font-variant-numeric: tabular-nums; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* The canvas takes the page's own background, found from the page's root box: paper, the
+       tenant pages' deep paper (.mp-page: Your profile, an application, the email confirmation,
+       the apply flow, the co applicant and guarantor form) and the founder office's ink
+       (components/admin/AdminShell.js .ad-shell). */
+    :root:has(#__next > .mp-page) { --canvas: ${C.paperDeep}; }
+    :root:has(#__next > .ad-shell) { --canvas: ${C.inst}; }
     html, body {
-      background: var(--paper);
+      background: var(--canvas);
       min-height: 100%;
     }
     /* The overscroll bounce and the region behind the notch (viewport-fit=cover) paint the ROOT
        element's background, so html carries the canvas explicitly, not only through body. */
     html {
-      background-color: var(--paper);
+      background-color: var(--canvas);
       scroll-behavior: smooth;
       overflow-x: hidden;
       -webkit-text-size-adjust: 100%;
@@ -126,7 +154,7 @@ export const GlobalStyle = () => (
     /* The Next root sits between body and the page, so it carries the canvas too: nothing between
        the root and a card can paint a different tone. */
     #__next {
-      background-color: var(--paper);
+      background-color: var(--canvas);
       min-height: 100%;
     }
     body {
@@ -197,7 +225,9 @@ export const GlobalStyle = () => (
       border-bottom: 1px solid transparent;
       transition: box-shadow 280ms ease, border-color 280ms ease; }
     .rl-header.rl-glass { box-shadow: none; }
-    .rl-header.rl-shrink { border-bottom-color: ${C.rule}; box-shadow: inset 0 1px 0 var(--glass-hi), 0 1px 0 rgba(15,15,16,.03), 0 8px 24px rgba(15,15,16,.05); }
+    .rl-header.rl-shrink { border-bottom-color: ${C.rule}; box-shadow: inset 0 1px 0 var(--glass-hi), var(--glass-lift); }
+    /* The homepage's (solid at the top) has its shadow on the layer that fades in (.rl-glass-auto above). */
+    .rl-header.rl-glass-auto.rl-shrink { box-shadow: inset 0 1px 0 var(--glass-hi); }
     .rl-header-inner { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;
       padding: 18px clamp(18px, 4vw, 32px); transition: padding 280ms ${EASE}; }
     .rl-header.rl-shrink .rl-header-inner { padding: 11px clamp(18px, 4vw, 32px); }
