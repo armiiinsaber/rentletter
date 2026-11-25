@@ -11,8 +11,8 @@ import { C, R, SH } from '../../components/theme';
 import DashShell from './DashShell';
 import Sheet from '../Sheet';
 import { go, linkProps, takeWarm, forgetWarm, applicantsUrl, rememberProfile, rememberListings, rememberApplicants, seenApplicants, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
-import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
-import { Reveal } from '../brand/Loader';
+import { useLoadWatch, LoadFailed, CarriedTitle } from '../nav/RouteLoader';
+import { Reveal, ScreenLoader } from '../brand/Loader';
 import ListingSetupModal from '../../components/listings/ListingSetupModal';
 import ApplicantDocIntel from '../../components/dashboard/ApplicantDocIntel';
 import SharedProfile from '../../components/dashboard/SharedProfile';
@@ -1236,7 +1236,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </a>
           {/* One screen, shown in one step (components/brand/Loader.js Reveal): the door until the
               applicants are in hand, then the listing and its applicants at once. */}
-          <Reveal ready={applicantsLoaded} label="Loading the listing" failed={applicantsWatch.failed ? <LoadFailed onRetry={applicantsWatch.again} /> : null}>
+          {/* While the applicants load, the address carried from the tap stays as the title (components/nav/RouteLoader.js). */}
+          <Reveal ready={applicantsLoaded} label="Loading the listing" placeholder={<><CarriedTitle listing={l} /><ScreenLoader label="Loading the listing" /></>} failed={applicantsWatch.failed ? <LoadFailed onRetry={applicantsWatch.again} /> : null}>
 
           {/* THE HEADER CARD: the listing as one paper card above the applicants. Address with
               Edit, the listing's facts and its criteria as pills, the invite link row, then the Details

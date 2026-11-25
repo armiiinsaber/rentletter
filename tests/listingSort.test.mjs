@@ -99,25 +99,28 @@ test('newest listing: the day it was made, newest first; Latest activity is the 
   assert.deepEqual(ids(S.sortRows(rows, null)), ids(S.sortRows(rows, S.DEFAULT_SORT)), 'no order given: the default');
 });
 
-test('Needs attention first: documents to check, no documents asked, documents that match, a report not sent; more applicants first within a rank', () => {
-  const c = (over) => ({ verified: 0, matched: 0, check: 0, waiting: 0, none: 0, sent: 0, lookedAgain: 0, notSelected: 0, ...over });
+test('Needs attention first: a report ready to send, documents to check, documents to ask for, an employer to call; more applicants first within a rank', () => {
+  // The order of the cards' one main action (components/dashboard/board.js), read from each row's
+  // next step, the same the card, the tiles and Needs you show.
+  const next = (kind, n = 0) => ({ kind, n });
   const rows = [
-    row('quiet', { address: '1 Quiet St', applicants: 2, report: 'sent', counts: c({ sent: 2 }), lastAt: ago(0) }),
-    row('ready', { address: '2 Ready St', applicants: 2, report: 'not_sent', counts: c({ verified: 2 }), lastAt: ago(1) }),
-    row('new2', { address: '3 New St', applicants: 2, report: 'not_sent', counts: c({ none: 2 }), lastAt: ago(5) }),
-    row('new1', { address: '4 New St', applicants: 1, report: 'not_sent', counts: c({ none: 1 }), lastAt: ago(1) }),
-    row('check', { address: '5 Check St', applicants: 3, report: 'not_sent', counts: c({ check: 1, verified: 2 }), lastAt: ago(9) }),
-    row('match', { address: '6 Match St', applicants: 1, report: 'not_sent', counts: c({ matched: 1 }), lastAt: ago(2) }),
-    row('docs', { address: '7 Docs St', applicants: 1, report: 'sent', counts: c({ waiting: 1 }), lastAt: ago(3) }),
-    row('empty', { address: '8 Empty St', applicants: 0, report: 'none', lastAt: ago(0.5) }),
-    row('rented', { address: '9 Rented St', applicants: 3, report: 'closed', open: false, counts: c({ check: 3 }), lastAt: ago(0.2) }),
+    row('quiet', { address: '1 Quiet St', applicants: 2, report: 'sent', next: next('quiet'), lastAt: ago(0) }),
+    row('ready', { address: '2 Ready St', applicants: 2, report: 'not_sent', next: next('send', 2), lastAt: ago(1) }),
+    row('new2', { address: '3 New St', applicants: 2, report: 'not_sent', next: next('ask', 2), lastAt: ago(5) }),
+    row('new1', { address: '4 New St', applicants: 1, report: 'not_sent', next: next('ask', 1), lastAt: ago(1) }),
+    row('check', { address: '5 Check St', applicants: 3, report: 'not_sent', next: next('check', 1), lastAt: ago(9) }),
+    row('match', { address: '6 Match St', applicants: 1, report: 'not_sent', next: next('call', 1), lastAt: ago(2) }),
+    row('docs', { address: '7 Docs St', applicants: 1, report: 'sent', next: next('open', 1), lastAt: ago(3) }),
+    row('empty', { address: '8 Empty St', applicants: 0, report: 'none', next: next('quiet'), lastAt: ago(0.5) }),
+    row('rented', { address: '9 Rented St', applicants: 3, report: 'closed', open: false, next: next('quiet'), lastAt: ago(0.2) }),
   ];
-  assert.deepEqual(rows.map((r) => S.attentionOf(r).rank), [5, 4, 2, 2, 1, 3, 4, 5, 5]);
-  // check, then the two with no documents asked (two applicants before one), the match, then the
-  // report not sent (two applicants) and the one waiting on documents (one), then the rest by
-  // latest activity, the rented one among them.
-  assert.deepEqual(stable(rows, { key: 'attention', dir: 'asc' }), ['check', 'new2', 'new1', 'match', 'ready', 'docs', 'quiet', 'rented', 'empty']);
+  assert.deepEqual(rows.map((r) => S.attentionOf(r).rank), [5, 1, 3, 3, 2, 4, 5, 5, 5]);
+  // The report ready to send, then the documents to check, then the two to ask for documents (two
+  // applicants before one), the employer to call, then the rest by latest activity, the rented one
+  // among them.
+  assert.deepEqual(stable(rows, { key: 'attention', dir: 'asc' }), ['ready', 'check', 'new2', 'new1', 'match', 'quiet', 'rented', 'empty', 'docs']);
   assert.deepEqual(S.validSort({ key: 'attention', dir: 'desc' }), { key: 'attention', dir: 'asc' }, 'one way only');
+  assert.deepEqual(S.attentionOf(row('none')), { rank: 5, n: 0 }, 'a row with no next step waits on nothing');
 });
 
 test('the rows rowOf builds carry what the orders read, from the listing and its applicants', () => {
@@ -127,7 +130,8 @@ test('the rows rowOf builds carry what the orders read, from the listing and its
   assert.equal(r.bedrooms, '2'); assert.equal(r.createdAt, ago(20)); assert.equal(r.address, '888 Bay St'); assert.equal(r.unit, '4301');
   assert.equal(r.label, '888 Bay St, Unit 4301');
   assert.equal(r.counts.none, 1, 'the applicant with no documents asked for');
-  assert.equal(S.attentionOf(r).rank, 2);
+  assert.deepEqual([r.next.kind, r.next.n, r.next.label], ['ask', 1, 'Ask for documents'], 'the next step, from the board');
+  assert.equal(S.attentionOf(r).rank, 3);
 });
 
 test('an order held while the data changes: the newest data in the positions set, a new row last, the set of rows its own key', () => {
@@ -227,7 +231,8 @@ test('the page: every table and every card list in the shelf\'s order; the selec
   assert.match(h, /const archivedOrder = useMemo\(\(\) => orderIds\(archivedRows, sorts\.archived\), \[sorts\.archived, rowSet\(archivedRows\), signals\.loaded\]\);/);
   assert.match(h, /const sortedRows = arrange\(rows, activeOrder\);\s*const sortedClosed = arrange\(closedRows, closedOrder\);\s*const sortedArchived = arrange\(archivedRows, archivedOrder\);/);
   for (const t of ['rows={shownRows}', 'rows={foundClosed}', 'rows={foundArchived}']) assert.match(h, new RegExp(`<ListingsTable ${t.replace(/[{}]/g, '\\$&')}[^\\n]*sort=\\{sorts\\.(active|archived)\\} onSort=\\{onHeading\\}`), t);
-  for (const list of ['openCards', 'closedCards', 'archivedCards']) assert.match(h, new RegExp(`\\{${list}\\.map\\(\\(l\\) => \\(`), list);
+  // The cards (components/dashboard/ListingCard.js) take the same rows as the tables, in the same order.
+  for (const list of ['shownRows', 'foundClosed', 'foundArchived']) assert.match(h, new RegExp(`\\{cardsOf\\(${list}\\)\\}`), list);
   // A change of order sets the order and keeps it, nothing else: no route, no scroll, no selection.
   const setSort = h.match(/const setSort = \(next\) => \{[\s\S]*?\n  \};/)[0];
   assert.doesNotMatch(setSort, /setPicked|go\(|goView|router|scroll|setFilter/);
@@ -235,8 +240,11 @@ test('the page: every table and every card list in the shelf\'s order; the selec
   assert.doesNotMatch(h.match(/const pickFromMenu = [^\n]*/)[0], /setPicked|go\(|scroll/);
   // Needs you and the Pipeline read what they always read.
   assert.match(h, /<NeedsYou items=\{needs\} now=\{now\} onGo=\{onNeed\} \/>/);
-  assert.match(h, /<PipelineSoon people=\{signals\.people \|\| \[\]\} href=\{pipelineHref\} onOpen=\{openPipeline\} \/>/);
-  assert.match(h, /needsYouItems\(\{ listings: liveListings, applicantsByListing: byListing,/, 'Needs you from the listings, never the sorted rows');
+  assert.match(h, /const people = signals\.people \|\| \[\];/);
+  assert.match(h, /<PipelineSoon people=\{people\} href=\{pipelineHref\} onOpen=\{openPipeline\} \/>/);
+  // Needs you from the board, and the board from the listings, never the sorted rows.
+  assert.match(h, /const board = useMemo\(\(\) => boardOf\(\{ listings: liveListings, applicantsByListing: byListing,/, 'the board from the listings, never the sorted rows');
+  assert.match(h, /needsYouItems\(\{ board, /, 'Needs you from the board');
   // The Sort controls never pass for a fold: the walk opens folds, never menus or sheets.
   assert.match(h, /aria-haspopup="dialog" aria-label=\{`Sort, \$\{sortLabel\}`\} data-sort-open=""/);
   assert.match(h, /aria-haspopup="menu" aria-expanded=\{menuOpen \? 'true' : 'false'\}/);
@@ -259,7 +267,8 @@ test('the search: past eight listings in the view, by address and unit, any case
   assert.deepEqual(ids(S.matchRows([rows[2], rows[0]], 'st')), ['c', 'a']);
   const h = code('components/dashboard/HomeView.js');
   assert.match(h, /const inView = shelf === 'archived' \? archivedListings\.length : liveListings\.length;\s*const canFind = inView >= SEARCH_FROM;\s*const q = canFind \? query : '';/, 'the field and its filter only past eight in the view');
-  assert.match(h, /\{canFind \? findField\('phone'\) : null\}/); assert.match(h, /\{canFind \? <div className="hv-find-row">\{findField\('desk'\)\}\{foundLine\}<\/div> : null\}/);
+  // One field at every width (feat/dashboard-2026), over the cards and the Compact table alike.
+  assert.match(h, /\{canFind \? <div className="hv-find-row">\{findField\}\{foundLine\}<\/div> : null\}/);
   assert.match(h, /count\(found, 'listing matches', 'listings match'\)/);
   assert.match(h, /<p role="status">No listing matches your search\.<\/p>\s*<button type="button" className="ds-btn ds-btn-quiet" onClick=\{\(\) => setQuery\(''\)\} data-search-clear="">Clear<\/button>/);
 });
@@ -267,8 +276,9 @@ test('the search: past eight listings in the view, by address and unit, any case
 test('one height, one radius: the Sort button, the switch, the field and the choices are 44px with the dashboard\'s button radius', () => {
   const h = code('components/dashboard/HomeView.js');
   assert.match(h, /className="ds-btn ds-btn-line hv-sort-btn"/);
-  assert.match(h, /:global\(\.hv-shelf button\) \{ min-height: 38px;/, '38px inside 2px of padding and a 1px border');
-  assert.match(h, /:global\(\.hv-shelf\) \{ display: inline-flex; padding: 2px; border-radius: var\(--btn-radius\); border: 1px solid/);
+  // The switches (Active and Archived, Cards and Compact): .hv-seg since feat/dashboard-2026.
+  assert.match(h, /:global\(\.hv-seg button\) \{ min-height: 38px;/, '38px inside 2px of padding and a 1px border');
+  assert.match(h, /:global\(\.hv-seg\) \{ display: inline-flex; padding: 2px; border-radius: var\(--btn-radius\); border: 1px solid/);
   // A rule's body, its ${...} values included.
   const rule = (sel) => { const m = h.match(new RegExp(`:global\\(${sel.replace(/[.()]/g, '\\$&')}\\) \\{((?:[^}$]|\\$\\{[^}]*\\}|\\$)*)\\}`)); assert.ok(m, sel); return m[1]; };
   assert.match(rule('.hv-find-input'), /min-height: 44px;[\s\S]*border-radius: var\(--btn-radius\);/);

@@ -70,9 +70,10 @@ async function walk(browserType, launch, tag) {
   try {
     // 1. The dashboard: every card opaque, the page not scrolled.
     await page.goto(URL_HOME, { waitUntil: 'networkidle' });
-    await page.locator('.dash-ink').waitFor({ timeout: 15000 });
+    await page.locator('[data-status-board]').waitFor({ timeout: 15000 });
     await page.waitForTimeout(200);
-    const cards = await page.evaluate(() => [...document.querySelectorAll('.dash-ink, .dash-card, .rl-card, .dash-new')].map((el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return { h: Math.round(r.height), o: cs.opacity, v: cs.visibility, cls: el.className.toString().slice(0, 24) }; }));
+    // The status board's tiles, the listing cards and the tab bar's New listing (feat/dashboard-2026).
+    const cards = await page.evaluate(() => [...document.querySelectorAll('[data-status-board] [data-tile], [data-listing-card], .rl-card, [data-tab-new]')].map((el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return { h: Math.round(r.height), o: cs.opacity, v: cs.visibility, cls: el.className.toString().slice(0, 24) }; }));
     assert.ok(cards.length >= 4, `the dashboard has its cards (${cards.length})`);
     for (const c of cards) assert.ok(c.h > 0 && c.o === '1' && c.v !== 'hidden', `a dashboard card is opaque and laid out (${JSON.stringify(c)})`);
     assert.equal(await page.evaluate(() => window.scrollY), 0, 'nothing scrolled');
@@ -105,7 +106,7 @@ async function walk(browserType, launch, tag) {
     await shot('4-checklist');
 
     // 5. The bell opens; a row navigates.
-    await page.locator('button[aria-haspopup="dialog"]').tap();
+    await page.getByRole('button', { name: /^Next,/ }).tap();
     await page.waitForTimeout(200);
     shown(await boxOf(page, '[role="dialog"][aria-label="Next"]'), 'the bell panel');
     await shot('5-bell');

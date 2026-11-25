@@ -82,6 +82,10 @@ export const GlobalStyle = () => (
     .rl-glass.rl-glass-dim { --glass-tone: 15, 15, 16; --glass-alpha: 0.38; --glass-solid: rgba(15, 15, 16, 0.45); --glass-blur: saturate(120%) blur(6px); --glass-edge: transparent; --glass-hi: transparent; }
     /* The surfaces that show inkSoft text: the strength, never under the inkSoft floor. */
     .tp-top.rl-glass, .rl-tbar.rl-glass:has(.rl-tbar-label), .rl-header.rl-glass, .al-head.rl-glass { --glass-alpha: max(var(--glass-fill), var(--glass-fill-soft)); }
+    /* The realtor shell's floating surfaces (components/dashboard): the sidebar, the phone's tab bar,
+       the search and the bell, Needs you and the status board's tiles. Each shows
+       inkSoft text, so each holds the floor too. */
+    .ds-side.rl-glass, .mn.rl-glass, .rl-hdr-glass.rl-glass, .ny.rl-glass, .sb-tile.rl-glass { --glass-alpha: max(var(--glass-fill), var(--glass-fill-soft)); }
     /* Solid at the very top of the page and glass once the page scrolls under it (usePageScrolled
        below): a solid layer over the glass that fades out, and the blur only from then on. The
        bar's shadow is a layer of its own that fades in at the same time. */

@@ -1,40 +1,51 @@
 // components/dashboard/HomeView.js
-// The realtor dashboard HOME: extracted verbatim from pages/dashboard.js so the real page
-// (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
-// goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
+// The realtor dashboard HOME: the real page (pages/dashboard.js, Supabase SSR) and /demo/dashboard
+// (in-memory fixture) render the SAME component. All I/O goes through useAdapter()
+// (lib/dashboardAdapter). Business-model logic unchanged.
+// THE LISTINGS VIEW, in the shell (components/dashboard/DashShell.js): the status board (the date and
+// four tiles, components/dashboard/StatusBoard.js), the listings as cards (components/dashboard/
+// ListingCard.js) or, switched next to Active and Archived and kept on this device, the Compact
+// table (components/dashboard/ListingsTable.js), Needs you beside them from 1280px (under them
+// between 1024 and 1279, the bell's on a phone), and the Pipeline under them. Every count and next
+// step on it comes from one function, components/dashboard/board.js boardOf: the tiles, the cards,
+// Needs you, the sidebar's count and the Needs attention first order. While the data loads the page
+// shows its own shape in pale placeholders (components/dashboard/BoardSkeleton.js).
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { GlobalStyle, Icon, StatusPills, ConfirmSheet } from '../../components/ui';
+import { GlobalStyle, Icon, ConfirmSheet } from '../../components/ui';
 import Sheet from '../Sheet';
 import { deleteCheck, archiveAvailable, isArchived, NOT_DELETABLE_LINE, skipLine } from '../../lib/listingArchiveRule';
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
 import Paywall from './Paywall';
-import { C, R, FONT } from '../../components/theme';
-import { formatUnit } from '../../lib/unitType';
-import { listingStatePills } from '../../lib/listingStateLine.js';
-import DashShell, { viewOf, viewHref } from './DashShell';
-import { DeskStats, ListingsTable, FILTERS } from './ListingsTable';
+import { C, FONT } from '../../components/theme';
+import DashShell, { viewOf, viewHref, SHELF_EVENT } from './DashShell';
+import { ListingsTable, FILTERS } from './ListingsTable';
 import NeedsYou from './NeedsYou';
 import PipelineSoon from './PipelineSoon';
-import { standingOf, rowOf, needsYouItems } from './homeData';
+import StatusBoard from './StatusBoard';
+import ListingCard, { ListingCardStyles } from './ListingCard';
+import BoardSkeleton from './BoardSkeleton';
+import { rowOf, needsYouItems } from './homeData';
+import { boardOf } from './board';
 import { DEFAULT_SORT, SEARCH_FROM, orderIds, arrange, rowSet, headingSort, sortName, sameSort, choicesFor, validSort, readSort, writeSort, matchRows, searchWords } from './listingSort';
 import { useCirclePending } from './MainNav';
 import { navigateToAction } from './actionNav';
 import InstallHint from '../../components/dashboard/InstallHint';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
-import { greetingFor } from '../../lib/greeting.js';
 import PeopleList from '../../components/dashboard/PeopleList';
 import SharedWithMe, { useSharedWithMe } from './SharedWithMe';
 import NewListingPanel from '../../components/listings/NewListingPanel';
-import { go, goView, linkProps, cardProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
+import { go, goView, linkProps, rememberListings, rememberProfile, rememberSignals, seenSignals, takeWarm, forgetWarm, SIGNALS_URL, rememberScreenView, prefetchCode, useTakeOver } from '../nav/routes';
 import { useLoadWatch, LoadFailed } from '../nav/RouteLoader';
 import { Reveal } from '../brand/Loader';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
 import { referralsEnabled } from '../../lib/features';
 import { displayLabel } from '../../lib/listingAddress';
+import { needsSignature } from '../../lib/justInTime';
+import { isWithdrawn, isSetAside } from '../../lib/listingApplicantsVocabulary';
 
 // ── Presentation-only helpers (no data logic) ─────────────────
 
@@ -95,6 +106,12 @@ function useLogoAccent(logoUrl) {
 // device's choice right after; the orders as last read or chosen in this tab are kept here too, so
 // a return to the dashboard inside the app draws them at once.
 let sortsSeen = null;
+// The Listings view as cards or as the Compact table, kept on this device the same way.
+let modeSeen = null;
+const MODE_STORE = 'rl-listing-view';
+const readMode = (store) => { try { return store && store.getItem(MODE_STORE) === 'compact' ? 'compact' : 'cards'; } catch (e) { return 'cards'; } };
+const writeMode = (store, mode) => { try { if (store) store.setItem(MODE_STORE, mode === 'compact' ? 'compact' : 'cards'); } catch (e) { /* kept for this visit only */ } };
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const deviceStore = () => { try { return window.localStorage; } catch (e) { return null; } };
 const useIsoLayout = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
@@ -127,7 +144,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const openNew = (e) => { opener.current = (e && e.currentTarget) || null; setDupe(null); setModalOpen(true); };
   const closeModal = () => {
     setModalOpen(false); setDupe(null);
-    const back = opener.current && document.contains(opener.current) && opener.current.getClientRects().length ? opener.current : [...document.querySelectorAll('[data-shell-new], .dash-new')].find((b) => b.getClientRects().length);
+    const back = opener.current && document.contains(opener.current) && opener.current.getClientRects().length ? opener.current : [...document.querySelectorAll('[data-shell-new], [data-tab-new], [data-get-started-new]')].find((b) => b.getClientRects().length);
     if (back) setTimeout(() => back.focus({ preventScroll: true }), 0);
   };
   // ?new=1 opens the form (an old link to it); ?duplicate={id} opens it filled from that listing
@@ -159,10 +176,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const canArchive = archiveAvailable(listings);
   const liveListings = useMemo(() => (listings || []).filter((l) => !isArchived(l)), [listings]);
   const archivedListings = useMemo(() => (listings || []).filter((l) => isArchived(l)), [listings]);
-  const openListings = liveListings.filter((l) => listingOpen(l));
-  const closedListings = liveListings.filter((l) => !listingOpen(l));
+  const openListings = useMemo(() => liveListings.filter((l) => listingOpen(l)), [liveListings]);
+  const closedListings = useMemo(() => liveListings.filter((l) => !listingOpen(l)), [liveListings]);
   // Client retry when the server-side listings query failed (an expired access token being
-  // refreshed under RLS is the usual reason). Until it resolves the page shows the door Loader,
+  // refreshed under RLS is the usual reason). Until it resolves the page shows its placeholders,
   // never the empty state.
   useEffect(() => {
     if (listingsLoaded) return undefined;
@@ -179,13 +196,13 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listingsLoaded, loadRound]);
-  // ── Assistant data for "Rentletter noticed": the realtor's own applicants per listing,
-  // notifications feed, referrals. Normally these arrive WITH the page (pages/dashboard.js loads
-  // them server side as initialSignals) so the dashboard commits in one paint. Without them
-  // (demo workspace, or a server side failure) they are fetched here and the page holds its
-  // Loader until they land, so nothing ever appears after the rest. No AI involved.
-  // After a tap inside the app the page comes without them (pages/dashboard.js): the signals seen
-  // earlier this session show at once and the fetch below refreshes them.
+  // ── The signals: the realtor's own applicants per listing, notifications, referrals, the Pipeline.
+  // Normally these arrive WITH the page (pages/dashboard.js loads them server side as
+  // initialSignals) so the dashboard commits in one paint. Without them (demo workspace, or a
+  // server side failure) they are fetched here and the page holds its placeholders until they land,
+  // so nothing ever appears after the rest. No AI involved. After a tap inside the app the page
+  // comes without them (pages/dashboard.js): the signals seen earlier this session show at once and
+  // the fetch below refreshes them.
   const [signals, setSignals] = useState(() => (initialSignals && initialSignals.loaded ? initialSignals : (seenSignals() || { applicantsByListing: {}, people: [], notifications: [], referralsInbox: [], referralsSent: [], loaded: false })));
   useEffect(() => { rememberSignals(signals); }, [signals]);
   // The page taking over this screen as it was seen (components/nav/RouteFrame.js keeps the screen):
@@ -232,8 +249,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // The first screen commits as one piece: listings known AND the assistant inputs in hand.
   const ready = listingsLoaded && signals.loaded;
   // Never an endless wait: a load that has not landed is retried once after 4 seconds, then the
-  // line and the pill take the Loader's place (components/nav/RouteLoader.js). A page back from
-  // the browser's cache, its reads cut off when it was hidden, is retried the same way.
+  // line and the pill take the placeholders' place (components/nav/RouteLoader.js). A page back
+  // from the browser's cache, its reads cut off when it was hidden, is retried the same way.
   const loadWatch = useLoadWatch(!ready && !listingsError, () => setLoadRound((n) => n + 1));
   // This screen as it stands, so a return to it within the session shows at once
   // (components/nav/routes.js rememberScreenView). The app only: the sandbox draws its own views.
@@ -244,20 +261,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // Once on view: the code of the screens one tap away (a listing, the profile), when idle.
   const firstListing = listings && listings[0] ? listings[0].id : null;
   useEffect(() => { if (adapter.kind === 'real' && ready) prefetchCode([...(firstListing ? [`/listing/${encodeURIComponent(firstListing)}`] : []), '/profile']); }, [adapter.kind, ready, firstListing]);
-  // The listings could not be read: said in the door's place, with a way to try again.
+  // The listings could not be read: said in the placeholders' place, with a way to try again.
   const listingsFailed = (
-    <section className="dash-card dash-block" style={{ padding: 'var(--s-4)' }} role="alert">
-      <div className="dash-eyebrow">Your listings</div>
-      <h2 className="dash-h2" style={{ marginBottom: 'var(--s-1)' }}>We couldn’t load your listings.</h2>
-      <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>They are still there. Give it a moment and try again.</p>
-      <button type="button" className="dash-ghost" onClick={() => window.location.reload()}>Try again</button>
+    <section className="hv-failed" role="alert">
+      <h2 className="hv-h2">We couldn’t load your listings.</h2>
+      <p className="hv-quiet">They are still there. Give it a moment and try again.</p>
+      <button type="button" className="ds-btn ds-btn-line" onClick={() => window.location.reload()}>Try again</button>
     </section>
   );
-  // Derived, presentation-only summaries from data that already exists (no fabrication,
-  // no new API calls — everything below comes from the listings/profile already loaded).
-  // Event-type Noticed actions on the home page go to the listing page, which owns the applicant
-  // cards: #docs=<linkId>[&renew] makes ListingView open that applicant (marking them reviewed),
-  // scroll to them and light up the document-request panel.
+  // Event-type Noticed actions go to the listing page, which owns the applicant cards:
+  // #docs=<linkId>[&renew] makes ListingView open that applicant (marking them reviewed), scroll to
+  // them and light up the document-request panel.
   const openAssistant = () => window.dispatchEvent(new CustomEvent(OPEN_EVENT));
   const onNoticeAction = (a) => {
     if (a.type === 'panel') { openAssistant(); return; }
@@ -270,55 +284,44 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     const t = setTimeout(() => window.dispatchEvent(new CustomEvent(OPEN_EVENT)), 300);
     return () => clearTimeout(t);
   }, []);
-  // The greeting line: the hour comes from the CLIENT after mount (lib/greeting.js), so the server's
-  // clock never decides it; until then the line holds its height and is not shown. It carries no
-  // name ("Good evening."), so it reads as one line at 320 whatever the realtor's name is.
-  const [clientHour, setClientHour] = useState(null);
-  useEffect(() => { setClientHour(new Date().getHours()); }, []);
-  const greeting = clientHour == null ? '' : greetingFor(clientHour);
-  // The bell receives one stable object per signals change: a fresh object every render would make
-  // the bell's setSignals effect re render this page forever.
-  // The standing: the listings that take applications, the applicants on them, and the listings
-  // whose report has not gone yet (components/dashboard/homeData.js standingOf). On a phone the ink
-  // card says the non zero ones as plain numbers; all three zero reads as nothing waiting. On a
-  // desktop they are the three numbers that filter the table. Counted from the signals already
-  // loaded, never a new call.
-  const standing = useMemo(() => {
-    if (!signals.loaded || !hasListings) return { listings: 0, applicants: 0, toSend: 0, items: [] };
-    const n = standingOf(openListings, signals.applicantsByListing || {});
-    const items = [
-      n.listings ? [n.listings, n.listings === 1 ? 'listing' : 'listings'] : null,
-      n.applicants ? [n.applicants, n.applicants === 1 ? 'applicant' : 'applicants'] : null,
-      n.toSend ? [n.toSend, n.toSend === 1 ? 'report to send' : 'reports to send'] : null,
-    ].filter(Boolean);
-    return { ...n, items };
-  }, [signals.loaded, signals.applicantsByListing, openListings, hasListings]);
-  // The desktop views (components/dashboard/DashShell.js): Listings, Pipeline, Shared with you.
+  // The views: Listings, Pipeline, Shared with you (components/dashboard/DashShell.js).
   const view = viewOf(router.query);
-  // The stat a desktop realtor clicked: the rows it counts, or all of them.
+  // The tile a realtor pressed: the cards it counts, or all of them.
   const [filter, setFilter] = useState('all');
-  // The client's clock for the relative times, after mount (the server's render and the first
-  // client render agree), once a minute after that.
+  // The client's clock for the date, the waits and the relative times, after mount (the server's
+  // render and the first client render agree), once a minute after that.
   const [now, setNow] = useState(null);
   useEffect(() => { setNow(Date.now()); const t = setInterval(() => setNow(Date.now()), 60000); return () => clearInterval(t); }, []);
   const circlePending = useCirclePending();
   const shared = useSharedWithMe();
-  const byListing = signals.applicantsByListing || {};
-  const rows = useMemo(() => openListings.map((l) => rowOf(l, byListing[l.id] || [])), [openListings, byListing]);
-  const closedRows = useMemo(() => closedListings.map((l) => rowOf(l, byListing[l.id] || [])), [closedListings, byListing]);
-  const needs = useMemo(() => (signals.loaded ? needsYouItems({ listings: liveListings, applicantsByListing: byListing, people: signals.people || [], shares: shared || [], circlePending, now: now || Date.now(), paths: adapter.paths }) : []),
-    // now is left out on purpose: the items change with the data, the times with the clock.
+  const byListing = useMemo(() => signals.applicantsByListing || {}, [signals.applicantsByListing]);
+  // THE BOARD: every count and next step on the page (components/dashboard/board.js).
+  const board = useMemo(() => boardOf({ listings: liveListings, applicantsByListing: byListing, people: signals.people || [], now }), [liveListings, byListing, signals.people, now]);
+  const cardFor = (l) => board.byId[l.id] || boardOf({ listings: [l], applicantsByListing: { [l.id]: byListing[l.id] || [] }, now }).byId[l.id];
+  const rows = useMemo(() => openListings.map((l) => rowOf(l, byListing[l.id] || [], board.byId[l.id])), [openListings, byListing, board]);
+  const closedRows = useMemo(() => closedListings.map((l) => rowOf(l, byListing[l.id] || [], board.byId[l.id])), [closedListings, byListing, board]);
+  const needs = useMemo(() => (signals.loaded ? needsYouItems({ board, people: signals.people || [], shares: shared || [], circlePending, now: now || Date.now(), paths: adapter.paths }) : []),
+    // now is left out on purpose beyond the board: the items change with the data, the times with the clock.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [signals.loaded, liveListings, byListing, signals.people, shared, circlePending, adapter.paths]);
-  // ── Archive and delete. The shelf on view (Active or Archived), the rows picked for the bar,
-  // the delete asked, the card whose menu is open (a phone), and the line that says what happened.
+    [signals.loaded, board, signals.people, shared, circlePending, adapter.paths]);
+  // ── Archive and delete. The shelf on view (Active or Archived), Select mode, the cards picked for
+  // the bar, the delete asked, and the line that says what happened.
   const [shelf, setShelf] = useState('active');
+  const [selecting, setSelecting] = useState(false);
   const [picked, setPicked] = useState(() => new Set());
   const [ask, setAsk] = useState(null); // { ids } a delete waiting for its yes
-  const [menuFor, setMenuFor] = useState(null); // a listing, its card's menu open
   const [acting, setActing] = useState(false);
   const [actNote, setActNote] = useState('');
-  const switchShelf = (to) => { setShelf(to); setPicked(new Set()); setFilter('all'); setActNote(''); };
+  // Select mode ends with a change of shelf and once the bar's action is done.
+  const switchShelf = (to) => { setShelf(to); setPicked(new Set()); setSelecting(false); setFilter('all'); setActNote(''); };
+  // Archived, asked for from the command menu: while the page is open, and on arrival (?shelf=archived).
+  useEffect(() => {
+    const on = (e) => { if (e.detail && e.detail.to === 'archived') { switchShelf('archived'); try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (x) { window.scrollTo(0, 0); } } };
+    window.addEventListener(SHELF_EVENT, on);
+    let q = null; try { q = new URLSearchParams(window.location.search); } catch (e) { q = null; }
+    if (q && q.get('shelf') === 'archived') { switchShelf('archived'); q.delete('shelf'); const rest = q.toString(); goView(`${window.location.pathname}${rest ? `?${rest}` : ''}`, { replace: true }); }
+    return () => window.removeEventListener(SHELF_EVENT, on);
+  }, []);
   const togglePick = (id) => setPicked((cur) => { const next = new Set(cur); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const count = (n, one, many) => `${n} ${n === 1 ? one : many}`;
   // The same check the route makes (lib/listingArchiveRule.js), from the applicants already loaded:
@@ -331,9 +334,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       const { r, j } = await post('/api/listings/archive', { listingIds: ids, archived });
       if (!r.ok) { setActNote(j.error || 'Could not save that. Try again.'); return; }
       setListings((cur) => (cur || []).map((l) => (ids.includes(l.id) ? { ...l, archived_at: j.archivedAt || null } : l)));
-      setPicked(new Set());
+      setPicked(new Set()); setSelecting(false);
       setActNote(archived ? `Archived ${count(ids.length, 'listing', 'listings')}.` : `Restored ${count(ids.length, 'listing', 'listings')}.`);
-    } catch (e) { setActNote('Could not save that. Try again.'); } finally { setActing(false); setAsk(null); setMenuFor(null); }
+    } catch (e) { setActNote('Could not save that. Try again.'); } finally { setActing(false); setAsk(null); }
   };
   const deleteIds = async (ids) => {
     setActing(true); setActNote('');
@@ -342,9 +345,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       if (!r.ok) { setActNote(j.error || 'Could not delete that. Try again.'); return; }
       const gone = j.deleted || [];
       setListings((cur) => (cur || []).filter((l) => !gone.includes(l.id)));
-      setPicked(new Set());
+      setPicked(new Set()); setSelecting(false);
       setActNote([gone.length ? `Deleted ${count(gone.length, 'listing', 'listings')}.` : '', j.line || ''].filter(Boolean).join(' '));
-    } catch (e) { setActNote('Could not delete that. Try again.'); } finally { setActing(false); setAsk(null); setMenuFor(null); }
+    } catch (e) { setActNote('Could not delete that. Try again.'); } finally { setActing(false); setAsk(null); }
   };
   // The delete asked for: what goes, what is skipped and why, or for one listing that cannot go,
   // the line and Archive in its place.
@@ -353,18 +356,21 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     if (n === 1 && skip.length === 1) return { title: 'This listing cannot be deleted', body: NOT_DELETABLE_LINE, confirm: canArchive && !isArchived((listings || []).find((l) => l.id === ask.ids[0])) ? 'Archive it' : 'Keep it', run: () => (canArchive && !isArchived((listings || []).find((l) => l.id === ask.ids[0])) ? archiveIds(ask.ids, true) : setAsk(null)), danger: false };
     return { title: n === 1 ? 'Delete this listing?' : `Delete ${n} listings?`, body: [n === 1 ? 'Its link stops working and any test applications go with it. This cannot be undone.' : 'Their links stop working and any test applications go with them. This cannot be undone.', skipLine(skip.length)].filter(Boolean).join(' '), confirm: 'Delete', run: () => deleteIds(ask.ids), danger: true };
   })() : null;
-  const archivedRows = useMemo(() => archivedListings.map((l) => rowOf(l, byListing[l.id] || [])), [archivedListings, byListing]);
+  const archivedRows = useMemo(() => archivedListings.map((l) => rowOf(l, byListing[l.id] || [], cardFor(l))), [archivedListings, byListing, board]); // eslint-disable-line react-hooks/exhaustive-deps
   // ── The order and the search, in the browser, on the rows above (components/dashboard/listingSort.js).
   // Each shelf keeps its own order on this device; a change never reloads, navigates or scrolls.
-  // The selection is by id, so the rows picked stay picked whatever the order; Needs you and the
+  // The selection is by id, so the cards picked stay picked whatever the order; Needs you and the
   // Pipeline have orders of their own.
   const [sorts, setSorts] = useState(() => sortsSeen || { active: DEFAULT_SORT, archived: DEFAULT_SORT });
+  const [mode, setModeState] = useState(() => modeSeen || 'cards');
   useIsoLayout(() => {
     const store = deviceStore();
     const kept = { active: readSort(store, 'active'), archived: readSort(store, 'archived') };
     sortsSeen = kept;
     setSorts((cur) => (sameSort(cur.active, kept.active) && sameSort(cur.archived, kept.archived) ? cur : kept));
+    const m = readMode(store); modeSeen = m; setModeState(m);
   }, []);
+  const setMode = (m) => { modeSeen = m; setModeState(m); writeMode(deviceStore(), m); };
   const sort = sorts[shelf] || DEFAULT_SORT;
   const setSort = (next) => {
     const s = validSort(next);
@@ -379,9 +385,9 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // are in; it holds while the rows' data changes under it (the server's answer taking over a
   // screen seen before, fresh signals), so no card moves under a finger and none is drawn again.
   // The data itself is always the newest: only the positions are held.
-  const activeOrder = useMemo(() => orderIds(rows, sorts.active), [sorts.active, rowSet(rows), signals.loaded]);
-  const closedOrder = useMemo(() => orderIds(closedRows, sorts.active), [sorts.active, rowSet(closedRows), signals.loaded]);
-  const archivedOrder = useMemo(() => orderIds(archivedRows, sorts.archived), [sorts.archived, rowSet(archivedRows), signals.loaded]);
+  const activeOrder = useMemo(() => orderIds(rows, sorts.active), [sorts.active, rowSet(rows), signals.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  const closedOrder = useMemo(() => orderIds(closedRows, sorts.active), [sorts.active, rowSet(closedRows), signals.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
+  const archivedOrder = useMemo(() => orderIds(archivedRows, sorts.archived), [sorts.archived, rowSet(archivedRows), signals.loaded]); // eslint-disable-line react-hooks/exhaustive-deps
   const sortedRows = arrange(rows, activeOrder);
   const sortedClosed = arrange(closedRows, closedOrder);
   const sortedArchived = arrange(archivedRows, archivedOrder);
@@ -396,10 +402,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const foundArchived = matchRows(sortedArchived, q);
   const found = shelf === 'archived' ? foundArchived.length : foundOpen.length + foundClosed.length;
   const shownRows = FILTERS[filter] ? foundOpen.filter(FILTERS[filter]) : foundOpen;
-  // A phone card draws its listing; the cards follow the rows' order.
   const listingById = useMemo(() => new Map((listings || []).map((l) => [l.id, l])), [listings]);
-  const cardsOf = (list) => list.map((r) => listingById.get(r.id)).filter(Boolean);
-  const openCards = cardsOf(foundOpen); const closedCards = cardsOf(foundClosed); const archivedCards = cardsOf(foundArchived);
   // The menu closes on a click outside it, on Escape (the focus back on its button) and on Tab; it
   // opens on the order on view, and the arrow keys move through it.
   useEffect(() => {
@@ -420,25 +423,55 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // A choice in the sheet: the order changes at once, its tick moves, and the sheet goes.
   const choose = (c) => { setSort(c); requestAnimationFrame(() => setSortOpen(false)); };
   const pickFromMenu = (c) => { setSort(c); setMenuOpen(false); if (menuBtn.current) menuBtn.current.focus({ preventScroll: true }); };
-  // The Active and Archived switch, above the listings at every width (only once archive is set up).
+  // ── Send report from a card: in place, "Sending", then a tick, and the card's status follows. A
+  // listing with no landlord email yet, or a first send that still needs the signing name, opens
+  // its report on the listing page, where both are asked for.
+  const [sends, setSends] = useState({});
+  const sendFrom = async (l, card) => {
+    if (!EMAIL.test(String(l.landlord_email || '').trim()) || needsSignature(profile)) { navigateToAction(card.next.item, adapter.paths); return; }
+    setSends((s) => ({ ...s, [l.id]: { state: 'sending' } }));
+    try {
+      const r = await adapter.fetch('/api/listings/send-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: l.id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.preview) { setSends((s) => ({ ...s, [l.id]: { state: 'failed', note: j.preview ? 'Sandbox: nothing sent.' : (j.error || 'The report did not go. Try again.') } })); return; }
+      setSends((s) => ({ ...s, [l.id]: { state: 'sent' } }));
+      // The route set last_sent_at on every applicant in the report (the ones still in the running):
+      // the same here, so the card, the tiles and Needs you follow at once.
+      const at = new Date().toISOString();
+      setTimeout(() => {
+        setSignals((cur) => ({ ...cur, applicantsByListing: { ...cur.applicantsByListing, [l.id]: (cur.applicantsByListing[l.id] || []).map((a) => (a && !isWithdrawn(a) && !isSetAside(a) ? { ...a, lastSentAt: at } : a)) } }));
+        setSends((s) => { const { [l.id]: gone, ...rest } = s; return rest; });
+      }, 1400);
+    } catch (e) { setSends((s) => ({ ...s, [l.id]: { state: 'failed', note: 'The report did not go. Try again.' } })); }
+  };
+  const onTile = (item) => navigateToAction(item, adapter.paths);
+  // The Active and Archived switch (only once archive is set up).
   const shelfSwitch = (
-    <div className="hv-shelf" role="group" aria-label="Show listings" data-shelf="">
+    <div className="hv-seg" role="group" aria-label="Show listings" data-shelf="">
       {[['active', 'Active'], ['archived', 'Archived']].map(([key, label]) => (
         <button key={key} type="button" aria-pressed={shelf === key ? 'true' : 'false'} onClick={() => switchShelf(key)} data-shelf-to={key}>{label}</button>
       ))}
     </div>
   );
-  // The Sort control: under 1024 a button above the cards that opens the sheet, at 1024 and wider a
-  // menu beside the switch. Each reads the order on view; the choices are the same eight.
+  // Cards or the Compact table, at 1024 and wider; kept on this device.
+  const modeSwitch = (
+    <div className="hv-seg hv-only-desk" role="group" aria-label="Show listings as" data-view-mode="">
+      {[['cards', 'Cards'], ['compact', 'Compact']].map(([key, label]) => (
+        <button key={key} type="button" aria-pressed={mode === key ? 'true' : 'false'} onClick={() => { setMode(key); setSelecting(false); }} data-view-mode-to={key}>{label}</button>
+      ))}
+    </div>
+  );
+  // The Sort control: under 1024 a button that opens the sheet, at 1024 and wider a menu. Each reads
+  // the order on view; the choices are the same eight.
   const sortLabel = sortName(sort);
   const sortChoices = choicesFor(sort);
   const sortButton = (
-    <button type="button" className="ds-btn ds-btn-line hv-sort-btn" aria-haspopup="dialog" aria-label={`Sort, ${sortLabel}`} data-sort-open="" onClick={() => setSortOpen(true)}>
+    <button type="button" className="ds-btn ds-btn-line hv-sort-btn hv-only-phone" aria-haspopup="dialog" aria-label={`Sort, ${sortLabel}`} data-sort-open="" onClick={() => setSortOpen(true)}>
       <Icon name="sort" size={16} /><span>{sortLabel}</span>
     </button>
   );
   const sortMenu = (
-    <span className="hv-sortmenu" ref={menuRef} data-sort-menu="">
+    <span className="hv-sortmenu hv-only-desk" ref={menuRef} data-sort-menu="">
       <button ref={menuBtn} type="button" className="ds-btn ds-btn-line hv-sort-btn" aria-haspopup="menu" aria-expanded={menuOpen ? 'true' : 'false'} aria-label={`Sort, ${sortLabel}`} data-sort-menu-open="" onClick={() => setMenuOpen((v) => !v)}>
         <Icon name="sort" size={16} /><span>{sortLabel}</span>
       </button>
@@ -453,11 +486,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       ) : null}
     </span>
   );
-  // The search, past eight listings in the view: one field for each layout, the one query.
-  const findField = (where) => (
-    <span className="hv-find" data-listing-search={where}>
+  // Select: a checkbox on every card, for the bar. The Compact table always has its checkboxes.
+  const selectButton = (
+    <button type="button" className={`ds-btn ${selecting ? 'ds-btn-ink' : 'ds-btn-line'} hv-select${mode === 'compact' ? ' hv-only-phone' : ''}`} aria-pressed={selecting ? 'true' : 'false'} onClick={() => { setSelecting((v) => !v); setPicked(new Set()); }} data-select-mode="">
+      {selecting ? 'Done' : 'Select'}
+    </button>
+  );
+  // The search, past eight listings in the view.
+  const findField = (
+    <span className="hv-find" data-listing-search="">
       <span className="hv-find-icon" aria-hidden="true"><Icon name="search" size={16} /></span>
-      <input type="search" className="hv-find-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Address or unit" aria-label="Find a listing by address or unit" autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="search" data-listing-search-input={where} />
+      <input type="search" className="hv-find-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Address or unit" aria-label="Find a listing by address or unit" autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="search" data-listing-search-input="" />
     </span>
   );
   const foundLine = searched && found > 0 ? <p className="hv-found" role="status" data-search-count="">{count(found, 'listing matches', 'listings match')}</p> : null;
@@ -467,20 +506,15 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setQuery('')} data-search-clear="">Clear</button>
     </div>
   );
-  // The table's checkboxes: one a row, and the header's for all the rows shown.
+  // The Compact table's checkboxes: one a row, and the header's for all the rows shown.
   const rowSelect = (list) => ({
     header: <input type="checkbox" aria-label="Select all" checked={list.length > 0 && list.every((r) => picked.has(r.id))} onChange={(e) => setPicked((cur) => { const next = new Set(cur); for (const r of list) { if (e.target.checked) next.add(r.id); else next.delete(r.id); } return next; })} className="hv-check" />,
     cell: (r) => <input type="checkbox" aria-label={`Select ${r.label}`} checked={picked.has(r.id)} onChange={() => togglePick(r.id)} className="hv-check" data-row-check={r.id} />,
   });
-  // A phone card's menu: a 44px button that opens the sheet with the card's actions; the tap is
-  // the button's own, never the card's.
-  const stop = (e) => { e.stopPropagation(); };
-  const cardMenu = (l) => (
-    <button type="button" className="dash-card-menu" aria-label={`Actions for ${displayLabel(l, 'this listing')}`} data-own-action="" data-card-menu={l.id}
-      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setActNote(''); setMenuFor(l); }} onKeyDown={stop} onPointerDown={stop} onTouchStart={stop}>
-      <Icon name="more" size={20} />
-    </button>
-  );
+  const cardsOf = (list) => list.map((r) => {
+    const l = listingById.get(r.id); if (!l) return null;
+    return <ListingCard key={r.id} listing={l} row={r} card={cardFor(l)} paths={adapter.paths} selecting={selecting} picked={picked.has(r.id)} onPick={togglePick} onSend={sendFrom} send={sends[r.id] || null} />;
+  });
   const onNeed = (it) => {
     if (it.go.kind === 'action') navigateToAction(it.go.item, adapter.paths);
     else if (it.go.kind === 'view') goView(viewHref(adapter.paths.home, it.go.view));
@@ -489,7 +523,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // The Pipeline section's Open Pipeline: the view in place, from its top.
   const pipelineHref = viewHref(adapter.paths.home, 'pipeline');
   const openPipeline = () => { goView(pipelineHref); try { window.scrollTo({ top: 0, behavior: 'instant' }); } catch (e) { window.scrollTo(0, 0); } };
-  const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: liveListings } : null), [signals, liveListings]);
+  // The bell and the command menu: the signals, the listings on Active, and every listing.
+  const headerSignals = useMemo(() => (signals.loaded ? { ...signals, listings: liveListings, allListings: listings || [] } : null), [signals, liveListings, listings]);
   // Access verdict (lib/entitlements.js) — from the server load, or derived from the profile
   // (demo workspace). Only READ here; nothing is gated yet (that ships with checkout).
   const entitlement = initialEntitlement || getEntitlement(profile);
@@ -502,17 +537,15 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const brokerage = (profile?.brokerage || '').trim();
   // Branding is complete when there is a display name, a brokerage, and a logo (uploaded or
   // generated, both land in logo_url). Complete → the brand card leaves the dashboard; branding
-  // is reached from the avatar menu instead.
+  // is reached from the sidebar and the Profile tab instead.
   const brandComplete = !!((profile?.full_name || '').trim() && brokerage && profile?.logo_url);
   // Logo-derived accent for the brand card only; the soft ink when absent or too light (red is
   // the one main action on the view).
   const logoAccent = useLogoAccent(profile?.logo_url || '');
   const brandAccent = logoAccent || C.inkSoft;
-
-  // Header note: the dashboard header is a plain in-flow element (position: static, see .dash-bg
-  // override) that scrolls away with the page. Because nothing is fixed/sticky, there is no floating
-  // bar for content to bleed under or be cut by — no measured content offset, no ResizeObserver, and
-  // no scroll-fade are needed. The whole page (header included) simply scrolls as one.
+  const people = signals.people || [];
+  const listCount = shelf === 'archived' ? foundArchived.length : filter !== 'all' ? shownRows.length : foundOpen.length + foundClosed.length;
+  const FILTER_WORDS = { applicants: 'With applicants', toSend: 'With a report ready to send', toCheck: 'With documents to check' };
 
   return (
     <>
@@ -520,285 +553,172 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         <title>Realtor Dashboard · Rentletter</title>
         <meta name="description" content="Your listings. Add a listing, share the invite link, review applicants." />
         {/* Tint the mobile browser chrome (status bar / toolbar) to the page eggshell so there is no
-            white band at the very top or bottom edge. html/body/#__next backgrounds (below) cover the
-            content, notch region (viewport-fit=cover), and overscroll canvas; this covers the chrome. */}
+            white band at the very top or bottom edge. */}
         <meta name="theme-color" content={C.paper} />
       </Head>
       <GlobalStyle />
+      <ListingCardStyles />
       {/* overflow-x: clip contains any horizontal overflow without creating a scroll container.
           The canvas comes from the root (components/ui.js), so this wrapper paints no tone of its
           own; it only stretches to the viewport so a short page still reads as one surface. */}
       <div className="dash-bg" style={{ overflowX: 'clip' }}>
-        {/* The shell (components/dashboard/DashShell.js): under 1024px the header as it always was,
-            static and in flow (see .dash-bg .rl-header below), with the Listings and Circle tabs; at
-            1024 and wider the sidebar and the main area. */}
-        {/* On a desktop the greeting is the header row's lead, in line with the bell and the avatar,
-            shown with the rest of the Listings view once it is in hand. */}
-        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={openNew} newPrimary={!empty}
-          lead={!locked && ready && view === 'listings' ? <h1 className="hv-greet" style={{ visibility: greeting ? 'visible' : 'hidden' }}>{greeting || '\u00A0'}</h1> : null}>
+        <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={openNew} newPrimary={!empty} listingsCount={ready && !locked ? board.tiles.active : null}>
 
         {locked && (
           <div className="hv-lock ds-col" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)', '--ds-col': '1036px' }}>
             <Paywall entitlement={entitlement} profile={profile} pending={checkoutFlag === 'success'} />
           </div>
         )}
-        {!locked && <div className="hv" data-view={view} style={{
-          // The header is in normal flow directly above, so it takes its own space; a small top gap
-          // is all that is needed. Ordinary bottom breathing room plus the home indicator inset.
-          paddingTop: 'var(--s-2)',
-          paddingBottom: 'max(var(--s-6), env(safe-area-inset-bottom, 0px))',
-        }}>
+        {!locked && <div className="hv" data-view={view}>
 
-          {/* One screen, shown in one step (components/brand/Loader.js Reveal): the door until the
-              listings and the signals are both in hand, then everything at once. */}
-          <Reveal ready={ready} label="Loading your workspace" failed={listingsError && !listingsLoaded ? listingsFailed : loadWatch.failed ? <LoadFailed onRetry={loadWatch.again} /> : null}>
-          <div className="hv-cols">
-          <div className="hv-primary">
-          {/* PHONE. 1. THE INK CARD: the greeting (the hour from the client, lib/greeting.js) over the
-              standing as plain numbers, counted from the loaded signals. No rows, no verbs, no links:
-              what is next lives in the bell. Then the one red action on the page: New listing.
-              With no listing yet it is the start: the heading and its line on the card, the button
-              right under it, and the three steps; all of it on one screen at 390. */}
-          <div className="hv-phone">
-          <section className="dash-ink" aria-label="Welcome" style={{ background: C.inst, color: C.instText, borderRadius: R.card, padding: 'var(--card-pad)' }}>
-            <h1 className="dash-greet" aria-live="polite" style={{ color: C.paper, margin: 0, minHeight: 'calc(var(--t-d1) * var(--lh-display))', visibility: greeting ? 'visible' : 'hidden', overflowWrap: 'anywhere' }}>{greeting || '\u00A0'}</h1>
-            {empty ? (
-              <div data-get-started="phone">
-                <h2 className="dash-start-h">{START.heading}</h2>
-                <p className="dash-start-line">{START.line}</p>
-              </div>
-            ) : standing.items.length ? (
-              <ul className="dash-standing" aria-label="Your workspace">
-                {standing.items.map(([n, label]) => <li key={label}><span className="dash-standing-n">{n}</span> {label}</li>)}
-              </ul>
-            ) : (
-              <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.instText, lineHeight: 'var(--lh-body)' }}>
-                <Icon name="check" size={15} color={C.instText} strokeWidth={2.5} /> Nothing waiting on you.
-              </div>
-            )}
-          </section>
-          <button type="button" onClick={openNew} className="dash-new" style={{ marginTop: 'var(--s-3)' }}>
-            <Icon name="plus" size={17} /> New listing
-          </button>
-          {/* The three steps, under the button, while there is no listing. */}
-          {empty ? <ol className="dash-steps" data-get-started-steps="">{START.steps.map(([title, line], i) => <li key={title}><span className="dash-step-n" aria-hidden="true">{i + 1}</span><span><span className="dash-step-t">{title}</span><span className="dash-step-l">{line}</span></span></li>)}</ol> : null}
-          {/* iOS Safari only, until dismissed once on this device (components/dashboard/InstallHint.js).
-              Held back while there is no listing, so the start fits one screen. */}
-          {!empty && <InstallHint />}
-          </div>
+          {/* One screen, shown in one step (components/brand/Loader.js Reveal): its shape in pale
+              placeholders until the listings and the signals are both in hand, then everything at once. */}
+          <Reveal ready={ready} label="Loading your workspace" placeholder={<BoardSkeleton label="Loading your workspace" />} failed={listingsError && !listingsLoaded ? listingsFailed : loadWatch.failed ? <LoadFailed onRetry={loadWatch.again} /> : null}>
+          <div className="hv-part-listings" data-listings-home="">
+            {/* THE STATUS BOARD: the date and the four tiles, across the main area's whole width. */}
+            {hasListings ? <StatusBoard tiles={board.tiles} now={now} filter={filter} onFilter={(f) => { setFilter(f); if (shelf !== 'active') switchShelf('active'); }} paths={adapter.paths} onJump={onTile} /> : null}
+            {trialDays != null && <p className="hv-note">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
+            {error && <div className="hv-error" role="alert">{error}</div>}
 
-          {/* DESKTOP. The three numbers that filter the table, one row across the listings column (the
-              greeting is in the header row, above), or with no listing yet the start, filling it. */}
-          <div className="hv-desk hv-part-listings">
-            {hasListings ? <DeskStats standing={standing} filter={filter} onFilter={setFilter} /> : null}
+            <div className="hv-cols">
+            <div className="hv-primary">
+            {/* No listing yet: the start. */}
             {empty ? (
-              <div className="hv-start" data-get-started="desktop">
+              <div className="hv-start" data-get-started="">
                 <h2 className="hv-start-h">{START.heading}</h2>
                 <p className="hv-start-line">{START.line}</p>
-                <button type="button" onClick={openNew} className="ds-btn ds-btn-primary hv-start-new" data-get-started-new="">
-                  <Icon name="plus" size={16} /> New listing
+                <button type="button" onClick={openNew} className="ds-btn hv-start-new" data-get-started-new="">
+                  <Icon name="plus" size={16} strokeWidth={2} /> New listing
                 </button>
-                <ol className="hv-steps">{START.steps.map(([title, line], i) => <li key={title}><span className="hv-step-n" aria-hidden="true">{i + 1}</span><span className="hv-step-t">{title}</span><span className="hv-step-l">{line}</span></li>)}</ol>
+                <ol className="hv-steps" data-get-started-steps="">{START.steps.map(([title, line], i) => <li key={title}><span className="hv-step-n" aria-hidden="true">{i + 1}</span><span className="hv-step-body"><span className="hv-step-t">{title}</span><span className="hv-step-l">{line}</span></span></li>)}</ol>
               </div>
             ) : null}
-          </div>
-          {trialDays != null && <p className="dash-note dash-data">{trialDays === 1 ? '1 day' : `${trialDays} days`} left on your trial. <a href="/billing" style={{ color: C.ink, fontWeight: 700 }}>See plans</a></p>}
-
-          {/* 2. YOUR LISTINGS. On a phone each card is its address, rent, beds and its state; on a
-              desktop, one row a listing in the table. */}
-          {error && (
-            <div className="dash-block" role="alert" style={{ padding: 'var(--s-3) var(--s-4)', background: C.dangerTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.danger}`, fontSize: 'var(--t-body-2)', color: C.ink }}>
-              {error}
-            </div>
-          )}
-          {hasListings && (
-            <div className="dash-block hv-part-listings hv-phone">
-              <div className="dash-section-head">
-                <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 'var(--s-2)', minWidth: 0 }}>
-                  <h2 className="dash-h2">Your listings</h2>
-                  <span className="dash-count">{shelf === 'archived' ? archivedListings.length : openListings.length}</span>
-                </span>
-                {canArchive ? shelfSwitch : null}
-              </div>
-              {actNote ? <p className="hv-act-note" role="status">{actNote}</p> : null}
-              {/* The search past eight listings, then the Sort control and how many match. */}
-              <div className="hv-tools" data-listing-tools="phone">
-                {canFind ? findField('phone') : null}
-                <div className="hv-tools-row">{sortButton}{foundLine}</div>
-              </div>
-              {shelf === 'archived' ? (
-                <div className="dash-grid" data-archived-cards="">
-                  {archivedListings.length === 0 ? <p className="hv-quiet-phone">Nothing archived.</p> : searched && !found ? noMatch : null}
-                  {archivedCards.map((l) => (
-                    <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} data-press="card" className="dash-card dash-card-int"
-                      {...cardProps(adapter.paths.listing(l.id))}
-                      style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
-                        <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
-                        <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
-                      </div>
-                      <div className="dash-card-foot">
-                        <StatusPills label="Listing status" items={['Archived']} />
-                        {cardMenu(l)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-              <div className="dash-grid">
-                {searched && !found ? noMatch : null}
-                {openCards.map((l) => (
-                  <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} className="dash-card dash-card-int" data-press="card"
-                    {...cardProps(adapter.paths.listing(l.id))}
-                    style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
-                    {/* Name left, the rent right in tabular numerals, so the rents line up down the column. */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
-                      <div className="t-d3" style={{ color: C.ink, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
-                      <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
-                    </div>
-                    <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)' }}>
-                      {l.monthly_rent ? 'per month' : 'Rent not set'}{formatUnit(l.bedrooms) ? `, ${formatUnit(l.bedrooms)}` : ''}
-                    </div>
-                    {/* The state as pills, all in the one status style: the applicants by what they
-                        need, then the report (lib/listingStateLine.js); beside them the card's menu. */}
-                    <div className="dash-card-foot">
-                      <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
-                      {cardMenu(l)}
-                    </div>
-                  </div>
-                ))}
-                {/* Rented and closed listings, below the active ones under one muted word. */}
-                {closedCards.length > 0 && (
-                  <div className="dash-eyebrow" role="separator" aria-label="Rented listings" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', color: C.inkMute, gridColumn: '1 / -1' }}>
-                    <span>Rented</span><span aria-hidden="true" style={{ flex: 1, height: 1, background: C.rule }} />
-                  </div>
-                )}
-                {closedCards.map((l) => (
-                  <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} data-press="card" className="dash-card dash-card-int"
-                    {...cardProps(adapter.paths.listing(l.id))}
-                    style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', minWidth: 0 }}>
-                      <div className="t-d3" style={{ color: C.inkSoft, minWidth: 0, overflowWrap: 'anywhere', textWrap: 'balance' }}>{displayLabel(l, 'Untitled listing')}</div>
-                      <div className="num" style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.inkSoft, whiteSpace: 'nowrap', textAlign: 'right', flexShrink: 0 }}>{l.monthly_rent ? `$${Number(l.monthly_rent).toLocaleString()}` : 'No rent'}</div>
-                    </div>
-                    <div className="dash-card-foot">
-                      <StatusPills label="Listing status" items={listingStatePills(l, signals.applicantsByListing[l.id] || []).map((x) => x.text)} />
-                      {cardMenu(l)}
-                    </div>
-                  </div>
-                ))}
-                {openListings.length === 0 && closedListings.length === 0 ? <p className="hv-quiet-phone">No active listings.</p> : null}
-              </div>
-              )}
-            </div>
-          )}
-          {hasListings && (
-            <div className="hv-desk hv-part-listings hv-section" data-listings-view="">
-              <div className="hv-head">
-                <h2 className="dash-h2">Your listings</h2>
-                <span className="hv-count" aria-label={`${shelf === 'archived' ? foundArchived.length : shownRows.length} shown`}>{shelf === 'archived' ? foundArchived.length : shownRows.length}</span>
-                {filter !== 'all' && shelf === 'active' ? (
-                  <span className="hv-filter">
-                    {filter === 'applicants' ? 'With applicants' : 'With a report to send'}
-                    <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button>
+            {hasListings && (
+              <section className="hv-section" aria-labelledby="hv-listings-h" data-listings-view="">
+                <div className="hv-head">
+                  <span className="hv-title">
+                    <h2 className="hv-h2" id="hv-listings-h">{shelf === 'archived' ? 'Archived' : 'Your listings'}</h2>
+                    <span className="hv-count" aria-label={`${listCount} shown`} data-listing-count="">{listCount}</span>
                   </span>
-                ) : null}
-                {/* The switch, then the Sort menu with the eight orders (two of them no column holds). */}
-                <span className="hv-head-tools">{canArchive ? shelfSwitch : null}{sortMenu}</span>
-              </div>
-              {canFind ? <div className="hv-find-row">{findField('desk')}{foundLine}</div> : null}
-              {/* The bar for the rows picked: archive (or restore) them, or delete the ones that can go. */}
-              {picked.size ? (
-                <div className="hv-bulk rl-glass" role="region" aria-label="Selected listings" data-bulk-bar="" data-stuck="">
-                  <span className="hv-bulk-n">{picked.size} selected</span>
-                  {canArchive ? <button type="button" className="ds-btn ds-btn-line" disabled={acting} onClick={() => archiveIds([...picked], shelf !== 'archived')}>{shelf === 'archived' ? 'Restore' : 'Archive'}</button> : null}
-                  <button type="button" className="ds-btn ds-btn-line hv-danger" disabled={acting} onClick={() => setAsk({ ids: [...picked] })} data-bulk-delete="">Delete</button>
-                  <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setPicked(new Set())}>Clear</button>
+                  {filter !== 'all' && shelf === 'active' ? (
+                    <span className="hv-filter" data-filter-on={filter}>
+                      <span>{FILTER_WORDS[filter]}</span>
+                      <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')} data-filter-clear="">Show all</button>
+                    </span>
+                  ) : null}
+                  <span className="hv-tools" data-listing-tools="">
+                    {canArchive ? shelfSwitch : null}
+                    {modeSwitch}
+                    {sortMenu}{sortButton}
+                    {selectButton}
+                  </span>
                 </div>
-              ) : null}
-              {actNote ? <p className="hv-act-note" role="status" data-act-note="">{actNote}</p> : null}
-              {shelf === 'archived' ? (
-                !archivedRows.length ? <p className="hv-quiet" data-archived-empty="">Nothing archived.</p>
-                  : foundArchived.length ? <ListingsTable rows={foundArchived} now={now} paths={adapter.paths} label="Archived listings" select={rowSelect(foundArchived)} sort={sorts.archived} onSort={onHeading} /> : noMatch
-              ) : searched && !found ? noMatch : (
-                <>
-                  {shownRows.length ? <ListingsTable rows={shownRows} now={now} paths={adapter.paths} select={rowSelect(shownRows)} sort={sorts.active} onSort={onHeading} /> : searched && filter === 'all' ? null : <p className="hv-quiet">{rows.length ? <>No listing matches. <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button></> : 'No active listings.'}</p>}
-                  {filter === 'all' && foundClosed.length > 0 && (
-                    <div className="hv-rented">
-                      <div className="hv-head"><h3 className="hv-h3">Rented</h3><span className="hv-count">{foundClosed.length}</span></div>
-                      <ListingsTable rows={foundClosed} now={now} paths={adapter.paths} label="Rented listings" select={rowSelect(foundClosed)} sort={sorts.active} onSort={onHeading} />
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-          )}
+                {canFind ? <div className="hv-find-row">{findField}{foundLine}</div> : null}
+                {/* The bar for the cards picked: archive (or restore) them, or delete the ones that can go. */}
+                {picked.size ? (
+                  <div className="hv-bulk rl-glass" role="region" aria-label="Selected listings" data-bulk-bar="" data-stuck="">
+                    <span className="hv-bulk-n">{picked.size} selected</span>
+                    {canArchive ? <button type="button" className="ds-btn ds-btn-line" disabled={acting} onClick={() => archiveIds([...picked], shelf !== 'archived')}>{shelf === 'archived' ? 'Restore' : 'Archive'}</button> : null}
+                    <button type="button" className="ds-btn ds-btn-line hv-danger" disabled={acting} onClick={() => setAsk({ ids: [...picked] })} data-bulk-delete="">Delete</button>
+                    <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setPicked(new Set())}>Clear</button>
+                  </div>
+                ) : null}
+                {actNote ? <p className="hv-act-note" role="status" data-act-note="">{actNote}</p> : null}
+                {shelf === 'archived' ? (
+                  !archivedRows.length ? <p className="hv-quiet" data-archived-empty="">Nothing archived.</p>
+                    : !foundArchived.length ? noMatch : (
+                      <>
+                        <div className={`hv-cards${mode === 'compact' ? ' hv-only-phone' : ''}`} data-archived-cards="">{cardsOf(foundArchived)}</div>
+                        {mode === 'compact' ? <div className="hv-only-desk"><ListingsTable rows={foundArchived} now={now} paths={adapter.paths} label="Archived listings" select={rowSelect(foundArchived)} sort={sorts.archived} onSort={onHeading} /></div> : null}
+                      </>
+                    )
+                ) : searched && !found ? noMatch : (
+                  <>
+                    {shownRows.length ? (
+                      <>
+                        <div className={`hv-cards${mode === 'compact' ? ' hv-only-phone' : ''}`} data-listing-cards="">{cardsOf(shownRows)}</div>
+                        {mode === 'compact' ? <div className="hv-only-desk"><ListingsTable rows={shownRows} now={now} paths={adapter.paths} select={rowSelect(shownRows)} sort={sorts.active} onSort={onHeading} /></div> : null}
+                      </>
+                    ) : searched && filter === 'all' ? null : (
+                      <p className="hv-quiet" data-filter-empty="">{rows.length ? <>No listing here right now. <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button></> : 'No active listings.'}</p>
+                    )}
+                    {filter === 'all' && foundClosed.length > 0 && (
+                      <div className="hv-rented" data-rented-listings="">
+                        <div className="hv-head"><span className="hv-title"><h3 className="hv-h3">Rented</h3><span className="hv-count">{foundClosed.length}</span></span></div>
+                        <div className={`hv-cards${mode === 'compact' ? ' hv-only-phone' : ''}`}>{cardsOf(foundClosed)}</div>
+                        {mode === 'compact' ? <div className="hv-only-desk"><ListingsTable rows={foundClosed} now={now} paths={adapter.paths} label="Rented listings" select={rowSelect(foundClosed)} sort={sorts.active} onSort={onHeading} /></div> : null}
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
 
-          {/* DESKTOP. The Pipeline under the listings (components/dashboard/PipelineSoon.js): the same
-              people as the Pipeline view, soonest first, and the way to the full view. With no
-              listing, and on Archived, too, so the column is never a lone table on an empty page. */}
-          <div className="hv-desk hv-part-listings hv-section">
-            <PipelineSoon people={signals.people || []} href={pipelineHref} onOpen={openPipeline} />
+            {/* THE PIPELINE under the cards (components/dashboard/PipelineSoon.js): the people soonest
+                first and the way to the full view, or with nobody in it, one quiet line. On a phone
+                with people in it, the list as it was. */}
+            {hasListings ? (
+              <div className="hv-section hv-pipe">
+                {people.length ? (
+                  <>
+                    <div className="hv-only-desk"><PipelineSoon people={people} href={pipelineHref} onOpen={openPipeline} /></div>
+                    {/* One Pipeline list on the page at a time: this one on the Listings view, the view's own on Pipeline. */}
+                    {view === 'listings' ? <div className="hv-only-phone"><PeopleList people={people} /></div> : null}
+                  </>
+                ) : <PipelineSoon people={people} href={pipelineHref} onOpen={openPipeline} />}
+              </div>
+            ) : null}
+
+            {/* BRAND CARD, only while branding is incomplete and there is a listing. Whole card opens the profile. */}
+            {hasListings && !brandComplete && (
+              <a {...linkProps(adapter.paths.profile)} data-press="card" className="dash-brand hv-section" style={{ '--brand-accent': brandAccent }}
+                title="You and your brand" aria-label="Set up your profile and branding">
+                <div className="dash-eyebrow">Your brand</div>
+                <div className="dash-brand-identity">
+                  {profile?.logo_url
+                    ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
+                    : <span className="dash-brand-initials" aria-hidden="true">{initialsOf(profile)}</span>}
+                  <span className="dash-brand-id">
+                    <span className="dash-brand-name">{profile?.full_name || 'Your name'}</span>
+                    <span className="dash-brand-brok">{brokerage || 'Add your brokerage'}</span>
+                    <span className="dash-brand-desc">Your logo, name, and brokerage appear on every report you send.</span>
+                  </span>
+                </div>
+                <span className="dash-brand-foot">
+                  {profile?.full_name && brokerage ? 'Add your logo' : 'Set up branding'} <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
+                </span>
+              </a>
+            )}
+            {/* iOS Safari only, until dismissed once on this device (components/dashboard/InstallHint.js). */}
+            {!empty ? <div className="hv-only-phone hv-install"><InstallHint /></div> : null}
+            </div>
+
+            {/* NEEDS YOU (components/dashboard/NeedsYou.js): beside the cards from 1280, under them from
+                1024; on a phone what is next lives in the bell. */}
+            <div className="hv-aside hv-only-desk" data-stuck="">
+              <NeedsYou items={needs} now={now} onGo={onNeed} />
+            </div>
+            </div>
           </div>
 
-          {/* 3. PIPELINE (components/dashboard/PeopleList.js): under the listings on a phone; on a
-              desktop its own view, and its soonest items feed Needs you. */}
-          {(hasListings || view === 'pipeline') && <div className="hv-part-pipeline hv-section-phone"><PeopleList people={signals.people || []} /></div>}
+          {/* PIPELINE (components/dashboard/PeopleList.js): its own view. */}
+          <div className="hv-part-pipeline">{view === 'pipeline' ? <PeopleList people={people} /> : null}</div>
 
-          {/* Profiles tenants shared with this realtor as listing agent (components/dashboard/SharedWithMe.js): nothing when there are none. */}
+          {/* Profiles tenants shared with this realtor as listing agent (components/dashboard/SharedWithMe.js):
+              its own view; on a phone under the Listings view too, as it always was, when there are any. */}
           <div className="hv-part-shared">
             <SharedWithMe />
             {Array.isArray(shared) && shared.length === 0 ? (
-              <div className="hv-desk" data-shared-empty="">
-                <h2 className="dash-h2">Shared with you</h2>
+              <div className="hv-shared-empty" data-shared-empty="">
+                <h2 className="hv-h2">Shared with you</h2>
                 <p className="hv-quiet">No tenant has shared a profile with you yet.</p>
               </div>
             ) : null}
-          </div>
-
-          {/* 4. BRAND CARD, only while branding is incomplete and there is a listing (the zero
-              listing state is one card, nothing else). Whole card opens the profile. */}
-          {hasListings && !brandComplete && (
-            <a {...linkProps(adapter.paths.profile)} data-press="card" className="dash-card dash-card-int dash-brand dash-block hv-part-listings" style={{ borderLeft: `3px solid ${brandAccent}` }}
-              title="You and your brand" aria-label="Set up your profile and branding">
-              <div className="dash-eyebrow">Your brand</div>
-              <div className="dash-brand-identity">
-                {profile?.logo_url
-                  ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
-                  : <span className="dash-brand-initials" aria-hidden="true">{initialsOf(profile)}</span>}
-                <span className="dash-brand-id">
-                  <span className="dash-brand-name">{profile?.full_name || 'Your name'}</span>
-                  <span className="dash-brand-brok">{brokerage || 'Add your brokerage'}</span>
-                  <span className="dash-brand-desc">Your logo, name, and brokerage appear on every report you send.</span>
-                </span>
-              </div>
-              <span className="dash-brand-foot">
-                {profile?.full_name && brokerage ? 'Add your logo' : 'Set up branding'} <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={15} /></span>
-              </span>
-            </a>
-          )}
-          </div>
-
-          {/* DESKTOP. NEEDS YOU: the next things to do, newest first (components/dashboard/NeedsYou.js). */}
-          <div className="hv-aside hv-desk" data-stuck="">
-            <NeedsYou items={needs} now={now} onGo={onNeed} />
-          </div>
           </div>
           </Reveal>
         </div>}
 
         </DashShell>
-        {/* A phone card's actions, in the one sheet (components/Sheet.js). */}
-        <Sheet open={!!menuFor} onClose={() => setMenuFor(null)} label={menuFor ? displayLabel(menuFor, 'This listing') : 'Listing'} maxWidth={480}>
-          {menuFor ? (
-            <div className="hv-menu" data-card-menu-sheet="">
-              <h3 data-sheet-drag="" className="hv-menu-t">{displayLabel(menuFor, 'This listing')}</h3>
-              {canArchive ? <button type="button" className="ds-btn ds-btn-line" disabled={acting} onClick={() => archiveIds([menuFor.id], !isArchived(menuFor))}>{isArchived(menuFor) ? 'Restore' : 'Archive'}</button> : null}
-              <button type="button" className="ds-btn ds-btn-line hv-danger" disabled={acting} onClick={() => { const id = menuFor.id; setMenuFor(null); setAsk({ ids: [id] }); }}>Delete</button>
-              <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setMenuFor(null)}>Cancel</button>
-            </div>
-          ) : null}
-        </Sheet>
         {/* The order of the cards, under 1024 (the same eight choices as the menu at 1024 and wider). */}
         <Sheet open={sortOpen} onClose={() => setSortOpen(false)} label="Sort listings" maxWidth={480}>
           {sortOpen ? (
@@ -821,229 +741,163 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       </div>
 
       <style jsx>{`
-        /* ── Base canvas: ONE flat, uniform tone, painted at the root as var(--paper)
-           (components/ui.js), no glows and no gradients. The header carries the same token (below),
-           so header and page read as a single surface top to bottom: no distinct header band,
-           nothing to flash on scroll, and the notch region matches too. The white cards (C.card)
-           sit raised on that canvas. ── */
-        .dash-bg {
-          /* No background here: the canvas is painted at the root (components/ui.js var(--paper)),
-             so there is nothing to stop at the last card. Short pages still fill the viewport. */
-          min-height: 100vh;
-          min-height: 100dvh;
-        }
-        /* The dashboard header is a NORMAL, STATIC, in-flow element — it scrolls up and off with the
-           page like any other content, NOT fixed/sticky. With no floating bar, there is no fixed layer
-           for content to bleed under or be cut by, which eliminates the entire class of iOS fixed-vs-
-           scrolling compositing bug (the half-cut title) at the source. It carries the exact page canvas
-           tone (var(--paper)) so it reads as a seamless top strip of the page. Scoped here; the
-           shared ScrollHeader (sticky) is unchanged on every other page. */
-        .dash-bg :global(.rl-header) {
-          position: static !important;            /* was fixed, now scrolls away with the page */
-          background: var(--paper) !important;  /* the one canvas tone, seamless with the page */
-          -webkit-backdrop-filter: none !important;
-          backdrop-filter: none !important;
-          border-bottom-color: transparent !important;
-          box-shadow: none !important;
-          /* As the topmost in-flow element, pad by the safe-area inset so the wordmark/controls clear
-             the iPhone notch/status bar at the top of the page; the solid bg fills that region too.
-             0 on non-notch browsers. */
-          padding-top: env(safe-area-inset-top, 0px);
-        }
-        /* Keep the header height constant when the shared scroll-shrink class toggles at ~8px scroll
-           (it tightens the inner padding) so the in-flow content below doesn't jump as you start
-           scrolling. */
-        .dash-bg :global(.rl-header.rl-shrink) .rl-header-inner {
-          padding-top: 18px;
-          padding-bottom: 18px;
-        }
-        /* ── One tasteful elevation tier — crafted card, soft rounded corners ── */
-        .dash-card {
-          background: ${C.card};
-          border: 1px solid var(--rule);
-          border-radius: var(--card-radius);
-          box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05);
+        /* The canvas is painted at the root (components/ui.js var(--canvas)); this wrapper paints no
+           tone of its own and stretches to the window so a short page still reads as one surface. */
+        .dash-bg { min-height: 100vh; min-height: 100dvh; }
+        /* Under 1024px the dashboard's header is static, in flow: it scrolls away with the page, so
+           there is no fixed layer for content to pass under (the half cut title on iOS). Clear, so
+           the colour fields show through; its round controls are the glass. At 1024 and wider the
+           shell floats its search and bell (components/dashboard/DashShell.js). */
+        @media (max-width: 1023.98px) {
+          .dash-bg :global(.rl-header) {
+            position: static !important;
+            background: transparent !important;
+            -webkit-backdrop-filter: none !important;
+            backdrop-filter: none !important;
+            border-bottom-color: transparent !important;
+            box-shadow: none !important;
+            padding-top: env(safe-area-inset-top, 0px);
+          }
+          .dash-bg :global(.rl-header.rl-shrink .rl-header-inner) { padding-top: 18px; padding-bottom: 18px; }
         }
 
-        /* ── Type scale: three tiers on this screen ──
-           display  (.dash-greet at --t-d1, .dash-h2 at --t-d3)  Fraunces serif
-           body     (inherited) Inter 400/500 · everything else
-           data     (.dash-data) Inter 800 + tabular-nums, every number that must line up */
-        .dash-greet { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: var(--lh-display); }
-        .dash-h2 { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; }
-        .dash-data { font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-        .dash-eyebrow { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; line-height: var(--lh-eyebrow); text-transform: uppercase; color: ${C.inkMute}; margin-bottom: var(--s-2); }
+        /* ── The page: its gutters, and room under it for the floating tab bar on a phone ── */
+        .hv { padding: 0 var(--page-gutter) var(--s-5); }
+        .hv-only-desk { display: none; }
+        .hv-part-pipeline, .hv-part-shared { display: none; }
+        .hv[data-view='pipeline'] .hv-part-pipeline, .hv[data-view='shared'] .hv-part-shared { display: block; }
+        .hv[data-view='listings'] .hv-part-shared { display: block; margin-top: var(--gap-section); }
+        .hv[data-view='listings'] .hv-shared-empty { display: none; }
+        .hv:not([data-view='listings']) .hv-part-listings { display: none; }
+        .hv-section { margin-top: var(--gap-section); }
+        .hv-section:first-child { margin-top: 0; }
+        .hv-h2 { font-family: var(--f-display); font-size: 22px; font-weight: 600; letter-spacing: -0.015em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; }
+        .hv-h3 { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkSoft}; margin: 0; }
+        .hv-quiet { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0; }
+        .hv-note { font-size: var(--t-body-2); color: ${C.inkSoft}; margin: 0 0 var(--s-4); }
+        .hv-error { margin: 0 0 var(--s-4); padding: var(--s-3) var(--s-4); background: ${C.dangerTint}; border-radius: 16px; border-left: 3px solid ${C.danger}; font-size: var(--t-body-2); color: ${C.ink}; }
+        .hv-failed { display: grid; gap: var(--s-2); justify-items: start; padding: var(--s-5); border-radius: 24px; background: ${C.card}; }
+        .hv-shared-empty { display: grid; gap: var(--s-2); }
+        .hv-install :global(*) { max-width: 100%; }
 
-        /* ── The one red action on the page: New listing, a full width 44px row, the radius and
-           padding every dashboard button has (components/dashboard/DashShell.js .ds-btn) ── */
-        .dash-new { width: 100%; min-height: 44px; background: ${C.red}; color: ${C.paper}; border: none; border-radius: var(--btn-radius); padding: 0 var(--gap-card); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); font-family: inherit; }
-        /* The standing on the ink card: plain numbers with their words, no pills. */
-        .dash-standing { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--t-body-2); color: ${C.instText}; line-height: var(--lh-body); }
-        .dash-standing li { white-space: nowrap; }
-        .dash-standing-n { font-weight: 800; color: ${C.paper}; font-variant-numeric: tabular-nums; }
+        /* The listings' head: the title and count, the filter a tile set, then the tools. */
+        .hv-head { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-3); margin-bottom: var(--s-4); }
+        .hv-title { display: inline-flex; align-items: baseline; gap: var(--s-2); min-width: 0; }
+        .hv-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkSoft}; font-variant-numeric: tabular-nums; }
+        .hv-filter { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); color: ${C.inkSoft}; }
+        .hv-tools { margin-left: auto; display: inline-flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
+        .hv-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
+        .hv-rented { margin-top: var(--gap-section); }
+        .hv-act-note { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0 0 var(--s-3); text-wrap: balance; }
+        .hv-bulk { position: sticky; top: var(--s-2); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); border-radius: 999px; }
+        .hv-bulk-n { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; margin-right: auto; font-variant-numeric: tabular-nums; }
+        .hv-pipe { margin-top: var(--s-6); }
 
-        /* ── Branding tile — identity moment, whole card → /profile. The card's 3px left edge
-           (inline style) carries the colour sampled from the uploaded logo, red otherwise. ── */
-        .dash-brand { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); text-decoration: none; color: ${C.ink}; }
-        /* The name and brokerage beside the logo while they keep 280px; on a phone, under it, the card's width. */
+        /* The start (no listing yet): the heading, its line, the button, the three steps. */
+        .hv-start { padding: var(--s-2) 0 var(--s-5); }
+        .hv-start-h { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; color: ${C.ink}; margin: 0; text-wrap: balance; }
+        .hv-start-line { font-size: var(--t-body); color: ${C.inkSoft}; line-height: var(--lh-body); margin: var(--s-3) 0 0; max-width: 34em; text-wrap: balance; }
+        /* On a phone the tab bar holds the red New listing: this one is ink. */
+        .hv :global(.hv-start-new) { margin-top: var(--s-5); background: ${C.ink}; color: ${C.paper}; border: 1px solid ${C.ink}; }
+        .hv-steps { list-style: none; margin: var(--s-5) 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
+        /* On a phone each step is a row: its number beside its words. From 1024 a card each. */
+        .hv-steps li { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.card}; border-radius: 22px; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
+        .hv-step-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-top: 2px; }
+        .hv-step-n { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.ruleDark}; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+        .hv-step-t { font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; }
+        .hv-step-l { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); text-wrap: balance; }
+
+        /* ── The brand card: identity, whole card → /profile; its left edge the colour of the logo. ── */
+        .dash-brand { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-5); text-decoration: none; color: ${C.ink}; background: ${C.card}; border-radius: 24px; box-shadow: inset 3px 0 0 var(--brand-accent), 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
+        .dash-eyebrow { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; line-height: var(--lh-eyebrow); text-transform: uppercase; color: ${C.inkSoft}; }
         .dash-brand-identity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); min-width: 0; }
-        /* Transparent logo art sits straight on the card surface — no tile, no frame. */
         .dash-brand-logo { width: clamp(72px, 20vw, 96px); height: clamp(72px, 20vw, 96px); object-fit: contain; flex-shrink: 0; }
-        /* Neutral backing exists ONLY as the no-logo fallback (initials as a placeholder mark). */
-        .dash-brand-initials { width: clamp(64px, 18vw, 84px); height: clamp(64px, 18vw, 84px); border-radius: 14px; background: ${C.paperDeep}; border: 1px solid ${C.rule}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: var(--t-d3); color: ${C.inkSoft}; flex-shrink: 0; }
+        .dash-brand-initials { width: clamp(64px, 18vw, 84px); height: clamp(64px, 18vw, 84px); border-radius: 18px; background: ${C.paperDeep}; display: inline-flex; align-items: center; justify-content: center; font-family: ${FONT.serif}; font-weight: 600; font-size: var(--t-d3); color: ${C.inkSoft}; flex-shrink: 0; }
         .dash-brand-id { display: flex; flex-direction: column; gap: var(--s-1); min-width: 0; flex: 1 1 280px; }
-        /* Masthead byline: name in the display serif, brokerage muted below. */
         .dash-brand-name { font-family: ${FONT.serif}; font-size: var(--t-d3); font-weight: 600; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
-        .dash-brand-brok { font-size: var(--t-body-2); color: ${C.inkMute}; overflow-wrap: anywhere; }
-        /* Below 345px a long name takes the body size (16px), so it holds two words a line at 320. */
+        .dash-brand-brok { font-size: var(--t-body-2); color: ${C.inkSoft}; overflow-wrap: anywhere; }
         @media (max-width: 344.98px) { .dash-brand-name { font-size: var(--t-body); } }
         .dash-brand-desc { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.5; margin-top: var(--s-1); text-wrap: balance; white-space: normal; }
         .dash-brand-foot { margin-top: auto; display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; }
 
-        /* ── Section rhythm: one gap between blocks, and a short note under the greeting ── */
-        .dash-block { margin-top: var(--gap-card); }
-        .dash-note { font-size: var(--t-body-2); color: ${C.inkMute}; font-variant-numeric: tabular-nums; margin: var(--s-2) var(--s-1) 0; }
-        .dash-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s-4); }
-        /* ── Listing invite-link status chip (real data) ── */
-        .dash-lchip { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 600; color: ${C.inkMute}; }
-        .dash-lchip-on { color: ${C.ink}; }
-        .dash-lchip-dot { width: 6px; height: 6px; border-radius: 50%; background: ${C.ink}; flex-shrink: 0; }
-        .dash-lchip-dot-off { background: ${C.ruleDark}; }
-
-        /* ── Section head + ghost button ── */
-        .dash-section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); flex-wrap: wrap; margin: var(--gap-section) 0 var(--s-4); }
-        .dash-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
-        .dash-ghost { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: var(--btn-radius); min-height: 44px; padding: 0 var(--gap-card); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: var(--s-1); }
-
-        /* Instant (motion-independent) hover colour states — safe for reduced-motion */
-        .dash-ghost:hover { background: ${C.paperDeep}; border-color: ${C.ink}; }
-        /* The listing cards never move: a pointer that hovers darkens the border, at once. */
-        @media (hover: hover) { .dash-card-int:hover { border-color: ${C.ruleDark}; } }
-
-        /* The press is the shared one (lib/motion.js installPress); a pointer that hovers gets a shadow, at once. */
-        @media (hover: hover) { .dash-new:hover { box-shadow: 0 8px 22px rgba(215, 32, 39, 0.28); } }
-
-        /* ── The start (no listing yet): on the ink card the heading and its line; the steps under
-           the button, numbered, each a title and a short line. ── */
-        .dash-start-h { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; letter-spacing: -0.015em; line-height: var(--lh-display); color: ${C.paper}; margin: var(--s-3) 0 0; text-wrap: balance; }
-        .dash-start-line { font-size: var(--t-body-2); color: ${C.instText}; line-height: var(--lh-body); margin: var(--s-2) 0 0; text-wrap: balance; }
-        .dash-steps { list-style: none; margin: var(--s-4) 0 0; padding: 0; display: grid; gap: var(--s-3); }
-        .dash-steps li { display: flex; align-items: flex-start; gap: var(--s-3); }
-        .dash-step-n, .hv-step-n { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.ruleDark}; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
-        .dash-step-t { display: block; font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; padding-top: 3px; }
-        .dash-step-l { display: block; font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.4; margin-top: 2px; text-wrap: balance; }
-        .hv-start-h { font-family: var(--f-display); font-size: 40px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; color: ${C.ink}; margin: 0; text-wrap: balance; }
-        .hv-start-line { font-size: var(--t-body); color: ${C.inkSoft}; line-height: var(--lh-body); margin: var(--s-3) 0 0; max-width: 34em; text-wrap: balance; }
-        .hv-start-new { margin-top: var(--s-5); }
-        .hv-steps { list-style: none; margin: var(--gap-section) 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); }
-        .hv-steps li { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-5); background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); }
-        .hv-step-t { font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; margin-top: var(--s-2); }
-        .hv-step-l { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); text-wrap: balance; }
-        @media (min-width: 1920px) { .hv-start-h { font-size: 48px; } .hv-start-line { font-size: 18px; } .hv-steps li { padding: var(--s-6); } .hv-step-t { font-size: 18px; } .hv-step-l { font-size: var(--t-body); } }
-
-        /* ── Archive and delete: the Active and Archived switch, the line that says what happened,
-           the bar for the picked rows, the checkboxes, a card's menu button and its sheet. ── */
-        /* The switch, the checkboxes and the card's menu are built outside the returned tree, so
-           their classes are global (and unique to this screen). */
-        .dash-section-head :global(.hv-shelf), .hv-head :global(.hv-shelf) { margin-left: auto; }
-        :global(.hv-shelf) { display: inline-flex; padding: 2px; border-radius: var(--btn-radius); border: 1px solid ${C.ruleDark}; background: ${C.card}; }
-        /* 38px inside 2px of padding and the 1px border: the 44px every control on the view has. */
-        :global(.hv-shelf button) { min-height: 38px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
-        :global(.hv-shelf button[aria-pressed='true']) { background: ${C.paperDeep}; color: ${C.ink}; font-weight: 700; }
-        :global(.hv-shelf button:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
-        .hv-act-note { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0 0 var(--s-3); text-wrap: balance; }
-        .hv-bulk { position: sticky; top: var(--s-2); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); border-radius: var(--card-radius); }
-        /* It floats over the rows as the page scrolls: the glass (components/ui.js), its text ink. */
-        .hv-bulk-n { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; margin-right: auto; font-variant-numeric: tabular-nums; }
+        /* ── The order and the search: the Sort control (a button and its sheet under 1024, a menu at
+           1024 and wider), the switches, the search field past eight listings, how many match, and
+           the line when none does; the bar's buttons and the checkboxes. Every control the 44px
+           height and the radius every dashboard button has (components/dashboard/DashShell.js
+           .ds-btn). Built outside the returned tree, so their classes are global (and unique to this
+           screen). ── */
+        :global(.hv-seg) { display: inline-flex; padding: 2px; border-radius: var(--btn-radius); border: 1px solid ${C.ruleDark}; background: ${C.card}; }
+        :global(.hv-seg button) { min-height: 38px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
+        :global(.hv-seg button[aria-pressed='true']) { background: ${C.ink}; color: ${C.paper}; font-weight: 700; }
+        :global(.hv-seg button:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
         :global(.ds-btn.hv-danger) { color: ${C.danger}; }
         :global(.hv-check) { width: 18px; height: 18px; margin: 0; accent-color: ${C.ink}; cursor: pointer; }
-        .dash-card-foot { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-2); }
-        .dash-card-foot :global(.rl-pills) { flex: 1 1 auto; min-width: 0; }
-        :global(.dash-card-menu) { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -8px -10px -10px 0; border-radius: 50%; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
-        :global(.dash-card-menu:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
-        .hv-quiet-phone { font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); margin: 0; grid-column: 1 / -1; }
         :global(.hv-menu) { display: grid; gap: var(--s-2); padding: 4px 20px 20px; }
         :global(.hv-menu-t) { font-size: 18px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.015em; margin: 0 0 var(--s-2); overflow-wrap: anywhere; text-wrap: balance; }
         :global(.hv-menu .ds-btn) { width: 100%; }
-        @media (min-width: 1024px) { .hv-head { align-items: center; } }
-
-        /* ── The order and the search: the Sort control (a button and its sheet under 1024, a menu at
-           1024 and wider), the search field past eight listings, how many match, and the line when
-           none does. Every control the 44px height and the radius every dashboard button has
-           (components/dashboard/DashShell.js .ds-btn). Built outside the returned tree, so their
-           classes are global (and unique to this screen). ── */
-        :global(.hv-tools) { display: grid; gap: var(--s-3); margin: 0 0 var(--s-4); }
-        :global(.hv-tools-row) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-4); min-width: 0; }
-        :global(.hv-find) { position: relative; display: block; min-width: 0; }
-        :global(.hv-find-icon) { position: absolute; left: var(--gap-card); top: 0; bottom: 0; display: flex; align-items: center; color: ${C.inkMute}; pointer-events: none; }
+        :global(.hv-find-row) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: 0 0 var(--s-3); }
+        :global(.hv-find) { position: relative; display: block; min-width: 0; flex: 1 1 320px; max-width: 420px; }
+        :global(.hv-find-icon) { position: absolute; left: var(--gap-card); top: 0; bottom: 0; display: flex; align-items: center; color: ${C.inkSoft}; pointer-events: none; }
         :global(.hv-find-input) { display: block; width: 100%; box-sizing: border-box; min-height: 44px; margin: 0; padding: 0 var(--gap-card) 0 calc(var(--gap-card) + 24px); border: 1px solid ${C.ruleDark}; border-radius: var(--btn-radius); background: ${C.card}; color: ${C.ink}; font-family: inherit; font-size: 16px; line-height: 1.2; -webkit-appearance: none; appearance: none; }
         :global(.hv-find-input::-webkit-search-decoration), :global(.hv-find-input::-webkit-search-cancel-button) { -webkit-appearance: none; appearance: none; }
         :global(.hv-find-input::placeholder) { color: ${C.inkMute}; opacity: 1; }
         :global(.hv-found) { margin: 0; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; line-height: var(--lh-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
-        :global(.hv-nomatch) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-1) var(--s-2); grid-column: 1 / -1; min-width: 0; }
-        :global(.hv-nomatch p) { margin: 0; font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); }
+        :global(.hv-nomatch) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-1) var(--s-2); min-width: 0; }
+        :global(.hv-nomatch p) { margin: 0; font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); }
         :global(.hv-nomatch .ds-btn) { margin-left: calc(-1 * var(--s-2)); }
-        :global(.hv-head-tools) { margin-left: auto; display: inline-flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
-        .hv-head :global(.hv-head-tools .hv-shelf) { margin-left: 0; }
-        :global(.hv-find-row) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: 0 0 var(--s-3); }
-        :global(.hv-find-row .hv-find) { flex: 0 1 420px; }
-        /* The menu: under its button, at the button's right edge, over the table. */
+        /* The menu: under its button, at the button's right edge, over the cards. */
         :global(.hv-sortmenu) { position: relative; display: inline-flex; }
-        :global(.hv-sortpop) { position: absolute; right: 0; top: calc(100% + var(--s-1)); z-index: 30; display: grid; gap: 2px; min-width: 248px; padding: var(--s-1); background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); box-shadow: 0 1px 2px rgba(15, 15, 16, 0.06), 0 12px 32px rgba(15, 15, 16, 0.12); }
+        :global(.hv-sortpop) { position: absolute; right: 0; top: calc(100% + var(--s-1)); z-index: 30; display: grid; gap: 2px; min-width: 248px; padding: var(--s-1); background: ${C.card}; border-radius: 20px; box-shadow: 0 0 0 1px ${C.rule}, 0 12px 32px rgba(15, 15, 16, 0.14); }
         :global(.hv-sort-list) { display: grid; gap: 2px; }
         :global(.hv-sort-opt) { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); width: 100%; min-height: 44px; margin: 0; padding: 0 var(--gap-card); border: none; border-radius: var(--btn-radius); background: transparent; color: ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 600; line-height: 1.2; text-align: left; cursor: pointer; white-space: nowrap; }
         :global(.hv-sort-opt[aria-checked='true']) { background: ${C.paperDeep}; font-weight: 700; }
         :global(.hv-sort-opt:focus-visible) { outline: none; box-shadow: inset 0 0 0 2px ${C.ink}; }
         @media (hover: hover) { :global(.hv-sort-opt:hover) { background: ${C.paper}; } :global(.hv-sort-opt[aria-checked='true']:hover) { background: ${C.paperDeep}; } }
         :global(.hv-menu .hv-sort-opt) { font-size: var(--t-body); }
-
         /* ── Phone and desktop: both are in the markup, the width picks one ── */
-        .hv { max-width: 1100px; margin: 0 auto; padding-left: clamp(16px, 4vw, 32px); padding-right: clamp(16px, 4vw, 32px); }
-        .hv-desk { display: none; }
-        .hv-section-phone { margin-top: var(--gap-section); }
+        @media (max-width: 1023.98px) {
+          .hv :global(.hv-only-desk) { display: none !important; }
+          .hv-tools { margin-left: 0; justify-content: flex-start; width: 100%; }
+        }
+
+        /* ── 1024 and wider: the main area's whole width, its sides the shell's padding; Needs you
+           under the cards, then beside them from 1280. ── */
         @media (min-width: 1024px) {
-          /* The main area's whole width, its sides the shell's padding (components/dashboard/DashShell.js). */
-          .hv { max-width: none; padding-left: var(--ds-pad); padding-right: var(--ds-pad); }
-          .hv-phone { display: none; }
-          .hv-desk { display: block; }
+          .hv { padding: var(--s-2) var(--ds-pad) var(--s-7); }
+          .hv :global(.hv-only-desk) { display: block; }
+          .hv :global(span.hv-only-desk), .hv :global(div.hv-seg.hv-only-desk) { display: inline-flex; }
+          .hv :global(.hv-only-phone) { display: none !important; }
+          .hv:not([data-view='shared']) .hv-part-shared { display: none; }
           .hv-cols { display: grid; grid-template-columns: minmax(0, 1fr); row-gap: var(--gap-section); }
           .hv-primary { min-width: 0; }
-          .hv-section-phone { margin-top: 0; }
-          /* The views: Listings, Pipeline, Shared with you (components/dashboard/DashShell.js). */
-          .hv:not([data-view='listings']) .hv-part-listings { display: none; }
-          .hv:not([data-view='pipeline']) .hv-part-pipeline { display: none; }
-          .hv:not([data-view='shared']) .hv-part-shared { display: none; }
-          /* The greeting, the header row's lead: built for the shell, so its class is global (and
-             unique to this screen). */
-          :global(.hv-greet) { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; letter-spacing: -0.015em; line-height: var(--lh-display); color: ${C.inkSoft}; margin: 0; white-space: nowrap; }
-          .hv-section { margin-top: var(--gap-section); }
-          .hv-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
-          .hv-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
-          .hv-filter { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-body-2); color: ${C.inkSoft}; }
-          .hv-quiet { font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); margin: 0; }
-          .hv-rented { margin-top: var(--gap-section); }
-          .hv-h3 { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; margin: 0; }
-          .hv-part-shared :global([data-shared-with-me]) { margin-top: 0; }
-          .hv-part-shared [data-shared-empty] .dash-h2 { margin-bottom: var(--s-2); }
-          .dash-brand { margin-top: var(--gap-section); }
+          .hv-cards { gap: var(--s-4); }
+          .hv-h2 { font-size: 24px; }
+          /* Stuck under the floating search bar, never behind it. */
+          .hv-bulk { top: calc(var(--s-4) * 2 + 48px + var(--s-2)); }
+          /* The start beside Needs you: the red New listing (the sidebar's is outlined while there is none). */
+          .hv :global(.hv-start-new) { background: ${C.red}; color: ${C.paper}; border-color: ${C.red}; }
+          .hv-start-h { font-size: 40px; line-height: 1.1; }
+          .hv-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); }
+          .hv-steps { margin-top: var(--s-6); }
+          .hv-steps li { flex-direction: column; gap: var(--s-2); padding: var(--s-5); border-radius: 24px; }
+          .hv-step-body { gap: var(--s-2); padding-top: 0; }
         }
-        /* Needs you at the main area's right edge from 1280: about 340px wide there, growing with the
-           window to 440px at 2560, the gap to it the main area's padding. Under 1280 it sits under
-           the listings. */
         @media (min-width: 1280px) {
-          .hv-cols { grid-template-columns: minmax(0, 1fr) clamp(340px, calc(240px + 7.8125vw), 440px); column-gap: calc(var(--ds-pad) - 8px); align-items: start; }
-          .hv-aside { position: sticky; top: var(--s-4); }
+          .hv-cols { grid-template-columns: minmax(0, 1fr) clamp(360px, calc(130px + 18vw), 420px); column-gap: var(--s-5); align-items: start; }
+          /* It stays in view under the floating search bar as the page scrolls. */
+          .hv-aside { position: sticky; top: calc(var(--s-4) * 2 + 48px); }
         }
-        /* 1280 to 1399, the listings column at its narrowest: the three steps of the start one under
+        /* 1280 to 1399, the cards' column at its narrowest: the three steps of the start one under
            another, so each title keeps its line. */
         @media (min-width: 1280px) and (max-width: 1399.98px) { .hv-steps { grid-template-columns: minmax(0, 1fr); } }
-        /* A large screen: the headings and the greeting a size up, the sections a little further apart. */
+        /* Two cards a row only where each keeps the room for the strip's names (about 700px). */
+        @media (min-width: 2200px) { .hv-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         @media (min-width: 1920px) {
-          :global(.hv-greet) { font-size: 26px; }
-          .dash-h2 { font-size: 20px; }
-          .hv-section, .hv-rented, .dash-brand { margin-top: var(--s-7); }
-          .hv-head { margin-bottom: var(--s-4); }
+          .hv-h2 { font-size: 26px; }
+          .hv-section { margin-top: var(--s-7); }
+          .hv-section:first-child { margin-top: 0; }
           .hv-count { font-size: var(--t-body); }
+          .hv-start-h { font-size: 48px; } .hv-start-line { font-size: 18px; } .hv-steps li { padding: var(--s-6); } .hv-step-t { font-size: 18px; } .hv-step-l { font-size: var(--t-body); }
         }
       `}</style>
     </>

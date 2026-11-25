@@ -86,16 +86,16 @@ async function signIn(browserType, launch, tag) {
     }
     await page.getByRole('button', { name: /Sign in/ }).tap();
     await page.waitForURL('**/demo/dashboard**', { timeout: 30000 });
-    await page.locator('.dash-grid').first().waitFor({ timeout: 20000 }); await atRest(page, { within: 600 });
+    await page.locator('[data-listing-cards]').first().waitFor({ timeout: 20000 }); await atRest(page, { within: 600 });
     assert.ok(calls.some((c) => /^POST token/.test(c)), `${tag}: the password was sent to the auth stub (${calls.join(', ')})`);
     const landed = await page.evaluate(() => {
       const iw = window.innerWidth; const right = (el) => (el ? Math.round(el.getBoundingClientRect().right) : null);
-      return { scale: window.visualViewport ? window.visualViewport.scale : 1, vw: window.visualViewport ? Math.round(window.visualViewport.width) : iw, sw: document.documentElement.scrollWidth, iw, avatar: right(document.querySelector('.rl-hdr-avatar')), cards: [...document.querySelectorAll('.dash-card')].map(right) };
+      return { scale: window.visualViewport ? window.visualViewport.scale : 1, vw: window.visualViewport ? Math.round(window.visualViewport.width) : iw, sw: document.documentElement.scrollWidth, iw, avatar: right(document.querySelector('.rl-hdr-bellwrap')), cards: [...document.querySelectorAll('[data-listing-card]')].map(right) };
     });
     assert.equal(landed.scale, 1, `${tag}: the dashboard lands at scale 1`);
     assert.equal(landed.vw, landed.iw, `${tag}: the visual viewport is the layout viewport`);
     assert.equal(landed.sw, landed.iw, `${tag}: the dashboard is exactly the viewport wide (${landed.sw} of ${landed.iw})`);
-    assert.ok(landed.avatar != null && landed.avatar <= landed.iw, `${tag}: the avatar sits inside the screen (right edge ${landed.avatar})`);
+    assert.ok(landed.avatar != null && landed.avatar <= landed.iw, `${tag}: the bell, the header's last control, sits inside the screen (right edge ${landed.avatar})`);
     assert.ok(landed.cards.length > 0 && landed.cards.every((r) => r <= landed.iw), `${tag}: every card sits inside the screen (${landed.cards.join(', ')})`);
     const wide = await page.evaluate(WIDER_THAN_VIEWPORT);
     assert.deepEqual(wide.out, [], `${tag}: nothing on the dashboard sticks out of the viewport`); assert.ok(wide.lifted <= wide.iw, `${tag}: not wider with the masks lifted`);

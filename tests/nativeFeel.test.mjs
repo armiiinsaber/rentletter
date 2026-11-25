@@ -78,8 +78,12 @@ test('every realtor link goes through the router, never a page reload', () => {
     if (/<a\s+href=\{adapter\.paths/.test(s)) offenders.push(`${p}: a plain link to a realtor screen`);
   }
   assert.deepEqual(offenders, []);
-  const h = src('components/dashboard/HomeView.js');
-  assert.match(h, /data-press="card"\s*\n\s*\{\.\.\.cardProps\(adapter\.paths\.listing\(l\.id\)\)\}/, 'the listing card taps through the router and prefetches on the touch');
+  // The listing card (components/dashboard/ListingCard.js, feat/dashboard-2026): the whole card taps
+  // through the router and prefetches on the touch; its address is the router link for the keyboard.
+  const card = src('components/dashboard/ListingCard.js');
+  assert.match(card, /const open = \(\) => go\(href\);/, 'the listing card goes through the router');
+  assert.match(card, /data-press="card"\s*\n\s*onClick=\{cardTap\(open\)\} onPointerDown=\{\(\) => prefetch\(href\)\}>/, 'the listing card taps through the router and prefetches on the touch');
+  assert.match(card, /<a \{\.\.\.linkProps\(href\)\} className="lc-link">/, 'its address: the router link');
   const r = src('components/nav/routes.js');
   assert.match(r, /onPointerDown: \(\) => prefetch\(href\)/); assert.match(r, /onTouchStart: \(\) => prefetch\(href\)/);
   assert.match(src('pages/_app.js'), /<RouteFrame><Component \{\.\.\.pageProps\} \/><\/RouteFrame>/);

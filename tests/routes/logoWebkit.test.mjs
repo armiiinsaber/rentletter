@@ -53,7 +53,7 @@ const warm = () => Promise.all(['/demo/dashboard', '/demo/dashboard?profile=1', 
 
 // The logo on screen: the header's on a phone, the sidebar's on a desktop.
 const LOGO = 'a.rl-mark:visible';
-const listingsShown = (page) => page.locator('[data-listings-view]:visible, .dash-ink:visible').first().waitFor({ timeout: 30000 });
+const listingsShown = (page) => page.locator('[data-listings-view]:visible, [data-status-board]:visible').first().waitFor({ timeout: 30000 });
 
 // Everything that would show the logo doing something, watched from inside the page: a route
 // change, a view transition, the page leaving (a reload), the frame's direction mark, the page's

@@ -5,7 +5,7 @@
 // five, each with the facts the Pipeline view shows on a closed row: the score, the date the hold
 // lasts until, applied or invited, and the listing it was scored for. Open Pipeline goes to the
 // full view, in place. The people come with the dashboard's signals; nothing is read here. With
-// nobody in it, it says so in the Pipeline view's own words.
+// nobody in it, it is one quiet line under the cards, not a box, with the way to the view.
 import { C } from '../theme';
 import { StatusPills, Icon } from '../ui';
 import { pipelineSoonest, pipelinePills, pipelinePlace, PIPELINE_SOON_LIMIT } from './homeData';
@@ -17,6 +17,20 @@ export default function PipelineSoon({ people = [], href, onOpen }) {
     if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault(); if (onOpen) onOpen();
   };
+  if (rows.length === 0) {
+    return (
+      <p className="ps-quiet" data-pipeline-soon="" data-pipeline-soon-empty="">
+        <span>Nobody in your Pipeline yet.</span>{' '}
+        <a href={href} onClick={open} className="ps-quiet-open" data-pipeline-open="">Open Pipeline</a>
+        <style jsx>{`
+          .ps-quiet { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s-2); font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); }
+          .ps-quiet-open { display: inline-flex; align-items: center; min-height: 44px; color: ${C.ink}; font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+          .ps-quiet-open:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.ink}; border-radius: 4px; }
+          @media (min-width: 1920px) { .ps-quiet { font-size: 15px; } }
+        `}</style>
+      </p>
+    );
+  }
   return (
     <section className="ps" aria-labelledby="ps-title" data-pipeline-soon="">
       <div className="ps-head">
@@ -27,9 +41,7 @@ export default function PipelineSoon({ people = [], href, onOpen }) {
         </a>
       </div>
       <div className="ps-card">
-        {rows.length === 0 ? (
-          <p className="ps-empty" data-pipeline-soon-empty="">Nobody yet. Applicants who lose out on a rented unit appear here once asked.</p>
-        ) : (
+        {(
           <ul className="ps-list">
             {shown.map((p) => (
               <li key={p.id} className="ps-item" data-pipeline-soon-item={p.id}>
@@ -47,7 +59,7 @@ export default function PipelineSoon({ people = [], href, onOpen }) {
         .ps-title { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; }
         .ps-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
         .ps-open { margin-left: auto; padding-right: var(--s-2); }
-        .ps-card { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); overflow: hidden; }
+        .ps-card { background: ${C.card}; border-radius: 24px; overflow: hidden; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.05), 0 10px 30px rgba(15, 15, 16, 0.06); }
         .ps-list { list-style: none; margin: 0; padding: 0; }
         /* A row: the name, the pills, the listing. They share one line while it holds them and wrap
            under each other when it does not; the name keeps a column of its own while it fits. */

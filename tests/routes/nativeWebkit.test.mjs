@@ -78,11 +78,11 @@ async function navigation(browser, tag) {
     const { ctx, page, errors } = await phone(browser, { reduced });
     await open(page, '/demo/dashboard');
     await page.evaluate(() => { window.__same = 'yes'; });
-    await page.locator('.dash-card[role=link]').first().click();
+    await page.locator('[data-listing-card]').first().click();
     await page.locator('section.rl-card h1').first().waitFor({ timeout: 10000 });
     assert.match(page.url(), /\?listing=/, `${tag}: on the listing`);
     await page.locator('a', { hasText: 'All listings' }).click();
-    await page.locator('.dash-card[role=link]').first().waitFor({ timeout: 10000 });
+    await page.locator('[data-listing-card]').first().waitFor({ timeout: 10000 });
     await page.waitForTimeout(500);
     assert.equal(await page.evaluate(() => window.__same), 'yes', `${tag}: one document, no reload`);
     const vt = await page.evaluate(() => window.__vt);
@@ -115,7 +115,7 @@ const PROBE = async (page, selector, steps) => page.evaluate(async ({ selector, 
 async function press(browser, tag) {
   const { ctx, page } = await phone(browser);
   await open(page, '/demo/dashboard');
-  const btn = '.dash-new';
+  const btn = '[data-tab-new]';
   // Held: nothing before the rest time, the press after it, gone after the let go.
   let r = await PROBE(page, btn, [['down'], ['wait', 30], ['read'], ['wait', 250], ['read'], ['up'], ['wait', 300], ['read']]);
   assert.deepEqual(r.map((x) => x.pressing), [false, true, false], `${tag}: held, after the rest time`);
@@ -131,10 +131,10 @@ async function press(browser, tag) {
   r = await PROBE(page, btn, [['down'], ['wait', 120], ['read'], ['move', 10], ['wait', 20], ['read'], ['up']]);
   assert.deepEqual(r.map((x) => x.pressing), [true, false], `${tag}: a move after the press lets go`);
   // The card: the whole listing card answers.
-  r = await PROBE(page, '.dash-card[role=link]', [['down'], ['wait', 120], ['read'], ['up'], ['wait', 260]]);
+  r = await PROBE(page, '[data-listing-card]', [['down'], ['wait', 120], ['read'], ['up'], ['wait', 260]]);
   assert.equal(r[0].pressing, true, `${tag}: a card`);
   // Disabled: Create listing while the form is empty.
-  await page.locator('.dash-new').click(); await page.locator('.rl-sh-panel').waitFor();
+  await page.locator('[data-tab-new]').click(); await page.locator('.rl-sh-panel').waitFor();
   await page.waitForTimeout(400);
   r = await PROBE(page, '.rl-sh-panel button[disabled]', [['down'], ['wait', 150], ['read'], ['up']]);
   assert.equal(r[0].pressing, false, `${tag}: a disabled control never reacts`);
@@ -202,7 +202,7 @@ async function sheets(browser, tag) {
   await open(page, '/demo/dashboard');
   await page.evaluate(() => window.scrollTo(0, 420)); await page.waitForTimeout(200);
   const y0 = await page.evaluate(() => window.scrollY);
-  await page.evaluate(() => document.querySelector('.dash-new').click()); // opens without scrolling the page
+  await page.evaluate(() => document.querySelector('[data-tab-new]').click()); // opens without scrolling the page
   const panel = page.locator('.rl-sh-panel.rl-modal'); await panel.waitFor(); await page.waitForTimeout(500);
   const shape = await page.evaluate(() => { const p = document.querySelector('.rl-sh-panel'); const r = p.getBoundingClientRect(); const sc = p.querySelector('.rl-sh-scroll'); return { bottom: Math.round(r.bottom), handle: !!p.querySelector('.rl-sh-handle'), overscroll: getComputedStyle(sc).overscrollBehaviorY, body: document.body.style.position, top: document.body.style.top, locked: document.documentElement.classList.contains('rl-sheet-open') }; });
   assert.deepEqual(shape, { bottom: 844, handle: true, overscroll: 'none', body: 'fixed', top: `-${y0}px`, locked: true }, `${tag}: a bottom sheet over a pinned page`);
@@ -221,24 +221,24 @@ async function sheets(browser, tag) {
   // Typed input is never lost: the dimmed page closes the sheet with nothing asked and the input is
   // kept as a draft; opened again it is back, a long drag closes it the same way, and Start over
   // clears it.
-  await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
+  await page.evaluate(() => document.querySelector('[data-tab-new]').click()); await panel.waitFor(); await page.waitForTimeout(450);
   await panel.locator('input').first().fill('88 Harbour St');
   await page.mouse.click(195, 10); await page.waitForTimeout(450);
   assert.equal(await page.locator('[role=alertdialog]').count(), 0, `${tag}: nothing asked, nothing to lose`);
   assert.equal(await panel.count(), 0, `${tag}: the dimmed page closes it`);
-  await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
+  await page.evaluate(() => document.querySelector('[data-tab-new]').click()); await panel.waitFor(); await page.waitForTimeout(450);
   assert.equal(await panel.locator('input').first().inputValue(), '88 Harbour St', `${tag}: the draft is back`);
   assert.equal(await panel.locator('[data-draft-restored]').count(), 1, `${tag}: and it says so`);
   await DRAG(page, 420); await page.waitForTimeout(600);
   assert.equal(await panel.count(), 0, `${tag}: a long drag closes it too`);
-  await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
+  await page.evaluate(() => document.querySelector('[data-tab-new]').click()); await panel.waitFor(); await page.waitForTimeout(450);
   assert.equal(await panel.locator('input').first().inputValue(), '88 Harbour St', `${tag}: kept again`);
   await panel.getByRole('button', { name: 'Start over' }).click(); await page.waitForTimeout(300);
   assert.equal(await panel.locator('input').first().inputValue(), '', `${tag}: Start over clears it`);
   await page.mouse.click(195, 10); await page.waitForTimeout(500);
   assert.equal(await panel.count(), 0, `${tag}: and a clean sheet closes`);
   // A long drag dismisses a clean sheet.
-  await page.evaluate(() => document.querySelector('.dash-new').click()); await panel.waitFor(); await page.waitForTimeout(450);
+  await page.evaluate(() => document.querySelector('[data-tab-new]').click()); await panel.waitFor(); await page.waitForTimeout(450);
   await DRAG(page, 420); await page.waitForTimeout(600);
   assert.equal(await panel.count(), 0, `${tag}: a long drag dismisses it`);
   // The Next panel is the same sheet.
@@ -270,7 +270,7 @@ async function realPages(browser, tag) {
   let dataProps = null; page.on('response', async (r) => { if (/_next\/data\/.*\/listing\/L1\.json/.test(r.url())) { try { dataProps = (await r.json()).pageProps; } catch (e) { /* not json */ } } });
   await open(page, '/dashboard');
   await page.evaluate(() => { window.__same = 'yes'; });
-  const card = page.locator('.dash-card[role=link]', { hasText: '210 Carlaw' }).first();
+  const card = page.locator('[data-listing-card]', { hasText: '210 Carlaw' }).first();
   const box = await card.boundingBox();
   const t0 = Date.now();
   await page.touchscreen.tap(box.x + 30, box.y + 20);

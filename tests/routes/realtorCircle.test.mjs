@@ -418,7 +418,8 @@ test('before db/021 has run the app works: the screen says not available, and no
 
 test('the screens: Circle beside Listings, the card moved with a link left on the profile, and the words', () => {
   const nav = code('components/dashboard/MainNav.js');
-  assert.match(nav, /\{item\('listings', adapter\.paths\.home, 'Listings'\)\}\s+\{item\('circle', CIRCLE_PATH, 'Circle',/);
+  // The phone's tab bar (feat/dashboard-2026): Listings, Pipeline, New listing, Circle, Profile.
+  assert.match(nav, /\['listings', home, 'Listings', 'home'\],\s*\['pipeline', viewHref\(home, 'pipeline'\), 'Pipeline', 'list'\],\s*\['new'\],\s*\['circle', adapter\.paths\.circle \|\| CIRCLE_PATH, 'Circle', 'users'\],\s*\['profile', adapter\.paths\.profile, 'Profile', 'user'\],/);
   assert.match(nav, /data-circle-badge=""/);
   assert.match(code('components/dashboard/HomeView.js'), /nav=\{locked \? null : 'listings'\}/);
   const view = code('components/dashboard/CircleView.js');

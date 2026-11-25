@@ -68,7 +68,7 @@ export default function ProfileView({ initialProfile }) {
       </Head>
       <GlobalStyle />
       <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
-        <DashShell profile={profile} current="profile">
+        <DashShell profile={profile} nav="profile" current="profile">
         {/* One column under 1024px; from there the main area's whole width (DashShell ds-fill). */}
         <div className="pv ds-fill">
           {/* The same row the listing page carries at its top; from 1024px the sidebar does its job. */}

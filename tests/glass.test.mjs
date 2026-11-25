@@ -3,7 +3,9 @@
 //     nowhere else on the realtor, tenant and public pages.
 //   · Only on what floats: the tenant's top bar, the phone's strength bar and chips, the bulk bar,
 //     the shared sticky header, the area behind a sheet and a sheet's own header, the notification
-//     panel's header, the toasts. Never on a card, a button, a field or a table.
+//     panel's header, the toasts; in the realtor shell the sidebar, the phone's tab bar, the frames
+//     of the search and the bell, Needs you and the status board's tiles. Never
+//     on a card, a button, a field or a table.
 //   · Its strength is one number, --glass-fill, defined once and read by every paper surface; the
 //     ink tone (the toasts) reads its own, --glass-fill-ink.
 //   · Text on it keeps 4.5 to 1 over black and over white: ink at the strength; inkSoft at the
@@ -75,7 +77,9 @@ test('defined once, in components/ui.js, and only on what floats', () => {
   assert.ok(uses.length >= 10, `the surfaces that wear it (${uses.length})`);
   for (const u of uses) {
     assert.doesNotMatch(u.line, /<(button|input|select|textarea|table|tr|td)\b|rl-card|ds-btn|mp-btn/, `${u.at}: never on a card, a button, a field or a table`);
-    assert.match(u.line, /rl-tbar|tp-top|hv-bulk|rl-header|rl-sh-scrim|rl-sh-grab|al-head|mp-toast|lv-toast|position: 'fixed'|setToast/, `${u.at}: a floating surface`);
+    // The realtor shell's own (feat/dashboard-2026): the floating sidebar, the phone's tab bar, the
+    // frames of the search and the bell, Needs you, the status board's tiles.
+    assert.match(u.line, /rl-tbar|tp-top|hv-bulk|rl-header|rl-sh-scrim|rl-sh-grab|al-head|mp-toast|lv-toast|position: 'fixed'|setToast|ds-side|"mn rl-glass"|rl-hdr-glass|"ny rl-glass"|sb-tile/, `${u.at}: a floating surface`);
   }
 });
 

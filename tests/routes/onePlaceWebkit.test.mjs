@@ -32,9 +32,10 @@
 //   2g. The frames while a long page scrolls under the glass (the tenant profile at 390 and 1440,
 //       the homepage at 390 and 1440), against the same scroll with the glass taken off: at most
 //       4ms more a frame at the median, 8ms at the 95th percentile.
-//   5.  The canvas: the tenant profile, the dashboard and the homepage at 390 and 1440, pulled up
-//       past their end as the bounce and a phone's bars do: the bottom row of the window is the
-//       page's own background, never a band of another tone.
+//   5.  The canvas: the tenant profile, the dashboard and the homepage at 390 and 1440, and the
+//       dashboard at 1920 and 2560, pulled up past their end as the bounce and a phone's bars do:
+//       the bottom row of the window is the page's own background, never a band of another tone;
+//       and on the dashboard from 1440 the page's own last row meets it with no step.
 // Each database call waits 60ms on the fake stack, so a screen not seen recently shows its Loader
 // first (DOOR.loaderDelayMs, lib/motion.js), which is drawn inside the shell
 // (components/nav/RouteLoader.js). The pages are served from the run's one production build
@@ -90,7 +91,8 @@ const WATCH = () => {
     w.frames++;
     const side = vis('[data-shell-side]');
     if (!side) w.noSide++; else { const b = side.getBoundingClientRect(); w.side.add([b.left, b.top, b.width, b.height].map(Math.round).join(',')); }
-    const av = vis('.rl-hdr-avatar');
+    // The bell, the header's control at the top right (the avatar is in the sidebar since feat/dashboard-2026).
+    const av = vis('.rl-hdr-bellwrap');
     if (av) { const b = av.getBoundingClientRect(); w.avatar.add([b.right, b.top + window.scrollY].map(Math.round).join(',')); }
     const cs = getComputedStyle(root);
     if (root.getAnimations().length || cs.transform !== 'none' || (cs.scale && cs.scale !== 'none' && cs.scale !== '1')) w.moved++;
@@ -105,7 +107,7 @@ const marked = (page, sel) => page.evaluate((s) => [...document.querySelectorAll
 const at = (page) => page.evaluate(() => window.location.pathname + window.location.search);
 const landed = async (page, url, sel) => { await page.waitForFunction((u) => window.location.pathname + window.location.search === u, url, { timeout: 15000 }); await page.locator(sel).first().waitFor({ timeout: 30000 }); await page.waitForFunction(() => !document.querySelector('[data-route-loading]'), null, { timeout: 30000 }); await page.waitForTimeout(250); };
 // Each screen's own content, so a screen is known to be on view.
-const SHOWS = { '/dashboard': '[data-listings-table]', '/dashboard?view=pipeline': '#people', '/dashboard?view=shared': '.hv[data-view="shared"] [data-shared-with-me], .hv[data-view="shared"] [data-shared-empty]', '/circle': '[data-circle-list], [data-circle-empty]', '/profile': '[data-invite-realtor]', '/listing/L1': 'section.rl-card h1' };
+const SHOWS = { '/dashboard': '[data-listing-cards]', '/dashboard?view=pipeline': '#people', '/dashboard?view=shared': '.hv[data-view="shared"] [data-shared-with-me], .hv[data-view="shared"] [data-shared-empty]', '/circle': '[data-circle-list], [data-circle-empty]', '/profile': '[data-invite-realtor]', '/listing/L1': 'section.rl-card h1' };
 // Clicks a place in the sidebar and reads which place is marked in the first frame drawn after the
 // click (an animation frame callback runs before that frame is painted).
 const clickPlace = (page, key) => page.evaluate(async (k) => {
@@ -135,7 +137,7 @@ const behind = (page) => page.evaluate(() => {
   const vis = (s) => [...document.querySelectorAll(s)].find((e) => e.getClientRects().length);
   const b = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return [r.left, r.top, r.width].map(Math.round).join(','); };
   const root = getComputedStyle(document.getElementById('__next'));
-  return { side: b(vis('[data-shell-side]')), head: b(vis('#__next main h1, #__next .ds-main h1, #__next .ds-main h2')), avatar: b(vis('.rl-hdr-avatar')), scale: root.scale || 'none', transform: root.transform };
+  return { side: b(vis('[data-shell-side]')), head: b(vis('#__next main h1, #__next .ds-main h1, #__next .ds-main h2')), avatar: b(vis('.rl-hdr-bellwrap')), scale: root.scale || 'none', transform: root.transform };
 });
 
 async function desk(browser, tag) {
@@ -157,7 +159,7 @@ async function desk(browser, tag) {
       assert.deepEqual(await marked(page, '[data-shell-place]'), [key], `${tag}: ${key} marked once it is on view`);
     }
     // Into a listing and back out with the sidebar's Listings, and the logo from the listing.
-    await page.locator('[data-listings-table] [data-listing-row="L1"] .lt-link').first().click();
+    await page.locator('[data-listing-card="L1"] .lc-link').first().click();
     await landed(page, '/listing/L1', SHOWS['/listing/L1']);
     assert.deepEqual(await marked(page, '[data-shell-place]'), ['listings'], `${tag}: a listing marks Listings`);
     await page.locator('[data-shell-side] a.rl-mark').click();
@@ -219,7 +221,7 @@ async function phone(browser, tag) {
   }, key);
   try {
     await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });
-    await page.locator('.dash-card[role=link]').first().waitFor({ timeout: 30000 }); await page.waitForTimeout(300);
+    await page.locator('[data-listing-card]').first().waitFor({ timeout: 30000 }); await page.waitForTimeout(300);
     await page.evaluate(() => {
       window.__vt = [];
       const real = typeof document.startViewTransition === 'function' ? document.startViewTransition.bind(document) : null;
@@ -233,22 +235,22 @@ async function phone(browser, tag) {
     // d: Circle again does nothing.
     await nothing(page, `${tag} d: Circle on Circle`, () => page.locator('[data-main-nav] [data-nav="circle"]').click(), '/circle');
     assert.deepEqual(await tab('listings'), ['listings'], `${tag} b: Listings marked the moment it is tapped`);
-    await landed(page, '/dashboard', '.dash-card[role=link]');
+    await landed(page, '/dashboard', '[data-listing-card]');
     assert.deepEqual(await page.evaluate(() => [window.__vt, window.__slides]), [[], 0], `${tag} f: no transition between Listings and Circle`);
     // e: back and forward between them.
     await page.goBack(); await landed(page, '/circle', SHOWS['/circle']);
-    await page.goForward(); await landed(page, '/dashboard', '.dash-card[role=link]');
+    await page.goForward(); await landed(page, '/dashboard', '[data-listing-card]');
     assert.deepEqual(await page.evaluate(() => [window.__vt, window.__slides]), [[], 0], `${tag} f: none on back and forward either`);
     // f: into a listing and back out still pushes and goes back.
-    await page.locator('.dash-card[role=link]').first().click();
+    await page.locator('[data-listing-card]').first().click();
     await page.locator('section.rl-card h1').first().waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
     await page.locator('a', { hasText: 'All listings' }).first().click();
-    await landed(page, '/dashboard', '.dash-card[role=link]'); await page.waitForTimeout(300);
+    await landed(page, '/dashboard', '[data-listing-card]'); await page.waitForTimeout(300);
     const vt = await page.evaluate(() => window.__vt);
     if (await page.evaluate(() => typeof document.startViewTransition === 'function')) assert.deepEqual(vt, ['push', 'back'], `${tag} f: into a listing and back out`);
     else assert.ok(await page.evaluate(() => window.__slides) > 0, `${tag} f: the push without view transitions`);
     // c: New listing rises over the dashboard; the address stays.
-    await page.locator('.dash-new').click(); await page.locator('.rl-sh-panel').waitFor({ timeout: 15000 });
+    await page.locator('[data-tab-new]').click(); await page.locator('.rl-sh-panel').waitFor({ timeout: 15000 });
     assert.equal(await at(page), '/dashboard', `${tag} c: the address stays`);
     noSupabaseLeft(ctx, `${tag} 390`);
     assert.deepEqual(errors, [], `${tag}: no page error`);
@@ -321,19 +323,31 @@ async function frames(page, tag, label) {
 // what shows under it is the canvas, and every pixel of the window's bottom row must be the page's
 // own background. The tenant pages' deep paper used to end there over a paper canvas, a light band.
 const BG = { paper: [250, 248, 243], deep: [242, 238, 227] };
-async function canvasAtEnd(page, tag, label, want) {
+// seam: the page's own last row, just above where the window runs past it, is the canvas's tone
+// too, across the whole width, so nothing of the page's (a full height sidebar's deep paper) stops
+// there as a band.
+async function canvasAtEnd(page, tag, label, want, { seam = false } = {}) {
   const vp = page.viewportSize();
-  await page.evaluate(() => { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }); document.body.style.transform = `translateY(-${Math.round(window.innerHeight / 4)}px)`; });
+  const pull = Math.round(vp.height / 4);
+  await page.evaluate((px) => { window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }); document.body.style.transform = `translateY(-${px}px)`; }, pull);
   await page.waitForTimeout(200);
-  let shot;
-  try { shot = await page.screenshot({ clip: { x: 0, y: vp.height - 1, width: vp.width, height: 1 } }); } finally { await page.evaluate(() => { document.body.style.transform = ''; }); }
-  const row = await page.evaluate(async (b64) => {
+  const shots = [];
+  try {
+    shots.push(await page.screenshot({ clip: { x: 0, y: vp.height - 1, width: vp.width, height: 1 } }));
+    if (seam) shots.push(await page.screenshot({ clip: { x: 0, y: vp.height - pull - 1, width: vp.width, height: 1 } }));
+  } finally { await page.evaluate(() => { document.body.style.transform = ''; }); }
+  const rowOf = (shot) => page.evaluate(async (b64) => {
     const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
     const c = document.createElement('canvas'); c.width = img.width; c.height = 1; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
     const d = g.getImageData(0, 0, img.width, 1).data; const px = []; for (let i = 0; i < d.length; i += 4) px.push([d[i], d[i + 1], d[i + 2]]); return px;
   }, shot.toString('base64'));
+  const row = await rowOf(shots[0]);
   const off = row.filter((p) => p.some((v, i) => Math.abs(v - want[i]) > 1));
   assert.ok(row.length >= vp.width && off.length === 0, `${tag} 5: ${label} at ${vp.width}, the bottom of the window is the page's background ${JSON.stringify(want)} (${off.length} of ${row.length} pixels differ, the first ${JSON.stringify(off[0])})`);
+  if (!seam) return;
+  const last = await rowOf(shots[1]);
+  const step = last.map((p, x) => [x, p]).filter(([, p]) => p.some((v, i) => Math.abs(v - want[i]) > 2));
+  assert.ok(last.length >= vp.width && step.length === 0, `${tag} 5: ${label} at ${vp.width}, the page's own last row meets the canvas with no step (${step.length} of ${last.length} pixels differ, the first at x ${step[0] && step[0][0]}: ${JSON.stringify(step[0] && step[0][1])})`);
 }
 async function tenantIn(ctx, page, who, query = 'docs=1') {
   const { token } = await fetch(`${BASE}/__fake/tenant?who=${who}&${query}`).then((r) => r.json());
@@ -390,7 +404,7 @@ async function glassPhone(browser, tag) {
     await canvasAtEnd(page, tag, 'the homepage', BG.paper);
     await frames(page, tag, 'homepage 390');
     // The dashboard at 390: the canvas.
-    await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' }); await page.locator('.dash-card').first().waitFor({ timeout: 30000 });
+    await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' }); await page.locator('[data-listing-card]').first().waitFor({ timeout: 30000 });
     await canvasAtEnd(page, tag, 'the dashboard', BG.paper);
     noSupabaseLeft(ctx, `${tag} glass 390`);
   } finally { await ctx.close(); }
@@ -440,14 +454,24 @@ async function glassDesk(browser, tag) {
     // The bulk bar: glass, stuck over the rows as the page scrolls.
     await fetch(`${BASE}/__fake/state?archive=1`);
     try {
-      await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' }); await page.locator('[data-listings-table]').first().waitFor({ timeout: 30000 });
-      await page.locator('[data-row-check="L1"]').check(); await page.locator('[data-row-check="L2"]').check();
+      // Select on the cards (feat/dashboard-2026): the checkboxes, then the bar.
+      await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' }); await page.locator('[data-listing-cards]').first().waitFor({ timeout: 30000 });
+      await page.locator('[data-select-mode]:visible').click();
+      await page.locator('[data-card-check="L1"]').check(); await page.locator('[data-card-check="L2"]').check();
       await page.locator('[data-bulk-bar]').waitFor({ timeout: 15000 });
       const bulk = await page.evaluate(SURFACE, '[data-bulk-bar]');
       assert.ok(bulk.blur, `${tag} 2b: the bulk bar is glass (${JSON.stringify(bulk)})`);
       await readable(page, `${tag} 2d bulk bar`);
-      await canvasAtEnd(page, tag, 'the dashboard', BG.paper);
+      await canvasAtEnd(page, tag, 'the dashboard', BG.paper, { seam: true });
     } finally { await fetch(`${BASE}/__fake/state?archive=0`); }
+    // The dashboard in a large window (item 8 of feat/dashboard-2026): where the window runs past the
+    // page, the canvas, and the page's own last row meeting it with no step. Before, the sidebar
+    // painted deep paper from the window's left edge, full height, and a paper band showed under it.
+    for (const [width, height] of [[1920, 1080], [2560, 1440]]) {
+      await page.setViewportSize({ width, height }); await page.goto(`${BASE}/dashboard`, { waitUntil: 'networkidle' });
+      await page.locator('[data-listing-cards]').first().waitFor({ timeout: 30000 }); await page.waitForTimeout(300);
+      await canvasAtEnd(page, tag, 'the dashboard', BG.paper, { seam: true });
+    }
     noSupabaseLeft(ctx, `${tag} glass 1440`);
   } finally { await ctx.close(); }
 }

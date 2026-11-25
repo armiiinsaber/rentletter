@@ -75,7 +75,7 @@ const STATE = () => ({
   path: location.pathname,
   routeLoading: document.querySelector('[data-route-loading]')?.getAttribute('data-route-loading') || null,
   homeLoading: !!document.querySelector('[data-screen-loading="Loading your workspace"]'),
-  cards: document.querySelectorAll('.dash-card-int').length,
+  cards: document.querySelectorAll('[data-listing-card]').length,
   failed: !!document.querySelector('[data-load-failed]'),
   listingLoading: !!document.querySelector('[data-screen-loading="Loading the listing"]'),
   applicants: document.querySelectorAll('[id^="applicant-"]').length,
@@ -102,7 +102,7 @@ async function backAtAnySpeed(browser, tag) {
         let start = await waitFor(page, dashboardReal, 4000);
         if (!start.ok) { await page.goto('/dashboard').catch(() => {}); await atRest(page, { afterIdle: 0 }); start = await waitFor(page, dashboardReal, 8000); }
         if (!start.ok) { failures.push(`no dashboard to start round ${rounds} from: ${JSON.stringify(start.s)}`); continue; }
-        const card = await page.locator('.dash-card-int').first().boundingBox({ timeout: 5000 }).catch(() => null);
+        const card = await page.locator('[data-listing-card]').first().boundingBox({ timeout: 5000 }).catch(() => null);
         if (!card) { failures.push(`no listing card in round ${rounds}`); continue; }
         await tapBox(page, card);
         await page.waitForTimeout(ms);
@@ -164,7 +164,7 @@ async function neverPermanent(browser, tag) {
   // A listing's applicants after a tap inside the app.
   await failTwice(browser, tag, {
     name: 'applicants', re: /\/api\/listings\/applicants\?listingId=L2/, from: '/dashboard',
-    go: async (page) => tapBox(page, await page.locator('.dash-card-int').filter({ hasText: '88 Harbour' }).first().boundingBox()),
+    go: async (page) => tapBox(page, await page.locator('[data-listing-card]').filter({ hasText: '88 Harbour' }).first().boundingBox()),
     real: applicantsReal,
   });
 }
@@ -195,9 +195,9 @@ async function takeOver(browser, tag) {
     await r.fulfill({ response: resp, body }).catch(() => {});
   });
   // Every card taken off the page, counted.
-  await ctx.addInitScript(() => { window.__gone = 0; new MutationObserver((ms) => { for (const m of ms) for (const n of m.removedNodes) if (n.nodeType === 1 && (n.matches?.('.dash-card-int') || n.querySelector?.('.dash-card-int'))) window.__gone++; }).observe(document, { childList: true, subtree: true }); });
+  await ctx.addInitScript(() => { window.__gone = 0; new MutationObserver((ms) => { for (const m of ms) for (const n of m.removedNodes) if (n.nodeType === 1 && (n.matches?.('[data-listing-card]') || n.querySelector?.('[data-listing-card]'))) window.__gone++; }).observe(document, { childList: true, subtree: true }); });
   const landed = []; page.on('response', (r) => { if (/\/_next\/data\/[^/]+\/dashboard\.json/.test(r.url())) landed.push(Date.now()); });
-  const card = () => page.locator('.dash-card-int').first();
+  const card = () => page.locator('[data-listing-card]').first();
   const tapOn = async (loc) => tapBox(page, await loc.boundingBox({ timeout: 5000 }));
   const gone = () => page.evaluate(() => window.__gone);
   await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
@@ -220,7 +220,7 @@ async function takeOver(browser, tag) {
   // a full load, so the read on the return is a new one (a touch's read serves 20 seconds).
   await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
   assert.ok((await waitFor(page, dashboardReal, 5000)).ok);
-  const status = () => card().locator('[aria-label="Listing status"]').innerText().catch(() => '');
+  const status = () => card().locator('[data-card-status]').innerText().catch(() => '');
   const before = await status();
   const listingData = page.waitForResponse(/\/_next\/data\/[^/]+\/listing\//);
   await tapOn(card()); await listingData; assert.ok((await waitFor(page, listingReal, 5000)).ok);
@@ -229,7 +229,7 @@ async function takeOver(browser, tag) {
   await page.waitForTimeout(150);
   assert.equal(await status(), before, `${tag}: the seen dashboard at once, as it was`);
   const was = await gone();
-  await page.waitForFunction(() => /no applicants/.test(document.querySelector('#__next .dash-card-int [aria-label="Listing status"]')?.innerText || ''), null, { timeout: 5000 });
+  await page.waitForFunction(() => /No applicants yet/.test(document.querySelector('#__next [data-listing-card] [data-card-status]')?.innerText || ''), null, { timeout: 5000 });
   assert.equal(await gone() - was, 0, `${tag}: the dashboard took the server's answers without drawing a card again`);
   // A listing takes the server's applicants: seen from a full load (no read started yet), then a tap.
   change = false;
@@ -237,7 +237,7 @@ async function takeOver(browser, tag) {
   assert.ok((await waitFor(page, listingReal, 5000)).ok);
   await tapOn(page.getByText('All listings', { exact: true }).first()); assert.ok((await waitFor(page, dashboardReal, 8000)).ok);
   change = true;
-  await tapOn(page.locator('.dash-card-int').filter({ hasText: '88 Harbour' }).first());
+  await tapOn(page.locator('[data-listing-card]').filter({ hasText: '88 Harbour' }).first());
   await page.waitForTimeout(150);
   assert.ok(await page.locator('#__next [id^="applicant-"]').count() > 0, `${tag}: the seen listing at once, with its applicants`);
   await page.evaluate(() => { document.querySelector('#__next h1').__seen = true; });
@@ -259,7 +259,7 @@ async function skippedTransitions(browser, tag) {
   if (!(await page.evaluate(() => typeof document.startViewTransition === 'function'))) { await ctx.close(); return; }
   await page.evaluate(() => { window.__ended = 0; const start = document.startViewTransition.bind(document); document.startViewTransition = (cb) => { const vt = start(cb); vt.skipTransition(); window.__ended++; return vt; }; });
   for (let i = 0; i < 3; i++) {
-    await tapBox(page, await page.locator('.dash-card-int').first().boundingBox({ timeout: 5000 }));
+    await tapBox(page, await page.locator('[data-listing-card]').first().boundingBox({ timeout: 5000 }));
     assert.ok((await waitFor(page, listingReal, 5000)).ok, `${tag}: the listing, its transition ended at once`);
     await tapBox(page, await page.getByText('All listings', { exact: true }).first().boundingBox({ timeout: 5000 }));
     assert.ok((await waitFor(page, dashboardReal, 5000)).ok, `${tag}: the dashboard, its transition ended at once`);
@@ -269,7 +269,7 @@ async function skippedTransitions(browser, tag) {
   await atRest(page, { within: 1500 });
   for (let i = 0; i < 5; i++) {
     await page.goto('/dashboard'); await atRest(page, { afterIdle: 0 });
-    await tapBox(page, await page.locator('.dash-card-int').first().boundingBox({ timeout: 5000 }));
+    await tapBox(page, await page.locator('[data-listing-card]').first().boundingBox({ timeout: 5000 }));
     await page.waitForTimeout(20);
     await page.touchscreen.tap(195, 800);
     await atRest(page, { within: 1500 }); // the push and its ended transition played out, any error they raise raised

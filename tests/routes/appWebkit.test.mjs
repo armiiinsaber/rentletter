@@ -117,7 +117,7 @@ async function standaloneWays(browser, tag) {
     const mark = page.locator('a.rl-mark').first();
     assert.equal(await mark.getAttribute('href'), DEMO, `${tag}: the header logo goes home`);
     assert.ok((await mark.boundingBox()).height >= 44, `${tag}: the header logo is a 44px target`);
-    await way('dashboard: a listing card, forward', async () => { await tap(page, page.locator('[role=link][aria-label*="Carlaw"]')); assert.match(path(page), /listing=demo-carlaw/); });
+    await way('dashboard: a listing card, forward', async () => { await tap(page, page.locator('[data-listing-card] .lc-link', { hasText: 'Carlaw' })); assert.match(path(page), /listing=demo-carlaw/); });
     await way('listing: All listings, back', async () => { await tap(page, page.getByRole('link', { name: /All listings/ })); assert.equal(path(page), DEMO); });
     await open(page, LISTING);
     await way('listing: the header logo, home', async () => { await tap(page, page.locator('a.rl-mark:visible')); assert.equal(path(page), DEMO); });
@@ -138,7 +138,8 @@ async function standaloneWays(browser, tag) {
     await open(page, DEMO);
     await way('new listing: Cancel', async () => { await tap(page, page.getByRole('button', { name: /New listing|Add your first listing/ })); await tap(page, page.getByRole('button', { name: /^Cancel$/ })); assert.equal(await page.getByText('New listing', { exact: true }).filter({ visible: true }).count() <= 1, true); });
     await way('the bell panel: Close', async () => { await tap(page, page.getByRole('button', { name: /^Next,/ })); await tap(page, page.locator('[role=dialog]').getByRole('button', { name: 'Close' })); assert.equal(await page.locator('[role=dialog]').count(), 0); });
-    await way('profile: Dashboard, back', async () => { await tap(page, page.getByRole('link', { name: 'Your profile' })); assert.match(path(page), /profile=1/); await tap(page, page.getByRole('link', { name: /^Dashboard$/ })); assert.equal(path(page), DEMO); });
+    // The phone's way to the profile: the tab bar's Profile (feat/dashboard-2026; the header's avatar is on screens with no tab bar).
+    await way('profile: Dashboard, back', async () => { await tap(page, page.locator('[data-main-nav] [data-nav="profile"]')); assert.match(path(page), /profile=1/); await tap(page, page.getByRole('link', { name: /^Dashboard$/ })); assert.equal(path(page), DEMO); });
     await open(page, '/signin');
     await way('sign in: Create an account, forward', async () => { await tap(page, page.getByRole('link', { name: 'Create an account' })); assert.equal(path(page), '/signup'); });
     await way('sign up: Sign in, back', async () => { await tap(page, page.getByRole('link', { name: 'Sign in' })); assert.equal(path(page), '/signin'); });

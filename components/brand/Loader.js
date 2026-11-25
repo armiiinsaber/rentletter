@@ -102,7 +102,9 @@ export function ScreenLoader({ label, since = navStartedAt(), onShow, tone = 'pa
 }
 
 // ── One reveal per screen ───────────────────────────────────────────────────────────────────
-export function Reveal({ ready, failed = null, label, tone = 'paper', fill = true, children }) {
+// placeholder: what stands in the Loader's place while the screen loads (the Listings view's shape,
+// components/dashboard/BoardSkeleton.js); the screen then shows in one step, as with the Loader.
+export function Reveal({ ready, failed = null, label, tone = 'paper', fill = true, placeholder = null, children }) {
   const was = useRef(null); // the Loader's place on screen, once it showed
   const content = useRef(null);
   const [leaving, setLeaving] = useState(null);
@@ -115,7 +117,7 @@ export function Reveal({ ready, failed = null, label, tone = 'paper', fill = tru
     const t = setTimeout(() => setLeaving(null), DOOR.revealMs);
     return () => clearTimeout(t);
   }, [ready]);
-  if (!ready) return failed || <ScreenLoader label={label} tone={tone} fill={fill} onShow={(el) => { if (el) { const r = el.getBoundingClientRect(); was.current = { left: r.left, top: r.top, width: r.width, height: r.height }; } }} />;
+  if (!ready) return failed || placeholder || <ScreenLoader label={label} tone={tone} fill={fill} onShow={(el) => { if (el) { const r = el.getBoundingClientRect(); was.current = { left: r.left, top: r.top, width: r.width, height: r.height }; } }} />;
   return (
     <>
       {leaving ? <Leaving rect={leaving} tone={tone} /> : null}

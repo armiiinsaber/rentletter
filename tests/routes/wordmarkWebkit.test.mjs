@@ -80,7 +80,7 @@ async function walk(browserType, launch, tag) {
     await shot('1-profile');
     await back.tap();
     await page.waitForURL((u) => u.pathname === '/demo/dashboard' && !u.searchParams.has('profile'), { timeout: 30000 });
-    await page.locator('.dash-ink').waitFor({ timeout: 30000 });   // the dashboard itself, not just the URL
+    await page.locator('[data-status-board]').waitFor({ timeout: 30000 });   // the dashboard itself, not just the URL
     await page.goto(`${BASE}/demo/dashboard?profile=1`, { waitUntil: 'networkidle' });
     await page.locator('#profile-field-full_name').waitFor({ timeout: 30000 });
     assert.equal(await page.locator('#profile-field-full_name').inputValue(), typed, 'the edit was kept');
@@ -102,7 +102,7 @@ async function walk(browserType, launch, tag) {
       await page.locator('a.rl-mark').first().tap();
       await page.waitForURL(onDashboard, { timeout: 30000 });
     }
-    await page.locator('.dash-ink').waitFor({ timeout: 30000 });
+    await page.locator('[data-status-board]').waitFor({ timeout: 30000 });
 
     // 3. The apply form: the wordmark is the way to the homepage. A tab of its own, so the
     // dashboard's own routing cannot interrupt the walk mid navigation.

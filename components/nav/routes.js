@@ -73,6 +73,8 @@ export const rememberSignals = (s) => { if (s && s.loaded) { seen.signals = s; s
 export const rememberApplicants = (listingId, list) => { if (listingId && Array.isArray(list)) seen.applicants.set(String(listingId), list); };
 export const seenProfile = () => seen.profile;
 export const seenListing = (id) => (id == null ? null : seen.listings.get(String(id)) || null);
+// Every listing seen this session (the command menu finds them from any screen).
+export const seenListings = () => [...seen.listings.values()];
 // Signals from this session, at most five minutes old: the dashboard shows them and refreshes.
 export const seenSignals = () => (seen.signals && Date.now() - seen.signalsAt < 300000 ? seen.signals : null);
 export const seenApplicants = (id) => (id == null ? null : seen.applicants.get(String(id)) || null);

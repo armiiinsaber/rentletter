@@ -1,14 +1,14 @@
 // The realtor's Listings on the real pages over the fake stack (tests/helpers/fakeNextServer.mjs on
 // 3153), in WebKit and in Chrome:
 //   the empty dashboard (no listing yet): one heading, one line, New listing right there and three
-//   steps; on a phone at 390 by 844 all of it on one screen with nothing to scroll and the greeting
-//   and the button together; at 1440 the start fills the main area beside Needs you's empty line,
-//   and its button is the view's one red action;
+//   steps; on a phone at 390 by 844 all of it on one screen with nothing to scroll, the line and the
+//   button together, and the tab bar's red New listing; at 1440 the start fills the main area beside
+//   Needs you's empty line, and its button is the view's one red action;
 //   archive and delete (db/025-listing-archive.sql): before the file no archive control and nothing
 //   else changes; after it, rows picked with their checkboxes are archived from the bar and leave
 //   Active for Archived, the apply link of an archived listing says it takes no applications, and a
 //   restore brings it back; a bulk delete asks in the page, deletes the listing with only test
-//   applications and says how many it skipped; on a phone the same from each card's menu;
+//   applications and says how many it skipped; on a phone the same through Select and the bar;
 //   the new listing form: on a phone at 390 and 320 one step a screen with the progress line, Back
 //   that keeps the answers, an error beside a field once it is left, the rent formatted as typed,
 //   Continue above the keyboard (WebKit headless has no software keyboard: the visual viewport is
@@ -70,29 +70,31 @@ async function emptyWalk(type, launch) {
     const ctx = await context(browser, 390, 844, true); await ctx.route(/supabase\.co\//, (r) => r.abort());
     const page = await ctx.newPage();
     await page.goto('/dashboard', { waitUntil: 'load' });
-    await page.locator('[data-get-started="phone"]').waitFor({ timeout: 30000 });
-    await page.locator('.dash-greet').filter({ hasText: /^Good / }).waitFor({ timeout: 10000 });
+    await page.locator('[data-get-started]').waitFor({ timeout: 30000 });
     await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(500);
     const fit = await page.evaluate(() => ({ scroll: document.documentElement.scrollHeight - window.innerHeight, steps: document.querySelectorAll('[data-get-started-steps] li').length }));
     assert.equal(fit.steps, 3, 'three steps');
     assert.ok(fit.scroll <= 0, `one screen at 390 by 844 with nothing to scroll (${fit.scroll}px over)`);
-    const card = await boxOf(page, '.dash-ink'); const btn = await boxOf(page, '.dash-new');
-    assert.ok(btn.top - card.bottom <= 16, `the greeting and the button sit together (${btn.top - card.bottom}px)`);
-    assert.equal(await page.locator('[data-get-started="phone"] h2').count(), 1, 'one heading');
-    assert.equal(await page.locator('[data-get-started="phone"] p').count(), 1, 'one line under it');
+    // The heading, its line and the button together; the tab bar's red New listing at the bottom
+    // (feat/dashboard-2026: the ink greeting card is gone).
+    const line = await boxOf(page, '[data-get-started] p'); const btn = await boxOf(page, '[data-get-started-new]');
+    assert.ok(btn.top - line.bottom <= 32, `the line and the button sit together (${btn.top - line.bottom}px)`);
+    assert.ok(await shown(page, '[data-tab-new]'), 'the tab bar\'s New listing');
+    assert.equal(await page.locator('[data-get-started] h2').count(), 1, 'one heading');
+    assert.equal(await page.locator('[data-get-started] > p').count(), 1, 'one line under it');
     await ctx.close();
 
     // The desktop: the start fills the main area, Needs you says there is nothing, one red button.
     const dctx = await context(browser, 1440, 900, false); await dctx.route(/supabase\.co\//, (r) => r.abort());
     const desk = await dctx.newPage();
     await desk.goto('/dashboard', { waitUntil: 'load' });
-    await desk.locator('[data-get-started="desktop"]').waitFor({ timeout: 30000 });
+    await desk.locator('[data-get-started]').waitFor({ timeout: 30000 });
     await desk.waitForTimeout(500);
     assert.ok(await shown(desk, '[data-needs-you-empty]'), 'Needs you shows its empty line');
     assert.equal(await desk.locator('[data-needs-you-empty]').first().textContent(), 'Nothing needs you right now.');
     const reds = await desk.evaluate(() => [...document.querySelectorAll('button, a')].filter((el) => el.getClientRects().length && getComputedStyle(el).backgroundColor === 'rgb(215, 32, 39)').map((el) => el.textContent.trim()));
     assert.deepEqual(reds, ['New listing'], 'one red action on the view: the start\'s New listing');
-    const start = await boxOf(desk, '[data-get-started="desktop"]'); const ny = await boxOf(desk, '[data-needs-you]');
+    const start = await boxOf(desk, '[data-get-started-steps]'); const ny = await boxOf(desk, '[data-needs-you]');
     assert.ok(ny.left > start.right, 'the start beside Needs you');
     // Its button opens the form.
     await desk.locator('[data-get-started-new]').click();
@@ -101,7 +103,9 @@ async function emptyWalk(type, launch) {
   } finally { await fake('/__fake/state?listings=1'); await browser.close(); }
 }
 
-const rowIds = (page) => page.locator('[data-listings-table] [data-listing-row]').evaluateAll((els) => els.filter((e) => e.getClientRects().length).map((e) => e.getAttribute('data-listing-row')));
+// The cards on view (feat/dashboard-2026: cards by default, picked in Select mode).
+const rowIds = (page) => page.locator('[data-listing-card]').evaluateAll((els) => els.filter((e) => e.getClientRects().length).map((e) => e.getAttribute('data-listing-card')));
+const selecting = async (page) => { const b = page.locator('[data-select-mode]:visible').first(); if ((await b.getAttribute('aria-pressed')) !== 'true') await b.click(); };
 async function archiveWalk(type, launch) {
   const browser = await type.launch(launch);
   try {
@@ -109,9 +113,9 @@ async function archiveWalk(type, launch) {
     await fake('/__fake/state?archive=0');
     const dctx = await context(browser, 1440, 900, false); await dctx.route(/supabase\.co\//, (r) => r.abort());
     const desk = await dctx.newPage();
-    await desk.goto('/dashboard', { waitUntil: 'load' }); await desk.locator('[data-listings-table]').first().waitFor({ timeout: 30000 }); await desk.waitForTimeout(400);
+    await desk.goto('/dashboard', { waitUntil: 'load' }); await desk.locator('[data-listing-cards]').first().waitFor({ timeout: 30000 }); await desk.waitForTimeout(400);
     assert.equal(await shown(desk, '[data-shelf]'), false, 'no Active and Archived switch before db/025');
-    await desk.locator('[data-row-check="L2"]').check();
+    await selecting(desk); await desk.locator('[data-card-check="L2"]').check();
     await desk.locator('[data-bulk-bar]').waitFor({ timeout: 5000 });
     assert.equal(await desk.locator('[data-bulk-bar] button', { hasText: 'Archive' }).count(), 0, 'no Archive before db/025');
     assert.equal(await desk.locator('[data-bulk-bar] button', { hasText: 'Delete' }).count(), 1);
@@ -120,7 +124,7 @@ async function archiveWalk(type, launch) {
     await fake('/__fake/state?archive=1&testlisting=1');
     await desk.goto('/dashboard', { waitUntil: 'load' }); await desk.locator('[data-shelf]:visible').first().waitFor({ timeout: 30000 }); await desk.waitForTimeout(400);
     assert.deepEqual((await rowIds(desk)).sort(), ['L1', 'L2', 'L3']);
-    await desk.locator('[data-row-check="L1"]').check(); await desk.locator('[data-row-check="L2"]').check();
+    await selecting(desk); await desk.locator('[data-card-check="L1"]').check(); await desk.locator('[data-card-check="L2"]').check();
     assert.match(await desk.locator('[data-bulk-bar]').textContent(), /2 selected/);
     await desk.locator('[data-bulk-bar] button', { hasText: 'Archive' }).click();
     await desk.locator('[data-act-note]').filter({ hasText: 'Archived 2 listings.' }).waitFor({ timeout: 15000 });
@@ -132,7 +136,7 @@ async function archiveWalk(type, launch) {
     assert.equal(await tenant.locator('#email, input[type=email]').count(), 0, 'no form');
     await desk.locator('[data-shelf-to="archived"]:visible').first().click(); await desk.waitForTimeout(400);
     assert.deepEqual((await rowIds(desk)).sort(), ['L1', 'L2'], 'under Archived');
-    await desk.locator('[data-row-check="L1"]').check();
+    await selecting(desk); await desk.locator('[data-card-check="L1"]').check();
     await desk.locator('[data-bulk-bar] button', { hasText: 'Restore' }).click();
     await desk.locator('[data-act-note]').filter({ hasText: 'Restored 1 listing.' }).waitFor({ timeout: 15000 });
     assert.deepEqual(await rowIds(desk), ['L2']);
@@ -149,7 +153,7 @@ async function archiveWalk(type, launch) {
     // refused by name just below).
     const old = await dctx.request.post('/api/listings/delete', { data: { listingId: 'L3' } });
     assert.ok([404, 405].includes(old.status()), `the old delete path answers ${old.status()}`);
-    await desk.locator('[data-row-check="L1"]').check(); await desk.locator('[data-row-check="L3"]').check();
+    await selecting(desk); await desk.locator('[data-card-check="L1"]').check(); await desk.locator('[data-card-check="L3"]').check();
     await desk.locator('[data-bulk-delete]').click();
     const sheet = desk.locator('[role=alertdialog]').filter({ hasText: 'Delete 2 listings?' });
     await sheet.waitFor({ timeout: 10000 });
@@ -160,19 +164,22 @@ async function archiveWalk(type, launch) {
     assert.equal(dialogs, 0, 'never a browser alert or confirm');
     await dctx.close();
 
-    // A phone: the card's menu archives and restores, and the switch shows Archived.
+    // A phone: Select, the card's checkbox and the bar archive and restore, and the switch shows
+    // Archived (feat/dashboard-2026: Select in place of each card's menu).
     const pctx = await context(browser, 390, 844, true); await pctx.route(/supabase\.co\//, (r) => r.abort());
     const phone = await pctx.newPage();
-    await phone.goto('/dashboard', { waitUntil: 'load' }); await phone.locator('[data-card-menu="L1"]').waitFor({ timeout: 30000 }); await phone.waitForTimeout(400);
-    await phone.locator('[data-card-menu="L1"]').tap();
-    assert.equal(new URL(phone.url()).pathname, '/dashboard', 'the menu is the button\'s own tap, never the card\'s');
-    await phone.locator('[data-card-menu-sheet]').getByRole('button', { name: 'Archive' }).tap();
-    await phone.waitForFunction(() => !document.querySelector('[data-card-menu="L1"]'), null, { timeout: 15000 });
-    await phone.locator('.dash-section-head [data-shelf-to="archived"]').tap();
-    await phone.locator('[data-archived-cards] [data-card-menu="L1"]').waitFor({ timeout: 10000 });
-    await phone.locator('[data-card-menu="L1"]').tap();
-    await phone.locator('[data-card-menu-sheet]').getByRole('button', { name: 'Restore' }).tap();
-    await phone.waitForFunction(() => !document.querySelector('[data-archived-cards] [data-card-menu="L1"]'), null, { timeout: 15000 });
+    await phone.goto('/dashboard', { waitUntil: 'load' }); await phone.locator('[data-listing-card="L1"]').waitFor({ timeout: 30000 }); await phone.waitForTimeout(400);
+    await phone.locator('[data-select-mode]:visible').tap();
+    await phone.locator('[data-card-check="L1"]').tap();
+    assert.equal(new URL(phone.url()).pathname, '/dashboard', 'the checkbox is its own tap, never the card\'s');
+    await phone.locator('[data-bulk-bar]').getByRole('button', { name: 'Archive' }).tap();
+    await phone.waitForFunction(() => !document.querySelector('[data-listing-card="L1"]'), null, { timeout: 15000 });
+    await phone.locator('[data-shelf-to="archived"]:visible').tap();
+    await phone.locator('[data-archived-cards] [data-listing-card="L1"]').waitFor({ timeout: 10000 });
+    await phone.locator('[data-select-mode]:visible').tap();
+    await phone.locator('[data-card-check="L1"]').tap();
+    await phone.locator('[data-bulk-bar]').getByRole('button', { name: 'Restore' }).tap();
+    await phone.waitForFunction(() => !document.querySelector('[data-archived-cards] [data-listing-card="L1"]'), null, { timeout: 15000 });
     await pctx.close();
   } finally { await fake('/__fake/state?archive=0&testlisting=0'); await browser.close(); }
 }
@@ -192,8 +199,8 @@ async function phoneForm(browser, width) {
   const ctx = await context(browser, width, 844, true); await ctx.route(/supabase\.co\//, (r) => r.abort()); await ctx.addInitScript(KEYBOARD);
   const page = await ctx.newPage();
   try {
-    await page.goto('/dashboard', { waitUntil: 'load' }); await page.locator('.dash-new').waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
-    await page.locator('.dash-new').tap();
+    await page.goto('/dashboard', { waitUntil: 'load' }); await page.locator('[data-tab-new]').waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+    await page.locator('[data-tab-new]').tap();
     const panel = page.locator('.lf-panel'); await panel.waitFor({ timeout: 15000 }); await page.waitForTimeout(500);
     const now = () => page.locator('[role=progressbar]').getAttribute('aria-valuenow');
     assert.equal(await now(), '1', 'step 1, with the progress line');
@@ -243,7 +250,7 @@ async function phoneForm(browser, width) {
     await page.locator('[data-copy-link]', { hasText: 'Copied' }).waitFor({ timeout: 5000 });
     await page.locator('[data-listing-done]').getByRole('button', { name: 'Done' }).tap(); await page.waitForTimeout(600);
     // The draft went with the save.
-    await page.locator('.dash-new').tap(); await panel.waitFor({ timeout: 15000 }); await page.waitForTimeout(400);
+    await page.locator('[data-tab-new]').tap(); await panel.waitFor({ timeout: 15000 }); await page.waitForTimeout(400);
     assert.equal(await page.locator('#lf-address').inputValue(), ''); assert.equal(await page.locator('[data-draft-restored]').count(), 0, 'no draft after a save');
   } finally { await ctx.close().catch(() => {}); }
 }

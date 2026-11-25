@@ -54,7 +54,8 @@ after(async () => {
 // whether a door (a Loader, or the opening screen) is on view, and where.
 const SAMPLER = () => {
   const SECTIONS = {
-    '/dashboard': ['section.dash-ink', '.dash-card-int', '#people'],
+    // The status board, the listing cards and the Pipeline (feat/dashboard-2026).
+    '/dashboard': ['[data-status-board]', '[data-listing-card]', '#people'],
     // Each screen's own: the address changes with the tap, while the screen before is still on view.
     listing: ['section.rl-card h1.t-d1', 'section.rl-card h2.t-d2', '[id^="applicant-"]'],
     '/profile': ['h1.t-d1', '#branding input'],
@@ -69,7 +70,9 @@ const SAMPLER = () => {
       const path = location.pathname; const key = /^\/listing\//.test(path) ? 'listing' : path;
       const want = SECTIONS[key] || [];
       const shown = want.filter((sel) => visible(sel)).length;
-      const door = [...document.querySelectorAll('[data-loader]:not([data-leaving])')].some(onView);
+      // The door: the Loader, or the Listings view's own shape in placeholders, which holds the
+      // dashboard's place where the Loader once did (components/dashboard/BoardSkeleton.js).
+      const door = [...document.querySelectorAll('[data-loader]:not([data-leaving]), [data-board-skeleton]')].some(onView);
       const opening = document.documentElement.classList.contains('rl-appstart-on') && !!document.querySelector('[data-app-start]:not([data-phase="out"])');
       const covering = document.documentElement.classList.contains('rl-appstart-on') && !!document.querySelector('[data-app-start]'); // fading out included
       const failed = [...document.querySelectorAll('[data-load-failed]')].some(onView);
@@ -118,7 +121,7 @@ async function walk(browserType, launch, tag) {
       const { ctx, page, errors } = await phone(browser, { slow: true });
       await page.goto('/dashboard', { waitUntil: 'networkidle' }); await page.waitForTimeout(600);
       await startSampling(page);
-      await tapOn(page, page.locator('.dash-card-int').filter({ hasText: '210 Carlaw' }).first());
+      await tapOn(page, page.locator('[data-listing-card]').filter({ hasText: '210 Carlaw' }).first());
       assert.ok(await until(page, '/listing/'), `${tag}: the listing arrives`);
       const r1 = oneReveal(await frames(page), '/listing/', `${tag} dashboard to listing`);
       assert.ok(r1.doorFrames > 0, `${tag}: on a slow network the door holds the listing's place`);
@@ -155,7 +158,7 @@ async function walk(browserType, launch, tag) {
       const { ctx, page, errors } = await phone(browser);
       await page.goto('/dashboard', { waitUntil: 'networkidle' }); await page.waitForTimeout(2500);
       await startSampling(page);
-      await tapOn(page, page.locator('a[aria-label="Your profile"]').first());
+      await tapOn(page, page.locator('[data-main-nav] [data-nav="profile"]').first());
       assert.ok(await until(page, '/profile'), `${tag}: the profile arrives`);
       const fr = await frames(page);
       const r = oneReveal(fr, '/profile', `${tag} dashboard to profile`);
@@ -170,7 +173,7 @@ async function walk(browserType, launch, tag) {
       const { ctx, page, errors } = await phone(browser);
       let n = 0; await ctx.route(/\/api\/listings\/applicants\?listingId=L2/, async (r) => { if (++n <= 2) return; await r.continue(); });
       await page.goto('/dashboard', { waitUntil: 'networkidle' }); await page.waitForTimeout(400);
-      await tapOn(page, page.locator('.dash-card-int').filter({ hasText: '88 Harbour' }).first());
+      await tapOn(page, page.locator('[data-listing-card]').filter({ hasText: '88 Harbour' }).first());
       await page.locator('[data-load-failed]').waitFor({ timeout: 15000 });
       assert.match(await page.locator('[data-load-failed]').innerText(), /Couldn’t load this\.\s*Try again/);
       assert.equal(await page.locator('[data-screen-loading], [data-route-loading]').count(), 0, `${tag}: the line in the Loader's place`);

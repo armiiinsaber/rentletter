@@ -15,7 +15,8 @@
 //   headingSort(sort, column)  the order a click on a column heading gives: its first direction,
 //                              or the same column the other way
 //   sortName(sort), sameSort(a, b), choicesFor(sort)
-//   attentionOf(row)           Needs attention first: { rank, n }, rank 1 the most urgent
+//   attentionOf(row)           Needs attention first: { rank, n }, rank 1 the most urgent, from the
+//                              row's next step (components/dashboard/board.js)
 //   addressParts(text)         { street, number, suffix, unit, rest } for the address order
 //   bedsValue(bedrooms)        a number for the beds order, null when it says none
 //   readSort(storage, shelf), writeSort(storage, shelf, sort)   the order kept on this device,
@@ -66,23 +67,19 @@ export function bedsValue(bedrooms) {
   return m ? Number(m[1]) + (m[2] && /den/.test(m[2]) ? 0.5 : 0) : null;
 }
 
-// Needs attention first. The order the listing cards already use for their one filled pill
-// (lib/listingStateLine.js ACTION_ORDER, then report not sent), counted over every live applicant
-// rather than the two states a card shows:
-//   1 documents to check (read and waiting for the realtor's review, a mismatch or a profile edit)
-//   2 applicants with no documents asked for yet
-//   3 documents that match, waiting for the employer check
-//   4 a report not sent, or applicants waiting on documents
-//   5 nothing waiting (a rented or closed listing is always here)
-// Within a rank the listing with more applicants in that state comes first.
+// Needs attention first: the order of the cards' one main action (components/dashboard/board.js,
+// the same next step the card, the tiles and Needs you read), counted from the row's next step:
+//   1 a report ready to send
+//   2 documents to check
+//   3 applicants to ask for documents
+//   4 an employer to call
+//   5 anything else (something that opens the listing, or nothing waiting; rented or closed)
+// Within a rank the listing with more applicants at that step comes first.
+const ATTENTION = { send: 1, check: 2, ask: 3, call: 4 };
 export function attentionOf(row) {
-  const c = (row && row.counts) || {};
-  if (!row || row.open === false || row.report === 'closed') return { rank: 5, n: 0 };
-  if (c.check > 0) return { rank: 1, n: c.check };
-  if (c.none > 0) return { rank: 2, n: c.none };
-  if (c.matched > 0) return { rank: 3, n: c.matched };
-  if (row.report === 'not_sent' || c.waiting > 0) return { rank: 4, n: Number(row.applicants) || 0 };
-  return { rank: 5, n: 0 };
+  const next = row && row.next;
+  if (!row || row.open === false || !next || !ATTENTION[next.kind]) return { rank: 5, n: 0 };
+  return { rank: ATTENTION[next.kind], n: Number(next.n) || 0 };
 }
 
 // Each order: the value it reads from a row (null for none) and how two values compare. first:

@@ -1,9 +1,6 @@
 // components/dashboard/ListingsTable.js
-// The desktop dashboard's Listings view (components/dashboard/HomeView.js, 1024px and wider):
-//   DeskStats      three numbers that can be clicked: listings, applicants, reports to send. Each a
-//                  large number over a small label, the three one row as wide as the table, equal
-//                  widths; a click shows the matching rows in the table below, a second click shows
-//                  them all again. A number that changes ticks once.
+// The desktop dashboard's Compact view of the listings (components/dashboard/HomeView.js, 1024px and
+// wider, switched next to Active and Archived; the cards are the default):
 //   ListingsTable  one row a listing: address, rent, beds, applicants, verified, report, last
 //                  activity, and at 1920 and wider the move in date and the newest applicant too. A
 //                  row opens the listing as a card does on a phone (the address is the link and
@@ -13,55 +10,14 @@
 //                  listingSort.js), a second click the other way; the one that holds the order
 //                  carries aria-sort and an arrow.
 // The rows come from components/dashboard/homeData.js rowOf; nothing is read here.
-import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { StatusPills } from '../ui';
 import { linkProps, go, prefetch } from '../nav/routes';
 import { relTime, shortDay } from './homeData';
 
-export const FILTERS = { all: null, applicants: (r) => r.applicants > 0, toSend: (r) => r.report === 'not_sent' };
-
-// A number that ticks (a short fade and lift) when its value changes after the first draw.
-function Tick({ value }) {
-  const was = useRef(value); const [k, setK] = useState(0);
-  useEffect(() => { if (was.current !== value) { was.current = value; setK((n) => n + 1); } }, [value]);
-  return <span key={k} className={k ? 'dst-num dst-tick' : 'dst-num'}>{value}</span>;
-}
-
-export function DeskStats({ standing, filter, onFilter }) {
-  const stats = [
-    ['all', standing.listings, standing.listings === 1 ? 'listing' : 'listings'],
-    ['applicants', standing.applicants, standing.applicants === 1 ? 'applicant' : 'applicants'],
-    ['toSend', standing.toSend, standing.toSend === 1 ? 'report to send' : 'reports to send'],
-  ];
-  return (
-    <div className="dst" role="group" aria-label="Your workspace" data-desk-stats="">
-      {stats.map(([key, n, label]) => (
-        <button key={key} type="button" className="dst-stat" aria-pressed={filter === key && key !== 'all' ? 'true' : 'false'} data-stat={key}
-          onClick={() => onFilter(key === 'all' || filter === key ? 'all' : key)}>
-          <Tick value={n} />
-          <span className="dst-label">{label}</span>
-        </button>
-      ))}
-      <style jsx>{`
-        /* One row as wide as the listings column: three equal cells, one height. */
-        .dst { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-        .dst-stat { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); min-width: 0; min-height: 44px; padding: var(--s-3) var(--s-4); border-radius: var(--card-radius); border: 1px solid ${C.rule}; background: ${C.card}; color: ${C.ink}; text-align: left; font-family: inherit; cursor: pointer; }
-        .dst-stat[aria-pressed='true'] { border-color: ${C.ink}; box-shadow: inset 0 0 0 1px ${C.ink}; }
-        .dst-stat:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
-        @media (hover: hover) { .dst-stat:hover { border-color: ${C.ruleDark}; } .dst-stat[aria-pressed='true']:hover { border-color: ${C.ink}; } }
-        .dst :global(.dst-num) { display: inline-block; font-family: var(--f-display); font-size: 40px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-        .dst-label { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: 1.3; white-space: nowrap; }
-        @media (min-width: 1600px) { .dst { gap: var(--s-4); } }
-        @media (min-width: 1920px) { .dst :global(.dst-num) { font-size: 48px; } .dst-stat { padding: var(--s-4) var(--s-5); } .dst-label { font-size: var(--t-body); } }
-        @media (prefers-reduced-motion: no-preference) {
-          .dst :global(.dst-tick) { animation: dst-tick 360ms cubic-bezier(0.22, 1, 0.36, 1) both; }
-          @keyframes dst-tick { from { opacity: 0.2; transform: translateY(4px); } to { opacity: 1; transform: none; } }
-        }
-      `}</style>
-    </div>
-  );
-}
+// The tiles' filters (components/dashboard/StatusBoard.js), on the rows' next step and counts from
+// the board (components/dashboard/board.js), the same the tiles count.
+export const FILTERS = { all: null, applicants: (r) => r.applicants > 0, toSend: (r) => !!(r.next && r.next.kind === 'send'), toCheck: (r) => r.toCheck > 0 };
 
 // The report as a status word. With no applicants there is nothing sent either: the Applicants
 // column says why.
@@ -143,7 +99,7 @@ export function ListingsTable({ rows, now, paths, label = 'Your listings', selec
         .lt {
           --lt-addr: 380px; --sp: minmax(var(--s-2), 1fr); --w: 0px; --wsp: 0px; --wh: max-content; --whs: var(--sp);
           --lt-cols: fit-content(var(--lt-addr)) var(--sp) max-content var(--sp) max-content var(--wsp) var(--w) var(--sp) max-content var(--wsp) var(--w) var(--sp) max-content var(--sp) max-content var(--whs) var(--wh);
-          display: grid; grid-template-columns: var(--lt-cols); column-gap: 0; background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); overflow-x: auto; overflow-y: hidden;
+          display: grid; grid-template-columns: var(--lt-cols); column-gap: 0; background: ${C.card}; border-radius: 24px; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.05), 0 10px 30px rgba(15, 15, 16, 0.06); overflow-x: auto; overflow-y: hidden;
         }
         .lt-select { grid-template-columns: auto var(--lt-cols); }
         .lt-group, .lt-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }

@@ -46,10 +46,17 @@ test('no spinner and no Loading text remains in components or pages', () => {
   assert.deepEqual(found, []);
 });
 
-test('no skeleton and no shimmer remains in components or pages', () => {
-  // Code only: a comment may say what was replaced.
-  const found = FILES.filter((f) => /skeleton|shimmer/i.test(code(src(f))));
+test('no skeleton and no shimmer remains in components or pages, but the Listings view\'s own shape', () => {
+  // Code only: a comment may say what was replaced. The one exception (feat/dashboard-2026, the
+  // brief's item 7b): while the Listings view loads it shows its own shape in pale placeholders
+  // (components/dashboard/BoardSkeleton.js), drawn by the view (HomeView.js) and by the frame a tap
+  // shows first (components/nav/RouteLoader.js), and nowhere else. They hold still.
+  const PLACES = ['components/dashboard/BoardSkeleton.js', 'components/dashboard/HomeView.js', 'components/nav/RouteLoader.js'];
+  const found = FILES.filter((f) => /skeleton|shimmer/i.test(code(src(f))) && !PLACES.includes(f));
   assert.deepEqual(found, []);
+  assert.deepEqual(FILES.filter((f) => /shimmer/i.test(code(src(f)))), [], 'no shimmer anywhere');
+  for (const f of PLACES.slice(1)) assert.deepEqual([...code(src(f)).matchAll(/\w*skeleton\w*/gi)].map((m) => m[0]).filter((w) => w !== 'BoardSkeleton'), [], `${f}: only the Listings view's placeholders`);
+  assert.doesNotMatch(code(src('components/dashboard/BoardSkeleton.js')), /@keyframes|animation|transition/, 'the placeholders hold still');
   // The screens wait behind the door, one reveal each (components/brand/Loader.js Reveal).
   assert.match(src('components/dashboard/HomeView.js'), /<Reveal ready=\{ready\} label="Loading your workspace"/);
   assert.match(src('components/dashboard/ListingView.js'), /<Reveal ready=\{applicantsLoaded\} label="Loading the listing"/);

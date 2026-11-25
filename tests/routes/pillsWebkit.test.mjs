@@ -121,7 +121,9 @@ const AUDIT = () => {
   // No dot line is left anywhere on the screen: no visible text carries a middle dot.
   const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let tn;
   while ((tn = tw.nextNode())) {
-    const el = tn.parentElement; if (!/·/.test(tn.nodeValue) || !el || el.closest('script, style, noscript, next-route-announcer') || !el.getClientRects().length) continue;
+    // One exception (feat/dashboard-2026): a listing card's facts line, "rent · beds · N applicants"
+    // as the brief sets it (components/dashboard/ListingCard.js .lc-facts). Its state is never a dot line.
+    const el = tn.parentElement; if (!/·/.test(tn.nodeValue) || !el || el.closest('script, style, noscript, next-route-announcer, .lc-facts') || !el.getClientRects().length) continue;
     problems.push(`a middle dot on screen: ${el.textContent.trim().slice(0, 80)}`);
   }
   const perCard = new Map();
@@ -149,7 +151,8 @@ const AUDIT = () => {
 
 // Where the task names a pill row, it is there.
 const NAMED = [
-  { screen: 'dashboard', rows: [['.dash-grid .rl-pills', 'the dashboard listing cards'], ['#people .rl-pills', 'the Pipeline card']] },
+  // The listing cards carry no pills since feat/dashboard-2026 (a strip and a status line).
+  { screen: 'dashboard', rows: [['#people .rl-pills', 'the Pipeline card']] },
   { screen: 'listing', rows: [['section:has(h1) .rl-pills', 'the listing header card'], ['[id^="applicant-"] .rl-pills', 'the applicant cards']] },
   { screen: 'landlord report', rows: [['main .rl-pills', 'the landlord report']] },
   { screen: 'my application', rows: [['.mp-wrap .rl-pills', 'the tenant application page']] },

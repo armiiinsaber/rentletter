@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import { C } from '../theme';
 import { GlobalStyle, Icon } from '../ui';
+import BoardSkeleton from '../dashboard/BoardSkeleton';
 import DashShell from '../dashboard/DashShell';
 import { seenListing, seenProfile, linkProps, placeOf } from './routes';
 import { Snapshot } from './EdgeBack';
@@ -53,13 +54,13 @@ export function LoadFailed({ onRetry, style }) {
 // The frame each screen has: the realtor's shell (components/dashboard/DashShell.js), so under
 // 1024px the header and the tabs and from 1024px the sidebar with the place on its way marked and
 // the header controls, exactly where the screen draws them; then the page's own width and paddings.
-const Page = ({ maxWidth, padding, children, label, waiting = true, nav = null, place = null }) => (
+const Page = ({ maxWidth, padding, children, label, waiting = true, nav = null, place = null, fill = false }) => (
   <>
     <GlobalStyle />
     <style>{'@media (min-width: 1024px) { .rl-ld-narrow { display: none !important; } }'}</style>
     <div style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }} data-route-loading={waiting ? label : undefined}>
       <DashShell profile={seenProfile() || {}} nav={nav} current={place}>
-        <div style={{ maxWidth, margin: '0 auto', padding }}>{children}</div>
+        <div className={fill ? 'ds-fill' : undefined} style={{ maxWidth, margin: '0 auto', padding }}>{children}</div>
       </DashShell>
     </div>
   </>
@@ -72,10 +73,30 @@ const Back = ({ label, tight = false, wide = true }) => (
     <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> {label}
   </a>
 );
+// The address a tap on a listing carries (components/dashboard/ListingCard.js): drawn as the listing's
+// title, where the listing page draws it (components/dashboard/ListingView.js, its header card, with
+// room kept for Edit and Duplicate so it wraps the same), from the moment of the tap until the page
+// lands and while its applicants load; the page's own title then takes its place.
+const ghost = { minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, fontFamily: 'inherit', flexShrink: 0, visibility: 'hidden' };
+export function CarriedTitle({ listing }) {
+  if (!listing) return null;
+  return (
+    <div className="rl-card" data-carried-title="" style={{ padding: 'var(--card-pad)', minWidth: 0, marginBottom: 'var(--s-4)' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 'var(--s-3)' }}>
+        <h1 className="t-d1" style={{ color: C.ink, overflowWrap: 'anywhere', minWidth: 0, flex: '1 1 220px', textWrap: 'balance', margin: 0 }}>{displayLabel(listing, 'Untitled listing')}</h1>
+        <span aria-hidden="true" style={{ display: 'inline-flex', gap: 'var(--s-2)', flexShrink: 0, marginTop: -6 }}>
+          <span style={{ ...ghost, display: 'inline-flex', alignItems: 'center' }}>Edit</span>
+          <span style={{ ...ghost, display: 'inline-flex', alignItems: 'center', border: `1px solid ${C.ruleDark}` }}>Duplicate</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // Each screen's frame: its width, its paddings, its way back.
 const FRAMES = {
   listing: { maxWidth: 760, padding: 'var(--s-4) clamp(16px, 4vw, 32px) 0', back: 'All listings', label: 'Loading the listing' },
-  dashboard: { maxWidth: 1100, padding: 'var(--s-2) clamp(16px, 4vw, 32px) 0', back: null, label: 'Loading your workspace' },
+  dashboard: { maxWidth: 'none', padding: 'var(--s-2) var(--page-gutter) 0', back: null, label: 'Loading your workspace', fill: true },
   profile: { maxWidth: 720, padding: 'var(--gap-section) var(--s-4) 0', back: 'Dashboard', label: 'Loading your profile' },
   circle: { maxWidth: 720, padding: 'var(--s-2) var(--s-4) 0', back: null, label: 'Loading your circle' },
   page: { maxWidth: 720, padding: 'var(--gap-section) var(--s-4) 0', back: 'Dashboard', label: 'Loading' },
@@ -93,10 +114,11 @@ export default function RouteLoader({ route, onRetry }) {
   if (route.shot && !route.failed) return <Snapshot shot={route.shot} />;
   const f = FRAMES[route.kind] || FRAMES.page;
   return (
-    <Page label={route.failed ? 'failed' : route.kind} waiting={!route.failed} maxWidth={f.maxWidth} padding={f.padding} nav={route.kind === 'dashboard' ? 'listings' : route.kind === 'circle' ? 'circle' : null} place={placeOf(route.url || route.path)}>
+    <Page label={route.failed ? 'failed' : route.kind} waiting={!route.failed} maxWidth={f.maxWidth} padding={f.padding} fill={!!f.fill} nav={route.kind === 'dashboard' ? 'listings' : route.kind === 'circle' ? 'circle' : route.kind === 'profile' ? 'profile' : null} place={placeOf(route.url || route.path)}>
       <Head><title>{titleOf(route)}</title></Head>
       {f.back ? <Back label={f.back} tight={route.kind === 'listing'} wide={route.kind === 'listing'} /> : null}
-      {route.failed ? <LoadFailed onRetry={onRetry} /> : <ScreenLoader label={f.label} />}
+      {route.kind === 'listing' && !route.failed ? <CarriedTitle listing={seenListing(route.listingId)} /> : null}
+      {route.failed ? <LoadFailed onRetry={onRetry} /> : route.kind === 'dashboard' ? <BoardSkeleton label={f.label} /> : <ScreenLoader label={f.label} />}
     </Page>
   );
 }

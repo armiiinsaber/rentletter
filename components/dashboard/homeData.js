@@ -2,15 +2,15 @@
 // What the dashboard's desktop shell shows, counted from what the dashboard already loads: the
 // listings, the signals (the applicants on each listing, the Pipeline people), the profiles shared
 // with the realtor (components/dashboard/SharedWithMe.js) and the Circle count
-// (components/dashboard/MainNav.js useCirclePending). No request of its own.
-//   standingOf(open, byListing)       -> { listings, applicants, toSend } the three numbers
-//   rowOf(listing, applicants)        -> one row of the listings table, and what its orders read
-//   needsYouItems({ ... })            -> the Needs you column, newest first
+// (components/dashboard/MainNav.js useCirclePending). No request of its own. Every count and next
+// step comes from components/dashboard/board.js boardOf, the one source: a row carries its card from
+// there, and Needs you is built from the same action items.
+//   rowOf(listing, applicants, card)  -> one row of the listings table, and what its orders read
+//   needsYouItems({ board, ... })     -> the Needs you column, newest first
 //   pipelineSoonest(people)           -> the Pipeline people, the hold that ends soonest first
 //   pipelinePills(person), pipelinePlace(person)  -> a Pipeline row's pills and its listing
 //   relTime(iso, now)                 -> "2 days ago", "Today", "In 3 days"
 //   shortDay(iso)                     -> "Dec 1", the day itself, whatever the time zone
-import { buildActions } from '../../lib/actions.js';
 import { isWithdrawn } from '../../lib/listingApplicantsVocabulary.js';
 import { stateCounts } from '../../lib/listingStateLine.js';
 import { listingOpen } from '../../lib/listingState.js';
@@ -18,22 +18,11 @@ import { displayLabel } from '../../lib/listingAddress.js';
 import { formatUnit } from '../../lib/unitType.js';
 import { INCOMPLETE_LINE } from '../../lib/fitScore.js';
 import { shortDate } from '../../lib/pipelineState.js';
+import { boardOf, cardOf } from './board.js';
 
 const DAY = 86400000;
 const live = (apps) => (apps || []).filter((a) => a && !isWithdrawn(a));
 const sentOf = (apps) => live(apps).map((a) => a.lastSentAt || a.last_sent_at || null).filter(Boolean).sort().pop() || null;
-
-// The three numbers: the listings that take applications, the applicants on them, and the
-// listings with applicants whose report has not gone yet.
-export function standingOf(open, byListing) {
-  let applicants = 0, toSend = 0;
-  for (const l of open || []) {
-    const apps = live((byListing || {})[l.id]);
-    applicants += apps.length;
-    if (apps.length && !sentOf(apps)) toSend++;
-  }
-  return { listings: (open || []).length, applicants, toSend };
-}
 
 // The newest moment anything happened on a listing: an applicant applied, was decided on, was
 // reviewed, or a report went; else the day the listing was made.
@@ -54,8 +43,11 @@ export function newestApplicant(applicants) {
   return { name: name || 'Applicant', at: appliedOf(a) };
 }
 
-export function rowOf(listing, applicants) {
+// card: the listing's card from the board (components/dashboard/board.js); computed for this listing
+// alone when not given, from the same function.
+export function rowOf(listing, applicants, card = null) {
   const apps = live(applicants);
+  const c = card || cardOf(listing, applicants, boardOf({ listings: [listing], applicantsByListing: { [listing.id]: applicants || [] } }).items, Date.now());
   const counts = stateCounts(apps);
   const sent = sentOf(apps);
   const open = listingOpen(listing);
@@ -84,6 +76,12 @@ export function rowOf(listing, applicants) {
     createdAt: (listing && listing.created_at) || null,
     bedrooms: listing && listing.bedrooms != null ? String(listing.bedrooms) : '',
     counts,
+    // From the board: the next step (Needs attention first and the stat filters read it), the stage,
+    // the applicants to check, and the red dot.
+    next: c.next,
+    stage: c.stage,
+    toCheck: c.toCheck,
+    dot: c.dot,
   };
 }
 
@@ -136,23 +134,35 @@ export const pipelinePlace = (p) => (p.best && p.best.listingName) || (p.fromLis
 const first = (n) => String(n || '').trim().split(/\s+/)[0] || '';
 const HOLD_SOON_DAYS = 7;
 
-// The Needs you column: the next things this realtor should do, newest first. From the applicants
-// on each listing (lib/actions.js buildActions: documents to ask for or check, an applicant to
-// verify or nudge, a report ready to send, a landlord who answered), the Pipeline (a person to
-// invite to a new listing, a hold that ends within a week), profiles shared with the realtor, and
-// Circle requests waiting. Each: { key, title, detail, at, go: { kind, item?, view?, href? }, verb }.
-export function needsYouItems({ listings = [], applicantsByListing = {}, people = [], shares = [], circlePending = 0, now = Date.now(), paths = null } = {}) {
+// The Needs you column: the next things this realtor should do, newest first. From the board's
+// action items (components/dashboard/board.js boardOf, which calls lib/actions.js buildActions once:
+// documents to ask for or check, an employer to call, an applicant to nudge, a report ready to
+// send, a landlord who answered, Pipeline fits), so the tiles and the cards count the same items;
+// then the Pipeline holds that end within a week, profiles shared with the realtor, and Circle
+// requests waiting. Each: { key, kind, title, detail, lines, place, at, go, verb, icon }.
+// what: the bold line's words for an item of the action list (the person, where there is one, after).
+const WHAT = { request: 'Ask for documents', verify: 'Call the employer', waiting: 'Documents asked for', ready: 'Ready to send', sent_waiting: 'No reply to the report' };
+const ICON = { request: 'mail', check_docs: 'doc', mismatch: 'doc', edited: 'doc', verify: 'phone', waiting: 'calendar', ready: 'send', sent_waiting: 'send', landlord_answered: 'mail', pipeline_fit: 'list' };
+export function needsYouItems({ board = null, listings = [], applicantsByListing = {}, people = [], shares = [], circlePending = 0, now = Date.now(), paths = null } = {}) {
   const out = [];
+  const b = board || boardOf({ listings, applicantsByListing, people, now });
   // An applicant item with no moment of its own (a new applicant: nothing asked yet) is timed by
   // when they applied.
   const appliedAt = (it) => {
     const a = it.linkId ? ((applicantsByListing || {})[it.listingId] || []).find((x) => x && x.linkId === it.linkId) : null;
     return a ? (a.createdAt || a.created_at || (a.application && a.application.created_at) || null) : null;
   };
-  for (const it of buildActions({ listings, applicantsByListing, people, now })) {
+  for (const it of b.items) {
     const pipeline = it.panel === 'people';
+    const what = pipeline ? 'Pipeline fits' : (WHAT[it.kind] || it.title);
     out.push({
       key: it.key,
+      kind: it.kind,
+      icon: ICON[it.kind] || 'doc',
+      // The bold line: what to do or what happened; then the person it is about, on a line of their own.
+      what,
+      who: it.name && !pipeline ? it.name : null,
+      place: pipeline ? (it.reason || it.listingName || '') : (it.listingName || ''),
       title: pipeline ? 'Pipeline fits' : it.title,
       // The person and the listing, or for a listing level item the short why and the listing:
       // each its own line, so a long name and a long address each wrap on their own.
@@ -168,14 +178,15 @@ export function needsYouItems({ listings = [], applicantsByListing = {}, people 
     if (!p || !p.expiresAt) continue;
     const left = new Date(p.expiresAt).getTime() - t;
     if (!(left > 0 && left <= HOLD_SOON_DAYS * DAY)) continue;
-    out.push({ key: `hold:${p.id}`, title: p.status === 'pending' ? 'A Pipeline ask ends soon' : 'A Pipeline hold ends soon', detail: p.display || p.name || p.email || 'Someone', at: p.expiresAt, verb: 'Open', go: { kind: 'view', view: 'pipeline' }, ends: true });
+    const title = p.status === 'pending' ? 'A Pipeline ask ends soon' : 'A Pipeline hold ends soon';
+    out.push({ key: `hold:${p.id}`, kind: 'hold', icon: 'calendar', what: title, who: p.display || p.name || p.email || 'Someone', place: '', title, detail: p.display || p.name || p.email || 'Someone', at: p.expiresAt, verb: 'Open', go: { kind: 'view', view: 'pipeline' }, ends: true });
   }
   for (const sh of shares || []) {
     if (!sh || sh.ended) continue;
-    out.push({ key: `shared:${sh.id}`, title: 'A profile shared with you', detail: sh.listingName || 'A unit', at: sh.sharedAt || null, verb: 'View', go: { kind: 'view', view: 'shared' } });
+    out.push({ key: `shared:${sh.id}`, kind: 'shared', icon: 'user', what: 'A profile shared with you', who: null, place: sh.listingName || 'A unit', title: 'A profile shared with you', detail: sh.listingName || 'A unit', at: sh.sharedAt || null, verb: 'View', go: { kind: 'view', view: 'shared' } });
   }
   const n = Number(circlePending) || 0;
-  if (n > 0) out.push({ key: 'circle', title: n === 1 ? 'A Circle request' : `${n} Circle requests`, detail: 'Waiting for your answer', at: null, verb: 'Open', go: { kind: 'href', href: (paths && paths.circle) || '/circle' } });
+  if (n > 0) { const title = n === 1 ? 'A Circle request' : `${n} Circle requests`; out.push({ key: 'circle', kind: 'circle', icon: 'users', what: title, who: null, place: 'Waiting for your answer', title, detail: 'Waiting for your answer', at: null, verb: 'Open', go: { kind: 'href', href: (paths && paths.circle) || '/circle' } }); }
   // Newest first; a hold that ends sits by the day it ends, so the soonest is near the top.
   out.sort((a, b) => (b.at ? 1 : 0) - (a.at ? 1 : 0) || String(b.at || '').localeCompare(String(a.at || '')) || a.key.localeCompare(b.key));
   return out.map((x) => ({ ...x, first: first(x.detail) }));

@@ -127,7 +127,10 @@ alone (`lib/parties.js` landlordPartyFacts, landlordFacts;
   the wordmark's bar, primary action buttons, the focus ring and the text
   selection, the red tick on a confirmed or done state and on the TickMeter,
   the rank numerals on the landlord report, the text links on the sign in and
-  sign up pages, and the Trial ended badge.
+  sign up pages, the Trial ended badge, and on the realtor's Listings view the
+  red dot that marks what needs the realtor (a status board tile, a listing
+  card, Circle in the sidebar and the tab bar) and the current stage of a
+  listing card's strip.
 - Done `#1e6670` (tint `#e9f1f2`): a done state on the tenant's own profile
   only (`components/tenant/ProfileLayout.js`), never a control or a notice.
   No green, amber or gold token exists (`tests/noGreenAmber.test.mjs`);

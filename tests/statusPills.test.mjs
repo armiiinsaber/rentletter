@@ -54,9 +54,12 @@ test('every pill reads at 4.5 or better on its own background', async () => {
   assert.match(ui, /height: 28px; max-width: 100%; padding: 0 12px;\s*border-radius: 999px;/);
   // The transparent pill sits on the ink surfaces that use tone="ink": the Pipeline and welcome
   // cards (C.inst) and the tenant's applying banner (.mp-ink, C.ink).
-  // The Pipeline card is a white card now (one dark block a view at most: the greeting's on a phone).
+  // The Pipeline card is a white card now. The phone's ink greeting card is gone (feat/dashboard-2026:
+  // the status board took its place); the one dark block on the Listings view is the Ready to send
+  // tile, and it carries no pill.
   assert.match(src('components/dashboard/PeopleList.js'), /id="people"[^>]*background: C\.card\b/);
-  assert.match(src('components/dashboard/HomeView.js'), /className="dash-ink"[^>]*background: C\.inst\b/);
+  assert.doesNotMatch(src('components/dashboard/HomeView.js'), /className="dash-ink"/);
+  assert.doesNotMatch(src('components/dashboard/StatusBoard.js'), /StatusPills|rl-pill/, 'no pill on the tiles');
   assert.match(src('components/tenant/ProfileFacts.js'), /\.mp-ink \{ background: \$\{C\.ink\};/);
   const rows = [
     ['informational pill: ink on paper', C.ink, C.paper],

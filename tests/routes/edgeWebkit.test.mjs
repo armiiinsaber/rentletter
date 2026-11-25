@@ -66,7 +66,7 @@ const STATE = () => {
     snapshot: !!document.querySelector('#__next [data-snapshot]'),
     busy: !!document.querySelector('[aria-busy="true"]'),
     moved: m !== 'none' && m !== 'matrix(1, 0, 0, 1, 0, 0)',
-    cards: document.querySelectorAll('#__next .dash-card-int').length,
+    cards: document.querySelectorAll('#__next [data-listing-card]').length,
     applicants: document.querySelectorAll('#__next [id^="applicant-"]').length,
     fields: document.querySelectorAll('#__next input').length,
     nav: document.documentElement.dataset.nav || '',
@@ -92,7 +92,7 @@ const drag = (page, { x0 = 6, y0 = 420, dx, dy = 0, ms = 400, steps = 12 }) => p
   fire('pointerdown', x0, y0);
   for (let i = 1; i <= steps; i++) { await new Promise((r) => setTimeout(r, ms / steps)); fire('pointermove', x0 + (dx * i) / steps, y0 + (dy * i) / steps); }
   const el = document.getElementById('__next'); const beneath = document.querySelector('[data-edge-beneath]');
-  const mid = { tx: new DOMMatrix(getComputedStyle(el).transform).m41, beneath: !!beneath, picture: !!beneath && !!beneath.querySelector('[data-snapshot]'), pictureCards: beneath ? beneath.querySelectorAll('.dash-card-int').length : 0, loading: !!beneath && !!beneath.querySelector('[data-route-loading]') };
+  const mid = { tx: new DOMMatrix(getComputedStyle(el).transform).m41, beneath: !!beneath, picture: !!beneath && !!beneath.querySelector('[data-snapshot]'), pictureCards: beneath ? beneath.querySelectorAll('[data-listing-card]').length : 0, loading: !!beneath && !!beneath.querySelector('[data-route-loading]') };
   fire('pointerup', x0 + dx, y0 + dy);
   return mid;
 }, { x0, y0, dx, dy, ms, steps });
@@ -100,7 +100,7 @@ const tapAt = async (page, loc) => { const b = await loc.boundingBox({ timeout: 
 // 210 Carlaw (five applicants): a page taller than the screen.
 async function toListing(page, tag) {
   await waitFor(page, onDashboard, 8000);
-  await tapAt(page, page.locator('#__next .dash-card-int').filter({ hasText: '210 Carlaw' }).first());
+  await tapAt(page, page.locator('#__next [data-listing-card]').filter({ hasText: '210 Carlaw' }).first());
   const r = await waitFor(page, (s) => realScreen(s) && /^\/listing\//.test(s.path), 8000);
   assert.ok(r.ok, `${tag}: a listing opened: ${JSON.stringify(r.s)}`);
 }
@@ -210,7 +210,7 @@ async function fuzz(browser, tag) {
     const where = rnd();
     let during = false;
     if (s.path === '/dashboard' && where < 0.85) {
-      const target = where < 0.55 ? page.locator('#__next .dash-card-int').nth(Math.floor(rnd() * 2)) : page.locator('#__next a.rl-hdr-avatar').first();
+      const target = where < 0.55 ? page.locator('#__next [data-listing-card]').nth(Math.floor(rnd() * 2)) : page.locator('#__next [data-main-nav] [data-nav="profile"]').first();
       await tapAt(page, target).catch(() => {});
       during = rnd() < 0.3;
       if (during) await page.waitForTimeout(Math.floor(rnd() * 300)); // the drag lands while the screen is on its way
