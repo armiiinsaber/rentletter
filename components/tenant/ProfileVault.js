@@ -37,7 +37,9 @@ const readBase64 = (file) => new Promise((resolve, reject) => {
 });
 // Who can open each kind of document and when it is deleted, said beside the button that adds it.
 export const KEPT = Object.freeze({
-  id: `No realtor can open your ID, even one you share with. It is deleted ${ID_DAYS} days after you add it.`,
+  // The ID added here, in the vault. An ID uploaded inside an application is another file, which
+  // that application's realtor may view for 14 days (lib/documentRetention.js).
+  id: `No realtor can open the ID you add here, even one you share your profile with. It is deleted ${ID_DAYS} days after you add it.`,
   income: `Realtors you share with can open it for a limited time, and you see each time they do. It is deleted ${DOCUMENT_DAYS} days after you add it unless you renew it.`,
   employment: `Realtors you share with can open it for a limited time, and you see each time they do. It is deleted ${DOCUMENT_DAYS} days after you add it unless you renew it.`,
 });

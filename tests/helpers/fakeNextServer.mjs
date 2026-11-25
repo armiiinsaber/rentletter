@@ -401,7 +401,8 @@ http.createServer(async (req, res) => {
   // the signed in realtor's plan (a trial with days left, one ended two days ago, a payment past
   // due with days of grace); listings=0 takes their listings away (the empty dashboard) and
   // listings=1 puts them back; name=0 blanks their name (onboarding) and name=1 puts it back;
-  // archive=1|0, testlisting=1|0 and longemail=1|0 as said below. Answers the profile's plan fields.
+  // archive=1|0, testlisting=1|0, many=<n>|0 and longemail=1|0 as said below. Answers the
+  // profile's plan fields.
   if (req.url.startsWith('/__fake/state')) {
     const q = new URL(req.url, 'http://localhost').searchParams; const p = t.profiles[0]; const days = Number(q.get('days') || 3);
     const plan = q.get('plan');
@@ -432,6 +433,27 @@ http.createServer(async (req, res) => {
     if (q.get('longemail') === '1' && !t.profiles.some((x) => x.id === 'long-email-realtor')) t.profiles.push({ id: 'long-email-realtor', email: 'alexandria.konstantinopoulou.residential.leasing@harbourfrontresidentialrealty.ca', full_name: 'Alexandria Konstantinopoulou', brokerage: 'Harbourfront Residential Realty Inc., Brokerage', plan: 'founding', province: 'ON', created_at: new Date(Date.now() - 86400000).toISOString(), signup_source: 'direct' });
     if (q.get('longemail') === '0') t.profiles = t.profiles.filter((x) => x.id !== 'long-email-realtor');
     if (q.get('testlisting') === '0') { t.listings = t.listings.filter((l) => l.id !== 'L3'); t.listing_applicants = t.listing_applicants.filter((k) => k.listing_id !== 'L3'); t.applications = t.applications.filter((x) => x.id !== 'AT1'); }
+    // many=<n>: n more listings of the realtor's (up to seven), with rents, unit types, units and
+    // move in dates of every kind, and no applicants. The first three are the ones a walk counts
+    // on whatever n it needs: two on Queens Quay West and, between them, one with no rent. The
+    // answer's listings count says how many the realtor has, so a walk asks for as many as make
+    // eight in the view (the dashboard's search not shown yet) or nine (it shows,
+    // components/dashboard/listingSort.js SEARCH_FROM). many=0 takes them away.
+    const many = Number(q.get('many'));
+    if (many > 0 && !t.listings.some((l) => l.id === 'L11')) {
+      const day = 86400000; const at = (n) => new Date(Date.now() - n * day).toISOString();
+      const archive = t.listings.some((l) => 'archived_at' in l) ? { archived_at: null } : {};
+      t.listings.push(...[
+        ['L11', '400 Queens Quay West', '902', 2875, '2', '2027-02-01', 8],
+        ['L12', '2 Bloor St East', '3110', null, '1', '2026-12-01', 5],
+        ['L13', '410 Queens Quay West', '1715', 4100, '3', null, 2],
+        ['L14', '55 Gerrard St West', '1208', 2450, '1', '2027-01-01', 30],
+        ['L15', '888 Bay St', '4301', 3900, '2', '2026-12-15', 25],
+        ['L16', '1 Yonge St', '2805', 2200, 'Studio', null, 15],
+        ['L17', '12 Bernard Ave', '', 3350, 'Loft', '2027-03-01', 12],
+      ].slice(0, Math.min(7, many)).map(([id, street, unit, rent, bedrooms, possession, ago]) => ({ id, profile_id: USER.id, name: street, address: `${street}, Toronto`, unit: unit || null, monthly_rent: rent, bedrooms, possession_date: possession, status: 'active', created_at: at(ago), updated_at: at(ago), ...archive })));
+    }
+    if (q.get('many') === '0') t.listings = t.listings.filter((l) => !/^L1\d$/.test(l.id));
     res.setHeader('content-type', 'application/json'); res.end(JSON.stringify({ plan: p.plan, trial_ends_at: p.trial_ends_at, subscription_status: p.subscription_status || null, listings: t.listings.filter((l) => l.profile_id === USER.id).length })); return;
   }
   if (req.url.startsWith('/__fake/kpi')) {

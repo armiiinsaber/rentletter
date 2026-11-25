@@ -9,7 +9,9 @@
 //                  row opens the listing as a card does on a phone (the address is the link and
 //                  covers the row); it has a hover state and the keyboard focus shows on the whole
 //                  row. The report is a status pill, the counts plain numbers, right aligned under
-//                  their headers.
+//                  their headers. Each heading sorts by its column (components/dashboard/
+//                  listingSort.js), a second click the other way; the one that holds the order
+//                  carries aria-sort and an arrow.
 // The rows come from components/dashboard/homeData.js rowOf; nothing is read here.
 import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
@@ -79,17 +81,41 @@ const COLUMNS = [
 ];
 const classOf = (c) => [c.cls, c.n ? 'lt-n' : '', c.wide ? 'lt-wide' : ''].filter(Boolean).join(' ') || undefined;
 
-export function ListingsTable({ rows, now, paths, label = 'Your listings', select = null }) {
+// The direction of the order on its column's heading: up for ascending, down for descending.
+// Before a number's heading, in room kept for it; after a word's, in the room its cells leave
+// (the styles below). Nothing moves when the order changes.
+const Arrow = ({ dir, side }) => (
+  <span className={`lt-arrow lt-arrow-${side}`} data-dir={dir || ''} aria-hidden="true">
+    <svg width="8" height="8" viewBox="0 0 10 10"><path d={dir === 'asc' ? 'M5 8.5V1.8M2 4.6l3-2.9 3 2.9' : 'M5 1.5v6.7M2 5.4l3 2.9 3-2.9'} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
+  </span>
+);
+
+// sort: the order on view ({ key, dir }, components/dashboard/listingSort.js); onSort(key): a
+// heading was clicked. Without onSort the headings are plain words.
+export function ListingsTable({ rows, now, paths, label = 'Your listings', select = null, sort = null, onSort = null }) {
   // Each column has a grid track of its own with a spacer track before it (the styles below); a
   // cell names its track, so the spacers stay empty in every row.
   const at = (i) => ({ gridColumn: (select ? 2 : 1) + 2 * i });
   const x = { now, paths };
+  // A heading that holds the order says so (aria-sort) and shows its arrow; a click on any heading
+  // sorts by its column, a second click the other way. Numbers keep their arrow on the left, so the
+  // heading stays right aligned over them.
+  const head = (c) => {
+    if (!onSort) return c.head;
+    const on = sort && sort.key === c.key ? sort.dir : '';
+    return (
+      <button type="button" className={`lt-sort${on ? ' lt-sort-on' : ''}`} data-sort-col={c.key} onClick={() => onSort(c.key)}>
+        {c.n ? <Arrow dir={on} side="before" /> : null}<span>{c.head}</span>{c.n ? null : <Arrow dir={on} side="after" />}
+      </button>
+    );
+  };
+  const ariaSort = (c) => (onSort && sort && sort.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : undefined);
   return (
     <div role="table" aria-label={label} className={`lt${select ? ' lt-select' : ''}`} data-listings-table="">
       <div role="rowgroup" className="lt-group">
         <div role="row" className="lt-row lt-head">
           {select ? <span role="columnheader" className="lt-check" style={{ gridColumn: 1 }}>{select.header}</span> : null}
-          {COLUMNS.map((c, i) => <span key={c.key} role="columnheader" className={classOf(c)} style={at(i)} data-col={c.key}>{c.head}</span>)}
+          {COLUMNS.map((c, i) => <span key={c.key} role="columnheader" className={classOf(c)} style={at(i)} data-col={c.key} aria-sort={ariaSort(c)}>{head(c)}</span>)}
         </div>
       </div>
       <div role="rowgroup" className="lt-group">
@@ -126,6 +152,22 @@ export function ListingsTable({ rows, now, paths, label = 'Your listings', selec
         .lt-row > .lt-addr { white-space: normal; min-width: 160px; }
         .lt-row > .lt-wide { display: none; }
         .lt-head { min-height: 44px; border-bottom: 1px solid ${C.rule}; font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: ${C.inkMute}; }
+        /* A heading that sorts is a button the height of the row, its words as they were; the one
+           that holds the order is ink, with its arrow. Built by a helper outside the returned
+           tree, so its classes are global (and unique to the table). */
+        .lt :global(.lt-sort) { position: relative; display: inline-flex; align-items: center; min-height: 44px; margin: 0; padding: 0; border: none; border-radius: 4px; background: transparent; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; white-space: nowrap; }
+        .lt :global(.lt-sort-on) { color: ${C.ink}; }
+        .lt :global(.lt-sort:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
+        @media (hover: hover) { .lt :global(.lt-sort:hover) { color: ${C.ink}; } }
+        /* 8px wide and 2px off the words. A word heading's arrow hangs after it, in room its cells
+           leave (the pills, the dates and the addresses are wider than their headings) or the row's
+           edge, and takes none. A number heading's arrow keeps its room inside its own column, kept
+           whether it shows or not: two number headings can stand only the narrowest spacer apart. */
+        .lt :global(.lt-arrow) { position: absolute; top: 50%; width: 8px; height: 8px; margin-top: -4px; display: block; visibility: hidden; pointer-events: none; }
+        .lt :global(.lt-arrow-after) { left: calc(100% + 2px); }
+        .lt :global(.lt-arrow-before) { position: static; flex-shrink: 0; margin: 0 2px 0 0; }
+        .lt :global(.lt-arrow[data-dir='asc']), .lt :global(.lt-arrow[data-dir='desc']) { visibility: visible; }
+        .lt :global(.lt-arrow svg) { display: block; }
         .lt-body { position: relative; min-height: 64px; padding-top: var(--s-3); padding-bottom: var(--s-3); border-top: 1px solid ${C.rule}; font-size: var(--t-body-2); color: ${C.ink}; }
         .lt-body:first-child { border-top: none; }
         .lt-closed { color: ${C.inkSoft}; }

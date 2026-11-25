@@ -2,7 +2,8 @@
 // The top of the tenant's own profile (pages/my-application.js): their card, the thing they carry
 // from listing to listing. The photo (or a clear invitation to add one), the name in large type,
 // the job title and the employer, four key facts set large with small labels (income before tax,
-// move in, household, time in role), and a row of marks that fill in as the tenant adds things,
+// move in, household, time in role; an income read from a document, with none typed, says so),
+// and a row of marks that fill in as the tenant adds things,
 // one for each step of lib/profileStrength.js the card can show (components/tenant/profileSteps.js
 // MARK_STEPS). A filled mark is a solid disc with a tick and says what happened ("ID added",
 // "Income read from your document"); an empty one is a dashed ring and names the step. Each mark
@@ -14,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { Icon } from '../ui';
 import { NBSP, noWidow, dateLong, money, count } from '../../lib/typeset';
+import { sourceLine, SOURCE } from '../../lib/profileFacts';
 import { MARK_STEPS, doneLabel } from './profileSteps';
 import { Chevron } from './ProfileFacts';
 
@@ -22,12 +24,25 @@ const has = (v) => v != null && String(v).trim() !== '';
 const dayOf = (v) => { if (!has(v)) return null; const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(v)) ? `${v}T00:00:00` : v); return Number.isNaN(d.getTime()) ? null : d; };
 const yearsLabel = (v) => { if (!has(v)) return null; const n = Number(v); return Number.isFinite(n) ? `${n}${NBSP}${n === 1 ? 'yr' : 'yrs'}` : String(v); };
 
-// The four key facts: the field that edits each, its section, its label and how it reads.
-export function keyFacts(f) {
+// The income read from the tenant's own document, in dollars a year (the newest read when there is
+// more than one), from the vault the page already holds; null when none was read.
+export function readIncome(vault) {
+  const reads = ((vault && vault.checks) || []).filter((c) => c && c.kind === 'income_annual_gross' && Number(c.value && c.value.cents) > 0);
+  if (!reads.length) return null;
+  const c = reads.reduce((best, x) => (String(x.readAt || '') > String(best.readAt || '') ? x : best));
+  return Math.round(Number(c.value.cents) / 100);
+}
+
+// The four key facts: the field that edits each, its section, its label and how it reads. The
+// income is the one the tenant typed; with none typed, the one read from their document, with the
+// page's own line for that source (lib/profileFacts.js sourceLine: "Read from a document").
+export function keyFacts(f, vault = null) {
   const x = f || {};
   const selfEmp = x.employmentType === 'self-employed';
+  const typed = money(x.annualIncome);
+  const read = typed ? null : money(readIncome(vault));
   return [
-    { field: 'annualIncome', section: 'employment', label: 'Income before tax', value: money(x.annualIncome), unit: money(x.annualIncome) ? 'a year' : null },
+    { field: 'annualIncome', section: 'employment', label: 'Income before tax', value: typed || read, unit: typed || read ? 'a year' : null, source: read ? sourceLine(SOURCE.DOCUMENT) : null },
     // The day large ("Dec 1"), its year under it.
     { field: 'moveInDate', section: 'household', label: 'Move in', value: dayOf(x.moveInDate) ? dayOf(x.moveInDate).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : (has(x.moveInDate) ? String(x.moveInDate) : null), unit: dayOf(x.moveInDate) ? String(dayOf(x.moveInDate).getFullYear()) : null },
     { field: 'numberOfOccupants', section: 'household', label: 'Household', value: Number(x.numberOfOccupants) ? count(Number(x.numberOfOccupants), 'person', 'people') : null },
@@ -89,17 +104,19 @@ export default function ProfileCard({ profile, facts: f, strength, vault, photo,
           </div>
         )}
         <div className="tp-keys" data-key-facts="">
-          {keyFacts(f).map((k) => {
+          {keyFacts(f, vault).map((k) => {
             const inner = (
               <>
                 <span className="tp-key-l">{k.label}</span>
                 {k.value ? <span className="tp-key-n">{k.value}</span> : <span className="tp-key-none">Not added</span>}
                 {k.unit ? <span className="tp-key-u">{k.unit}</span> : null}
+                {k.source ? <span className="tp-key-src" data-key-source="document">{k.source}</span> : null}
               </>
             );
+            const cls = `tp-key${k.source ? ' tp-key-read' : ''}`;
             return canEdit
-              ? <button key={k.field} type="button" className="tp-key tp-key-tap" data-key-fact={k.field} onClick={() => onEdit(k.section, k.field)}>{inner}</button>
-              : <div key={k.field} className="tp-key" data-key-fact={k.field}>{inner}</div>;
+              ? <button key={k.field} type="button" className={`${cls} tp-key-tap`} data-key-fact={k.field} onClick={() => onEdit(k.section, k.field)}>{inner}</button>
+              : <div key={k.field} className={cls} data-key-fact={k.field}>{inner}</div>;
           })}
         </div>
         {marks.length > 0 && (
@@ -158,6 +175,8 @@ export default function ProfileCard({ profile, facts: f, strength, vault, photo,
         .tp-key-n { margin-top: 2px; font-family: var(--f-display); font-size: 24px; font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; color: ${C.ink}; white-space: nowrap; font-variant-numeric: tabular-nums; }
         .tp-key-u { font-size: 12.5px; line-height: 1.3; color: ${C.inkSoft}; white-space: nowrap; }
         .tp-key-none { margin-top: 2px; font-size: var(--t-body-2); line-height: 1.6; font-weight: 600; color: ${C.inkMute}; }
+        /* An income read from the tenant's document, with none typed: the line that says so, small. */
+        .tp-key-src { margin-top: 2px; font-size: 12px; line-height: 1.3; font-weight: 600; color: ${C.inkMute}; text-wrap: balance; }
         @media (max-width: 344.98px) {
           /* A 320 screen: the photo, then the name, then the job, each across the card. */
           .tp-card-in { --tp-photo: 56px; }
@@ -165,7 +184,9 @@ export default function ProfileCard({ profile, facts: f, strength, vault, photo,
           .tp-keys { grid-template-columns: minmax(0, 1fr); }
           .tp-key { grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; column-gap: var(--s-2); padding: var(--s-2) var(--s-3); }
           .tp-key-l { grid-row: 1 / span 2; align-self: center; }
-          .tp-key-n, .tp-key-none, .tp-key-u { justify-self: end; }
+          .tp-key-read .tp-key-l { grid-row: 1 / span 3; }
+          .tp-key-n, .tp-key-none, .tp-key-u, .tp-key-src { justify-self: end; }
+          .tp-key-src { text-align: right; }
           .tp-key-n { font-size: 20px; }
         }
         /* The marks: one a step, a solid disc with a tick once it is added, a dashed ring before.

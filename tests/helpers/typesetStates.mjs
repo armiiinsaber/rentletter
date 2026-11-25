@@ -70,6 +70,32 @@ export const DESK = [1024, 1280, 1440, 1920, 2560];
 const noDraft = (p) => p.evaluate(() => { try { for (const k of Object.keys(localStorage)) if (k.startsWith('rl-listing-draft')) localStorage.removeItem(k); } catch (e) { /* none */ } });
 const desk = async (p) => { await p.setViewportSize({ width: 1440, height: 900 }); await wait(p, 300); };
 const vis = (p, sel) => p.locator(`${sel}:visible`).first();
+// The dashboard's order of the listings, kept on the device (components/dashboard/listingSort.js):
+// each state that sets one leaves none behind.
+const clearSort = (p) => p.evaluate(() => { try { localStorage.removeItem('rl-listing-sort-active'); localStorage.removeItem('rl-listing-sort-archived'); } catch (e) { /* none */ } }).catch(() => {});
+const TABLE = '[data-listings-view] [data-listings-table]';
+// The realtor's listings brought to n in the view with the fake stack's extra ones (many=, tests/
+// helpers/fakeNextServer.mjs), from the count it answers: a write state before has saved one of
+// its own. At least three extra, so both on Queens Quay West and the one with no rent are there.
+const listingsTo = async (f, n, extra = '') => {
+  const { listings } = await f(`/__fake/state?many=0${extra}`); const more = n - listings;
+  if (more < 3 || more > 7) throw new Error(`the realtor has ${listings} listings: ${n} in the view takes ${more} more`);
+  await f(`/__fake/state?many=${more}`);
+};
+// The first listings table as it stands: the heading that holds the order, the arrows drawn, the
+// rents down its rows, the rows picked, the bar's count, the scroll, the page's mark and its address.
+const tableNow = (p) => p.evaluate((sel) => {
+  const t = document.querySelector(sel);
+  return {
+    sorted: [...t.querySelectorAll('[role=columnheader][aria-sort]')].map((h) => [h.dataset.col, h.getAttribute('aria-sort')]),
+    arrows: [...t.querySelectorAll('.lt-arrow')].filter((a) => a.getClientRects().length && getComputedStyle(a).visibility === 'visible').map((a) => [a.closest('[data-col]').dataset.col, a.dataset.dir]),
+    rents: [...t.querySelectorAll('[data-listing-row] [data-col="rent"]')].map((c) => Number(c.textContent.replace(/[^\d]/g, '')) || null),
+    ids: [...t.querySelectorAll('[data-listing-row]')].map((r) => r.dataset.listingRow),
+    picked: [...document.querySelectorAll('[data-row-check]:checked')].map((c) => c.dataset.rowCheck),
+    bar: ((document.querySelector('[data-bulk-bar] .hv-bulk-n') || {}).textContent || '').trim(),
+    y: Math.round(window.scrollY), mark: window.__sortMark || 0, url: location.href,
+  };
+}, TABLE);
 const NEW_LISTING = /^(\+\s*)?(New listing|Add a listing|Add listing)/i;
 // The tenant's apply flow: each step filled with the long values, then Continue.
 const STEPS = [
@@ -305,6 +331,94 @@ export const STATES = [
     await p.locator('[data-row-check="L1"]').check(); await p.locator('[data-row-check="L2"]').check(); await p.locator('[data-bulk-bar]').waitFor({ timeout: 15000 });
     await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300);
   }, after: (f) => f('/__fake/state?archive=0') },
+  // The order of the listings (components/dashboard/listingSort.js), on eight listings in the view
+  // (the fixture's, the one a write state saved and enough more): at 1440 the Rent heading, a click high to low with its
+  // arrow and aria-sort, a second low to high, a third high to low again, the one with no rent last
+  // each time; the row picked before stays picked, the bar keeps its count, nothing reloads,
+  // navigates or scrolls; the order is kept on this device for Active alone and read again after a
+  // reload. No search with eight. Measured sorted by rent at every width.
+  { name: 'dashboard, the table sorted by rent', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await listingsTo(f, 8, '&archive=1'); await desk(p); await open(p, '/dashboard'); await clearSort(p); await open(p, '/dashboard');
+    await p.locator(TABLE).first().waitFor({ timeout: 30000 });
+    if (await p.locator('[data-listing-search]:visible').count()) throw new Error('the search shows with eight listings');
+    const before = await tableNow(p);
+    if (JSON.stringify(before.sorted) !== '[["when","descending"]]' || before.ids.length < 6) throw new Error(`the default order: ${JSON.stringify(before)}`);
+    await p.locator('[data-row-check="L1"]').check(); await p.locator('[data-bulk-bar]').waitFor({ timeout: 15000 });
+    await p.evaluate(() => { window.__sortMark = 1; window.scrollTo({ top: 120, behavior: 'instant' }); }); await wait(p, 300);
+    const y0 = await p.evaluate(() => window.scrollY);
+    for (const [aria, dir] of [['descending', 'desc'], ['ascending', 'asc'], ['descending', 'desc']]) {
+      await p.locator(`${TABLE} [data-sort-col="rent"]`).first().click(); await wait(p, 300);
+      const s = await tableNow(p);
+      const set = s.rents.filter((n) => n != null);
+      if (JSON.stringify(s.sorted) !== JSON.stringify([['rent', aria]]) || JSON.stringify(s.arrows) !== JSON.stringify([['rent', dir]])) throw new Error(`the rent heading, ${dir}: ${JSON.stringify(s)}`);
+      if (JSON.stringify(set) !== JSON.stringify([...set].sort((a, b) => (dir === 'desc' ? b - a : a - b))) || s.rents[s.rents.length - 1] !== null || s.rents.slice(s.rents.indexOf(null)).some((n) => n != null)) throw new Error(`the rows by rent, ${dir}: ${JSON.stringify(s.rents)}`);
+      if (JSON.stringify(s.picked) !== '["L1"]' || s.bar !== '1 selected' || s.mark !== 1 || s.url !== before.url || Math.abs(s.y - y0) > 1) throw new Error(`a sort changed more than the order: ${JSON.stringify({ ...s, y0 })}`);
+    }
+    const kept = await p.evaluate(() => { try { return [localStorage.getItem('rl-listing-sort-active'), localStorage.getItem('rl-listing-sort-archived')]; } catch (e) { return String(e); } });
+    if (JSON.stringify(kept) !== JSON.stringify(['{"key":"rent","dir":"desc"}', null])) throw new Error(`kept on the device: ${JSON.stringify(kept)}`);
+    // Archived keeps its own order; a reload reads Active's back.
+    await vis(p, '[data-shelf-to="archived"]').click(); await wait(p, 300);
+    if ((await vis(p, '[data-sort-menu-open]').innerText()).trim() !== 'Latest activity') throw new Error('Archived took the order of Active');
+    await vis(p, '[data-shelf-to="active"]').click(); await wait(p, 300);
+    await open(p, '/dashboard'); await p.locator(TABLE).first().waitFor({ timeout: 30000 }); await wait(p, 300);
+    const again = await tableNow(p);
+    if (JSON.stringify(again.sorted) !== '[["rent","descending"]]' || (await vis(p, '[data-sort-menu-open]').innerText()).trim() !== 'Rent high to low') throw new Error(`after a reload: ${JSON.stringify(again)}`);
+    await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300);
+    if ((await vis(p, '[data-sort-open]').innerText()).trim() !== 'Rent high to low') throw new Error('the phone\'s Sort control does not read the order');
+  }, after: async (f, p) => { await clearSort(p); await f('/__fake/state?archive=0&many=0'); } },
+  // The Sort sheet under 1024: the eight choices, Latest activity the one ticked; Rent low to high
+  // puts the cards in that order at once, the sheet goes, the page is where it was and did not
+  // reload; opened again with that choice ticked, and measured open at every width.
+  { name: 'dashboard, the Sort sheet', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await listingsTo(f, 8); await open(p, '/dashboard'); await clearSort(p); await open(p, '/dashboard');
+    await vis(p, '[data-sort-open]').waitFor({ timeout: 30000 });
+    await p.evaluate(() => { window.__sortMark = 1; window.scrollTo({ top: 80, behavior: 'instant' }); }); await wait(p, 300);
+    const y0 = await p.evaluate(() => window.scrollY);
+    const choices = async () => p.evaluate(() => [...document.querySelectorAll('[data-sort-sheet] [role=radio]')].map((b) => [b.textContent.trim(), b.getAttribute('aria-checked')]));
+    await vis(p, '[data-sort-open]').click(); await p.locator('[data-sort-sheet]').waitFor({ timeout: 15000 }); await wait(p, 500);
+    const first = await choices();
+    const EIGHT = ['Latest activity', 'Newest listing', 'Rent high to low', 'Rent low to high', 'Most applicants', 'Needs attention first', 'Move in date soonest', 'Address A to Z'];
+    if (JSON.stringify(first) !== JSON.stringify(EIGHT.map((t, i) => [t, i === 0 ? 'true' : 'false']))) throw new Error(`the sheet: ${JSON.stringify(first)}`);
+    await p.locator('[data-sort-sheet] [data-sort-choice="rent-low"]').click();
+    await p.locator('[data-sort-sheet]').waitFor({ state: 'detached', timeout: 15000 }); await wait(p, 300);
+    // The cards that take applications: those before the Rented line.
+    const cards = await p.evaluate(() => {
+      const kids = [...document.querySelector('.hv-phone .dash-grid').children]; const cut = kids.findIndex((k) => k.getAttribute('role') === 'separator');
+      return { rents: (cut < 0 ? kids : kids.slice(0, cut)).filter((k) => k.getAttribute('role') === 'link').map((c) => c.querySelector('.num').textContent.trim()), y: window.scrollY, mark: window.__sortMark || 0, label: [...document.querySelectorAll('[data-sort-open]')].find((b) => b.getClientRects().length).textContent.trim() };
+    });
+    const nums = cards.rents.filter((r) => r !== 'No rent').map((r) => Number(r.replace(/[^\d]/g, '')));
+    if (cards.rents.length < 6 || JSON.stringify(nums) !== JSON.stringify([...nums].sort((a, b) => a - b)) || cards.rents[cards.rents.length - 1] !== 'No rent' || cards.label !== 'Rent low to high') throw new Error(`the cards after Rent low to high: ${JSON.stringify(cards)}`);
+    if (cards.mark !== 1 || Math.abs(cards.y - y0) > 1) throw new Error(`the choice moved the page: ${JSON.stringify({ ...cards, y0 })}`);
+    await vis(p, '[data-sort-open]').click(); await p.locator('[data-sort-sheet]').waitFor({ timeout: 15000 }); await wait(p, 500);
+    if (JSON.stringify((await choices()).filter(([, on]) => on === 'true')) !== '[["Rent low to high","true"]]') throw new Error('the sheet does not tick the order on view');
+  }, after: async (f, p) => { await clearSort(p); await f('/__fake/state?many=0'); } },
+  // Nine listings: the search above the list at 390, by address and unit as the realtor types;
+  // none matches, the one line with Clear; Clear brings them all back; "queens quay" two, said;
+  // Archived (none there) shows no search, and back on Active the query is still there. At 1440
+  // the desktop field holds the same query over the table's two rows. Measured with it typed.
+  { name: 'dashboard, nine listings and the search', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await listingsTo(f, 9, '&archive=1'); await open(p, '/dashboard'); await clearSort(p); await open(p, '/dashboard');
+    const field = vis(p, '[data-listing-search-input]');
+    await field.waitFor({ timeout: 30000 });
+    const seen = () => p.evaluate(() => { const shown = (sel) => [...document.querySelectorAll(sel)].filter((e) => e.getClientRects().length); return { cards: shown('.hv-phone .dash-grid > [role=link]').length, rows: shown('[data-listings-view] [data-listing-row]').length, count: (shown('[data-search-count]')[0] || {}).textContent || '', empty: shown('[data-search-empty]').length, fields: shown('[data-listing-search-input]').map((i) => i.value) }; });
+    await field.fill('zzzz'); await wait(p, 300);
+    let s = await seen();
+    if (s.cards !== 0 || s.empty !== 1 || s.count) throw new Error(`no match: ${JSON.stringify(s)}`);
+    await vis(p, '[data-search-clear]').click(); await wait(p, 300);
+    s = await seen();
+    if (s.cards !== 9 || s.empty || JSON.stringify(s.fields) !== '[""]') throw new Error(`after Clear: ${JSON.stringify(s)}`);
+    await field.fill('QUEENS quay'); await wait(p, 300);
+    s = await seen();
+    if (s.cards !== 2 || s.count !== '2 listings match') throw new Error(`queens quay: ${JSON.stringify(s)}`);
+    await vis(p, '[data-shelf-to="archived"]').click(); await wait(p, 300);
+    if ((await seen()).fields.length) throw new Error('the search shows on Archived, with nothing there');
+    await vis(p, '[data-shelf-to="active"]').click(); await wait(p, 300);
+    s = await seen();
+    if (JSON.stringify(s.fields) !== '["QUEENS quay"]' || s.cards !== 2) throw new Error(`back on Active: ${JSON.stringify(s)}`);
+    await desk(p); s = await seen();
+    if (JSON.stringify(s.fields) !== '["QUEENS quay"]' || s.rows !== 2 || s.count !== '2 listings match') throw new Error(`at 1440: ${JSON.stringify(s)}`);
+    await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300);
+  }, after: async (f, p) => { await clearSort(p); await f('/__fake/state?archive=0&many=0'); } },
   { name: 'new listing form, step 1 on a phone', kind: 'realtor', widths: NARROW, go: async (p) => { await open(p, '/dashboard'); await noDraft(p); await p.locator('.dash-new').click(); await p.locator('.lf-panel').waitFor({ timeout: 15000 }); await wait(p, 500); }, steps: async function* (p) {
     try {
       await p.locator('#lf-address').fill('2150 Lake Shore Boulevard West'); await p.locator('#lf-unit').fill('Penthouse 4512');
@@ -564,6 +678,14 @@ export const STATES = [
     if (!(await p.evaluate(() => document.activeElement && document.activeElement.dataset.field === 'annualIncome'))) throw new Error('the button of what the card needs does not open its field');
     yield 'tenant profile, a section open for editing';
   } },
+  // A pay stub added and its income read, no amount typed (components/tenant/ProfileCard.js): the
+  // card's income is the amount read, with the line that it was read from a document, beside the
+  // mark that says the income was read; never Not added.
+  { name: 'tenant profile, the income read from a pay stub', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => {
+    await tenantProfile(p, f, 'who=16&facts=half&docs=2'); await p.locator('[data-key-fact="annualIncome"] [data-key-source="document"]').waitFor({ timeout: 15000 }); await wait(p, 300);
+    const seen = await p.evaluate(() => { const t = (sel) => (document.querySelector(sel) || {}).innerText || ''; return { fact: t('[data-key-fact="annualIncome"]').replace(/\s+/g, ' ').trim(), mark: t('[data-mark="income"]').replace(/\s+/g, ' ').trim(), done: (document.querySelector('[data-mark="income"]') || {}).dataset?.done }; });
+    if (seen.fact !== 'Income before tax $118,000 a year Read from a document' || seen.mark !== 'Income read from your document' || seen.done !== 'yes') throw new Error(`the card's income: ${JSON.stringify(seen)}`);
+  } },
   { name: 'tenant profile, complete', kind: 'tenant', phase: 'alone', widths: WIDE, go: async (p, f) => { await tenantProfile(p, f, 'who=13&facts=full&docs=1&personal=1&share=new&agent=1'); await p.locator('[data-strength-next="none"]').first().waitFor({ state: 'attached', timeout: 15000 }); await p.locator('[data-share="live"]').first().waitFor({ timeout: 15000 }); await wait(p, 300); }, steps: async function* (p) {
     // Preview: the realtor's own view of the profile (components/dashboard/SharedProfileView.js),
     // the facts "What a realtor would see" lists and nothing else: no progress, no document, no ID.
@@ -666,7 +788,7 @@ export const STATES = [
     const kept = await p.evaluate(() => Object.fromEntries([...document.querySelectorAll('[data-kept]')].map((el) => [el.dataset.kept, { text: el.textContent.replace(/\s+/g, ' ').trim(), beside: !!(el.closest('[data-vault-slot]') || el.closest('[data-photo]')).querySelector('button') }])));
     const want = { photo: `${IDLE_MONTHS} months`, id: `${ID_DAYS} days`, income: `${DOCUMENT_DAYS} days`, employment: `${DOCUMENT_DAYS} days` };
     for (const [k, period] of Object.entries(want)) if (!kept[k] || !kept[k].text.includes(period) || !kept[k].beside) throw new Error(`the line beside ${k}: ${JSON.stringify(kept[k])}`);
-    if (!/No realtor can open your ID/.test(kept.id.text) || /verified|checked|confirmed/i.test(Object.values(kept).map((x) => x.text).join(' '))) throw new Error(`the lines: ${JSON.stringify(kept)}`);
+    if (kept.id.text !== `No realtor can open the ID you add here, even one you share your profile with. It is deleted ${ID_DAYS} days after you add it.` || /verified|checked|confirmed/i.test(Object.values(kept).map((x) => x.text).join(' '))) throw new Error(`the lines: ${JSON.stringify(kept)}`);
   }, steps: async function* (p) {
     await p.locator('[data-vault-documents] input[type=file]').setInputFiles({ name: 'paystub.pdf', mimeType: 'application/pdf', buffer: Buffer.from('%PDF-1.4 a pay stub') });
     await p.locator('[data-vault-slot="income"][data-held="yes"]').waitFor({ timeout: 30000 }); await wait(p, 400);

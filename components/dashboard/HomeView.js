@@ -2,7 +2,7 @@
 // The realtor dashboard HOME: extracted verbatim from pages/dashboard.js so the real page
 // (Supabase SSR) and /demo/dashboard (in-memory fixture) render the SAME component. All I/O
 // goes through useAdapter() (lib/dashboardAdapter). Business-model logic unchanged.
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, StatusPills, ConfirmSheet } from '../../components/ui';
@@ -19,6 +19,7 @@ import { DeskStats, ListingsTable, FILTERS } from './ListingsTable';
 import NeedsYou from './NeedsYou';
 import PipelineSoon from './PipelineSoon';
 import { standingOf, rowOf, needsYouItems } from './homeData';
+import { DEFAULT_SORT, SEARCH_FROM, orderIds, arrange, rowSet, headingSort, sortName, sameSort, choicesFor, validSort, readSort, writeSort, matchRows, searchWords } from './listingSort';
 import { useCirclePending } from './MainNav';
 import { navigateToAction } from './actionNav';
 import InstallHint from '../../components/dashboard/InstallHint';
@@ -88,6 +89,14 @@ function useLogoAccent(logoUrl) {
   }, [logoUrl]);
   return accent;
 }
+
+// The order of the listings, one for Active and one for Archived (components/dashboard/listingSort.js),
+// kept on this device. A fresh page load draws the default, as the server did, and reads the
+// device's choice right after; the orders as last read or chosen in this tab are kept here too, so
+// a return to the dashboard inside the app draws them at once.
+let sortsSeen = null;
+const deviceStore = () => { try { return window.localStorage; } catch (e) { return null; } };
+const useIsoLayout = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 // The start, for a realtor with no listing yet: one heading, one line, the button, three steps.
 const START = {
@@ -297,7 +306,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   const byListing = signals.applicantsByListing || {};
   const rows = useMemo(() => openListings.map((l) => rowOf(l, byListing[l.id] || [])), [openListings, byListing]);
   const closedRows = useMemo(() => closedListings.map((l) => rowOf(l, byListing[l.id] || [])), [closedListings, byListing]);
-  const shownRows = FILTERS[filter] ? rows.filter(FILTERS[filter]) : rows;
   const needs = useMemo(() => (signals.loaded ? needsYouItems({ listings: liveListings, applicantsByListing: byListing, people: signals.people || [], shares: shared || [], circlePending, now: now || Date.now(), paths: adapter.paths }) : []),
     // now is left out on purpose: the items change with the data, the times with the clock.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -346,12 +354,117 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     return { title: n === 1 ? 'Delete this listing?' : `Delete ${n} listings?`, body: [n === 1 ? 'Its link stops working and any test applications go with it. This cannot be undone.' : 'Their links stop working and any test applications go with them. This cannot be undone.', skipLine(skip.length)].filter(Boolean).join(' '), confirm: 'Delete', run: () => deleteIds(ask.ids), danger: true };
   })() : null;
   const archivedRows = useMemo(() => archivedListings.map((l) => rowOf(l, byListing[l.id] || [])), [archivedListings, byListing]);
+  // ── The order and the search, in the browser, on the rows above (components/dashboard/listingSort.js).
+  // Each shelf keeps its own order on this device; a change never reloads, navigates or scrolls.
+  // The selection is by id, so the rows picked stay picked whatever the order; Needs you and the
+  // Pipeline have orders of their own.
+  const [sorts, setSorts] = useState(() => sortsSeen || { active: DEFAULT_SORT, archived: DEFAULT_SORT });
+  useIsoLayout(() => {
+    const store = deviceStore();
+    const kept = { active: readSort(store, 'active'), archived: readSort(store, 'archived') };
+    sortsSeen = kept;
+    setSorts((cur) => (sameSort(cur.active, kept.active) && sameSort(cur.archived, kept.archived) ? cur : kept));
+  }, []);
+  const sort = sorts[shelf] || DEFAULT_SORT;
+  const setSort = (next) => {
+    const s = validSort(next);
+    setSorts((cur) => { const out = { ...cur, [shelf]: s }; sortsSeen = out; return out; });
+    writeSort(deviceStore(), shelf, s);
+  };
+  const onHeading = (key) => setSort(headingSort(sort, key));
+  const [sortOpen, setSortOpen] = useState(false); // the sheet, under 1024
+  const [menuOpen, setMenuOpen] = useState(false); // the menu, 1024 and wider
+  const menuRef = useRef(null); const menuBtn = useRef(null);
+  // The order is set when the realtor sets one, when a listing comes or goes, and once the signals
+  // are in; it holds while the rows' data changes under it (the server's answer taking over a
+  // screen seen before, fresh signals), so no card moves under a finger and none is drawn again.
+  // The data itself is always the newest: only the positions are held.
+  const activeOrder = useMemo(() => orderIds(rows, sorts.active), [sorts.active, rowSet(rows), signals.loaded]);
+  const closedOrder = useMemo(() => orderIds(closedRows, sorts.active), [sorts.active, rowSet(closedRows), signals.loaded]);
+  const archivedOrder = useMemo(() => orderIds(archivedRows, sorts.archived), [sorts.archived, rowSet(archivedRows), signals.loaded]);
+  const sortedRows = arrange(rows, activeOrder);
+  const sortedClosed = arrange(closedRows, closedOrder);
+  const sortedArchived = arrange(archivedRows, archivedOrder);
+  // The search: past eight listings in the view, by address and unit as the realtor types.
+  const [query, setQuery] = useState('');
+  const inView = shelf === 'archived' ? archivedListings.length : liveListings.length;
+  const canFind = inView >= SEARCH_FROM;
+  const q = canFind ? query : '';
+  const searched = searchWords(q).length > 0;
+  const foundOpen = matchRows(sortedRows, q);
+  const foundClosed = matchRows(sortedClosed, q);
+  const foundArchived = matchRows(sortedArchived, q);
+  const found = shelf === 'archived' ? foundArchived.length : foundOpen.length + foundClosed.length;
+  const shownRows = FILTERS[filter] ? foundOpen.filter(FILTERS[filter]) : foundOpen;
+  // A phone card draws its listing; the cards follow the rows' order.
+  const listingById = useMemo(() => new Map((listings || []).map((l) => [l.id, l])), [listings]);
+  const cardsOf = (list) => list.map((r) => listingById.get(r.id)).filter(Boolean);
+  const openCards = cardsOf(foundOpen); const closedCards = cardsOf(foundClosed); const archivedCards = cardsOf(foundArchived);
+  // The menu closes on a click outside it, on Escape (the focus back on its button) and on Tab; it
+  // opens on the order on view, and the arrow keys move through it.
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const outside = (e) => { if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false); };
+    const keys = (e) => { if (e.key === 'Escape') { e.stopPropagation(); setMenuOpen(false); if (menuBtn.current) menuBtn.current.focus({ preventScroll: true }); } };
+    document.addEventListener('pointerdown', outside); document.addEventListener('keydown', keys);
+    const f = requestAnimationFrame(() => { const box = menuRef.current; const el = box && (box.querySelector('[role=menuitemradio][aria-checked="true"]') || box.querySelector('[role=menuitemradio]')); if (el) el.focus({ preventScroll: true }); });
+    return () => { cancelAnimationFrame(f); document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', keys); };
+  }, [menuOpen]);
+  const menuKeys = (e) => {
+    if (e.key === 'Tab') { setMenuOpen(false); return; }
+    const items = [...e.currentTarget.querySelectorAll('[role=menuitemradio]')];
+    const at = items.indexOf(document.activeElement);
+    const to = e.key === 'ArrowDown' ? (at + 1) % items.length : e.key === 'ArrowUp' ? (at - 1 + items.length) % items.length : e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1 : -1;
+    if (to >= 0 && items[to]) { e.preventDefault(); items[to].focus({ preventScroll: true }); }
+  };
+  // A choice in the sheet: the order changes at once, its tick moves, and the sheet goes.
+  const choose = (c) => { setSort(c); requestAnimationFrame(() => setSortOpen(false)); };
+  const pickFromMenu = (c) => { setSort(c); setMenuOpen(false); if (menuBtn.current) menuBtn.current.focus({ preventScroll: true }); };
   // The Active and Archived switch, above the listings at every width (only once archive is set up).
   const shelfSwitch = (
     <div className="hv-shelf" role="group" aria-label="Show listings" data-shelf="">
       {[['active', 'Active'], ['archived', 'Archived']].map(([key, label]) => (
         <button key={key} type="button" aria-pressed={shelf === key ? 'true' : 'false'} onClick={() => switchShelf(key)} data-shelf-to={key}>{label}</button>
       ))}
+    </div>
+  );
+  // The Sort control: under 1024 a button above the cards that opens the sheet, at 1024 and wider a
+  // menu beside the switch. Each reads the order on view; the choices are the same eight.
+  const sortLabel = sortName(sort);
+  const sortChoices = choicesFor(sort);
+  const sortButton = (
+    <button type="button" className="ds-btn ds-btn-line hv-sort-btn" aria-haspopup="dialog" aria-label={`Sort, ${sortLabel}`} data-sort-open="" onClick={() => setSortOpen(true)}>
+      <Icon name="sort" size={16} /><span>{sortLabel}</span>
+    </button>
+  );
+  const sortMenu = (
+    <span className="hv-sortmenu" ref={menuRef} data-sort-menu="">
+      <button ref={menuBtn} type="button" className="ds-btn ds-btn-line hv-sort-btn" aria-haspopup="menu" aria-expanded={menuOpen ? 'true' : 'false'} aria-label={`Sort, ${sortLabel}`} data-sort-menu-open="" onClick={() => setMenuOpen((v) => !v)}>
+        <Icon name="sort" size={16} /><span>{sortLabel}</span>
+      </button>
+      {menuOpen ? (
+        <span className="hv-sortpop" role="menu" aria-label="Sort listings" data-sort-menu-list="" onKeyDown={menuKeys}>
+          {sortChoices.map((c) => { const on = sameSort(c, sort); return (
+            <button key={c.id} type="button" role="menuitemradio" aria-checked={on ? 'true' : 'false'} className="hv-sort-opt" data-sort-choice={c.id} onClick={() => pickFromMenu(c)}>
+              <span>{c.label}</span>{on ? <Icon name="check" size={16} strokeWidth={2} /> : null}
+            </button>
+          ); })}
+        </span>
+      ) : null}
+    </span>
+  );
+  // The search, past eight listings in the view: one field for each layout, the one query.
+  const findField = (where) => (
+    <span className="hv-find" data-listing-search={where}>
+      <span className="hv-find-icon" aria-hidden="true"><Icon name="search" size={16} /></span>
+      <input type="search" className="hv-find-input" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Address or unit" aria-label="Find a listing by address or unit" autoComplete="off" autoCorrect="off" spellCheck={false} enterKeyHint="search" data-listing-search-input={where} />
+    </span>
+  );
+  const foundLine = searched && found > 0 ? <p className="hv-found" role="status" data-search-count="">{count(found, 'listing matches', 'listings match')}</p> : null;
+  const noMatch = (
+    <div className="hv-nomatch" data-search-empty="">
+      <p role="status">No listing matches your search.</p>
+      <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setQuery('')} data-search-clear="">Clear</button>
     </div>
   );
   // The table's checkboxes: one a row, and the header's for all the rows shown.
@@ -508,10 +621,15 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                 {canArchive ? shelfSwitch : null}
               </div>
               {actNote ? <p className="hv-act-note" role="status">{actNote}</p> : null}
+              {/* The search past eight listings, then the Sort control and how many match. */}
+              <div className="hv-tools" data-listing-tools="phone">
+                {canFind ? findField('phone') : null}
+                <div className="hv-tools-row">{sortButton}{foundLine}</div>
+              </div>
               {shelf === 'archived' ? (
                 <div className="dash-grid" data-archived-cards="">
-                  {archivedListings.length === 0 ? <p className="hv-quiet-phone">Nothing archived.</p> : null}
-                  {archivedListings.map((l) => (
+                  {archivedListings.length === 0 ? <p className="hv-quiet-phone">Nothing archived.</p> : searched && !found ? noMatch : null}
+                  {archivedCards.map((l) => (
                     <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} data-press="card" className="dash-card dash-card-int"
                       {...cardProps(adapter.paths.listing(l.id))}
                       style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
@@ -528,7 +646,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                 </div>
               ) : (
               <div className="dash-grid">
-                {openListings.map((l) => (
+                {searched && !found ? noMatch : null}
+                {openCards.map((l) => (
                   <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} className="dash-card dash-card-int" data-press="card"
                     {...cardProps(adapter.paths.listing(l.id))}
                     style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
@@ -549,12 +668,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                   </div>
                 ))}
                 {/* Rented and closed listings, below the active ones under one muted word. */}
-                {closedListings.length > 0 && (
+                {closedCards.length > 0 && (
                   <div className="dash-eyebrow" role="separator" aria-label="Rented listings" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', color: C.inkMute, gridColumn: '1 / -1' }}>
                     <span>Rented</span><span aria-hidden="true" style={{ flex: 1, height: 1, background: C.rule }} />
                   </div>
                 )}
-                {closedListings.map((l) => (
+                {closedCards.map((l) => (
                   <div key={l.id} role="link" tabIndex={0} aria-label={displayLabel(l, 'Untitled listing')} data-press="card" className="dash-card dash-card-int"
                     {...cardProps(adapter.paths.listing(l.id))}
                     style={{ cursor: 'pointer', color: C.ink, padding: 'var(--card-pad)', display: 'flex', flexDirection: 'column', gap: 'var(--gap-line)' }}>
@@ -577,15 +696,17 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             <div className="hv-desk hv-part-listings hv-section" data-listings-view="">
               <div className="hv-head">
                 <h2 className="dash-h2">Your listings</h2>
-                <span className="hv-count" aria-label={`${shelf === 'archived' ? archivedListings.length : shownRows.length} shown`}>{shelf === 'archived' ? archivedListings.length : shownRows.length}</span>
-                {canArchive ? shelfSwitch : null}
+                <span className="hv-count" aria-label={`${shelf === 'archived' ? foundArchived.length : shownRows.length} shown`}>{shelf === 'archived' ? foundArchived.length : shownRows.length}</span>
                 {filter !== 'all' && shelf === 'active' ? (
                   <span className="hv-filter">
                     {filter === 'applicants' ? 'With applicants' : 'With a report to send'}
                     <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button>
                   </span>
                 ) : null}
+                {/* The switch, then the Sort menu with the eight orders (two of them no column holds). */}
+                <span className="hv-head-tools">{canArchive ? shelfSwitch : null}{sortMenu}</span>
               </div>
+              {canFind ? <div className="hv-find-row">{findField('desk')}{foundLine}</div> : null}
               {/* The bar for the rows picked: archive (or restore) them, or delete the ones that can go. */}
               {picked.size ? (
                 <div className="hv-bulk rl-glass" role="region" aria-label="Selected listings" data-bulk-bar="" data-stuck="">
@@ -597,14 +718,15 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               ) : null}
               {actNote ? <p className="hv-act-note" role="status" data-act-note="">{actNote}</p> : null}
               {shelf === 'archived' ? (
-                archivedRows.length ? <ListingsTable rows={archivedRows} now={now} paths={adapter.paths} label="Archived listings" select={rowSelect(archivedRows)} /> : <p className="hv-quiet" data-archived-empty="">Nothing archived.</p>
-              ) : (
+                !archivedRows.length ? <p className="hv-quiet" data-archived-empty="">Nothing archived.</p>
+                  : foundArchived.length ? <ListingsTable rows={foundArchived} now={now} paths={adapter.paths} label="Archived listings" select={rowSelect(foundArchived)} sort={sorts.archived} onSort={onHeading} /> : noMatch
+              ) : searched && !found ? noMatch : (
                 <>
-                  {shownRows.length ? <ListingsTable rows={shownRows} now={now} paths={adapter.paths} select={rowSelect(shownRows)} /> : <p className="hv-quiet">{rows.length ? <>No listing matches. <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button></> : 'No active listings.'}</p>}
-                  {filter === 'all' && closedRows.length > 0 && (
+                  {shownRows.length ? <ListingsTable rows={shownRows} now={now} paths={adapter.paths} select={rowSelect(shownRows)} sort={sorts.active} onSort={onHeading} /> : searched && filter === 'all' ? null : <p className="hv-quiet">{rows.length ? <>No listing matches. <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setFilter('all')}>Show all</button></> : 'No active listings.'}</p>}
+                  {filter === 'all' && foundClosed.length > 0 && (
                     <div className="hv-rented">
-                      <div className="hv-head"><h3 className="hv-h3">Rented</h3><span className="hv-count">{closedRows.length}</span></div>
-                      <ListingsTable rows={closedRows} now={now} paths={adapter.paths} label="Rented listings" select={rowSelect(closedRows)} />
+                      <div className="hv-head"><h3 className="hv-h3">Rented</h3><span className="hv-count">{foundClosed.length}</span></div>
+                      <ListingsTable rows={foundClosed} now={now} paths={adapter.paths} label="Rented listings" select={rowSelect(foundClosed)} sort={sorts.active} onSort={onHeading} />
                     </div>
                   )}
                 </>
@@ -674,6 +796,21 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
               {canArchive ? <button type="button" className="ds-btn ds-btn-line" disabled={acting} onClick={() => archiveIds([menuFor.id], !isArchived(menuFor))}>{isArchived(menuFor) ? 'Restore' : 'Archive'}</button> : null}
               <button type="button" className="ds-btn ds-btn-line hv-danger" disabled={acting} onClick={() => { const id = menuFor.id; setMenuFor(null); setAsk({ ids: [id] }); }}>Delete</button>
               <button type="button" className="ds-btn ds-btn-quiet" onClick={() => setMenuFor(null)}>Cancel</button>
+            </div>
+          ) : null}
+        </Sheet>
+        {/* The order of the cards, under 1024 (the same eight choices as the menu at 1024 and wider). */}
+        <Sheet open={sortOpen} onClose={() => setSortOpen(false)} label="Sort listings" maxWidth={480}>
+          {sortOpen ? (
+            <div className="hv-menu" data-sort-sheet="">
+              <h3 data-sheet-drag="" className="hv-menu-t">Sort listings</h3>
+              <div className="hv-sort-list" role="radiogroup" aria-label="Sort listings">
+                {sortChoices.map((c) => { const on = sameSort(c, sort); return (
+                  <button key={c.id} type="button" role="radio" aria-checked={on ? 'true' : 'false'} className="hv-sort-opt" data-sort-choice={c.id} onClick={() => choose(c)}>
+                    <span>{c.label}</span>{on ? <Icon name="check" size={18} strokeWidth={2} /> : null}
+                  </button>
+                ); })}
+              </div>
             </div>
           ) : null}
         </Sheet>
@@ -810,7 +947,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
            their classes are global (and unique to this screen). */
         .dash-section-head :global(.hv-shelf), .hv-head :global(.hv-shelf) { margin-left: auto; }
         :global(.hv-shelf) { display: inline-flex; padding: 2px; border-radius: var(--btn-radius); border: 1px solid ${C.ruleDark}; background: ${C.card}; }
-        :global(.hv-shelf button) { min-height: 40px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
+        /* 38px inside 2px of padding and the 1px border: the 44px every control on the view has. */
+        :global(.hv-shelf button) { min-height: 38px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
         :global(.hv-shelf button[aria-pressed='true']) { background: ${C.paperDeep}; color: ${C.ink}; font-weight: 700; }
         :global(.hv-shelf button:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
         .hv-act-note { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0 0 var(--s-3); text-wrap: balance; }
@@ -828,6 +966,36 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         :global(.hv-menu-t) { font-size: 18px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.015em; margin: 0 0 var(--s-2); overflow-wrap: anywhere; text-wrap: balance; }
         :global(.hv-menu .ds-btn) { width: 100%; }
         @media (min-width: 1024px) { .hv-head { align-items: center; } }
+
+        /* ── The order and the search: the Sort control (a button and its sheet under 1024, a menu at
+           1024 and wider), the search field past eight listings, how many match, and the line when
+           none does. Every control the 44px height and the radius every dashboard button has
+           (components/dashboard/DashShell.js .ds-btn). Built outside the returned tree, so their
+           classes are global (and unique to this screen). ── */
+        :global(.hv-tools) { display: grid; gap: var(--s-3); margin: 0 0 var(--s-4); }
+        :global(.hv-tools-row) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-4); min-width: 0; }
+        :global(.hv-find) { position: relative; display: block; min-width: 0; }
+        :global(.hv-find-icon) { position: absolute; left: var(--gap-card); top: 0; bottom: 0; display: flex; align-items: center; color: ${C.inkMute}; pointer-events: none; }
+        :global(.hv-find-input) { display: block; width: 100%; box-sizing: border-box; min-height: 44px; margin: 0; padding: 0 var(--gap-card) 0 calc(var(--gap-card) + 24px); border: 1px solid ${C.ruleDark}; border-radius: var(--btn-radius); background: ${C.card}; color: ${C.ink}; font-family: inherit; font-size: 16px; line-height: 1.2; -webkit-appearance: none; appearance: none; }
+        :global(.hv-find-input::-webkit-search-decoration), :global(.hv-find-input::-webkit-search-cancel-button) { -webkit-appearance: none; appearance: none; }
+        :global(.hv-find-input::placeholder) { color: ${C.inkMute}; opacity: 1; }
+        :global(.hv-found) { margin: 0; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; line-height: var(--lh-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        :global(.hv-nomatch) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-1) var(--s-2); grid-column: 1 / -1; min-width: 0; }
+        :global(.hv-nomatch p) { margin: 0; font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); }
+        :global(.hv-nomatch .ds-btn) { margin-left: calc(-1 * var(--s-2)); }
+        :global(.hv-head-tools) { margin-left: auto; display: inline-flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
+        .hv-head :global(.hv-head-tools .hv-shelf) { margin-left: 0; }
+        :global(.hv-find-row) { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-4); margin: 0 0 var(--s-3); }
+        :global(.hv-find-row .hv-find) { flex: 0 1 420px; }
+        /* The menu: under its button, at the button's right edge, over the table. */
+        :global(.hv-sortmenu) { position: relative; display: inline-flex; }
+        :global(.hv-sortpop) { position: absolute; right: 0; top: calc(100% + var(--s-1)); z-index: 30; display: grid; gap: 2px; min-width: 248px; padding: var(--s-1); background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); box-shadow: 0 1px 2px rgba(15, 15, 16, 0.06), 0 12px 32px rgba(15, 15, 16, 0.12); }
+        :global(.hv-sort-list) { display: grid; gap: 2px; }
+        :global(.hv-sort-opt) { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); width: 100%; min-height: 44px; margin: 0; padding: 0 var(--gap-card); border: none; border-radius: var(--btn-radius); background: transparent; color: ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 600; line-height: 1.2; text-align: left; cursor: pointer; white-space: nowrap; }
+        :global(.hv-sort-opt[aria-checked='true']) { background: ${C.paperDeep}; font-weight: 700; }
+        :global(.hv-sort-opt:focus-visible) { outline: none; box-shadow: inset 0 0 0 2px ${C.ink}; }
+        @media (hover: hover) { :global(.hv-sort-opt:hover) { background: ${C.paper}; } :global(.hv-sort-opt[aria-checked='true']:hover) { background: ${C.paperDeep}; } }
+        :global(.hv-menu .hv-sort-opt) { font-size: var(--t-body); }
 
         /* ── Phone and desktop: both are in the markup, the width picks one ── */
         .hv { max-width: 1100px; margin: 0 auto; padding-left: clamp(16px, 4vw, 32px); padding-right: clamp(16px, 4vw, 32px); }
@@ -851,7 +1019,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           .hv-section { margin-top: var(--gap-section); }
           .hv-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--s-2) var(--s-3); margin-bottom: var(--s-3); }
           .hv-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
-          .hv-filter { display: inline-flex; align-items: center; gap: var(--s-2); margin-left: auto; font-size: var(--t-body-2); color: ${C.inkSoft}; }
+          .hv-filter { display: inline-flex; align-items: center; gap: var(--s-2); font-size: var(--t-body-2); color: ${C.inkSoft}; }
           .hv-quiet { font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); margin: 0; }
           .hv-rented { margin-top: var(--gap-section); }
           .hv-h3 { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; margin: 0; }

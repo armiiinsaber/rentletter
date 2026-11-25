@@ -4,7 +4,7 @@
 // with the realtor (components/dashboard/SharedWithMe.js) and the Circle count
 // (components/dashboard/MainNav.js useCirclePending). No request of its own.
 //   standingOf(open, byListing)       -> { listings, applicants, toSend } the three numbers
-//   rowOf(listing, applicants)        -> one row of the listings table
+//   rowOf(listing, applicants)        -> one row of the listings table, and what its orders read
 //   needsYouItems({ ... })            -> the Needs you column, newest first
 //   pipelineSoonest(people)           -> the Pipeline people, the hold that ends soonest first
 //   pipelinePills(person), pipelinePlace(person)  -> a Pipeline row's pills and its listing
@@ -76,6 +76,14 @@ export function rowOf(listing, applicants) {
     sentAt: sent,
     lastAt: lastActivity(listing, applicants),
     open,
+    // What the orders and the search read (components/dashboard/listingSort.js): the listing's own
+    // words for its place, the day it was made, the unit type as stored and the applicants by state.
+    name: (listing && listing.name) || '',
+    address: (listing && listing.address) || '',
+    unit: (listing && listing.unit) || '',
+    createdAt: (listing && listing.created_at) || null,
+    bedrooms: listing && listing.bedrooms != null ? String(listing.bedrooms) : '',
+    counts,
   };
 }
 
