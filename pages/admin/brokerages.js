@@ -6,6 +6,7 @@
 // /api/admin/brokerages.
 import { useCallback, useEffect, useState } from 'react';
 import { isAdmin } from '../../lib/adminAuth';
+import { C } from '../../components/theme';
 import { adminFetch } from '../../components/admin/adminFetch';
 import AdminShell from '../../components/admin/AdminShell';
 import Loader from '../../components/brand/Loader';
@@ -90,7 +91,7 @@ export default function Brokerages() {
         .bk-mail { overflow-wrap: anywhere; }
         .bk-label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; margin-top: 10px; opacity: 0.7; }
         .bk-standing { font-size: 13px; font-weight: 700; margin-top: 10px; }
-        .bk-flag { font-size: 13px; margin-top: 6px; padding: 6px 10px; border-left: 2px solid #d72027; }
+        .bk-flag { font-size: 13px; margin-top: 6px; padding: 6px 10px; border-left: 2px solid ${C.red}; }
         .bk-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
         :global(.bk-state) { padding: 20px; }
         :global(.bk-state p) { margin: 0 0 12px; font-size: 14px; line-height: 1.55; }

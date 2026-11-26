@@ -22,8 +22,9 @@ export const CEILING = Number(process.env.TEST_CEILING_MS || 20 * 60 * 1000);
 // The ports the walks' servers listen on (devServer, adminServer, the fake stack servers; 3180 to
 // 3190 are the walks that once shared the dev server, each on its own production server now; 3175
 // to 3178 the wrapped text walk's, two for each engine; 3191 the Profile and Circle walk; 3192 the
-// one place and glass walk; 3193 the width and pop up walk; 3194 the Listings walk).
-const WALK_PORTS = [3123, 3125, 3152, 3153, 3157, 3159, 3161, 3162, 3163, 3164, 3165, 3166, 3167, 3168, 3169, 3174, 3175, 3176, 3177, 3178, 3179, 3180, 3181, 3182, 3183, 3184, 3185, 3186, 3187, 3188, 3189, 3190, 3191, 3192, 3193, 3194];
+// one place and glass walk; 3193 the width and pop up walk; 3194 the Listings walk; 3195 the dark
+// theme walk).
+const WALK_PORTS = [3123, 3125, 3152, 3153, 3157, 3159, 3161, 3162, 3163, 3164, 3165, 3166, 3167, 3168, 3169, 3174, 3175, 3176, 3177, 3178, 3179, 3180, 3181, 3182, 3183, 3184, 3185, 3186, 3187, 3188, 3189, 3190, 3191, 3192, 3193, 3194, 3195];
 const WALK_FILES = ['/tmp/rentletter-dev-3123.turn', '/tmp/rentletter-dev-3123.lane-a.turn', '/tmp/rentletter-dev-3123.lane-b.turn', '/tmp/rentletter-dev-3123.lock', '/tmp/rentletter-dev-3123.users'];
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 

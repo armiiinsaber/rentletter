@@ -6,13 +6,14 @@
 // in shell (components/auth/AuthShell.js: sign in, sign up, forgot, reset), onboarding and the
 // dashboard header (components/dashboard/DashboardHeader.js). Tenant and landlord pages (apply,
 // upload, my application, keep, r, ref, refer, a) never carry it. The admin keeps its own install
-// (components/admin/AdminShell.js). The status bar is "default": dark text that reads on paper.
+// (components/admin/AdminShell.js). The status bar is "default": dark text that reads on paper. The
+// browser's theme-color is set for every page in pages/_app.js (components/ThemeColor.js), in the
+// theme in force.
 // The app is portrait only: the manifest says so, and UprightOverlay covers a landscape phone in
 // standalone (components/UprightOverlay.js). Opened from the Home Screen, the first paint continues
 // the launch image with the door turning until the first screen is ready (components/brand/
 // AppStart.js, hosted by components/nav/RouteFrame.js).
 import Head from 'next/head';
-import { C } from './theme';
 import { SPLASH, splashFile, splashMedia } from '../lib/brand/splash';
 import UprightOverlay from './UprightOverlay';
 
@@ -21,7 +22,6 @@ export default function AppHead() {
     <>
     <Head>
       <link key="rl-manifest" rel="manifest" href="/manifest.webmanifest" />
-      <meta key="rl-theme" name="theme-color" content={C.paper} />
       <meta key="rl-apple-capable" name="apple-mobile-web-app-capable" content="yes" />
       <meta key="rl-capable" name="mobile-web-app-capable" content="yes" />
       <meta key="rl-apple-status" name="apple-mobile-web-app-status-bar-style" content="default" />

@@ -4,7 +4,8 @@
 // TickMeter } where needed.
 
 import { useEffect, useRef } from 'react';
-import { C, R, SH, EASE, FONT } from './theme';
+import { C, RGB, R, SH, EASE, FONT } from './theme';
+import { inDark } from './themeHead';
 import { noWidow } from '../lib/typeset';
 import { LOGO } from '../lib/brand/logoPaths';
 import { PRESS_CSS, NAV_CSS, HIT_CSS, DURATION, CURVE } from '../lib/motion';
@@ -69,17 +70,33 @@ export const GlobalStyle = () => (
        Paper text on the ink tone at 72 percent: 7.24 to 1 over white. inkMute would fall to 2.2
        to 1 over black, so it is never set on glass. With prefers-reduced-transparency, or where
        backdrop-filter is not supported, the surface is solid. Playwright's WebKit draws no
-       backdrop blur at all (Safari does): its screenshots show the fill alone. ── */
+       backdrop blur at all (Safari does): its screenshots show the fill alone.
+       IN DARK the paper tone is the dark paper, the same blur, a faint light hairline for the edge
+       and next to no light along the top. The same rule holds, over black and over white: dark ink
+       needs 64 percent and dark inkSoft 75, so the strength is 70 percent and the inkSoft floor 78
+       (ink 5.31 and inkSoft 4.89 over white). The ink tone stays ink-black, its text instText. ── */
     :root {
       --glass-fill: 0.62; --glass-fill-ink: 0.72; --glass-fill-soft: 0.66;
       --glass-solid: ${C.paper};
       --glass-blur: saturate(140%) blur(24px);
-      --glass-edge: rgba(15, 15, 16, 0.08); --glass-hi: rgba(255, 255, 255, 0.55);
-      --glass-lift: 0 1px 0 rgba(15, 15, 16, 0.04), 0 8px 24px rgba(15, 15, 16, 0.06);
+      --glass-edge: rgba(var(--c-ink-rgb), 0.08); --glass-hi: rgba(var(--c-plate-rgb), 0.55);
+      --glass-lift: 0 1px 0 rgba(var(--c-shadow-rgb), 0.04), 0 8px 24px rgba(var(--c-shadow-rgb), 0.06);
+      --glass-dim: var(--c-shadow-rgb); --glass-dim-fill: 0.38; --glass-dim-solid: rgba(var(--c-shadow-rgb), 0.45);
     }
-    .rl-glass { --glass-tone: 250, 248, 243; background-color: rgba(var(--glass-tone), var(--glass-alpha, var(--glass-fill))); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge); }
-    .rl-glass.rl-glass-ink { --glass-tone: 16, 16, 18; --glass-alpha: var(--glass-fill-ink); --glass-solid: ${C.inst}; --glass-edge: rgba(250, 248, 243, 0.12); --glass-hi: rgba(250, 248, 243, 0.08); }
-    .rl-glass.rl-glass-dim { --glass-tone: 15, 15, 16; --glass-alpha: 0.38; --glass-solid: rgba(15, 15, 16, 0.45); --glass-blur: saturate(120%) blur(6px); --glass-edge: transparent; --glass-hi: transparent; }
+    ${inDark(`:root {
+      --glass-fill: 0.7; --glass-fill-ink: 0.72; --glass-fill-soft: 0.78;
+      --glass-edge: rgba(var(--c-ink-rgb), 0.1); --glass-hi: rgba(var(--c-plate-rgb), 0.05);
+      --glass-lift: 0 1px 0 rgba(var(--c-shadow-rgb), 0.3), 0 8px 24px rgba(var(--c-shadow-rgb), 0.4);
+      --glass-dim: var(--c-shadow-rgb); --glass-dim-fill: 0.55; --glass-dim-solid: rgba(var(--c-shadow-rgb), 0.62);
+    }`)}
+    /* The glows behind the realtor's shell (components/dashboard/DashShell.js): a faint red above and
+       a faint sand low on the left. In dark the same two, barely there: the bright red at 6 percent
+       and the dark theme's sand (ruleDark) at 12, so they warm the charcoal and never read as a haze. */
+    :root { --glow-red: rgba(var(--c-red-rgb), 0.1); --glow-red-soft: rgba(var(--c-red-rgb), 0.04); --glow-sand: rgba(var(--c-rule-dark-rgb), 0.55); --glow-sand-soft: rgba(var(--c-rule-dark-rgb), 0.22); }
+    ${inDark(`:root { --glow-red: rgba(var(--c-red-rgb), 0.06); --glow-red-soft: rgba(var(--c-red-rgb), 0.022); --glow-sand: rgba(var(--c-rule-dark-rgb), 0.12); --glow-sand-soft: rgba(var(--c-rule-dark-rgb), 0.05); }`)}
+    .rl-glass { --glass-tone: var(--c-paper-rgb); background-color: rgba(var(--glass-tone), var(--glass-alpha, var(--glass-fill))); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge); }
+    .rl-glass.rl-glass-ink { --glass-tone: 16, 16, 18; --glass-alpha: var(--glass-fill-ink); --glass-solid: ${C.inst}; --glass-edge: rgba(var(--c-inst-ink-rgb), 0.12); --glass-hi: rgba(var(--c-inst-ink-rgb), 0.08); }
+    .rl-glass.rl-glass-dim { --glass-tone: var(--glass-dim); --glass-alpha: var(--glass-dim-fill); --glass-solid: var(--glass-dim-solid); --glass-blur: saturate(120%) blur(6px); --glass-edge: transparent; --glass-hi: transparent; }
     /* The surfaces that show inkSoft text: the strength, never under the inkSoft floor. */
     .tp-top.rl-glass, .rl-tbar.rl-glass:has(.rl-tbar-label), .rl-header.rl-glass, .al-head.rl-glass { --glass-alpha: max(var(--glass-fill), var(--glass-fill-soft)); }
     /* The realtor shell's floating surfaces (components/dashboard): the sidebar, the phone's tab bar,
@@ -133,7 +150,7 @@ export const GlobalStyle = () => (
        the apply flow, the co applicant and guarantor form) and the founder office's ink
        (components/admin/AdminShell.js .ad-shell). */
     :root:has(#__next > .mp-page) { --canvas: ${C.paperDeep}; }
-    :root:has(#__next > .ad-shell) { --canvas: ${C.inst}; }
+    :root:has(#__next > .ad-shell) { --canvas: ${C.inst}; color-scheme: dark; }
     html, body {
       background: var(--canvas);
       min-height: 100%;
@@ -188,14 +205,15 @@ export const GlobalStyle = () => (
     /* Status pills (StatusPills below): each fact its own pill, wrapping as a whole unit, 8px apart
        both ways, left aligned. Paper fill, rule border and ink text on white cards; the one fact
        that needs the realtor's action is filled ink. On ink surfaces, transparent with a paper
-       border at 24 percent. Never animated: no transition, no animation, full opacity. */
+       border at 24 percent. Never animated: no transition, no animation, full opacity. In dark the
+       ink fill is light, so the action pill is light with dark text: the one light pill. */
     .rl-pills { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; margin: 0; padding: 0; list-style: none; }
     .rl-pill { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 28px; max-width: 100%; padding: 0 12px;
       border-radius: 999px; border: 1px solid ${C.rule}; background: ${C.paper}; color: ${C.ink};
       font-family: ${FONT.sans}; font-size: 14px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; transition: none; animation: none; }
-    .rl-pill.rl-pill-action { background: ${C.inst}; border-color: ${C.inst}; color: ${C.paper}; }
-    .rl-pills.rl-pills-ink .rl-pill { background: transparent; border-color: rgba(250, 248, 243, 0.24); color: ${C.paper}; }
+    .rl-pill.rl-pill-action { background: ${C.ink}; border-color: ${C.ink}; color: ${C.paper}; }
+    .rl-pills.rl-pills-ink .rl-pill { background: transparent; border-color: rgba(${RGB.paper}, 0.24); color: ${C.paper}; }
     /* A row whose pills may wrap their text (the Pipeline's open row, components/dashboard/PeopleList.js):
        a pill whose text holds one line is the same 28px pill; one longer than its row (a long address)
        wraps inside itself, balanced, and grows with its lines, never past the row or the screen. */
@@ -213,6 +231,10 @@ export const GlobalStyle = () => (
     input[type="range"] { border-radius: ${R.pill}px; }
     a { color: inherit; }
     ::selection { background: ${C.red}; color: ${C.paper}; }
+
+    /* A realtor's uploaded logo (.rl-logo-plate on its img): as it is in light; in dark on a light
+       plate, so a dark logo never disappears into the charcoal. Not inside a subtree held light. */
+    ${inDark(`.rl-logo-plate:not(.rl-theme-light .rl-logo-plate) { background: var(--c-plate); padding: 4px 6px; border-radius: 6px; }`)}
 
     /* The wordmark is a link on every screen: a 44px tap target, the art untouched. */
     .rl-mark { display: inline-flex; align-items: center; min-height: 44px; text-decoration: none; color: inherit; }
@@ -478,7 +500,7 @@ export const ConfirmSheet = ({
           {/* A confirmation is only ever a direct hit (lib/motion.js: the tap resolver skips it). */}
           <button data-destructive="" onClick={onConfirm} disabled={busy} autoFocus
             style={{
-              flex: '1 1 0', minWidth: 0, background: busy ? C.ruleDark : accent, color: C.paper, border: `1px solid ${busy ? C.ruleDark : accent}`,
+              flex: '1 1 0', minWidth: 0, background: busy ? C.busy : accent, color: C.paper, border: `1px solid ${busy ? C.busy : accent}`,
               borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 15, fontWeight: 700,
               cursor: busy ? 'wait' : 'pointer', minHeight: 48,
             }}>

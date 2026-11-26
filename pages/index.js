@@ -404,7 +404,7 @@ export default function Home() {
                     <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.red, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: SH.rest }}>
                       <Icon name={st.icon} size={20} color={C.paper} />
                     </span>
-                    <span className="rl-serif" style={{ fontSize: 22, color: C.rule }}>{st.n}</span>
+                    <span className="rl-serif" aria-hidden="true" style={{ fontSize: 22, color: C.rule }}>{st.n}</span>
                   </div>
                   <h3 className="lp-q" style={{ fontWeight: 700, color: C.ink, margin: '0 0 var(--gap-line)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>{noWidow(st.t)}</h3>
                   <p className="lp-body" style={{ margin: 0, lineHeight: 'var(--lh-body)', color: C.inkSoft, textWrap: 'balance' }}>{noWidow(st.d)}</p>
@@ -475,7 +475,7 @@ export default function Home() {
                     Create account <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
                   </a>
                   <a href="/demo/dashboard" className="rl-btn" style={{
-                    background: 'transparent', color: C.paper, border: '1px solid rgba(250,248,243,0.3)', textDecoration: 'none',
+                    background: 'transparent', color: C.paper, border: '1px solid rgba(var(--c-paper-rgb), 0.3)', textDecoration: 'none',
                     borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 15, fontWeight: 500,
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   }}>

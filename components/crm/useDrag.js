@@ -27,7 +27,7 @@ export default function useDrag(onDrop) {
   const begin = useCallback((s) => {
     const r = s.el.getBoundingClientRect();
     const ghost = s.el.cloneNode(true);
-    Object.assign(ghost.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, margin: 0, zIndex: 1000, pointerEvents: 'none', opacity: 0.96, boxShadow: '0 18px 40px rgba(15,15,16,0.22)', transform: 'translate(0,0) rotate(1.2deg)', willChange: 'transform' });
+    Object.assign(ghost.style, { position: 'fixed', left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px`, margin: 0, zIndex: 1000, pointerEvents: 'none', opacity: 0.96, boxShadow: '0 18px 40px rgba(var(--c-shadow-rgb), 0.22)', transform: 'translate(0,0) rotate(1.2deg)', willChange: 'transform' });
     ghost.setAttribute('aria-hidden', 'true');
     document.body.appendChild(ghost);
     s.ghost = ghost; s.ox = s.x0 - r.left; s.oy = s.y0 - r.top; s.active = true;

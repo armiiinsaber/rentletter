@@ -231,7 +231,7 @@ export const ProfileLayoutStyles = () => (
       .tp-main .mp-actions .mp-btn { flex: 0 0 auto; }
       .tp-main .mp-input { max-width: 720px; }
     }
-    @media (min-width: 1024px) and (hover: hover) { .tp-menu-item:hover { background: rgba(15, 15, 16, 0.045); color: ${C.ink}; } .tp-menu-item[aria-current]:hover { background: ${C.card}; } }
+    @media (min-width: 1024px) and (hover: hover) { .tp-menu-item:hover { background: rgba(var(--c-ink-rgb), 0.045); color: ${C.ink}; } .tp-menu-item[aria-current]:hover { background: ${C.card}; } }
     @media (min-width: 1280px) {
       .tp { --tp-main: clamp(500px, calc(44vw - 63px), 1120px); }
       .tp-grid { grid-template-columns: var(--tp-menu) minmax(0, var(--tp-main)) minmax(300px, 1fr); grid-template-areas: 'menu switch aside' 'menu main aside'; grid-template-rows: auto 1fr; }

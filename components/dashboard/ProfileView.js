@@ -20,6 +20,7 @@ import { signingName } from '../../lib/reportSignature';
 import { linkProps, rememberProfile, rememberScreenView, useTakeOver } from '../nav/routes';
 import { C } from '../theme';
 import ReportBrand from '../ReportBrand';
+import ThemeChoice from '../ThemeChoice';
 import DashShell from './DashShell';
 import ProfileEditorBody from './ProfileEditorBody';
 import RealtorCard, { initialsOf } from './RealtorCard';
@@ -85,6 +86,8 @@ export default function ProfileView({ initialProfile }) {
               </div>
               {/* Invite a realtor: the realtor's own invite link and who joined through it. */}
               <InviteRealtor />
+              {/* Appearance: Automatic, Light or Dark, kept on this device (components/ThemeChoice.js). */}
+              <ThemeChoice />
               {/* Sign out: the account's exit, outlined, at the foot of the page that is about the account. */}
               <div style={{ marginTop: 'var(--gap-section)' }}>
                 <button type="button" onClick={signOut} className="ds-btn ds-btn-line" data-sign-out="">Sign out</button>
@@ -97,7 +100,8 @@ export default function ProfileView({ initialProfile }) {
                 <div className="pv-shows">
                   <figure className="pv-show" data-preview="report">
                     <figcaption className="pv-cap">On your landlord reports</figcaption>
-                    <div className="rl-card pv-report">
+                    {/* The landlord's report is always light (components/themeMode.js), so its preview is too. */}
+                    <div className="rl-card pv-report rl-theme-light">
                       <ReportBrand realtor={reportRealtorOf(profile, shown)} />
                       <div className="pv-hold" aria-hidden="true">The listing’s address</div>
                     </div>

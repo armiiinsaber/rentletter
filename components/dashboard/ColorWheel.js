@@ -114,7 +114,7 @@ export default function ColorWheel({ value, onChange, size = 150, disabled }) {
         <canvas ref={canvasRef} width={size} height={size}
           onMouseDown={onDown} onTouchStart={onDown}
           style={{ width: size, height: size, borderRadius: '50%', cursor: disabled ? 'not-allowed' : 'crosshair', display: 'block', boxShadow: `inset 0 0 0 1px ${C.ruleDark}` }} />
-        <span aria-hidden="true" style={{ position: 'absolute', left: mx - 7, top: my - 7, width: 14, height: 14, borderRadius: '50%', background: hsvToHex(hsv), border: '2px solid #fff', boxShadow: '0 0 0 1px rgba(0,0,0,0.4)', pointerEvents: 'none' }} />
+        <span aria-hidden="true" style={{ position: 'absolute', left: mx - 7, top: my - 7, width: 14, height: 14, borderRadius: '50%', background: hsvToHex(hsv), border: `2px solid ${C.plate}`, boxShadow: '0 0 0 1px rgba(var(--c-shadow-rgb), 0.4)', pointerEvents: 'none' }} />
       </div>
       {/* Brightness */}
       <input type="range" min={0} max={100} value={Math.round(hsv[2] * 100)} disabled={disabled}

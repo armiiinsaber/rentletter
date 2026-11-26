@@ -10,7 +10,8 @@
 // The AI reads, it never judges: no copy here weighs the tenant, and "verified" never appears
 // (only a realtor's own confirmation is verification, lib/applicantSynthesis.js).
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { C } from '../theme';
+// Drawn for export in the founder office, always light: the hex tokens (components/theme.js LIGHT).
+import { LIGHT as C } from '../theme';
 import { TickMeter, Wordmark } from '../ui';
 import { noWidow } from '../../lib/typeset';
 import { CURVE, DURATION, prefersReducedMotion } from '../../lib/motion';

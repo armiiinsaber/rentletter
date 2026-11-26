@@ -316,7 +316,7 @@ export default function Admin({ authed: initialAuthed }) {
         .ad-table th button[aria-sort] { color: ${C.instText}; }
         .ad-table td { padding: 10px 12px; border-bottom: 1px solid ${C.instRule}; vertical-align: middle; color: ${C.instText}; }
         .ad-table tr:last-child td { border-bottom: none; }
-        .ad-table tr.sel td { background: rgba(255,90,95,0.08); }
+        .ad-table tr.sel td { background: rgba(var(--c-red-bright-rgb), 0.08); }
         .ad-table input[type="checkbox"], .ad-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: ${C.red}; }
         .ad-list { display: none; gap: 8px; }
         .ad-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
@@ -329,9 +329,9 @@ export default function Admin({ authed: initialAuthed }) {
         /* Below 345px an email stays on one line: the row's own face at 13px, where the fixed width one runs out of room. */
         @media (max-width: 345px) { .ad-row .ad-row-email { font-family: inherit; font-size: 13px !important; letter-spacing: -0.01em; } }
         @media (max-width: 719px) { .ad-table-card { display: none; } .ad-list { display: grid; } }
-        .ad-bar { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 40; background: ${C.instText}; color: ${C.inst}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; box-shadow: 0 -6px 24px rgba(0,0,0,0.4); }
-        .ad-bar .ad-btn.secondary { color: ${C.inst}; border-color: rgba(16,16,18,0.35); }
-        .ad-bar .ad-btn.ghost { color: rgba(16,16,18,0.7); }
+        .ad-bar { position: sticky; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 40; background: ${C.instText}; color: ${C.inst}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; box-shadow: 0 -6px 24px rgba(var(--c-shadow-rgb), 0.4); }
+        .ad-bar .ad-btn.secondary { color: ${C.inst}; border-color: rgba(var(--c-inst-rgb), 0.35); }
+        .ad-bar .ad-btn.ghost { color: rgba(var(--c-inst-rgb), 0.7); }
         .ad-disclose { display: flex; align-items: center; gap: 10px; width: 100%; background: transparent; border: none; padding: 10px 0; cursor: pointer; text-align: left; min-height: 44px; }
         .ad-audit-row { padding: 10px 12px; display: flex; gap: 10px 12px; flex-wrap: wrap; color: ${C.instText}; }
       `}</style>

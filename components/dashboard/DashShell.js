@@ -181,14 +181,15 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         .ds-alert { margin: 0 var(--ds-pad, clamp(16px, 4vw, 32px)) var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.dangerTint}; border-left: 3px solid ${C.danger}; border-radius: var(--btn-radius); font-size: var(--t-body-2); color: ${C.ink}; }
         /* The page's own background: the paper (the canvas, components/ui.js) with two radial colour
            fields painted on the shell itself, decorative, behind everything: a faint red glow above
-           the top centre, a faint warm sand glow low on the left (the rule tone, ruleDark). They scroll with the page, under
+           the top centre, a faint warm sand glow low on the left (the rule tone, ruleDark), each at the
+           theme's own level (--glow-*, components/ui.js: in dark barely there). They scroll with the page, under
            the glass that floats over it. Neither reaches the page's bottom edge, and nothing of the
            page's own tone does (the sidebar floats 16px clear of it), so the page's last row is the
            plain paper of the canvas and no band shows where the window runs past the page. */
         .ds { position: relative;
           background:
-            radial-gradient(ellipse 560px 400px at 58% -40px, rgba(215, 32, 39, 0.10), rgba(215, 32, 39, 0.04) 55%, rgba(215, 32, 39, 0) 100%),
-            radial-gradient(ellipse 640px 380px at -40px calc(100% - 420px), rgba(214, 207, 190, 0.55), rgba(214, 207, 190, 0.22) 55%, rgba(214, 207, 190, 0) 100%);
+            radial-gradient(ellipse 560px 400px at 58% -40px, var(--glow-red), var(--glow-red-soft) 55%, rgba(var(--c-red-rgb), 0) 100%),
+            radial-gradient(ellipse 640px 380px at -40px calc(100% - 420px), var(--glow-sand), var(--glow-sand-soft) 55%, rgba(var(--c-rule-dark-rgb), 0) 100%);
           background-repeat: no-repeat; }
         .ds-main { min-width: 0; }
         .ds-side { display: none; }
@@ -199,7 +200,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           /* The whole window: the floating sidebar's column from its left edge, the main area to its right edge. */
           .ds { --ds-pad: clamp(24px, calc(8px + 1.875vw), 56px); --ds-side: 232px; --ds-inset: 16px; display: grid; grid-template-columns: calc(var(--ds-side) + var(--ds-inset)) minmax(0, 1fr); grid-template-areas: 'side main'; align-items: start; width: 100%; min-height: 100vh; min-height: 100dvh; }
           .ds-main { grid-area: main; }
-          .ds-side { grid-area: side; position: sticky; z-index: 2; top: var(--ds-inset); margin: var(--ds-inset) 0 var(--ds-inset) var(--ds-inset); width: var(--ds-side); height: calc(100vh - 2 * var(--ds-inset)); height: calc(100dvh - 2 * var(--ds-inset)); display: flex; flex-direction: column; gap: var(--s-4); overflow-y: auto; padding: var(--s-5) var(--s-3) var(--s-3); border-radius: 28px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 2px 12px rgba(15, 15, 16, 0.07); }
+          .ds-side { grid-area: side; position: sticky; z-index: 2; top: var(--ds-inset); margin: var(--ds-inset) 0 var(--ds-inset) var(--ds-inset); width: var(--ds-side); height: calc(100vh - 2 * var(--ds-inset)); height: calc(100dvh - 2 * var(--ds-inset)); display: flex; flex-direction: column; gap: var(--s-4); overflow-y: auto; padding: var(--s-5) var(--s-3) var(--s-3); border-radius: 28px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 2px 12px rgba(var(--c-shadow-rgb), 0.07); }
           /* Its shadow fades within the 16px under it, so the page's last row is plain paper. */
           .ds-logo { align-self: flex-start; display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--s-2); text-decoration: none; color: inherit; }
           .ds-side :global(.ds-new) { width: 100%; }
@@ -211,6 +212,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           .ds-place:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
           .ds-num { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; color: inherit; }
           .ds-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: ${C.red}; flex-shrink: 0; }
+          .ds-place[aria-current='page'] .ds-dot { background: ${C.redOnInk}; }
           .ds-me { margin-top: auto; display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; column-gap: var(--s-3); row-gap: var(--s-1); min-height: 56px; padding: var(--s-2); border-radius: 20px; text-decoration: none; color: ${C.ink}; }
           .ds-me:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
           .ds-me-avatar { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: ${C.ink}; color: ${C.paper}; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; }
@@ -239,9 +241,9 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           :global(body:has([data-shell])), :global(#__next:has([data-shell])), :global(:has(> [data-shell])) { overflow-x: clip !important; }
         }
         @media (min-width: 1024px) and (hover: hover) {
-          .ds-place:hover { background: rgba(15, 15, 16, 0.06); color: ${C.ink}; }
+          .ds-place:hover { background: rgba(var(--c-ink-rgb), 0.06); color: ${C.ink}; }
           .ds-place[aria-current='page']:hover { background: ${C.ink}; color: ${C.paper}; }
-          .ds-me:hover { background: rgba(15, 15, 16, 0.05); }
+          .ds-me:hover { background: rgba(var(--c-ink-rgb), 0.05); }
         }
         /* The buttons of the dashboard: one height, one radius, one padding. Global, so a sheet the
            dashboard opens (components/Sheet.js renders on the body) carries the same buttons. */
@@ -255,7 +257,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         :global(.ds-btn:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         @media (hover: hover) {
           :global(.ds-btn-line:hover) { border-color: ${C.ink}; }
-          :global(.ds-btn-quiet:hover) { background: rgba(15, 15, 16, 0.045); }
+          :global(.ds-btn-quiet:hover) { background: rgba(var(--c-ink-rgb), 0.045); }
         }
       `}</style>
     </div>

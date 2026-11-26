@@ -4,7 +4,8 @@
 // Eyebrow are reused from there); laptop screens are laid out at 560 × 350, the phone at 330
 // wide, and ProductFilm scales them into the devices. transform/opacity only — nothing here
 // changes layout over time.
-import { C, R, SH } from '../theme';
+// The film is drawn for export, always light: the hex tokens (components/theme.js LIGHT).
+import { LIGHT as C, R, SH_LIGHT as SH } from '../theme';
 import { Icon, TickMeter, Wordmark, StatusPills } from '../ui';
 import { CAST, Avatar, Eyebrow, money } from '../mockups/scenes';
 
@@ -22,7 +23,7 @@ export function LogoMark({ size = 28, color = DEFAULT_BRAND, paper = C.paper, va
   return <svg width={s} height={s} viewBox="0 0 40 40" aria-hidden="true"><rect x="2" y="2" width="36" height="36" rx="8" fill={color} /><path d="M9 19l11-9 11 9" fill="none" stroke={paper} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /><text x="20" y="32" textAnchor="middle" fontFamily="Fraunces, Georgia, serif" fontWeight="600" fontSize="13" fill={paper}>SC</text></svg>;
 }
 
-const Screen = ({ children, dark }) => <div style={{ position: 'absolute', inset: 0, background: dark ? '#101012' : C.paper, color: dark ? '#e8e4d9' : C.ink, overflow: 'hidden' }}>{children}</div>;
+const Screen = ({ children, dark }) => <div style={{ position: 'absolute', inset: 0, background: dark ? C.inst : C.paper, color: dark ? C.instText : C.ink, overflow: 'hidden' }}>{children}</div>;
 const Chrome = () => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 18px', borderBottom: `1px solid ${C.rule}` }}>
     <Wordmark size="mock" />
@@ -81,9 +82,9 @@ export function ApplyScreen({ b }) {
   return (
     <Screen>
       <div style={{ background: C.ink, color: C.paper, padding: '10px 14px', borderLeft: `4px solid ${C.red}` }}>
-        <div style={{ fontSize: 8.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 3 }}>You’re applying to</div>
+        <div style={{ fontSize: 8.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.inkInverse, marginBottom: 3 }}>You’re applying to</div>
         <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '-0.01em' }}>88 Harbour St, Unit 2104</div>
-        <div style={{ fontSize: 10, color: '#c8c2b3' }}>$2,600/mo · 2 bed · Goes to Sarah Chen, Royal LePage</div>
+        <div style={{ fontSize: 10, color: C.inkInverse }}>$2,600/mo · 2 bed · Goes to Sarah Chen, Royal LePage</div>
       </div>
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9, position: 'absolute', top: 66, bottom: 0, left: 0, right: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><span style={{ fontSize: 10, color: C.inkMute }}>03</span><span style={{ fontSize: 14, fontWeight: 700 }}>Employment</span><span style={{ fontSize: 9, color: C.inkMute }}>Required</span></div>
@@ -167,11 +168,11 @@ export function VerifyScreen({ b }) {
           {/* The product's label for this state, as the live card's status pill (components/ui.js). */}
           <StatusPills tone="ink" className="rl-pills-mock" label="Document status" items={['docs match']} style={{ marginLeft: 'auto', ...fade(b.badge, 4) }} />
         </div>
-        <div style={{ border: '1px solid #2a2a2e', borderRadius: R.ctrl, overflow: 'hidden' }}>
+        <div style={{ border: `1px solid ${C.instRule}`, borderRadius: R.ctrl, overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 86px', gap: 8, padding: '5px 10px', fontSize: 8.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9a958a', background: '#161618' }}><span>Field</span><span>Applicant said</span><span>Documents show</span><span /></div>
           {rows.map(([f, said, doc], i) => { const k = b.rows[i]; return (
-            <div key={f} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 86px', gap: 8, padding: '7px 10px', borderTop: '1px solid #2a2a2e', fontSize: 11, alignItems: 'center' }}>
-              <span style={{ color: '#c8c2b3' }}>{f}</span><span>{said}</span>
+            <div key={f} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1.2fr 86px', gap: 8, padding: '7px 10px', borderTop: `1px solid ${C.instRule}`, fontSize: 11, alignItems: 'center' }}>
+              <span style={{ color: C.inkInverse }}>{f}</span><span>{said}</span>
               <span style={{ fontWeight: 600, position: 'relative', height: 14 }}><span style={{ position: 'absolute', left: 0, opacity: 1 - k, color: '#6f6b63' }}>Reading…</span><span style={{ position: 'absolute', left: 0, ...fade(k, 4) }}>{doc}</span></span>
               <span style={{ position: 'relative', height: 18 }}>
                 <span style={{ position: 'absolute', right: 0, fontSize: 9, color: '#6f6b63', opacity: 1 - k, padding: '2px 0' }}>pending</span>
@@ -188,16 +189,16 @@ export function VerifyScreen({ b }) {
               never wraps, text can only truncate inside its pill, never spill out of it. */}
           <div style={{ position: 'absolute', left: 0, right: 0, top: 0, display: 'flex', flexWrap: 'nowrap', gap: 8, overflow: 'hidden' }}>
             {files.map((n, i) => (
-              <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flex: '0 1 auto', minWidth: 0, maxWidth: 150, boxSizing: 'border-box', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: 9.5, lineHeight: '12px', color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6, opacity: 1 - b.del[i], transform: `translate(0, ${-10 * b.del[i]}px) scale(${1 - 0.2 * b.del[i]})` }}>
+              <span key={n} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, flex: '0 1 auto', minWidth: 0, maxWidth: 150, boxSizing: 'border-box', whiteSpace: 'nowrap', overflow: 'hidden', fontSize: 9.5, lineHeight: '12px', color: C.inkInverse, background: '#1c1c1e', border: `1px solid ${C.instRule}`, padding: '3px 8px', borderRadius: 6, opacity: 1 - b.del[i], transform: `translate(0, ${-10 * b.del[i]}px) scale(${1 - 0.2 * b.del[i]})` }}>
                 <span aria-hidden="true" style={{ flexShrink: 0 }}>📄</span>
                 <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n}</span>
               </span>
             ))}
           </div>
-          <div style={{ position: 'absolute', left: 0, top: 2, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: '#e8e4d9', ...fade(b.deleted, 4) }}><span style={{ width: 3, height: 12, background: '#ff4d55' }} /><strong>3 files deleted.</strong><span style={{ color: '#9a958a' }}>Held 14 days for review, then gone. The confirmed facts remain.</span></div>
+          <div style={{ position: 'absolute', left: 0, top: 2, display: 'flex', alignItems: 'center', gap: 7, fontSize: 10.5, color: C.instText, ...fade(b.deleted, 4) }}><span style={{ width: 3, height: 12, background: '#ff4d55' }} /><strong>3 files deleted.</strong><span style={{ color: '#9a958a' }}>Held 14 days for review, then gone. The confirmed facts remain.</span></div>
         </div>
-        <div style={{ marginTop: 'auto', padding: '8px 12px', background: '#161618', border: '1px solid #2a2a2e', borderLeft: '3px solid #ff4d55', borderRadius: R.ctrl, fontSize: 10, lineHeight: 1.5, color: '#c8c2b3', ...fade(b.badge, 4) }}>
-          <strong style={{ color: '#e8e4d9' }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; employer and title are consistent across documents.
+        <div style={{ marginTop: 'auto', padding: '8px 12px', background: '#161618', border: `1px solid ${C.instRule}`, borderLeft: '3px solid #ff4d55', borderRadius: R.ctrl, fontSize: 10, lineHeight: 1.5, color: C.inkInverse, ...fade(b.badge, 4) }}>
+          <strong style={{ color: C.instText }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; employer and title are consistent across documents.
         </div>
       </div>
     </Screen>
@@ -258,7 +259,7 @@ export function ReportScreen({ b, brand = null, logo = 0 }) {
 }
 
 // 6 ── The brand studio: colours, concepts, a logo, fonts ─────────────────────────────────
-export const SWATCHES = ['#1f3a5f', '#3a6ea5', '#8a2b4a', '#6b4a8a', '#d72027'];
+export const SWATCHES = ['#1f3a5f', '#3a6ea5', '#8a2b4a', '#6b4a8a', C.red];
 export const FONTS = [['Fraunces', "'Fraunces', Georgia, serif", 600, false], ['Inter', "'Inter', sans-serif", 800, false], ['Fraunces Italic', "'Fraunces', Georgia, serif", 500, true]]; // [name, family, weight, italic]
 // What the studio ends on, read from the SAME beat values the studio renders from — so the final
 // report wears exactly the colour, mark and font the viewer just watched being chosen.

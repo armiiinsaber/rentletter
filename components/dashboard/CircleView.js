@@ -481,7 +481,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
         .cv :global(.cv-btn-line) { background: transparent; color: ${C.ink}; border: 1.5px solid ${C.ink}; }
         .cv :global(.cv-btn-quiet) { background: transparent; color: ${C.inkSoft}; border: 1.5px solid transparent; }
         .cv :global(.cv-btn:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
-        @media (hover: hover) { .cv :global(.cv-btn-quiet:hover:not(:disabled)) { background: rgba(15, 15, 16, 0.045); color: ${C.ink}; } }
+        @media (hover: hover) { .cv :global(.cv-btn-quiet:hover:not(:disabled)) { background: rgba(var(--c-ink-rgb), 0.045); color: ${C.ink}; } }
         .cv :global(.cv-in) { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; }
         .cv :global(.cv-label) { display: block; font-size: 11px; color: ${C.inkSoft}; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
         .cv :global(.cv-input) { display: block; width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 12px; border: 1px solid ${C.rule}; border-radius: 12px; background: ${C.card}; color: ${C.ink}; font-family: inherit; font-size: 16px; }

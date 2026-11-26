@@ -18,7 +18,9 @@
 // the tilt exist only in motion.
 import { LOGO, MARK } from '../../lib/brand/logoPaths';
 import { DOOR, REDUCED_QUERY } from '../../lib/motion';
-import { C } from '../theme';
+// The door's colours are the hex tokens (components/theme.js LIGHT): the brand kit draws them as
+// they are, and in the page doorColours maps the kinds that sit on the page to the theme in force.
+import { LIGHT as C, DARK, cssVar } from '../theme';
 
 // The widest the controls go, as a fraction of the R's width: at this setting the open panel of
 // the app icons reaches the edge of the icon's ground, and no further.
@@ -58,6 +60,21 @@ export const DOOR_GROUNDS = Object.freeze({
   mark: { ground: C.paper, bar: C.red, letter: C.ink, knob: C.ink },
   red: { ground: C.red, bar: C.inst, letter: C.card, knob: C.red },
 });
+// The kinds that sit on the page follow its theme (components/themeMode.js): in the page their
+// ground, bar and letters are the theme's variables, so the mark changes with the page, and the
+// knob stays ink on the red door. Turning, the bar is the theme's own red as one plain colour
+// (barHex in light, barDark in dark). On an ink fill (the loader in a pending ink button, which is
+// light in dark) the door is the red for a mark on ink, redOnInk; on a red button (the red loader)
+// the letters are the card's colour. The app icons and the admin's ink kinds keep their colours.
+export const DOOR_THEMED = Object.freeze(['wordmark', 'paper', 'ink', 'logo', 'red']);
+const TOKEN_OF = Object.freeze(Object.fromEntries(['paper', 'ink', 'card', 'red'].map((k) => [C[k], k])));
+export function doorColours(kind) {
+  const c = DOOR_GROUNDS[kind] || DOOR_GROUNDS.wordmark;
+  if (!DOOR_THEMED.includes(kind)) return { ...c, barHex: c.bar, barDark: c.bar };
+  const v = (hex) => (TOKEN_OF[hex] ? `var(${cssVar(TOKEN_OF[hex])})` : hex);
+  const bar = kind === 'ink' ? 'redOnInk' : TOKEN_OF[c.bar];
+  return { ground: v(c.ground), bar: bar ? `var(${cssVar(bar)})` : c.bar, letter: v(c.letter), knob: c.knob, barHex: bar ? C[bar] : c.bar, barDark: bar ? DARK[bar] : c.bar };
+}
 const LOGO_KINDS = ['wordmark', 'logo', 'logoInk'];
 const ICON_KINDS = ['realtor', 'admin', 'mark'];
 

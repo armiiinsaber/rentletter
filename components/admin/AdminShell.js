@@ -8,7 +8,8 @@
 // lives in the ⋯ menu so the header never wraps. Safe areas top and bottom (home-screen app).
 import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
-import { C, R, SH, FONT } from '../theme';
+import { C, LIGHT, R, SH, FONT } from '../theme';
+import ThemeColor from '../ThemeColor';
 import { GlobalStyle, Wordmark, Icon } from '../ui';
 
 export const NAV = [
@@ -33,11 +34,11 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
   }, [menu]);
   return (
     <>
+      <ThemeColor color={LIGHT.inst} />
       <Head>
         <title>{title ? `${title} — Rentletter admin` : 'Rentletter admin'}</title>
         <meta name="robots" content="noindex, nofollow" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <meta name="theme-color" content={C.inst} />
         <meta name="color-scheme" content="dark" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -84,7 +85,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         ::selection { background: ${C.red}; color: ${C.paper}; }
         .ad-shell { min-height: 100dvh; background: ${C.inst}; color: ${C.instText}; padding-bottom: max(24px, env(safe-area-inset-bottom)); font-family: ${FONT.sans}; }
         /* ── header ── */
-        .ad-top { position: sticky; top: 0; z-index: 60; background: rgba(16,16,18,0.86); -webkit-backdrop-filter: saturate(160%) blur(14px); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid ${C.instRule}; padding-top: env(safe-area-inset-top); }
+        .ad-top { position: sticky; top: 0; z-index: 60; background: rgba(var(--c-inst-rgb), 0.86); -webkit-backdrop-filter: saturate(160%) blur(14px); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid ${C.instRule}; padding-top: env(safe-area-inset-top); }
         .ad-top-row { display: flex; align-items: center; gap: 14px; padding: 10px clamp(14px, 3vw, 28px); min-height: 56px; }
         .ad-brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; min-width: 0; flex-shrink: 0; }
         .ad-brand-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: ${C.instMute}; }
@@ -138,7 +139,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         .ad-pill.trial { color: ${C.instText}; border-color: ${C.instRule}; }
         .ad-pill.danger { color: ${C.instText}; background: ${C.instDanger}; }
         .ad-pill.quiet { color: ${C.instMute}; border-color: ${C.instRule}; }
-        .ad-pill.red { color: ${C.redBright}; border-color: rgba(255,90,95,0.4); }
+        .ad-pill.red { color: ${C.redBright}; border-color: rgba(var(--c-red-bright-rgb), 0.4); }
         /* ── inputs: 16px minimum so iOS never auto-zooms ── */
         .ad-input { width: 100%; padding: 11px 12px; font: inherit; font-size: 16px; line-height: 1.3; border: 1px solid ${C.instRule}; border-radius: ${R.ctrl}px; background: ${C.inst}; color: ${C.instText}; outline: none; min-height: 46px; -webkit-appearance: none; appearance: none; }
         .ad-input::placeholder { color: ${C.instMute}; }
@@ -159,7 +160,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         .ad-info { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.instRule}; background: transparent; color: ${C.instMute}; cursor: help; vertical-align: middle; margin-left: 4px; }
         .ad-info:hover { color: ${C.instText}; border-color: ${C.instMute}; }
         /* ── sheet / modal: bottom sheet on phones, centred on desktop ── */
-        .ad-scrim { position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.6); display: flex; align-items: flex-end; justify-content: center; }
+        .ad-scrim { position: fixed; inset: 0; z-index: 1000; background: rgba(var(--c-shadow-rgb), 0.6); display: flex; align-items: flex-end; justify-content: center; }
         .ad-sheet { width: 100%; max-height: 92dvh; background: ${C.instRaise}; border: 1px solid ${C.instRule}; border-radius: ${R.modal}px ${R.modal}px 0 0; box-shadow: ${SH.modal}; display: flex; flex-direction: column; overflow: hidden; }
         .ad-sheet-h { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 16px clamp(16px, 3vw, 22px) 12px; border-bottom: 1px solid ${C.instRule}; }
         .ad-sheet-b { flex: 1; overflow-y: auto; padding: 14px clamp(16px, 3vw, 22px) 20px; -webkit-overflow-scrolling: touch; }
@@ -170,7 +171,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
           .ad-sheet.wide { width: min(760px, 100%); }
         }
         .ad-toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 1200; background: ${C.instText}; color: ${C.inst}; padding: 11px 16px; border-radius: ${R.pill}px; font-size: 13.5px; font-weight: 700; max-width: calc(100vw - 32px); text-align: center; box-shadow: ${SH.raised}; }
-        .ad-alert { padding: 12px 14px; background: rgba(173,34,41,0.18); border-left: 3px solid ${C.instDangerText}; border-radius: ${R.ctrl}px; font-size: 13.5px; color: ${C.instText}; line-height: 1.5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .ad-alert { padding: 12px 14px; background: rgba(var(--c-inst-danger-rgb), 0.18); border-left: 3px solid ${C.instDangerText}; border-radius: ${R.ctrl}px; font-size: 13.5px; color: ${C.instText}; line-height: 1.5; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
         .ad-alert > span { flex: 1 1 200px; }
         /* ── motion ── */
         @media (prefers-reduced-motion: no-preference) {

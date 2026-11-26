@@ -24,9 +24,9 @@ export default function DocumentViewer({ doc, onClose }) {
       </div>
       <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isImage ? 12 : 0, paddingBottom: `max(${isImage ? 12 : 0}px, env(safe-area-inset-bottom, 0px))`, overflow: 'auto', overscrollBehavior: 'none' }}>
         {d ? (isImage ? (
-          <img src={d.url} alt={`${title} for review`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', background: '#fff' }} />
+          <img src={d.url} alt={`${title} for review`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', background: C.plate }} />
         ) : (
-          <iframe src={`${d.url}#toolbar=0&navpanes=0`} title={`${title} for review`} style={{ width: '100%', height: '100%', border: 0, background: '#fff' }} />
+          <iframe src={`${d.url}#toolbar=0&navpanes=0`} title={`${title} for review`} style={{ width: '100%', height: '100%', border: 0, background: C.plate }} />
         )) : null}
       </div>
     </Sheet>

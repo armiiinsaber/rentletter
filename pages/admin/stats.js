@@ -5,6 +5,7 @@
 import crypto from 'crypto';
 import { getCounter, getRecentEvents, getUniqueUserCount, COUNTERS } from '../../lib/stats';
 import { isAdmin } from '../../lib/adminAuth';
+import { C } from '../../components/theme';
 
 export async function getServerSideProps({ query, req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -63,15 +64,15 @@ export async function getServerSideProps({ query, req, res }) {
 
 // This page loads no shared stylesheet (components/ui.js), so it sets its own canvas: the browser's
 // white margin and the white past the end of the page are its ink, as the page is.
-const Canvas = () => <style jsx global>{`html, body { margin: 0; background: #0f0f10; }`}</style>;
+const Canvas = () => <style jsx global>{`html, body { margin: 0; background: ${C.ink}; }`}</style>;
 
 export default function AdminStats({ error, stats, recentSignups, recentShares, recentLetters, recentEmails, generatedAt }) {
   if (error) {
     return (
-      <div style={{ padding: 40, fontFamily: 'monospace', background: '#0f0f10', color: '#faf8f3', minHeight: '100vh' }}>
+      <div style={{ padding: 40, fontFamily: 'monospace', background: C.ink, color: C.paper, minHeight: '100vh' }}>
         <Canvas />
         <h1 style={{ fontSize: 18, marginBottom: 12 }}>Admin Stats</h1>
-        <p style={{ color: '#d72027' }}>{error}</p>
+        <p style={{ color: C.red }}>{error}</p>
       </div>
     );
   }
@@ -79,13 +80,13 @@ export default function AdminStats({ error, stats, recentSignups, recentShares, 
   return (
     <div style={{
       padding: '32px 24px', fontFamily: "'Inter', -apple-system, sans-serif",
-      background: '#0f0f10', color: '#faf8f3', minHeight: '100vh',
+      background: C.ink, color: C.paper, minHeight: '100vh',
     }}>
       <Canvas />
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}>
           <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em' }}>
-            <span style={{ color: '#d72027' }}>●</span> Rentletter — Internal Stats
+            <span style={{ color: C.red }}>●</span> Rentletter — Internal Stats
           </h1>
           <span style={{ fontSize: 11, color: '#86868b' }}>
             Snapshot at {new Date(generatedAt).toLocaleString('en-CA')}
@@ -156,15 +157,15 @@ export default function AdminStats({ error, stats, recentSignups, recentShares, 
 function Stat({ label, value, highlight }) {
   return (
     <div style={{
-      background: highlight ? '#d72027' : '#1a1a1c',
+      background: highlight ? C.red : '#1a1a1c',
       padding: '16px 18px',
       borderRadius: 8,
-      borderLeft: highlight ? '3px solid #faf8f3' : '3px solid #d72027',
+      borderLeft: highlight ? `3px solid ${C.paper}` : `3px solid ${C.red}`,
     }}>
-      <div style={{ fontSize: 10, color: highlight ? '#faf8f3' : '#c8c2b3', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, opacity: highlight ? 0.9 : 1 }}>
+      <div style={{ fontSize: 10, color: highlight ? C.paper : C.inkInverse, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6, opacity: highlight ? 0.9 : 1 }}>
         {label}
       </div>
-      <div style={{ fontSize: 30, fontWeight: 800, color: '#faf8f3', letterSpacing: '-0.02em', lineHeight: 1 }}>
+      <div style={{ fontSize: 30, fontWeight: 800, color: C.paper, letterSpacing: '-0.02em', lineHeight: 1 }}>
         {Number(value).toLocaleString()}
       </div>
     </div>
@@ -174,7 +175,7 @@ function Stat({ label, value, highlight }) {
 function Section({ title, children }) {
   return (
     <section style={{ marginBottom: 28 }}>
-      <h2 style={{ fontSize: 11, color: '#d72027', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+      <h2 style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
         {title}
       </h2>
       <div style={{ background: '#1a1a1c', padding: '12px 16px', borderRadius: 12 }}>
@@ -196,7 +197,7 @@ function EventList({ events, render }) {
           padding: '8px 0', borderBottom: i < events.length - 1 ? '1px solid #2a2a2c' : 'none',
           fontSize: 13,
         }}>
-          <div style={{ flex: 1, minWidth: 0, color: '#faf8f3', wordBreak: 'break-all' }}>{render(e)}</div>
+          <div style={{ flex: 1, minWidth: 0, color: C.paper, wordBreak: 'break-all' }}>{render(e)}</div>
           <div style={{ fontSize: 10, color: '#86868b', marginLeft: 12, whiteSpace: 'nowrap' }}>
             {e.ts ? new Date(e.ts).toLocaleString('en-CA', { dateStyle: 'short', timeStyle: 'short' }) : '—'}
           </div>
@@ -207,5 +208,5 @@ function EventList({ events, render }) {
 }
 
 const tbl = { width: '100%', borderCollapse: 'collapse', fontSize: 13 };
-const td = { padding: '10px 0', borderBottom: '1px solid #2a2a2c', color: '#faf8f3' };
-const tdRight = { padding: '10px 0', borderBottom: '1px solid #2a2a2c', color: '#faf8f3', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 };
+const td = { padding: '10px 0', borderBottom: '1px solid #2a2a2c', color: C.paper };
+const tdRight = { padding: '10px 0', borderBottom: '1px solid #2a2a2c', color: C.paper, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700 };

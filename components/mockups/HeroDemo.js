@@ -18,10 +18,10 @@ import { Icon } from '../ui';
 // ever a screenable step still to take (documents requested, the employer not yet confirmed),
 // never a protected ground or a proxy for one, and never an absence of history.
 const HERO_APPLICANTS = [
-  { id: 'mei', initials: 'MT', color: C.instRule, name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Landlord reference', true], ['Non-smoker', true]] },
+  { id: 'mei', initials: 'MT', color: C.instRule, ink: C.instInk, name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Landlord reference', true], ['Non-smoker', true]] },
   { id: 'james', initials: 'JO', color: C.inkSoft, name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income matches documents', true], ['Employer not confirmed', false]] },
   { id: 'priya', initials: 'PN', color: C.ink, name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income matches documents', true], ['Rent paid on time, 5 yrs', true]] },
-  { id: 'david', initials: 'DT', color: C.instRaise, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Docs match', true], ['Rent paid on time, 4 yrs', true]] },
+  { id: 'david', initials: 'DT', color: C.instRaise, ink: C.instInk, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Docs match', true], ['Rent paid on time, 4 yrs', true]] },
   { id: 'amara', initials: 'AO', color: C.inkSoft, name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['References on file', true], ['Docs requested', false]] },
 ];
 // Both scenes are ordered by score, desc — the mockup must show what the product does: the
@@ -30,11 +30,13 @@ const HERO_RANKED  = [...HERO_APPLICANTS].sort((a, b) => b.score - a.score).map(
 const HERO_ARRIVAL = HERO_RANKED; // review scene walks the ranked list top-down
 const HERO_BY_ID = Object.fromEntries(HERO_APPLICANTS.map(a => [a.id, a]));
 
+// The initials in paper on the ink tones, which turn light in dark; on the instrument tones, which
+// stay ink-black in dark, the instrument's own light ink (the same paper colour in light).
 function HeroAvatar({ a, size = 30 }) {
   return (
     <span aria-hidden="true" style={{
       width: size, height: size, flexShrink: 0, borderRadius: '50%',
-      background: a.color, color: C.paper,
+      background: a.color, color: a.ink || C.paper,
       display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       fontSize: size * 0.4, fontWeight: 700, letterSpacing: '0.01em',
     }}>{a.initials}</span>

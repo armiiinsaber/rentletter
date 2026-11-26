@@ -21,7 +21,8 @@ import { deleteCheck, archiveAvailable, isArchived, NOT_DELETABLE_LINE, skipLine
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
 import Paywall from './Paywall';
-import { C, FONT } from '../../components/theme';
+import { C, DARK, FONT } from '../../components/theme';
+import { useTheme } from '../themeMode';
 import DashShell, { viewOf, viewHref, SHELF_EVENT } from './DashShell';
 import { ListingsTable, FILTERS } from './ListingsTable';
 import NeedsYou from './NeedsYou';
@@ -63,7 +64,13 @@ function initialsOf(profile) {
 // Dominant colour of the uploaded logo, sampled client-side on a downsampled canvas
 // (no dependencies). Transparent and near-white/near-paper pixels are ignored; a
 // too-light average (washes out on the cream card) or any failure (CORS taint,
-// decode error, no logo) yields null → callers fall back to the product red.
+// decode error, no logo) yields null → callers fall back to the product red. In dark the
+// card is charcoal, so the colour must also hold 3 to 1 on the dark card (darkCardOk).
+// A logo's colour as the brand card's stripe in dark: at least 3 to 1 on the dark card.
+const linc = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; };
+const lumOf = ([r, g, b]) => 0.2126 * linc(r) + 0.7152 * linc(g) + 0.0722 * linc(b);
+const DARK_CARD = [1, 3, 5].map((i) => parseInt(DARK.card.slice(i, i + 2), 16));
+function darkCardOk(rgb) { return (lumOf(rgb) + 0.05) / (lumOf(DARK_CARD) + 0.05) >= 3; }
 function useLogoAccent(logoUrl) {
   const [accent, setAccent] = useState(null);
   useEffect(() => {
@@ -93,7 +100,7 @@ function useLogoAccent(logoUrl) {
         if (n < 12) return; // logo is effectively white/empty, keep the red fallback
         r = Math.round(r / n); g = Math.round(g / n); b = Math.round(b / n);
         if (0.2126 * r + 0.7152 * g + 0.0722 * b > 200) return; // insufficient contrast on the card
-        setAccent(`rgb(${r}, ${g}, ${b})`);
+        setAccent({ css: `rgb(${r}, ${g}, ${b})`, rgb: [r, g, b] });
       } catch (e) { /* tainted canvas / decode failure, red fallback stands */ }
     };
     img.src = logoUrl;
@@ -570,7 +577,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // Logo-derived accent for the brand card only; the soft ink when absent or too light (red is
   // the one main action on the view).
   const logoAccent = useLogoAccent(profile?.logo_url || '');
-  const brandAccent = logoAccent || C.inkSoft;
+  const { theme } = useTheme();
+  const brandAccent = logoAccent && (theme !== 'dark' || darkCardOk(logoAccent.rgb)) ? logoAccent.css : C.inkSoft;
   const people = signals.people || [];
   const listCount = shelf === 'archived' ? foundArchived.length : filter !== 'all' ? shownRows.length : foundOpen.length + foundClosed.length;
   const FILTER_WORDS = { applicants: 'With applicants', toSend: 'With a report ready to send', toCheck: 'With documents to check' };
@@ -580,9 +588,6 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
       <Head>
         <title>Realtor Dashboard · Rentletter</title>
         <meta name="description" content="Your listings. Add a listing, share the invite link, review applicants." />
-        {/* Tint the mobile browser chrome (status bar / toolbar) to the page eggshell so there is no
-            white band at the very top or bottom edge. */}
-        <meta name="theme-color" content={C.paper} />
       </Head>
       <GlobalStyle />
       <ListingCardStyles />
@@ -704,7 +709,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
                 <div className="dash-eyebrow">Your brand</div>
                 <div className="dash-brand-identity">
                   {profile?.logo_url
-                    ? <img src={profile.logo_url} alt="" className="dash-brand-logo" />
+                    ? <img src={profile.logo_url} alt="" className="dash-brand-logo rl-logo-plate" />
                     : <span className="dash-brand-initials" aria-hidden="true">{initialsOf(profile)}</span>}
                   <span className="dash-brand-id">
                     <span className="dash-brand-name">{profile?.full_name || 'Your name'}</span>
@@ -840,14 +845,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv :global(.hv-start-new) { margin-top: var(--s-5); background: ${C.ink}; color: ${C.paper}; border: 1px solid ${C.ink}; }
         .hv-steps { list-style: none; margin: var(--s-5) 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
         /* On a phone each step is a row: its number beside its words. From 1024 a card each. */
-        .hv-steps li { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.card}; border-radius: 22px; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
+        .hv-steps li { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.card}; border-radius: 22px; box-shadow: 0 1px 2px rgba(var(--c-shadow-rgb), 0.04), 0 10px 30px rgba(var(--c-shadow-rgb), 0.05); }
         .hv-step-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-top: 2px; }
         .hv-step-n { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.ruleDark}; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
         .hv-step-t { font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; }
         .hv-step-l { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); text-wrap: balance; }
 
         /* ── The brand card: identity, whole card → /profile; its left edge the colour of the logo. ── */
-        .dash-brand { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-5); text-decoration: none; color: ${C.ink}; background: ${C.card}; border-radius: 24px; box-shadow: inset 3px 0 0 var(--brand-accent), 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.05); }
+        .dash-brand { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-5); text-decoration: none; color: ${C.ink}; background: ${C.card}; border-radius: 24px; box-shadow: inset 3px 0 0 var(--brand-accent), 0 1px 2px rgba(var(--c-shadow-rgb), 0.04), 0 10px 30px rgba(var(--c-shadow-rgb), 0.05); }
         .dash-eyebrow { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; line-height: var(--lh-eyebrow); text-transform: uppercase; color: ${C.inkSoft}; }
         .dash-brand-identity { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-3); min-width: 0; }
         .dash-brand-logo { width: clamp(72px, 20vw, 96px); height: clamp(72px, 20vw, 96px); object-fit: contain; flex-shrink: 0; }
@@ -886,7 +891,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         :global(.hv-nomatch .ds-btn) { margin-left: calc(-1 * var(--s-2)); }
         /* The menu: under its button, at the button's right edge, over the cards. */
         :global(.hv-sortmenu) { position: relative; display: inline-flex; }
-        :global(.hv-sortpop) { position: absolute; right: 0; top: calc(100% + var(--s-1)); z-index: 30; display: grid; gap: 2px; min-width: 248px; padding: var(--s-1); background: ${C.card}; border-radius: 20px; box-shadow: 0 0 0 1px ${C.rule}, 0 12px 32px rgba(15, 15, 16, 0.14); }
+        :global(.hv-sortpop) { position: absolute; right: 0; top: calc(100% + var(--s-1)); z-index: 30; display: grid; gap: 2px; min-width: 248px; padding: var(--s-1); background: ${C.card}; border-radius: 20px; box-shadow: 0 0 0 1px ${C.rule}, 0 12px 32px rgba(var(--c-shadow-rgb), 0.14); }
         :global(.hv-sort-list) { display: grid; gap: 2px; }
         :global(.hv-sort-opt) { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); width: 100%; min-height: 44px; margin: 0; padding: 0 var(--gap-card); border: none; border-radius: var(--btn-radius); background: transparent; color: ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 600; line-height: 1.2; text-align: left; cursor: pointer; white-space: nowrap; }
         :global(.hv-sort-opt[aria-checked='true']) { background: ${C.paperDeep}; font-weight: 700; }

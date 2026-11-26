@@ -18,7 +18,8 @@
 // stays out of the initial bundle. /admin/mockups renders it as a scene with a scrubber.
 import { forwardRef, memo, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import DeviceFrame from '../DeviceFrame';
-import { C } from '../theme';
+// The film is drawn for export, always light: the hex tokens (components/theme.js LIGHT).
+import { LIGHT as C } from '../theme';
 import { Wordmark } from '../ui';
 import { FILM_DURATION, WORLD, LAPTOP, PHONE, LAPTOP_DESIGN, PHONE_DESIGN, camera, screenOpacity, phonePose, overlays, beats } from './timeline';
 import { ListingScreen, ApplyScreen, RankedScreen, VerifyScreen, ReportScreen, StudioScreen, studioBrand } from './beats';
@@ -139,8 +140,8 @@ const ProductFilm = forwardRef(function ProductFilm({ time = null, autoplay = tr
       <span hidden data-film-playing={playing ? 1 : 0} />
       <style jsx global>{`
         /* device shadows: blurred, no negative spread (the shape browsers rasterize consistently) */
-        .rl-film .df-shell { box-shadow: 0 0 0 1px #2a2a2e, 0 22px 44px rgba(15,15,16,0.18) !important; }
-        .rl-film .df-base { box-shadow: 0 18px 26px rgba(15,15,16,0.16) !important; }
+        .rl-film .df-shell { box-shadow: 0 0 0 1px ${C.instRule}, 0 22px 44px rgba(var(--c-shadow-rgb), 0.18) !important; }
+        .rl-film .df-base { box-shadow: 0 18px 26px rgba(var(--c-shadow-rgb), 0.16) !important; }
         .rl-film .df-base::after { display: none; }
       `}</style>
     </div>

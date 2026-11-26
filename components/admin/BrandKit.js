@@ -122,8 +122,8 @@ export default function BrandKit() {
         .bk-row { margin-top: 12px; }
         .bk-rowlabel { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.instMute}; line-height: 1; margin-bottom: 8px; }
         .bk-pills { display: grid; gap: 8px; }
-        .bk-pill { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: ${R.pill}px; border: 1px solid rgba(250, 248, 243, 0.24); color: ${C.instText}; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-        .bk-pill:hover { background: rgba(250, 248, 243, 0.08); }
+        .bk-pill { display: flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 12px; border-radius: ${R.pill}px; border: 1px solid rgba(var(--c-paper-rgb), 0.24); color: ${C.instText}; font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+        .bk-pill:hover { background: rgba(var(--c-paper-rgb), 0.08); }
         .bk-pill:focus-visible, .bk-primary:focus-visible { outline: 2px solid ${C.instText}; outline-offset: 2px; }
       `}</style>
     </section>

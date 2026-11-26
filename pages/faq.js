@@ -191,7 +191,7 @@ export default function FAQ() {
 
           {/* CTA at bottom */}
           <section className="rl-card" style={{ marginTop: 36, padding: 'clamp(24px, 4vw, 40px)', background: C.ink, color: C.paper, border: 'none' }}>
-            <div style={{ fontSize: 11, color: '#f0b8bb', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
+            <div style={{ fontSize: 11, color: C.blush, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Still have a question?
             </div>
             <h3 className="t-d3" style={{ color: C.paper, margin: '0 0 var(--gap-line)' }}>

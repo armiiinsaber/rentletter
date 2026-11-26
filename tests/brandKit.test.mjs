@@ -31,7 +31,8 @@ const manifest = JSON.parse(readFileSync(join(KIT, 'manifest.json'), 'utf8'));
 const DIR = join(KIT, manifest.folder);
 const file = (p) => readFileSync(join(DIR, p));
 const sha = (b) => createHash('sha256').update(b).digest('hex');
-const { C } = await import('../components/theme.js');
+// The kit is drawn in the hex tokens, the light palette (components/theme.js LIGHT).
+const { LIGHT: C } = await import('../components/theme.js');
 
 // WCAG contrast, computed here rather than trusted from the build.
 const lin = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };

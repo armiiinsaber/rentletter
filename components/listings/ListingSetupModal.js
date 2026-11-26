@@ -778,7 +778,7 @@ const LF_CSS = css.global`
   .lf-pcard { background: ${C.card}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); padding: var(--s-5); }
   .lf-pcard-k { font-size: var(--t-body-2); color: ${C.inkMute}; }
   .lf-pcard-h { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; line-height: var(--lh-display); color: ${C.ink}; margin-top: var(--s-1); overflow-wrap: anywhere; text-wrap: balance; }
-  .lf-pcard-empty { color: ${C.ruleDark}; }
+  .lf-pcard-empty { color: ${C.ghost}; }
   .lf-pfacts { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--s-1) var(--s-4); font-size: var(--t-body-2); color: ${C.ink}; line-height: var(--lh-body); }
   .lf-pfacts li { white-space: nowrap; }
   .lf-pcard-by { font-size: var(--t-body-2); color: ${C.inkSoft}; margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid ${C.rule}; text-wrap: balance; }

@@ -18,6 +18,7 @@
 // content's own canvas paints the whole box, so no band of the screen surface can show).
 import { useEffect, useRef } from 'react';
 import { C, R } from './theme';
+import { inDark } from './themeHead';
 
 export const DEVICE_BREAKPOINT = 720;
 
@@ -119,7 +120,10 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
         .df-content { position: relative; overflow: hidden; aspect-ratio: var(--df-aspect); min-width: 0; flex: none; }
         .df-content > * { min-width: 0; }
         /* warm shadow: the device sits on paper, not floating */
-        .df-tone-paper .df-shell { box-shadow: 0 0 0 1px #2a2a2e, 0 18px 40px -18px rgba(15,15,16,0.45), 0 40px 70px -40px rgba(15,15,16,0.35); }
+        .df-tone-paper .df-shell { box-shadow: 0 0 0 1px #2a2a2e, 0 18px 40px -18px rgba(var(--c-shadow-rgb), 0.45), 0 40px 70px -40px rgba(var(--c-shadow-rgb), 0.35); }
+        /* In dark the device sits on the charcoal: its edge is a faint light hairline, so the dark
+           hardware reads as a shape and not as a hole in the page. */
+        ${inDark(`.df-tone-paper .df-shell { box-shadow: 0 0 0 1px rgba(var(--c-ink-rgb), 0.16), 0 18px 40px -18px rgba(var(--c-shadow-rgb), 0.6); } .df-base { box-shadow: 0 0 0 1px rgba(var(--c-ink-rgb), 0.1); }`)}
         .df-tone-ink .df-shell { box-shadow: 0 0 0 1px #3a3a3e, 0 18px 40px -18px rgba(0,0,0,0.8); }
 
         /* ── browser bar (laptop) — proportional SVG strip on the screen surface ── */
@@ -144,9 +148,9 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
           top: calc(var(--df-w) * 0.014 - 2px); left: calc(var(--df-w) * 0.014 - 2px); right: calc(var(--df-w) * 0.014 - 2px); bottom: 0;
           border-bottom: 0; border-radius: calc(var(--df-w) * 0.011 + 2px) calc(var(--df-w) * 0.011 + 2px) 0 0;
         }
-        .df-base { position: relative; height: calc(var(--df-w) * 0.021); margin: 0 -5%; background: linear-gradient(180deg, #34343a 0%, #1a1a1d 20%, #131315 60%, #0b0b0c 100%); border-radius: 0 0 10px 10px; box-shadow: 0 22px 30px -22px rgba(15,15,16,0.55); }
+        .df-base { position: relative; height: calc(var(--df-w) * 0.021); margin: 0 -5%; background: linear-gradient(180deg, #34343a 0%, #1a1a1d 20%, #131315 60%, #0b0b0c 100%); border-radius: 0 0 10px 10px; box-shadow: 0 22px 30px -22px rgba(var(--c-shadow-rgb), 0.55); }
         .df-base::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: rgba(255,255,255,0.10); }
-        .df-base::after { content: ''; position: absolute; left: 6%; right: 6%; bottom: -6px; height: 6px; border-radius: 0 0 50% 50% / 0 0 100% 100%; background: rgba(15,15,16,0.18); filter: blur(3px); }
+        .df-base::after { content: ''; position: absolute; left: 6%; right: 6%; bottom: -6px; height: 6px; border-radius: 0 0 50% 50% / 0 0 100% 100%; background: rgba(var(--c-shadow-rgb), 0.18); filter: blur(3px); }
         .df-notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 14%; height: calc(var(--df-w) * 0.007); border-radius: 0 0 4px 4px; background: #3a3a3e; }
 
         /* ── phone: shell radius 44, bezel 10 → screen radius 34, exactly continuing the curve.
@@ -157,11 +161,11 @@ export default function DeviceFrame({ variant = 'laptop', url, aspect, phoneAspe
         .df-phone .df-shell::after { inset: calc(var(--df-w) * 0.028 - 2px); border-radius: calc(var(--df-w) * 0.111 + 2px); }
         /* status bar + home band are proportional to screen width (viewBox / aspect-ratio), so
            the phone looks identical at 211px (Story) and 360px. */
-        .df-status { display: block; width: 100%; height: auto; flex: none; color: #0f0f10; }
-        .df-dark .df-status { color: #e8e4d9; }
+        .df-status { display: block; width: 100%; height: auto; flex: none; color: ${C.ink}; }
+        .df-dark .df-status { color: ${C.instText}; }
         .df-safe { position: relative; width: 100%; aspect-ratio: 330 / 22; flex: none; }
-        .df-home { position: absolute; left: 50%; bottom: 30%; transform: translateX(-50%); width: 36%; height: 18%; border-radius: 999px; background: #0f0f10; opacity: 0.8; }
-        .df-dark .df-home { background: #e8e4d9; }
+        .df-home { position: absolute; left: 50%; bottom: 30%; transform: translateX(-50%); width: 36%; height: 18%; border-radius: 999px; background: ${C.ink}; opacity: 0.8; }
+        .df-dark .df-home { background: ${C.instText}; }
 
         /* ── tablet: shell radius 26, bezel 16 → screen radius 10 ── */
         .df-tablet .df-shell { border-radius: 26px; padding: 16px; }

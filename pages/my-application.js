@@ -53,6 +53,7 @@ import { cardTap } from '../lib/motion';
 import { SOURCE } from '../lib/profileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 import { Pending, ScreenLoader } from '../components/brand/Loader';
+import ThemeChoice from '../components/ThemeChoice';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -485,6 +486,8 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
                         {emailMsg && <p role="status" className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(emailMsg)}</p>}
                         <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow(`Documents you add to your profile are kept until the date beside each one. Anything you upload for one realtor’s request is held for that realtor only for ${RETENTION_DAYS} days, then deleted.`)}</p>
                       </div>
+                      {/* Appearance: Automatic, Light or Dark, kept on this device (components/ThemeChoice.js). */}
+                      <ThemeChoice variant="tenant" />
                     </div>
                     <div className="tp-group tp-edit-only" data-tp-anchor="rental">{facts(['rental'])}</div>
                     <div className="tp-group tp-edit-only" data-tp-anchor="references">{facts(['references'])}</div>

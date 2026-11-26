@@ -100,7 +100,7 @@ export default function CommandMenu({ open, onClose, onRun, listings = [], appli
         .cm-opt { display: flex; align-items: center; gap: var(--s-3); min-height: 48px; padding: var(--s-2) var(--s-3); border-radius: 14px; cursor: pointer; color: ${C.ink}; }
         .cm-on { background: ${C.ink}; color: ${C.paper}; }
         .cm-opt-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: ${C.paperDeep}; color: ${C.ink}; }
-        .cm-on .cm-opt-icon { background: rgba(250, 248, 243, 0.14); color: ${C.paper}; }
+        .cm-on .cm-opt-icon { background: rgba(var(--c-paper-rgb), 0.14); color: ${C.paper}; }
         .cm-opt-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
         .cm-opt-label { font-size: var(--t-body-2); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
         .cm-opt-detail { font-size: 13px; color: ${C.inkSoft}; line-height: 1.3; overflow-wrap: anywhere; }

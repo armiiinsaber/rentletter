@@ -35,11 +35,11 @@ export default function BoardSkeleton({ label }) {
         .bs-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         .bs :global(.bs-bar) { display: block; max-width: 100%; background: ${C.paperDeep}; }
         .bs-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); margin-bottom: var(--gap-section); }
-        .bs-tile { display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-3); min-height: 132px; padding: var(--s-4); border-radius: 24px; background: rgba(255, 255, 255, 0.6); box-shadow: 0 0 0 1px rgba(15, 15, 16, 0.05); }
-        .bs-tile-dark { background: rgba(15, 15, 16, 0.08); }
+        .bs-tile { display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-3); min-height: 132px; padding: var(--s-4); border-radius: 24px; background: rgba(var(--c-card-rgb), 0.6); box-shadow: 0 0 0 1px rgba(var(--c-ink-rgb), 0.05); }
+        .bs-tile-dark { background: rgba(var(--c-ink-rgb), 0.08); }
         .bs-cols { display: grid; gap: var(--s-4); }
         .bs-cards { display: grid; gap: var(--s-4); }
-        .bs-card { display: grid; gap: var(--s-4); padding: var(--s-4); border-radius: 22px; background: ${C.card}; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.04), 0 10px 30px rgba(15, 15, 16, 0.04); }
+        .bs-card { display: grid; gap: var(--s-4); padding: var(--s-4); border-radius: 22px; background: ${C.card}; box-shadow: 0 1px 2px rgba(var(--c-shadow-rgb), 0.04), 0 10px 30px rgba(var(--c-shadow-rgb), 0.04); }
         .bs-row { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-3); }
         .bs-id { display: grid; gap: var(--s-2); flex: 1 1 auto; min-width: 0; }
         .bs-strip { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
@@ -53,7 +53,7 @@ export default function BoardSkeleton({ label }) {
         }
         @media (min-width: 1280px) {
           .bs-cols { grid-template-columns: minmax(0, 1fr) clamp(360px, calc(130px + 18vw), 420px); column-gap: var(--s-5); align-items: start; }
-          .bs-side { display: grid; gap: var(--s-4); padding: var(--s-5) var(--s-4); border-radius: 28px; background: rgba(255, 255, 255, 0.5); box-shadow: 0 0 0 1px rgba(15, 15, 16, 0.05); }
+          .bs-side { display: grid; gap: var(--s-4); padding: var(--s-5) var(--s-4); border-radius: 28px; background: rgba(var(--c-card-rgb), 0.5); box-shadow: 0 0 0 1px rgba(var(--c-ink-rgb), 0.05); }
         }
       `}</style>
     </div>

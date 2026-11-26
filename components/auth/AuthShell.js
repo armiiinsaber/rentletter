@@ -66,14 +66,14 @@ export const authInputStyle = {
 export function authButtonStyle(enabled) {
   return {
     width: '100%', borderRadius: 'var(--btn-radius)', border: 'none',
-    background: enabled ? C.red : '#c8c2b3', color: C.paper,
+    background: enabled ? C.red : C.inkInverse, color: C.paper,
     padding: '15px', fontSize: 15, fontWeight: 700, marginTop: 8,
     cursor: enabled ? 'pointer' : 'not-allowed', minHeight: 52,
   };
 }
 
 export const authErrorStyle = {
-  marginBottom: 12, padding: '10px 14px', background: '#fef2f0',
+  marginBottom: 12, padding: '10px 14px', background: C.dangerTint,
   borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`,
   fontSize: 13, color: C.ink,
 };

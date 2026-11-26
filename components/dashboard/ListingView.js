@@ -1285,7 +1285,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               )}
             </div>
             {error && (
-              <div style={{ marginTop: 'var(--s-3)', padding: 'var(--s-3) var(--s-4)', background: '#fef2f0', borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
+              <div style={{ marginTop: 'var(--s-3)', padding: 'var(--s-3) var(--s-4)', background: C.dangerTint, borderRadius: R.ctrl, borderLeft: `3px solid ${C.red}`, fontSize: 'var(--t-body-2)', color: C.ink }}>{error}</div>
             )}
             {/* NOT REACHED: after a status change, whoever the messages did not reach, by name, with the one reason. */}
             {notReached.length > 0 && (

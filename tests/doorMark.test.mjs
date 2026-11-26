@@ -26,7 +26,8 @@ const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const src = (p) => readFileSync(join(ROOT, p), 'utf8');
 const { DOOR, REDUCED_QUERY } = await import('../lib/motion.js');
 const { LOGO, MARK } = await import('../lib/brand/logoPaths.js');
-const { C } = await import('../components/theme.js');
+// The door's colours are the hex tokens (components/theme.js LIGHT; the page maps them to the theme).
+const { LIGHT: C } = await import('../components/theme.js');
 const G = await import('../components/brand/doorGeometry.js');
 
 const FILES = ['components/brand/DoorMark.js', 'components/brand/doorGeometry.js', 'components/admin/DoorLab.js', 'components/brand/Loader.js', 'components/brand/HomeDoor.js', 'components/brand/AppStart.js'];

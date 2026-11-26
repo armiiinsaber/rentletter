@@ -58,13 +58,13 @@ export default function NeedsYou({ items = [], now = null, onGo }) {
         <button type="button" className="ds-btn ds-btn-quiet ny-more" onClick={() => setAll((v) => !v)} aria-expanded={all}>{all ? 'Show fewer' : `Show ${items.length - LIMIT} more`}</button>
       ) : null}
       <style jsx>{`
-        .ny { border-radius: 28px; padding: var(--s-5) var(--s-4) var(--s-3); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 12px 40px rgba(15, 15, 16, 0.07); }
+        .ny { border-radius: 28px; padding: var(--s-5) var(--s-4) var(--s-3); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 12px 40px rgba(var(--c-shadow-rgb), 0.07); }
         .ny-head { display: flex; align-items: baseline; gap: var(--s-2); margin: 0 var(--s-1) var(--s-3); }
         .ny-title { font-family: var(--f-display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; }
         .ny-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkSoft}; font-variant-numeric: tabular-nums; }
         .ny-empty { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0 var(--s-1) var(--s-2); }
         .ny-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-        .ny-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: 'icon what go' '. who who' '. line line'; align-items: center; column-gap: var(--s-3); row-gap: 2px; padding: var(--s-3) var(--s-1); border-top: 1px solid rgba(15, 15, 16, 0.07); }
+        .ny-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: 'icon what go' '. who who' '. line line'; align-items: center; column-gap: var(--s-3); row-gap: 2px; padding: var(--s-3) var(--s-1); border-top: 1px solid rgba(var(--c-ink-rgb), 0.07); }
         .ny-item:first-child { border-top: none; }
         .ny-icon { grid-area: icon; display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%; background: ${C.card}; color: ${C.ink}; box-shadow: 0 0 0 1px ${C.rule}; }
         .ny-what { grid-area: what; min-width: 0; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: 1.3; text-wrap: balance; }

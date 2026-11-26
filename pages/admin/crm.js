@@ -215,7 +215,7 @@ export default function Crm() {
         .crm-note { background: ${C.inst}; border: 1px solid ${C.instRule}; border-radius: ${R.ctrl}px; padding: 10px 12px; }
         .crm-note-meta { display: flex; align-items: center; gap: 8px; font-size: 11.5px; color: ${C.instMute}; font-weight: 600; margin-bottom: 4px; }
         .crm-note-del { margin-left: auto; background: transparent; border: none; color: ${C.instMute}; cursor: pointer; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
-        .crm-note-del:hover { color: ${C.instDangerText}; background: rgba(173,34,41,0.18); }
+        .crm-note-del:hover { color: ${C.instDangerText}; background: rgba(var(--c-inst-danger-rgb), 0.18); }
         .crm-note-body { font-size: 14.5px; color: ${C.instText}; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; text-wrap: pretty; }
         .crm-people { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
         .crm-person { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: ${C.inst}; border: 1px solid ${C.instRule}; border-radius: ${R.ctrl}px; padding: 10px 12px; font: inherit; font-size: 14px; color: ${C.instText}; cursor: pointer; min-height: 48px; }
@@ -248,7 +248,7 @@ export default function Crm() {
         .crm-chip-mark { width: 3px; height: 12px; border-radius: 1px; background: ${C.redBright}; flex-shrink: 0; }
         .crm-chip.demo { background: ${C.instText}; color: ${C.inst}; border-color: ${C.instText}; }
         .crm-chip.demo .crm-chip-mark { background: ${C.red}; }
-        .crm-chip.overdue { background: rgba(173,34,41,0.2); color: ${C.instDangerText}; border-color: ${C.instDangerText}; }
+        .crm-chip.overdue { background: rgba(var(--c-inst-danger-rgb), 0.2); color: ${C.instDangerText}; border-color: ${C.instDangerText}; }
         .crm-chip.overdue .crm-chip-mark { background: ${C.instDangerText}; }
         .crm-chip.past { background: transparent; color: ${C.instMute}; border-color: ${C.instRule}; }
         .crm-chip.past .crm-chip-mark { background: ${C.instRule}; }

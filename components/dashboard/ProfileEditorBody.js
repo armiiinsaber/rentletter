@@ -338,7 +338,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
               the card's width, and a long name wraps instead of being cut short. */}
           <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 14 }}>
             {/* top-left logo slot (the brand placement) */}
-            <div style={{ width: 88, height: 56, borderRadius: 8, background: '#fff', border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, padding: 6 }}>
+            <div style={{ width: 88, height: 56, borderRadius: 8, background: logoUrl ? C.plate : C.card, border: `1px solid ${C.rule}`, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0, padding: 6 }}>
               <Crossfade watch={logoUrl || 'none'}>{logoUrl
                 ? <img src={logoUrl} alt="Your logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                 : <span style={{ fontSize: 10.5, color: C.inkMute, textAlign: 'center', lineHeight: 1.3 }}>No logo yet</span>}</Crossfade>
@@ -545,7 +545,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {/* Explicit Save for a modal host only, same write path as the blur autosave (persistDetails). */}
       {onClose && <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 'var(--gap-card)' }}>
         <button onClick={save} disabled={saving}
-          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(215, 32, 39, 0.25)' : 'none' }}>
+          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(var(--c-red-rgb), 0.25)' : 'none' }}>
           <Pending busy={saving} label="Saving your profile" tone="red">{dirty ? 'Save changes' : 'Save'}</Pending>
         </button>
         {!saving && dirty && (

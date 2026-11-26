@@ -141,12 +141,12 @@ export default function ListingCard({ listing, row, card, paths, selecting = fal
 export function ListingCardStyles() {
   return (
     <style jsx global>{`
-      .lc { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: 'id people copy act' 'strip strip strip strip' 'status status status status'; align-items: center; column-gap: var(--s-3); row-gap: var(--s-4); min-width: 0; padding: var(--s-5); background: ${C.card}; border-radius: 24px; color: ${C.ink}; cursor: pointer; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.05), 0 10px 30px rgba(15, 15, 16, 0.06); }
-      .lc::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 2px 4px rgba(15, 15, 16, 0.06), 0 18px 40px rgba(15, 15, 16, 0.1); opacity: 0; pointer-events: none; }
-      .lc:focus-within { box-shadow: 0 0 0 2px ${C.ink}, 0 10px 30px rgba(15, 15, 16, 0.06); }
+      .lc { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; grid-template-areas: 'id people copy act' 'strip strip strip strip' 'status status status status'; align-items: center; column-gap: var(--s-3); row-gap: var(--s-4); min-width: 0; padding: var(--s-5); background: ${C.card}; border-radius: 24px; color: ${C.ink}; cursor: pointer; box-shadow: 0 1px 2px rgba(var(--c-shadow-rgb), 0.05), 0 10px 30px rgba(var(--c-shadow-rgb), 0.06); }
+      .lc::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 2px 4px rgba(var(--c-shadow-rgb), 0.06), 0 18px 40px rgba(var(--c-shadow-rgb), 0.1); opacity: 0; pointer-events: none; }
+      .lc:focus-within { box-shadow: 0 0 0 2px ${C.ink}, 0 10px 30px rgba(var(--c-shadow-rgb), 0.06); }
       .lc-selecting { padding-left: calc(var(--s-5) + 36px); }
       /* 44 by 44 of its own: no hit area drawn over the checkbox (lib/motion.js installHitAreas). */
-      .lc-picked { box-shadow: 0 0 0 2px ${C.ink}, 0 10px 30px rgba(15, 15, 16, 0.06); }
+      .lc-picked { box-shadow: 0 0 0 2px ${C.ink}, 0 10px 30px rgba(var(--c-shadow-rgb), 0.06); }
       .lc-pick { position: absolute; left: 10px; top: 14px; display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; cursor: pointer; }
       .lc-id { grid-area: id; min-width: 0; align-self: start; }
       .lc-addr { margin: 0; font-family: var(--f-display); font-size: 22px; font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; overflow-wrap: anywhere; text-wrap: balance; }

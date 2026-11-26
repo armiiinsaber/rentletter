@@ -21,7 +21,7 @@ import { createHash } from 'node:crypto';
 import { deflateRawSync, crc32 } from 'node:zlib';
 import { createRequire } from 'node:module';
 import { LOGO, MARK } from '../../lib/brand/logoPaths.js';
-import { C, R } from '../../components/theme.js';
+import { LIGHT as C, R } from '../../components/theme.js'; // the kit is the light palette, as hex
 import { PALETTES, IOS_RADIUS, logoSvg, markSvg, bareFrame, r2 } from './draw.mjs';
 import { kitSources, typeScale } from './kitSources.mjs';
 

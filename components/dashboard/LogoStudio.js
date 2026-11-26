@@ -7,7 +7,7 @@
 // No API calls in demo mode — this component is only mounted in the authenticated
 // profile editor. Brand colours are controlled by the parent (saved with the profile).
 import { useState, useEffect, useRef } from 'react';
-import { C, R } from '../theme';
+import { C, LIGHT, R } from '../theme';
 import ColorWheel from './ColorWheel';
 import { Pending, ScreenLoader } from '../brand/Loader';
 
@@ -103,7 +103,7 @@ function StepChip({ n, label, state }) {
   const bg = done ? C.paper : active ? C.ink : C.paperDeep;
   const fg = done ? C.red : active ? C.paper : C.inkMute;
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, opacity: state === 'locked' ? 0.55 : 1 }}>
+    <div aria-disabled={state === 'locked' ? 'true' : undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, opacity: state === 'locked' ? 0.55 : 1 }}>
       <span style={{ width: 20, height: 20, borderRadius: '50%', background: bg, color: fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: `1px solid ${done ? C.ink : active ? C.ink : C.ruleDark}` }}>{done ? '✓' : n}</span>
       <span style={{ fontSize: 11.5, fontWeight: active ? 700 : 600, color: active ? C.ink : C.inkSoft }}>{label}</span>
     </div>
@@ -361,8 +361,8 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                   {isSaved && <span style={{ fontSize: 11, fontWeight: 800, color: C.paper, background: C.ink, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.04em' }}>✓ SAVED</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <Swatch svg={v.svg} bg="#ffffff" label="On light" idKey={`r${roundIdx}v${i}l`} />
-                  <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`r${roundIdx}v${i}d`} />
+                  <Swatch svg={v.svg} bg={LIGHT.card} label="On light" idKey={`r${roundIdx}v${i}l`} />
+                  <Swatch svg={v.svg} bg={LIGHT.ink} label="On dark" idKey={`r${roundIdx}v${i}d`} />
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                   <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy} className="ds-btn ds-btn-ink">
@@ -398,14 +398,14 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           </div>
 
           {/* The chosen concept, large + emphasized */}
-          <div style={{ border: `2px solid ${C.ink}`, borderRadius: R.card, padding: 'clamp(12px,3vw,18px)', background: C.paper, boxShadow: `0 6px 22px rgba(15,15,16,0.10)` }}>
+          <div style={{ border: `2px solid ${C.ink}`, borderRadius: R.card, padding: 'clamp(12px,3vw,18px)', background: C.paper, boxShadow: `0 6px 22px rgba(var(--c-shadow-rgb), 0.10)` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
               <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.ink, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Refining this concept</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{refineCurrent.label}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-              <BigSwatch svg={refineCurrent.svg} bg="#ffffff" label="On light" idKey={`cur-l-${refineHistory.length}`} />
-              <BigSwatch svg={refineCurrent.svg} bg="#0f0f10" label="On dark" idKey={`cur-d-${refineHistory.length}`} />
+              <BigSwatch svg={refineCurrent.svg} bg={LIGHT.card} label="On light" idKey={`cur-l-${refineHistory.length}`} />
+              <BigSwatch svg={refineCurrent.svg} bg={LIGHT.ink} label="On dark" idKey={`cur-d-${refineHistory.length}`} />
             </div>
             <div style={{ marginTop: 12 }}>
               <button onClick={() => saveLogo(refineCurrent, 'refine-cur')} disabled={usingKey !== null || busy} className="ds-btn ds-btn-ink">
@@ -439,8 +439,8 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
                   <div key={i} style={{ border: `1px solid ${isSaved ? C.ink : C.rule}`, borderRadius: R.ctrl, padding: 12, background: isSaved ? C.paperDeep : C.paper, boxShadow: isSaved ? `0 0 0 1px ${C.ink}` : 'none' }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: C.ink, marginBottom: 8 }}>{v.label}</div>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                      <Swatch svg={v.svg} bg="#ffffff" label="On light" idKey={`res${i}l-${refineHistory.length}`} />
-                      <Swatch svg={v.svg} bg="#0f0f10" label="On dark" idKey={`res${i}d-${refineHistory.length}`} />
+                      <Swatch svg={v.svg} bg={LIGHT.card} label="On light" idKey={`res${i}l-${refineHistory.length}`} />
+                      <Swatch svg={v.svg} bg={LIGHT.ink} label="On dark" idKey={`res${i}d-${refineHistory.length}`} />
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                       <button onClick={() => saveLogo(v, key)} disabled={usingKey !== null || busy} className="ds-btn ds-btn-ink">
@@ -462,7 +462,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
       {/* Toast, fixed to the viewport so it's visible no matter which card was saved or how far down the realtor scrolled */}
       {toast && (
         <div role="status" data-tap="" onClick={() => setToast('')} className="rl-glass rl-glass-ink"
-          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, color: C.paper, padding: '12px 20px', borderRadius: R.pill, boxShadow: 'inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(15,15,16,0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
+          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, color: C.instInk, padding: '12px 20px', borderRadius: R.pill, boxShadow: 'inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
           <span style={{ fontSize: 15 }}>✓</span> {toast}
         </div>
       )}

@@ -751,7 +751,7 @@ export default function ApplyPage({ invited = null, archived = false }) {
     );
   };
 
-  const inkMute = '#8f8b81', inkText = '#c8c2b3';
+  const inkMute = C.inkInverseMute, inkText = C.inkInverse;
 
   return (
     <>

@@ -96,7 +96,7 @@ export function MotionStyles() {
       .m-verified { display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.ink}; background: ${C.paper}; border: 1px solid ${C.rule}; padding: var(--s-1) var(--s-2); border-radius: 999px; white-space: nowrap; }
       .m-verified-tick { width: 6px; height: 6px; border-radius: 50%; background: ${C.red}; display: inline-block; }
       .m-depart { position: relative; display: inline-block; width: 0; height: 0; overflow: visible; }
-      .m-depart-card { position: absolute; left: 0; bottom: 0; width: 44px; height: 56px; border-radius: 6px; background: ${C.card}; border: 1px solid ${C.ruleDark}; box-shadow: 0 8px 20px rgba(15,15,16,0.14); display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-2) var(--s-2); pointer-events: none; opacity: 0; }
+      .m-depart-card { position: absolute; left: 0; bottom: 0; width: 44px; height: 56px; border-radius: 6px; background: ${C.card}; border: 1px solid ${C.ruleDark}; box-shadow: 0 8px 20px rgba(var(--c-shadow-rgb), 0.14); display: flex; flex-direction: column; gap: var(--s-1); padding: var(--s-2) var(--s-2); pointer-events: none; opacity: 0; }
       .m-depart-line { display: block; height: 3px; border-radius: 2px; background: ${C.rule}; }
       .m-depart-line.short { width: 60%; }
       .m-xfade { display: contents; }

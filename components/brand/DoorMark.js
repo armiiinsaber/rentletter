@@ -22,7 +22,8 @@
 // AppStart.js), so the door turns while the page is still loading its code.
 import { useEffect, useId, useRef, useState } from 'react';
 import { DOOR, REDUCED_QUERY } from '../../lib/motion';
-import { DOOR_GROUNDS, doorGeometry, doorFrame, doorFill, breathCss, travelAt, cycleTime, doorTimeline, bezier, hash, r3 } from './doorGeometry';
+import { DOOR_GROUNDS, DOOR_THEMED, doorColours, doorGeometry, doorFrame, doorFill, breathCss, travelAt, cycleTime, doorTimeline, bezier, hash, r3 } from './doorGeometry';
+import { useTheme } from '../themeMode';
 
 // ── the clock ───────────────────────────────────────────────────────────────────────────────────
 // One loop for every mark. frozen: a time the tests set (window.__rlDoor.at), at which every mark
@@ -58,14 +59,17 @@ function useReducedMotion(motion) {
 }
 
 // ── before React ──────────────────────────────────────────────────────────────────────────────
-// One swing at 30 frames a second, each [outline, fill, knob or 0], then the cycle's length: what
-// DOOR_PLAYER needs to turn the door from first paint. Drawn by doorFrame, the same as the clock.
+// One swing at 30 frames a second, each [outline, fill, knob or 0] and, for a mark that follows the
+// theme, the fill in dark last; then the cycle's length: what DOOR_PLAYER needs to turn the door
+// from first paint. Drawn by doorFrame, the same as the clock.
 const PLAYER_STEP = 1000 / 30;
-function playerFrames(g, s, bar) {
+function playerFrames(g, s, bar, barDark = bar) {
   const ease = bezier(DOOR.curves[s.easing] || DOOR.curves[DOOR.defaults.easing]); const out = [];
   for (let t = 0; t < s.swingMs; t += PLAYER_STEP) {
     const f = doorFrame(g, s, travelAt(s, t, ease));
-    out.push([f.d, doorFill(bar, f.shade), f.knob ? [r3(f.knob.cx), r3(f.knob.cy), r3(f.knob.rx), r3(f.knob.ry)] : 0]);
+    const frame = [f.d, doorFill(bar, f.shade), f.knob ? [r3(f.knob.cx), r3(f.knob.cy), r3(f.knob.rx), r3(f.knob.ry)] : 0];
+    if (barDark !== bar) frame.push(doorFill(barDark, f.shade));
+    out.push(frame);
   }
   return JSON.stringify({ step: r3(PLAYER_STEP), swing: s.swingMs, cycle: doorTimeline(s).cycle, frames: out });
 }
@@ -73,8 +77,9 @@ function playerFrames(g, s, bar) {
 // while the mark is on screen and motion is allowed, steps through data-door-frames on
 // requestAnimationFrame, and stops for good once DoorMark's effect marks the svg live (or the mark
 // leaves the page). It records its start on the svg, so the clock continues the same cycle. A
-// frame stamped before the player started counts as its start.
-export const DOOR_PLAYER = `(function(){var c=document.currentScript,h=c&&c.previousElementSibling,v=h&&h.querySelector('svg[data-door-frames]');if(!v||!window.requestAnimationFrame||!v.getBoundingClientRect().width)return;if(window.matchMedia&&window.matchMedia('${REDUCED_QUERY}').matches)return;var F=JSON.parse(v.getAttribute('data-door-frames')),p=v.querySelector('[data-door-panel]'),k=v.querySelector('[data-door-knob]'),t0=performance.now();v.__rlDoorT0=t0;function f(n){if(v.getAttribute('data-door-live')||!v.isConnected)return;var t=Math.max(0,n-t0)%F.cycle,x=F.frames[t<F.swing?Math.min(F.frames.length-1,Math.floor(t/F.step)):0];p.setAttribute('d',x[0]);p.style.fill=x[1];if(x[2]){k.setAttribute('cx',x[2][0]);k.setAttribute('cy',x[2][1]);k.setAttribute('rx',x[2][2]);k.setAttribute('ry',x[2][3]);k.style.display='';}else{k.style.display='none';}v.setAttribute('data-door-travel',t<F.swing?'1':'0');requestAnimationFrame(f);}requestAnimationFrame(f);})();`;
+// frame stamped before the player started counts as its start. In the dark theme (html[data-theme]
+// as components/themeHead.js THEME_HEAD set it, or the device's own) it draws a frame's dark fill.
+export const DOOR_PLAYER = `(function(){var c=document.currentScript,h=c&&c.previousElementSibling,v=h&&h.querySelector('svg[data-door-frames]');if(!v||!window.requestAnimationFrame||!v.getBoundingClientRect().width)return;if(window.matchMedia&&window.matchMedia('${REDUCED_QUERY}').matches)return;var F=JSON.parse(v.getAttribute('data-door-frames')),p=v.querySelector('[data-door-panel]'),k=v.querySelector('[data-door-knob]'),t0=performance.now(),r=document.documentElement,a=r.getAttribute('data-theme'),dk=a==='dark'||(a!=='light'&&!!window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);v.__rlDoorT0=t0;function f(n){if(v.getAttribute('data-door-live')||!v.isConnected)return;var t=Math.max(0,n-t0)%F.cycle,x=F.frames[t<F.swing?Math.min(F.frames.length-1,Math.floor(t/F.step)):0];p.setAttribute('d',x[0]);p.style.fill=(dk&&x[3])||x[1];if(x[2]){k.setAttribute('cx',x[2][0]);k.setAttribute('cy',x[2][1]);k.setAttribute('rx',x[2][2]);k.setAttribute('ry',x[2][3]);k.style.display='';}else{k.style.display='none';}v.setAttribute('data-door-travel',t<F.swing?'1':'0');requestAnimationFrame(f);}requestAnimationFrame(f);})();`;
 
 // kind: wordmark | logo | logoInk | realtor | admin | mark | paper | ink (components/brand/
 // doorGeometry.js). size: the cap height (wordmark, logo) or the side (the rest), in px. settings:
@@ -90,12 +95,18 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
   const cls = `rd${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const s = { ...DOOR.defaults, ...settings };
   const g = doorGeometry(kind, size, s.open, { square });
-  const colours = DOOR_GROUNDS[kind] || DOOR_GROUNDS.wordmark;
+  const isStill = typeof still === 'number';
+  // A mark on the page follows its theme; the kit's still frames are drawn in the hex tokens.
+  const { theme } = useTheme();
+  const themed = !isStill && DOOR_THEMED.includes(kind);
+  const colours = themed ? doorColours(kind) : (DOOR_GROUNDS[kind] || DOOR_GROUNDS.wordmark);
+  const bar = useRef(null);
+  bar.current = { rest: colours.bar, hex: themed ? (theme === 'dark' ? colours.barDark : colours.barHex) : colours.bar };
+  const fillOf = (shade) => (shade > 0 ? doorFill(bar.current.hex, shade) : bar.current.rest);
   const reduced = useReducedMotion(motion);
   const key = [motion, run, paused, delay, s.rest, s.open, s.knob, s.swingMs, s.pauseMs, s.easing, s.play].join('|');
   const name = `${cls}${hash(key)}`;
   const icon = g.radius !== null;
-  const isStill = typeof still === 'number';
   const rest = isStill ? doorFrame(g, s, travelAt(s, cycleTime(s, still))) : doorFrame(g, s, 0, { reduced });
   const root = useRef(null); const panel = useRef(null); const knob = useRef(null);
   const live = useRef({ g, s }); live.current = { g, s };
@@ -104,7 +115,7 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
   const paint = (frame) => {
     const el = panel.current; const k = knob.current; if (!el || !k) return;
     el.setAttribute('d', frame.d);
-    el.style.fill = doorFill(colours.bar, frame.shade);
+    el.style.fill = fillOf(frame.shade);
     if (frame.knob) { k.setAttribute('cx', r3(frame.knob.cx)); k.setAttribute('cy', r3(frame.knob.cy)); k.setAttribute('rx', r3(frame.knob.rx)); k.setAttribute('ry', r3(frame.knob.ry)); k.style.display = ''; }
     else k.style.display = 'none';
     root.current?.setAttribute('data-door-angle', r3(frame.deg)); root.current?.setAttribute('data-door-travel', r3(frame.travel));
@@ -140,7 +151,7 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
   }, [size]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const named = label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': 'true' };
-  const frames = prehydrate && !isStill && !paused ? playerFrames(g, s, colours.bar) : undefined;
+  const frames = prehydrate && !isStill && !paused ? playerFrames(g, s, themed ? colours.barHex : colours.bar, themed ? colours.barDark : colours.bar) : undefined;
   // The logo kinds take the static Wordmark's own rounding (components/ui.js), so swapping one for
   // the other moves nothing on the page.
   const dim = (v) => (kind === 'logo' || kind === 'logoInk' ? Math.round(v * 10) / 10 : r3(v));
@@ -154,7 +165,7 @@ export default function DoorMark({ kind = 'wordmark', size = 40, settings = DOOR
         {g.restPath ? <path d={g.restPath} fill={colours.letter} /> : null}
       </g>
       <g data-door-leaf="">
-        <path ref={panel} data-door-panel="" d={rest.d} style={{ fill: doorFill(colours.bar, rest.shade) }} />
+        <path ref={panel} data-door-panel="" d={rest.d} style={{ fill: fillOf(rest.shade) }} />
         <ellipse ref={knob} data-door-knob="" fill={colours.knob} cx={rest.knob ? r3(rest.knob.cx) : 0} cy={rest.knob ? r3(rest.knob.cy) : 0}
           rx={rest.knob ? r3(rest.knob.rx) : 0} ry={rest.knob ? r3(rest.knob.ry) : 0} style={{ display: rest.knob ? undefined : 'none' }} />
       </g>

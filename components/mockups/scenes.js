@@ -7,7 +7,8 @@
 // reduced-motion gated); everything here is static so it screenshots identically every time.
 //
 // Imported ONLY by /admin/mockups — never by the landing page (keeps the hero bundle light).
-import { C, R } from '../theme';
+// The scenes are drawn for export in the founder office, always light: the hex tokens (LIGHT).
+import { LIGHT as C, R } from '../theme';
 import { Icon, TickMeter, Wordmark, StatusPills } from '../ui';
 import HeroDemo from './HeroDemo';
 import { DocsFirstScene } from './DocsFirst';
@@ -20,7 +21,7 @@ export const CAST = [
   { initials: 'AO', color: '#6b4a8a', name: 'Amara Okonkwo', role: 'Teacher · TDSB', income: 71000, net: 54500, score: 3.3, basis: 'Rent paid on time, 8 mo', rent: 49 },
 ];
 export const money = (n) => `$${Number(n).toLocaleString('en-CA')}`;
-export const Avatar = ({ a, size = 28 }) => <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', background: a.color, color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 700 }}>{a.initials}</span>;
+export const Avatar = ({ a, size = 28 }) => <span aria-hidden="true" style={{ width: size, height: size, flexShrink: 0, borderRadius: '50%', background: a.color, color: C.card, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: size * 0.38, fontWeight: 700 }}>{a.initials}</span>;
 export const Eyebrow = ({ children, color = C.red, size = 9.5 }) => <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 6 }}><span style={{ width: 16, height: 2, background: color, borderRadius: 1 }} /><span style={{ fontSize: size, color, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{children}</span></div>;
 const pad = 'clamp(12px, 4%, 22px)';
 
@@ -73,7 +74,7 @@ export function VerificationScene({ phone = false }) {
   // Each row's status in the product's words: the red tick for a match, no status colour.
   const status = { match: 'Matches', found: 'Found', close: 'Close' };
   return (
-    <div style={{ position: 'absolute', inset: 0, background: '#101012', color: '#e8e4d9', overflow: 'hidden', padding: pad, display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.6%, 10px)' }}>
+    <div style={{ position: 'absolute', inset: 0, background: C.inst, color: C.instText, overflow: 'hidden', padding: pad, display: 'flex', flexDirection: 'column', gap: 'clamp(6px, 1.6%, 10px)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
         <Eyebrow color="#ff4d55">What the documents say</Eyebrow>
         <span style={{ fontSize: 9, color: '#9a958a', whiteSpace: 'nowrap' }}>3 documents · held 14 days</span>
@@ -83,22 +84,22 @@ export function VerificationScene({ phone = false }) {
         <div style={{ minWidth: 0 }}><div style={{ fontSize: 'clamp(12px, 3vw, 14px)', fontWeight: 800 }}>Priya Nair</div><div style={{ fontSize: 'clamp(9px, 2.3vw, 10.5px)', color: '#9a958a' }}>Name on documents matches the applicant · high confidence</div></div>
         <StatusPills tone="ink" className="rl-pills-mock" label="Document status" items={['docs match']} style={{ marginLeft: 'auto' }} />
       </div>
-      <div style={{ border: '1px solid #2a2a2e', borderRadius: R.ctrl, overflow: 'hidden' }}>
+      <div style={{ border: `1px solid ${C.instRule}`, borderRadius: R.ctrl, overflow: 'hidden' }}>
         <div style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1.2fr auto' : '1fr 1fr 1.2fr auto', gap: 8, padding: '6px 10px', fontSize: 8.5, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#9a958a', background: '#161618' }}>
           <span>Field</span>{!phone && <span>Applicant said</span>}<span>Documents show</span><span />
         </div>
         {rows.map(([f, said, doc, st]) => (
-          <div key={f} style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1.2fr auto' : '1fr 1fr 1.2fr auto', gap: 8, padding: 'clamp(6px, 1.8%, 9px) 10px', borderTop: '1px solid #2a2a2e', fontSize: 'clamp(9.5px, 2.4vw, 11.5px)', alignItems: 'center' }}>
-            <span style={{ color: '#c8c2b3' }}>{f}</span>{!phone && <span>{said}</span>}<span style={{ fontWeight: 600 }}>{doc}</span>
+          <div key={f} style={{ display: 'grid', gridTemplateColumns: phone ? '1fr 1.2fr auto' : '1fr 1fr 1.2fr auto', gap: 8, padding: 'clamp(6px, 1.8%, 9px) 10px', borderTop: `1px solid ${C.instRule}`, fontSize: 'clamp(9.5px, 2.4vw, 11.5px)', alignItems: 'center' }}>
+            <span style={{ color: C.inkInverse }}>{f}</span>{!phone && <span>{said}</span>}<span style={{ fontWeight: 600 }}>{doc}</span>
             <span style={{ fontSize: 9, fontWeight: 800, color: C.instText, background: C.instRaise, padding: '2px 7px', borderRadius: 999, whiteSpace: 'nowrap' }}>{st === 'match' ? <><span style={{ color: C.redBright }}>✓</span> {status[st]}</> : status[st]}</span>
           </div>
         ))}
       </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {['pay-stub-jul.pdf', 'employment-letter.pdf', 'credit-report.pdf'].map((n) => <span key={n} style={{ fontSize: 9.5, color: '#c8c2b3', background: '#1c1c1e', border: '1px solid #2a2a2e', padding: '3px 8px', borderRadius: 6 }}>📄 {n}</span>)}
+        {['pay-stub-jul.pdf', 'employment-letter.pdf', 'credit-report.pdf'].map((n) => <span key={n} style={{ fontSize: 9.5, color: C.inkInverse, background: '#1c1c1e', border: `1px solid ${C.instRule}`, padding: '3px 8px', borderRadius: 6 }}>📄 {n}</span>)}
       </div>
-      <div style={{ marginTop: 'auto', padding: 'clamp(7px, 2%, 10px) clamp(9px, 2.4%, 12px)', background: '#161618', border: '1px solid #2a2a2e', borderLeft: '3px solid #ff4d55', borderRadius: R.ctrl, fontSize: 'clamp(9px, 2.3vw, 10.5px)', lineHeight: 1.5, color: '#c8c2b3' }}>
-        <strong style={{ color: '#e8e4d9' }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; employer and title are consistent across documents. Credit report shows no collections. Nothing here considers background, family status, or source of income.
+      <div style={{ marginTop: 'auto', padding: 'clamp(7px, 2%, 10px) clamp(9px, 2.4%, 12px)', background: '#161618', border: `1px solid ${C.instRule}`, borderLeft: '3px solid #ff4d55', borderRadius: R.ctrl, fontSize: 'clamp(9px, 2.3vw, 10.5px)', lineHeight: 1.5, color: C.inkInverse }}>
+        <strong style={{ color: C.instText }}>Insight.</strong> Stated income is corroborated by a current T4 and pay stub from the same employer; employer and title are consistent across documents. Credit report shows no collections. Nothing here considers background, family status, or source of income.
       </div>
     </div>
   );
@@ -115,9 +116,9 @@ export function TenantApplyScene() {
   return (
     <div style={{ position: 'absolute', inset: 0, background: C.paper, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       <div style={{ background: C.ink, color: C.paper, padding: '10px 14px', borderLeft: `4px solid ${C.red}` }}>
-        <div style={{ fontSize: 8.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#c8c2b3', marginBottom: 3 }}>You’re applying to</div>
+        <div style={{ fontSize: 8.5, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.inkInverse, marginBottom: 3 }}>You’re applying to</div>
         <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '-0.01em' }}>88 Harbour St, Unit 2104</div>
-        <div style={{ fontSize: 10, color: '#c8c2b3' }}>$2,600/mo · 2 bed · Goes to Sarah Chen, Royal LePage</div>
+        <div style={{ fontSize: 10, color: C.inkInverse }}>$2,600/mo · 2 bed · Goes to Sarah Chen, Royal LePage</div>
       </div>
       <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: 9, flex: 1, minHeight: 0 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}><span style={{ fontSize: 10, color: C.inkMute }}>03</span><span style={{ fontSize: 14, fontWeight: 700, color: C.ink }}>Employment</span><span style={{ fontSize: 9, color: C.inkMute }}>Required</span></div>

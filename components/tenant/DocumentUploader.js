@@ -221,7 +221,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
             onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
             onClick={() => inputRef.current?.click()}
             role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); } }}
-            style={{ border: `1.5px dashed ${dragOver ? C.red : C.ruleDark}`, background: dragOver ? '#fef2f0' : C.card, borderRadius: R.card, padding: 'clamp(22px, 5vw, 30px) 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 12, minHeight: 44 }}>
+            style={{ border: `1.5px dashed ${dragOver ? C.red : C.ruleDark}`, background: dragOver ? C.redTint : C.card, borderRadius: R.card, padding: 'clamp(22px, 5vw, 30px) 16px', textAlign: 'center', cursor: 'pointer', marginBottom: 12, minHeight: 44 }}>
             <input ref={inputRef} type="file" multiple accept={OK_ACCEPT} style={{ display: 'none' }} onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <div style={{ display: 'inline-flex', marginBottom: 8, color: C.red }}><Icon name="plus" size={22} /></div>
             <div style={{ fontSize: 14.5, fontWeight: 700, color: C.ink }}>Tap to choose files, or drop them here</div>

@@ -325,7 +325,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
             onDragLeave={() => setDragOver(false)}
             onDrop={(e) => { e.preventDefault(); setDragOver(false); addFiles(e.dataTransfer.files); }}
             onClick={() => inputRef.current?.click()}
-            style={{ border: `1.5px dashed ${dragOver ? C.red : C.ruleDark}`, background: dragOver ? '#fef2f0' : C.paper, borderRadius: R.card, padding: 'var(--s-4) var(--s-4)', textAlign: 'center', cursor: 'pointer' }}>
+            style={{ border: `1.5px dashed ${dragOver ? C.red : C.ruleDark}`, background: dragOver ? C.redTint : C.paper, borderRadius: R.card, padding: 'var(--s-4) var(--s-4)', textAlign: 'center', cursor: 'pointer' }}>
             <input ref={inputRef} type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.doc,.docx" style={{ display: 'none' }}
               onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }} />
             <div style={{ fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.ink }}>Drop documents here or click to choose</div>

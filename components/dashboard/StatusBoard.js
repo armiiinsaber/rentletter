@@ -82,21 +82,21 @@ export default function StatusBoard({ tiles, now, filter, onFilter, paths, onJum
         .sb-date { margin: 0 0 var(--s-3); font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; line-height: 1.3; }
         .sb-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
         @media (min-width: 1024px) { .sb-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); } }
-        .sb :global(.sb-tile) { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); min-width: 0; min-height: 132px; margin: 0; padding: var(--s-4); border-radius: 24px; border: none; color: ${C.ink}; text-align: left; text-decoration: none; font-family: inherit; cursor: pointer; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(15, 15, 16, 0.05); }
-        .sb :global(.sb-dark) { background: ${C.ink}; color: ${C.paper}; box-shadow: 0 12px 32px rgba(15, 15, 16, 0.22); }
-        .sb :global(.sb-tile[aria-pressed='true']) { box-shadow: inset 0 0 0 2px ${C.ink}, 0 8px 24px rgba(15, 15, 16, 0.05); }
+        .sb :global(.sb-tile) { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); min-width: 0; min-height: 132px; margin: 0; padding: var(--s-4); border-radius: 24px; border: none; color: ${C.ink}; text-align: left; text-decoration: none; font-family: inherit; cursor: pointer; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.05); }
+        .sb :global(.sb-dark) { background: ${C.ink}; color: ${C.paper}; box-shadow: 0 12px 32px rgba(var(--c-shadow-rgb), 0.22); }
+        .sb :global(.sb-tile[aria-pressed='true']) { box-shadow: inset 0 0 0 2px ${C.ink}, 0 8px 24px rgba(var(--c-shadow-rgb), 0.05); }
         .sb :global(.sb-tile:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         .sb :global(.sb-label) { font-size: var(--t-body-2); font-weight: 700; line-height: 1.25; color: inherit; }
         .sb :global(.sb-quiet .sb-label), .sb :global(.sb-quiet .sb-num) { color: ${C.inkSoft}; }
         .sb :global(.sb-dot) { flex-shrink: 0; width: 10px; height: 10px; margin-top: 4px; border-radius: 50%; background: ${C.red}; }
-        .sb :global(.sb-dark .sb-dot) { box-shadow: 0 0 0 3px rgba(215, 32, 39, 0.28); }
+        .sb :global(.sb-dark .sb-dot) { background: ${C.redOnInk}; box-shadow: 0 0 0 3px rgba(var(--c-red-on-ink-rgb), 0.28); }
         .sb :global(.sb-num) { display: inline-flex; align-items: flex-start; gap: var(--s-2); font-family: var(--f-display); font-size: 40px; font-weight: 600; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
         .sb :global(.sb-act) { margin-top: auto; display: inline-flex; align-items: center; gap: var(--s-1); font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; }
         .sb :global(.sb-line) { margin-top: auto; font-size: 13px; font-weight: 500; color: ${C.inkSoft}; line-height: 1.3; text-wrap: balance; }
         .sb :global(.sb-label) { text-wrap: balance; }
         .sb :global(.sb-roll) { position: relative; display: inline-block; overflow: hidden; vertical-align: top; }
         .sb :global(.sb-roll-was) { display: none; }
-        @media (hover: hover) { .sb :global(.sb-tile:not(.sb-dark):hover) { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px rgba(15, 15, 16, 0.16), 0 8px 24px rgba(15, 15, 16, 0.07); } }
+        @media (hover: hover) { .sb :global(.sb-tile:not(.sb-dark):hover) { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px rgba(var(--c-ink-rgb), 0.16), 0 8px 24px rgba(var(--c-shadow-rgb), 0.07); } }
         @media (min-width: 1024px) { .sb :global(.sb-tile) { min-height: 148px; padding: var(--s-4); } .sb :global(.sb-num) { font-size: 48px; } }
         /* 1024 to 1279: four tiles in the narrowest main area; the longest label (Documents to check) keeps one line. */
         @media (min-width: 1024px) and (max-width: 1279.98px) { .sb-tiles { gap: var(--s-3); } .sb :global(.sb-label) { font-size: 13px; } }

@@ -12,6 +12,7 @@ import Head from 'next/head';
 import { isAdmin } from '../../lib/adminAuth';
 import { LOGO } from '../../lib/brand/logoPaths';
 import { Wordmark } from '../../components/ui';
+import ThemeColor from '../../components/ThemeColor';
 
 export async function getServerSideProps({ req, res }) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
@@ -49,10 +50,10 @@ export default function CommitmentPoster() {
   }, []);
   return (
     <>
+      <ThemeColor color="#e6e6e4" />
       <Head>
         <title>Commitment poster — Rentletter admin</title>
         <meta name="robots" content="noindex, nofollow" />
-        <meta name="theme-color" content="#e6e6e4" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Newsreader:wght@400;500&display=swap" />

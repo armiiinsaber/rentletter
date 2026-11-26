@@ -99,7 +99,7 @@ export function ListingsTable({ rows, now, paths, label = 'Your listings', selec
         .lt {
           --lt-addr: 380px; --sp: minmax(var(--s-2), 1fr); --w: 0px; --wsp: 0px; --wh: max-content; --whs: var(--sp);
           --lt-cols: fit-content(var(--lt-addr)) var(--sp) max-content var(--sp) max-content var(--wsp) var(--w) var(--sp) max-content var(--wsp) var(--w) var(--sp) max-content var(--sp) max-content var(--whs) var(--wh);
-          display: grid; grid-template-columns: var(--lt-cols); column-gap: 0; background: ${C.card}; border-radius: 24px; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.05), 0 10px 30px rgba(15, 15, 16, 0.06); overflow-x: auto; overflow-y: hidden;
+          display: grid; grid-template-columns: var(--lt-cols); column-gap: 0; background: ${C.card}; border-radius: 24px; box-shadow: 0 1px 2px rgba(var(--c-shadow-rgb), 0.05), 0 10px 30px rgba(var(--c-shadow-rgb), 0.06); overflow-x: auto; overflow-y: hidden;
         }
         .lt-select { grid-template-columns: auto var(--lt-cols); }
         .lt-group, .lt-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }

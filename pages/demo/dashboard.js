@@ -61,13 +61,13 @@ export default function DemoSandbox() {
         </DashboardAdapterContext.Provider>
       )}
       <style jsx global>{`
-        .rl-sandbox-bar { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; padding: var(--s-2) var(--s-4); background: ${C.ink}; color: #e8e4d9; font-size: var(--t-body-2); line-height: 1.4; border-bottom: 3px solid ${C.red}; }
-        .rl-sandbox-bar strong { color: #fff; }
+        .rl-sandbox-bar { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; padding: var(--s-2) var(--s-4); background: ${C.inst}; color: ${C.instText}; font-size: var(--t-body-2); line-height: 1.4; border-bottom: 3px solid ${C.red}; }
+        .rl-sandbox-bar strong { color: ${C.instInk}; }
         .rl-sandbox-dot { width: 8px; height: 8px; border-radius: 50%; background: ${C.red}; flex-shrink: 0; }
         .rl-sandbox-actions { margin-left: 0; display: flex; flex-wrap: wrap; gap: var(--gap-card); align-items: center; }
         @media (max-width: 420px) { .rl-sandbox-actions { margin-left: 0; width: 100%; } .rl-sandbox-actions > * { flex: 1 1 100%; justify-content: center; text-align: center; } }
-        .rl-sandbox-actions button, .rl-sandbox-actions a { font: inherit; font-weight: 600; color: #e8e4d9; background: transparent; border: 1px solid #3a3a3e; border-radius: 8px; padding: var(--s-1) var(--s-2); min-height: 34px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
-        .rl-sandbox-actions a { background: transparent; border-color: #e8e4d9; color: #e8e4d9; }
+        .rl-sandbox-actions button, .rl-sandbox-actions a { font: inherit; font-weight: 600; color: ${C.instText}; background: transparent; border: 1px solid rgba(var(--c-inst-text-rgb), 0.2); border-radius: 8px; padding: var(--s-1) var(--s-2); min-height: 34px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+        .rl-sandbox-actions a { background: transparent; border-color: ${C.instText}; color: ${C.instText}; }
         @media (max-width: 480px) { .rl-sandbox-actions { margin-left: 0; } }
       `}</style>
     </>

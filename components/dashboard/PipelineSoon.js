@@ -59,7 +59,7 @@ export default function PipelineSoon({ people = [], href, onOpen }) {
         .ps-title { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; margin: 0; }
         .ps-count { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; font-variant-numeric: tabular-nums; }
         .ps-open { margin-left: auto; padding-right: var(--s-2); }
-        .ps-card { background: ${C.card}; border-radius: 24px; overflow: hidden; box-shadow: 0 1px 2px rgba(15, 15, 16, 0.05), 0 10px 30px rgba(15, 15, 16, 0.06); }
+        .ps-card { background: ${C.card}; border-radius: 24px; overflow: hidden; box-shadow: 0 1px 2px rgba(var(--c-shadow-rgb), 0.05), 0 10px 30px rgba(var(--c-shadow-rgb), 0.06); }
         .ps-list { list-style: none; margin: 0; padding: 0; }
         /* A row: the name, the pills, the listing. They share one line while it holds them and wrap
            under each other when it does not; the name keeps a column of its own while it fits. */

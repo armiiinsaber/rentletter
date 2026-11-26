@@ -212,7 +212,7 @@ export default function RouteFrame({ children }) {
       flushSync(() => setBeneath({ route: { ...route, url: prev.url }, shot: seenScreen(prev.url) }));
       const { shift, dim } = beneathEls.current; if (!shift || !dim) { drop(); return null; }
       shift.style.transform = `translate3d(${-PARALLAX * window.innerWidth}px, 0, 0)`; dim.style.opacity = String(DIM);
-      Object.assign(el.style, { position: 'relative', zIndex: '1', boxShadow: '-12px 0 24px rgba(15, 15, 16, 0.12)', willChange: 'transform' });
+      Object.assign(el.style, { position: 'relative', zIndex: '1', boxShadow: '-12px 0 24px rgba(var(--c-shadow-rgb), 0.12)', willChange: 'transform' });
       return { page: el, shift, dim };
     };
     const edgeCommit = (reduced) => {

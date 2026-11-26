@@ -44,12 +44,13 @@ test('DotLine is imported, rendered or defined nowhere', () => {
 });
 
 test('every pill reads at 4.5 or better on its own background', async () => {
-  const { C } = await import('../components/theme.js');
+  const { LIGHT, DARK } = await import('../components/theme.js');
   const ui = src('components/ui.js');
-  // The three styles, as the CSS writes them.
+  // The three styles, as the CSS writes them. The action pill is filled ink, so in dark, where the
+  // ink fill is light, it is the one light pill; the ink tone's border is the theme's paper at 24.
   assert.match(ui, /\.rl-pill \{[^}]*border: 1px solid \$\{C\.rule\}; background: \$\{C\.paper\}; color: \$\{C\.ink\};/);
-  assert.match(ui, /\.rl-pill\.rl-pill-action \{ background: \$\{C\.inst\}; border-color: \$\{C\.inst\}; color: \$\{C\.paper\}; \}/);
-  assert.match(ui, /\.rl-pills\.rl-pills-ink \.rl-pill \{ background: transparent; border-color: rgba\(250, 248, 243, 0\.24\); color: \$\{C\.paper\}; \}/);
+  assert.match(ui, /\.rl-pill\.rl-pill-action \{ background: \$\{C\.ink\}; border-color: \$\{C\.ink\}; color: \$\{C\.paper\}; \}/);
+  assert.match(ui, /\.rl-pills\.rl-pills-ink \.rl-pill \{ background: transparent; border-color: rgba\(\$\{RGB\.paper\}, 0\.24\); color: \$\{C\.paper\}; \}/);
   assert.match(ui, /font-size: 14px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums;/);
   assert.match(ui, /height: 28px; max-width: 100%; padding: 0 12px;\s*border-radius: 999px;/);
   // The transparent pill sits on the ink surfaces that use tone="ink": the Pipeline and welcome
@@ -61,15 +62,17 @@ test('every pill reads at 4.5 or better on its own background', async () => {
   assert.doesNotMatch(src('components/dashboard/HomeView.js'), /className="dash-ink"/);
   assert.doesNotMatch(src('components/dashboard/StatusBoard.js'), /StatusPills|rl-pill/, 'no pill on the tiles');
   assert.match(src('components/tenant/ProfileFacts.js'), /\.mp-ink \{ background: \$\{C\.ink\};/);
-  const rows = [
-    ['informational pill: ink on paper', C.ink, C.paper],
-    ['action pill: paper on ink', C.paper, C.inst],
-    ['pill on the Pipeline and welcome cards: paper on the ink card', C.paper, C.inst],
-    ['pill on the applying banner: paper on ink', C.paper, C.ink],
-  ];
-  for (const [name, fg, bg] of rows) assert.ok(contrast(rgb(fg), rgb(bg)) >= 4.5, `${name}: ${contrast(rgb(fg), rgb(bg)).toFixed(2)}`);
-  // The border at paper 24 percent is a decoration, not text; it still shows on the ink card.
-  assert.ok(contrast(over(rgb(C.paper), 0.24, rgb(C.inst)), rgb(C.inst)) > 1.5);
+  for (const [theme, C] of [['light', LIGHT], ['dark', DARK]]) {
+    const rows = [
+      ['informational pill: ink on paper', C.ink, C.paper],
+      ['informational pill: ink on the card', C.ink, C.card],
+      ['action pill: paper on ink', C.paper, C.ink],
+      ['pill on the applying banner: paper on ink', C.paper, C.ink],
+    ];
+    for (const [name, fg, bg] of rows) assert.ok(contrast(rgb(fg), rgb(bg)) >= 4.5, `${theme}, ${name}: ${contrast(rgb(fg), rgb(bg)).toFixed(2)}`);
+    // The border at paper 24 percent is a decoration, not text; it still shows on the ink fill.
+    assert.ok(contrast(over(rgb(C.paper), 0.24, rgb(C.ink)), rgb(C.ink)) > 1.5, `${theme}: the ink tone's border shows`);
+  }
   // No filled pill on an ink surface: StatusPills marks the action only in the paper tone.
   assert.match(ui, /const action = tone === 'paper' \? list\.findIndex\(\(x\) => x\.action\) : -1;/);
 });

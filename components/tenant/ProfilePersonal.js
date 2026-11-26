@@ -27,7 +27,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { noWidow, dateLong } from '../../lib/typeset';
 import { MOTION_QUERY, DURATION, CURVE } from '../../lib/motion';
-import { C } from '../theme';
+import { C, LIGHT } from '../theme';
 import { StatusPills } from '../ui';
 import { Pending } from '../brand/Loader';
 import { ENGLISH_MAX, ENGLISH_HEAD, ENGLISH_NOTE, ENGLISH_UNSEEN, ENGLISH_NOT_READY, ENGLISH_NONE, textDirection, spellChecked, englishLength } from '../../lib/aboutTranslation';
@@ -55,7 +55,7 @@ async function smallPhoto(file) {
     const img = await new Promise((resolve, reject) => { const i = new window.Image(); i.onload = () => resolve(i); i.onerror = () => reject(new Error('That photo could not be opened.')); i.src = url; });
     const k = Math.min(1, 640 / Math.max(img.naturalWidth, img.naturalHeight));
     const canvas = document.createElement('canvas'); canvas.width = Math.max(1, Math.round(img.naturalWidth * k)); canvas.height = Math.max(1, Math.round(img.naturalHeight * k));
-    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = LIGHT.card; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     for (const q of [0.85, 0.7, 0.55]) { const data = canvas.toDataURL('image/jpeg', q).split(',')[1] || ''; if (Math.floor((data.length * 3) / 4) <= PHOTO_MAX_BYTES) return data; }
     throw new Error('This photo is too large. Try a smaller one.');
   } finally { URL.revokeObjectURL(url); }

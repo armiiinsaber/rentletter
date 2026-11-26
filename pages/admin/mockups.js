@@ -4,7 +4,9 @@
 // Each scene: a stage with a framing preset (Wide / Square / Portrait / Story) and a canvas
 // (paper / ink). The founder screenshots the stage; nothing else is needed.
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { C, R } from '../../components/theme';
+// The mockups are drawn for export, always light, and the export redraws their backgrounds in
+// Canvas 2D from these stops (lib/mockupExport.js): the hex tokens (components/theme.js LIGHT).
+import { LIGHT as C, R } from '../../components/theme';
 import AdminShell from '../../components/admin/AdminShell';
 import BrandKit from '../../components/admin/BrandKit';
 import DoorLab from '../../components/admin/DoorLab';
@@ -35,8 +37,8 @@ const PRESETS = [
 // (lib/mockupExport.js) instead of capturing it from the DOM.
 const radial = (stops) => `radial-gradient(120% 90% at 50% 0%, ${stops.map(([c, p]) => `${c} ${Math.round(p * 100)}%`).join(', ')})`;
 const PAPER_STOPS = [[C.card, 0], [C.paper, 0.55], [C.paperDeep, 1]];
-const INK_STOPS = [['#1c1c1e', 0], ['#101012', 0.6], ['#0a0a0b', 1]];
-const CANVAS = { paper: { bg: radial(PAPER_STOPS), stops: PAPER_STOPS, tone: 'paper', fg: C.ink }, ink: { bg: radial(INK_STOPS), stops: INK_STOPS, tone: 'ink', fg: '#e8e4d9' } };
+const INK_STOPS = [['#1c1c1e', 0], [C.inst, 0.6], ['#0a0a0b', 1]];
+const CANVAS = { paper: { bg: radial(PAPER_STOPS), stops: PAPER_STOPS, tone: 'paper', fg: C.ink }, ink: { bg: radial(INK_STOPS), stops: INK_STOPS, tone: 'ink', fg: C.instText } };
 
 // Scenes are laid out at a fixed DESIGN size and scaled to the device screen with a MEASURED
 // transform: scale() (ResizeObserver), no container query units, no CSS trig, so it behaves
@@ -327,7 +329,7 @@ export default function Mockups() {
               controls
               playsInline
               preload="metadata"
-              style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', background: '#101012', borderRadius: 10 }}
+              style={{ display: 'block', width: '100%', aspectRatio: '16 / 9', background: C.inst, borderRadius: 10 }}
             />
             {/* The same export row every other scene carries (mk-ui mk-export, mk-xbtn), here as
                 links, since this film is a file rather than something rendered in the browser. */}
@@ -354,7 +356,7 @@ export default function Mockups() {
       </div>
       <style jsx global>{`
         .mk-wrap { max-width: 1320px; margin: 0 auto; padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 28px) 80px; }
-        .mk-controls { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 20; background: rgba(27,27,30,0.92); backdrop-filter: blur(8px); border: 1px solid ${C.instRule}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 14px 22px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+        .mk-controls { position: sticky; top: calc(56px + env(safe-area-inset-top)); z-index: 20; background: rgba(var(--c-inst-raise-rgb), 0.92); backdrop-filter: blur(8px); border: 1px solid ${C.instRule}; border-radius: ${R.card}px; padding: 10px 12px; display: flex; gap: 14px 22px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
         .mk-group { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
         .mk-label { font-size: 10px; color: ${C.instMute}; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-right: 4px; }
         .mk-chip { background: transparent; border: 1px solid ${C.instRule}; color: ${C.instText}; border-radius: ${R.pill}px; padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer; min-height: 36px; }
@@ -371,7 +373,7 @@ export default function Mockups() {
         .mk-stage:hover .mk-export, .mk-export:focus-within { opacity: 1; }
         /* The film section has no stage to hover: its export row lifts with the section. */
         .mk-item:hover .mk-export { opacity: 1; }
-        .mk-xbtn { background: ${C.paper}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: ${R.pill}px; padding: 6px 11px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 30px; box-shadow: 0 2px 8px rgba(15,15,16,0.12); }
+        .mk-xbtn { background: ${C.paper}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; border-radius: ${R.pill}px; padding: 6px 11px; font-size: 12px; font-weight: 700; cursor: pointer; min-height: 30px; box-shadow: 0 2px 8px rgba(var(--c-shadow-rgb), 0.12); }
         .mk-xbtn:disabled { opacity: 0.5; cursor: wait; }
         /* while exporting: shadows and the gradient are composited in canvas (lib/mockupExport.js) */
         .mk-stage.mk-exporting { background: none !important; }
@@ -381,7 +383,7 @@ export default function Mockups() {
         .mk-stage.mk-exporting .df-base::after { display: none; }
         .mk-stage.mk-exporting .rl-film { background: none !important; } /* the canvas paints the gradient */
         .mk-film { flex-direction: column; }
-        .mk-scrub { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; background: rgba(250,248,243,0.92); border: 1px solid ${C.rule}; border-radius: ${R.pill}px; padding: 6px 10px; opacity: 0; }
+        .mk-scrub { position: absolute; left: 10px; right: 10px; bottom: 10px; display: flex; align-items: center; gap: 8px; background: rgba(var(--c-paper-rgb), 0.92); border: 1px solid ${C.rule}; border-radius: ${R.pill}px; padding: 6px 10px; opacity: 0; }
         .mk-stage:hover .mk-scrub, .mk-scrub:focus-within { opacity: 1; }
         .mk-scrub input[type=range] { flex: 1; accent-color: ${C.red}; min-width: 0; height: 30px; margin: 0; } /* the buttons' height, one row (R2) */
         .mk-time { font-size: 11px; font-variant-numeric: tabular-nums; color: ${C.inkSoft}; white-space: nowrap; }

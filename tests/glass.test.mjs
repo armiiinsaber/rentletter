@@ -11,6 +11,9 @@
 //   · Text on it keeps 4.5 to 1 over black and over white: ink at the strength; inkSoft at the
 //     inkSoft floor, --glass-fill-soft, which every surface that shows inkSoft text holds; paper and
 //     instText on the ink tone. inkMute would not hold, so it is never set on glass.
+//   · In both themes: the paper tone is the theme's own paper (--c-paper-rgb), and the dark theme
+//     sets its own strength and floor once, in the dark block beside the light ones; the same rule
+//     holds for its ink and inkSoft over black and over white (components/theme.js DARK).
 //   · The change from solid to glass, and the bar's shadow, animate opacity alone, inside the
 //     reduced motion query, and reduced transparency and a browser without backdrop-filter get the
 //     solid surface.
@@ -25,6 +28,8 @@ const read = (p) => readFileSync(join(ROOT, p), 'utf8');
 const ui = read('components/ui.js');
 const theme = read('components/theme.js');
 const hex = (name) => { const m = theme.match(new RegExp(`\\b${name}: '#([0-9a-f]{6})'`, 'i')); assert.ok(m, name); return [0, 2, 4].map((i) => parseInt(m[1].slice(i, i + 2), 16)); };
+const { LIGHT, DARK } = await import('../components/theme.js');
+const rgbOf = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
 const L = ([r, g, b]) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
 const ratio = (a, b) => { const x = L(a); const y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
@@ -32,6 +37,9 @@ const over = (top, a, under) => top.map((c, i) => c * a + under[i] * (1 - a));
 // A number set in the glass's :root block (components/ui.js), and a tone's colour from its own rule.
 const glassRoot = () => { const at = ui.indexOf('--glass-fill:'); assert.ok(at > 0, 'the glass tokens'); return ui.slice(ui.lastIndexOf(':root {', at), ui.indexOf('}', at)); };
 const fill = (name) => { const m = glassRoot().match(new RegExp(`--${name}: ([\\d.]+);`)); assert.ok(m, name); return Number(m[1]); };
+// The dark theme's own, in the dark block written right after the light one (inDark, components/themeHead.js).
+const darkRoot = () => { const at = ui.indexOf('--glass-fill:', ui.indexOf('--glass-fill:') + 1); assert.ok(at > 0, 'the dark glass tokens'); const open = ui.lastIndexOf('${inDark(`:root {', at); assert.ok(open > 0 && at - open < 200, 'set in the dark block'); return ui.slice(open, ui.indexOf('}', at)); };
+const darkFill = (name) => { const m = darkRoot().match(new RegExp(`--${name}: ([\\d.]+);`)); assert.ok(m, `dark ${name}`); return Number(m[1]); };
 const tone = (sel, name) => { const m = ui.match(new RegExp(`${sel} \\{ --glass-tone: (\\d+), (\\d+), (\\d+);`)); assert.ok(m, name); return [Number(m[1]), Number(m[2]), Number(m[3])]; };
 const files = (dir) => readdirSync(join(ROOT, dir)).flatMap((f) => { const p = join(dir, f); return statSync(join(ROOT, p)).isDirectory() ? files(p) : /\.js$/.test(f) ? [p] : []; });
 const PAGES = [...files('components'), ...files('pages')].filter((p) => !/^pages\/api\//.test(p) && !/admin/.test(p));
@@ -39,10 +47,13 @@ const PAGES = [...files('components'), ...files('pages')].filter((p) => !/^pages
 test('the strength is one token, defined once, that every glass surface reads', () => {
   assert.equal(fill('glass-fill'), 0.62, 'the strength of the paper glass');
   assert.equal(fill('glass-fill-ink'), 0.72, 'the ink glass, its own');
-  // The fill is the tone at the strength (or a surface's floor), on the one .rl-glass rule.
-  assert.match(ui, /\.rl-glass \{ --glass-tone: 250, 248, 243; background-color: rgba\(var\(--glass-tone\), var\(--glass-alpha, var\(--glass-fill\)\)\);/);
+  assert.equal(darkFill('glass-fill'), 0.7, 'the strength in dark');
+  assert.equal(darkFill('glass-fill-ink'), 0.72, 'the ink glass in dark');
+  // The fill is the tone at the strength (or a surface's floor), on the one .rl-glass rule: the
+  // theme's own paper.
+  assert.match(ui, /\.rl-glass \{ --glass-tone: var\(--c-paper-rgb\); background-color: rgba\(var\(--glass-tone\), var\(--glass-alpha, var\(--glass-fill\)\)\);/);
   assert.match(ui, /\.rl-glass\.rl-glass-ink \{ --glass-tone: 16, 16, 18; --glass-alpha: var\(--glass-fill-ink\);/);
-  assert.equal((ui.match(/--glass-fill: /g) || []).length, 1, 'set once');
+  assert.equal((ui.match(/--glass-fill: /g) || []).length, 2, 'set once for each theme');
   for (const p of PAGES) {
     if (p === 'components/ui.js') continue;
     const s = read(p);
@@ -52,18 +63,24 @@ test('the strength is one token, defined once, that every glass surface reads', 
 });
 
 test('text on glass keeps 4.5 to 1 over anything that can pass under it', () => {
-  const paper = tone('\\.rl-glass', 'the paper tone'); const ink = tone('\\.rl-glass\\.rl-glass-ink', 'the ink tone');
-  const strength = fill('glass-fill'); const soft = Math.max(strength, fill('glass-fill-soft')); const inkFill = fill('glass-fill-ink');
+  const ink = tone('\\.rl-glass\\.rl-glass-ink', 'the ink tone');
   const black = [0, 0, 0]; const white = [255, 255, 255];
-  for (const under of [black, white]) {
-    assert.ok(ratio(hex('ink'), over(paper, strength, under)) >= 4.5, `ink on the paper glass at ${strength} over ${under[0] ? 'white' : 'black'}`);
-    assert.ok(ratio(hex('inkSoft'), over(paper, soft, under)) >= 4.5, `inkSoft on the paper glass at ${soft} over ${under[0] ? 'white' : 'black'}`);
-    for (const name of ['paper', 'instText']) assert.ok(ratio(hex(name), over(ink, inkFill, under)) >= 4.5, `${name} on the ink glass at ${inkFill} over ${under[0] ? 'white' : 'black'}`);
+  for (const [name, P, f] of [['light', LIGHT, fill], ['dark', DARK, darkFill]]) {
+    const paper = rgbOf(P.paper); const at = (k) => rgbOf(P[k]);
+    const strength = f('glass-fill'); const soft = Math.max(strength, f('glass-fill-soft')); const inkFill = f('glass-fill-ink');
+    for (const under of [black, white]) {
+      const over_ = under[0] ? 'white' : 'black';
+      assert.ok(ratio(at('ink'), over(paper, strength, under)) >= 4.5, `${name}: ink on the paper glass at ${strength} over ${over_}`);
+      assert.ok(ratio(at('inkSoft'), over(paper, soft, under)) >= 4.5, `${name}: inkSoft on the paper glass at ${soft} over ${over_}`);
+      for (const t of ['instInk', 'instText']) assert.ok(ratio(at(t), over(ink, inkFill, under)) >= 4.5, `${name}: ${t} on the ink glass at ${inkFill} over ${over_}`);
+    }
+    assert.ok(ratio(at('inkMute'), over(paper, soft, black)) < 4.5 || ratio(at('inkMute'), over(paper, soft, white)) < 4.5, `${name}: inkMute would not hold over black or white: it stays off glass`);
   }
+  assert.equal(LIGHT.instInk, LIGHT.paper, 'the toast text in light is the paper it always was');
   // The surfaces that show inkSoft text hold the floor: the phone's strength bar and chips, the
   // tenant bar with a label, the shared header, the notification panel's header.
   assert.match(ui, /\.tp-top\.rl-glass, \.rl-tbar\.rl-glass:has\(\.rl-tbar-label\), \.rl-header\.rl-glass, \.al-head\.rl-glass \{ --glass-alpha: max\(var\(--glass-fill\), var\(--glass-fill-soft\)\); \}/);
-  assert.ok(ratio(hex('inkMute'), over(paper, soft, black)) < 4.5, 'inkMute would not hold over black: it stays off glass');
+  assert.ok(ratio(hex('inkMute'), over(rgbOf(LIGHT.paper), Math.max(fill('glass-fill'), fill('glass-fill-soft')), [0, 0, 0])) < 4.5, 'inkMute would not hold over black: it stays off glass');
 });
 
 test('defined once, in components/ui.js, and only on what floats', () => {

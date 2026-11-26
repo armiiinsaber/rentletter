@@ -181,6 +181,7 @@ export const ProfileStyles = () => (
     .mp-ink { background: ${C.ink}; color: ${C.paper}; border-radius: ${R.card}px; padding: var(--card-pad); }
     .mp-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; min-height: 12px; }
     .mp-dash { display: inline-block; width: 3px; height: 11px; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
+    .mp-ink .mp-dash { background: ${C.redOnInk}; }
     .mp-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.04em; text-transform: none; color: ${C.inkSoft}; }
     /* An email address in a sentence stays whole on its line and the owner key on its own: below
        345px each steps down one size so it fits a 320 screen (a code or a link may; the words may not). */
@@ -238,9 +239,9 @@ export const ProfileStyles = () => (
     .mp-step { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: var(--lh-body); }
     .mp-progress { height: 2px; background: var(--rule); border-radius: 1px; margin-top: var(--gap-line); overflow: hidden; }
     .mp-progress > span { display: block; height: 100%; background: ${C.ink}; }
-    .mp-toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 300; color: ${C.paper}; padding: var(--s-3) var(--s-4); border-radius: ${R.ctrl}px; font-size: var(--t-body-2); font-weight: 600; max-width: calc(100vw - 32px); text-align: center; cursor: pointer; }
+    .mp-toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 300; color: ${C.instInk}; padding: var(--s-3) var(--s-4); border-radius: ${R.ctrl}px; font-size: var(--t-body-2); font-weight: 600; max-width: calc(100vw - 32px); text-align: center; cursor: pointer; }
     /* A toast floats over the page: the ink glass (components/ui.js), with its own lift. */
-    .mp-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(15,15,16,0.22); }
+    .mp-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.22); }
     .mp-sub { padding-left: var(--s-4); border-left: 2px solid var(--rule); display: grid; gap: var(--gap-card); }
     /* The tenant's profile (FactSourceContext set, pages/my-application.js): the one or two values
        that matter most set large at the head of the card (.tp-lead, side by side once the card is

@@ -9,11 +9,12 @@
 //              lanes (none today)
 // A walk file not named here runs in lane b. tests/lanes.test.mjs holds the rules.
 // The split, from the serial run's turns in WebKit on 2026-11-26 (1043s in all): lane a 521s, lane
-// b 522s, each lane besides paying its one build (about 20s).
+// b 522s, each lane besides paying its one build (about 20s). The dark walk (feat/dark-mode) joined
+// lane a.
 export const LANES = Object.freeze({
   a: Object.freeze([
     'backWebkit', 'tapsWebkit', 'edgeWebkit', 'zoomWebkit',
-    'pillsWebkit', 'appWebkit', 'homeWebkit', 'wordmarkWebkit', 'resetWebkit',
+    'pillsWebkit', 'appWebkit', 'homeWebkit', 'wordmarkWebkit', 'resetWebkit', 'darkWebkit',
   ]),
   b: Object.freeze([
     'onePlaceWebkit', 'wideWebkit', 'shellWebkit', 'nativeWebkit', 'listingsDeskWebkit', 'revealWebkit', 'doorRolloutWebkit',

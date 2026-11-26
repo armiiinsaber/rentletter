@@ -21,6 +21,7 @@ import { C, R } from '../../components/theme';
 import { noWidow } from '../../lib/typeset.js';
 import DocumentUploader from '../../components/tenant/DocumentUploader';
 import { ScreenLoader } from '../../components/brand/Loader';
+import ThemeColor from '../../components/ThemeColor';
 
 // The set the card asks for is lib/documentSet.js, rendered by the uploader itself.
 // The line above the button while the set is incomplete: this link closes once documents are
@@ -68,8 +69,8 @@ export default function UploadPage() {
       <Head>
         <title>Upload your documents · Rentletter</title>
         <meta name="description" content="Securely upload your rental application documents." />
-        <meta name="theme-color" content="#f2eee3" />
       </Head>
+      <ThemeColor tone="paperDeep" />
       <GlobalStyle />
       <div style={{ minHeight: '100vh', background: C.paper, overflowX: 'hidden' }}>
         <TenantBar label="Document request" />

@@ -12,7 +12,7 @@ register('./helpers/fakeStackHook.mjs', import.meta.url);
 
 const ROOT = new URL('../', import.meta.url);
 const src = (p) => readFileSync(new URL(p, ROOT), 'utf8');
-const { C } = await import('../components/theme.js');
+const { LIGHT: C, DARK } = await import('../components/theme.js');
 const L = await import('../components/tenant/ProfileLayout.js');
 const S = await import('../components/tenant/ProfileStrength.js');
 const P = await import('../components/tenant/profileSteps.js');
@@ -26,11 +26,14 @@ const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
 const hue = (hex) => { const [r, g, b] = rgb(hex); const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn; let h = 0; if (c) { if (mx === r) h = ((g - b) / c) % 6; else if (mx === g) h = (b - r) / c + 2; else h = (r - g) / c + 4; h *= 60; if (h < 0) h += 360; } return h; };
 
 test('done is one calm colour: readable on the paper, the card and the deep paper, and not green', () => {
-  for (const [bg, min] of [[C.paper, 6.1], [C.card, 6.5], [C.paperDeep, 5.6], [C.doneTint, 5.6]]) assert.ok(ratio(C.done, bg) >= min, `${C.done} on ${bg}: ${ratio(C.done, bg).toFixed(2)}`);
-  // White on it, for the tick inside a done mark.
-  assert.ok(ratio(C.card, C.done) >= 4.5);
-  // A teal, outside the green range the house rule scans for (tests/noGreenAmber.test.mjs: 70 to 170).
-  for (const hex of [C.done, C.doneTint]) { const h = hue(hex); assert.ok(h > 175 && h < 200, `${hex} hue ${h.toFixed(1)}`); }
+  // In both themes (components/theme.js LIGHT and DARK), at the same floors.
+  for (const P of [C, DARK]) {
+    for (const [bg, min] of [[P.paper, 6.1], [P.card, 6.5], [P.paperDeep, 5.6], [P.doneTint, 5.6]]) assert.ok(ratio(P.done, bg) >= min, `${P.done} on ${bg}: ${ratio(P.done, bg).toFixed(2)}`);
+    // The card's colour on it, for the tick inside a done mark: white in light.
+    assert.ok(ratio(P.card, P.done) >= 4.5);
+    // A teal, outside the green range the house rule scans for (tests/noGreenAmber.test.mjs: 70 to 170).
+    for (const hex of [P.done, P.doneTint]) { const h = hue(hex); assert.ok(h > 175 && h < 200, `${hex} hue ${h.toFixed(1)}`); }
+  }
 });
 
 test('done is used for a done state and nothing else', () => {
