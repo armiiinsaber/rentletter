@@ -127,11 +127,29 @@ export function listingFormSeed(initial, prefill = null) {
   return seed;
 }
 
+// What an edit compares against: the answers the stored listing gave the form (before any prefill)
+// and the name it stores, which the form has no field for (an empty string when it stores none).
+export function listingStored(initial) {
+  return { ...listingFormSeed(initial), name: initial && initial.name != null ? String(initial.name) : '' };
+}
+
+// Is the stored name still the old address? The same text, case and surrounding spaces aside, or
+// the first 80 characters of it, the name a new listing takes from its address; an empty name too.
+// A name that differs was set on purpose, by the realtor or an import. Without a stored name to read
+// (stored.name absent) nothing is known, and the name is left alone.
+function nameIsAddress(stored) {
+  if (typeof stored.name !== 'string') return false;
+  const name = stored.name.trim().toLowerCase();
+  const old = String(stored.address ?? '').trim();
+  return !name || name === old.toLowerCase() || name === old.slice(0, 80).trim().toLowerCase();
+}
+
 // What an edit saves: only what the realtor changed. Each column the form writes is built from the
-// answers now and from the answers the stored listing gave the form (stored, before any prefill),
-// and only the columns that differ go to the route, which writes only what it is sent; every other
-// column stays as it was. The name is never among them: the form has no name field, the name is
-// set from the address once, when the listing is created, and an edit leaves it alone.
+// answers now and from the stored listing (listingStored), and only the columns that differ go to
+// the route, which writes only what it is sent; every other column stays as it was. The name
+// follows the address only while it is the address: when the address changes and the stored name
+// is the old address or empty, the new address goes as the name too (as a new listing takes it);
+// a name of its own stays, and an edit that leaves the address alone never sends the name.
 export function listingEditPayload(form, stored, opts = {}) {
   const after = listingPayload(form, opts);
   const before = listingPayload(stored, { ...opts, askProvince: false });
@@ -140,6 +158,7 @@ export function listingEditPayload(form, stored, opts = {}) {
     if (k === 'name') continue;
     if (k === 'province' || JSON.stringify(v) !== JSON.stringify(before[k])) out[k] = v;
   }
+  if ('address' in out && nameIsAddress(stored)) out.name = after.name;
   return out;
 }
 
@@ -281,8 +300,9 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   const [choices, setChoices] = useState([]);
   useEffect(() => { setChoices(moveInChoices(new Date())); }, []);
   const seedRef = useRef(JSON.stringify(seed));
-  // What the stored listing gave the form, before any prefill: an edit saves what differs from it.
-  const storedRef = useRef(JSON.stringify(listingFormSeed(initial)));
+  // What the stored listing gave the form, before any prefill, and its name: an edit saves what
+  // differs from it (listingEditPayload).
+  const storedRef = useRef(JSON.stringify(listingStored(initial)));
   const rootRef = useRef(null);
   const creating = mode === 'create';
   // A laptop and wider (1024px): one panel with no steps. Read from the client after mount; the
@@ -298,7 +318,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   useEffect(() => {
     if (!open || inline) return;
     seedRef.current = JSON.stringify(seed);
-    storedRef.current = JSON.stringify(listingFormSeed(initial));
+    storedRef.current = JSON.stringify(listingStored(initial));
     const draft = creating && !initial && draftKey ? readListingDraft(draftKey) : null;
     if (draft) {
       setForm({ ...seed, ...draft.form }); setProvince(draft.province || ''); setStep(Math.max(0, Math.min(STEPS.length - 1, Number(draft.step) || 0))); setDetailsOpen(!!draft.detailsOpen); setRestored(true);

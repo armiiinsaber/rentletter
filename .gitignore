@@ -5,6 +5,8 @@ node_modules*
 .next
 .next/
 /.next-*/
+# Each walk run's table as JSON (scripts/walk-lanes.mjs); the next run clears the earlier ones.
+/.next-walk-stats-*/
 .env.local
 .env*.local
 

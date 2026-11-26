@@ -12,12 +12,15 @@
 // how long it held its turn, its tests (passed, failed and skipped; a test the name pattern leaves
 // out is skipped) and the assertions it made (tests/helpers/walkReport.mjs,
 // tests/helpers/countAsserts.mjs), each lane's time and the run's, as a table, and the same as JSON
-// in the folder the last line names (.next-walk-stats-<run>). Exits 0 only when every lane did.
+// in the folder the last line names (.next-walk-stats-<run>). The stats folders of earlier runs go
+// at the start of each run, and only this run's stays (tests/helpers/walkStats.mjs). Exits 0 only
+// when every lane did.
 import { spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync, existsSync, globSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { laneOf } from '../tests/helpers/lanes.mjs';
+import { clearEarlierStats } from '../tests/helpers/walkStats.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const COUNT = fileURLToPath(new URL('../tests/helpers/countAsserts.mjs', import.meta.url));
@@ -30,6 +33,7 @@ const files = [...new Set(args.filter((a) => !a.startsWith('-'))
 const RUN = process.env.RENTLETTER_RUN || `walks-${process.pid}`;
 const STATS = process.env.RENTLETTER_STATS || `${ROOT}.next-walk-stats-${RUN}`;
 mkdirSync(STATS, { recursive: true });
+clearEarlierStats(ROOT, STATS);
 
 // The plan: the lanes that run at once, then what runs alone after them.
 const lanesOn = process.env.WALK_LANES !== '1' && files.length > 0 && files.every((f) => f.startsWith('tests/routes/'));

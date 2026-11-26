@@ -272,12 +272,15 @@ async function walk(type, opts, tag) {
     await long.getByRole('button', { name: 'Save changes' }).click();
     const longWarn = page.locator('[role=alertdialog]').getByRole('button', { name: 'Save changes' });
     if (await longWarn.count()) await longWarn.click();
-    // The address changed and the name did not: the edit sends the address and the three brokerage
-    // fields, never the name, so the listing keeps the name it was created with.
-    assert.deepEqual(Object.keys(await sentLong).sort(), ['address', 'coop_brokerage_name', 'listingId', 'listing_brokerage_address', 'listing_brokerage_name'], 'the edit sends what changed and never the name');
+    // The address changed, and the name was the old address (the listing took it from the address it
+    // was created with): the edit sends the address, the new address as the name, and the three
+    // brokerage fields (components/listings/ListingSetupModal.js listingEditPayload).
+    const longBody = await sentLong;
+    assert.deepEqual(Object.keys(longBody).sort(), ['address', 'coop_brokerage_name', 'listingId', 'listing_brokerage_address', 'listing_brokerage_name', 'name'], 'the edit sends what changed and the name that was the old address');
+    assert.deepEqual([longBody.address, longBody.name], [LONG.address, LONG.address], 'the name is the new address');
     await long.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {}); await page.waitForTimeout(600);
     await page.goto(page.url(), { waitUntil: 'load', timeout: 120000 });
-    assert.equal(plain(await page.locator('h1').first().innerText()).trim(), `${tag === 'wk' ? '12' : '14'} Board St, Toronto`, 'the listing is not renamed to its new address');
+    assert.equal(plain(await page.locator('h1').first().innerText()).trim(), LONG.address, 'the title follows the new address');
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
     await detailsAt(page, tag, LONG_ROWS, 25);
     // 2. The profile: the brokerage address and the board.
