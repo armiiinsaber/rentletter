@@ -48,6 +48,8 @@ after(async () => {
 }, { timeout: STOP_TIMEOUT });
 
 const plain = (s) => String(s).replace(/\xa0/g, ' ');
+// The body of the next listing update the page sends, as JSON.
+const updateBody = (page) => page.waitForRequest((r) => r.method() === 'POST' && new URL(r.url()).pathname === '/api/listings/update', { timeout: 30000 }).then((r) => JSON.parse(r.postData() || '{}'));
 const json = async (path) => (await fetch(`${BASE}${path}`)).json();
 async function phone(browser) {
   const ctx = await browser.newContext({ baseURL: BASE, viewport: { width: 390, height: 844 }, userAgent: UA, isMobile: true, hasTouch: true, deviceScaleFactor: 2, serviceWorkers: 'block', reducedMotion: 'reduce' });
@@ -245,9 +247,12 @@ async function walk(type, opts, tag) {
     await again.getByRole('button', { name: 'Board details (optional)' }).click();
     await again.locator('[data-board-details]').waitFor({ timeout: 30000 });
     await again.getByLabel('Hydro').selectOption({ label: 'Not entered' }); await again.getByLabel('Water').selectOption({ label: 'Not included' });
+    const sentUtilities = updateBody(page);
     await again.getByRole('button', { name: 'Save changes' }).click();
     const warned = page.locator('[role=alertdialog]').getByRole('button', { name: 'Save changes' });
     if (await warned.count()) await warned.click();
+    // An edit sends only what changed: the two utilities, never the name (components/listings/ListingSetupModal.js).
+    assert.deepEqual(Object.keys(await sentUtilities).sort(), ['listingId', 'utilities_hydro', 'utilities_water'], 'the edit sends the two utilities it changed and nothing else');
     await again.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {}); await page.waitForTimeout(600);
     await page.goto(page.url(), { waitUntil: 'load', timeout: 120000 });
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
@@ -263,11 +268,16 @@ async function walk(type, opts, tag) {
     await long.getByLabel('Listing brokerage', { exact: true }).fill(LONG.brokerage);
     await long.getByLabel('Brokerage address').fill(LONG.brokerageAddress);
     await long.getByLabel('Cooperating brokerage', { exact: true }).fill(LONG.coop);
+    const sentLong = updateBody(page);
     await long.getByRole('button', { name: 'Save changes' }).click();
     const longWarn = page.locator('[role=alertdialog]').getByRole('button', { name: 'Save changes' });
     if (await longWarn.count()) await longWarn.click();
+    // The address changed and the name did not: the edit sends the address and the three brokerage
+    // fields, never the name, so the listing keeps the name it was created with.
+    assert.deepEqual(Object.keys(await sentLong).sort(), ['address', 'coop_brokerage_name', 'listingId', 'listing_brokerage_address', 'listing_brokerage_name'], 'the edit sends what changed and never the name');
     await long.waitFor({ state: 'hidden', timeout: 30000 }).catch(() => {}); await page.waitForTimeout(600);
     await page.goto(page.url(), { waitUntil: 'load', timeout: 120000 });
+    assert.equal(plain(await page.locator('h1').first().innerText()).trim(), `${tag === 'wk' ? '12' : '14'} Board St, Toronto`, 'the listing is not renamed to its new address');
     await page.getByRole('button', { name: /^Details/ }).click(); await page.waitForTimeout(500);
     await detailsAt(page, tag, LONG_ROWS, 25);
     // 2. The profile: the brokerage address and the board.

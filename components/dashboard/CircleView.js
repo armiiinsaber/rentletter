@@ -445,7 +445,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
         <ConfirmSheet open={!!ask} danger busy={!!busy} title={ask ? (ask.kind === 'block' ? 'Block this realtor?' : 'Remove from your circle?') : ''} body={ask ? (ask.kind === 'block' ? `${ask.name} leaves your circle and cannot send you requests. They are not told.` : `${ask.name} leaves your circle, and you leave theirs. They are not told.`) : ''} confirmLabel={ask && ask.kind === 'block' ? 'Block' : 'Remove'} cancelLabel="Keep" onConfirm={confirmAsk} onCancel={() => setAsk(null)} />
         {/* The brokerage form over the view from 1024px. The panel renders on the body, so its
             content carries the screen's own class and takes the same styles. */}
-        <Sheet open={panelShown} onClose={() => setPanel(false)} label="Your brokerage" busy={busy === 'brokerage' || busy === 'resend'} maxWidth={560}>
+        <Sheet open={panelShown} onClose={() => setPanel(false)} label="Your brokerage" busy={busy === 'brokerage' || busy === 'resend'} maxWidth={560} desktop="side">
           <div className="cv cv-panel" onKeyDown={holdTab} data-brokerage-panel="">
             <h2 className="t-d2" data-sheet-drag="" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Your brokerage</h2>
             <p className="cv-quiet" style={{ margin: 0 }}>Shown on your card to realtors in your circle. Your broker of record confirms it by email.</p>

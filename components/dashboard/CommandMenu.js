@@ -8,7 +8,8 @@
 // and goes back to what opened it. In the browser alone, on what is already loaded
 // (components/dashboard/commandSearch.js). It is the one sheet (components/Sheet.js), as every
 // modal on the realtor side is: the page dims behind it, Escape and a tap outside close it, and the
-// focus goes back to what opened it.
+// focus goes back to what opened it. At 1024 and wider it opens near the top centre of the window,
+// a search box with its results under it (desktop="top"); under 1024 it rises from the bottom.
 import { useEffect, useMemo, useState } from 'react';
 import { C } from '../theme';
 import Sheet from '../Sheet';
@@ -49,7 +50,7 @@ export default function CommandMenu({ open, onClose, onRun, listings = [], appli
     if (e.key === 'Enter') { e.preventDefault(); run(results[at]); }
   };
   return (
-    <Sheet open={open} onClose={onClose} label="Search listings, tenants or actions" maxWidth={640}>
+    <Sheet open={open} onClose={onClose} label="Search listings, tenants or actions" maxWidth={640} desktop="top">
       <div className="cm" data-command-menu="" onKeyDown={keys}>
         <div className="cm-field" data-sheet-drag="">
           <span className="cm-field-icon" aria-hidden="true"><Icon name="search" size={18} /></span>

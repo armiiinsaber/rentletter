@@ -1,11 +1,24 @@
 // components/Sheet.js
-// The one sheet: every modal, confirm and panel on the realtor side is this iOS style bottom
-// sheet. It rises from the bottom over 320ms on the iOS curve (lib/motion.js), the page behind
+// The one sheet: every modal, confirm and panel on the realtor side. Under 1024px it is this iOS
+// style bottom sheet. It rises from the bottom over 320ms on the iOS curve (lib/motion.js), the page behind
 // dims (and on a phone scales back a little), a grab handle sits at the top, and dragging the handle or the
 // header (anything marked data-sheet-drag) down dismisses it: the sheet follows the finger, resists
 // an upward pull, and snaps back unless dragged far enough or flicked. Tapping the dimmed area or
 // pressing Escape dismisses it too, except while busy; with unsaved input (dirty) it asks first.
 // Under reduced motion the sheet and the dim crossfade over 120ms and nothing moves.
+// At 1024px and wider it is a pop up, never a sheet from the bottom (desktop):
+//   'dialog' (the default)  centred in the window, about 560px wide (dialogWidth where the content
+//                           needs more; maxWidth when that is wider), 24px corners, the solid card
+//                           surface over the dimmed glass, appearing with a short fade and a slight
+//                           scale up, at once under reduced motion;
+//   'top'                   the same, near the top centre of the window (the command menu, as a
+//                           search box with its results under it);
+//   'side'                  a panel at the window's right edge, inset 16px as the shell's sidebar is,
+//                           the window's height, on its own paper (the new listing form, the
+//                           brokerage form), coming in with a short slide and fade.
+// Escape and a click on the dimmed page close it, nothing drags it, and long content scrolls inside it.
+// At every width the focus stays inside while it is open (Tab and Shift Tab go round its controls)
+// and goes back to what opened it.
 //
 // While any sheet is open the page behind is locked (lockPage): the scroll position is saved, the
 // body is pinned in place, and on close the position is restored exactly, with no jump. The sheet's
@@ -13,7 +26,7 @@
 // (overscroll-behavior: none); under the last control sits the safe area, nothing more.
 //
 //   <Sheet open onClose={fn} label="New listing" dirty={changed} busy={saving} role="dialog"
-//     panelClassName="rl-modal" maxWidth={640}>...</Sheet>
+//     panelClassName="rl-modal" maxWidth={640} desktop="dialog" dialogWidth={680}>...</Sheet>
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { C, R, SH } from './theme';
@@ -86,11 +99,29 @@ function sinkPage() {
 // snaps back. Upward the sheet gives only a little (RESIST of the pull, at most UP_MAX px).
 const DISMISS_MIN = 96, FLICK = 0.6, RESIST = 0.15, UP_MAX = 24;
 const CONTROL = 'button, a, input, select, textarea, label, [role="button"], [contenteditable="true"]';
+// The pop up at 1024px and wider: its width when the sheet asks for no more, its corners, its fade.
+export const WIDE = '(min-width: 1024px)';
+export const DIALOG_WIDTH = 560, DIALOG_RADIUS = 24, DIALOG_MS = 200;
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+// What opened the sheet, for the focus to go back to: what had the focus as the sheet was asked
+// for (read while it renders open, before React applies an autoFocus inside it), or, where a click
+// gives a button no focus (Safari and WebKit), the control pressed a moment before.
+let pressed = null;
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', (e) => { const el = e.target && e.target.closest ? e.target.closest('button, a[href], [role="button"], input, select, textarea, [tabindex]') : null; pressed = el ? { el, at: Date.now() } : null; }, true);
+}
+function openerNow() {
+  const a = document.activeElement;
+  if (a && a !== document.body && a !== document.documentElement) return a;
+  return pressed && Date.now() - pressed.at < 2000 && document.contains(pressed.el) ? pressed.el : null;
+}
 
 export default function Sheet({
   open, onClose, label, role = 'dialog', dirty = false, busy = false, children,
   panelClassName = '', maxWidth = 560, tall = false, discardTitle = 'Discard your changes?',
   discardBody = 'What you entered here is not saved.', id, padSafe = true, flush = false, tone = 'paper',
+  desktop = 'dialog', dialogWidth = null,
 }) {
   const [mounted, setMounted] = useState(open);
   const [phase, setPhase] = useState('enter'); // enter | open | leave
@@ -99,6 +130,9 @@ export default function Sheet({
   const drag = useRef(null);
   const draggedAway = useRef(false); // dismissed by a drag: already off screen when open turns false
   const rise = useRef(null); // gives the page behind its full size back
+  // What opened it, noted as it is asked for, before anything inside it takes the focus.
+  const opener = useRef(null);
+  if (open && !opener.current && typeof document !== 'undefined') opener.current = openerNow();
   // While it slides away the sheet keeps what it last showed, even if the caller has cleared it.
   const kept = useRef({ children, label });
   if (open) kept.current = { children, label };
@@ -121,11 +155,11 @@ export default function Sheet({
     if (!mounted) return undefined;
     const unlock = lockPage();
     rise.current = sinkPage();
-    const before = document.activeElement;
+    const before = opener.current;
     const f = requestAnimationFrame(() => { const p = panelRef.current; if (p && !p.contains(document.activeElement)) p.focus({ preventScroll: true }); });
     // Focus goes back first, while the page is still pinned: WebKit would otherwise scroll to it
     // after the page is back in place, preventScroll or not.
-    return () => { cancelAnimationFrame(f); if (rise.current) { rise.current(); rise.current = null; } if (before && before.focus && before !== document.body && document.contains(before)) before.focus({ preventScroll: true }); unlock(); };
+    return () => { cancelAnimationFrame(f); opener.current = null; if (rise.current) { rise.current(); rise.current = null; } if (before && before.focus && before !== document.body && document.contains(before)) before.focus({ preventScroll: true }); unlock(); };
   }, [mounted]);
 
   const requestClose = useCallback(() => {
@@ -147,8 +181,9 @@ export default function Sheet({
     p.style.transition = animate ? `transform ${NATIVE.sheet}ms ${CURVE.ios}` : 'none';
     p.style.transform = y ? `translateY(${y}px)` : '';
   };
+  // From 1024px the sheet is a pop up: nothing drags it.
   const onPointerDown = (e) => {
-    if (reduced || e.button > 0 || phase !== 'open') return;
+    if (reduced || e.button > 0 || phase !== 'open' || (window.matchMedia && window.matchMedia(WIDE).matches)) return;
     const t = e.target;
     if (!t.closest('.rl-sh-grab, [data-sheet-drag]') || (t.closest(CONTROL) && !t.closest('.rl-sh-grab'))) return;
     drag.current = { y0: e.clientY, t0: performance.now(), last: e.clientY, lastT: performance.now(), dy: 0, h: panelRef.current.getBoundingClientRect().height, id: e.pointerId };
@@ -171,13 +206,29 @@ export default function Sheet({
     if (far) requestClose(); // busy: stays; dirty: asks
   };
 
+  // The focus stays inside: Tab and Shift Tab go round the sheet's own controls, in the sheet's
+  // order, in every engine (Safari's own Tab skips buttons). A control inside that moves the focus
+  // itself (the listing form) has already done so.
+  const trap = (e) => {
+    if (e.key !== 'Tab' || e.defaultPrevented) return;
+    const p = panelRef.current; if (!p) return;
+    const all = [...p.querySelectorAll(FOCUSABLE)].filter((el) => el.getClientRects().length && !el.closest('[inert]') && getComputedStyle(el).visibility !== 'hidden');
+    e.preventDefault();
+    if (!all.length) { p.focus({ preventScroll: true }); return; }
+    const i = all.indexOf(document.activeElement);
+    const to = i < 0 ? (e.shiftKey ? all[all.length - 1] : all[0]) : all[(i + (e.shiftKey ? -1 : 1) + all.length) % all.length];
+    to.focus();
+  };
+
   if (!mounted || typeof document === 'undefined') return null;
   const shown = phase === 'open';
+  const at = desktop === 'side' || desktop === 'top' ? desktop : 'dialog';
+  const wide = dialogWidth || (at === 'side' ? maxWidth : Math.max(DIALOG_WIDTH, maxWidth));
   return createPortal(
-    <div className={`rl-sh-root${reduced ? ' rl-sh-reduced' : ''}${shown ? ' rl-sh-shown' : ''}`} role="presentation" data-sheet="">
+    <div className={`rl-sh-root rl-sh-at-${at}${reduced ? ' rl-sh-reduced' : ''}${shown ? ' rl-sh-shown' : ''}`} role="presentation" data-sheet="" data-sheet-desktop={at}>
       <div className="rl-sh-scrim rl-glass rl-glass-dim" data-tap="" onClick={() => requestClose()} aria-hidden="true" />
       <div ref={panelRef} id={id} className={`rl-sh-panel${tall ? ' rl-sh-tall' : ''}${tone === 'ink' ? ' rl-sh-ink' : ''}${flush ? ' rl-sh-flushed' : ''}${panelClassName ? ` ${panelClassName}` : ''}`} role={role} aria-modal="true" aria-label={kept.current.label} tabIndex={-1}
-        style={{ maxWidth }} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
+        style={{ maxWidth, '--rl-dlg-w': `${wide}px` }} onKeyDown={trap} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}>
         {/* The sheet's own header: the grab strip. Where the content scrolls in the sheet it lies
             over the top of it, glass, and the content passes under it; a flush sheet lays out its
             own parts below it, so nothing passes under and it stays the panel's own paper. */}
@@ -222,6 +273,33 @@ export default function Sheet({
         .rl-sh-root .rl-sh-panel.rl-sh-ink { background: ${C.inst}; color: ${C.instText}; }
         .rl-sh-ink .rl-sh-handle { background: ${C.instRule}; }
         [data-sheet-drag] { touch-action: pan-x; }
+        /* 1024px and wider: a pop up. Centred (dialog), near the top centre (top) or at the right
+           edge (side); 24px corners; the solid card surface for a dialog, the panel's own paper at
+           the side; a short fade with a slight scale up (a slide in at the side), at once under
+           reduced motion. */
+        @media (min-width: 1024px) {
+          .rl-sh-root { align-items: center; padding: 24px; }
+          .rl-sh-root.rl-sh-at-top { align-items: flex-start; padding-top: max(24px, 12vh); }
+          .rl-sh-root.rl-sh-at-side { justify-content: flex-end; align-items: stretch; padding: 16px; }
+          .rl-sh-root .rl-sh-panel { width: min(100%, var(--rl-dlg-w, ${DIALOG_WIDTH}px)); max-width: none !important; max-height: 100%; border-radius: ${DIALOG_RADIUS}px; opacity: 0; transform: scale(0.97); transition: none; }
+          .rl-sh-root:not(.rl-sh-at-side) .rl-sh-panel:not(.rl-sh-ink) { background: ${C.card}; }
+          .rl-sh-root.rl-sh-at-side .rl-sh-panel { transform: translateX(24px); }
+          .rl-sh-root .rl-sh-tall { height: min(100%, 960px); }
+          .rl-sh-root.rl-sh-at-side .rl-sh-panel, .rl-sh-root.rl-sh-at-side .rl-sh-tall { height: auto; }
+          .rl-sh-root.rl-sh-shown .rl-sh-panel { opacity: 1; transform: none; }
+          .rl-sh-root.rl-sh-reduced .rl-sh-panel { transform: none; transition: none; }
+          .rl-sh-root.rl-sh-reduced .rl-sh-scrim { transition: none; }
+          /* Nothing drags it, so no handle: the glass strip over the content goes (its blur would
+             take the page's colour in at the corners), its 24px of room above the content stays, and
+             a flush panel keeps the strip as plain room. */
+          .rl-sh-handle { display: none; }
+          .rl-sh-grab { cursor: default; }
+          .rl-sh-panel:not(.rl-sh-flushed) > .rl-sh-grab { display: none; }
+          .rl-sh-panel:not(.rl-sh-flushed) > .rl-sh-scroll { border-radius: ${DIALOG_RADIUS}px; }
+        }
+        @media (min-width: 1024px) and (prefers-reduced-motion: no-preference) {
+          .rl-sh-root:not(.rl-sh-reduced) .rl-sh-panel { transition: opacity ${DIALOG_MS}ms ${CURVE.enter}, transform ${DIALOG_MS}ms ${CURVE.enter}; }
+        }
       `}</style>
     </div>,
     document.body,

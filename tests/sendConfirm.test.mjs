@@ -150,7 +150,7 @@ test('one way to send: no component, page or helper calls the send route but the
   assert.equal(s.split('onClick={onSend}').length - 1, 1, 'and in the body to one button');
   assert.match(s, /<button type="button" className="srs-btn srs-send" onClick=\{onSend\} disabled=\{busy \|\| blocked\}/);
   assert.match(s, /<button type="button" className="srs-btn srs-cancel" onClick=\{onCancel\} disabled=\{busy\}/);
-  assert.match(s, /<Sheet open=\{!!listing\} onClose=\{onClose\} role="alertdialog" label=\{SEND_COPY\.title\} busy=\{busy\} maxWidth=\{520\}>/);
+  assert.match(s, /<Sheet open=\{!!listing\} onClose=\{onClose\} role="alertdialog" label=\{SEND_COPY\.title\} busy=\{busy\} maxWidth=\{520\} dialogWidth=\{680\}>/, 'at 1024 and wider a pop up wider than the default, for the applicant list');
   assert.match(s, /onSend=\{send\} onCancel=\{onClose\}/);
   // A refusal stays in the sheet; a send tells the page that opened it.
   assert.match(send, /if \(!r\.ok\) \{ setNote\(j\.error \|\| SEND_FAILED\); return; \}\s*if \(onSent\) onSent\(l, j\);/);

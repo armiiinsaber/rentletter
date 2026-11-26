@@ -15,7 +15,7 @@
 // hook timed out while it waited in line) never takes the turn afterwards: before this, such a file
 // took the turn later, started the server, and held both forever, so every walk behind it waited.
 import { spawn, execSync } from 'node:child_process';
-import { mkdirSync, openSync, closeSync, writeFileSync, unlinkSync, readdirSync, existsSync, rmSync, readFileSync, statSync } from 'node:fs';
+import { mkdirSync, openSync, closeSync, writeFileSync, unlinkSync, readdirSync, existsSync, rmSync, readFileSync, statSync, appendFileSync } from 'node:fs';
 import { relative } from 'node:path';
 import { beforeEach, afterEach } from 'node:test';
 import { reap } from './reap.mjs';
@@ -33,7 +33,17 @@ export const STOP_TIMEOUT = STOP_WAIT + 60000;
 export const START_TIMEOUT = RUN_CEILING + 60000;
 const LOCK = `/tmp/rentletter-dev-${PORT}.lock`;
 const USERS = `/tmp/rentletter-dev-${PORT}.users`;
-const TURN = `/tmp/rentletter-dev-${PORT}.turn`;
+// The walks of a lane take turns among themselves (scripts/walk-lanes.mjs runs two lanes at once,
+// each with its own turn, servers, ports and build copy); outside a lane, one turn for every walk.
+export const LANE = String(process.env.RENTLETTER_LANE || '').replace(/[^a-z0-9]/gi, '');
+export const turnFor = (lane = LANE) => `/tmp/rentletter-dev-${PORT}${lane ? `.lane-${lane}` : ''}.turn`;
+const TURN = turnFor();
+// How long each file held the turn, for the walk runs' table: one line on giving it back to
+// $RENTLETTER_STATS/turns.jsonl, { file, lane, from, to } in ms.
+const STATS = process.env.RENTLETTER_STATS || '';
+const ME = relative(new URL('../..', import.meta.url).pathname, process.argv[1] || '') || 'a walk file';
+let heldFrom = 0;
+const noteTurn = () => { if (!STATS || !heldFrom) return; try { appendFileSync(`${STATS}/turns.jsonl`, `${JSON.stringify({ file: ME, lane: LANE || null, from: heldFrom, to: Date.now() })}\n`); } catch (e) { /* the table goes without it */ } heldFrom = 0; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const listeners = () => { try { return execSync(`lsof -tiTCP:${PORT} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
 
@@ -72,7 +82,7 @@ function arm(turn) {
 export async function takeTurn(turn = TURN) {
   for (;;) {
     if (leaving) return false;
-    try { mkdirSync(turn); writeFileSync(`${turn}/pid`, String(process.pid)); arm(turn); step = 'the before hook, with the turn'; return true; } catch (e) { /* someone else is walking */ }
+    try { mkdirSync(turn); writeFileSync(`${turn}/pid`, String(process.pid)); arm(turn); heldFrom = Date.now(); step = 'the before hook, with the turn'; return true; } catch (e) { /* someone else is walking */ }
     let holder = 0; let age = 0;
     try { holder = Number(readFileSync(`${turn}/pid`, 'utf8')) || 0; } catch (e) { holder = 0; }
     try { age = Date.now() - statSync(turn).mtimeMs; } catch (e) { age = 0; }
@@ -81,7 +91,7 @@ export async function takeTurn(turn = TURN) {
   }
 }
 export function giveTurn(turn = TURN) {
-  try { if (Number(readFileSync(`${turn}/pid`, 'utf8')) === process.pid) { rmSync(turn, { recursive: true, force: true }); clearTimeout(watch); watch = null; } } catch (e) { /* not ours, or already gone */ }
+  try { if (Number(readFileSync(`${turn}/pid`, 'utf8')) === process.pid) { rmSync(turn, { recursive: true, force: true }); clearTimeout(watch); watch = null; noteTurn(); } } catch (e) { /* not ours, or already gone */ }
 }
 
 export function devServer(probeUrl) {

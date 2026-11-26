@@ -428,6 +428,15 @@ http.createServer(async (req, res) => {
       t.applications.push({ id: 'AT1', application_number: 'RL-2026-TEST-T1T1', full_name: 'Test Applicant', email: 'sarah+test@example.com', created_at: new Date().toISOString() });
       t.listing_applicants.push({ id: 'JT1', listing_id: 'L3', application_id: 'AT1', decision_status: 'none', decision_priority: null, decision_notes: '', added_via: 'invite', created_at: new Date().toISOString(), doc_verifications: null, reviewed_at: null, withdrawn_at: null, confirmations: {}, last_sent_at: null });
     }
+    // three=1: a listing with three applicants (L4, from the fixture's A1, A2 and A4; the first with
+    // A1's documents read), for the listing page's two columns; three=0 takes it away again.
+    if (q.get('three') === '1' && !t.listings.some((l) => l.id === 'L4')) {
+      const l1 = t.listings.find((l) => l.id === 'L1') || {};
+      t.listings.push({ id: 'L4', profile_id: USER.id, name: '15 Mill Street, Unit 3', address: '15 Mill Street, Unit 3, Toronto', monthly_rent: 2400, bedrooms: '2', allows_pets: 'no', allows_smoking: 'no', parking_included: 'no', landlord_name: l1.landlord_name || 'Marco Rossi', landlord_email: l1.landlord_email || 'marco@example.com', pref_rent_to_income_max_pct: 40, pref_requires_landlord_reference: true, pref_requires_employer_verification: false, status: 'active', invite_token: null, invite_url: null, created_at: new Date(Date.now() - 6 * 86400000).toISOString(), ...(t.listings.some((l) => 'archived_at' in l) ? { archived_at: null } : {}) });
+      const j1 = t.listing_applicants.find((j) => j.id === 'J1') || {};
+      [['J41', 'A1', j1.doc_verifications || null, 3], ['J42', 'A2', null, 2], ['J43', 'A4', null, 1]].forEach(([id, app, docs, days]) => t.listing_applicants.push({ id, listing_id: 'L4', application_id: app, decision_status: 'none', decision_priority: null, decision_notes: '', decision_reason_code: null, decision_changed_at: null, added_via: 'invite', created_at: new Date(Date.now() - days * 86400000).toISOString(), doc_verifications: docs, reviewed_at: null, withdrawn_at: null, confirmations: {}, last_sent_at: null }));
+    }
+    if (q.get('three') === '0') { t.listings = t.listings.filter((l) => l.id !== 'L4'); t.listing_applicants = t.listing_applicants.filter((k) => k.listing_id !== 'L4'); }
     // longemail=1: a realtor whose email is far longer than a 320 screen (the office list holds it
     // on one line, cut short, the whole address on hover); longemail=0 takes them away.
     if (q.get('longemail') === '1' && !t.profiles.some((x) => x.id === 'long-email-realtor')) t.profiles.push({ id: 'long-email-realtor', email: 'alexandria.konstantinopoulou.residential.leasing@harbourfrontresidentialrealty.ca', full_name: 'Alexandria Konstantinopoulou', brokerage: 'Harbourfront Residential Realty Inc., Brokerage', plan: 'founding', province: 'ON', created_at: new Date(Date.now() - 86400000).toISOString(), signup_source: 'direct' });

@@ -593,7 +593,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         <DashShell profile={profile} signals={headerSignals} onAssistantAction={onNoticeAction} nav={locked ? null : 'listings'} current={view} locked={locked} onNewListing={openNew} newPrimary={!empty} listingsCount={ready && !locked ? board.tiles.active : null}>
 
         {locked && (
-          <div className="hv-lock ds-col" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)', '--ds-col': '1036px' }}>
+          <div className="hv-lock ds-mid" style={{ maxWidth: 1100, margin: '0 auto', padding: '0 clamp(16px, 4vw, 32px)', '--ds-col': '1036px' }}>
             <Paywall entitlement={entitlement} profile={profile} pending={checkoutFlag === 'success'} />
           </div>
         )}
@@ -739,7 +739,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
             {Array.isArray(shared) && shared.length === 0 ? (
               <div className="hv-shared-empty" data-shared-empty="">
                 <h2 className="hv-h2">Shared with you</h2>
-                <p className="hv-quiet">No tenant has shared a profile with you yet.</p>
+                <p className="hv-quiet hv-empty-box">No tenant has shared a profile with you yet.</p>
               </div>
             ) : null}
           </div>
@@ -813,7 +813,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-note { font-size: var(--t-body-2); color: ${C.inkSoft}; margin: 0 0 var(--s-4); }
         .hv-error { margin: 0 0 var(--s-4); padding: var(--s-3) var(--s-4); background: ${C.dangerTint}; border-radius: 16px; border-left: 3px solid ${C.danger}; font-size: var(--t-body-2); color: ${C.ink}; }
         .hv-failed { display: grid; gap: var(--s-2); justify-items: start; padding: var(--s-5); border-radius: 24px; background: ${C.card}; }
-        .hv-shared-empty { display: grid; gap: var(--s-2); }
+        .hv-shared-empty { display: grid; gap: var(--s-3); }
+        /* Nothing shared yet: the line in a box the width of the view, as the listing page says it has
+           no applicants yet, so the view never leaves one short line at its left. */
+        .hv-empty-box { padding: var(--s-6) var(--s-4); text-align: center; background: ${C.paperDeep}; border: 1px dashed ${C.ruleDark}; border-radius: var(--card-radius); text-wrap: balance; }
         .hv-install :global(*) { max-width: 100%; }
 
         /* The listings' head: the title and count, the filter a tile set, then the tools. */

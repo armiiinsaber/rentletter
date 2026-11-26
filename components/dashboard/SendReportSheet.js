@@ -236,7 +236,7 @@ export default function SendReportSheet({ listing = null, applicants = [], profi
   };
   const previewHref = !listing ? '#' : adapter.kind === 'real' ? `/api/listings/report-pdf?listingId=${encodeURIComponent(listing.id)}` : `${adapter.paths.listing(listing.id)}#report`;
   return (
-    <Sheet open={!!listing} onClose={onClose} role="alertdialog" label={SEND_COPY.title} busy={busy} maxWidth={520}>
+    <Sheet open={!!listing} onClose={onClose} role="alertdialog" label={SEND_COPY.title} busy={busy} maxWidth={520} dialogWidth={680}>
       {listing ? (
         <SendReportBody key={listing.id} listing={listing} rows={reportRows({ listing, applicants, profile })} profile={profile} missing={missing}
           busy={busy} note={note} onSend={send} onCancel={onClose} onAddEmail={onAddEmail} onSaveSignature={saveSignature}

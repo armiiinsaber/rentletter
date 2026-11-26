@@ -3,7 +3,8 @@
 // (.next-fake-<port>, tests/helpers/fakeNextServer.mjs). Each ran `next build` inside its walk
 // turn, about 16 seconds, and it was the same build every time: the same code and the same
 // environment. Under a run (scripts/test-run.mjs sets RENTLETTER_RUN) the first of them builds once
-// into .next-fake-shared-<run>-<env>, and every walk then gets its own copy of that build in
+// into .next-fake-shared-<run>-<env> (one for each lane of the run, scripts/walk-lanes.mjs), and
+// every walk then gets its own copy of that build in
 // .next-fake-<port>, without the build cache, so each server still reads and writes its own folder
 // alone. The copy is a clone on APFS (copy on write), a plain copy elsewhere. A walk file run on its
 // own, outside a run, builds into its own folder as before. A shared build left by a run that has
@@ -30,7 +31,12 @@ const inlined = (env) => createHash('sha256')
   .update(JSON.stringify(Object.keys(env).filter((k) => k === 'BILLING_OFF' || k.startsWith('NEXT_PUBLIC_')).sort().map((k) => [k, env[k]])))
   .digest('hex').slice(0, 12);
 
-export const sharedBuildDir = (run = process.env.RENTLETTER_RUN, env = {}) => (run ? `.next-fake-shared-${run}-${inlined({ ...process.env, ...env })}` : null);
+// A lane of a run (scripts/walk-lanes.mjs) builds a shared build of its own, so two lanes never
+// write one folder at once: .next-fake-shared-<run>-lane-<lane>-<digest>.
+export const sharedBuildDir = (run = process.env.RENTLETTER_RUN, env = {}, lane = process.env.RENTLETTER_LANE) => {
+  const l = String(lane || '').replace(/[^a-z0-9]/gi, '');
+  return run ? `.next-fake-shared-${run}-${l ? `lane-${l}-` : ''}${inlined({ ...process.env, ...env })}` : null;
+};
 
 export async function fakeBuild(port, env = {}) {
   const own = `.next-fake-${port}`;

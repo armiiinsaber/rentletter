@@ -1,7 +1,8 @@
 // The wrapped text walk, part 6 of 6: the realtor's send sheet (components/dashboard/
 // SendReportSheet.js) at 390, 320, 1440 and 1920, with every line at its longest and with the
-// landlord's email and the signing name missing, on the servers part 5 left; the last part takes
-// the servers down
+// landlord's email and the signing name missing, and the listing page with three applicants in its
+// two columns at every width (components/dashboard/ListingView.js), on the servers part 5 left; the
+// last part takes the servers down
 // (tests/helpers/typesetWalk.mjs describes the walk, its rules and how the parts run in order on
 // the same fake stack). A WebKit walk fails, never skips, when the binary is missing.
 import { test } from 'node:test';

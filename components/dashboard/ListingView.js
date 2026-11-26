@@ -87,6 +87,10 @@ function initialsOf(name) {
   return (parts[0][0] + (parts[1] ? parts[1][0] : '')).toUpperCase();
 }
 
+// The initials of a name, for the applicant card's mark at 1440 and wider: the first letter of
+// its first two words.
+const markOf = (name) => String(name || '').trim().split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '?';
+
 export default function ListingView({ initialProfile, initialListing, initialApplicants }) {
   const adapter = useAdapter();
   const router = useRouter();
@@ -864,7 +868,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   // Two columns, or one where half the width is under 160px (a phone), so a long value (an
   // employer, a job title) wraps across the card's width, never a word at a time.
   const renderRows = (rows) => (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(160px, calc((100% - var(--s-4)) / 2)), 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(var(--lv-fact-min, 160px), calc((100% - var(--s-4)) / 2)), 1fr))', gap: 'var(--s-2) var(--s-4)' }}>
       {rows.map(([label, value]) => (
         <div key={label} data-fact={label} style={{ minWidth: 0 }}>
           <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>{noWidow(label)}</div>
@@ -977,9 +981,12 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <span className={`m-chev ${open ? 'open' : ''}`} aria-hidden="true" style={{ flexShrink: 0, marginLeft: 'auto' }}><Icon name="chevronD" size={16} /></span>
           </div>
         ) : (
-        <div role="button" tabIndex={0} data-press-to-host="" aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`}
+        <div role="button" tabIndex={0} data-press-to-host="" aria-expanded={open} aria-controls={`applicant-${a.linkId}-body`} className="lv-head"
           onClick={() => toggleApplicant(a)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleApplicant(a); } }}
           style={{ cursor: 'pointer', WebkitTapHighlightColor: 'transparent' }}>
+          {/* At 1440 and wider the card is one row across the column (lv-head): the initials, the
+              name with the lines under it, and the Fit with the card's action at the right. */}
+          <span className="lv-av" aria-hidden="true">{markOf(app.full_name)}</span>
           {/* Row one: the name alone; a name longer than the row wraps, balanced, never cut short. Below
               345px the review dot sits in the card's padding (lv-dot), so the name has the row. */}
           <div className="lv-name-row" style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 26 }}>
@@ -987,7 +994,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <span className={adapter.kind === 'demo' ? 'lv-name-demo' : undefined} title={app.full_name || 'Applicant'} style={{ flex: 1, minWidth: 0, fontSize: 'var(--t-body)', fontWeight: 500, color: C.ink, letterSpacing: '-0.01em', lineHeight: 1.3 }}>{app.full_name || 'Applicant'}</span>
           </div>
           {/* Row two: the meter, the Fit number and the label as one group at the right, the chevron at the far right. */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--s-2)', minHeight: 26, marginTop: 'var(--s-1)', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>
+          <div className="lv-fit-row" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 'var(--s-2)', minHeight: 26, marginTop: 'var(--s-1)', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>
             {overall != null ? (
               <AnimatedScore value={overall} index={rank ? rank - 1 : 0} refill={meterMuted ? 'muted' : 'full'} renderValue={(shown, target) => (
                 <span data-fit-number="" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', flexShrink: 0 }} aria-label={`Fit ${Number(target).toFixed(1)} on ${fit.assessed} of ${fit.of}, ${fit.label}`}>
@@ -1012,7 +1019,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>{synthesisLine(a)}</div>
             {missed.length > 0 && pills(missed)}
             {dup}
-            {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} style={primaryBtn}>Verify</button>}
+            {!open && <button type="button" onClick={stop(() => focusChecklist(a.linkId))} className="lv-act" style={primaryBtn}>Verify</button>}
           </>)}
           {docSt === 'verified' && (<>
             <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, textWrap: 'balance', paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}>{synthesisLine(a)}</div>
@@ -1040,27 +1047,27 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {docSt === 'new' && (<>
             {pills([creditLines(a.docVerifications).shared ? CREDIT_ONLY_LINE : stateLabel('new', 'line')])}
             {dup}
-            {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={primaryBtn}>Request documents</button>}
+            {!open && <button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} className="lv-act" style={primaryBtn}>Request documents</button>}
           </>)}
           {docSt === 'requested' && (<>
             {pills([stateLabel('requested', 'line'), st.since ? shortDate(st.since) : null, (() => { const n = a.docRequest?.nudgedAt; const last = Array.isArray(n) && n.length ? n[n.length - 1] : null; return last ? `nudged ${shortDate(last)}` : null; })()])}
             {dup}
-            {!open && <div style={{ paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
+            {!open && <div className="lv-act" style={{ paddingLeft: tracking ? 'var(--lv-indent)' : 0 }}><button type="button" onClick={stop(() => focusApplicantDocs(a.linkId))} style={textBtn}>Send again</button></div>}
           </>)}
           {docSt === 'checked' && (<>
             {pills(facts(stateLabel('checked', 'line')))}
             {dup}
-            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
+            {!open && <button type="button" onClick={stop(() => openApplicant(a))} className="lv-act" style={primaryBtn}>Review documents</button>}
           </>)}
           {docSt === 'mismatch' && (<>
             {pills([stateLabel('mismatch', 'line')])}
             {dup}
-            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
+            {!open && <button type="button" onClick={stop(() => openApplicant(a))} className="lv-act" style={primaryBtn}>Review documents</button>}
           </>)}
           {docSt === 'edited' && (<>
             {pills(facts(stateLabel('edited', 'line', { date: st.since ? shortDate(st.since) : '' })))}
             {dup}
-            {!open && <button type="button" onClick={stop(() => openApplicant(a))} style={primaryBtn}>Review documents</button>}
+            {!open && <button type="button" onClick={stop(() => openApplicant(a))} className="lv-act" style={primaryBtn}>Review documents</button>}
           </>)}
         </div>
         )}
@@ -1210,9 +1217,11 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         {/* The shell (components/dashboard/DashShell.js): a listing has red actions of its own, so New listing is outlined here. */}
         <DashShell profile={profile} onAssistantAction={onNoticeAction} current="listings" newPrimary={false} locked={locked}>
 
-        {/* A reading column: at 1024 and wider it keeps its width at the main area's left (DashShell ds-col). */}
-        {locked && <div className="ds-col" style={{ maxWidth: 760, margin: '0 auto', padding: '0 var(--page-gutter)', '--ds-col': '696px' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
-        {!locked && <div className="ds-col" style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) var(--page-gutter) var(--s-7)', '--ds-col': '696px' }}>
+        {/* The paywall: a column centred in the main area (DashShell ds-mid). */}
+        {locked && <div className="ds-mid" style={{ maxWidth: 760, margin: '0 auto', padding: '0 var(--page-gutter)', '--ds-col': '696px' }}><Paywall entitlement={entitlement} profile={profile} /></div>}
+        {/* At 1280 and wider the listing fills the main area in two columns (lv-cols below); under
+            1280 it is this reading column, held at the main area's left from 1024. */}
+        {!locked && <div className="ds-col lv-page" style={{ maxWidth: 760, margin: '0 auto', padding: 'var(--s-4) var(--page-gutter) var(--s-7)', '--ds-col': '696px' }}>
           <a {...linkProps(adapter.paths.home, { back: true })} style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none', marginBottom: 'var(--s-4)' }}>
             <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> All listings
           </a>
@@ -1221,9 +1230,14 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           {/* While the applicants load, the address carried from the tap stays as the title (components/nav/RouteLoader.js). */}
           <Reveal ready={applicantsLoaded} label="Loading the listing" placeholder={<><CarriedTitle listing={l} /><ScreenLoader label="Loading the listing" /></>} failed={applicantsWatch.failed ? <LoadFailed onRetry={applicantsWatch.again} /> : null}>
 
+          {/* TWO COLUMNS from 1280 (lv-cols): at the left, flexible, the header card and the
+              applicants; at the right (lv-side, 380 to 420px, staying on screen as the page scrolls)
+              the landlord card, then the post kit and the details. Under 1280 the right column
+              comes under the applicants. */}
+          <div className="lv-cols">
+          <div className="lv-main">
           {/* THE HEADER CARD: the listing as one paper card above the applicants. Address with
-              Edit, the listing's facts and its criteria as pills, the invite link row, then the Details
-              toggle row; the Details panel opens inside this card. */}
+              Edit and Duplicate, the listing's facts and its criteria as pills, the invite link row. */}
           <section className="rl-card" style={{ padding: 'var(--card-pad)', minWidth: 0 }}>
             {/* The address and Edit share the row while the address keeps 220px; narrower (320), Edit
                 drops below it and the address takes the card's width. */}
@@ -1291,6 +1305,163 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 <div style={{ color: C.inkSoft, marginTop: 'var(--s-2)' }}>Reach them another way.</div>
               </div>
             )}
+          </section>
+
+          {/* WHO GOT IT: the existing bottom sheet; the radio list is its body. Confirm is the one red button on it. */}
+          <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} busyLabel="Marking the listing rented" onConfirm={confirmRented} onCancel={() => { setRentedOpen(false); setDeadEnd(null); }}
+            footer={deadEnd && deadEnd.linkId === rentedPick ? (() => {
+              const who = applicants.find((x) => x.linkId === deadEnd.linkId);
+              return (
+                <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
+                  <span style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 1.35 }}>{deadEnd.kind === 'shortlist' ? RECONSIDER_COPY.deadEndShortlist : RECONSIDER_COPY.deadEnd}</span>
+                  <button type="button" onClick={() => (deadEnd.kind === 'shortlist' ? shortlistApplicant(who) : openReconsider(who))} disabled={!who}
+                    style={{ flexShrink: 0, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>
+                    {deadEnd.kind === 'shortlist' ? RECONSIDER_COPY.shortlist : RECONSIDER_COPY.action}
+                  </button>
+                </div>
+              );
+            })() : null}
+            body={(
+              <span style={{ display: 'block' }}>
+                <span role="radiogroup" aria-label="Who got the unit" style={{ display: 'block' }}>
+                  {active.map((a) => {
+                    const fit = a.application?.fit;
+                    return (
+                      <label key={a.linkId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
+                        <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => { setRentedPick(a.linkId); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                        {/* The name, and its Fit beside it, or under it when the two do not fit on one line. */}
+                        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0 var(--s-3)' }}>
+                          <span style={{ minWidth: 0 }}>{a.application?.full_name || 'Applicant'}</span>
+                          {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap' }}>{fitLine(fit)} ({fit.label})</span>}
+                        </span>
+                      </label>
+                    );
+                  })}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
+                    <input type="radio" name="rented-pick" checked={rentedPick === 'outside'} onChange={() => { setRentedPick('outside'); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                    <span>Someone outside Rentletter</span>
+                  </label>
+                </span>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-3)', minHeight: 44, marginTop: 'var(--s-2)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}`, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)' }}>
+                  <input type="checkbox" checked={rentedNotify} onChange={(e) => setRentedNotify(e.target.checked)} style={{ width: 20, height: 20, margin: '1px 0 0', accentColor: C.ink, flexShrink: 0 }} />
+                  <span style={{ textWrap: 'balance' }}>Let the others know and ask if they want to be kept for similar units</span>
+                </label>
+              </span>
+            )} />
+
+          {/* DELETE and WITHDRAW: the confirm sheet, destructive wording, the danger red on the action. */}
+          {delCheck.deletable ? (
+            <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} busyLabel="Deleting the listing" onConfirm={remove} onCancel={() => setDeleteOpen(false)}
+              body={delCheck.tests ? 'Its test applications go with it, and the invite link stops working. This cannot be undone.' : 'The invite link stops working. This cannot be undone.'} />
+          ) : (
+            <ConfirmSheet open={deleteOpen} title="This listing cannot be deleted" confirmLabel={archivable && !archived ? 'Archive it' : 'Close'} cancelLabel="Keep it" busy={archiveBusy} busyLabel="Archiving the listing" onConfirm={() => (archivable && !archived ? setArchived(true) : setDeleteOpen(false))} onCancel={() => setDeleteOpen(false)}
+              body={NOT_DELETABLE_LINE} />
+          )}
+          <ConfirmSheet open={!!withdrawFor} danger title={`Mark ${withdrawFor?.application?.full_name || 'this applicant'} as withdrawn?`} confirmLabel="Mark withdrawn" cancelLabel="Cancel" onConfirm={confirmWithdraw} onCancel={() => setWithdrawFor(null)}
+            body="Only when the tenant told you they withdrew. It removes them from your ranked list." />
+
+          {/* WHY LOOK AGAIN: three screenable, factual reasons about the deal, never about the person. */}
+          <ConfirmSheet open={!!reconsiderFor} cardRadius title={RECONSIDER_COPY.sheetTitle} confirmLabel={RECONSIDER_COPY.confirm} cancelLabel="Cancel" busy={reconsiderBusy} busyLabel="Saving" onConfirm={confirmReconsider} onCancel={() => setReconsiderFor(null)}
+            body={(
+              <span role="radiogroup" aria-label={RECONSIDER_COPY.sheetTitle} style={{ display: 'block' }}>
+                {RECONSIDER_REASONS.map((code) => (
+                  <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
+                    <input type="radio" name="reconsider-reason" checked={reconsiderReason === code} onChange={() => setReconsiderReason(code)} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
+                    <span style={{ flex: 1, minWidth: 0, textWrap: 'balance' }}>{RECONSIDER_REASON_LABELS[code]}</span>
+                  </label>
+                ))}
+              </span>
+            )} />
+
+          <div style={{ height: 'var(--gap-section)' }} aria-hidden="true" />
+
+          {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
+          <section className="rl-card" style={{ padding: 'var(--card-pad)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
+              <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
+              <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
+            </div>
+            {statePills(active).length > 0 && <StatusPills label="Applicants by state" items={statePills(active)} style={{ marginBottom: 'var(--s-3)' }} />}
+
+            {totalApplicants === 0 ? (
+              <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
+                <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>
+                <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, marginBottom: 'var(--s-1)' }}>No applicants yet</div>
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
+                  Share your invite link above. As tenants apply, they appear here ranked against your stated criteria, best fit first.
+                </p>
+              </div>
+            ) : compareOpen ? (
+              <CompareTenants pool={comparePool} unitRules={{ pets: listing?.allows_pets, smoking: listing?.allows_smoking }} onClose={() => setCompareOpen(false)} />
+            ) : (
+              <>
+                {hintText && (
+                  <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
+                )}
+                <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
+                  {active.map((a, idx) => (
+                    <React.Fragment key={a.linkId}>
+                      {renderApplicantCard(a, { rank: idx + 1, isSetAside: false })}
+                    </React.Fragment>
+                  ))}
+                </div>
+                {active.length >= 2 && (
+                  <button type="button" onClick={() => setCompareOpen(true)} style={{ marginTop: 'var(--s-4)', minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Compare</button>
+                )}
+
+                {setAsideList.length > 0 && (
+                  <div style={{ marginTop: 'var(--gap-section)' }}>
+                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Set aside ({setAsideList.length})</div>
+                    <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>
+                      Set aside for the screenable reasons noted. Still shown to your landlord, at the bottom.
+                    </p>
+                    <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
+                      {setAsideList.map((a) => renderApplicantCard(a, { rank: null, isSetAside: true }))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </section>
+
+          </div>
+          <aside className="lv-side" data-stuck="" aria-label="The landlord and the listing">
+          {/* LANDLORD (once anyone has applied): one button, the sent line, two text links. Signed by
+              and the landlord's details live in the Details fold under it. Red when no card owns
+              the red on this page, ink otherwise. */}
+          {totalApplicants > 0 && (
+            <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', scrollMarginTop: 16 }}>
+              <h2 className="t-d2" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Landlord</h2>
+              <div className="rl-ctrl-row">
+                <button type="button" onClick={openSend} aria-haspopup="dialog" className="rl-btn" data-send-open=""
+                  style={{ flex: '1 1 100%', minHeight: 44, background: primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
+                </button>
+                <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
+              </div>
+              {/* The latest frozen report: when it went, how often it was opened, how many want to meet. */}
+              {l.snapshot && sentPills(l.snapshot) && (
+                <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2) var(--s-3)', flexWrap: 'wrap' }}>
+                  <StatusPills label="The report" items={sentPills(l.snapshot)} />
+                  <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" onClick={() => setBrandHint(true)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
+                </div>
+              )}
+              {/* From the latest snapshot once one exists; the live preview before any send. */}
+              <div className="rl-ctrl-row">
+                <button type="button" onClick={downloadPdf} disabled={pdfBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: pdfBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={pdfBusy} label="Building the report PDF">Download PDF</Pending></button>
+                <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={textBusy} label="Writing the report text">{textCopied ? 'Copied' : 'Copy text'}</Pending></button>
+              </div>
+              {brandHint && needsBrandingHint(profile) && (
+                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'balance' }}>{BRANDING_HINT} <a {...linkProps(adapter.paths.profile)} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
+              )}
+              {sendMsg && (
+                <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>{sendMsg}</div>
+              )}
+            </section>
+          )}
+          {/* THE REFERENCE CARD: the post kit and the details, each a 44px toggle row with its fold
+              under it, as they were under the invite row. */}
+          <section className="rl-card lv-ref" style={{ padding: 'var(--card-pad)', paddingTop: 'var(--s-2)', paddingBottom: 'var(--s-2)', minWidth: 0 }}>
             {/* THE POST KIT: a 44px toggle row under the invite row, hidden with it when the listing
                 is rented or closed. Open: the short link, three texts and the QR, each with an ink
                 outlined Copy at the right that reads Copied for two seconds. */}
@@ -1461,157 +1632,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </div>
             </div>
           </section>
-
-          {/* WHO GOT IT: the existing bottom sheet; the radio list is its body. Confirm is the one red button on it. */}
-          <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} busyLabel="Marking the listing rented" onConfirm={confirmRented} onCancel={() => { setRentedOpen(false); setDeadEnd(null); }}
-            footer={deadEnd && deadEnd.linkId === rentedPick ? (() => {
-              const who = applicants.find((x) => x.linkId === deadEnd.linkId);
-              return (
-                <div role="status" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--s-3)', marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
-                  <span style={{ fontSize: 'var(--t-body)', color: C.ink, lineHeight: 1.35 }}>{deadEnd.kind === 'shortlist' ? RECONSIDER_COPY.deadEndShortlist : RECONSIDER_COPY.deadEnd}</span>
-                  <button type="button" onClick={() => (deadEnd.kind === 'shortlist' ? shortlistApplicant(who) : openReconsider(who))} disabled={!who}
-                    style={{ flexShrink: 0, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', minHeight: 44 }}>
-                    {deadEnd.kind === 'shortlist' ? RECONSIDER_COPY.shortlist : RECONSIDER_COPY.action}
-                  </button>
-                </div>
-              );
-            })() : null}
-            body={(
-              <span style={{ display: 'block' }}>
-                <span role="radiogroup" aria-label="Who got the unit" style={{ display: 'block' }}>
-                  {active.map((a) => {
-                    const fit = a.application?.fit;
-                    return (
-                      <label key={a.linkId} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
-                        <input type="radio" name="rented-pick" checked={rentedPick === a.linkId} onChange={() => { setRentedPick(a.linkId); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
-                        {/* The name, and its Fit beside it, or under it when the two do not fit on one line. */}
-                        <span style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '0 var(--s-3)' }}>
-                          <span style={{ minWidth: 0 }}>{a.application?.full_name || 'Applicant'}</span>
-                          {fit && fit.score != null && <span className="num" style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, whiteSpace: 'nowrap' }}>{fitLine(fit)} ({fit.label})</span>}
-                        </span>
-                      </label>
-                    );
-                  })}
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
-                    <input type="radio" name="rented-pick" checked={rentedPick === 'outside'} onChange={() => { setRentedPick('outside'); setDeadEnd(null); }} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
-                    <span>Someone outside Rentletter</span>
-                  </label>
-                </span>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--s-3)', minHeight: 44, marginTop: 'var(--s-2)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}`, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body-2)', lineHeight: 'var(--lh-body)' }}>
-                  <input type="checkbox" checked={rentedNotify} onChange={(e) => setRentedNotify(e.target.checked)} style={{ width: 20, height: 20, margin: '1px 0 0', accentColor: C.ink, flexShrink: 0 }} />
-                  <span style={{ textWrap: 'balance' }}>Let the others know and ask if they want to be kept for similar units</span>
-                </label>
-              </span>
-            )} />
-
-          {/* DELETE and WITHDRAW: the confirm sheet, destructive wording, the danger red on the action. */}
-          {delCheck.deletable ? (
-            <ConfirmSheet open={deleteOpen} danger title="Delete this listing?" confirmLabel="Delete listing" cancelLabel="Keep it" busy={deleteBusy} busyLabel="Deleting the listing" onConfirm={remove} onCancel={() => setDeleteOpen(false)}
-              body={delCheck.tests ? 'Its test applications go with it, and the invite link stops working. This cannot be undone.' : 'The invite link stops working. This cannot be undone.'} />
-          ) : (
-            <ConfirmSheet open={deleteOpen} title="This listing cannot be deleted" confirmLabel={archivable && !archived ? 'Archive it' : 'Close'} cancelLabel="Keep it" busy={archiveBusy} busyLabel="Archiving the listing" onConfirm={() => (archivable && !archived ? setArchived(true) : setDeleteOpen(false))} onCancel={() => setDeleteOpen(false)}
-              body={NOT_DELETABLE_LINE} />
-          )}
-          <ConfirmSheet open={!!withdrawFor} danger title={`Mark ${withdrawFor?.application?.full_name || 'this applicant'} as withdrawn?`} confirmLabel="Mark withdrawn" cancelLabel="Cancel" onConfirm={confirmWithdraw} onCancel={() => setWithdrawFor(null)}
-            body="Only when the tenant told you they withdrew. It removes them from your ranked list." />
-
-          {/* WHY LOOK AGAIN: three screenable, factual reasons about the deal, never about the person. */}
-          <ConfirmSheet open={!!reconsiderFor} cardRadius title={RECONSIDER_COPY.sheetTitle} confirmLabel={RECONSIDER_COPY.confirm} cancelLabel="Cancel" busy={reconsiderBusy} busyLabel="Saving" onConfirm={confirmReconsider} onCancel={() => setReconsiderFor(null)}
-            body={(
-              <span role="radiogroup" aria-label={RECONSIDER_COPY.sheetTitle} style={{ display: 'block' }}>
-                {RECONSIDER_REASONS.map((code) => (
-                  <label key={code} style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-3)', minHeight: 44, cursor: 'pointer', color: C.ink, fontSize: 'var(--t-body)' }}>
-                    <input type="radio" name="reconsider-reason" checked={reconsiderReason === code} onChange={() => setReconsiderReason(code)} style={{ width: 20, height: 20, margin: 0, accentColor: C.ink, flexShrink: 0 }} />
-                    <span style={{ flex: 1, minWidth: 0, textWrap: 'balance' }}>{RECONSIDER_REASON_LABELS[code]}</span>
-                  </label>
-                ))}
-              </span>
-            )} />
-
-          <div style={{ height: 'var(--gap-section)' }} aria-hidden="true" />
-
-          {/* ── APPLICANTS. One title, one count, one line of state. The cards do the rest. ── */}
-          <section className="rl-card" style={{ padding: 'var(--card-pad)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 'var(--s-3)', marginBottom: 'var(--s-1)' }}>
-              <h2 className="t-d2" style={{ color: C.ink }}>Applicants</h2>
-              <span className="t-d3 num" style={{ color: C.ink }}>{active.length}</span>
-            </div>
-            {statePills(active).length > 0 && <StatusPills label="Applicants by state" items={statePills(active)} style={{ marginBottom: 'var(--s-3)' }} />}
-
-            {totalApplicants === 0 ? (
-              <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
-                <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>
-                <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, marginBottom: 'var(--s-1)' }}>No applicants yet</div>
-                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
-                  Share your invite link above. As tenants apply, they appear here ranked against your stated criteria, best fit first.
-                </p>
-              </div>
-            ) : compareOpen ? (
-              <CompareTenants pool={comparePool} unitRules={{ pets: listing?.allows_pets, smoking: listing?.allows_smoking }} onClose={() => setCompareOpen(false)} />
-            ) : (
-              <>
-                {hintText && (
-                  <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>Tip: push a card left to set it aside. Push a set aside card right to restore it.</p>
-                )}
-                <div ref={rankedRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
-                  {active.map((a, idx) => (
-                    <React.Fragment key={a.linkId}>
-                      {renderApplicantCard(a, { rank: idx + 1, isSetAside: false })}
-                    </React.Fragment>
-                  ))}
-                </div>
-                {active.length >= 2 && (
-                  <button type="button" onClick={() => setCompareOpen(true)} style={{ marginTop: 'var(--s-4)', minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Compare</button>
-                )}
-
-                {setAsideList.length > 0 && (
-                  <div style={{ marginTop: 'var(--gap-section)' }}>
-                    <div style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Set aside ({setAsideList.length})</div>
-                    <p style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-3)', textWrap: 'balance' }}>
-                      Set aside for the screenable reasons noted. Still shown to your landlord, at the bottom.
-                    </p>
-                    <div ref={asideRef} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--s-2)' }}>
-                      {setAsideList.map((a) => renderApplicantCard(a, { rank: null, isSetAside: true }))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </section>
-
-          {/* LANDLORD (once anyone has applied): one button, the sent line, two text links. Signed by
-              and the landlord's details live in the header card's Details fold. Red when no card owns
-              the red on this page, ink otherwise. */}
-          {totalApplicants > 0 && (
-            <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
-              <h2 className="t-d2" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Landlord</h2>
-              <div className="rl-ctrl-row">
-                <button type="button" onClick={openSend} aria-haspopup="dialog" className="rl-btn" data-send-open=""
-                  style={{ flex: '1 1 100%', minHeight: 44, background: primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
-                  {l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
-                </button>
-                <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
-              </div>
-              {/* The latest frozen report: when it went, how often it was opened, how many want to meet. */}
-              {l.snapshot && sentPills(l.snapshot) && (
-                <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2) var(--s-3)', flexWrap: 'wrap' }}>
-                  <StatusPills label="The report" items={sentPills(l.snapshot)} />
-                  <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" onClick={() => setBrandHint(true)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
-                </div>
-              )}
-              {/* From the latest snapshot once one exists; the live preview before any send. */}
-              <div className="rl-ctrl-row">
-                <button type="button" onClick={downloadPdf} disabled={pdfBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: pdfBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={pdfBusy} label="Building the report PDF">Download PDF</Pending></button>
-                <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={textBusy} label="Writing the report text">{textCopied ? 'Copied' : 'Copy text'}</Pending></button>
-              </div>
-              {brandHint && needsBrandingHint(profile) && (
-                <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'balance' }}>{BRANDING_HINT} <a {...linkProps(adapter.paths.profile)} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
-              )}
-              {sendMsg && (
-                <div style={{ marginTop: 'var(--s-2)', fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', textWrap: 'balance' }}>{sendMsg}</div>
-              )}
-            </section>
-          )}
+          </aside>
+          </div>
           </Reveal>
         </div>}
 
@@ -1679,6 +1701,32 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); text-wrap: balance; }
         /* A toast floats over the page: the ink glass (components/ui.js), with its own lift. */
         .lv-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), ${SH.raised}; }
+        /* The right column: under 1280 it comes under the applicants, one card after another. */
+        :global(.lv-side) { display: flex; flex-direction: column; gap: var(--gap-section); margin-top: var(--gap-section); min-width: 0; }
+        /* The reference card's first toggle row needs no hairline above it. */
+        :global(.lv-ref > button:first-child) { margin-top: 0 !important; border-top: none !important; }
+        /* 1280 and wider: the main area's whole width in two columns, the right one 380 to 420px and
+           staying on screen under the shell's header (76px: the search bar and its padding) as the
+           page scrolls; taller than the window, it scrolls in its place. */
+        @media (min-width: 1280px) {
+          :global(.ds .ds-main .ds-col.lv-page) { max-width: none !important; box-sizing: border-box !important; }
+          :global(.lv-cols) { display: grid; grid-template-columns: minmax(0, 1fr) clamp(380px, 26vw, 420px); column-gap: var(--s-5); align-items: start; }
+          /* The left column is at its narrowest from 1280 to about 1340: an open card's facts take
+             two to a row only where each has 260px, so a long employer or landlord holds one line. */
+          :global(.lv-cols) { --lv-fact-min: 260px; }
+          :global(.lv-side) { position: sticky; top: calc(76px + var(--s-4)); gap: var(--s-4); margin: -4px -6px 0; padding: 4px 6px var(--s-4); max-height: calc(100vh - 76px - var(--s-4)); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+        }
+        /* The applicant card at 1440 and wider: one row across the column. The initials, then the
+           name with the lines under it, then the Fit and the card's action at the right. */
+        :global(.lv-av) { display: none; }
+        @media (min-width: 1440px) {
+          :global(.lv-head) { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; column-gap: var(--s-4); align-items: start; }
+          :global(.lv-head > *) { grid-column: 2; }
+          :global(.lv-head > .lv-av) { display: inline-flex; align-items: center; justify-content: center; grid-column: 1; grid-row: 1 / span 3; width: 40px; height: 40px; border-radius: 50%; background: ${C.paperDeep}; color: ${C.ink}; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; }
+          :global(.lv-head > .lv-fit-row) { grid-column: 3; grid-row: 1; margin-top: 0 !important; padding-left: 0 !important; }
+          :global(.lv-head > .lv-act) { grid-column: 3; grid-row: 2 / span 3; justify-self: end; align-self: start; padding-left: 0 !important; }
+          :global(.lv-head > button.lv-act) { width: auto !important; min-width: 200px; padding: 0 var(--gap-card) !important; }
+        }
         .lv-fold { display: grid; grid-template-rows: 0fr; }
         .lv-fold.lv-fold-open { grid-template-rows: 1fr; }
         .lv-fold > div { overflow: hidden; min-height: 0; }

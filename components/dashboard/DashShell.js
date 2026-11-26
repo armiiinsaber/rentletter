@@ -12,9 +12,10 @@
 // (--ds-pad). At its top, floating as the page scrolls under them, the search bar (a glass pill
 // about 520px wide that opens the command menu, components/dashboard/CommandMenu.js, with its
 // Command K hint) and the bell, a round glass button at the right (components/dashboard/
-// DashboardHeader.js). A reading column (className ds-col: a listing) keeps its own width against
-// the main area's left padding; a view laid out in columns of its own (ds-fill: Circle, Profile)
-// takes the main area's whole width inside the same padding.
+// DashboardHeader.js). A reading column (className ds-col: a listing under 1280) keeps its own width
+// against the main area's left padding; a column centred in the main area (ds-mid: the paywall)
+// keeps its own width with even margins; a view laid out in columns of its own (ds-fill: Circle,
+// Profile) takes the main area's whole width inside the same padding.
 // UNDER 1024: the header (the wordmark, and round glass search and bell buttons) and the screen
 // under it, and on the main places a floating glass tab bar at the bottom (components/dashboard/
 // MainNav.js): Listings, Pipeline, the red New listing, Circle, Profile.
@@ -225,6 +226,8 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           .ds-main :global(.rl-hdr-lead) { display: flex; align-items: center; min-width: 0; min-height: 44px; margin-right: auto; }
           /* A reading column or a form: its own width, against the main area's left padding. */
           .ds-main :global(.ds-col) { box-sizing: content-box !important; max-width: var(--ds-col, 688px) !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var(--ds-pad) !important; padding-right: var(--ds-pad) !important; }
+          /* A column of its own width centred in the main area, its margins balanced (the paywall). */
+          .ds-main :global(.ds-mid) { box-sizing: content-box !important; max-width: var(--ds-col, 688px) !important; margin-left: auto !important; margin-right: auto !important; padding-left: var(--ds-pad) !important; padding-right: var(--ds-pad) !important; }
           /* A view in columns of its own: the main area's whole width, inside the same padding. */
           .ds-main :global(.ds-fill) { box-sizing: border-box !important; max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var(--ds-pad) !important; padding-right: var(--ds-pad) !important; }
         }

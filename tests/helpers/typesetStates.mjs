@@ -146,6 +146,8 @@ async function report(p) {
 // email and the realtor's signing name set as the state asks. What it changes it reads from the
 // page first and puts back after (sendSheetBack), with the report's times.
 const SEND = [390, 320, 1440, 1920];
+// The paywall, centred in the main area from 1024 (components/dashboard/DashShell.js ds-mid).
+const PAYWALL = [390, 320, 1440, 1920];
 const LONG_SIGNATURE = 'Alexandria Konstantinopoulou, Harbourfront Residential Realty Inc., Brokerage';
 const sendKept = {};
 const postJson = (p, url, body) => p.evaluate(async ([u, b]) => (await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })).ok, [url, body]);
@@ -502,8 +504,8 @@ export const STATES = [
   // ── billing (billing on) ──
   { name: 'dashboard, founding member', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=founding'); await open(p, '/dashboard'); } },
   { name: 'dashboard, trial with 3 days left', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=trial&days=3'); await open(p, '/dashboard'); } },
-  { name: 'dashboard, trial ended', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=lapsed'); await open(p, '/dashboard'); } },
-  { name: 'listing, trial ended', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=lapsed'); await open(p, '/listing/L1'); } },
+  { name: 'dashboard, trial ended', kind: 'billing', server: 'on', widths: PAYWALL, go: async (p, f) => { await f('/__fake/state?plan=lapsed'); await open(p, '/dashboard'); } },
+  { name: 'listing, trial ended', kind: 'billing', server: 'on', widths: PAYWALL, go: async (p, f) => { await f('/__fake/state?plan=lapsed'); await open(p, '/listing/L1'); } },
   { name: 'dashboard, payment past due', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=past_due&days=3'); await open(p, '/dashboard'); } },
   { name: 'billing, founding member', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=founding'); await open(p, '/billing'); } },
   { name: 'billing, trial', kind: 'billing', server: 'on', go: async (p, f) => { await f('/__fake/state?plan=trial&days=3'); await open(p, '/billing'); } },
@@ -626,7 +628,7 @@ export const STATES = [
     if (await p.locator('[data-share-role="listing_agent"]').count() !== 2) throw new Error('the share with the listing agent is not on the list');
     yield 'tenant profile, shared with a second listing agent';
   } },
-  { name: 'dashboard, a profile shared with the listing agent', kind: 'realtor', phase: 'alone', go: async (p, f) => { await f('/__fake/tenant?who=10&docs=1&personal=1&asagent=1'); await open(p, '/dashboard'); await p.locator('[data-shared-with-me]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+  { name: 'dashboard, a profile shared with the listing agent', kind: 'realtor', phase: 'alone', widths: [390, 320, 1440, 1920], go: async (p, f) => { await f('/__fake/tenant?who=10&docs=1&personal=1&asagent=1'); await open(p, '/dashboard'); await p.locator('[data-shared-with-me]').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
     await p.locator('[data-shared-with-me] [data-shared-view]').first().click(); await p.locator('[data-shared-screening]').waitFor({ timeout: 30000 }); await p.locator('[data-shared-facts]').waitFor({ timeout: 30000 }); await wait(p, 400);
     if (await p.locator('[data-shared-with-me] [data-shared-open="id"]').count()) throw new Error('the ID is offered to a listing agent');
     yield 'dashboard, the listing agent\'s view of a shared profile';
@@ -869,6 +871,17 @@ export const STATES = [
     await p.locator('[data-send-add-signature]').click(); await p.locator('[data-send-signature-field] input').waitFor({ timeout: 15000 }); await wait(p, 400);
     yield 'dashboard, the send sheet, the signing name field';
   }, after: sendSheetBack },
+  // ── the listing page in two columns (components/dashboard/ListingView.js), part 6 ──
+  // Three applicants (L4, /__fake/state?three=1): one column under 1280; from 1280 the header card
+  // and the applicants at the left, the landlord card, Post kit and Details at the right; from 1440
+  // each card one row across its column. At every width, then the first applicant open, then
+  // Details open in the right column.
+  { name: 'listing, three applicants', kind: 'realtor', phase: 'alone', widths: WIDE, go: async (p, f) => { await f('/__fake/state?three=1'); await open(p, '/listing/L4'); await p.locator('#applicant-J41').waitFor({ timeout: 30000 }); await wait(p, 300); }, steps: async function* (p) {
+    await press(p, p.locator('#applicant-J41 [role=button][aria-controls$="-body"]')); await wait(p, 600);
+    yield 'listing, three applicants, the first open';
+    await press(p, p.getByRole('button', { name: /^Details/ }).first()); await wait(p, 600);
+    yield 'listing, three applicants, Details open';
+  }, after: (f) => f('/__fake/state?three=0') },
 ];
 
 // Every state (of states), in its phase, concurrency at a time; measure(page, name, kind) after

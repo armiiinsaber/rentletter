@@ -66,7 +66,7 @@ export default function SharedProfileView({ state, intro, onOpen = null, busy = 
           their original under it; before they approve one, the original alone under the name of
           its language. Each paragraph reads in its own direction (components/AboutText.js). */}
       {state.about ? (
-        <div data-shared-about={state.aboutEnglish && state.aboutEnglish.text ? 'translated' : 'original'} style={{ display: 'grid', gap: 2 }}>
+        <div data-shared-about={state.aboutEnglish && state.aboutEnglish.text ? 'translated' : 'original'} style={{ display: 'grid', gap: 2, maxWidth: '72ch' }}>
           <div style={label}>About me, in the tenant’s words</div>
           {state.aboutEnglish && state.aboutEnglish.text ? (
             <>
@@ -84,16 +84,19 @@ export default function SharedProfileView({ state, intro, onOpen = null, busy = 
           <p style={source}>{noWidow('Their own offer. It cannot be required.')}</p>
         </div>
       ) : null}
-      <ul data-shared-facts="" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-        {state.facts.map((f, i) => (
-          <li key={f.key} data-shared-fact={f.key} style={{ padding: 'var(--s-2) 0', borderTop: i ? `1px solid ${C.rule}` : 'none', display: 'grid', gap: 2 }}>
+      {/* The facts in as many columns as the width holds, each at least 17rem, one on a phone. Every
+          fact has its hairline above it, and the list's own first pixel row is clipped, so the top
+          row (the first fact on a phone) shows none, as before. */}
+      <ul data-shared-facts="" style={{ listStyle: 'none', margin: '-1px 0 0', padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 17rem), 1fr))', columnGap: 'var(--s-5)', clipPath: 'inset(1px 0 0 0)' }}>
+        {state.facts.map((f) => (
+          <li key={f.key} data-shared-fact={f.key} style={{ padding: 'var(--s-2) 0', borderTop: `1px solid ${C.rule}`, display: 'grid', gap: 2, alignContent: 'start', minWidth: 0 }}>
             <div style={label}>{f.label}</div>
             <div className={f.key === 'email' ? 'rl-addr' : undefined} style={value}>{f.key === 'email' ? f.value : <StackedLines text={readable(f.key, f.value)} />}</div>
             <div style={source}>{noWidow(f.line)}</div>
           </li>
         ))}
         {state.checks.map((c) => { const t = checkText(c); return (
-          <li key={c.kind} data-shared-check={c.kind} style={{ padding: 'var(--s-2) 0', borderTop: `1px solid ${C.rule}`, display: 'grid', gap: 2 }}>
+          <li key={c.kind} data-shared-check={c.kind} style={{ padding: 'var(--s-2) 0', borderTop: `1px solid ${C.rule}`, display: 'grid', gap: 2, alignContent: 'start', minWidth: 0 }}>
             <div style={label}>{t.label}</div>
             <div style={value}>{noWidow(t.value.replace('your name', 'the name on the profile'))}</div>
             <div style={source}>{noWidow(c.line)}</div>

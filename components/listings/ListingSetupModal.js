@@ -20,7 +20,8 @@
 // error shows beside its field once the realtor leaves it, in plain words; nothing typed is lost.
 // On a phone (under 1024px) a new listing is three screens, one step each, with a thin progress
 // line at the top, Back that keeps every answer, and Continue lifted above the keyboard
-// (visualViewport). From 1024px it is one panel over the Listings view: the form in one column
+// (visualViewport). From 1024px it is one panel at the window's right edge (components/Sheet.js
+// desktop="side"), over the Listings view: the form in one column
 // about 520px wide on the left, what tenants see on the right; Enter moves to the next field,
 // Escape closes and keeps the draft, Tab stays inside the panel. What is typed is kept in this
 // browser as a draft (localStorage, every read and write in try), restored when the form opens
@@ -103,6 +104,44 @@ export function listingPayload(form, { askProvince = false, province = '', depos
   };
 }
 export const EMPTY_LISTING_FORM = EMPTY;
+
+// The answers the form opens with, from a stored listing (or none, for a new one): every column the
+// form asks about, as its inputs hold them; prefill fills the listing brokerage from the profile
+// where the listing has none.
+export function listingFormSeed(initial, prefill = null) {
+  const seed = { ...EMPTY };
+  if (initial) {
+    for (const k of Object.keys(EMPTY)) {
+      if (initial[k] !== null && initial[k] !== undefined) seed[k] = initial[k];
+    }
+    // Existing listings keep whatever they stored; a null cap shows the 40 it reads as.
+  }
+  // Numbers and the furnished answer as the inputs hold them (strings); the brokerage from the profile.
+  for (const k of ['lease_term_months', 'parking_spaces', 'deposit_last_month', 'deposit_key', 'deposit_security', 'deposit_pet']) seed[k] = seed[k] == null || seed[k] === '' ? '' : String(seed[k]);
+  for (const k of ['monthly_rent']) seed[k] = seed[k] == null || seed[k] === '' ? '' : String(seed[k]).replace(/[^\d]/g, '');
+  // Three states each, as the select holds them: included, not included, or not set.
+  for (const k of ['utilities_heat', 'utilities_hydro', 'utilities_water']) seed[k] = seed[k] === true ? 'yes' : seed[k] === false ? 'no' : '';
+  seed.furnished = seed.furnished === true ? 'yes' : seed.furnished === false ? 'no' : '';
+  seed.possession_date = seed.possession_date ? String(seed.possession_date).slice(0, 10) : '';
+  for (const k of BOARD_PREFILL) if (!String(seed[k] || '').trim() && prefill && prefill[k]) seed[k] = String(prefill[k]);
+  return seed;
+}
+
+// What an edit saves: only what the realtor changed. Each column the form writes is built from the
+// answers now and from the answers the stored listing gave the form (stored, before any prefill),
+// and only the columns that differ go to the route, which writes only what it is sent; every other
+// column stays as it was. The name is never among them: the form has no name field, the name is
+// set from the address once, when the listing is created, and an edit leaves it alone.
+export function listingEditPayload(form, stored, opts = {}) {
+  const after = listingPayload(form, opts);
+  const before = listingPayload(stored, { ...opts, askProvince: false });
+  const out = {};
+  for (const [k, v] of Object.entries(after)) {
+    if (k === 'name') continue;
+    if (k === 'province' || JSON.stringify(v) !== JSON.stringify(before[k])) out[k] = v;
+  }
+  return out;
+}
 
 // ── The draft: this browser only, every read and write in try (a private window, blocked storage). ──
 export const DRAFT_KEY = 'rl-listing-draft';
@@ -226,21 +265,7 @@ function DoneScreen({ done, onClose }) {
 export default function ListingSetupModal({ open = true, mode = 'create', initial = null, activeApplicants = 0, askProvince = false, realtorProvince = null, prefill = null, onCancel, onSave, saving = false, inline = false, draftKey = null, realtor = null, done = null }) {
   // The realtor's province, asked once, at the first listing (lib/justInTime.js), written to the profile.
   const [province, setProvince] = useState('');
-  const seed = { ...EMPTY };
-  if (initial) {
-    for (const k of Object.keys(EMPTY)) {
-      if (initial[k] !== null && initial[k] !== undefined) seed[k] = initial[k] === null ? EMPTY[k] : initial[k];
-    }
-    // Existing listings keep whatever they stored; a null cap shows the 40 it reads as.
-  }
-  // Numbers and the furnished answer as the inputs hold them (strings); the brokerage from the profile.
-  for (const k of ['lease_term_months', 'parking_spaces', 'deposit_last_month', 'deposit_key', 'deposit_security', 'deposit_pet']) seed[k] = seed[k] == null || seed[k] === '' ? '' : String(seed[k]);
-  for (const k of ['monthly_rent']) seed[k] = seed[k] == null || seed[k] === '' ? '' : String(seed[k]).replace(/[^\d]/g, '');
-  // Three states each, as the select holds them: included, not included, or not set.
-  for (const k of ['utilities_heat', 'utilities_hydro', 'utilities_water']) seed[k] = seed[k] === true ? 'yes' : seed[k] === false ? 'no' : '';
-  seed.furnished = seed.furnished === true ? 'yes' : seed.furnished === false ? 'no' : '';
-  seed.possession_date = seed.possession_date ? String(seed.possession_date).slice(0, 10) : '';
-  for (const k of BOARD_PREFILL) if (!String(seed[k] || '').trim() && prefill && prefill[k]) seed[k] = String(prefill[k]);
+  const seed = listingFormSeed(initial, prefill);
   const [form, setForm] = useState(seed);
   const [confirming, setConfirming] = useState(false); // the edit time rent warning
   const [touched, setTouched] = useState({});
@@ -256,6 +281,8 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   const [choices, setChoices] = useState([]);
   useEffect(() => { setChoices(moveInChoices(new Date())); }, []);
   const seedRef = useRef(JSON.stringify(seed));
+  // What the stored listing gave the form, before any prefill: an edit saves what differs from it.
+  const storedRef = useRef(JSON.stringify(listingFormSeed(initial)));
   const rootRef = useRef(null);
   const creating = mode === 'create';
   // A laptop and wider (1024px): one panel with no steps. Read from the client after mount; the
@@ -271,6 +298,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   useEffect(() => {
     if (!open || inline) return;
     seedRef.current = JSON.stringify(seed);
+    storedRef.current = JSON.stringify(listingFormSeed(initial));
     const draft = creating && !initial && draftKey ? readListingDraft(draftKey) : null;
     if (draft) {
       setForm({ ...seed, ...draft.form }); setProvince(draft.province || ''); setStep(Math.max(0, Math.min(STEPS.length - 1, Number(draft.step) || 0))); setDetailsOpen(!!draft.detailsOpen); setRestored(true);
@@ -335,13 +363,20 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   const stepValid = [provinceOk && req.address, req.monthly_rent && req.bedrooms, req.landlord_name && req.landlord_email && !boardCheck.error];
 
   const buildPayload = () => listingPayload(form, { askProvince, province, depositProvince });
+  // A new listing saves every answer; an edit saves only what changed (listingEditPayload), and an
+  // edit that changed nothing saves nothing and closes as Cancel does.
+  const save = () => {
+    if (creating) { onSave(buildPayload()); return; }
+    const changed = listingEditPayload(form, JSON.parse(storedRef.current), { askProvince, province, depositProvince });
+    if (Object.keys(changed).length) onSave(changed); else onCancel?.();
+  };
 
   // Save: a new listing saves at once (the preview showed it); an edit that moves the rent under
-  // live applicants asks first (lib/listingEditWarning.js).
+  // live applicants asks first (lib/listingEditWarning.js reads the rent from the whole answer).
   const handleSaveClick = () => {
     if (!allValid) { setTouched({ province: true, address: true, monthly_rent: true, bedrooms: true, landlord_name: true, landlord_email: true }); return; }
     if (!creating && needsRentConfirm(initial, buildPayload(), activeApplicants)) { setConfirming(true); return; }
-    onSave(buildPayload());
+    save();
   };
   const focusFirst = () => { requestAnimationFrame(() => { const el = rootRef.current && rootRef.current.querySelector(`[data-step-body="${step + 1}"] input, [data-step-body="${step + 1}"] [role=radio]`); if (el) el.focus({ preventScroll: true }); }); };
   const next = () => {
@@ -623,7 +658,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
         <p style={{ fontSize: 14, color: C.inkSoft, lineHeight: 1.5, marginBottom: 16, textWrap: 'balance' }}>{RENT_WARNING}</p>
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => setConfirming(false)} disabled={saving} className="lf-btn lf-btn-line">Cancel</button>
-          <button type="button" onClick={() => { if (allValid && !saving) onSave(buildPayload()); }} disabled={saving} className="lf-btn lf-btn-red"><Pending busy={saving} label="Saving your changes" tone="red">Save changes</Pending></button>
+          <button type="button" onClick={() => { if (allValid && !saving) save(); }} disabled={saving} className="lf-btn lf-btn-red"><Pending busy={saving} label="Saving your changes" tone="red">Save changes</Pending></button>
         </div>
       </div>
     </Sheet>
@@ -639,7 +674,7 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
   }
   return (
     <>
-      <Sheet open={open} onClose={onCancel} label={done ? 'Apply link' : title} busy={saving} maxWidth={done ? 560 : 1120} tall={!done} flush={!done} padSafe={!!done}
+      <Sheet open={open} onClose={onCancel} label={done ? 'Apply link' : title} busy={saving} maxWidth={done ? 560 : 1120} tall={!done} flush={!done} padSafe={!!done} desktop="side"
         panelClassName={`rl-modal lf-panel${done ? ' lf-panel-done' : ''}`}>
         {body}
       </Sheet>

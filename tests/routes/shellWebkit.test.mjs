@@ -320,8 +320,9 @@ async function deskWalk(browser, tag) {
     const openListing = async () => { await page.goto(`${BASE}/listing/L1`, { waitUntil: 'networkidle' }); const b = page.locator('#report [data-send-open]'); await b.waitFor({ timeout: 30000 }); await b.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' })); await page.waitForTimeout(300); return b; };
     await (await openListing()).click(); await sheetUp();
     const s2 = await read();
-    // The address as the listing now reads: the setup form above saved its name as its address.
-    assert.deepEqual([s2.address, s2.landlord, s2.email, s2.signature, s2.missing, s2.rows, s2.fits, s2.buttons], ['210 Carlaw Ave, Unit 4, Toronto', 'Marco Rossi', 'marco@example.com', 'Sarah Chen, Demo Realty', [], listed.rows, listed.fits, [['Send to the landlord', false], ['Cancel', false]]], `${tag}: the listing page's sheet (${JSON.stringify(s2)})`);
+    // The listing keeps its name: the setup form above saved only the email it was given
+    // (components/listings/ListingSetupModal.js listingEditPayload), never the address as the name.
+    assert.deepEqual([s2.address, s2.landlord, s2.email, s2.signature, s2.missing, s2.rows, s2.fits, s2.buttons], ['210 Carlaw Ave, Unit 4', 'Marco Rossi', 'marco@example.com', 'Sarah Chen, Demo Realty', [], listed.rows, listed.fits, [['Send to the landlord', false], ['Cancel', false]]], `${tag}: the listing page's sheet (${JSON.stringify(s2)})`);
     assert.equal(await page.evaluate(() => { const a = document.activeElement; return !!(a && a.closest('[data-sheet]')) && !a.matches('button, a, input'); }), true, `${tag}: the panel has the focus, not a button`);
     assert.equal(await styled('[data-send-sheet] .srs-title', 'fontWeight'), '800', `${tag}: the sheet's style on the listing page`);
     await page.keyboard.press('Escape'); await sheetGone();

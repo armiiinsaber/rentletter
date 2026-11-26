@@ -126,7 +126,15 @@ test('the shell: a floating glass sidebar at 1024 and wider, the floating search
   assert.match(s, /\.ds-main :global\(\.ds-col\) \{[^}]*margin-left: 0 !important;[^}]*padding-left: var\(--ds-pad\) !important;/);
   assert.match(s, /\.ds-main :global\(\.ds-fill\) \{[^}]*max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var\(--ds-pad\) !important; padding-right: var\(--ds-pad\) !important; \}/);
   for (const v of ['ProfileView', 'CircleView']) assert.match(src(`components/dashboard/${v}.js`), /className="[^"]*\bds-fill\b[^"]*"/, `${v}: the main area's whole width, in columns of its own`);
-  assert.match(src('components/dashboard/ListingView.js'), /className="ds-col"/, 'ListingView: a column at the left');
+  const lv = src('components/dashboard/ListingView.js');
+  assert.match(lv, /className="ds-col lv-page"/, 'ListingView: a column at the left under 1280');
+  assert.match(lv, /@media \(min-width: 1280px\) \{\s*:global\(\.ds \.ds-main \.ds-col\.lv-page\) \{ max-width: none !important; box-sizing: border-box !important; \}/, 'ListingView: from 1280 the main area\'s whole width');
+  assert.match(lv, /:global\(\.lv-cols\) \{ display: grid; grid-template-columns: minmax\(0, 1fr\) clamp\(380px, 26vw, 420px\);/, 'ListingView: two columns from 1280, the right one 380 to 420px');
+  assert.match(lv, /<aside className="lv-side" data-stuck=""/, 'ListingView: the right column stays on screen, and a sheet keeps it in place');
+  // The paywall: a column centred in the main area, its margins balanced.
+  assert.match(s, /\.ds-main :global\(\.ds-mid\) \{[^}]*margin-left: auto !important; margin-right: auto !important; padding-left: var\(--ds-pad\) !important; padding-right: var\(--ds-pad\) !important; \}/);
+  assert.match(lv, /\{locked && <div className="ds-mid"/, 'ListingView: the paywall centred');
+  assert.match(src('components/dashboard/HomeView.js'), /<div className="hv-lock ds-mid"/, 'HomeView: the paywall centred');
   // Under 1024 the tab bar: fixed, 16px in, 68px tall, round, above the home indicator, gone from 1024.
   const nav = code('components/dashboard/MainNav.js');
   assert.match(nav, /\.mn \{ position: fixed; z-index: 70; left: 16px; right: 16px; bottom: calc\(16px \+ env\(safe-area-inset-bottom, 0px\)\); height: 68px;[^}]*border-radius: 999px;/);
