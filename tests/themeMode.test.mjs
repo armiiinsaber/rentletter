@@ -171,3 +171,9 @@ test('the browser\'s bars take the page\'s ground: the deep paper on the tenant\
   for (const p of ['/', '/dashboard', '/applications', '/upload/[token]', '/r/[token]']) assert.equal(H.deepGround(p), false, p);
   assert.match(src('components/ThemeColor.js'), /const tone = given \|\| \(deepGround\(pathname\) \? 'paperDeep' : 'paper'\);/);
 });
+
+test('what dims the page is the shadow, never the ink, which is light in dark', () => {
+  assert.match(src('components/nav/RouteFrame.js'), /beneathEls\.current\.dim = el; \}\} style=\{\{ position: 'absolute', inset: 0, background: C\.shadow \}\}/, 'the page under a back swipe');
+  assert.equal(LIGHT.shadow, LIGHT.ink, 'in light the same colour as before');
+  assert.match(src('components/ui.js'), /--glass-dim: var\(--c-shadow-rgb\);/, 'the page behind a sheet');
+});

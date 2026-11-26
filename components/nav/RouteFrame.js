@@ -287,7 +287,8 @@ export default function RouteFrame({ children }) {
           <div ref={(el) => { beneathEls.current.shift = el; }} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
             {beneath.shot ? <Snapshot shot={beneath.shot} fixed /> : <RouteLoader route={beneath.route} />}
           </div>
-          <div ref={(el) => { beneathEls.current.dim = el; }} style={{ position: 'absolute', inset: 0, background: C.ink }} />
+          {/* The dim is a shadow, never the ink: in dark the ink is light (components/theme.js). */}
+          <div ref={(el) => { beneathEls.current.dim = el; }} style={{ position: 'absolute', inset: 0, background: C.shadow }} />
         </div>,
         document.body,
       )}
