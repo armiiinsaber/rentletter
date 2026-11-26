@@ -16,7 +16,11 @@
 //     Escape, a tap outside or Preview (the report's PDF in a new tab); the missing email added
 //     through the listing's setup form and the signing name in the sheet; then Send to the landlord:
 //     the sheet closes, Sent in place, the card, the tile and Needs you follow, and the landlord's
-//     page lists the applicants the sheet listed, in its order, with the same Fit words.
+//     page lists the applicants the sheet listed, in its order, with the same Fit words. Then the
+//     listing page's Send: the same sheet, the panel taking the focus, nothing sent on Escape, the
+//     missing email through that page's own Edit listing form, then one send from there. The
+//     sheet's style and the listing form's both load on one page, on the dashboard and on the
+//     listing page (tests/styleNames.test.mjs holds why).
 //   1440, 1920 and 2560: the shell fills the window (the sidebar floats 16px in, the board spans the
 //     main area, Needs you 360 to 420px, nothing sideways, no card wider than its column).
 //   1024: Needs you under the cards; the sidebar stays on screen, full height less its insets.
@@ -224,10 +228,15 @@ async function deskWalk(browser, tag) {
         rows: [...s.querySelectorAll('[data-send-applicant]')].map((e) => `${e.getAttribute('data-send-rank')}. ${e.querySelector('[data-send-name]').textContent.replace(/\u00a0/g, ' ').trim()}`), fits: [...s.querySelectorAll('[data-send-fit]')].map((e) => e.textContent.trim()),
         preview: !!s.querySelector('a[data-send-preview][target="_blank"]'), buttons: [...s.querySelectorAll('.srs-actions button')].map((b) => [b.textContent.trim(), b.disabled]) };
     });
+    // A style's computed value, on the element of it a person can see: the proof its stylesheet loaded.
+    const styled = (sel, prop) => page.evaluate(([q, p]) => { const e = [...document.querySelectorAll(q)].find((x) => x.getClientRects().length); return e ? getComputedStyle(e)[p] : null; }, [sel, prop]);
     await open(page);
     // From the card: the address, the landlord, the signing name (none yet: it says so), the
     // applicants in the report's order with their Fit words, Preview, and the two buttons.
     await page.locator('[data-listing-card="L1"] [data-card-action="send"]').click(); await sheetUp();
+    // The sheet's style loaded, on the page where the listing form's style mounted first (the style
+    // trap: two styles kept in plain string constants took one blank name, and the second never loaded).
+    assert.deepEqual([await styled('[data-send-sheet] .srs-title', 'fontWeight'), await styled('[data-send-sheet]', 'paddingLeft')], ['800', '28px'], `${tag}: the sheet's style on the dashboard`);
     let s1 = await read();
     assert.deepEqual([s1.address, s1.landlord, s1.email, s1.signature, s1.missing], ['210 Carlaw Ave, Unit 4', 'Marco Rossi', 'marco@example.com', null, ['signature']], `${tag}: the sheet (${JSON.stringify(s1)})`);
     assert.ok(s1.rows.length >= 2 && s1.rows.every((r, i) => r.startsWith(`${i + 1}. `)) && s1.fits.length === s1.rows.length && s1.preview, `${tag}: the applicants in order with their Fit words, and Preview (${JSON.stringify(s1)})`);
@@ -256,6 +265,7 @@ async function deskWalk(browser, tag) {
     assert.equal(await sheet.locator('[data-send-confirm]').isDisabled(), true);
     await sheet.locator('[data-send-add-email]').click(); await sheetGone();
     const form = page.locator('[data-listing-form]'); await form.waitFor({ timeout: 10000 }); await page.waitForTimeout(450);
+    assert.equal(await styled('[data-listing-form] .lf-title', 'fontWeight'), '600', `${tag}: the listing form's style loaded beside the sheet's`);
     await form.locator('#lf-landlord-email').fill('marco@example.com');
     await form.locator('[data-lf-primary]').click();
     await form.waitFor({ state: 'detached', timeout: 15000 }); await sheetUp();
@@ -303,6 +313,35 @@ async function deskWalk(browser, tag) {
     await landlord.close();
     assert.deepEqual(onPage.map((p) => p[0]), listed.rows, `${tag}: the same applicants in the same order`);
     assert.ok(onPage.every((p, i) => p[1].includes(listed.fits[i])), `${tag}: each with the Fit word the sheet showed (${JSON.stringify(listed.fits)})`);
+    // One way to send: the listing page's Send opens the same sheet, with the same contents and the
+    // same focus rule (the panel takes the focus, never a button); nothing goes until Send to the
+    // landlord. The missing email through this page's own Edit listing form, then back to the sheet.
+    const sentBefore = posts.length; const mailBefore = (await mailed()).length;
+    const openListing = async () => { await page.goto(`${BASE}/listing/L1`, { waitUntil: 'networkidle' }); const b = page.locator('#report [data-send-open]'); await b.waitFor({ timeout: 30000 }); await b.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' })); await page.waitForTimeout(300); return b; };
+    await (await openListing()).click(); await sheetUp();
+    const s2 = await read();
+    // The address as the listing now reads: the setup form above saved its name as its address.
+    assert.deepEqual([s2.address, s2.landlord, s2.email, s2.signature, s2.missing, s2.rows, s2.fits, s2.buttons], ['210 Carlaw Ave, Unit 4, Toronto', 'Marco Rossi', 'marco@example.com', 'Sarah Chen, Demo Realty', [], listed.rows, listed.fits, [['Send to the landlord', false], ['Cancel', false]]], `${tag}: the listing page's sheet (${JSON.stringify(s2)})`);
+    assert.equal(await page.evaluate(() => { const a = document.activeElement; return !!(a && a.closest('[data-sheet]')) && !a.matches('button, a, input'); }), true, `${tag}: the panel has the focus, not a button`);
+    assert.equal(await styled('[data-send-sheet] .srs-title', 'fontWeight'), '800', `${tag}: the sheet's style on the listing page`);
+    await page.keyboard.press('Escape'); await sheetGone();
+    assert.equal(posts.length, sentBefore, `${tag}: the listing page's sheet sent nothing`);
+    const off2 = await page.request.post(`${BASE}/api/listings/update`, { data: { listingId: 'L1', landlord_email: null } });
+    assert.ok(off2.ok(), `${tag}: the email taken off again (${off2.status()})`);
+    await (await openListing()).click(); await sheetUp();
+    assert.deepEqual((await read()).missing, ['email'], `${tag}: the listing page's sheet names the missing email`);
+    await sheet.locator('[data-send-add-email]').click(); await sheetGone();
+    await form.waitFor({ timeout: 10000 }); await page.waitForTimeout(450);
+    assert.equal(await styled('[data-listing-form] .lf-title', 'fontWeight'), '600', `${tag}: the listing form's style on the listing page`);
+    await form.locator('#lf-landlord-email').fill('marco@example.com');
+    await form.locator('[data-lf-primary]').click();
+    await form.waitFor({ state: 'detached', timeout: 15000 }); await sheetUp();
+    assert.deepEqual([(await read()).email, (await read()).missing, await styled('[data-send-sheet] .srs-title', 'fontWeight')], ['marco@example.com', [], '800'], `${tag}: back in the sheet with the email, both styles on one page`);
+    assert.equal(posts.length, sentBefore, `${tag}: still nothing sent`);
+    await sheet.locator('[data-send-confirm]').click(); await sheetGone();
+    await page.getByText('Sent to marco@example.com.').waitFor({ timeout: 10000 });
+    assert.equal(posts.length, sentBefore + 1, `${tag}: one send, from the listing page's sheet`);
+    assert.equal((await mailed()).length, mailBefore + 1, `${tag}: one more email to the landlord`);
     assert.deepEqual(errors, [], `${tag}: no page error`);
     noSupabaseLeft(ctx, '1440');
   } finally { await ctx.close(); }

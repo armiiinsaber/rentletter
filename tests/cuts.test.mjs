@@ -71,9 +71,14 @@ test('just in time: province at the first listing, signing name at the first sen
   assert.match(home, /askProvince=\{needsProvince\(profile\)\}/);
   assert.match(home, /const \{ province, \.\.\.values \} = input \|\| \{\};/);
   assert.match(home, /body: JSON\.stringify\(\{ province \}\)/, 'the province goes to the profile through its route');
+  // The signing name at the first send: the send sheet asks it (components/dashboard/
+  // SendReportSheet.js), wherever the send starts, the listing page included.
   const lv = read(`${root}components/dashboard/ListingView.js`);
-  assert.match(lv, /if \(needsSignature\(profile\)\) \{ setSigValue\(defaultSignature\(profile\)\); setSigSheet\(true\); return; \}/);
-  assert.match(lv, /body: JSON\.stringify\(\{ report_signature: v \}\)/);
-  assert.match(lv, /title="Sign the report as" confirmLabel="Send"/);
+  const sheet = read(`${root}components/dashboard/SendReportSheet.js`);
+  assert.match(read(`${root}components/dashboard/sendReport.js`), /signature: needsSignature\(profile\)/);
+  assert.match(sheet, /const openSig = \(\) => \{ setSigValue\(defaultSignature\(profile\)\);/);
+  assert.match(sheet, /body: JSON\.stringify\(\{ report_signature: v \}\)/);
+  assert.match(sheet, /signAs: 'Sign the report as'/);
+  assert.match(lv, /<SendReportSheet listing=\{sendOpen \? listing : null\}/);
   assert.match(lv, /brandHint && needsBrandingHint\(profile\)/);
 });

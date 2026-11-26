@@ -28,6 +28,7 @@
 // the system share sheet where there is one (done). Editing is the same form with no steps.
 // inline: the same form in the page flow, with no sheet.
 import { useEffect, useRef, useState } from 'react';
+import css from 'styled-jsx/css';
 import { DEFAULT_RENT_SHARE_CAP, CAP_HELPER, affordabilityPayload } from '../../lib/listingForm';
 import { C, R } from '../theme';
 import Sheet from '../Sheet';
@@ -648,7 +649,9 @@ export default function ListingSetupModal({ open = true, mode = 'create', initia
 }
 
 // Global: the sheet renders on the body (components/Sheet.js). Every class is lf-, this form's own.
-const LF_CSS = `
+// Tagged with css.global (styled-jsx/css), which gives the style its own name at build time; a plain
+// string has none, and two of them on one page took the same blank name (tests/styleNames.test.mjs).
+const LF_CSS = css.global`
   .lf { display: flex; flex-direction: column; height: 100%; min-height: 0; }
   .lf-top { flex: none; padding: 0 clamp(20px, 4vw, 28px) var(--s-3); border-bottom: 1px solid ${C.rule}; }
   .lf-progress { height: 3px; border-radius: 2px; background: ${C.rule}; overflow: hidden; margin: 0 0 var(--s-3); }

@@ -15,9 +15,8 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, ConfirmSheet } from '../../components/ui';
 import Sheet from '../Sheet';
-import SendReportSheet from './SendReportSheet';
+import SendReportSheet, { afterSheet } from './SendReportSheet';
 import ListingSetupModal from '../listings/ListingSetupModal';
-import { NATIVE, prefersReducedMotion } from '../../lib/motion';
 import { deleteCheck, archiveAvailable, isArchived, NOT_DELETABLE_LINE, skipLine } from '../../lib/listingArchiveRule';
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
@@ -424,54 +423,31 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // A choice in the sheet: the order changes at once, its tick moves, and the sheet goes.
   const choose = (c) => { setSort(c); requestAnimationFrame(() => setSortOpen(false)); };
   const pickFromMenu = (c) => { setSort(c); setMenuOpen(false); if (menuBtn.current) menuBtn.current.focus({ preventScroll: true }); };
-  // ── Send report, from a card, the Ready to send tile or Needs you: the send sheet first
-  // (components/dashboard/SendReportSheet.js), with the address, the landlord, the signing name,
-  // the applicants in the report in its order with their Fit word, and Preview. Nothing is sent
-  // until the realtor presses Send to the landlord; Cancel, Escape and a tap outside send nothing.
-  // Once it is sent the sheet closes and the card shows Sent in place, a tick, then its status
-  // follows. A missing landlord email opens the listing's setup form (the one the listing page's
-  // Edit listing opens) and comes back to the sheet; a missing signing name is asked in the sheet.
+  // ── Send report, from a card, the Ready to send tile or Needs you: the send sheet
+  // (components/dashboard/SendReportSheet.js, the one place a report is sent from), with the
+  // address, the landlord, the signing name, the applicants in the report in its order with their
+  // Fit word, and Preview. Nothing is sent until the realtor presses Send to the landlord; Cancel,
+  // Escape and a tap outside send nothing. Once it is sent the sheet closes and the card shows Sent
+  // in place, a tick, then its status follows. A missing landlord email opens the listing's setup
+  // form (the one the listing page's Edit listing opens) and comes back to the sheet; a missing
+  // signing name is asked in the sheet.
   const [sends, setSends] = useState({});
   const [sendFor, setSendFor] = useState(null); // the listing whose report waits for the realtor's yes
-  const [sendBusy, setSendBusy] = useState(false);
-  const [sendNote, setSendNote] = useState('');
   const sendListing = sendFor ? listingById.get(sendFor) || null : null;
-  const askSend = (l) => { if (!l || !l.id) return false; setSendNote(''); setSendFor(l.id); return true; };
-  const closeSend = () => { setSendFor(null); setSendNote(''); };
-  // One sheet at a time: the next rises once the last has gone (components/Sheet.js gives the focus
-  // back to what opened it as it leaves).
-  const afterSheet = (fn) => setTimeout(fn, (prefersReducedMotion() ? NATIVE.fade : NATIVE.sheet) + 60);
-  const sendFrom = async () => {
-    const l = sendListing; if (!l || sendBusy) return;
-    setSendBusy(true); setSendNote('');
-    setSends((s) => ({ ...s, [l.id]: { state: 'sending' } }));
-    const drop = () => setSends((s) => { const { [l.id]: gone, ...rest } = s; return rest; });
-    try {
-      const r = await adapter.fetch('/api/listings/send-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: l.id }) });
-      const j = await r.json().catch(() => ({}));
-      // Not sent: the route's line in the sheet, which stays open to try again or cancel.
-      if (!r.ok) { drop(); setSendNote(j.error || 'The report did not go. Try again.'); return; }
-      setSendFor(null);
-      if (j.preview) { setSends((s) => ({ ...s, [l.id]: { state: 'failed', note: 'Sandbox: nothing sent.' } })); return; }
-      setSends((s) => ({ ...s, [l.id]: { state: 'sent' } }));
-      // The route set last_sent_at on every applicant in the report (the ones still in the running):
-      // the same here, so the card, the tiles and Needs you follow at once.
-      const at = new Date().toISOString();
-      setTimeout(() => {
-        setSignals((cur) => ({ ...cur, applicantsByListing: { ...cur.applicantsByListing, [l.id]: (cur.applicantsByListing[l.id] || []).map((a) => (a && !isWithdrawn(a) && !isSetAside(a) ? { ...a, lastSentAt: at } : a)) } }));
-        drop();
-      }, 1400);
-    } catch (e) { drop(); setSendNote('The report did not go. Try again.'); } finally { setSendBusy(false); }
-  };
-  // The signing name, asked in the sheet: saved to the profile as the listing page saves it.
-  const saveSignature = async (value) => {
-    try {
-      const r = await adapter.fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ report_signature: value }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || j.error) return j.error || 'Could not save the signing name.';
-      setProfile((p) => ({ ...(j.profile || p), report_signature: value }));
-      return null;
-    } catch (e) { return 'Could not save the signing name.'; }
+  const askSend = (l) => { if (!l || !l.id) return false; setSendFor(l.id); return true; };
+  const closeSend = () => setSendFor(null);
+  // The sheet sent it: closed, and the card says so in place.
+  const onSent = (l, j) => {
+    setSendFor(null);
+    if (j && j.preview) { setSends((s) => ({ ...s, [l.id]: { state: 'failed', note: 'Sandbox: nothing sent.' } })); return; }
+    setSends((s) => ({ ...s, [l.id]: { state: 'sent' } }));
+    // The route set last_sent_at on every applicant in the report (the ones still in the running):
+    // the same here, so the card, the tiles and Needs you follow at once.
+    const at = new Date().toISOString();
+    setTimeout(() => {
+      setSignals((cur) => ({ ...cur, applicantsByListing: { ...cur.applicantsByListing, [l.id]: (cur.applicantsByListing[l.id] || []).map((a) => (a && !isWithdrawn(a) && !isSetAside(a) ? { ...a, lastSentAt: at } : a)) } }));
+      setSends((s) => { const { [l.id]: gone, ...rest } = s; return rest; });
+    }, 1400);
   };
   // The landlord's email, added in the listing's setup form; saved or cancelled, back to the sheet.
   const [editFor, setEditFor] = useState(null);
@@ -788,8 +764,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         </Sheet>
         <ConfirmSheet open={!!askInfo} danger={askInfo ? askInfo.danger : false} title={askInfo ? askInfo.title : ''} body={askInfo ? askInfo.body : ''} confirmLabel={askInfo ? askInfo.confirm : 'Delete'} cancelLabel="Keep it" busy={acting} busyLabel="Working" onConfirm={() => askInfo && askInfo.run()} onCancel={() => setAsk(null)} />
         {/* Send report's sheet: nothing goes to the landlord until Send to the landlord is pressed. */}
-        <SendReportSheet listing={sendListing} applicants={sendListing ? byListing[sendListing.id] || [] : []} profile={profile} busy={sendBusy} note={sendNote}
-          onSend={sendFrom} onClose={closeSend} onAddEmail={addEmail} onSaveSignature={saveSignature} />
+        <SendReportSheet listing={sendListing} applicants={sendListing ? byListing[sendListing.id] || [] : []} profile={profile}
+          onClose={closeSend} onSent={onSent} onAddEmail={addEmail} onProfile={setProfile} />
         {editFor ? (
           <ListingSetupModal open={editOpen && !!editListing} mode="edit" initial={editListing} activeApplicants={(byListing[editFor] || []).filter((a) => a && !isWithdrawn(a) && !isSetAside(a)).length}
             realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }}

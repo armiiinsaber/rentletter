@@ -1,7 +1,8 @@
 // tests/helpers/fakeStackHook.mjs  register() this before importing anything under pages or lib.
 //   resolve: the real Supabase, Resend and Anthropic modules resolve to tests/helpers/fakeModules,
-//            which read globalThis.__rlStack at call time; extensionless relative imports resolve
-//            as Next resolves them.
+//            which read globalThis.__rlStack at call time; styled-jsx/css resolves there too (its
+//            tags give back the style's text, since the load below compiles without styled-jsx);
+//            extensionless relative imports resolve as Next resolves them.
 //   load:    files under pages and components are JSX; they are compiled with Next's own swc so
 //            a page's getServerSideProps can be called from node.
 import { createRequire } from 'node:module';
@@ -13,6 +14,7 @@ const FAKES = {
   '@supabase/supabase-js': './fakeModules/supabaseJs.mjs',
   resend: './fakeModules/resend.mjs',
   '@anthropic-ai/sdk': './fakeModules/anthropic.mjs',
+  'styled-jsx/css': './fakeModules/styledJsxCss.mjs',
 };
 export async function resolve(spec, ctx, next) {
   if (FAKES[spec]) return { url: new URL(FAKES[spec], import.meta.url).href, shortCircuit: true };

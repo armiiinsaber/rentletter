@@ -26,7 +26,7 @@ import Paywall from './Paywall';
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
 import { signingName, cleanSignature, SIGNATURE_MAX } from '../../lib/reportSignature';
-import { needsSignature, defaultSignature, needsBrandingHint, BRANDING_HINT, BRANDING_HINT_LINK } from '../../lib/justInTime';
+import { needsBrandingHint, BRANDING_HINT, BRANDING_HINT_LINK } from '../../lib/justInTime';
 import { AnimatedScore, useFlip, ReportDeparture, MotionStyles } from '../motion';
 import SwipeCard from '../motion/swipe';
 import { CURVE, DURATION, prefersReducedMotion, cardTap } from '../../lib/motion';
@@ -50,6 +50,7 @@ import { listingOpen } from '../../lib/listingState.js';
 import { LEGACY_LISTING_STATUS, APPLICATION_STATE, RECONSIDER_REASONS, listingStanding, applicantStanding, canTransition, withLocalDecision, withLocalListingStatus, carriedListingColumns, reconsideredLocalColumns, holdsListing } from '../../lib/application-state.js';
 import { boardRows } from '../../lib/boardDetails';
 import FormDataSheet from './FormDataSheet';
+import SendReportSheet, { afterSheet } from './SendReportSheet';
 import { sentPills, answerLine } from '../../lib/reportSnapshot.js';
 import { postKitTexts, shortUrl as shortUrlFor, addressSlug } from '../../lib/shortLink.js';
 import qrcode from 'qrcode-generator';
@@ -223,7 +224,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     if (a.event === 'request-docs') focusApplicantDocs(a.linkId, a.renew);
     else if (a.event === 'send-report') {
       document.getElementById('report')?.scrollIntoView({ block: 'start', behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
-      sendEmail();
+      openSend();
     }
   };
   // Where an action item lands: ?applicant={linkId}&panel=checklist|documents|report (lib/actions.js),
@@ -319,7 +320,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
   const [pdfBusy, setPdfBusy] = useState(false);
   const [textBusy, setTextBusy] = useState(false);
   const [textCopied, setTextCopied] = useState(false);
-  const [sending, setSending] = useState(false);
   const [sendMsg, setSendMsg] = useState('');
   const [departToken, setDepartToken] = useState(0); // the report leaving the screen after a successful send
   const rankedRef = useRef(null); const asideRef = useRef(null);
@@ -350,6 +350,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       setListing((l) => ({ ...l, ...(j.listing || values) }));
       setSaving(false);
       setEditOpen(false);
+      backFromEdit();
       refreshApplicants(); // scores and rent shares are derived from the listing's current rent at read time
     } catch (e) {
       setError('Could not save changes.'); setSaving(false);
@@ -604,43 +605,24 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     setTextBusy(false);
   };
 
-  // The first send with no signing name stored: the sheet asks "Sign the report as" (prefilled
-  // with the display name and brokerage), writes it to the profile, then sends. Every later send
-  // uses the stored name and the Change link above (lib/justInTime.js).
-  const [sigSheet, setSigSheet] = useState(false);
-  const [sigValue, setSigValue] = useState('');
+  // ── Send: the send sheet (components/dashboard/SendReportSheet.js, the one place a report is sent
+  // from), as on the dashboard: the address, the landlord, the signing name, the applicants in the
+  // report in its order with their Fit word, and Preview, and nothing goes to the landlord until the
+  // realtor presses Send to the landlord there. A missing landlord email opens this page's Edit
+  // listing form and comes back to the sheet; a missing signing name is asked in the sheet.
+  const [sendOpen, setSendOpen] = useState(false);
   const [brandHint, setBrandHint] = useState(false);
-  const sendEmail = async () => {
-    setBrandHint(true);
-    if (needsSignature(profile)) { setSigValue(defaultSignature(profile)); setSigSheet(true); return; }
-    await doSend();
+  const resumeSend = useRef(false); // the setup form was opened from the sheet: back to the sheet after it
+  const openSend = () => { setBrandHint(true); setSendMsg(''); setSendOpen(true); };
+  // The sheet sent it: closed, the report leaving the screen, and the line under the button.
+  const onSent = (sent, j) => {
+    setSendOpen(false);
+    setDepartToken((n) => n + 1);
+    if (j && j.snapshot) setListing((cur) => ({ ...cur, snapshot: j.snapshot }));
+    setSendMsg(j && j.preview ? `Demo: nothing sent. In the product this goes to ${j.sentTo || sent.landlord_email}.` : `Sent to ${(j && j.sentTo) || sent.landlord_email}.`);
   };
-  const signAndSend = async () => {
-    const v = cleanSignature(sigValue); if (!v) return;
-    setSigBusy(true);
-    try {
-      const r = await adapter.fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ report_signature: v }) });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || j?.error) { setError(j?.error || 'Could not save the signing name.'); setSigBusy(false); return; }
-      setProfile((p) => ({ ...(j.profile || p), report_signature: v }));
-    } catch (e) { setError('Could not save the signing name.'); setSigBusy(false); return; }
-    setSigBusy(false); setSigSheet(false);
-    await doSend();
-  };
-  const doSend = async () => {
-    setSending(true); setSendMsg('');
-    try {
-      const r = await adapter.fetch('/api/listings/send-report', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listingId: listing.id }),
-      });
-      const j = await r.json();
-      if (r.ok) setDepartToken((n) => n + 1);
-      if (r.ok && j.snapshot) setListing((cur) => ({ ...cur, snapshot: j.snapshot }));
-      setSendMsg(r.ok ? (j.preview ? `Demo: nothing sent. In the product this goes to ${j.sentTo || listing.landlord_email}.` : `Sent to ${j.sentTo || listing.landlord_email}.`) : (j?.error || 'Email send failed.'));
-    } catch (e) { setSendMsg('Email send failed.'); }
-    setSending(false);
-  };
+  const addEmailFromSend = () => { setSendOpen(false); resumeSend.current = true; afterSheet(() => setEditOpen(true)); };
+  function backFromEdit() { if (!resumeSend.current) return; resumeSend.current = false; afterSheet(() => setSendOpen(true)); }
 
   // Persist a decision through its route (session, entitlement, ownership, the event, the
   // signals cache and the pending nudge set on the server). Optimistic local update, reverted on
@@ -1481,8 +1463,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </section>
 
           {/* WHO GOT IT: the existing bottom sheet; the radio list is its body. Confirm is the one red button on it. */}
-          <ConfirmSheet open={sigSheet} title="Sign the report as" confirmLabel="Send" cancelLabel="Cancel" busy={sigBusy || sending} busyLabel="Sending the report" onConfirm={signAndSend} onCancel={() => setSigSheet(false)}
-            body={<input value={sigValue} onChange={(e) => setSigValue(e.target.value)} maxLength={SIGNATURE_MAX} autoCapitalize="words" autoComplete="off" aria-label="Sign the report as" style={{ width: '100%', minHeight: 44, padding: '0 var(--s-3)', fontSize: 16, border: `1px solid ${C.ruleDark}`, borderRadius: R.ctrl, background: C.card, color: C.ink, fontFamily: 'inherit' }} />} />
           <ConfirmSheet open={rentedOpen} title="Who got it?" confirmLabel="Confirm" cancelLabel="Cancel" busy={statusBusy} busyLabel="Marking the listing rented" onConfirm={confirmRented} onCancel={() => { setRentedOpen(false); setDeadEnd(null); }}
             footer={deadEnd && deadEnd.linkId === rentedPick ? (() => {
               const who = applicants.find((x) => x.linkId === deadEnd.linkId);
@@ -1606,9 +1586,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
               <h2 className="t-d2" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Landlord</h2>
               <div className="rl-ctrl-row">
-                <button onClick={sendEmail} disabled={sending || !l.landlord_email} title={l.landlord_email ? '' : "Add the landlord's email first"} className="rl-btn"
-                  style={{ flex: '1 1 100%', minHeight: 44, background: (sending || !l.landlord_email) ? C.ruleDark : primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: (sending || !l.landlord_email) ? 'not-allowed' : 'pointer', fontFamily: 'inherit' }}>
-                  <Pending busy={sending} label="Sending the report">{l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}</Pending>
+                <button type="button" onClick={openSend} aria-haspopup="dialog" className="rl-btn" data-send-open=""
+                  style={{ flex: '1 1 100%', minHeight: 44, background: primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
@@ -1635,8 +1615,10 @@ export default function ListingView({ initialProfile, initialListing, initialApp
           </Reveal>
         </div>}
 
-        <ListingSetupModal open={editOpen} mode="edit" initial={listing} activeApplicants={active.length} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => setEditOpen(false)} onSave={saveEdit} saving={saving} />
+        <ListingSetupModal open={editOpen} mode="edit" initial={listing} activeApplicants={active.length} realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }} onCancel={() => { setEditOpen(false); backFromEdit(); }} onSave={saveEdit} saving={saving} />
         <FormDataSheet open={formDataOpen} listingId={listing.id} onClose={() => setFormDataOpen(false)} />
+        {/* Send: nothing goes to the landlord until Send to the landlord is pressed in this sheet. */}
+        <SendReportSheet listing={sendOpen ? listing : null} applicants={applicants} profile={profile} onClose={() => setSendOpen(false)} onSent={onSent} onAddEmail={addEmailFromSend} onProfile={setProfile} />
 
         {referralsEnabled() && (
         <ReferModal open={!!referFor} listingId={listing.id} applicant={referFor} onClose={() => setReferFor(null)}

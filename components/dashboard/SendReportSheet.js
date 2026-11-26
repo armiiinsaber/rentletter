@@ -1,15 +1,19 @@
 // components/dashboard/SendReportSheet.js
-// The confirmation before a report goes to the landlord, on the realtor's Listings view
-// (components/dashboard/HomeView.js). Send report on a listing card, on the Ready to send tile and
-// in Needs you opens it; nothing is sent until the realtor presses Send to the landlord. On the one
-// sheet (components/Sheet.js): Cancel, Escape, a drag down or a tap on the dimmed page closes it
-// and sends nothing (never while the report is going). It shows, from what the view already holds:
+// THE ONE PLACE A REPORT GOES TO THE LANDLORD FROM: the confirmation before it goes, and the send
+// itself. Every way to send opens it: on the realtor's Listings view (components/dashboard/
+// HomeView.js) Send report on a listing card, on the Ready to send tile and in Needs you; on the
+// listing page (components/dashboard/ListingView.js) the Landlord section's Send. Nothing is sent
+// until the realtor presses Send to the landlord, and nothing else in the app calls the send route
+// (tests/sendConfirm.test.mjs). On the one sheet (components/Sheet.js): Cancel, Escape, a drag down
+// or a tap on the dimmed page closes it and sends nothing (never while the report is going). It
+// shows, from what the page already holds:
 //   the listing's address, under the question;
 //   Landlord: the landlord's name and email, or the line that the email is missing and a button
-//     that opens the listing's setup form to add it (the form the listing page's Edit listing opens);
+//     that asks the page for the listing's setup form (the form Edit listing opens), after which the
+//     page opens the sheet again;
 //   Signed by: the signing name (lib/reportSignature.js), or the line that it is missing and a
-//     button that opens the field the listing page asks with (prefilled with the display name and
-//     the brokerage, lib/justInTime.js), saved to the profile;
+//     button that opens a field for it (prefilled with the display name and the brokerage,
+//     lib/justInTime.js), saved to the profile from here;
 //   In the report: the applicants the report carries, in its order, each with their Fit word
 //     (components/dashboard/sendReport.js reportRows, the send route's own buildSnapshot), and
 //     Preview, which opens the report the landlord gets (the PDF built from the same payload the
@@ -18,6 +22,7 @@
 //     name is missing), and Cancel.
 // The panel itself takes the focus when the sheet opens, never the red button, so no key sends.
 import { useEffect, useRef, useState } from 'react';
+import css from 'styled-jsx/css';
 import Sheet from '../Sheet';
 import { C, R } from '../theme';
 import { Pending } from '../brand/Loader';
@@ -27,6 +32,7 @@ import { defaultSignature } from '../../lib/justInTime';
 import { displayLabel } from '../../lib/listingAddress';
 import { isStandalone } from '../../lib/standalone';
 import { useAdapter } from '../../lib/dashboardAdapter';
+import { NATIVE, prefersReducedMotion } from '../../lib/motion';
 import { reportRows, fitWord, sendMissing } from './sendReport';
 
 export const SEND_COPY = Object.freeze({
@@ -139,7 +145,7 @@ export function SendReportBody({ listing, rows = [], profile = null, missing = {
         <button type="button" className="srs-btn srs-cancel" onClick={onCancel} disabled={busy} data-send-cancel="">{SEND_COPY.cancel}</button>
       </div>
       {note ? <p className="srs-note" role="alert" data-send-note="">{note}</p> : null}
-      <SendReportStyles />
+      <style jsx global>{SRS_CSS}</style>
     </div>
   );
 }
@@ -175,13 +181,51 @@ async function openReportPdf(adapter, listingId) {
   }
 }
 
-// open: the listing whose report is asked for (the sheet closes when it is null).
-export default function SendReportSheet({ listing = null, applicants = [], profile = null, busy = false, note = '', onSend, onClose, onAddEmail, onSaveSignature }) {
+// One sheet at a time: the next rises once the last has gone (components/Sheet.js gives the focus
+// back to what opened it as it leaves). The pages open the listing's setup form this way when the
+// email is missing, and the sheet again after it.
+export const afterSheet = (fn) => setTimeout(fn, (prefersReducedMotion() ? NATIVE.fade : NATIVE.sheet) + 60);
+export const SEND_FAILED = 'The report did not go. Try again.';
+
+// listing: the listing whose report is asked for (the sheet closes when it is null). The page that
+// opened it hears back:
+//   onSent(listing, answer)  the route sent it (answer.preview in the sandbox: nothing went out);
+//                            the page closes the sheet and shows it on its own screen
+//   onProfile(profile)       the signing name was saved
+//   onAddEmail()             the realtor asked to add the landlord's email
+//   onClose()                Cancel, Escape, a drag down or a tap outside
+// A refusal stays in the sheet, with the route's line, to try again or cancel.
+export default function SendReportSheet({ listing = null, applicants = [], profile = null, onClose, onSent, onAddEmail, onProfile }) {
   const adapter = useAdapter();
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState('');
   const [previewBusy, setPreviewBusy] = useState(false);
   const [previewNote, setPreviewNote] = useState('');
   const id = listing ? listing.id : null;
-  useEffect(() => { setPreviewNote(''); }, [id]);
+  useEffect(() => { setNote(''); setPreviewNote(''); }, [id]);
+  const missing = listing ? sendMissing(listing, profile) : { email: true, signature: true };
+  // Send to the landlord: the report goes, from here alone.
+  const send = async () => {
+    if (!listing || busy || missing.email || missing.signature) return;
+    const l = listing;
+    setBusy(true); setNote('');
+    try {
+      const r = await adapter.fetch('/api/listings/send-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: l.id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setNote(j.error || SEND_FAILED); return; }
+      if (onSent) onSent(l, j);
+    } catch (e) { setNote(SEND_FAILED); } finally { setBusy(false); }
+  };
+  // The signing name, asked in the sheet, saved to the profile.
+  const saveSignature = async (v) => {
+    try {
+      const r = await adapter.fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ report_signature: v }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) return j.error || SEND_COPY.signatureFailed;
+      if (onProfile) onProfile({ ...(j.profile || profile || {}), report_signature: v });
+      return null;
+    } catch (e) { return SEND_COPY.signatureFailed; }
+  };
   const onPreview = async (e) => {
     e.preventDefault();
     if (previewBusy || !listing) return;
@@ -194,8 +238,8 @@ export default function SendReportSheet({ listing = null, applicants = [], profi
   return (
     <Sheet open={!!listing} onClose={onClose} role="alertdialog" label={SEND_COPY.title} busy={busy} maxWidth={520}>
       {listing ? (
-        <SendReportBody key={listing.id} listing={listing} rows={reportRows({ listing, applicants, profile })} profile={profile} missing={sendMissing(listing, profile)}
-          busy={busy} note={note} onSend={onSend} onCancel={onClose} onAddEmail={onAddEmail} onSaveSignature={onSaveSignature}
+        <SendReportBody key={listing.id} listing={listing} rows={reportRows({ listing, applicants, profile })} profile={profile} missing={missing}
+          busy={busy} note={note} onSend={send} onCancel={onClose} onAddEmail={onAddEmail} onSaveSignature={saveSignature}
           onPreview={onPreview} previewHref={previewHref} previewBusy={previewBusy} previewNote={previewNote} />
       ) : null}
     </Sheet>
@@ -203,54 +247,50 @@ export default function SendReportSheet({ listing = null, applicants = [], profi
 }
 
 // Global: the sheet renders on the body (components/Sheet.js). Every class is srs-, this sheet's own.
-// Red is the one action, Send to the landlord; an error line is the danger red.
-// Written inline, so styled-jsx gives it an id of its own: a style passed in from a constant has
-// none and is taken for any other such style already on the page (the listing form's).
-function SendReportStyles() {
-  return (
-    <style jsx global>{`
-      .srs { display: grid; gap: var(--s-4); padding: 4px 20px 20px; }
-      .srs p { margin: 0; }
-      .srs-head { display: grid; gap: var(--s-1); }
-      .srs-title { margin: 0; font-size: 18px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.25; }
-      .srs-addr { font-family: var(--f-display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; color: ${C.ink}; overflow-wrap: anywhere; text-wrap: balance; }
-      .srs-facts { display: grid; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid ${C.rule}; border-bottom: 1px solid ${C.rule}; }
-      .srs-row { display: grid; gap: 2px; min-width: 0; }
-      .srs-label { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; line-height: var(--lh-eyebrow); }
-      .srs-strong { font-size: var(--t-body-2); font-weight: 600; color: ${C.ink}; line-height: var(--lh-body); overflow-wrap: anywhere; text-wrap: balance; }
-      .srs-soft { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); overflow-wrap: anywhere; }
-      .srs-missing-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-1) var(--s-3); min-width: 0; }
-      .srs-missing { font-size: var(--t-body-2); font-weight: 600; color: ${C.ink}; line-height: var(--lh-body); }
-      .srs-add { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); border: 1.5px solid ${C.ink}; background: transparent; color: ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 700; white-space: nowrap; cursor: pointer; }
-      .srs-add:disabled { border-color: ${C.ruleDark}; color: ${C.inkMute}; cursor: not-allowed; }
-      .srs-sig { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-1); min-width: 0; }
-      .srs-input { flex: 1 1 200px; min-width: 0; min-height: 44px; margin: 0; padding: 0 var(--s-3); border: 1px solid ${C.ruleDark}; border-radius: ${R.ctrl}px; background: ${C.card}; color: ${C.ink}; font-family: inherit; font-size: 16px; }
-      .srs-input:focus { outline: none; border-color: ${C.ink}; box-shadow: 0 0 0 1px ${C.ink}; }
-      .srs-sig .srs-note { flex: 1 1 100%; }
-      .srs-report { display: grid; gap: var(--s-1); min-width: 0; }
-      .srs-list-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0 var(--s-3); }
-      .srs-list-t { margin: 0; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: 1.3; }
-      .srs-count { margin-left: var(--s-2); color: ${C.inkSoft}; font-variant-numeric: tabular-nums; }
-      .srs-preview { display: inline-flex; align-items: center; min-height: 44px; color: ${C.ink}; font-size: var(--t-body-2); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
-      .srs-list { list-style: none; margin: 0; padding: 0; display: grid; }
-      .srs-app { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--s-2); align-items: baseline; padding: var(--s-2) 0; border-top: 1px solid ${C.rule}; }
-      .srs-app:first-child { border-top: none; padding-top: 0; }
-      .srs-rank { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; line-height: 1.35; font-variant-numeric: tabular-nums; }
-      .srs-who { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--s-3); min-width: 0; }
-      .srs-name { flex: 1 1 auto; min-width: 0; font-size: var(--t-body-2); font-weight: 600; color: ${C.ink}; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
-      .srs-fit { flex: none; font-size: var(--t-eyebrow); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: ${C.inkMute}; line-height: 1.35; white-space: nowrap; }
-      .srs-fit-on { color: ${C.ink}; }
-      .srs-actions { display: flex; flex-wrap: wrap; gap: 10px; }
-      .srs-btn { flex: 1 1 180px; min-width: 0; min-height: 48px; margin: 0; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer; }
-      .srs-send { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
-      .srs-send:disabled { background: ${C.ruleDark}; border-color: ${C.ruleDark}; cursor: not-allowed; }
-      .srs-send[aria-busy='true'] { cursor: wait; }
-      .srs-cancel { background: transparent; color: ${C.inkSoft}; border: 1px solid ${C.ruleDark}; font-weight: 600; }
-      .srs-cancel:disabled { cursor: not-allowed; }
-      .srs-add:focus-visible, .srs-btn:focus-visible, .srs-preview:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
-      .srs-note { font-size: var(--t-body-2); font-weight: 600; color: ${C.danger}; line-height: var(--lh-body); text-wrap: balance; }
-      @media (min-width: 1024px) { .srs { padding: 8px 28px 28px; } .srs-addr { font-size: 22px; } }
-      @media (min-width: 1920px) { .srs-strong, .srs-soft, .srs-missing, .srs-name, .srs-list-t, .srs-preview { font-size: 15px; } }
-    `}</style>
-  );
-}
+// Red is the one action, Send to the landlord; an error line is the danger red. A style kept in a
+// constant is tagged with css.global (styled-jsx/css), which gives it its name at build time
+// (tests/styleNames.test.mjs).
+const SRS_CSS = css.global`
+  .srs { display: grid; gap: var(--s-4); padding: 4px 20px 20px; }
+  .srs p { margin: 0; }
+  .srs-head { display: grid; gap: var(--s-1); }
+  .srs-title { margin: 0; font-size: 18px; font-weight: 800; color: ${C.ink}; letter-spacing: -0.015em; line-height: 1.25; }
+  .srs-addr { font-family: var(--f-display); font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; color: ${C.ink}; overflow-wrap: anywhere; text-wrap: balance; }
+  .srs-facts { display: grid; gap: var(--s-3); padding: var(--s-3) 0; border-top: 1px solid ${C.rule}; border-bottom: 1px solid ${C.rule}; }
+  .srs-row { display: grid; gap: 2px; min-width: 0; }
+  .srs-label { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; line-height: var(--lh-eyebrow); }
+  .srs-strong { font-size: var(--t-body-2); font-weight: 600; color: ${C.ink}; line-height: var(--lh-body); overflow-wrap: anywhere; text-wrap: balance; }
+  .srs-soft { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); overflow-wrap: anywhere; }
+  .srs-missing-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-1) var(--s-3); min-width: 0; }
+  .srs-missing { font-size: var(--t-body-2); font-weight: 600; color: ${C.ink}; line-height: var(--lh-body); }
+  .srs-add { flex: none; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); border: 1.5px solid ${C.ink}; background: transparent; color: ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 700; white-space: nowrap; cursor: pointer; }
+  .srs-add:disabled { border-color: ${C.ruleDark}; color: ${C.inkMute}; cursor: not-allowed; }
+  .srs-sig { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); margin-top: var(--s-1); min-width: 0; }
+  .srs-input { flex: 1 1 200px; min-width: 0; min-height: 44px; margin: 0; padding: 0 var(--s-3); border: 1px solid ${C.ruleDark}; border-radius: ${R.ctrl}px; background: ${C.card}; color: ${C.ink}; font-family: inherit; font-size: 16px; }
+  .srs-input:focus { outline: none; border-color: ${C.ink}; box-shadow: 0 0 0 1px ${C.ink}; }
+  .srs-sig .srs-note { flex: 1 1 100%; }
+  .srs-report { display: grid; gap: var(--s-1); min-width: 0; }
+  .srs-list-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0 var(--s-3); }
+  .srs-list-t { margin: 0; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: 1.3; }
+  .srs-count { margin-left: var(--s-2); color: ${C.inkSoft}; font-variant-numeric: tabular-nums; }
+  .srs-preview { display: inline-flex; align-items: center; min-height: 44px; color: ${C.ink}; font-size: var(--t-body-2); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+  .srs-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .srs-app { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: var(--s-2); align-items: baseline; padding: var(--s-2) 0; border-top: 1px solid ${C.rule}; }
+  .srs-app:first-child { border-top: none; padding-top: 0; }
+  .srs-rank { font-size: var(--t-body-2); font-weight: 700; color: ${C.inkMute}; line-height: 1.35; font-variant-numeric: tabular-nums; }
+  .srs-who { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--s-3); min-width: 0; }
+  .srs-name { flex: 1 1 auto; min-width: 0; font-size: var(--t-body-2); font-weight: 600; color: ${C.ink}; line-height: 1.35; overflow-wrap: anywhere; text-wrap: balance; }
+  .srs-fit { flex: none; font-size: var(--t-eyebrow); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: ${C.inkMute}; line-height: 1.35; white-space: nowrap; }
+  .srs-fit-on { color: ${C.ink}; }
+  .srs-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+  .srs-btn { flex: 1 1 180px; min-width: 0; min-height: 48px; margin: 0; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer; }
+  .srs-send { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
+  .srs-send:disabled { background: ${C.ruleDark}; border-color: ${C.ruleDark}; cursor: not-allowed; }
+  .srs-send[aria-busy='true'] { cursor: wait; }
+  .srs-cancel { background: transparent; color: ${C.inkSoft}; border: 1px solid ${C.ruleDark}; font-weight: 600; }
+  .srs-cancel:disabled { cursor: not-allowed; }
+  .srs-add:focus-visible, .srs-btn:focus-visible, .srs-preview:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
+  .srs-note { font-size: var(--t-body-2); font-weight: 600; color: ${C.danger}; line-height: var(--lh-body); text-wrap: balance; }
+  @media (min-width: 1024px) { .srs { padding: 8px 28px 28px; } .srs-addr { font-size: 22px; } }
+  @media (min-width: 1920px) { .srs-strong, .srs-soft, .srs-missing, .srs-name, .srs-list-t, .srs-preview { font-size: 15px; } }
+`;

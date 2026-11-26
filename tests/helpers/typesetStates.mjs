@@ -264,7 +264,8 @@ export const STATES = [
   { name: 'listing, add by application number', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Details/); await tap(p, /Add by application number/); } },
   { name: 'set aside sheet', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await expand(p, LONG.a2); await tap(p, /^Set aside$/); } },
   { name: 'compare', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Compare$/); } },
-  { name: 'landlord sheet', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Send to /); } },
+  // The listing page's Send opens the send sheet (components/dashboard/SendReportSheet.js): nothing is sent.
+  { name: 'listing, the send sheet', kind: 'realtor', widths: SEND, go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Send to /); await p.locator('[data-send-sheet="L1"]').waitFor({ timeout: 15000 }); await wait(p, 400); } },
   { name: 'rented sheet', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Details/); await tap(p, /Mark as rented/); } },
   { name: 'edit listing sheet', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, 'Edit', { exact: true }); }, steps: async function* (p) { await openAll(p, '[role=dialog]'); yield 'edit listing sheet, every fold open'; } },
   { name: 'delete listing', kind: 'realtor', go: async (p) => { await open(p, '/listing/L1'); await tap(p, /^Details/); await tap(p, /Delete listing/); } },

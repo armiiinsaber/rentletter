@@ -1,21 +1,23 @@
-// Send report asks first (components/dashboard/SendReportSheet.js, sendReport.js, HomeView.js).
-// A card's Send report, the Ready to send tile and Needs you's Send open the send sheet; the report
-// goes only from the sheet's Send to the landlord. The sheet lists the applicants the report
-// carries, in its order, with their Fit words (the send route's own buildSnapshot), and says which
-// of the landlord's email and the signing name is missing, with a button to add it. The walk
-// (tests/routes/shellWebkit.test.mjs) presses all of it in WebKit and in Chrome: nothing sent while
-// the sheet is open, Cancel, Escape and a tap outside send nothing, the names against the
+// Send report asks first, and there is one way to send (components/dashboard/SendReportSheet.js,
+// sendReport.js, HomeView.js, ListingView.js). A card's Send report, the Ready to send tile and
+// Needs you's Send on the dashboard, and the Landlord section's Send on the listing page, open the
+// send sheet; the report goes only from the sheet's Send to the landlord, and no other file in the
+// app names the send route. The sheet lists the applicants the report carries, in its order, with
+// their Fit words (the send route's own buildSnapshot), and says which of the landlord's email and
+// the signing name is missing, with a button to add it. The walk (tests/routes/shellWebkit.test.mjs)
+// presses all of it in WebKit and in Chrome, on the dashboard and on the listing page: nothing sent
+// while the sheet is open, Cancel, Escape and a tap outside send nothing, the names against the
 // landlord's own page after the send, the email added through the listing's setup form.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { register } from 'node:module';
 register('./helpers/fakeStackHook.mjs', import.meta.url);
 
 const React = (await import('react')).default;
 const { renderToStaticMarkup } = await import('react-dom/server');
 const { reportRows, fitWord, sendMissing, LANDLORD_EMAIL, NO_FIT_WORD } = await import('../components/dashboard/sendReport.js');
-const { SendReportBody, SEND_COPY } = await import('../components/dashboard/SendReportSheet.js');
+const { SendReportBody, SEND_COPY, SEND_FAILED } = await import('../components/dashboard/SendReportSheet.js');
 const { buildSnapshot } = await import('../lib/reportSnapshot.js');
 const { INCOMPLETE_LINE } = await import('../lib/fitScore.js');
 const { isWithdrawn, isSetAside } = await import('../lib/listingApplicantsVocabulary.js');
@@ -119,35 +121,67 @@ test('the missing signing name: the sheet says so and offers the field; with bot
   assert.match(s, /const openSig = \(\) => \{ setSigValue\(defaultSignature\(profile\)\);/);
   assert.match(s, /aria-label=\{SEND_COPY\.signAs\}/);
   assert.equal(SEND_COPY.signAs, 'Sign the report as');
-  assert.match(code('components/dashboard/HomeView.js'), /adapter\.fetch\('\/api\/profile\/update', \{ method: 'POST', headers: \{ 'Content-Type': 'application\/json' \}, body: JSON\.stringify\(\{ report_signature: value \}\) \}\)/);
+  assert.match(s, /adapter\.fetch\('\/api\/profile\/update', \{ method: 'POST', headers: \{ 'Content-Type': 'application\/json' \}, body: JSON\.stringify\(\{ report_signature: v \}\) \}\)/, 'saved by the sheet');
+  assert.match(s, /if \(onProfile\) onProfile\(\{ \.\.\.\(j\.profile \|\| profile \|\| \{\}\), report_signature: v \}\);/);
+  for (const page of ['components/dashboard/HomeView.js', 'components/dashboard/ListingView.js']) assert.match(code(page), /<SendReportSheet [^\n]*(?:\n[^\n<]*)?onProfile=\{setProfile\} \/>/, page);
 });
 
-test('nothing is sent before the realtor confirms: the card, the tile and Needs you only open the sheet', () => {
+// Every file of the app's own code (pages/api, the routes themselves, aside).
+const ROOT = new URL('../', import.meta.url);
+const ownFiles = (dir) => readdirSync(new URL(dir, ROOT), { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? (`${dir}${e.name}/` === 'pages/api/' ? [] : ownFiles(`${dir}${e.name}/`)) : /\.(m?js|jsx)$/.test(e.name) ? [`${dir}${e.name}`] : []));
+const ROUTE = "'/api/listings/send-report'";
+
+test('one way to send: no component, page or helper calls the send route but the sheet', () => {
+  const files = [...ownFiles('components/'), ...ownFiles('pages/'), ...ownFiles('lib/')];
+  assert.ok(files.length > 200, `the app's files (${files.length})`);
+  const naming = files.filter((f) => code(f).includes('/api/listings/send-report'));
+  // The sheet sends; the two adapters carry the route (the real one's list of routes, the sandbox's
+  // stand in for it), and neither is called by name: every page reaches them through adapter.fetch.
+  assert.deepEqual(naming.sort(), ['components/dashboard/SendReportSheet.js', 'lib/dashboardAdapter.js', 'lib/demoAdapter.js']);
+  assert.match(code('lib/dashboardAdapter.js'), /'POST \/api\/listings\/send-report'/);
+  assert.match(code('lib/demoAdapter.js'), /'POST \/api\/listings\/send-report': \(q, b\) => \{/);
+  // In the sheet: one send, run by Send to the landlord alone.
+  const s = code('components/dashboard/SendReportSheet.js');
+  assert.equal(s.split(ROUTE).length - 1, 1, 'one send');
+  const send = s.match(/const send = async \(\) => \{[\s\S]*?\n  \};/)[0];
+  assert.ok(send.includes(ROUTE), 'the send is the sheet\'s send');
+  assert.match(send, /if \(!listing \|\| busy \|\| missing\.email \|\| missing\.signature\) return;/, 'never with the email or the signing name missing, never twice');
+  assert.equal(s.split('onSend={send}').length - 1, 1, 'handed to the body once');
+  assert.equal(s.split('onClick={onSend}').length - 1, 1, 'and in the body to one button');
+  assert.match(s, /<button type="button" className="srs-btn srs-send" onClick=\{onSend\} disabled=\{busy \|\| blocked\}/);
+  assert.match(s, /<button type="button" className="srs-btn srs-cancel" onClick=\{onCancel\} disabled=\{busy\}/);
+  assert.match(s, /<Sheet open=\{!!listing\} onClose=\{onClose\} role="alertdialog" label=\{SEND_COPY\.title\} busy=\{busy\} maxWidth=\{520\}>/);
+  assert.match(s, /onSend=\{send\} onCancel=\{onClose\}/);
+  // A refusal stays in the sheet; a send tells the page that opened it.
+  assert.match(send, /if \(!r\.ok\) \{ setNote\(j\.error \|\| SEND_FAILED\); return; \}\s*if \(onSent\) onSent\(l, j\);/);
+  assert.equal(SEND_FAILED, 'The report did not go. Try again.');
+});
+
+test('every way in opens the sheet: the card, the tile and Needs you on the dashboard, Send on the listing page', () => {
   const h = code('components/dashboard/HomeView.js');
-  // One place posts the send, and it runs only from the sheet's Send to the landlord.
-  assert.equal(h.split("'/api/listings/send-report'").length - 1, 1, 'one send in the view');
-  const sendFrom = h.match(/const sendFrom = async \(\) => \{[\s\S]*?\n  \};/)[0];
-  assert.ok(sendFrom.includes("'/api/listings/send-report'"), 'the send is in sendFrom');
-  assert.equal(h.split('sendFrom').length - 1, 2, 'sendFrom is declared and handed to the sheet, nowhere else');
-  assert.match(h, /<SendReportSheet listing=\{sendListing\}[^>]*\n\s*onSend=\{sendFrom\} onClose=\{closeSend\}/);
-  // The three ways in open the sheet.
   assert.match(h, /<ListingCard [^>]*onSend=\{askSend\}/, 'the card');
   assert.match(h, /const onTile = \(item\) => \{ if \(item && item\.kind === 'ready' && askSend\(listingById\.get\(item\.listingId\)\)\) return; navigateToAction\(item, adapter\.paths\); \};/, 'the Ready to send tile');
   assert.match(h, /if \(it\.go\.kind === 'action' && it\.go\.item && it\.go\.item\.kind === 'ready' && askSend\(listingById\.get\(it\.go\.item\.listingId\)\)\) return;/, 'Needs you');
-  assert.match(h, /const askSend = \(l\) => \{ if \(!l \|\| !l\.id\) return false; setSendNote\(''\); setSendFor\(l\.id\); return true; \};/, 'askSend opens, nothing more');
-  // Cancel, Escape and a tap outside close it and nothing else (components/Sheet.js calls onClose).
-  assert.match(h, /const closeSend = \(\) => \{ setSendFor\(null\); setSendNote\(''\); \};/);
-  const s = code('components/dashboard/SendReportSheet.js');
-  assert.match(s, /<Sheet open=\{!!listing\} onClose=\{onClose\} role="alertdialog" label=\{SEND_COPY\.title\} busy=\{busy\} maxWidth=\{520\}>/);
-  assert.match(s, /onSend=\{onSend\} onCancel=\{onClose\}/);
-  assert.equal(s.split('onClick={onSend}').length - 1, 1, 'onSend on one button');
-  assert.match(s, /<button type="button" className="srs-btn srs-send" onClick=\{onSend\} disabled=\{busy \|\| blocked\}/);
-  assert.match(s, /<button type="button" className="srs-btn srs-cancel" onClick=\{onCancel\} disabled=\{busy\}/);
-  // No key sends: nothing in the sheet takes the focus on its own (the panel does).
-  assert.doesNotMatch(s, /autoFocus/);
-  // The card shows Sent in place once sent, as built; a refusal stays in the sheet.
-  assert.match(h, /setSendFor\(null\);\s*if \(j\.preview\)[^\n]*\n\s*setSends\(\(s\) => \(\{ \.\.\.s, \[l\.id\]: \{ state: 'sent' \} \}\)\);/);
-  assert.match(h, /if \(!r\.ok\) \{ drop\(\); setSendNote\(j\.error \|\| 'The report did not go\. Try again\.'\); return; \}/);
+  assert.match(h, /const askSend = \(l\) => \{ if \(!l \|\| !l\.id\) return false; setSendFor\(l\.id\); return true; \};/, 'askSend opens, nothing more');
+  assert.match(h, /const closeSend = \(\) => setSendFor\(null\);/, 'Cancel, Escape and a tap outside close it');
+  assert.match(h, /<SendReportSheet listing=\{sendListing\} applicants=\{sendListing \? byListing\[sendListing\.id\] \|\| \[\] : \[\]\} profile=\{profile\}\s*onClose=\{closeSend\} onSent=\{onSent\} onAddEmail=\{addEmail\} onProfile=\{setProfile\} \/>/);
+  // Once sent: the sheet closes and the card shows Sent in place, as built.
+  assert.match(h, /const onSent = \(l, j\) => \{\s*setSendFor\(null\);\s*if \(j && j\.preview\)[^\n]*\n\s*setSends\(\(s\) => \(\{ \.\.\.s, \[l\.id\]: \{ state: 'sent' \} \}\)\);/);
+  // The listing page: its Send opens the same sheet, with the same contents and handling.
+  const v = code('components/dashboard/ListingView.js');
+  assert.match(v, /<button type="button" onClick=\{openSend\} aria-haspopup="dialog" className="rl-btn" data-send-open=""/, 'the Landlord section\'s Send');
+  assert.match(v, /const openSend = \(\) => \{ setBrandHint\(true\); setSendMsg\(''\); setSendOpen\(true\); \};/, 'it opens the sheet, nothing more');
+  assert.match(v, /else if \(a\.event === 'send-report'\) \{[^}]*\}\);\s*openSend\(\);\s*\}/, 'the send-report notice opens it too');
+  assert.match(v, /<SendReportSheet listing=\{sendOpen \? listing : null\} applicants=\{applicants\} profile=\{profile\} onClose=\{\(\) => setSendOpen\(false\)\} onSent=\{onSent\} onAddEmail=\{addEmailFromSend\} onProfile=\{setProfile\} \/>/);
+  // The missing email: this page's own Edit listing form, then back to the sheet, saved or cancelled.
+  assert.match(v, /const addEmailFromSend = \(\) => \{ setSendOpen\(false\); resumeSend\.current = true; afterSheet\(\(\) => setEditOpen\(true\)\); \};/);
+  assert.match(v, /function backFromEdit\(\) \{ if \(!resumeSend\.current\) return; resumeSend\.current = false; afterSheet\(\(\) => setSendOpen\(true\)\); \}/);
+  assert.match(v, /setEditOpen\(false\);\s*backFromEdit\(\);\s*refreshApplicants\(\);/, 'saved');
+  assert.match(v, /onCancel=\{\(\) => \{ setEditOpen\(false\); backFromEdit\(\); \}\} onSave=\{saveEdit\}/, 'cancelled');
+  // The old one tap send and its own signing sheet are gone.
+  assert.doesNotMatch(v, /sendEmail|doSend|signAndSend|setSigSheet|title="Sign the report as"/);
+  // The same focus rule everywhere: the sheet takes the focus on its panel, never on a button.
+  assert.doesNotMatch(code('components/dashboard/SendReportSheet.js'), /autoFocus/);
 });
 
 test('red is the one action on the sheet; the error line is the danger red', () => {
@@ -155,8 +189,9 @@ test('red is the one action on the sheet; the error line is the danger red', () 
   const reds = s.split('\n').filter((l) => /\bC\.red\b/.test(l)).map((l) => l.trim().split(' {')[0]);
   assert.deepEqual(reds, ['.srs-send'], 'only Send to the landlord');
   assert.match(s, /\.srs-note \{[^}]*color: \$\{C\.danger\};/);
-  // Written inline, so styled-jsx gives the sheet's style an id of its own.
-  assert.match(s, /<style jsx global>\{`\s*\.srs \{/);
+  // A constant tagged with css.global, so styled-jsx gives the style a name of its own (tests/styleNames.test.mjs).
+  assert.match(s, /<style jsx global>\{SRS_CSS\}<\/style>/);
+  assert.match(s, /^const SRS_CSS = css\.global`\n  \.srs \{/m);
   // Motion: none of its own (the sheet rises on components/Sheet.js).
   assert.doesNotMatch(s, /transition:|animation:|@keyframes/);
 });
