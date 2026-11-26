@@ -3,8 +3,9 @@
 // tiles in one row across the main area's whole width, equal widths (two by two under 1024px).
 // Every number is the board's (components/dashboard/board.js boardOf, the one source):
 //   Ready to send       the listings with a report ready to send. Black, light text, a red dot and
-//                       "Send report" with an arrow while above zero; a link to the listing that has
-//                       waited longest, its report panel open.
+//                       "Send report" with an arrow while above zero; a press opens the send sheet
+//                       for the listing that has waited longest (components/dashboard/
+//                       SendReportSheet.js, from the page), its link that listing's report panel.
 //   Documents to check  the applicants whose documents wait for the realtor's review. Glass, a red
 //                       dot and "Check now" with an arrow while above zero; a link to the applicant
 //                       who has waited longest, their documents open.

@@ -1,4 +1,4 @@
-// The wrapped text walk, part 3 of 5: the alone states from the tenant's own profile on, up to the
+// The wrapped text walk, part 3 of 6: the alone states from the tenant's own profile on, up to the
 // tenant's card (tests/helpers/typesetWalk.mjs PART4_FROM), on the servers part 2 left
 // (tests/helpers/typesetWalk.mjs describes the walk, its rules and how the parts run in order on
 // the same fake stack). A WebKit walk fails, never skips, when the binary is missing.

@@ -15,6 +15,9 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { GlobalStyle, Icon, ConfirmSheet } from '../../components/ui';
 import Sheet from '../Sheet';
+import SendReportSheet from './SendReportSheet';
+import ListingSetupModal from '../listings/ListingSetupModal';
+import { NATIVE, prefersReducedMotion } from '../../lib/motion';
 import { deleteCheck, archiveAvailable, isArchived, NOT_DELETABLE_LINE, skipLine } from '../../lib/listingArchiveRule';
 import { getEntitlement } from '../../lib/entitlements';
 import { billingOff } from '../../lib/billingOff';
@@ -44,7 +47,6 @@ import { useAdapter } from '../../lib/dashboardAdapter';
 import { listingOpen } from '../../lib/listingState';
 import { referralsEnabled } from '../../lib/features';
 import { displayLabel } from '../../lib/listingAddress';
-import { needsSignature } from '../../lib/justInTime';
 import { isWithdrawn, isSetAside } from '../../lib/listingApplicantsVocabulary';
 
 // ── Presentation-only helpers (no data logic) ─────────────────
@@ -111,7 +113,6 @@ let modeSeen = null;
 const MODE_STORE = 'rl-listing-view';
 const readMode = (store) => { try { return store && store.getItem(MODE_STORE) === 'compact' ? 'compact' : 'cards'; } catch (e) { return 'cards'; } };
 const writeMode = (store, mode) => { try { if (store) store.setItem(MODE_STORE, mode === 'compact' ? 'compact' : 'cards'); } catch (e) { /* kept for this visit only */ } };
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const deviceStore = () => { try { return window.localStorage; } catch (e) { return null; } };
 const useIsoLayout = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
@@ -423,28 +424,78 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   // A choice in the sheet: the order changes at once, its tick moves, and the sheet goes.
   const choose = (c) => { setSort(c); requestAnimationFrame(() => setSortOpen(false)); };
   const pickFromMenu = (c) => { setSort(c); setMenuOpen(false); if (menuBtn.current) menuBtn.current.focus({ preventScroll: true }); };
-  // ── Send report from a card: in place, "Sending", then a tick, and the card's status follows. A
-  // listing with no landlord email yet, or a first send that still needs the signing name, opens
-  // its report on the listing page, where both are asked for.
+  // ── Send report, from a card, the Ready to send tile or Needs you: the send sheet first
+  // (components/dashboard/SendReportSheet.js), with the address, the landlord, the signing name,
+  // the applicants in the report in its order with their Fit word, and Preview. Nothing is sent
+  // until the realtor presses Send to the landlord; Cancel, Escape and a tap outside send nothing.
+  // Once it is sent the sheet closes and the card shows Sent in place, a tick, then its status
+  // follows. A missing landlord email opens the listing's setup form (the one the listing page's
+  // Edit listing opens) and comes back to the sheet; a missing signing name is asked in the sheet.
   const [sends, setSends] = useState({});
-  const sendFrom = async (l, card) => {
-    if (!EMAIL.test(String(l.landlord_email || '').trim()) || needsSignature(profile)) { navigateToAction(card.next.item, adapter.paths); return; }
+  const [sendFor, setSendFor] = useState(null); // the listing whose report waits for the realtor's yes
+  const [sendBusy, setSendBusy] = useState(false);
+  const [sendNote, setSendNote] = useState('');
+  const sendListing = sendFor ? listingById.get(sendFor) || null : null;
+  const askSend = (l) => { if (!l || !l.id) return false; setSendNote(''); setSendFor(l.id); return true; };
+  const closeSend = () => { setSendFor(null); setSendNote(''); };
+  // One sheet at a time: the next rises once the last has gone (components/Sheet.js gives the focus
+  // back to what opened it as it leaves).
+  const afterSheet = (fn) => setTimeout(fn, (prefersReducedMotion() ? NATIVE.fade : NATIVE.sheet) + 60);
+  const sendFrom = async () => {
+    const l = sendListing; if (!l || sendBusy) return;
+    setSendBusy(true); setSendNote('');
     setSends((s) => ({ ...s, [l.id]: { state: 'sending' } }));
+    const drop = () => setSends((s) => { const { [l.id]: gone, ...rest } = s; return rest; });
     try {
       const r = await adapter.fetch('/api/listings/send-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: l.id }) });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok || j.preview) { setSends((s) => ({ ...s, [l.id]: { state: 'failed', note: j.preview ? 'Sandbox: nothing sent.' : (j.error || 'The report did not go. Try again.') } })); return; }
+      // Not sent: the route's line in the sheet, which stays open to try again or cancel.
+      if (!r.ok) { drop(); setSendNote(j.error || 'The report did not go. Try again.'); return; }
+      setSendFor(null);
+      if (j.preview) { setSends((s) => ({ ...s, [l.id]: { state: 'failed', note: 'Sandbox: nothing sent.' } })); return; }
       setSends((s) => ({ ...s, [l.id]: { state: 'sent' } }));
       // The route set last_sent_at on every applicant in the report (the ones still in the running):
       // the same here, so the card, the tiles and Needs you follow at once.
       const at = new Date().toISOString();
       setTimeout(() => {
         setSignals((cur) => ({ ...cur, applicantsByListing: { ...cur.applicantsByListing, [l.id]: (cur.applicantsByListing[l.id] || []).map((a) => (a && !isWithdrawn(a) && !isSetAside(a) ? { ...a, lastSentAt: at } : a)) } }));
-        setSends((s) => { const { [l.id]: gone, ...rest } = s; return rest; });
+        drop();
       }, 1400);
-    } catch (e) { setSends((s) => ({ ...s, [l.id]: { state: 'failed', note: 'The report did not go. Try again.' } })); }
+    } catch (e) { drop(); setSendNote('The report did not go. Try again.'); } finally { setSendBusy(false); }
   };
-  const onTile = (item) => navigateToAction(item, adapter.paths);
+  // The signing name, asked in the sheet: saved to the profile as the listing page saves it.
+  const saveSignature = async (value) => {
+    try {
+      const r = await adapter.fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ report_signature: value }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) return j.error || 'Could not save the signing name.';
+      setProfile((p) => ({ ...(j.profile || p), report_signature: value }));
+      return null;
+    } catch (e) { return 'Could not save the signing name.'; }
+  };
+  // The landlord's email, added in the listing's setup form; saved or cancelled, back to the sheet.
+  const [editFor, setEditFor] = useState(null);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const editListing = editFor ? listingById.get(editFor) || null : null;
+  const addEmail = () => { const id = sendFor; if (!id) return; closeSend(); afterSheet(() => { setEditFor(id); setEditOpen(true); }); };
+  const backToSend = (id) => { setEditOpen(false); afterSheet(() => setSendFor(id)); };
+  const saveEdit = async (values) => {
+    const id = editFor; if (!id) return;
+    setEditSaving(true); setError('');
+    try {
+      const r = await adapter.fetch('/api/listings/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: id, ...values }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || j.error) { setError(j.error || 'Could not save changes.'); return; }
+      setListings((cur) => (cur || []).map((x) => (x.id === id ? { ...x, ...(j.listing || values) } : x)));
+      // Fit reads the listing's rent: the applicants read again, so the sheet lists them as the report will.
+      adapter.fetch(`/api/listings/applicants?listingId=${encodeURIComponent(id)}`).then((x) => (x.ok ? x.json() : null)).then((a) => {
+        if (a && Array.isArray(a.applicants)) setSignals((cur) => ({ ...cur, applicantsByListing: { ...cur.applicantsByListing, [id]: a.applicants } }));
+      }).catch(() => {});
+      backToSend(id);
+    } catch (e) { setError('Could not save changes.'); } finally { setEditSaving(false); }
+  };
+  const onTile = (item) => { if (item && item.kind === 'ready' && askSend(listingById.get(item.listingId))) return; navigateToAction(item, adapter.paths); };
   // The Active and Archived switch (only once archive is set up).
   const shelfSwitch = (
     <div className="hv-seg" role="group" aria-label="Show listings" data-shelf="">
@@ -513,9 +564,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
   });
   const cardsOf = (list) => list.map((r) => {
     const l = listingById.get(r.id); if (!l) return null;
-    return <ListingCard key={r.id} listing={l} row={r} card={cardFor(l)} paths={adapter.paths} selecting={selecting} picked={picked.has(r.id)} onPick={togglePick} onSend={sendFrom} send={sends[r.id] || null} />;
+    return <ListingCard key={r.id} listing={l} row={r} card={cardFor(l)} paths={adapter.paths} selecting={selecting} picked={picked.has(r.id)} onPick={togglePick} onSend={askSend} send={sends[r.id] || null} />;
   });
   const onNeed = (it) => {
+    if (it.go.kind === 'action' && it.go.item && it.go.item.kind === 'ready' && askSend(listingById.get(it.go.item.listingId))) return;
     if (it.go.kind === 'action') navigateToAction(it.go.item, adapter.paths);
     else if (it.go.kind === 'view') goView(viewHref(adapter.paths.home, it.go.view));
     else go(it.go.href);
@@ -735,6 +787,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           ) : null}
         </Sheet>
         <ConfirmSheet open={!!askInfo} danger={askInfo ? askInfo.danger : false} title={askInfo ? askInfo.title : ''} body={askInfo ? askInfo.body : ''} confirmLabel={askInfo ? askInfo.confirm : 'Delete'} cancelLabel="Keep it" busy={acting} busyLabel="Working" onConfirm={() => askInfo && askInfo.run()} onCancel={() => setAsk(null)} />
+        {/* Send report's sheet: nothing goes to the landlord until Send to the landlord is pressed. */}
+        <SendReportSheet listing={sendListing} applicants={sendListing ? byListing[sendListing.id] || [] : []} profile={profile} busy={sendBusy} note={sendNote}
+          onSend={sendFrom} onClose={closeSend} onAddEmail={addEmail} onSaveSignature={saveSignature} />
+        {editFor ? (
+          <ListingSetupModal open={editOpen && !!editListing} mode="edit" initial={editListing} activeApplicants={(byListing[editFor] || []).filter((a) => a && !isWithdrawn(a) && !isSetAside(a)).length}
+            realtorProvince={profile?.province || null} prefill={{ listing_brokerage_name: profile?.brokerage || null, listing_brokerage_address: profile?.brokerage_address || null, listing_brokerage_phone: profile?.phone || null }}
+            onCancel={() => backToSend(editFor)} onSave={saveEdit} saving={editSaving} />
+        ) : null}
         <NewListingPanel open={modalOpen} initial={dupe} profile={profile} userId={userId} onClose={closeModal} onError={setError}
           onProfile={(saved, province) => setProfile((p) => ({ ...(saved || p), province }))}
           onCreated={(data) => setListings((cur) => [data, ...(cur || []).filter((l) => l.id !== data.id)])} />

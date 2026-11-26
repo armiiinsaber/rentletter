@@ -1,4 +1,4 @@
-// The wrapped text walk, part 4 of 5: the tenant's card, empty, half filled and complete, its
+// The wrapped text walk, part 4 of 6: the tenant's card, empty, half filled and complete, its
 // Preview and the checklist sheet, on the servers part 3 left
 // (tests/helpers/typesetWalk.mjs describes the walk, its rules and how the parts run in order on
 // the same fake stack). A WebKit walk fails, never skips, when the binary is missing.

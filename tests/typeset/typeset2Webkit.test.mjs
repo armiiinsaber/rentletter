@@ -1,4 +1,4 @@
-// The wrapped text walk, part 2 of 3: the writes, and then the alone states up to the tenant's own
+// The wrapped text walk, part 2 of 6: the writes, and then the alone states up to the tenant's own
 // profile, on the servers part 1 left (tests/helpers/typesetWalk.mjs describes the walk, its rules
 // and how the parts run in order on the same fake stack). A WebKit walk fails, never skips, when
 // the binary is missing.

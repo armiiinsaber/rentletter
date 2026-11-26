@@ -401,7 +401,7 @@ http.createServer(async (req, res) => {
   // the signed in realtor's plan (a trial with days left, one ended two days ago, a payment past
   // due with days of grace); listings=0 takes their listings away (the empty dashboard) and
   // listings=1 puts them back; name=0 blanks their name (onboarding) and name=1 puts it back;
-  // archive=1|0, testlisting=1|0, many=<n>|0 and longemail=1|0 as said below. Answers the
+  // archive=1|0, testlisting=1|0, many=<n>|0, longemail=1|0 and unsent=<id>|0 as said below. Answers the
   // profile's plan fields.
   if (req.url.startsWith('/__fake/state')) {
     const q = new URL(req.url, 'http://localhost').searchParams; const p = t.profiles[0]; const days = Number(q.get('days') || 3);
@@ -432,6 +432,12 @@ http.createServer(async (req, res) => {
     // on one line, cut short, the whole address on hover); longemail=0 takes them away.
     if (q.get('longemail') === '1' && !t.profiles.some((x) => x.id === 'long-email-realtor')) t.profiles.push({ id: 'long-email-realtor', email: 'alexandria.konstantinopoulou.residential.leasing@harbourfrontresidentialrealty.ca', full_name: 'Alexandria Konstantinopoulou', brokerage: 'Harbourfront Residential Realty Inc., Brokerage', plan: 'founding', province: 'ON', created_at: new Date(Date.now() - 86400000).toISOString(), signup_source: 'direct' });
     if (q.get('longemail') === '0') t.profiles = t.profiles.filter((x) => x.id !== 'long-email-realtor');
+    // unsent=<listing id>: that listing's report as if it had never gone (last_sent_at cleared on
+    // its applicants, the times kept aside), so its card says Send report again (the send sheet's
+    // wrapped text states); unsent=0 puts the times back.
+    const unsent = q.get('unsent');
+    if (unsent && unsent !== '0') { t.__unsent = t.__unsent || {}; for (const j of t.listing_applicants) if (j.listing_id === unsent && j.last_sent_at) { t.__unsent[j.id] = j.last_sent_at; j.last_sent_at = null; } }
+    if (unsent === '0' && t.__unsent) { for (const j of t.listing_applicants) if (t.__unsent[j.id]) j.last_sent_at = t.__unsent[j.id]; t.__unsent = null; }
     if (q.get('testlisting') === '0') { t.listings = t.listings.filter((l) => l.id !== 'L3'); t.listing_applicants = t.listing_applicants.filter((k) => k.listing_id !== 'L3'); t.applications = t.applications.filter((x) => x.id !== 'AT1'); }
     // many=<n>: n more listings of the realtor's (up to seven), with rents, unit types, units and
     // move in dates of every kind, and no applicants. The first three are the ones a walk counts

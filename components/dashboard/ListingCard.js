@@ -13,8 +13,10 @@
 // Under 1024px the same card is compact: the address, "rent · beds · N applicants", the copy
 // button, the strip without its names, then the status line with the main action at its right.
 // The whole card opens the listing (lib/motion.js cardTap, the address the link for the keyboard
-// and a new tab); its buttons do their own action. Send report sends in place: "Sending", then a
-// tick, and the card's status follows. In Select mode a checkbox shows at its top left.
+// and a new tab); its buttons do their own action. Send report opens the send sheet first
+// (components/dashboard/SendReportSheet.js, from the page); once the realtor confirms it sends in
+// place: "Sending", then a tick, and the card's status follows. In Select mode a checkbox shows at
+// its top left.
 import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { Icon } from '../ui';
@@ -92,7 +94,7 @@ export default function ListingCard({ listing, row, card, paths, selecting = fal
   const factsOf = (list) => list.filter(Boolean).map((f, i, all) => <span key={f} className="lc-fact">{f}{i < all.length - 1 ? ' ·' : ''}</span>).reduce((out, x, i) => (i ? [...out, ' ', x] : [x]), []);
   const facts = factsOf([money(row.rent), row.beds || null]);
   const phoneFacts = factsOf([money(row.rent), row.beds || null, `${card.applicants} applicant${card.applicants === 1 ? '' : 's'}`]);
-  // The main action: Send report sends here; every other step opens the listing where it is done.
+  // The main action: Send report asks the page for its sheet; every other step opens the listing where it is done.
   const stepHref = next.item ? actionHref(next.item, paths) : href;
   const sending = send && send.state === 'sending'; const sent = send && send.state === 'sent';
   const act = next.kind === 'send' && onSend ? (

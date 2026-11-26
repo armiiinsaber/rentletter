@@ -1,5 +1,5 @@
-// The wrapped text walk, part 1 of 3: the reads and the billing states. The first part builds the
-// two production fake stacks and starts their servers, which parts 2 and 3 go on with
+// The wrapped text walk, part 1 of 6: the reads and the billing states. The first part builds the
+// two production fake stacks and starts their servers, which parts 2 to 6 go on with
 // (tests/helpers/typesetWalk.mjs describes the walk, its rules and how the parts run in order on
 // the same fake stack). A WebKit walk fails, never skips, when the binary is missing.
 import { test } from 'node:test';

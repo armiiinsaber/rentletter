@@ -20,8 +20,8 @@
 // parts keep the order of the whole walk and run one after another on the same two servers: part 1
 // the reads and the billing states, part 2 the writes and then the alone states up to PART3_FROM,
 // part 3 the alone states from there up to PART4_FROM, part 4 those up to PART5_FROM (the tenant's
-// card, Preview and the sheet), part 5 the rest (the first run, the writing helper, an upload and
-// the office's alone states). Part 1 builds (once a run, tests/helpers/fakeBuild.mjs) and
+// card, Preview and the sheet), part 5 those up to PART6_FROM (the first run, the writing helper,
+// an upload and the office's alone states), part 6 the rest (the realtor's send sheet). Part 1 builds (once a run, tests/helpers/fakeBuild.mjs) and
 // starts the servers; each later part waits, without the turn, for the part before it to finish,
 // and starts where that part left the fake stack; the last part takes the servers down (and the
 // run takes them down too, however it ends, tests/helpers/reap.mjs reapWithRun). Each engine has
@@ -43,22 +43,24 @@ import { reapWithRun } from './reap.mjs';
 import { readPage, pageProblems } from './textLines.mjs';
 import { sweep, STATES, NARROW } from './typesetStates.mjs';
 
-export const PARTS = 5;
+export const PARTS = 6;
 // The first alone state of part 3: the tenant's own profile and what follows it. Of part 4: the
-// tenant's card, empty, half filled and complete. Of part 5: the guided first run.
+// tenant's card, empty, half filled and complete. Of part 5: the guided first run. Of part 6: the
+// realtor's send sheet.
 export const PART3_FROM = 'tenant profile, documents stored';
 export const PART4_FROM = 'tenant profile, empty';
 export const PART5_FROM = 'tenant profile, the first run, the name';
+export const PART6_FROM = 'dashboard, the send sheet';
 const kindOf = (s) => (s.server === 'on' ? 'billing' : (s.phase || 'read'));
 export function partOf(s) {
   const k = kindOf(s);
   if (k === 'read' || k === 'billing') return 1;
   if (k === 'write') return 2;
   const alone = STATES.filter((x) => kindOf(x) === 'alone');
-  const cuts = [PART3_FROM, PART4_FROM, PART5_FROM].map((name) => { const i = alone.findIndex((x) => x.name === name); if (i < 0) throw new Error(`a part names no alone state: ${name}`); return i; });
-  if (!(cuts[0] < cuts[1] && cuts[1] < cuts[2])) throw new Error(`the parts are out of order: ${cuts}`);
+  const cuts = [PART3_FROM, PART4_FROM, PART5_FROM, PART6_FROM].map((name) => { const i = alone.findIndex((x) => x.name === name); if (i < 0) throw new Error(`a part names no alone state: ${name}`); return i; });
+  if (!(cuts[0] < cuts[1] && cuts[1] < cuts[2] && cuts[2] < cuts[3])) throw new Error(`the parts are out of order: ${cuts}`);
   const at = alone.indexOf(s);
-  return at < cuts[0] ? 2 : at < cuts[1] ? 3 : at < cuts[2] ? 4 : 5;
+  return at < cuts[0] ? 2 : at < cuts[1] ? 3 : at < cuts[2] ? 4 : at < cuts[3] ? 5 : 6;
 }
 export const statesOf = (part) => STATES.filter((s) => partOf(s) === part);
 

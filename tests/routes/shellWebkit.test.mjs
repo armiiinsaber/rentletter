@@ -5,13 +5,18 @@
 //   1440: the floating glass sidebar (16px in from the window's edges, 232px wide, 28px corners) with
 //     its five places, Listings marked and counted as the Active listings tile counts; no tab bar;
 //     the status board's four tiles one row across the main area's whole width, equal widths; the
-//     cards with their strips, Needs you beside them; a tile that filters the cards and one that
-//     jumps; Pipeline and Shared with you in place (no reload, no transition); a card that opens
+//     cards with their strips, Needs you beside them; a tile that filters the cards; Pipeline and
+//     Shared with you in place (no reload, no transition); a card that opens
 //     its listing from anywhere on it, its address the link for the keyboard; the copy button's
 //     Copied for a second; Select and the bar; the Compact table kept on the device; the command
 //     menu: open from the search bar and from Command K or Control K, find a listing and jump, find
 //     an applicant, run an action, the arrows, Tab kept inside, Escape closing with the focus back;
-//     and Send report from the card: Sending, a tick, then the card, the tile and Needs you follow.
+//     and Send report asking first (components/dashboard/SendReportSheet.js): the card, the Ready to
+//     send tile and Needs you open the send sheet, with nothing sent while it is open, nor on Cancel,
+//     Escape, a tap outside or Preview (the report's PDF in a new tab); the missing email added
+//     through the listing's setup form and the signing name in the sheet; then Send to the landlord:
+//     the sheet closes, Sent in place, the card, the tile and Needs you follow, and the landlord's
+//     page lists the applicants the sheet listed, in its order, with the same Fit words.
 //   1440, 1920 and 2560: the shell fills the window (the sidebar floats 16px in, the board spans the
 //     main area, Needs you 360 to 420px, nothing sideways, no card wider than its column).
 //   1024: Needs you under the cards; the sidebar stays on screen, full height less its insets.
@@ -121,10 +126,7 @@ async function deskWalk(browser, tag) {
     assert.equal(await page.locator('[data-tile="applicants"]').getAttribute('aria-pressed'), 'true');
     assert.deepEqual((await cardIds(page)).sort(), ['L1', 'L2']);
     await page.locator('[data-tile="applicants"]').click(); await page.waitForTimeout(250);
-    // Ready to send jumps to the listing that has waited longest, its report.
-    await page.locator('[data-tile="toSend"]').click();
-    await page.waitForURL((u) => u.pathname === '/listing/L1', { timeout: 15000 });
-    await page.goBack(); await page.locator('[data-listing-card]').first().waitFor({ timeout: 30000 }); await page.waitForTimeout(400);
+    // Ready to send opens the send sheet (below, with Send report from the card and Needs you).
     // Pipeline and Shared with you in place: the address changes, nothing slides, nothing reloads.
     await page.evaluate(() => { window.__shellMark = 1; window.__navMarks = 0; new MutationObserver(() => { if (document.documentElement.dataset.nav) window.__navMarks++; }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-nav'] }); });
     await page.locator('[data-shell-place="pipeline"]').click();
@@ -207,14 +209,81 @@ async function deskWalk(browser, tag) {
       assert.ok(f.sideways <= 0, `${width}: no sideways scroll`);
     }
     await page.setViewportSize({ width: 1440, height: 900 }); await page.waitForTimeout(300);
-    // Send report from the card: Sending, a tick, then the card, the tile and Needs you follow. The
-    // realtor's signing name is set first (a first send asks for it on the listing page).
-    const r = await page.request.post(`${BASE}/api/profile/update`, { data: { report_signature: 'Sarah Chen, Demo Realty' } });
-    assert.ok(r.ok(), `${tag}: the signing name saved (${r.status()})`);
+    // Send report asks first (components/dashboard/SendReportSheet.js): the card, the Ready to send
+    // tile and Needs you open the send sheet, and nothing goes to the landlord until Send to the
+    // landlord is pressed. Cancel, Escape and a tap outside send nothing; Preview sends nothing.
+    const posts = []; page.on('request', (q) => { if (q.method() === 'POST' && new URL(q.url()).pathname === '/api/listings/send-report') posts.push(q.url()); });
+    const mailed = () => fetch(`${BASE}/__fake/mail?to=marco@example.com`).then((x) => x.json());
+    const nothingSent = async (when) => { assert.deepEqual(posts, [], `${tag}: ${when}: no send`); assert.equal((await mailed()).length, 0, `${tag}: ${when}: no email to the landlord`); };
+    const sheet = page.locator('[data-send-sheet="L1"]');
+    const sheetUp = async () => { await sheet.waitFor({ timeout: 10000 }); await page.waitForTimeout(450); };
+    const sheetGone = () => page.locator('[data-send-sheet]').waitFor({ state: 'detached', timeout: 10000 });
+    const read = () => sheet.evaluate((s) => {
+      const t = (sel) => { const e = s.querySelector(sel); return e ? e.textContent.replace(/\u00a0/g, ' ').trim() : null; };
+      return { address: t('[data-send-address]'), landlord: t('[data-send-landlord-name]'), email: t('[data-send-landlord-email]'), signature: t('[data-send-signature]'), missing: [...s.querySelectorAll('[data-send-missing]')].map((e) => e.getAttribute('data-send-missing')),
+        rows: [...s.querySelectorAll('[data-send-applicant]')].map((e) => `${e.getAttribute('data-send-rank')}. ${e.querySelector('[data-send-name]').textContent.replace(/\u00a0/g, ' ').trim()}`), fits: [...s.querySelectorAll('[data-send-fit]')].map((e) => e.textContent.trim()),
+        preview: !!s.querySelector('a[data-send-preview][target="_blank"]'), buttons: [...s.querySelectorAll('.srs-actions button')].map((b) => [b.textContent.trim(), b.disabled]) };
+    });
     await open(page);
-    const act = page.locator('[data-listing-card="L1"] [data-card-action="send"]');
-    await act.click();
-    await page.locator('[data-listing-card="L1"] [data-pending="busy"], [data-listing-card="L1"] .lc-act-done').first().waitFor({ timeout: 5000 });
+    // From the card: the address, the landlord, the signing name (none yet: it says so), the
+    // applicants in the report's order with their Fit words, Preview, and the two buttons.
+    await page.locator('[data-listing-card="L1"] [data-card-action="send"]').click(); await sheetUp();
+    let s1 = await read();
+    assert.deepEqual([s1.address, s1.landlord, s1.email, s1.signature, s1.missing], ['210 Carlaw Ave, Unit 4', 'Marco Rossi', 'marco@example.com', null, ['signature']], `${tag}: the sheet (${JSON.stringify(s1)})`);
+    assert.ok(s1.rows.length >= 2 && s1.rows.every((r, i) => r.startsWith(`${i + 1}. `)) && s1.fits.length === s1.rows.length && s1.preview, `${tag}: the applicants in order with their Fit words, and Preview (${JSON.stringify(s1)})`);
+    assert.deepEqual(s1.buttons, [['Send to the landlord', true], ['Cancel', false]], `${tag}: the two buttons, Send waiting for the signing name`);
+    assert.equal(new URL(page.url()).pathname, '/dashboard', `${tag}: the card did not open`);
+    await nothingSent('the sheet open');
+    await sheet.locator('[data-send-cancel]').click(); await sheetGone();
+    await nothingSent('Cancel');
+    // The Ready to send tile: the sheet for the listing that has waited longest, in place; Escape.
+    await page.locator('[data-tile="toSend"]').click(); await sheetUp();
+    assert.equal(new URL(page.url()).pathname, '/dashboard', `${tag}: the tile opens the sheet, not the listing`);
+    await page.keyboard.press('Escape'); await sheetGone();
+    await nothingSent('Escape');
+    // Needs you's Send: the same sheet; a tap on the dimmed page outside it.
+    await page.locator('[data-needs-you-item="ready:L1"] .ny-go').click(); await sheetUp();
+    await page.locator('.rl-sh-scrim').click({ position: { x: 12, y: 12 } }); await sheetGone();
+    await nothingSent('a tap outside');
+    // The missing email: taken off the listing, the sheet says so and Add the email opens the
+    // listing's setup form; the email saved there, the sheet is back with it.
+    const off = await page.request.post(`${BASE}/api/listings/update`, { data: { listingId: 'L1', landlord_email: null } });
+    assert.ok(off.ok(), `${tag}: the email taken off (${off.status()})`);
+    await open(page);
+    await page.locator('[data-listing-card="L1"] [data-card-action="send"]').click(); await sheetUp();
+    s1 = await read();
+    assert.deepEqual([s1.landlord, s1.email, s1.missing], ['Marco Rossi', null, ['email', 'signature']], `${tag}: the email and the signing name missing (${JSON.stringify(s1)})`);
+    assert.equal(await sheet.locator('[data-send-confirm]').isDisabled(), true);
+    await sheet.locator('[data-send-add-email]').click(); await sheetGone();
+    const form = page.locator('[data-listing-form]'); await form.waitFor({ timeout: 10000 }); await page.waitForTimeout(450);
+    await form.locator('#lf-landlord-email').fill('marco@example.com');
+    await form.locator('[data-lf-primary]').click();
+    await form.waitFor({ state: 'detached', timeout: 15000 }); await sheetUp();
+    s1 = await read();
+    assert.deepEqual([s1.email, s1.missing], ['marco@example.com', ['signature']], `${tag}: back in the sheet with the email (${JSON.stringify(s1)})`);
+    await nothingSent('the email added');
+    // The signing name, asked in the sheet: prefilled with the name and the brokerage, saved.
+    await sheet.locator('[data-send-add-signature]').click();
+    const field = sheet.locator('[data-send-signature-field] input'); await field.waitFor({ timeout: 5000 });
+    assert.equal(await field.inputValue(), 'Sarah Chen, Demo Realty', `${tag}: the field prefilled`);
+    await sheet.locator('[data-send-signature-save]').click();
+    await sheet.locator('[data-send-signature]').waitFor({ timeout: 10000 });
+    s1 = await read();
+    assert.deepEqual([s1.signature, s1.missing, s1.buttons], ['Sarah Chen, Demo Realty', [], [['Send to the landlord', false], ['Cancel', false]]], `${tag}: nothing missing, Send ready`);
+    // Preview: the report the landlord gets, in a new tab; the sheet stays, nothing is sent.
+    const pdf = page.waitForResponse((x) => new URL(x.url()).pathname === '/api/listings/report-pdf' && new URL(x.url()).searchParams.get('listingId') === 'L1', { timeout: 15000 });
+    const [tab] = await Promise.all([ctx.waitForEvent('page', { timeout: 10000 }), sheet.locator('[data-send-preview]').click()]);
+    const got = await pdf;
+    assert.deepEqual([got.status(), got.headers()['content-type']], [200, 'application/pdf'], `${tag}: the report's PDF`);
+    await tab.waitForURL(/^blob:/, { timeout: 10000 });
+    await tab.close();
+    assert.equal(await sheet.count(), 1, `${tag}: the sheet stays after Preview`);
+    await nothingSent('Preview');
+    const listed = await read();
+    // Send to the landlord: the sheet closes, and the card shows Sent in place, then its status follows.
+    await sheet.locator('[data-send-confirm]').click();
+    await sheetGone();
+    assert.equal(posts.length, 1, `${tag}: one send, from the sheet`);
     await page.locator('[data-listing-card="L1"] .lc-act-done').waitFor({ timeout: 15000 });
     assert.equal((await page.locator('[data-listing-card="L1"] .lc-act-done').textContent()).trim(), 'Sent', `${tag}: a tick and Sent, in place`);
     assert.equal(new URL(page.url()).pathname, '/dashboard', `${tag}: the card did not open`);
@@ -225,6 +294,15 @@ async function deskWalk(browser, tag) {
     assert.equal(await page.locator('[data-needs-you-item="ready:L1"]').count(), 0, `${tag}: and gone from Needs you`);
     const mail = await fetch(`${BASE}/__fake/mail?to=marco@example.com`).then((x) => x.json());
     assert.ok(mail.length >= 1, `${tag}: the landlord's email went`);
+    // The sheet listed the applicants the landlord's page shows, in its order, each with its Fit word.
+    const token = (String(mail[mail.length - 1].text).match(/\/r\/([A-Za-z0-9_-]+)/) || [])[1];
+    assert.ok(token, `${tag}: the report's page in the email`);
+    const landlord = await ctx.newPage();
+    await landlord.goto(`${BASE}/r/${token}`, { waitUntil: 'networkidle' });
+    const onPage = await landlord.locator('section[aria-label]').evaluateAll((els) => els.filter((e) => /^\d+\. /.test(e.getAttribute('aria-label'))).map((e) => [e.getAttribute('aria-label').replace(/\u00a0/g, ' '), e.textContent.replace(/\u00a0/g, ' ')]));
+    await landlord.close();
+    assert.deepEqual(onPage.map((p) => p[0]), listed.rows, `${tag}: the same applicants in the same order`);
+    assert.ok(onPage.every((p, i) => p[1].includes(listed.fits[i])), `${tag}: each with the Fit word the sheet showed (${JSON.stringify(listed.fits)})`);
     assert.deepEqual(errors, [], `${tag}: no page error`);
     noSupabaseLeft(ctx, '1440');
   } finally { await ctx.close(); }

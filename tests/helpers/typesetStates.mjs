@@ -141,6 +141,32 @@ async function report(p) {
   const sent = await p.evaluate(async () => { const r = await fetch('/api/listings/send-report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingId: 'L1' }) }); return r.json(); });
   return sent.snapshot.token;
 }
+// The send sheet (components/dashboard/SendReportSheet.js), opened from L1's card: L1's report made
+// ready to send again (/__fake/state?unsent=L1; the landlord report state sent it), its landlord
+// email and the realtor's signing name set as the state asks. What it changes it reads from the
+// page first and puts back after (sendSheetBack), with the report's times.
+const SEND = [390, 320, 1440, 1920];
+const LONG_SIGNATURE = 'Alexandria Konstantinopoulou, Harbourfront Residential Realty Inc., Brokerage';
+const sendKept = {};
+const postJson = (p, url, body) => p.evaluate(async ([u, b]) => (await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(b) })).ok, [url, body]);
+async function sendSheet(p, f, { email, signature }) {
+  await f('/__fake/state?unsent=L1');
+  await open(p, '/dashboard');
+  const was = await p.evaluate(() => { const pp = window.__NEXT_DATA__.props.pageProps; const l = (pp.initialListings || []).find((x) => x.id === 'L1'); return { email: l ? l.landlord_email || null : null, signature: (pp.initialProfile && pp.initialProfile.report_signature) || null }; });
+  if (!('email' in sendKept)) Object.assign(sendKept, was);
+  if (!(await postJson(p, '/api/listings/update', { listingId: 'L1', landlord_email: email }))) throw new Error('L1\'s landlord email was not set');
+  if (!(await postJson(p, '/api/profile/update', { report_signature: signature }))) throw new Error('the signing name was not set');
+  await open(p, '/dashboard');
+  await vis(p, '[data-listing-card="L1"] [data-card-action="send"]').click();
+  await p.locator('[data-send-sheet="L1"]').waitFor({ timeout: 15000 }); await wait(p, 500);
+}
+async function sendSheetBack(f, p) {
+  if ('email' in sendKept) {
+    try { await postJson(p, '/api/listings/update', { listingId: 'L1', landlord_email: sendKept.email }); await postJson(p, '/api/profile/update', { report_signature: sendKept.signature }); } catch (e) { /* the page is gone */ }
+    for (const k of Object.keys(sendKept)) delete sendKept[k];
+  }
+  await f('/__fake/state?unsent=0');
+}
 // L2 rented to J6 (POST /api/listings/status), a co applicant and a guarantor on the application.
 async function rentL2(p, f) {
   await f('/__fake/seed-parties?link=J6');
@@ -833,6 +859,15 @@ export const STATES = [
   { name: 'office, the commitment poster', kind: 'office', phase: 'write', go: async (p) => { await office(p); await open(p, '/admin/commitment'); await p.locator('[data-poster]').waitFor({ timeout: 30000 }); await wait(p, 400); } },
   { name: 'office, the Lead Realtor Partner with no start date', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?seed=1'); await f('/__fake/kpi?partner=1'); await f('/__fake/kpi?start=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-partner-start=""]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?start=1'); } } },
   { name: 'office, the commitment before its table exists', kind: 'office', phase: 'alone', go: async (p, f) => { await f('/__fake/kpi?history=0'); try { await office(p); await open(p, '/admin'); await p.locator('[data-tile="days"]').waitFor({ timeout: 30000 }); await wait(p, 400); } finally { await f('/__fake/kpi?history=1'); } } },
+  // ── the send sheet (components/dashboard/SendReportSheet.js), part 6 ──
+  // Every line at its longest: the long address, the landlord's long name and email, the long
+  // signing name, the applicants' long names with their Fit words, the two buttons.
+  { name: 'dashboard, the send sheet', kind: 'realtor', phase: 'alone', widths: SEND, go: (p, f) => sendSheet(p, f, { email: 'b.castellanos.whitfield@outlook.com', signature: LONG_SIGNATURE }), after: sendSheetBack },
+  // The email and the signing name missing, each with its button; then the signing name's field.
+  { name: 'dashboard, the send sheet, the email and the signing name missing', kind: 'realtor', phase: 'alone', widths: SEND, go: (p, f) => sendSheet(p, f, { email: null, signature: null }), steps: async function* (p) {
+    await p.locator('[data-send-add-signature]').click(); await p.locator('[data-send-signature-field] input').waitFor({ timeout: 15000 }); await wait(p, 400);
+    yield 'dashboard, the send sheet, the signing name field';
+  }, after: sendSheetBack },
 ];
 
 // Every state (of states), in its phase, concurrency at a time; measure(page, name, kind) after
