@@ -359,7 +359,7 @@ export default function ProfilePersonal({ data, load, openHelper = 0 }) {
         .pp-switch { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); width: 100%; min-height: 44px; padding: 0; background: transparent; border: none; border-radius: 12px; color: ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: var(--lh-body); text-align: left; cursor: pointer; }
         .pp-switch-label { min-width: 0; text-wrap: balance; }
         .pp-switch:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.red}; }
-        .pp-track { position: relative; width: 48px; height: 28px; border-radius: 999px; background: ${C.ruleDark}; flex-shrink: 0; }
+        .pp-track { position: relative; width: 48px; height: 28px; border-radius: 999px; background: ${C.sand}; flex-shrink: 0; }
         .pp-track[data-on='1'] { background: ${C.ink}; }
         .pp-knob { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: ${C.paper}; }
         .pp-track[data-on='1'] .pp-knob { transform: translateX(20px); }

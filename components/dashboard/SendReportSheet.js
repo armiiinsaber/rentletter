@@ -284,8 +284,8 @@ const SRS_CSS = css.global`
   .srs-fit-on { color: ${C.ink}; }
   .srs-actions { display: flex; flex-wrap: wrap; gap: 10px; }
   .srs-btn { flex: 1 1 180px; min-width: 0; min-height: 48px; margin: 0; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: 15px; font-weight: 700; line-height: 1.2; white-space: nowrap; cursor: pointer; }
-  .srs-send { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
-  .srs-send:disabled { background: ${C.ruleDark}; border-color: ${C.ruleDark}; cursor: not-allowed; }
+  .srs-send { background: ${C.redFill}; color: ${C.onRed}; border: 1px solid ${C.redFill}; }
+  .srs-send:disabled { background: ${C.sand}; border-color: ${C.sand}; color: ${C.paper}; cursor: not-allowed; }
   .srs-send[aria-busy='true'] { cursor: wait; }
   .srs-cancel { background: transparent; color: ${C.inkSoft}; border: 1px solid ${C.ruleDark}; font-weight: 600; }
   .srs-cancel:disabled { cursor: not-allowed; }

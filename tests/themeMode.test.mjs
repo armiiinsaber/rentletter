@@ -62,7 +62,7 @@ test('the tokens on the root: light always, dark only on a screen, by the device
   // Nothing dark outside a screen query: printing is the light theme.
   assert.equal(css.split(DARK.paper).length - 1, 2, 'the dark paper is set in the two screen blocks only');
   // The root's derived variables follow the theme too, also inside a subtree held light.
-  for (const b of [light, byDevice, held]) assert.match(b, /--paper: var\(--c-paper\); --rule: var\(--c-rule\); --action: var\(--c-red\); --focus-ring: var\(--c-ink\);/);
+  for (const b of [light, byDevice, held]) assert.match(b, /--paper: var\(--c-paper\); --rule: var\(--c-rule\); --action: var\(--c-red-fill\); --focus-ring: var\(--c-ink\);/);
   // Landing a choice: no element plays a colour transition of its own.
   assert.match(css, /html\[data-theme-switch\] \*, html\[data-theme-switch\] \*::before, html\[data-theme-switch\] \*::after \{ transition: none !important; \}/);
   assert.doesNotMatch(src('components/themeMode.js').replace(/\/\/.*$/gm, ''), /startViewTransition|transition:/, 'the choice lands at once, with no animation of its own');
@@ -159,7 +159,9 @@ test('the door mark on the page follows the theme; the kit and the app icons kee
   assert.deepEqual([w.barHex, w.barDark], [LIGHT.red, DARK.red], 'turning: the red of the theme in force, as hex');
   const ink = G.doorColours('ink');
   assert.deepEqual([ink.bar, ink.barHex, ink.barDark], ['var(--c-red-on-ink)', LIGHT.redOnInk, DARK.redOnInk], 'on an ink fill, the red for a mark on ink');
-  assert.equal(G.doorColours('red').letter, 'var(--c-card)', 'in a red button, the card\'s colour');
+  assert.deepEqual([ink.ground, ink.letter], ['var(--c-ink-fill)', 'var(--c-on-ink)'], 'on an ink fill, the fill\'s own ground and letters');
+  const red = G.doorColours('red');
+  assert.deepEqual([red.ground, red.letter], ['var(--c-red-fill)', 'var(--c-on-red)'], 'in a red button, the red fill and its white label');
   for (const k of ['realtor', 'admin', 'mark', 'logoInk']) assert.deepEqual({ ...G.doorColours(k), barHex: undefined, barDark: undefined }, { ...G.DOOR_GROUNDS[k], barHex: undefined, barDark: undefined }, `${k} keeps its colours`);
   const mark = src('components/brand/DoorMark.js');
   assert.match(mark, /const themed = !isStill && DOOR_THEMED\.includes\(kind\);/, 'the kit\'s still frames are drawn in the hex tokens');

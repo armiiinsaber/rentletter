@@ -82,7 +82,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
       </div>
       <style jsx global>{`
         body { background: ${C.inst}; color: ${C.instText}; }
-        ::selection { background: ${C.red}; color: ${C.paper}; }
+        ::selection { background: ${C.redFill}; color: ${C.onRed}; }
         .ad-shell { min-height: 100dvh; background: ${C.inst}; color: ${C.instText}; padding-bottom: max(24px, env(safe-area-inset-bottom)); font-family: ${FONT.sans}; }
         /* ── header ── */
         .ad-top { position: sticky; top: 0; z-index: 60; background: rgba(var(--c-inst-rgb), 0.86); -webkit-backdrop-filter: saturate(160%) blur(14px); backdrop-filter: saturate(160%) blur(14px); border-bottom: 1px solid ${C.instRule}; padding-top: env(safe-area-inset-top); }
@@ -126,7 +126,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         .ad-well { background: ${C.inst}; border: 1px solid ${C.instRule}; border-radius: ${R.ctrl}px; }
         /* ── buttons: primary (brand red) / secondary / danger (never brand red) / ghost ── */
         .ad-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: ${R.ctrl}px; padding: 10px 14px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; min-height: 44px; text-decoration: none; white-space: nowrap; color: ${C.instText}; background: ${C.instRaise}; }
-        .ad-btn.primary { background: ${C.red}; color: ${C.paper}; }
+        .ad-btn.primary { background: ${C.redFill}; color: ${C.onRed}; }
         .ad-btn.secondary { background: transparent; border-color: ${C.instRule}; color: ${C.instText}; }
         .ad-btn.danger { background: ${C.instDanger}; color: ${C.instText}; }
         .ad-btn.ghost { background: transparent; color: ${C.instMute}; }
@@ -151,7 +151,7 @@ export default function AdminShell({ page, title, signedIn = true, right = null,
         .ad-f { display: grid; gap: 5px; min-width: 0; }
         .ad-f-l { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: ${C.instMute}; }
         .ad-check { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; color: ${C.instText}; font-weight: 600; min-height: 44px; cursor: pointer; }
-        .ad-check input { width: 20px; height: 20px; accent-color: ${C.red}; }
+        .ad-check input { width: 20px; height: 20px; accent-color: ${C.redFill}; }
         /* ── segmented control ── */
         .ad-seg { display: inline-flex; background: ${C.instRaise}; border: 1px solid ${C.instRule}; border-radius: ${R.pill}px; padding: 3px; max-width: 100%; }
         .ad-seg button { border: none; background: transparent; color: ${C.instMute}; font: inherit; font-size: 13.5px; font-weight: 700; padding: 8px 14px; min-height: 38px; border-radius: ${R.pill}px; cursor: pointer; white-space: nowrap; flex: 1 1 auto; }

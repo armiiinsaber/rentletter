@@ -116,7 +116,7 @@ export default function ResetPassword() {
         title="Reset password"
         eyebrow="Realtor dashboard"
         heading="Set a new password."
-        footer={<a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
+        footer={<a href="/signin" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
       >
         <ScreenLoader label="Opening your reset link" fill={false} />
       </AuthShell>
@@ -129,9 +129,9 @@ export default function ResetPassword() {
         title="Reset password"
         eyebrow="Link expired"
         heading="That link has expired."
-        footer={<a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
+        footer={<a href="/signin" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
       >
-        <div style={authNoticeStyle}>Reset links last one hour and work once. <a href="/forgot-password" style={{ color: C.red, fontWeight: 700 }}>Request another</a> and we will email a fresh one.</div>
+        <div style={authNoticeStyle}>Reset links last one hour and work once. <a href="/forgot-password" style={{ color: C.redText, fontWeight: 700 }}>Request another</a> and we will email a fresh one.</div>
       </AuthShell>
     );
   }
@@ -141,7 +141,7 @@ export default function ResetPassword() {
       title="Reset password"
       eyebrow="Realtor dashboard"
       heading="Set a new password."
-      footer={<a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
+      footer={<a href="/signin" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
     >
       <form onSubmit={submit} noValidate>
         {error && <div style={authErrorStyle}>{error}</div>}
@@ -152,7 +152,7 @@ export default function ResetPassword() {
           placeholder="At least 8 characters" style={authInputStyle}
         />
         {touched && password.length > 0 && !passwordValid && (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Use at least 8 characters.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>Use at least 8 characters.</div>
         )}
         <label style={authLabelStyle} htmlFor="confirm">Confirm password</label>
         <input
@@ -161,7 +161,7 @@ export default function ResetPassword() {
           placeholder="Re enter password" style={authInputStyle}
         />
         {touched && confirm.length > 0 && !matches && (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don't match.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>Passwords don't match.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
           <Pending busy={loading} label="Saving your new password">Save new password →</Pending>

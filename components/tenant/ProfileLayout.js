@@ -250,7 +250,7 @@ export const ProfileLayoutStyles = () => (
     .tp-switch-row { display: grid; gap: var(--s-2); margin-bottom: var(--gap-card); min-width: 0; }
     .tp-switch { display: inline-grid; grid-template-columns: 1fr 1fr; justify-self: start; padding: 3px; border-radius: var(--btn-radius); background: ${C.card}; border: 1px solid var(--rule); }
     .tp-switch button { min-height: 38px; min-width: 104px; padding: 0 var(--s-4); border: none; border-radius: var(--btn-radius); background: transparent; color: ${C.inkSoft}; font: inherit; font-size: var(--t-body-2); font-weight: 700; cursor: pointer; }
-    .tp-switch button[aria-pressed='true'] { background: ${C.ink}; color: ${C.paper}; }
+    .tp-switch button[aria-pressed='true'] { background: ${C.inkFill}; color: ${C.onInk}; }
     .tp-switch button:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.card}, 0 0 0 4px ${C.ink}; }
     .tp-switch-line { margin: 0; font-size: var(--t-body-2); line-height: var(--lh-body); color: ${C.inkSoft}; text-wrap: balance; max-width: 68ch; }
     /* Preview: the sections, the progress and the apply box step aside; they stay in the page, so

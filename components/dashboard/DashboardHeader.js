@@ -117,7 +117,7 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
           .rl-hdr-searchwrap { display: inline-flex; width: min(520px, 100%); margin-right: auto; border-radius: 999px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 6px 20px rgba(var(--c-shadow-rgb), 0.06); }
           .rl-hdr-search { display: flex; align-items: center; gap: var(--s-3); width: 100%; min-height: 48px; padding: 0 var(--s-2) 0 var(--s-5); border-radius: 999px; border: none; background: transparent; color: ${C.inkSoft}; font-family: inherit; font-size: var(--t-body-2); font-weight: 500; text-align: left; cursor: text; }
           .rl-hdr-search-t { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; }
-          .rl-hdr-kbd { flex-shrink: 0; font-family: inherit; font-size: 12px; font-weight: 700; color: ${C.inkSoft}; background: rgba(var(--c-paper-rgb), 0.7); border: 1px solid ${C.ruleDark}; border-radius: 999px; padding: 4px 10px; }
+          .rl-hdr-kbd { flex-shrink: 0; font-family: inherit; font-size: 12px; font-weight: 700; color: ${C.inkSoft}; background: rgba(var(--c-paper-rgb), 0.7); border: 1px solid ${C.sand}; border-radius: 999px; padding: 4px 10px; }
           .rl-hdr-search:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
           .rl-hdr-bellwrap { width: 48px; height: 48px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 6px 20px rgba(var(--c-shadow-rgb), 0.06); }
           .rl-hdr-bellwrap :global(button) { width: 48px !important; height: 48px !important; }
@@ -155,8 +155,8 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          background: ${C.ink};
-          color: ${C.paper};
+          background: ${C.inkFill};
+          color: ${C.onInk};
           font-size: var(--t-body-2);
           font-weight: 800;
           letter-spacing: 0.02em;

@@ -39,7 +39,7 @@ export default function ReferModal({ open = true, listingId, applicant: given, o
   return (
     <Sheet open={open} onClose={onClose} label="Refer to another realtor" dirty={dirty} busy={busy} maxWidth={480} panelClassName="rl-modal">
       <form onSubmit={submit} style={{ padding: '4px clamp(18px, 4vw, 26px) clamp(18px, 4vw, 26px)' }}>
-        <div data-sheet-drag="" style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Refer to another realtor</div>
+        <div data-sheet-drag="" style={{ fontSize: 11, color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 8 }}>Refer to another realtor</div>
         <h3 style={{ fontSize: 'clamp(18px, 4vw, 22px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', lineHeight: 1.2, marginBottom: 6 }}>Pass {app.full_name ? app.full_name.split(' ')[0] : 'this applicant'} to a colleague</h3>
         <p style={{ fontSize: 13, color: C.inkSoft, lineHeight: 1.55, marginBottom: 16 }}>
           Good applicant, wrong unit? Refer them. <strong style={{ color: C.ink }}>Nothing is shared until the applicant approves</strong>, they get an email showing exactly what would go to the other realtor, and can decline. You’ll see the outcome here.
@@ -53,8 +53,8 @@ export default function ReferModal({ open = true, listingId, applicant: given, o
         </div>
         {error && <div role="alert" style={{ marginBottom: 12, padding: '10px 12px', background: C.redTint, borderLeft: `3px solid ${C.danger}`, borderRadius: R.ctrl, fontSize: 13, color: C.ink }}>{error}</div>}
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <button type="button" onClick={onClose} disabled={busy} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.rule}`, borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42 }}>Cancel</button>
-          <button type="submit" disabled={!valid || busy} style={{ background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: !valid || busy ? 'not-allowed' : 'pointer', opacity: !valid || busy ? 0.5 : 1, minHeight: 42, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <button type="button" onClick={onClose} disabled={busy} style={{ background: 'transparent', color: C.inkSoft, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 600, cursor: 'pointer', minHeight: 42 }}>Cancel</button>
+          <button type="submit" disabled={!valid || busy} style={{ background: C.redFill, color: C.onRed, border: 'none', borderRadius: 'var(--btn-radius)', padding: '11px var(--gap-card)', fontSize: 13, fontWeight: 700, cursor: !valid || busy ? 'not-allowed' : 'pointer', opacity: !valid || busy ? 0.5 : 1, minHeight: 42, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <Pending busy={busy} label="Sending the request" tone="red">Ask the applicant <Icon name="send" size={14} /></Pending>
           </button>
         </div>

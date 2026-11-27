@@ -83,7 +83,7 @@ export default function StatusBoard({ tiles, now, filter, onFilter, paths, onJum
         .sb-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
         @media (min-width: 1024px) { .sb-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); } }
         .sb :global(.sb-tile) { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-2); min-width: 0; min-height: 132px; margin: 0; padding: var(--s-4); border-radius: 24px; border: none; color: ${C.ink}; text-align: left; text-decoration: none; font-family: inherit; cursor: pointer; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.05); }
-        .sb :global(.sb-dark) { background: ${C.ink}; color: ${C.paper}; box-shadow: 0 12px 32px rgba(var(--c-shadow-rgb), 0.22); }
+        .sb :global(.sb-dark) { background: ${C.inkFill}; color: ${C.onInk}; box-shadow: 0 12px 32px rgba(var(--c-shadow-rgb), 0.22); }
         .sb :global(.sb-tile[aria-pressed='true']) { box-shadow: inset 0 0 0 2px ${C.ink}, 0 8px 24px rgba(var(--c-shadow-rgb), 0.05); }
         .sb :global(.sb-tile:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         .sb :global(.sb-label) { font-size: var(--t-body-2); font-weight: 700; line-height: 1.25; color: inherit; }

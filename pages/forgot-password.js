@@ -50,7 +50,7 @@ export default function ForgotPassword() {
         eyebrow="Check your email"
         heading="Reset link sent."
         sub="If an account exists for that address, we've emailed a link to reset your password."
-        footer={<a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
+        footer={<a href="/signin" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
       >
         <div style={authNoticeStyle}>Sent to <strong>{email.trim()}</strong>. The link expires soon, check spam if it doesn't arrive.</div>
       </AuthShell>
@@ -63,7 +63,7 @@ export default function ForgotPassword() {
       eyebrow="Realtor dashboard"
       heading="Forgot your password?"
       sub="Enter your email and we'll send you a link to set a new one."
-      footer={<a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
+      footer={<a href="/signin" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Back to sign in</a>}
     >
       <form onSubmit={submit} noValidate>
         {error && <div style={authErrorStyle}>{error}</div>}
@@ -74,7 +74,7 @@ export default function ForgotPassword() {
           placeholder="you@brokerage.com" style={authInputStyle}
         />
         {touched && email.trim() && !emailValid && (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Enter a valid email address.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>Enter a valid email address.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
           <Pending busy={loading} label="Sending your reset link">Send reset link →</Pending>

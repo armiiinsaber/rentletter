@@ -75,7 +75,7 @@ export default function BrokerageConfirmPage({ token, state, record }) {
               <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-3) 0 0', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}`, textWrap: 'balance' }}>Confirming says the brokerage exists and this realtor is registered with it. Nothing else is agreed to.</p>
               {error && <div role="alert" style={{ marginTop: 'var(--s-3)', fontSize: 'var(--t-body-2)', color: C.danger }}>{error}</div>}
               <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-4)' }}>
-                <button type="button" onClick={() => answer('confirm')} disabled={!!busy} style={{ ...btn, background: C.ink, color: C.paper, border: `1.5px solid ${C.ink}` }}>
+                <button type="button" onClick={() => answer('confirm')} disabled={!!busy} style={{ ...btn, background: C.inkFill, color: C.onInk, border: `1.5px solid ${C.inkFill}` }}>
                   <Pending busy={busy === 'confirm'} label="Saving your answer">Yes, confirm</Pending>
                 </button>
                 <button type="button" onClick={() => answer('not_ours')} disabled={!!busy} style={{ ...btn, background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}` }}>

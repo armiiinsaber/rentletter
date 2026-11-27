@@ -30,7 +30,7 @@ export default function JoinByInvite() {
           <span aria-hidden="true" style={{ display: 'block', width: 26, height: 3, background: C.red, borderRadius: 1, margin: '0 auto 18px' }} />
           <h1 className="rl-serif" style={{ fontSize: 'clamp(28px, 6vw, 40px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 14, textWrap: 'balance' }}>A realtor invited you to Rentletter.</h1>
           <p style={{ fontSize: 16.5, color: C.inkSoft, lineHeight: 1.55, marginBottom: 26, textWrap: 'balance' }}>A full background check on every applicant. Read and organized, so you close sooner with confidence.</p>
-          <a href="/signup" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 52, padding: '0 var(--gap-card)', background: C.red, color: C.paper, borderRadius: 'var(--btn-radius)', fontSize: 16, fontWeight: 700, textDecoration: 'none', width: '100%', maxWidth: 320 }}>Create your account</a>
+          <a href="/signup" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 52, padding: '0 var(--gap-card)', background: C.redFill, color: C.onRed, borderRadius: 'var(--btn-radius)', fontSize: 16, fontWeight: 700, textDecoration: 'none', width: '100%', maxWidth: 320 }}>Create your account</a>
           <p style={{ fontSize: 13, color: C.inkMute, marginTop: 16, lineHeight: 1.5, textWrap: 'balance' }}>Already have an account? <a href="/signin" style={{ color: C.ink, fontWeight: 600 }}>Sign in</a></p>
         </div>
       </main>

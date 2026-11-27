@@ -317,7 +317,7 @@ export default function Admin({ authed: initialAuthed }) {
         .ad-table td { padding: 10px 12px; border-bottom: 1px solid ${C.instRule}; vertical-align: middle; color: ${C.instText}; }
         .ad-table tr:last-child td { border-bottom: none; }
         .ad-table tr.sel td { background: rgba(var(--c-red-bright-rgb), 0.08); }
-        .ad-table input[type="checkbox"], .ad-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: ${C.red}; }
+        .ad-table input[type="checkbox"], .ad-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: ${C.redFill}; }
         .ad-list { display: none; gap: 8px; }
         .ad-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; cursor: pointer; }
         /* An email is one line: whole where it fits, cut short where it cannot (a very long one at

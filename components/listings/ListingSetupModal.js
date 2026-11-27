@@ -766,8 +766,8 @@ const LF_CSS = css.global`
   .lf-board-toggle { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; margin-top: var(--s-2); padding: 0; background: transparent; border: none; border-top: 1px solid ${C.rule}; cursor: pointer; font: inherit; color: ${C.ink}; text-align: left; }
   .lf-foot { flex: none; display: flex; gap: var(--s-2); justify-content: flex-end; padding: var(--s-3) clamp(20px, 4vw, 28px) calc(var(--s-3) + env(safe-area-inset-bottom, 0px)); border-top: 1px solid ${C.rule}; background: ${C.paper}; }
   .lf-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 48px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body); font-weight: 700; cursor: pointer; white-space: nowrap; }
-  .lf-btn-red { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
-  .lf-btn-red:disabled { background: ${C.ruleDark}; border-color: ${C.ruleDark}; cursor: not-allowed; }
+  .lf-btn-red { background: ${C.redFill}; color: ${C.onRed}; border: 1px solid ${C.redFill}; }
+  .lf-btn-red:disabled { background: ${C.sand}; border-color: ${C.sand}; color: ${C.paper}; cursor: not-allowed; }
   .lf-btn-line { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; }
   .lf-btn-quiet { background: transparent; color: ${C.ink}; border: 1px solid transparent; }
   .lf-btn-big { width: 100%; min-height: 56px; font-size: 18px; }

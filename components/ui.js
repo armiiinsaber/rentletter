@@ -42,8 +42,9 @@ export const GlobalStyle = () => (
       --btn-radius: ${R.pill}px;
       --gap-section: 32px; --gap-card: 16px; --gap-line: 8px;
       /* The red budget: --action fills exactly one button per screen, the screen's primary action.
-         Every other control is ink. The red tick and the red dot are signals, not controls. */
-      --action: ${C.red};
+         Every other control is ink. The red tick and the red dot are signals, not controls. The fill
+         is the brand red in both themes, its label white (C.onRed). */
+      --action: ${C.redFill};
       /* The field focus ring: ink, 18.05 to 1 on paper and 19.16 on white. An instrument surface
          sets its own (components/admin/AdminShell.js). */
       --focus-ring: ${C.ink};
@@ -91,9 +92,9 @@ export const GlobalStyle = () => (
     }`)}
     /* The glows behind the realtor's shell (components/dashboard/DashShell.js): a faint red above and
        a faint sand low on the left. In dark the same two, barely there: the bright red at 6 percent
-       and the dark theme's sand (ruleDark) at 12, so they warm the charcoal and never read as a haze. */
-    :root { --glow-red: rgba(var(--c-red-rgb), 0.1); --glow-red-soft: rgba(var(--c-red-rgb), 0.04); --glow-sand: rgba(var(--c-rule-dark-rgb), 0.55); --glow-sand-soft: rgba(var(--c-rule-dark-rgb), 0.22); }
-    ${inDark(`:root { --glow-red: rgba(var(--c-red-rgb), 0.06); --glow-red-soft: rgba(var(--c-red-rgb), 0.022); --glow-sand: rgba(var(--c-rule-dark-rgb), 0.12); --glow-sand-soft: rgba(var(--c-rule-dark-rgb), 0.05); }`)}
+       and the dark theme's sand at 12, so they warm the charcoal and never read as a haze. */
+    :root { --glow-red: rgba(var(--c-red-rgb), 0.1); --glow-red-soft: rgba(var(--c-red-rgb), 0.04); --glow-sand: rgba(var(--c-sand-rgb), 0.55); --glow-sand-soft: rgba(var(--c-sand-rgb), 0.22); }
+    ${inDark(`:root { --glow-red: rgba(var(--c-red-rgb), 0.06); --glow-red-soft: rgba(var(--c-red-rgb), 0.022); --glow-sand: rgba(var(--c-sand-rgb), 0.12); --glow-sand-soft: rgba(var(--c-sand-rgb), 0.05); }`)}
     .rl-glass { --glass-tone: var(--c-paper-rgb); background-color: rgba(var(--glass-tone), var(--glass-alpha, var(--glass-fill))); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge); }
     .rl-glass.rl-glass-ink { --glass-tone: 16, 16, 18; --glass-alpha: var(--glass-fill-ink); --glass-solid: ${C.inst}; --glass-edge: rgba(var(--c-inst-ink-rgb), 0.12); --glass-hi: rgba(var(--c-inst-ink-rgb), 0.08); }
     .rl-glass.rl-glass-dim { --glass-tone: var(--glass-dim); --glass-alpha: var(--glass-dim-fill); --glass-solid: var(--glass-dim-solid); --glass-blur: saturate(120%) blur(6px); --glass-edge: transparent; --glass-hi: transparent; }
@@ -204,16 +205,16 @@ export const GlobalStyle = () => (
        one width, so a row never mixes a full width control with a narrower one. */
     /* Status pills (StatusPills below): each fact its own pill, wrapping as a whole unit, 8px apart
        both ways, left aligned. Paper fill, rule border and ink text on white cards; the one fact
-       that needs the realtor's action is filled ink. On ink surfaces, transparent with a paper
-       border at 24 percent. Never animated: no transition, no animation, full opacity. In dark the
-       ink fill is light, so the action pill is light with dark text: the one light pill. */
+       that needs the realtor's action is filled ink (inkFill). On ink surfaces, transparent with an
+       onInk border at 24 percent. Never animated: no transition, no animation, full opacity. In dark
+       the ink fill is the raised charcoal, so the action pill is raised with off white text. */
     .rl-pills { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-start; gap: 8px; margin: 0; padding: 0; list-style: none; }
     .rl-pill { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 28px; max-width: 100%; padding: 0 12px;
       border-radius: 999px; border: 1px solid ${C.rule}; background: ${C.paper}; color: ${C.ink};
       font-family: ${FONT.sans}; font-size: 14px; font-weight: 500; line-height: 1; font-variant-numeric: tabular-nums;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 1; transition: none; animation: none; }
-    .rl-pill.rl-pill-action { background: ${C.ink}; border-color: ${C.ink}; color: ${C.paper}; }
-    .rl-pills.rl-pills-ink .rl-pill { background: transparent; border-color: rgba(${RGB.paper}, 0.24); color: ${C.paper}; }
+    .rl-pill.rl-pill-action { background: ${C.inkFill}; border-color: ${C.inkFill}; color: ${C.onInk}; }
+    .rl-pills.rl-pills-ink .rl-pill { background: transparent; border-color: rgba(${RGB.onInk}, 0.24); color: ${C.onInk}; }
     /* A row whose pills may wrap their text (the Pipeline's open row, components/dashboard/PeopleList.js):
        a pill whose text holds one line is the same 28px pill; one longer than its row (a long address)
        wraps inside itself, balanced, and grows with its lines, never past the row or the screen. */
@@ -230,7 +231,7 @@ export const GlobalStyle = () => (
     input, textarea, select { border-radius: var(--card-radius); }
     input[type="range"] { border-radius: ${R.pill}px; }
     a { color: inherit; }
-    ::selection { background: ${C.red}; color: ${C.paper}; }
+    ::selection { background: ${C.redFill}; color: ${C.onRed}; }
 
     /* A realtor's uploaded logo (.rl-logo-plate on its img): as it is in light; in dark on a light
        plate, so a dark logo never disappears into the charcoal. Not inside a subtree held light. */
@@ -488,7 +489,8 @@ export const ConfirmSheet = ({
   open, title, body, footer = null, confirmLabel = 'Confirm', cancelLabel = 'Cancel',
   danger = false, busy = false, busyLabel = null, onConfirm, onCancel,
 }) => {
-  const accent = danger ? C.danger : C.red;
+  // Brand red with its white label, or danger with paper on it.
+  const accent = danger ? C.danger : C.redFill; const label = danger ? C.paper : C.onRed;
   return (
     <Sheet open={open} onClose={onCancel} role="alertdialog" label={title} busy={busy} maxWidth={480}>
       <div style={{ padding: '4px 20px 20px' }}>
@@ -500,7 +502,7 @@ export const ConfirmSheet = ({
           {/* A confirmation is only ever a direct hit (lib/motion.js: the tap resolver skips it). */}
           <button data-destructive="" onClick={onConfirm} disabled={busy} autoFocus
             style={{
-              flex: '1 1 0', minWidth: 0, background: busy ? C.busy : accent, color: C.paper, border: `1px solid ${busy ? C.busy : accent}`,
+              flex: '1 1 0', minWidth: 0, background: busy ? C.busy : accent, color: label, border: `1px solid ${busy ? C.busy : accent}`,
               borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 15, fontWeight: 700,
               cursor: busy ? 'wait' : 'pointer', minHeight: 48,
             }}>

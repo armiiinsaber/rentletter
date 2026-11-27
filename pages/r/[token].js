@@ -231,7 +231,7 @@ export default function ReportPage({ token, payload, answers: initial, state, sa
             <div className="rl-ctrl-row" style={{ marginTop: 'var(--s-4)' }}>
               {given && !isEditing ? (
                 <button type="button" data-answer={given.answer} onClick={() => setEditing((e) => ({ ...e, [a.rank]: true }))} aria-label={`You answered ${answerLine(given.answer)}. Tap to change.`}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, padding: '0 var(--gap-card)', background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)', minHeight: 44, padding: '0 var(--gap-card)', background: C.inkFill, color: C.onInk, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   <Icon name="check" size={14} color={C.red} strokeWidth={2.5} /> {given.answer === 'meet' ? 'You want to meet them' : 'Not for you'}
                 </button>
               ) : (

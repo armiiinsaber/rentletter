@@ -36,7 +36,7 @@ export default function Billing({ profile, entitlement: e }) {
       <div style={{ minHeight: '100vh', background: C.paper }}>
         <DashboardHeader profile={profile} />
         <main style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(20px, 4vw, 40px) clamp(16px, 4vw, 32px) 56px', paddingTop: 'calc(clamp(20px, 4vw, 40px) + env(safe-area-inset-top, 0px))' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}><span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Plans</span></div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}><span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} /><span style={{ fontSize: 11, color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Plans</span></div>
           {e.status === 'founding' ? (
             <>
               <h1 className="rl-serif" style={{ fontSize: 'clamp(26px, 5vw, 36px)', color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10, textWrap: 'balance' }}>Founding member.</h1>
@@ -64,5 +64,5 @@ export default function Billing({ profile, entitlement: e }) {
 
 function PlanPickerPortalOnly() {
   const open = async () => { const r = await fetch('/api/billing/portal', { method: 'POST' }); const j = await r.json().catch(() => ({})); if (r.ok && j.url) window.location.href = j.url; else alert(j.error || 'Could not open the billing portal.'); };
-  return <button type="button" onClick={open} style={{ minHeight: 48, padding: '0 22px', border: 'none', borderRadius: 8, background: C.ink, color: C.paper, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Open the billing portal</button>;
+  return <button type="button" onClick={open} style={{ minHeight: 48, padding: '0 22px', border: 'none', borderRadius: 8, background: C.inkFill, color: C.onInk, fontSize: 15, fontWeight: 700, cursor: 'pointer' }}>Open the billing portal</button>;
 }

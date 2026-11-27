@@ -261,7 +261,7 @@ export default function Home() {
               <div className="lp-hero-text">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
                   <span className="rl-rule-draw" style={{ height: 2, background: C.red, borderRadius: 1, display: 'block' }} />
-                  <span style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                  <span style={{ fontSize: 11, color: C.redText, fontWeight: 700, letterSpacing: '0.14em', textTransform: 'uppercase' }}>
                     Ontario and BC
                   </span>
                 </div>
@@ -272,7 +272,7 @@ export default function Home() {
                   color: C.ink,
                   marginBottom: 20,
                 }}>
-                  {HERO_HEADLINE.map((line, i) => <span key={line} style={{ display: 'block', whiteSpace: 'nowrap', color: i === HERO_HEADLINE.length - 1 ? C.red : C.ink }}>{line}</span>)}
+                  {HERO_HEADLINE.map((line, i) => <span key={line} style={{ display: 'block', whiteSpace: 'nowrap', color: i === HERO_HEADLINE.length - 1 ? C.redText : C.ink }}>{line}</span>)}
                 </h1>
                 <p className="lp-sub" style={{ lineHeight: 1.45, color: C.inkSoft, margin: '0 0 var(--gap-line)', textWrap: 'balance' }}>
                   <span className="lp-sentence">{noWidow('Tenants apply from one link and every document is read before you open it.')}</span>
@@ -287,7 +287,7 @@ export default function Home() {
                       at 390. The sign up is the page's one red action. */}
                   <div className="rl-ctrl-row" style={{ marginBottom: 18 }}>
                     <a href="/signup" className="rl-btn" style={{
-                      background: 'var(--action)', color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
+                      background: 'var(--action)', color: C.onRed, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
                       padding: '0 28px', fontSize: 15, fontWeight: 600,
                       display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
                     }}>
@@ -354,7 +354,7 @@ export default function Home() {
           <section style={{ borderTop: `1px solid ${C.rule}` }}>
             <div className="lp-w lp-pricing" style={{ padding: 'clamp(48px, 7vw, 88px) clamp(20px, 4vw, 32px)' }}>
               <div>
-                <div className="lp-eyebrow" style={{ color: C.red }}>Pricing</div>
+                <div className="lp-eyebrow" style={{ color: C.redText }}>Pricing</div>
                 {/* Two sentences, each on lines of its own, so the second never begins at the end of the first's line. */}
                 <h2 className="rl-serif lp-h2-a" style={{ lineHeight: 1.08, letterSpacing: '-0.02em', color: C.ink, margin: '0 0 var(--gap-line)', maxWidth: 760 }}>
                   <span className="lp-fit-s">{noWidow('Free to join.')}</span>{' '}
@@ -391,7 +391,7 @@ export default function Home() {
           {/* ── HOW IT WORKS ── */}
           <section className="lp-w" style={{ padding: 'clamp(64px, 10vw, 112px) clamp(20px, 4vw, 32px)' }}>
             <div className="lp-how-head" style={{ marginBottom: 'var(--s-5)' }}>
-              <div className="lp-eyebrow" style={{ color: C.red }}>How it works</div>
+              <div className="lp-eyebrow" style={{ color: C.redText }}>How it works</div>
               <h2 className="rl-serif lp-h2-b" style={{ lineHeight: 1.12, letterSpacing: '-0.02em', color: C.ink, margin: 0 }}>
                 {noWidow('From listing to landlord in four steps.')}
               </h2>
@@ -401,8 +401,8 @@ export default function Home() {
                 <div key={st.n} style={{ paddingTop: 22, position: 'relative' }}>
                   <span className="rl-step-bar" style={{ background: C.red, position: 'absolute', top: 0, left: 0, right: 0 }} />
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
-                    <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.red, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: SH.rest }}>
-                      <Icon name={st.icon} size={20} color={C.paper} />
+                    <span style={{ width: 40, height: 40, borderRadius: R.ctrl, background: C.redFill, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxShadow: SH.rest }}>
+                      <Icon name={st.icon} size={20} color={C.onRed} />
                     </span>
                     <span className="rl-serif" aria-hidden="true" style={{ fontSize: 22, color: C.rule }}>{st.n}</span>
                   </div>
@@ -443,7 +443,7 @@ export default function Home() {
                     border: `1px solid ${applyError ? C.red : C.ruleDark}`, background: C.paper, color: C.ink,
                   }} />
                 <button onClick={goToApply} className="rl-btn" style={{
-                  flexShrink: 0, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)',
+                  flexShrink: 0, background: C.inkFill, color: C.onInk, border: 'none', borderRadius: 'var(--btn-radius)',
                   minHeight: 44, padding: '0 var(--gap-card)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 }}>
@@ -451,16 +451,16 @@ export default function Home() {
                 </button>
               </div>
               {applyError
-                ? <div className="lp-tenant-note" style={{ fontSize: 13, color: C.red, lineHeight: 1.5 }}>{applyError}</div>
+                ? <div className="lp-tenant-note" style={{ fontSize: 13, color: C.redText, lineHeight: 1.5 }}>{applyError}</div>
                 : <div className="lp-tenant-note" style={{ fontSize: 12.5, color: C.inkMute, lineHeight: 1.5 }}>{noWidow('The full link or just the code at the end. No account needed.')}</div>}
             </div>
           </section>
 
-          {/* ── CLOSING BAND, ink, edge to edge ── */}
-          <section style={{ background: C.ink, color: C.paper, marginTop: 'clamp(20px, 4vw, 40px)' }}>
+          {/* ── CLOSING BAND, the ink fill (a raised charcoal in dark), edge to edge ── */}
+          <section style={{ background: C.inkFill, color: C.onInk, marginTop: 'clamp(20px, 4vw, 40px)' }}>
             <div className="lp-w" style={{ padding: 'clamp(56px, 8vw, 96px) clamp(20px, 4vw, 32px)', borderLeft: `6px solid ${C.red}` }}>
               <div className="lp-close">
-                <h2 className="rl-serif lp-h2-c" style={{ letterSpacing: '-0.025em', lineHeight: 1.04, margin: '0 0 18px', color: C.paper }}>
+                <h2 className="rl-serif lp-h2-c" style={{ letterSpacing: '-0.025em', lineHeight: 1.04, margin: '0 0 18px', color: C.onInk }}>
                   {noWidow('Ready when your next listing is.')}
                 </h2>
                 <p className="lp-close-sub" style={{ lineHeight: 1.6, color: C.inkInverse, margin: '0 0 32px', textWrap: 'balance' }}>
@@ -468,14 +468,14 @@ export default function Home() {
                 </p>
                 <div className="rl-ctrl-row">
                   <a href="/signup" className="rl-btn" style={{
-                    background: 'var(--action)', color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
+                    background: 'var(--action)', color: C.onRed, textDecoration: 'none', borderRadius: 'var(--btn-radius)',
                     padding: '0 28px', fontSize: 15, fontWeight: 600,
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 9,
                   }}>
                     Create account <span className="rl-arrow" style={{ display: 'inline-flex' }}><Icon name="arrow" size={17} /></span>
                   </a>
                   <a href="/demo/dashboard" className="rl-btn" style={{
-                    background: 'transparent', color: C.paper, border: '1px solid rgba(var(--c-paper-rgb), 0.3)', textDecoration: 'none',
+                    background: 'transparent', color: C.onInk, border: '1px solid rgba(var(--c-on-ink-rgb), 0.4)', textDecoration: 'none',
                     borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 15, fontWeight: 500,
                     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                   }}>
@@ -669,7 +669,7 @@ export default function Home() {
 
           <div style={{ maxWidth: 820, margin: '0 auto', padding: 'clamp(40px, 6vw, 64px) clamp(20px, 4vw, 32px) 64px' }}>
             <h1 className="rl-serif" style={{ fontSize: 'clamp(32px, 5.5vw, 48px)', color: C.ink, marginBottom: 12, letterSpacing: '-0.025em', lineHeight: 1.04, textWrap: 'balance' }}>
-              Your application is <span style={{ color: C.red, whiteSpace: 'nowrap' }}>submitted.</span>
+              Your application is <span style={{ color: C.redText, whiteSpace: 'nowrap' }}>submitted.</span>
             </h1>
             <p style={{ fontSize: 16, color: C.inkSoft, marginBottom: 32, lineHeight: 1.55 }}>
               Below is your application number and tenant resume. Share these with the listing realtor or landlord.
@@ -678,27 +678,27 @@ export default function Home() {
             {/* Application Number Card, the trust signal for landlords */}
             {applicationNumber && (
               <div style={{
-                background: C.ink, color: C.paper, borderRadius: R.card,
+                background: C.inkFill, color: C.onInk, borderRadius: R.card,
                 padding: '24px 28px', marginBottom: 24,
                 position: 'relative', overflow: 'hidden',
               }}>
                 <div style={{ position: 'absolute', top: 0, left: 0, width: 4, height: '100%', background: C.red }} />
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
-                    <div style={{ fontSize: 11, color: C.red, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, color: C.blush, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>
                       Your Application Number
                     </div>
                     <div className="rl-serif" style={{ fontSize: 26, letterSpacing: '0.02em', marginBottom: 10, fontFamily: 'monospace' }}>
                       {applicationNumber}
                     </div>
                     <p style={{ fontSize: 13, color: C.inkInverse, lineHeight: 1.55, maxWidth: 480 }}>
-                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants, for free, at <span style={{ color: C.paper, fontWeight: 600 }}>rentletter.ca/dashboard</span>
+                      Share this number with your landlord or realtor. They can verify your application and compare you against other tenants, for free, at <span style={{ color: C.onInk, fontWeight: 600 }}>rentletter.ca/dashboard</span>
                     </p>
                     <a href="/my-application"
                       style={{
                         display: 'inline-block', marginTop: 14,
                         fontSize: 12, fontWeight: 600,
-                        color: C.paper, textDecoration: 'underline',
+                        color: C.onInk, textDecoration: 'underline',
                       }}>
                       → See who viewed your application or revoke it
                     </a>

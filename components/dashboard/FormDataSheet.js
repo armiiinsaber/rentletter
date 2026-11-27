@@ -57,7 +57,7 @@ export default function FormDataSheet({ open, listingId, onClose }) {
   return (
     <Sheet open={open} onClose={onClose} label="Form data" tall maxWidth={640} panelClassName="rl-modal">
       <div data-form-data="" style={{ padding: '4px var(--s-4) var(--s-5)' }}>
-        <div data-sheet-drag="" style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Form data</div>
+        <div data-sheet-drag="" style={{ fontSize: 'var(--t-eyebrow)', color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Form data</div>
         <h3 data-sheet-drag="" style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 'var(--s-2)', textWrap: 'balance' }}>{state.data ? noWidow(state.data.listingName || 'This listing') : 'This listing'}</h3>
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', marginBottom: 'var(--s-4)', textWrap: 'balance' }}>{noWidow('Every value an agreement to lease asks for, in its order. Copy and paste into the forms tool you already use.')}</p>
         {state.loading ? <Loader label="Loading the form data" /> : null}

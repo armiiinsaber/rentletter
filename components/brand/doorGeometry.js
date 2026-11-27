@@ -63,17 +63,22 @@ export const DOOR_GROUNDS = Object.freeze({
 // The kinds that sit on the page follow its theme (components/themeMode.js): in the page their
 // ground, bar and letters are the theme's variables, so the mark changes with the page, and the
 // knob stays ink on the red door. Turning, the bar is the theme's own red as one plain colour
-// (barHex in light, barDark in dark). On an ink fill (the loader in a pending ink button, which is
-// light in dark) the door is the red for a mark on ink, redOnInk; on a red button (the red loader)
-// the letters are the card's colour. The app icons and the admin's ink kinds keep their colours.
+// (barHex in light, barDark in dark). On an ink fill (the loader in a pending ink button, a raised
+// charcoal in dark) the ground and the letters are the fill's own (inkFill, onInk) and the door the
+// red for a mark on it, redOnInk; on a red button (the red loader) the ground is the red fill and
+// the letters its white label (redFill, onRed). The app icons and the admin's ink kinds keep their
+// colours.
 export const DOOR_THEMED = Object.freeze(['wordmark', 'paper', 'ink', 'logo', 'red']);
 const TOKEN_OF = Object.freeze(Object.fromEntries(['paper', 'ink', 'card', 'red'].map((k) => [C[k], k])));
+const ON_FILL = Object.freeze({ ink: { ground: 'inkFill', letter: 'onInk', bar: 'redOnInk' }, red: { ground: 'redFill', letter: 'onRed' } });
 export function doorColours(kind) {
   const c = DOOR_GROUNDS[kind] || DOOR_GROUNDS.wordmark;
   if (!DOOR_THEMED.includes(kind)) return { ...c, barHex: c.bar, barDark: c.bar };
-  const v = (hex) => (TOKEN_OF[hex] ? `var(${cssVar(TOKEN_OF[hex])})` : hex);
-  const bar = kind === 'ink' ? 'redOnInk' : TOKEN_OF[c.bar];
-  return { ground: v(c.ground), bar: bar ? `var(${cssVar(bar)})` : c.bar, letter: v(c.letter), knob: c.knob, barHex: bar ? C[bar] : c.bar, barDark: bar ? DARK[bar] : c.bar };
+  const own = ON_FILL[kind] || {};
+  const tok = (part) => own[part] || TOKEN_OF[c[part]];
+  const v = (part) => (tok(part) ? `var(${cssVar(tok(part))})` : c[part]);
+  const bar = tok('bar');
+  return { ground: v('ground'), bar: v('bar'), letter: v('letter'), knob: c.knob, barHex: bar ? C[bar] : c.bar, barDark: bar ? DARK[bar] : c.bar };
 }
 const LOGO_KINDS = ['wordmark', 'logo', 'logoInk'];
 const ICON_KINDS = ['realtor', 'admin', 'mark'];

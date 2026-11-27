@@ -130,7 +130,7 @@ test('5. one style of buttons on each screen, and red only for the one main acti
   assert.doesNotMatch(page, /\bC\.red\b/);
   assert.match(code('components/dashboard/ProfileView.js'), /className="ds-btn ds-btn-line" data-sign-out=""/);
   assert.match(code('components/dashboard/InviteRealtor.js'), /data-invite-open-circle="" className="ds-btn ds-btn-line"/);
-  assert.match(code('components/dashboard/DashShell.js'), /:global\(\.ds-btn-ink\) \{ background: \$\{C\.ink\}; color: \$\{C\.paper\}; border: 1px solid \$\{C\.ink\}; \}/);
+  assert.match(code('components/dashboard/DashShell.js'), /:global\(\.ds-btn-ink\) \{ background: \$\{C\.inkFill\}; color: \$\{C\.onInk\}; border: 1px solid \$\{C\.inkFill\}; \}/);
   // Remove asks in the page, and the confirm is marked as the destructive control.
   assert.match(body, /\{removeAsk \? \(\s*<div className="pe-ask" data-logo-remove-ask="">/);
   assert.doesNotMatch(body, /window\.confirm|\bconfirm\(/, 'never a browser dialog');

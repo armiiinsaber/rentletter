@@ -181,7 +181,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         .ds-alert { margin: 0 var(--ds-pad, clamp(16px, 4vw, 32px)) var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.dangerTint}; border-left: 3px solid ${C.danger}; border-radius: var(--btn-radius); font-size: var(--t-body-2); color: ${C.ink}; }
         /* The page's own background: the paper (the canvas, components/ui.js) with two radial colour
            fields painted on the shell itself, decorative, behind everything: a faint red glow above
-           the top centre, a faint warm sand glow low on the left (the rule tone, ruleDark), each at the
+           the top centre, a faint warm sand glow low on the left (the sand token), each at the
            theme's own level (--glow-*, components/ui.js: in dark barely there). They scroll with the page, under
            the glass that floats over it. Neither reaches the page's bottom edge, and nothing of the
            page's own tone does (the sidebar floats 16px clear of it), so the page's last row is the
@@ -189,7 +189,7 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         .ds { position: relative;
           background:
             radial-gradient(ellipse 560px 400px at 58% -40px, var(--glow-red), var(--glow-red-soft) 55%, rgba(var(--c-red-rgb), 0) 100%),
-            radial-gradient(ellipse 640px 380px at -40px calc(100% - 420px), var(--glow-sand), var(--glow-sand-soft) 55%, rgba(var(--c-rule-dark-rgb), 0) 100%);
+            radial-gradient(ellipse 640px 380px at -40px calc(100% - 420px), var(--glow-sand), var(--glow-sand-soft) 55%, rgba(var(--c-sand-rgb), 0) 100%);
           background-repeat: no-repeat; }
         .ds-main { min-width: 0; }
         .ds-side { display: none; }
@@ -208,14 +208,14 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           .ds-place { display: flex; align-items: center; gap: var(--s-3); min-height: 44px; padding: 0 var(--s-3); border-radius: 999px; color: ${C.inkSoft}; font-size: var(--t-body-2); font-weight: 600; text-decoration: none; white-space: nowrap; }
           .ds-place-icon { display: inline-flex; flex-shrink: 0; }
           .ds-place-label { flex: 1 1 auto; min-width: 0; }
-          .ds-place[aria-current='page'] { background: ${C.ink}; color: ${C.paper}; font-weight: 700; }
+          .ds-place[aria-current='page'] { background: ${C.inkFill}; color: ${C.onInk}; font-weight: 700; }
           .ds-place:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
           .ds-num { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 13px; color: inherit; }
           .ds-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: ${C.red}; flex-shrink: 0; }
           .ds-place[aria-current='page'] .ds-dot { background: ${C.redOnInk}; }
           .ds-me { margin-top: auto; display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center; column-gap: var(--s-3); row-gap: var(--s-1); min-height: 56px; padding: var(--s-2); border-radius: 20px; text-decoration: none; color: ${C.ink}; }
           .ds-me:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
-          .ds-me-avatar { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: ${C.ink}; color: ${C.paper}; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; }
+          .ds-me-avatar { flex-shrink: 0; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: ${C.inkFill}; color: ${C.onInk}; font-size: 13px; font-weight: 800; letter-spacing: 0.02em; }
           .ds-me-name { min-width: 0; font-size: var(--t-body-2); font-weight: 700; line-height: 1.3; white-space: nowrap; }
           .ds-me-brok { grid-column: 1 / -1; font-size: 12px; color: ${C.inkSoft}; line-height: 1.35; text-wrap: balance; }
           /* The header in the main area: no wordmark (the sidebar has it); the search bar at its left
@@ -242,16 +242,16 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         }
         @media (min-width: 1024px) and (hover: hover) {
           .ds-place:hover { background: rgba(var(--c-ink-rgb), 0.06); color: ${C.ink}; }
-          .ds-place[aria-current='page']:hover { background: ${C.ink}; color: ${C.paper}; }
+          .ds-place[aria-current='page']:hover { background: ${C.inkFill}; color: ${C.onInk}; }
           .ds-me:hover { background: rgba(var(--c-ink-rgb), 0.05); }
         }
         /* The buttons of the dashboard: one height, one radius, one padding. Global, so a sheet the
            dashboard opens (components/Sheet.js renders on the body) carries the same buttons. */
         :global(.ds-btn) { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; text-decoration: none; cursor: pointer; white-space: nowrap; }
-        :global(.ds-btn-primary) { background: ${C.red}; color: ${C.paper}; border: 1px solid ${C.red}; }
+        :global(.ds-btn-primary) { background: ${C.redFill}; color: ${C.onRed}; border: 1px solid ${C.redFill}; }
         :global(.ds-btn-line) { background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; }
         /* The main button of a group that is not the view's one main action: ink, never red. */
-        :global(.ds-btn-ink) { background: ${C.ink}; color: ${C.paper}; border: 1px solid ${C.ink}; }
+        :global(.ds-btn-ink) { background: ${C.inkFill}; color: ${C.onInk}; border: 1px solid ${C.inkFill}; }
         :global(.ds-btn-quiet) { background: transparent; color: ${C.ink}; border: 1px solid transparent; }
         :global(.ds-btn:disabled) { opacity: 0.55; cursor: default; }
         :global(.ds-btn:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }

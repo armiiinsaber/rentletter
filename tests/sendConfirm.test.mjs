@@ -186,8 +186,9 @@ test('every way in opens the sheet: the card, the tile and Needs you on the dash
 
 test('red is the one action on the sheet; the error line is the danger red', () => {
   const s = code('components/dashboard/SendReportSheet.js');
-  const reds = s.split('\n').filter((l) => /\bC\.red\b/.test(l)).map((l) => l.trim().split(' {')[0]);
+  const reds = s.split('\n').filter((l) => /\bC\.red(Fill|Text)?\b/.test(l)).map((l) => l.trim().split(' {')[0]);
   assert.deepEqual(reds, ['.srs-send'], 'only Send to the landlord');
+  assert.match(s, /\.srs-send \{ background: \$\{C\.redFill\}; color: \$\{C\.onRed\}; border: 1px solid \$\{C\.redFill\}; \}/, 'the brand red with its white label, in both themes');
   assert.match(s, /\.srs-note \{[^}]*color: \$\{C\.danger\};/);
   // A constant tagged with css.global, so styled-jsx gives the style a name of its own (tests/styleNames.test.mjs).
   assert.match(s, /<style jsx global>\{SRS_CSS\}<\/style>/);

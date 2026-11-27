@@ -50,7 +50,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
     <section id="referrals" className={embedded ? '' : 'dash-card span-4'} style={{ padding: embedded ? '4px 0 0' : 'clamp(16px, 3vw, 24px)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s-2)', marginBottom: 'var(--s-1)' }}>
         <span aria-hidden="true" style={{ width: 22, height: 2, background: C.red, borderRadius: 1 }} />
-        <span style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Referred to you</span>
+        <span style={{ fontSize: 'var(--t-eyebrow)', color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Referred to you</span>
       </div>
       <h2 style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.015em', marginBottom: 'var(--s-1)' }}>{items.length} applicant{items.length === 1 ? '' : 's'} sent your way</h2>
       <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, marginBottom: 'var(--s-3)' }}>Each approved sharing their application with you. Assign one to a listing and it’s ranked against that unit like any other applicant.</p>
@@ -86,7 +86,7 @@ export default function ReferralInbox({ listings, initialItems = null, onChanged
                         {listings.map((l) => <option key={l.id} value={l.id}>{displayLabel(l)}{l.monthly_rent ? `, $${Number(l.monthly_rent).toLocaleString('en-CA')} per month` : ''}</option>)}
                       </select>
                       <button type="button" onClick={() => assign(ref)} disabled={!choice[ref.id] || busy === ref.id}
-                        style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !choice[ref.id] ? 'not-allowed' : 'pointer', opacity: !choice[ref.id] ? 0.5 : 1, minHeight: 42 }}>
+                        style={{ background: C.inkFill, color: C.onInk, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: !choice[ref.id] ? 'not-allowed' : 'pointer', opacity: !choice[ref.id] ? 0.5 : 1, minHeight: 42 }}>
                         <Pending busy={busy === ref.id} label="Assigning the applicant" tone="ink">Assign &amp; rank</Pending>
                       </button>
                       {listings.length === 0 && <span style={{ fontSize: 'var(--t-body-2)', color: C.inkMute }}>Create a listing first.</span>}

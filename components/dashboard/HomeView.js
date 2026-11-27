@@ -821,7 +821,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-shared-empty { display: grid; gap: var(--s-3); }
         /* Nothing shared yet: the line in a box the width of the view, as the listing page says it has
            no applicants yet, so the view never leaves one short line at its left. */
-        .hv-empty-box { padding: var(--s-6) var(--s-4); text-align: center; background: ${C.paperDeep}; border: 1px dashed ${C.ruleDark}; border-radius: var(--card-radius); text-wrap: balance; }
+        .hv-empty-box { padding: var(--s-6) var(--s-4); text-align: center; background: ${C.paperDeep}; border: 1px dashed ${C.sand}; border-radius: var(--card-radius); text-wrap: balance; }
         .hv-install :global(*) { max-width: 100%; }
 
         /* The listings' head: the title and count, the filter a tile set, then the tools. */
@@ -842,12 +842,12 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-start-h { font-family: var(--f-display); font-size: var(--t-d1); font-weight: 600; letter-spacing: -0.02em; line-height: 1.12; color: ${C.ink}; margin: 0; text-wrap: balance; }
         .hv-start-line { font-size: var(--t-body); color: ${C.inkSoft}; line-height: var(--lh-body); margin: var(--s-3) 0 0; max-width: 34em; text-wrap: balance; }
         /* On a phone the tab bar holds the red New listing: this one is ink. */
-        .hv :global(.hv-start-new) { margin-top: var(--s-5); background: ${C.ink}; color: ${C.paper}; border: 1px solid ${C.ink}; }
+        .hv :global(.hv-start-new) { margin-top: var(--s-5); background: ${C.inkFill}; color: ${C.onInk}; border: 1px solid ${C.inkFill}; }
         .hv-steps { list-style: none; margin: var(--s-5) 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-2); }
         /* On a phone each step is a row: its number beside its words. From 1024 a card each. */
         .hv-steps li { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.card}; border-radius: 22px; box-shadow: 0 1px 2px rgba(var(--c-shadow-rgb), 0.04), 0 10px 30px rgba(var(--c-shadow-rgb), 0.05); }
         .hv-step-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; padding-top: 2px; }
-        .hv-step-n { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.ruleDark}; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
+        .hv-step-n { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; border: 1px solid ${C.sand}; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; font-variant-numeric: tabular-nums; }
         .hv-step-t { font-size: var(--t-body); font-weight: 700; color: ${C.ink}; line-height: 1.35; }
         .hv-step-l { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); text-wrap: balance; }
 
@@ -872,7 +872,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
            screen). ── */
         :global(.hv-seg) { display: inline-flex; padding: 2px; border-radius: var(--btn-radius); border: 1px solid ${C.ruleDark}; background: ${C.card}; }
         :global(.hv-seg button) { min-height: 38px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; }
-        :global(.hv-seg button[aria-pressed='true']) { background: ${C.ink}; color: ${C.paper}; font-weight: 700; }
+        :global(.hv-seg button[aria-pressed='true']) { background: ${C.inkFill}; color: ${C.onInk}; font-weight: 700; }
         :global(.hv-seg button:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
         :global(.ds-btn.hv-danger) { color: ${C.danger}; }
         :global(.hv-check) { width: 18px; height: 18px; margin: 0; accent-color: ${C.ink}; cursor: pointer; }
@@ -919,7 +919,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
           /* Stuck under the floating search bar, never behind it. */
           .hv-bulk { top: calc(var(--s-4) * 2 + 48px + var(--s-2)); }
           /* The start beside Needs you: the red New listing (the sidebar's is outlined while there is none). */
-          .hv :global(.hv-start-new) { background: ${C.red}; color: ${C.paper}; border-color: ${C.red}; }
+          .hv :global(.hv-start-new) { background: ${C.redFill}; color: ${C.onRed}; border-color: ${C.redFill}; }
           .hv-start-h { font-size: 40px; line-height: 1.1; }
           .hv-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-4); }
           .hv-steps { margin-top: var(--s-6); }

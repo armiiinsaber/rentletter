@@ -64,7 +64,7 @@ export default function SignIn() {
       title="Sign in"
       eyebrow="Realtor dashboard"
       heading="Sign in to Rentletter."
-      footer={<>New here? <a href="/signup" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Create an account</a></>}
+      footer={<>New here? <a href="/signup" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Create an account</a></>}
     >
       <form onSubmit={submit} noValidate>
         {error && <div style={authErrorStyle}>{error}</div>}
@@ -75,7 +75,7 @@ export default function SignIn() {
           placeholder="you@brokerage.com" style={authInputStyle}
         />
         {touched && email.trim() && !emailValid && (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Enter a valid email address.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>Enter a valid email address.</div>
         )}
         <label style={authLabelStyle} htmlFor="password">Password</label>
         <input

@@ -142,7 +142,7 @@ export default function SignUp() {
         eyebrow="Almost there"
         heading="Check your email."
         sub="We sent a confirmation link to your inbox. Click it to activate your account and sign in."
-        footer={<>Wrong address? <a href="/signup" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Start over</a></>}
+        footer={<>Wrong address? <a href="/signup" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Start over</a></>}
       >
         <div style={authNoticeStyle}>
           Confirmation sent to <strong>{email.trim()}</strong>. The link expires soon, if it doesn't arrive, check spam or try again.
@@ -162,7 +162,7 @@ export default function SignUp() {
       sub={referral
         ? `${referral.from || 'A realtor'} referred an applicant to you, with the applicant’s approval, their full application is already waiting in your dashboard. Sign up with this email address and assign them to a listing in seconds.`
         : "Organize your applicants, rank everyone against your landlord's criteria, and send a polished report to your landlord client."}
-      footer={<>Already have an account? <a href="/signin" style={{ color: C.red, fontWeight: 700, textDecoration: 'none' }}>Sign in</a></>}
+      footer={<>Already have an account? <a href="/signin" style={{ color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Sign in</a></>}
     >
       <form onSubmit={submit} noValidate>
         {/* Render the error ONLY when it's a non-empty string, never a raw object (an
@@ -176,7 +176,7 @@ export default function SignUp() {
           placeholder="you@brokerage.com" style={authInputStyle}
         />
         {touched && email.trim() && !emailValid && (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Enter a valid email address.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>Enter a valid email address.</div>
         )}
         <label style={authLabelStyle} htmlFor="password">Password</label>
         <input
@@ -185,7 +185,7 @@ export default function SignUp() {
           placeholder="At least 8 characters" style={authInputStyle}
         />
         {touched && password.length > 0 && !passwordValid ? (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Use at least 8 characters.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>Use at least 8 characters.</div>
         ) : (
           <div style={{ fontSize: 12, color: C.inkMute, marginBottom: 4 }}>Use at least 8 characters.</div>
         )}
@@ -196,7 +196,7 @@ export default function SignUp() {
           placeholder="Re enter your password" style={authInputStyle}
         />
         {touched && confirm.length > 0 && !confirmValid && (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>Passwords don’t match.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>Passwords don’t match.</div>
         )}
         {/* The province is asked once, at the first listing (ListingSetupModal askProvince). */}
         {/* Required agreement, makes the Terms binding at signup. */}
@@ -204,17 +204,17 @@ export default function SignUp() {
           <input
             type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
             aria-label="I agree to the Terms of Service and Privacy Policy"
-            style={{ width: 18, height: 18, marginTop: 1, flexShrink: 0, accentColor: C.red, cursor: 'pointer' }}
+            style={{ width: 18, height: 18, marginTop: 1, flexShrink: 0, accentColor: C.redFill, cursor: 'pointer' }}
           />
           <span style={{ textWrap: 'balance' }}>
             I agree to the{' '}
-            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: C.red, fontWeight: 700, textDecoration: 'underline' }}>Terms of Service</a>{' '}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: C.redText, fontWeight: 700, textDecoration: 'underline' }}>Terms of Service</a>{' '}
             and{' '}
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: C.red, fontWeight: 700, textDecoration: 'underline' }}>Privacy Policy</a>.
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: C.redText, fontWeight: 700, textDecoration: 'underline' }}>Privacy Policy</a>.
           </span>
         </label>
         {touched && !agreed && (
-          <div style={{ fontSize: 12, color: C.red, marginBottom: 4 }}>You must agree to the Terms of Service and Privacy Policy to continue.</div>
+          <div style={{ fontSize: 12, color: C.redText, marginBottom: 4 }}>You must agree to the Terms of Service and Privacy Policy to continue.</div>
         )}
         <button type="submit" disabled={!canSubmit} style={authButtonStyle(canSubmit)}>
           <Pending busy={loading} label="Creating your account">Create account →</Pending>

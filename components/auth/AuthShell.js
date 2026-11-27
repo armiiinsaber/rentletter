@@ -33,7 +33,7 @@ export default function AuthShell({ title, eyebrow, heading, sub, children, foot
           </div>
           <div className="rl-card rl-auth-card">
             {eyebrow && (
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
+              <div style={{ fontSize: 11, color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>
                 {eyebrow}
               </div>
             )}
@@ -63,10 +63,11 @@ export const authInputStyle = {
   background: C.paper, color: C.ink, marginBottom: 4,
 };
 
+// The brand red with its white label; until the form can go, the sand of a disabled fill.
 export function authButtonStyle(enabled) {
   return {
     width: '100%', borderRadius: 'var(--btn-radius)', border: 'none',
-    background: enabled ? C.red : C.inkInverse, color: C.paper,
+    background: enabled ? C.redFill : C.sand, color: enabled ? C.onRed : C.paper,
     padding: '15px', fontSize: 15, fontWeight: 700, marginTop: 8,
     cursor: enabled ? 'pointer' : 'not-allowed', minHeight: 52,
   };

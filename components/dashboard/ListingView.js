@@ -901,7 +901,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
     const shortDate = (iso) => (iso ? new Date(iso).toLocaleDateString('en-CA', { month: 'short', day: 'numeric' }) : '');
     const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
     const isPrimaryCard = a.linkId === primaryLinkId;
-    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: isPrimaryCard ? 'var(--action)' : 'transparent', color: isPrimaryCard ? C.paper : C.ink, border: isPrimaryCard ? 'none' : `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
+    const primaryBtn = { display: 'block', width: '100%', minHeight: 44, marginTop: 'var(--s-2)', background: isPrimaryCard ? 'var(--action)' : 'transparent', color: isPrimaryCard ? C.onRed : C.ink, border: isPrimaryCard ? 'none' : `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
     const textBtn = { display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, marginTop: 'var(--s-1)', background: 'transparent', color: C.ink, border: 'none', fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: 'pointer' };
     const stateLine = { fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', lineHeight: 1.35, paddingLeft: tracking ? 'var(--lv-indent)' : 0 };
     // The card's state as pills (components/ui.js StatusPills): short facts, never a sentence. The
@@ -942,9 +942,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       ['Smoker', notShared(app, 'smoker') ? NOT_SHARED : smokerLabel],
       ['Pets', notShared(app, 'pets') ? NOT_SHARED : (app.pets || 'None')],
     ]);
-    // The rank one active card carries the red edge; everyone else sits on the rule colour.
+    // The rank one active card carries the red edge (a red mark, C.red); everyone else sits on the sand.
     const first = rank === 1 && !isSetAside;
-    const borderColor = first ? 'var(--action)' : C.ruleDark;
+    const borderColor = first ? C.red : C.sand;
     const leftAction = !isSetAside ? { label: 'Set aside' } : null;
     const rightAction = isSetAside ? { label: 'Restore', tone: 'good' } : null;
     const ref = referrals[a.linkId];
@@ -956,7 +956,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       {/* The whole card is the target: a tap anywhere opens or closes it; a control keeps its own action. */}
       <div data-press-host="" data-tap-card="" onClick={cardTap(() => toggleApplicant(a))} style={{
         minWidth: 0, cursor: 'pointer', WebkitTapHighlightColor: 'transparent',
-        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${first ? 'var(--action)' : C.rule}`, borderLeft: `4px solid ${borderColor}`,
+        background: isSetAside ? C.paperDeep : C.card, border: `1px solid ${first ? C.red : C.rule}`, borderLeft: `4px solid ${borderColor}`,
         borderRadius: R.card, padding: 'var(--card-pad)',
       }}>
         {recent?.linkId === a.linkId && (
@@ -1277,7 +1277,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               ) : inviteShareUrl ? (
                 <>
                   <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link" title={inviteShareUrl}
-                    style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink, textOverflow: 'ellipsis' }} />
+                    style={{ flex: 1, minWidth: 0, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.ruleDark}`, background: C.paperDeep, color: C.ink, textOverflow: 'ellipsis' }} />
                   <button onClick={copy} style={{ minHeight: 44, minWidth: 72, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}>{copied ? 'Copied' : 'Copy'}</button>
                 </>
               ) : (
@@ -1384,7 +1384,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
             {statePills(active).length > 0 && <StatusPills label="Applicants by state" items={statePills(active)} style={{ marginBottom: 'var(--s-3)' }} />}
 
             {totalApplicants === 0 ? (
-              <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.ruleDark}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
+              <div style={{ padding: 'var(--s-5)', textAlign: 'center', background: C.paperDeep, border: `1px dashed ${C.sand}`, borderRadius: R.card, marginTop: 'var(--s-3)' }}>
                 <div style={{ display: 'inline-flex', marginBottom: 'var(--s-3)', color: C.inkMute }}><Icon name="users" size={28} /></div>
                 <div style={{ fontSize: 'var(--t-body)', fontWeight: 700, color: C.ink, marginBottom: 'var(--s-1)' }}>No applicants yet</div>
                 <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.55, maxWidth: 380, margin: '0 auto' }}>
@@ -1434,7 +1434,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <h2 className="t-d2" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Landlord</h2>
               <div className="rl-ctrl-row">
                 <button type="button" onClick={openSend} aria-haspopup="dialog" className="rl-btn" data-send-open=""
-                  style={{ flex: '1 1 100%', minHeight: 44, background: primaryLinkId ? C.ink : 'var(--action)', color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  style={{ flex: '1 1 100%', minHeight: 44, background: primaryLinkId ? C.inkFill : 'var(--action)', color: primaryLinkId ? C.onInk : C.onRed, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
                   {l.landlord_name ? `Send to ${String(l.landlord_name).trim().split(/\s+/)[0]}` : 'Send report'}
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
@@ -1580,7 +1580,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                     ) : inviteShareUrl ? (
                       <div className="rl-ctrl-row">
                         <input readOnly value={inviteShareUrl} onFocus={(e) => e.target.select()} aria-label="Invite link"
-                          style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paperDeep, color: C.ink }} />
+                          style={{ flex: 1, minWidth: 200, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.ruleDark}`, background: C.paperDeep, color: C.ink }} />
                         <button onClick={copy} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: 'transparent', color: C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>{copied ? 'Copied' : 'Copy'}</button>
                       </div>
                     ) : (
@@ -1595,8 +1595,8 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                       <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
                         <input value={addRL} onChange={(e) => setAddRL(e.target.value)} placeholder="RL-2026-XXXX-XXXX" aria-label="Application number"
                           onKeyDown={(e) => e.key === 'Enter' && addApplicant()}
-                          style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink }} />
-                        <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: (addLoading || !addRL.trim()) ? C.ruleDark : C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}><Pending busy={addLoading} label="Adding the applicant">Add</Pending></button>
+                          style={{ flex: 1, minWidth: 180, minHeight: 44, padding: '0 var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.ruleDark}`, background: C.paper, color: C.ink }} />
+                        <button onClick={addApplicant} disabled={addLoading || !addRL.trim()} style={{ minHeight: 44, padding: '0 var(--gap-card)', background: (addLoading || !addRL.trim()) ? C.sand : C.inkFill, color: (addLoading || !addRL.trim()) ? C.paper : C.onInk, border: 'none', borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (addLoading || !addRL.trim()) ? 'default' : 'pointer', fontFamily: 'inherit' }}><Pending busy={addLoading} label="Adding the applicant">Add</Pending></button>
                       </div>
                     )}
                   </div>
@@ -1652,7 +1652,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         dirty={!!setAsideCode || !!setAsideNote.trim()} discardTitle="Discard this reason?">
         {setAsideFor ? (
           <div style={{ padding: '4px var(--s-4) var(--s-4)' }}>
-              <div data-sheet-drag="" style={{ fontSize: 'var(--t-eyebrow)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Set aside</div>
+              <div data-sheet-drag="" style={{ fontSize: 'var(--t-eyebrow)', color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 'var(--s-2)' }}>Set aside</div>
               <h3 data-sheet-drag="" style={{ fontSize: 'var(--t-d3)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 'var(--s-2)' }}>
                 {setAsideFor.application?.full_name || 'Applicant'}
               </h3>
@@ -1661,7 +1661,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </p>
               <label style={{ display: 'block', fontSize: 'var(--t-eyebrow)', color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 'var(--s-1)' }}>Reason (required)</label>
               <select value={setAsideCode} onChange={(e) => setSetAsideCode(e.target.value)}
-                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, marginBottom: 'var(--s-3)' }}>
+                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.ruleDark}`, background: C.paper, color: C.ink, marginBottom: 'var(--s-3)' }}>
                 <option value="">Select a reason…</option>
                 {SET_ASIDE_REASONS.map((r) => <option key={r.code} value={r.code}>{r.label}</option>)}
               </select>
@@ -1670,7 +1670,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               </label>
               <textarea value={setAsideNote} onChange={(e) => setSetAsideNote(e.target.value)} rows={3}
                 placeholder="e.g. rent share 55% against your 40% cap"
-                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit', marginBottom: 'var(--s-2)' }} />
+                style={{ width: '100%', padding: 'var(--s-3) var(--s-3)', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.ruleDark}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit', marginBottom: 'var(--s-2)' }} />
               <p style={{ fontSize: 'var(--t-eyebrow)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-4)' }}>
                 Use only screenable facts (income, references, tenancy, occupancy). Never protected grounds.
               </p>
@@ -1678,7 +1678,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               <div style={{ display: 'flex', gap: 'var(--s-2)', flexWrap: 'wrap' }}>
                 <button data-destructive="" onClick={confirmSetAside}
                   disabled={!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())}
-                  style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.ruleDark : C.red, color: C.paper, border: '1px solid transparent', borderRadius: 'var(--btn-radius)', padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
+                  style={{ flex: '1 1 0', minWidth: 0, minHeight: 48, background: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.sand : C.redFill, color: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? C.paper : C.onRed, border: '1px solid transparent', borderRadius: 'var(--btn-radius)', padding: 'var(--s-3)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: (!setAsideCode || (setAsideCode === 'other_screenable' && !setAsideNote.trim())) ? 'not-allowed' : 'pointer' }}>
                   Set aside
                 </button>
                 <button onClick={() => setSetAsideFor(null)}

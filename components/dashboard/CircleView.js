@@ -477,14 +477,14 @@ export default function CircleView({ initialProfile, entitlement = null }) {
            button, line the one beside it, quiet the least of them. */
         .cv :global(.cv-btn) { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 var(--gap-card); border-radius: var(--btn-radius); font-size: var(--t-body-2); font-weight: 700; font-family: inherit; cursor: pointer; text-decoration: none; white-space: nowrap; }
         .cv :global(.cv-btn:disabled) { cursor: default; opacity: 0.6; }
-        .cv :global(.cv-btn-ink) { background: ${C.ink}; color: ${C.paper}; border: 1.5px solid ${C.ink}; }
+        .cv :global(.cv-btn-ink) { background: ${C.inkFill}; color: ${C.onInk}; border: 1.5px solid ${C.inkFill}; }
         .cv :global(.cv-btn-line) { background: transparent; color: ${C.ink}; border: 1.5px solid ${C.ink}; }
         .cv :global(.cv-btn-quiet) { background: transparent; color: ${C.inkSoft}; border: 1.5px solid transparent; }
         .cv :global(.cv-btn:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         @media (hover: hover) { .cv :global(.cv-btn-quiet:hover:not(:disabled)) { background: rgba(var(--c-ink-rgb), 0.045); color: ${C.ink}; } }
         .cv :global(.cv-in) { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; }
         .cv :global(.cv-label) { display: block; font-size: 11px; color: ${C.inkSoft}; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
-        .cv :global(.cv-input) { display: block; width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 12px; border: 1px solid ${C.rule}; border-radius: 12px; background: ${C.card}; color: ${C.ink}; font-family: inherit; font-size: 16px; }
+        .cv :global(.cv-input) { display: block; width: 100%; box-sizing: border-box; min-height: 44px; padding: 0 12px; border: 1px solid ${C.ruleDark}; border-radius: 12px; background: ${C.card}; color: ${C.ink}; font-family: inherit; font-size: 16px; }
         .cv :global(.cv-field) { margin-top: var(--s-3); }
         .cv :global(.cv-hint) { font-size: 12px; color: ${C.inkMute}; line-height: 1.5; margin: 6px 0 0; text-wrap: balance; }
         .cv :global(.cv-quiet) { font-size: var(--t-body-2); color: ${C.inkMute}; line-height: var(--lh-body); margin: 0; text-wrap: balance; }
@@ -499,7 +499,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
         .cv :global(.cv-sr) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         .cv :global(.cv-switch) { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); width: 100%; min-height: 44px; padding: 0; margin-top: var(--s-2); background: transparent; border: none; border-radius: 12px; color: ${C.ink}; font-family: inherit; font-size: var(--t-body); font-weight: 600; text-align: left; cursor: pointer; }
         .cv :global(.cv-switch:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
-        .cv :global(.cv-track) { position: relative; width: 48px; height: 28px; border-radius: 999px; background: ${C.ruleDark}; flex-shrink: 0; }
+        .cv :global(.cv-track) { position: relative; width: 48px; height: 28px; border-radius: 999px; background: ${C.sand}; flex-shrink: 0; }
         .cv :global(.cv-track[data-on='1']) { background: ${C.ink}; }
         .cv :global(.cv-knob) { position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: ${C.paper}; }
         .cv :global(.cv-track[data-on='1'] .cv-knob) { transform: translateX(20px); }

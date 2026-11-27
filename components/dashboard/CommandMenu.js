@@ -92,15 +92,15 @@ export default function CommandMenu({ open, onClose, onRun, listings = [], appli
         .cm-input::placeholder { color: ${C.inkSoft}; }
         /* The field is the menu's: its caret and the sheet show the focus, not the fields' ring. */
         .cm-input:focus, .cm-input:focus-visible { outline: none !important; box-shadow: none !important; border: none !important; }
-        .cm-esc { flex-shrink: 0; font-family: inherit; font-size: 12px; font-weight: 600; color: ${C.inkSoft}; border: 1px solid ${C.ruleDark}; border-radius: 6px; padding: 2px 6px; }
+        .cm-esc { flex-shrink: 0; font-family: inherit; font-size: 12px; font-weight: 600; color: ${C.inkSoft}; border: 1px solid ${C.sand}; border-radius: 6px; padding: 2px 6px; }
         .cm-list { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: var(--s-2) var(--s-2) var(--s-4); }
         .cm-none { margin: 0; padding: var(--s-4); font-size: var(--t-body-2); color: ${C.inkSoft}; }
         .cm-group + .cm-group { margin-top: var(--s-2); }
         .cm-group-t { padding: var(--s-2) var(--s-3) var(--s-1); font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkSoft}; }
         .cm-opt { display: flex; align-items: center; gap: var(--s-3); min-height: 48px; padding: var(--s-2) var(--s-3); border-radius: 14px; cursor: pointer; color: ${C.ink}; }
-        .cm-on { background: ${C.ink}; color: ${C.paper}; }
+        .cm-on { background: ${C.inkFill}; color: ${C.onInk}; }
         .cm-opt-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: ${C.paperDeep}; color: ${C.ink}; }
-        .cm-on .cm-opt-icon { background: rgba(var(--c-paper-rgb), 0.14); color: ${C.paper}; }
+        .cm-on .cm-opt-icon { background: rgba(var(--c-on-ink-rgb), 0.14); color: ${C.onInk}; }
         .cm-opt-text { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
         .cm-opt-label { font-size: var(--t-body-2); font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
         .cm-opt-detail { font-size: 13px; color: ${C.inkSoft}; line-height: 1.3; overflow-wrap: anywhere; }

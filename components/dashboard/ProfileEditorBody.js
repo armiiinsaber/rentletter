@@ -28,7 +28,7 @@ import Loader, { Pending } from '../brand/Loader';
 
 const inputStyle = {
   width: '100%', padding: '12px 14px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)',
-  border: `1px solid ${C.rule}`, background: C.paper, color: C.ink,
+  border: `1px solid ${C.ruleDark}`, background: C.paper, color: C.ink,
 };
 
 const ALLOWED = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/svg+xml': 'svg', 'image/webp': 'webp' };
@@ -522,11 +522,11 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
               const selected = fontId === fp.id;
               return (
                 <button key={fp.id} type="button" onClick={() => selectFont(fp)}
-                  style={{ height: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: R.card, padding: 12, background: selected ? C.paperDeep : C.paper, border: `1px solid ${selected ? C.ink : C.rule}`, boxShadow: selected ? `0 0 0 1px ${C.ink}` : 'none' }}>
+                  style={{ height: '100%', textAlign: 'left', cursor: 'pointer', borderRadius: R.card, padding: 12, background: selected ? C.paperDeep : C.paper, border: `1px solid ${selected ? C.ink : C.ruleDark}`, boxShadow: selected ? `0 0 0 1px ${C.ink}` : 'none' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
                     <span style={{ fontSize: 12.5, fontWeight: 800, color: C.ink }}>{fp.name}</span>
                     {selected
-                      ? <span style={{ fontSize: 10, fontWeight: 800, color: C.paper, background: C.ink, padding: '2px 8px', borderRadius: R.pill }}>IN USE</span>
+                      ? <span style={{ fontSize: 10, fontWeight: 800, color: C.onInk, background: C.inkFill, padding: '2px 8px', borderRadius: R.pill }}>IN USE</span>
                       : fp.id === suggestedFontId && <span style={{ fontSize: 10, fontWeight: 700, color: C.ink, border: `1px solid ${C.ink}`, padding: '1px 7px', borderRadius: R.pill }}>SUGGESTED</span>}
                   </div>
                   <div style={{ fontSize: 10.5, color: C.inkMute, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 8 }}>{String(fp.mood).split(' · ').join(', ')}</div>
@@ -545,11 +545,11 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {/* Explicit Save for a modal host only, same write path as the blur autosave (persistDetails). */}
       {onClose && <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 'var(--gap-card)' }}>
         <button onClick={save} disabled={saving}
-          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(var(--c-red-rgb), 0.25)' : 'none' }}>
+          style={{ flex: onClose ? '1 1 100%' : '0 0 auto', background: C.redFill, color: C.onRed, border: 'none', borderRadius: 'var(--btn-radius)', padding: '14px var(--gap-card)', fontSize: 14, fontWeight: 700, cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1, boxShadow: (dirty && !saving) ? '0 0 0 3px rgba(var(--c-red-fill-rgb), 0.25)' : 'none' }}>
           <Pending busy={saving} label="Saving your profile" tone="red">{dirty ? 'Save changes' : 'Save'}</Pending>
         </button>
         {!saving && dirty && (
-          <span style={{ fontSize: 13, color: C.red, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: C.redText, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', background: C.red, display: 'inline-block', flexShrink: 0 }} />
             Unsaved changes
           </span>

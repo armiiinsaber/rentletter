@@ -1,12 +1,14 @@
 // Every pair of tokens the app sets one on the other, in both themes (components/theme.js LIGHT and
 // DARK): text and the text of a control at 4.5 to 1 or better, a mark (an icon, a tick, a dot, the
 // focus ring) and a boundary (a control's border, a filled control's edge against the page) at 3 to
-// 1 or better. The dark theme holds every pair. The light theme is held as it was before the dark
-// theme existed, with its three known gaps named here at their measured value and allowed no lower:
-// red text on the deep paper (4.39), the ghost of an empty value in a preview (1.55), and the control
-// border, ruleDark, against the surfaces (1.34 to 1.55). A hairline (rule, instRule) is decoration, not a boundary; it only has to show as a line in
-// dark about as it does in light. Glass is held in tests/glass.test.mjs, the pages in the dark walk
-// (tests/routes/darkWebkit.test.mjs).
+// 1 or better. Both themes hold every pair; there is no known gap. The light theme's three old gaps
+// were closed by fix/theme-refine: red text on the deep paper (4.39, now redText at 4.50), the ghost
+// of an empty value in a preview (1.55, now 5.30) and the control border, ruleDark, against the
+// surfaces (1.34 to 1.55, now 3.00 to 3.48). A hairline (rule, instRule) is decoration, not a
+// boundary; it only has to show as a line in dark about as it does in light. The ink fill is ink in
+// light and a raised charcoal in dark, bounded there by being lighter than the page and the card,
+// with its text held like any other. Glass is held in tests/glass.test.mjs, the pages in the dark
+// walk (tests/routes/darkWebkit.test.mjs).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -20,19 +22,18 @@ const SURFACES = ['paper', 'paperDeep', 'card'];
 const TEXT = 4.5; const MARK = 3;
 // [what, foreground token, background token, the floor]
 export const PAIRS = [
-  ...['ink', 'inkSoft', 'inkMute', 'danger', 'red'].flatMap((t) => SURFACES.map((s) => [`${t} text on ${s}`, t, s, TEXT])),
+  ...['ink', 'inkSoft', 'inkMute', 'danger', 'redText'].flatMap((t) => SURFACES.map((s) => [`${t} text on ${s}`, t, s, TEXT])),
   ['infoInk on an info well', 'infoInk', 'info', TEXT],
   ['inkMute on an info well', 'inkMute', 'info', TEXT],
   ['ghost text (an empty value in a live preview) on card', 'ghost', 'card', TEXT],
   // A filled control: its label on its fill.
-  ['paper on an ink button, pill or band', 'paper', 'ink', TEXT],
-  ['inkInverse on an ink fill', 'inkInverse', 'ink', TEXT],
-  ['inkInverseMute on an ink fill (an eyebrow)', 'inkInverseMute', 'ink', TEXT],
-  ['blush on an ink fill (an eyebrow)', 'blush', 'ink', TEXT],
-  ['paper on a red button', 'paper', 'red', TEXT],
-  ['card on a red button', 'card', 'red', TEXT],
+  ['onInk on an ink fill (a button, pill, tile, card or band)', 'onInk', 'inkFill', TEXT],
+  ['inkInverse on an ink fill', 'inkInverse', 'inkFill', TEXT],
+  ['inkInverseMute on an ink fill (an eyebrow)', 'inkInverseMute', 'inkFill', TEXT],
+  ['blush on an ink fill (an eyebrow)', 'blush', 'inkFill', TEXT],
+  ['onRed on a red button', 'onRed', 'redFill', TEXT],
   ['paper on a danger button', 'paper', 'danger', TEXT],
-  ['red on its tint', 'red', 'redTint', TEXT],
+  ['redText on its tint', 'redText', 'redTint', TEXT],
   ['danger on its tint', 'danger', 'dangerTint', TEXT],
   ['ink on the danger tint (an error line)', 'ink', 'dangerTint', TEXT],
   ['inkSoft on the danger tint', 'inkSoft', 'dangerTint', TEXT],
@@ -45,23 +46,16 @@ export const PAIRS = [
   // Marks: the red tick and dot, the focus rings, a mark on an ink fill, the logo's white plate.
   ...SURFACES.map((s) => [`a red mark or the focus ring on ${s}`, 'red', s, MARK]),
   ...SURFACES.map((s) => [`the field focus ring (ink) on ${s}`, 'ink', s, MARK]),
-  ['a red mark on an ink fill', 'redOnInk', 'ink', MARK],
+  ['a red mark on an ink fill', 'redOnInk', 'inkFill', MARK],
   ['a red mark on an instrument panel', 'redBright', 'inst', MARK],
   ['done as a mark on its tint', 'done', 'doneTint', MARK],
   ['the door turning in a pending button', 'red', 'busy', MARK],
-  // Boundaries: a control's border, and a filled control against the page.
+  // Boundaries: a control's border (an input, a select, an outlined control), an ink border or
+  // track, and a red filled control against the page.
   ...SURFACES.map((s) => [`a control border (ruleDark) on ${s}`, 'ruleDark', s, MARK]),
-  ...SURFACES.map((s) => [`an ink control against ${s}`, 'ink', s, MARK]),
-  ...SURFACES.map((s) => [`a red control against ${s}`, 'red', s, MARK]),
+  ...SURFACES.map((s) => [`an ink border or track against ${s}`, 'ink', s, MARK]),
+  ...SURFACES.map((s) => [`a red control against ${s}`, 'redFill', s, MARK]),
 ];
-// The light theme's gaps, as they were before the dark theme: no lower, and no new one.
-const LIGHT_GAPS = {
-  'red text on paperDeep': 4.39,
-  'ghost text (an empty value in a live preview) on card': 1.55,
-  'a control border (ruleDark) on paper': 1.46,
-  'a control border (ruleDark) on paperDeep': 1.34,
-  'a control border (ruleDark) on card': 1.55,
-};
 
 test('both themes name the same tokens, each a six digit hex, and the pages read them as variables', () => {
   assert.deepEqual(Object.keys(DARK), Object.keys(LIGHT));
@@ -70,15 +64,38 @@ test('both themes name the same tokens, each a six digit hex, and the pages read
   assert.equal(cssVar('paperDeep'), '--c-paper-deep');
 });
 
-test('every pair in the dark theme: text 4.5 to 1, marks and boundaries 3 to 1', () => {
-  const low = PAIRS.map(([what, fg, bg, min]) => [what, ratio(DARK[fg], DARK[bg]), min]).filter(([, r, min]) => r < min);
-  assert.deepEqual(low.map(([w, r]) => `${w}: ${r.toFixed(2)}`), []);
+for (const [name, P] of [['light', LIGHT], ['dark', DARK]]) {
+  test(`every pair in the ${name} theme: text 4.5 to 1, marks and boundaries 3 to 1, no known gap`, () => {
+    const low = PAIRS.map(([what, fg, bg, min]) => [what, ratio(P[fg], P[bg]), min]).filter(([, r, min]) => r < min);
+    assert.deepEqual(low.map(([w, r]) => `${w}: ${r.toFixed(2)}`), []);
+  });
+}
+
+test('the light fixes are the least that pass: the text red and the control border just over the line, the fills unchanged', () => {
+  const ch = (h) => rgb(h);
+  // The text red: the brand red darkened, no channel lighter, and only just past 4.5 on the deep paper.
+  assert.ok(ch(LIGHT.redText).every((v, i) => v <= ch(LIGHT.red)[i]) && lum(LIGHT.redText) < lum(LIGHT.red), 'redText is the brand red darkened');
+  const rt = ratio(LIGHT.redText, LIGHT.paperDeep); assert.ok(rt >= TEXT && rt < 4.55, `redText on paperDeep: ${rt.toFixed(3)}`);
+  assert.equal(LIGHT.redFill, LIGHT.red, 'the red fill is the brand red'); assert.equal(LIGHT.red, '#d72027', 'the red mark is the brand red');
+  // The control border: only just past 3 on the deep paper, the darkest of the three light surfaces.
+  const rd = ratio(LIGHT.ruleDark, LIGHT.paperDeep); assert.ok(rd >= MARK && rd < 3.05, `ruleDark on paperDeep: ${rd.toFixed(3)}`);
+  assert.equal(LIGHT.sand, '#d6cfbe', 'the sand that is not a border keeps the old colour');
+  assert.equal(LIGHT.ghost, LIGHT.inkMute, 'the ghost reads as the placeholder colour');
 });
 
-test('every pair in the light theme, with only its known gaps and none lower', () => {
-  const low = PAIRS.map(([what, fg, bg, min]) => [what, ratio(LIGHT[fg], LIGHT[bg]), min]).filter(([, r, min]) => r < min);
-  assert.deepEqual(low.map(([w]) => w).sort(), Object.keys(LIGHT_GAPS).sort(), 'the light gaps are the known ones');
-  for (const [w, r] of low) assert.ok(Math.round(r * 100) / 100 >= LIGHT_GAPS[w], `${w}: ${r.toFixed(2)} is no lower than it was`);
+test('the red fill is the brand red with a white label in both themes; the bright red is text and marks only', () => {
+  for (const P of [LIGHT, DARK]) { assert.equal(P.redFill, '#d72027'); assert.equal(P.onRed, '#ffffff'); }
+  assert.ok(ratio(DARK.onRed, DARK.redFill) >= TEXT, 'white on the brand red');
+  assert.equal(DARK.redText, LIGHT.redBright); assert.equal(DARK.red, LIGHT.redBright);
+});
+
+test('the ink fill: ink in light, in dark a raised charcoal lighter than the page and the card, never a light slab', () => {
+  assert.equal(LIGHT.inkFill, LIGHT.ink); assert.equal(LIGHT.onInk, LIGHT.paper);
+  for (const s of SURFACES) assert.ok(ratio(LIGHT.inkFill, LIGHT[s]) >= MARK, `light: an ink filled control against ${s}`);
+  assert.ok(lum(DARK.inkFill) > lum(DARK.card) && lum(DARK.card) > lum(DARK.paper), 'raised: lighter than the card, which is lighter than the page');
+  assert.ok(lum(DARK.inkFill) < 0.05, 'a charcoal, not a light surface');
+  assert.ok(lum(DARK.onInk) > 0.75 && DARK.onInk === DARK.ink, 'off white text on it');
+  const [r, , b] = rgb(DARK.inkFill); assert.ok(r > b, 'warm, like the ground');
 });
 
 test('ink and paper swap roles in dark; red stays the signal, brighter only to hold its contrast', () => {
@@ -101,7 +118,8 @@ test('a hairline shows in dark about as it does in light', () => {
   assert.ok(ratio(DARK.instRule, DARK.inst) >= ratio(LIGHT.instRule, LIGHT.inst), 'the instrument hairline');
 });
 
-test('the colours that do not change: the toast text, the plate, the red mark on an ink fill', () => {
-  for (const k of ['instInk', 'plate', 'redOnInk', 'instText', 'instMute', 'redBright', 'instDanger', 'instDangerText']) assert.equal(DARK[k], LIGHT[k], k);
+test('the colours that do not change: the toast text, the plate, the red fill and its label', () => {
+  for (const k of ['instInk', 'plate', 'redFill', 'onRed', 'instText', 'instMute', 'redBright', 'instDanger', 'instDangerText']) assert.equal(DARK[k], LIGHT[k], k);
   assert.equal(LIGHT.redOnInk, LIGHT.red, 'the brand red on the ink tile, in light as before');
+  assert.equal(DARK.redOnInk, DARK.red, 'the bright red on the raised ink fill in dark');
 });

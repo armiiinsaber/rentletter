@@ -898,7 +898,7 @@ export default function ApplyPage({ invited = null, archived = false }) {
               {invite && (
                 <div className="mp-ink">
                   <Eyebrow style={{ color: inkMute }}>You are applying to</Eyebrow>
-                  <div className="mp-h2" style={{ color: C.paper, marginTop: 'var(--gap-line)' }}>{noWidow(invite.listingName || invite.unit?.address || 'Rental unit')}</div>
+                  <div className="mp-h2" style={{ color: C.onInk, marginTop: 'var(--gap-line)' }}>{noWidow(invite.listingName || invite.unit?.address || 'Rental unit')}</div>
                   {invite.unit && (() => {
                     const addr = invite.unit.address && invite.unit.address !== (invite.listingName || '') ? invite.unit.address : null;
                     const bits = [invite.unit.monthlyRent ? `$${Number(invite.unit.monthlyRent).toLocaleString('en-CA')} per month` : null, formatUnit(invite.unit.bedrooms) || null];

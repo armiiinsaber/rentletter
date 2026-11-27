@@ -32,7 +32,7 @@ export default function CompliancePage() {
         {/* HERO */}
         <section style={{ padding: 'clamp(48px, 8vw, 90px) 0 clamp(36px, 6vw, 60px)', borderBottom: `1px solid ${C.rule}` }}>
           <div style={{ maxWidth: 820, margin: '0 auto', padding: '0 clamp(20px, 4vw, 32px)' }}>
-            <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16 }}>
+            <div style={{ fontSize: 11, color: C.redText, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 16 }}>
               Compliance overview · for property managers & legal teams
             </div>
             <h1 className="rl-serif" style={{ fontSize: 'clamp(34px, 5.5vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 20 }}>
@@ -89,7 +89,7 @@ export default function CompliancePage() {
           </Section>
 
           <Section title="Data handling">
-            <p>Applicant data is stored on Canadian infrastructure via Vercel (with Upstash Redis as the data layer). Data is encrypted in transit and at rest. Applicants can revoke access to their application at any time, which removes the data from active landlord dashboards. Full details are in the <Link href="/privacy" style={{ color: C.red, textDecoration: 'underline' }}>Privacy Policy</Link>.</p>
+            <p>Applicant data is stored on Canadian infrastructure via Vercel (with Upstash Redis as the data layer). Data is encrypted in transit and at rest. Applicants can revoke access to their application at any time, which removes the data from active landlord dashboards. Full details are in the <Link href="/privacy" style={{ color: C.redText, textDecoration: 'underline' }}>Privacy Policy</Link>.</p>
             <p>Rentletter is governed by Canadian privacy law (PIPEDA) and, where applicable, provincial privacy statutes.</p>
           </Section>
 
@@ -102,7 +102,7 @@ export default function CompliancePage() {
               <li style={li}>A pilot deployment with a sandboxed environment scoped to a subset of your portfolio</li>
               <li style={li}>White label branding so deliverables to your owners or stakeholders carry your brand</li>
             </ul>
-            <p style={{ marginTop: 16 }}>Contact <a href="mailto:info@rentletter.ca" style={{ color: C.red, textDecoration: 'underline' }}>info@rentletter.ca</a> for institutional evaluations.</p>
+            <p style={{ marginTop: 16 }}>Contact <a href="mailto:info@rentletter.ca" style={{ color: C.redText, textDecoration: 'underline' }}>info@rentletter.ca</a> for institutional evaluations.</p>
           </Section>
 
           <Section title="Not legal advice">

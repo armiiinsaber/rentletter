@@ -20,7 +20,7 @@ import { Icon } from '../ui';
 const HERO_APPLICANTS = [
   { id: 'mei', initials: 'MT', color: C.instRule, ink: C.instInk, name: 'Mei Tanaka',  role: 'Marketing Mgr · Loblaw',  income: '$87,000/yr', score: 3.9, fit: [['Landlord reference', true], ['Non-smoker', true]] },
   { id: 'james', initials: 'JO', color: C.inkSoft, name: 'James Okafor', role: 'Software Eng · Shopify',    income: '$95,000/yr', score: 4.2, fit: [['Income matches documents', true], ['Employer not confirmed', false]] },
-  { id: 'priya', initials: 'PN', color: C.ink, name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income matches documents', true], ['Rent paid on time, 5 yrs', true]] },
+  { id: 'priya', initials: 'PN', color: C.inkFill, ink: C.onInk, name: 'Priya Nair',  role: 'Senior UX · CIBC',         income: '$115,000/yr', score: 4.6, fit: [['Income matches documents', true], ['Rent paid on time, 5 yrs', true]] },
   { id: 'david', initials: 'DT', color: C.instRaise, ink: C.instInk, name: 'David Tremblay', role: 'Registered Nurse · Sunnybrook', income: '$78,000/yr', score: 3.6, fit: [['Docs match', true], ['Rent paid on time, 4 yrs', true]] },
   { id: 'amara', initials: 'AO', color: C.inkSoft, name: 'Amara Okonkwo', role: 'Teacher · TDSB',          income: '$71,000/yr', score: 3.3, fit: [['References on file', true], ['Docs requested', false]] },
 ];
@@ -30,8 +30,9 @@ const HERO_RANKED  = [...HERO_APPLICANTS].sort((a, b) => b.score - a.score).map(
 const HERO_ARRIVAL = HERO_RANKED; // review scene walks the ranked list top-down
 const HERO_BY_ID = Object.fromEntries(HERO_APPLICANTS.map(a => [a.id, a]));
 
-// The initials in paper on the ink tones, which turn light in dark; on the instrument tones, which
-// stay ink-black in dark, the instrument's own light ink (the same paper colour in light).
+// The initials in paper on the inkSoft tone, which turns light in dark; on the ink fill (a raised
+// charcoal in dark) its own onInk; on the instrument tones, which stay ink-black in dark, the
+// instrument's own light ink (the same paper colour in light).
 function HeroAvatar({ a, size = 30 }) {
   return (
     <span aria-hidden="true" style={{
@@ -83,7 +84,7 @@ export default function HeroDemo({ step: controlledStep = null }) {
     transition: 'opacity 600ms ease, transform 600ms cubic-bezier(0.22,1,0.36,1)',
   };
   const head = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 };
-  const eyebrow = { fontSize: 'clamp(8px, 2.2vw, 10px)', color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' };
+  const eyebrow = { fontSize: 'clamp(8px, 2.2vw, 10px)', color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' };
   const cardBase = {
     background: C.card, border: `1px solid ${C.rule}`, borderRadius: R.ctrl,
     padding: 'clamp(7px, 2%, 11px) clamp(9px, 2.4%, 13px)', boxShadow: SH.rest,
@@ -92,7 +93,7 @@ export default function HeroDemo({ step: controlledStep = null }) {
   const nameStyle = { fontSize: 'clamp(11px, 3vw, 13px)', fontWeight: 700, color: C.ink, lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
   // The role and income wrap, balanced, rather than run under an ellipsis on a narrow phone.
   const roleStyle = { fontSize: 'clamp(9px, 2.4vw, 11px)', color: C.inkMute, lineHeight: 1.2, overflowWrap: 'anywhere' };
-  const scorePill = (active) => ({ fontSize: 'clamp(10px, 2.6vw, 12px)', fontWeight: 700, color: active ? C.paper : C.ink, background: active ? C.red : C.paperDeep, borderRadius: R.pill, padding: '2px 9px', flexShrink: 0 });
+  const scorePill = (active) => ({ fontSize: 'clamp(10px, 2.6vw, 12px)', fontWeight: 700, color: active ? C.onRed : C.ink, background: active ? C.redFill : C.paperDeep, borderRadius: R.pill, padding: '2px 9px', flexShrink: 0 });
 
   return (
     <>
@@ -180,7 +181,7 @@ export default function HeroDemo({ step: controlledStep = null }) {
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={nameStyle}>
                   {a.name}
-                  {top && <span style={{ color: C.red, fontWeight: 600 }}> · Top pick</span>}
+                  {top && <span style={{ color: C.redText, fontWeight: 600 }}> · Top pick</span>}
                 </div>
                 <div style={roleStyle}>{a.role} · {a.income}</div>
               </div>
@@ -190,13 +191,13 @@ export default function HeroDemo({ step: controlledStep = null }) {
         })}
         {/* Send-to-landlord bar, sits directly under the 5 ranked rows (no dead gap above). */}
         <div style={{
-          background: C.ink, color: C.paper, borderRadius: R.ctrl,
+          background: C.inkFill, color: C.onInk, borderRadius: R.ctrl,
           padding: 'clamp(7px, 2%, 10px) clamp(10px, 2.6%, 14px)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
         }}>
           <span style={{ fontSize: 'clamp(9px, 2.4vw, 11px)', color: C.inkInverse, fontWeight: 500 }}>Co branded report</span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'clamp(10px, 2.6vw, 12px)', fontWeight: 700, color: C.paper }}>
-            Send to landlord <Icon name="arrow" size={14} color={C.paper} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'clamp(10px, 2.6vw, 12px)', fontWeight: 700, color: C.onInk }}>
+            Send to landlord <Icon name="arrow" size={14} color={C.onInk} />
           </span>
         </div>
       </div>

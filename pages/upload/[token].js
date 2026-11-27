@@ -86,7 +86,7 @@ export default function UploadPage() {
               <div style={{ display: 'inline-flex', marginBottom: 14, color: C.inkMute }}><Icon name="link" size={30} /></div>
               <h1 style={{ fontSize: 'clamp(22px, 5vw, 30px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.02em', marginBottom: 10, textWrap: 'balance' }}>{noWidow('This link is no longer active')}</h1>
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6, maxWidth: 460, margin: '0 auto 24px' }}>{invalidMsg}</p>
-              <a href="/" className="rl-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.ink, color: C.paper, textDecoration: 'none', borderRadius: 'var(--btn-radius)', padding: '13px var(--gap-card)', fontSize: 14, fontWeight: 700 }}>Go to Rentletter</a>
+              <a href="/" className="rl-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: C.inkFill, color: C.onInk, textDecoration: 'none', borderRadius: 'var(--btn-radius)', padding: '13px var(--gap-card)', fontSize: 14, fontWeight: 700 }}>Go to Rentletter</a>
             </div>
           )}
 
@@ -120,7 +120,7 @@ export default function UploadPage() {
 
           {status === 'ready' && (
             <>
-              <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Document request</div>
+              <div style={{ fontSize: 11, color: C.redText, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 12 }}>Document request</div>
               <h1 style={{ fontSize: 'clamp(24px, 5.5vw, 34px)', fontWeight: 800, color: C.ink, letterSpacing: '-0.025em', lineHeight: 1.08, marginBottom: 10 }}>
                 {firstName ? `${firstName}, upload your documents` : 'Upload your documents'}
               </h1>

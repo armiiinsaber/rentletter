@@ -68,7 +68,7 @@ export default function ReferencePage({ token, state, realtorName, applicantName
     } catch { setError('Could not save that. Please try again.'); }
     finally { setBusy(false); }
   };
-  const pill = (on) => ({ minHeight: 44, padding: '0 var(--s-3)', background: on ? C.ink : 'transparent', color: on ? C.paper : C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 999, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' });
+  const pill = (on) => ({ minHeight: 44, padding: '0 var(--s-3)', background: on ? C.inkFill : 'transparent', color: on ? C.onInk : C.ink, border: `1.5px solid ${C.ink}`, borderRadius: 999, fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' });
   const select = { minHeight: 44, fontSize: 16, padding: '0 var(--s-2)', border: `1.5px solid ${C.ink}`, borderRadius: R.ctrl, background: 'transparent', color: C.ink, fontFamily: 'inherit' };
   return (
     <>

@@ -239,7 +239,7 @@ export default function Crm() {
         .crm-day.hot { border-color: ${C.redBright}; box-shadow: inset 0 0 0 1px ${C.redBright}; }
         .crm-day-n { font-size: 12px; font-weight: 700; color: ${C.instMute}; font-variant-numeric: tabular-nums; display: flex; gap: 6px; align-items: center; }
         .crm-day.today .crm-day-n { color: ${C.instText}; }
-        .crm-day-today { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.paper}; background: ${C.red}; padding: 1px 5px; border-radius: ${R.pill}px; }
+        .crm-day-today { font-size: 9px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.onRed}; background: ${C.redFill}; padding: 1px 5px; border-radius: ${R.pill}px; }
         .crm-day-items { display: grid; gap: 3px; }
         .crm-day-dots { display: none; gap: 3px; flex-wrap: wrap; }
         .crm-chip { display: flex; align-items: center; gap: 5px; width: 100%; text-align: left; background: ${C.inst}; border: 1px solid ${C.instRule}; border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 11.5px; font-weight: 600; color: ${C.instText}; cursor: pointer; min-width: 0; }

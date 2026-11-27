@@ -5,8 +5,9 @@
 //      --c-paper and color-scheme, the canvas the dark ground, the browser's theme-color the dark
 //      ground), nothing sideways, and the page read in place (tests/helpers/darkAudit.mjs): no
 //      text under 4.5 to 1 against what is under it, no icon, tick or dot under 3 to 1, and no
-//      surface left light but the theme's own ink fill and a logo's plate. The text wraps with no
-//      layout break, measured as the wrapped text walk measures it (tests/helpers/textLines.mjs).
+//      surface left light but a logo's plate: an ink filled button, pill, tile, card or band is the
+//      raised charcoal (inkFill), never a light slab. The text wraps with no layout break, measured
+//      as the wrapped text walk measures it (tests/helpers/textLines.mjs).
 //   2. What stays light whatever the device or the choice: the landlord's report, from its first
 //      frame, its theme-color too; the page printed; a subtree held light (the report's preview
 //      on Profile).

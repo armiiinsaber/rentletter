@@ -110,7 +110,7 @@ test('the shell: a floating glass sidebar at 1024 and wider, the floating search
   assert.match(s, /<aside className="ds-side rl-glass" data-shell-side="" data-stuck="">/, 'glass, and it floats');
   assert.doesNotMatch(s, /1800px|margin: 0 auto/, 'no cap and no centring');
   // The current place: a dark filled pill. The Listings count from the board; Circle's dot while a request waits.
-  assert.match(s, /\.ds-place\[aria-current='page'\] \{ background: \$\{C\.ink\}; color: \$\{C\.paper\};/);
+  assert.match(s, /\.ds-place\[aria-current='page'\] \{ background: \$\{C\.inkFill\}; color: \$\{C\.onInk\};/);
   assert.match(s, /aria-current=\{current === key \? 'page' : undefined\}/);
   assert.match(s, /key === 'circle' && pending > 0 \? <span className="ds-dot" data-shell-dot="">/);
   // The realtor at the bottom: avatar, name, brokerage, the way to the profile.
@@ -160,16 +160,22 @@ test('the shell: a floating glass sidebar at 1024 and wider, the floating search
 
 test('the visual rules: red for the one main action and what needs the realtor, cards solid, motion on transform and opacity', () => {
   const files = ['components/dashboard/HomeView.js', 'components/dashboard/DashShell.js', 'components/dashboard/MainNav.js', 'components/dashboard/NeedsYou.js', 'components/dashboard/ListingsTable.js', 'components/dashboard/PipelineSoon.js', 'components/dashboard/PeopleList.js', 'components/dashboard/AssistantBell.js', 'components/dashboard/ActionRow.js', 'components/dashboard/StatusBoard.js', 'components/dashboard/ListingCard.js', 'components/dashboard/CommandMenu.js', 'components/dashboard/BoardSkeleton.js'];
-  const reds = files.flatMap((f) => code(f).split('\n').filter((l) => /\bC\.red\b/.test(l)).map((l) => `${f.split('/').pop()}: ${(l.match(/[.:#][\w-]+(?:[\s.:\w-()'=\[\]]*)?\{|className|rgba/) || [''])[0].trim()}`));
-  // The red fills: the one main action (New listing in the sidebar, the round one in the tab bar,
-  // the start's at 1024 and wider) and the signals of what needs the realtor (the dots, the current
-  // stage of the strip, the tick of a report sent).
-  const want = [
-    'HomeView.js: .hv :global(.hv-start-new) {',
-    'DashShell.js: .ds-dot {',
+  const linesOf = (re) => files.flatMap((f) => code(f).split('\n').filter((l) => re.test(l)).map((l) => `${f.split('/').pop()}: ${(l.match(/[.:#][\w-]+(?:[\s.:\w-()'=\[\]]*)?\{|className|rgba/) || [''])[0].trim()}`));
+  // The red fills, the brand red with its white label in both themes (C.redFill): the one main
+  // action (New listing in the sidebar, the round one in the tab bar, the start's at 1024 and wider).
+  const fills = linesOf(/\bC\.redFill\b/);
+  assert.deepEqual([...fills].sort(), [
     'DashShell.js: :global(.ds-btn-primary) {',
-    'MainNav.js: .mn :global(.mn-dot) {',
+    'HomeView.js: .hv :global(.hv-start-new) {',
     'MainNav.js: .mn :global(.mn-new) {',
+  ].sort(), fills.join('\n'));
+  for (const f of ['DashShell', 'HomeView', 'MainNav']) for (const l of code(`components/dashboard/${f}.js`).split('\n').filter((x) => /\bC\.redFill\b/.test(x))) assert.match(l, /color: \$\{C\.onRed\}/, `${f}: the label on the red fill is white`);
+  // The red marks (C.red): the signals of what needs the realtor (the dots, the current stage of
+  // the strip, the tick of a report sent).
+  const reds = linesOf(/\bC\.red\b/);
+  const want = [
+    'DashShell.js: .ds-dot {',
+    'MainNav.js: .mn :global(.mn-dot) {',
     'StatusBoard.js: .sb :global(.sb-dot) {',
     'ListingCard.js: .lc-dot {',
     'ListingCard.js: .lc-act-done svg {',

@@ -162,7 +162,7 @@ export default function ProfileCard({ profile, facts: f, strength, vault, photo,
         .tp-card-photo-none { position: relative; overflow: visible; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 1.5px dashed ${C.inkMute}; background: transparent; color: ${C.inkSoft}; font: inherit; font-size: 11px; font-weight: 700; line-height: 1.1; text-align: center; }
         /* On a narrow card the circle carries a plus; the words fit it once the card is wide. */
         .tp-photo-word { display: none; white-space: nowrap; }
-        .tp-photo-plus { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; background: ${C.ink}; color: ${C.paper}; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px ${C.card}; }
+        .tp-photo-plus { position: absolute; right: -2px; bottom: -2px; width: 22px; height: 22px; border-radius: 50%; background: ${C.inkFill}; color: ${C.onInk}; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 2px ${C.card}; }
         .tp-card-photo:focus-visible, .tp-key-tap:focus-visible, .tp-markbtn:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.card}, 0 0 0 4px ${C.ink}; }
         .tp-card .tp-need { margin-top: 0; }
         /* The key facts: the value in the display face, the largest thing on the card after the name.

@@ -178,7 +178,7 @@ export const ProfileStyles = () => (
     .mp-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); }
     .mp-card { padding: var(--card-pad); }
     .mp-card > :last-child { margin-bottom: 0; }
-    .mp-ink { background: ${C.ink}; color: ${C.paper}; border-radius: ${R.card}px; padding: var(--card-pad); }
+    .mp-ink { background: ${C.inkFill}; color: ${C.onInk}; border-radius: ${R.card}px; padding: var(--card-pad); }
     .mp-eyebrow { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); font-size: var(--t-eyebrow); line-height: var(--lh-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; min-height: 12px; }
     .mp-dash { display: inline-block; width: 3px; height: 11px; background: ${C.red}; border-radius: 1px; flex-shrink: 0; }
     .mp-ink .mp-dash { background: ${C.redOnInk}; }
@@ -216,9 +216,9 @@ export const ProfileStyles = () => (
     .mp-link:disabled { opacity: 0.5; cursor: default; }
     .mp-btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; min-height: 44px; padding: 0 var(--gap-card); background: transparent; color: ${C.ink}; border: 1.5px solid ${C.ink}; border-radius: var(--btn-radius); font-size: var(--t-body-2); font-weight: 700; cursor: pointer; font-family: inherit; text-decoration: none; }
     .mp-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .mp-btn-red { background: var(--action); color: ${C.paper}; border-color: var(--action); }
+    .mp-btn-red { background: var(--action); color: ${C.onRed}; border-color: var(--action); }
     .mp-btn-auto { width: auto; }
-    .mp-input { display: block; width: 100%; min-height: 44px; padding: 0 var(--s-3); font-size: var(--t-body); border: 1px solid ${C.rule}; border-radius: var(--card-radius); background: ${C.paper}; color: ${C.ink}; font-family: inherit; }
+    .mp-input { display: block; width: 100%; min-height: 44px; padding: 0 var(--s-3); font-size: var(--t-body); border: 1px solid ${C.ruleDark}; border-radius: var(--card-radius); background: ${C.paper}; color: ${C.ink}; font-family: inherit; }
     .mp-input:focus { border-color: ${C.ink}; }
     .mp-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); margin-top: var(--gap-card); }
     .mp-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: var(--gap-card); }

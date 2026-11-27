@@ -170,17 +170,17 @@ export function ListingCardStyles() {
       /* The applicants: overlapping initials, up to four, then +N. */
       .lc-faces { display: inline-flex; align-items: center; padding-left: 6px; }
       .lc-face { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; margin-left: -6px; border-radius: 50%; background: ${C.paperDeep}; color: ${C.ink}; font-size: 10px; font-weight: 800; letter-spacing: 0.02em; box-shadow: 0 0 0 2px ${C.card}; }
-      .lc-more { background: ${C.ink}; color: ${C.paper}; }
+      .lc-more { background: ${C.inkFill}; color: ${C.onInk}; }
       /* The copy button: round, outlined, the "Copied" bubble over it. */
       .lc-copy-slot { position: relative; display: inline-flex; min-width: 44px; }
       .lc-copy { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; background: ${C.card}; color: ${C.ink}; border: 1px solid ${C.ruleDark}; cursor: pointer; }
       .lc-copy[data-copied='true'] { border-color: ${C.ink}; }
       .lc-copy:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
-      .lc-copied { position: absolute; left: 50%; bottom: calc(100% + 6px); translate: -50% 0; padding: 4px 10px; border-radius: 999px; background: ${C.ink}; color: ${C.paper}; font-size: 12px; font-weight: 700; white-space: nowrap; pointer-events: none; opacity: 0; }
+      .lc-copied { position: absolute; left: 50%; bottom: calc(100% + 6px); translate: -50% 0; padding: 4px 10px; border-radius: 999px; background: ${C.inkFill}; color: ${C.onInk}; font-size: 12px; font-weight: 700; white-space: nowrap; pointer-events: none; opacity: 0; }
       .lc-copied:empty { padding: 0; }
       .lc-copied-on { opacity: 1; }
       /* The main action: a dark pill with an arrow. */
-      .lc-act { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--s-4) 0 var(--s-5); border-radius: 999px; background: ${C.ink}; color: ${C.paper}; border: 1px solid ${C.ink}; font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; text-decoration: none; white-space: nowrap; cursor: pointer; }
+      .lc-act { display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2); min-height: 44px; padding: 0 var(--s-4) 0 var(--s-5); border-radius: 999px; background: ${C.inkFill}; color: ${C.onInk}; border: 1px solid ${C.inkFill}; font-family: inherit; font-size: var(--t-body-2); font-weight: 700; line-height: 1.2; text-decoration: none; white-space: nowrap; cursor: pointer; }
       .lc-act-quiet { background: ${C.card}; color: ${C.ink}; border-color: ${C.ruleDark}; }
       .lc-act-done { background: ${C.card}; color: ${C.ink}; border-color: ${C.ink}; }
       .lc-act:disabled { cursor: default; }

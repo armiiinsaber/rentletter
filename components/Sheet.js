@@ -263,7 +263,7 @@ export default function Sheet({
         .rl-sh-grab { flex: none; display: flex; justify-content: center; align-items: center; height: 24px; touch-action: none; cursor: grab; }
         .rl-sh-panel:not(.rl-sh-flushed) > .rl-sh-grab { position: absolute; top: 0; left: 0; right: 0; z-index: 2; border-radius: ${R.modal}px ${R.modal}px 0 0; --glass-edge: transparent; }
         .rl-sh-panel:not(.rl-sh-flushed) > .rl-sh-scroll { padding-top: 24px; border-radius: ${R.modal}px ${R.modal}px 0 0; }
-        .rl-sh-handle { width: 36px; height: 5px; border-radius: 3px; background: ${C.ruleDark}; }
+        .rl-sh-handle { width: 36px; height: 5px; border-radius: 3px; background: ${C.sand}; }
         .rl-sh-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: none; -webkit-overflow-scrolling: touch;
           padding-bottom: env(safe-area-inset-bottom, 0px); }
         .rl-sh-scroll.rl-sh-nosafe { padding-bottom: 0; } /* its own last row carries the safe area */

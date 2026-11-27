@@ -234,7 +234,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           {disclosure && <div style={{ marginBottom: 16 }}>{disclosure}</div>}
           {setLine}
           <button type="button" onClick={() => { if (ready) { setError(''); setReviewing(true); } }} disabled={!ready} aria-live="polite"
-            style={{ width: '100%', minHeight: 48, background: ready ? C.red : C.ruleDark, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
+            style={{ width: '100%', minHeight: 48, background: ready ? C.redFill : C.sand, color: ready ? C.onRed : C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: ready ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}>
             <Pending busy={!!analyzingLabel} label={analyzingLabel || ''}>{`Review ${done.length ? `${done.length} file${done.length === 1 ? '' : 's'}` : ''} & submit`}</Pending>
           </button>
         </>
@@ -253,7 +253,7 @@ export default function DocumentUploader({ token, before = null, disclosure = nu
           )}
           {setLine}
           <button type="button" onClick={runSubmit} disabled={submitting} aria-live="polite"
-            style={{ width: '100%', minHeight: 48, background: C.red, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.85 : 1, marginBottom: 10, fontFamily: 'inherit' }}>
+            style={{ width: '100%', minHeight: 48, background: C.redFill, color: C.onRed, border: 'none', borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 700, cursor: submitting ? 'wait' : 'pointer', opacity: submitting ? 0.85 : 1, marginBottom: 10, fontFamily: 'inherit' }}>
             <Pending busy={submitting} label={finalizing ? 'Finishing your submission' : 'Sending your documents'} tone="red">{submitLabel}</Pending>
           </button>
           <button type="button" onClick={() => setReviewing(false)} disabled={submitting}

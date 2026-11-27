@@ -24,7 +24,7 @@ const triplet = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16))
 export const themeDecls = (P, S) => [
   ...TOKENS.map((k) => `${cssVar(k)}: ${P[k]}; ${cssVar(k)}-rgb: ${triplet(P[k])};`),
   `--sh-rest: ${S.rest}; --sh-raised: ${S.raised}; --sh-modal: ${S.modal};`,
-  '--paper: var(--c-paper); --rule: var(--c-rule); --action: var(--c-red); --focus-ring: var(--c-ink); --glass-solid: var(--c-paper);',
+  '--paper: var(--c-paper); --rule: var(--c-rule); --action: var(--c-red-fill); --focus-ring: var(--c-ink); --glass-solid: var(--c-paper);',
 ].join(' ');
 const LIGHT_DECLS = `${themeDecls(LIGHT, SH_LIGHT)} color-scheme: light;`;
 const DARK_DECLS = `${themeDecls(DARK, SH_DARK)} color-scheme: dark;`;

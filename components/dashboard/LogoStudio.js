@@ -92,19 +92,19 @@ function ColorField({ label, value, onChange, disabled }) {
       <ColorWheel value={valid ? value : '#1f3a5f'} onChange={onChange} size={150} disabled={disabled} />
       <input type="text" value={hex} disabled={disabled} onChange={(e) => apply(e.target.value)} placeholder="#1f3a5f" spellCheck={false}
         aria-label={`${label} hex`}
-        style={{ width: 150, marginTop: 8, padding: '8px 10px', fontSize: 'var(--t-body)', fontFamily: 'monospace', textAlign: 'center', borderRadius: 'var(--card-radius)', border: `1px solid ${valid || !hex ? C.rule : C.danger}`, background: C.paper, color: C.ink }} />
+        style={{ width: 150, marginTop: 8, padding: '8px 10px', fontSize: 'var(--t-body)', fontFamily: 'monospace', textAlign: 'center', borderRadius: 'var(--card-radius)', border: `1px solid ${valid || !hex ? C.ruleDark : C.danger}`, background: C.paper, color: C.ink }} />
     </div>
   );
 }
 
 function StepChip({ n, label, state }) {
   const done = state === 'done', active = state === 'active';
-  // Done: the red tick on paper; active: filled ink; the rest: a paper well. No status colour.
-  const bg = done ? C.paper : active ? C.ink : C.paperDeep;
-  const fg = done ? C.red : active ? C.paper : C.inkMute;
+  // Done: the red tick on paper; active: filled ink (inkFill); the rest: a paper well. No status colour.
+  const bg = done ? C.paper : active ? C.inkFill : C.paperDeep;
+  const fg = done ? C.red : active ? C.onInk : C.inkMute;
   return (
     <div aria-disabled={state === 'locked' ? 'true' : undefined} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, opacity: state === 'locked' ? 0.55 : 1 }}>
-      <span style={{ width: 20, height: 20, borderRadius: '50%', background: bg, color: fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: `1px solid ${done ? C.ink : active ? C.ink : C.ruleDark}` }}>{done ? '✓' : n}</span>
+      <span style={{ width: 20, height: 20, borderRadius: '50%', background: bg, color: fg, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, border: `1px solid ${done ? C.ink : active ? C.ink : C.sand}` }}>{done ? '✓' : n}</span>
       <span style={{ fontSize: 11.5, fontWeight: active ? 700 : 600, color: active ? C.ink : C.inkSoft }}>{label}</span>
     </div>
   );
@@ -315,7 +315,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               <div style={{ fontSize: 11, color: C.inkSoft, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>Step 2 · Describe <span style={{ color: C.inkMute, fontWeight: 600 }}>(optional)</span></div>
               <textarea value={brief} onChange={(e) => setBrief(e.target.value)} rows={2} disabled={busy}
                 placeholder="Describe your logo, a house, a key, your initials, a mood… or leave blank and we'll design from your name."
-                style={{ width: '100%', padding: '10px 12px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit' }} />
+                style={{ width: '100%', padding: '10px 12px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.ruleDark}`, background: C.paper, color: C.ink, resize: 'vertical', fontFamily: 'inherit' }} />
             </div>
           )}
 
@@ -358,7 +358,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
               <div key={i} style={{ border: `1px solid ${isSaved ? C.ink : C.rule}`, borderRadius: R.ctrl, padding: 12, background: isSaved ? C.paperDeep : C.paper, boxShadow: isSaved ? `0 0 0 1px ${C.ink}` : 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                   <span style={{ fontSize: 12, fontWeight: 700, color: C.ink }}>{v.label}</span>
-                  {isSaved && <span style={{ fontSize: 11, fontWeight: 800, color: C.paper, background: C.ink, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.04em' }}>✓ SAVED</span>}
+                  {isSaved && <span style={{ fontSize: 11, fontWeight: 800, color: C.onInk, background: C.inkFill, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.04em' }}>✓ SAVED</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   <Swatch svg={v.svg} bg={LIGHT.card} label="On light" idKey={`r${roundIdx}v${i}l`} />
@@ -400,7 +400,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
           {/* The chosen concept, large + emphasized */}
           <div style={{ border: `2px solid ${C.ink}`, borderRadius: R.card, padding: 'clamp(12px,3vw,18px)', background: C.paper, boxShadow: `0 6px 22px rgba(var(--c-shadow-rgb), 0.10)` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-              <span style={{ fontSize: 10.5, fontWeight: 800, color: C.paper, background: C.ink, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Refining this concept</span>
+              <span style={{ fontSize: 10.5, fontWeight: 800, color: C.onInk, background: C.inkFill, padding: '3px 9px', borderRadius: R.pill, letterSpacing: '0.05em', textTransform: 'uppercase' }}>Refining this concept</span>
               <span style={{ fontSize: 13, fontWeight: 700, color: C.ink }}>{refineCurrent.label}</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
@@ -421,7 +421,7 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
             <input value={refineBrief} onChange={(e) => setRefineBrief(e.target.value)} disabled={busy}
               onKeyDown={(e) => { if (e.key === 'Enter') doRefine(); }}
               placeholder="e.g. make it bolder · use the accent colour · tighter spacing · simpler"
-              style={{ width: '100%', padding: '11px 13px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.rule}`, background: C.paper, color: C.ink }} />
+              style={{ width: '100%', padding: '11px 13px', fontSize: 'var(--t-body)', borderRadius: 'var(--card-radius)', border: `1px solid ${C.ruleDark}`, background: C.paper, color: C.ink }} />
             <button onClick={doRefine} disabled={busy} className="ds-btn ds-btn-ink" style={{ marginTop: 8 }}>
               <Pending busy={busy} label="Refining your logo" tone="ink">Refine this concept</Pending>
             </button>

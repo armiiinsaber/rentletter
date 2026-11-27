@@ -76,7 +76,7 @@ function HeldDocuments({ docs, realtorName, onView, onDeleteAll }) {
       ) : (
         <div className="rl-ctrl-row" style={{ marginTop: 'var(--gap-card)' }}>
           <span style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 1.4, flex: '1 1 160px' }}>Delete {live.length === 1 ? 'this document' : `these ${live.length} documents`} now? The analysis stays.</span>
-          <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.ink, color: C.paper, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}><Pending busy={busy === 'delete'} label="Deleting the documents" tone="ink">Delete</Pending></button>
+          <button type="button" onClick={del} disabled={busy === 'delete'} style={{ ...btn44, background: C.inkFill, color: C.onInk, border: 'none', opacity: busy === 'delete' ? 0.7 : 1 }}><Pending busy={busy === 'delete'} label="Deleting the documents" tone="ink">Delete</Pending></button>
           <button type="button" onClick={() => setConfirm(false)} disabled={busy === 'delete'} style={{ ...btn44, background: 'transparent', color: C.ink, border: `1px solid ${C.ruleDark}` }}>Cancel</button>
         </div>
       )}
@@ -266,7 +266,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
   const ghostBtn = { minHeight: 44, background: 'transparent', border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, color: C.inkSoft, cursor: 'pointer' };
   const secondaryBtn = { minHeight: 44, background: 'transparent', border: `1px solid ${C.ruleDark}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
   const destOutlineBtn = { minHeight: 44, background: 'transparent', border: `1px solid ${C.ink}`, color: C.ink, borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer' };
-  const destSolidBtn = { minHeight: 44, background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
+  const destSolidBtn = { minHeight: 44, background: C.inkFill, color: C.onInk, border: 'none', borderRadius: 'var(--btn-radius)', padding: '0 var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)' };
 
   return (
     <div style={{ marginTop: 'var(--s-3)', paddingTop: 'var(--s-3)', borderTop: `1px solid ${C.rule}` }}>
@@ -365,7 +365,7 @@ export default function ApplicantDocIntel({ listingId, linkId, applicationId, ap
                 <div style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 1.5, marginBottom: 'var(--s-2)' }}>Send the landlord what the documents say about <strong style={{ color: C.inkSoft }}>{applicantName || 'this applicant'}</strong> only, separate from the ranked shortlist.</div>
                 <div className="rl-ctrl-row">
                   <button onClick={downloadConfirmPdf} disabled={pdfBusy}
-                    style={{ background: C.ink, color: C.paper, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
+                    style={{ background: C.inkFill, color: C.onInk, border: 'none', borderRadius: 'var(--btn-radius)', padding: 'var(--s-2) var(--gap-card)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: pdfBusy ? 'wait' : 'pointer', opacity: pdfBusy ? 0.7 : 1, display: 'inline-flex', alignItems: 'center', gap: 'var(--s-2)' }}>
                     <Pending busy={pdfBusy} label="Preparing the PDF" tone="ink">Download PDF</Pending>
                   </button>
                   <button onClick={copyConfirmText} disabled={textBusy}

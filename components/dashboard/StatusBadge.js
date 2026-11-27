@@ -18,7 +18,7 @@ export default function StatusBadge({ profile }) {
     bg = C.paper; fg = C.ink; border = C.rule;
     label = `Trial · ${s.daysLeft} day${s.daysLeft === 1 ? '' : 's'} left`;
   } else if (s.status === 'trial_expired') {
-    bg = C.redTint; fg = C.red; border = C.red; label = 'Trial ended';
+    bg = C.redTint; fg = C.redText; border = C.red; label = 'Trial ended';
   } else if (s.status === 'past_due') {
     bg = C.dangerTint; fg = C.danger; border = C.danger; label = 'Payment past due';
   }

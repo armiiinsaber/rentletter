@@ -9,8 +9,9 @@
 //            colour (an empty tick) is decoration, and a box with a border that holds minMark (a
 //            colour swatch) is bounded by it
 //   light    every surface of 2000px² or more painted light (luminance over 0.4) that is not a
-//            fill of the dark theme's own ink (the light ink button, pill or band), a logo's plate,
-//            a picture, or inside a subtree held light (.rl-theme-light)
+//            logo's plate, a picture, or inside a subtree held light (.rl-theme-light). An ink
+//            filled surface (a button, pill, tile, card or band) is a raised charcoal in dark
+//            (components/theme.js inkFill), so it is never let through.
 // Text that is disabled, clipped away or transparent is left out, and so is anything
 // over a picture or a gradient, which no colour pair can describe. A glass surface is read over the
 // ancestors under it, as the page lays it.
@@ -85,14 +86,12 @@ export const THEME_AUDIT = ({ minText = 4.5, minMark = 3 } = {}) => {
     const m = over({ ...col, a: col.a * o }, u.c); const k = ratio(m, u.c);
     if (k < minMark) marks.push({ at: path(el), fg: hex(m), bg: hex(u.c), ratio: Math.round(k * 100) / 100 });
   }
-  const inkDark = parse(`rgb(${getComputedStyle(root).getPropertyValue('--c-ink-rgb')})`);
   for (const el of document.querySelectorAll('body *')) {
     if (!shown(el) || el.closest('.rl-theme-light, .rl-logo-plate')) continue;
     const r = el.getBoundingClientRect(); if (r.width * r.height < 2000) continue;
     if (/^(IMG|VIDEO|CANVAS|IFRAME|PICTURE)$/.test(el.tagName)) continue;
     const bg = parse(getComputedStyle(el).backgroundColor); if (!bg || bg.a < 0.5) continue;
     const c = over(bg, base); if (lum(c) <= 0.4) continue;
-    if (inkDark && Math.abs(c.r - inkDark.r) + Math.abs(c.g - inkDark.g) + Math.abs(c.b - inkDark.b) < 12) continue;
     light.push({ at: path(el), bg: hex(c), size: `${Math.round(r.width)}x${Math.round(r.height)}` });
   }
   const paper = getComputedStyle(root).getPropertyValue('--c-paper').trim();

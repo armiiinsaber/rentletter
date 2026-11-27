@@ -137,7 +137,7 @@ export default function FAQ() {
 
         <main style={{ maxWidth: 820, margin: '0 auto', padding: 'clamp(40px, 8vw, 80px) clamp(20px, 4vw, 40px)' }}>
 
-          <div style={{ fontSize: 11, color: C.red, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 14 }}>
+          <div style={{ fontSize: 11, color: C.redText, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', marginBottom: 14 }}>
             Frequently asked questions
           </div>
           <h1 className="rl-serif" style={{ fontSize: 'clamp(34px, 6vw, 52px)', letterSpacing: '-0.025em', lineHeight: 1.04, marginBottom: 18 }}>
@@ -145,7 +145,7 @@ export default function FAQ() {
           </h1>
           <p style={{ fontSize: 'clamp(15px, 3vw, 17px)', color: C.inkSoft, marginBottom: 40, lineHeight: 1.6, maxWidth: 600 }}>
             Can&apos;t find what you need? Email{' '}
-            <a href="mailto:info@rentletter.ca" style={{ color: C.red, textDecoration: 'underline' }}>info@rentletter.ca</a>{' '}
+            <a href="mailto:info@rentletter.ca" style={{ color: C.redText, textDecoration: 'underline' }}>info@rentletter.ca</a>{' '}
             and the Rentletter team replies within 24 hours.
           </p>
 
@@ -190,11 +190,11 @@ export default function FAQ() {
           ))}
 
           {/* CTA at bottom */}
-          <section className="rl-card" style={{ marginTop: 36, padding: 'clamp(24px, 4vw, 40px)', background: C.ink, color: C.paper, border: 'none' }}>
+          <section className="rl-card" style={{ marginTop: 36, padding: 'clamp(24px, 4vw, 40px)', background: C.inkFill, color: C.onInk, border: 'none' }}>
             <div style={{ fontSize: 11, color: C.blush, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: 10 }}>
               Still have a question?
             </div>
-            <h3 className="t-d3" style={{ color: C.paper, margin: '0 0 var(--gap-line)' }}>
+            <h3 className="t-d3" style={{ color: C.onInk, margin: '0 0 var(--gap-line)' }}>
               Talk to the Rentletter team.
             </h3>
             <p style={{ fontSize: 'var(--t-body)', color: C.inkInverse, lineHeight: 1.6, marginBottom: 20, maxWidth: 520 }}>
@@ -202,7 +202,7 @@ export default function FAQ() {
             </p>
             <a href="mailto:info@rentletter.ca" className="rl-btn" style={{
               display: 'inline-flex', alignItems: 'center', gap: 9,
-              background: C.red, color: C.paper, padding: '14px var(--gap-card)', borderRadius: 'var(--btn-radius)',
+              background: C.redFill, color: C.onRed, padding: '14px var(--gap-card)', borderRadius: 'var(--btn-radius)',
               fontSize: 14, fontWeight: 600, textDecoration: 'none',
             }}>
               <Icon name="mail" size={16} /> info@rentletter.ca

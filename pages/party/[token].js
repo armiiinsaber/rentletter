@@ -125,9 +125,9 @@ export default function PartyPage() {
   const banner = (
     <div className="mp-ink">
       <Eyebrow style={{ color: C.inkInverseMute }}>{isGuarantor ? 'You were named as guarantor' : 'You were named as co applicant'}</Eyebrow>
-      <div className="mp-h2" style={{ color: C.paper, marginTop: 'var(--gap-line)' }}>{noWidow(unit)}</div>
+      <div className="mp-h2" style={{ color: C.onInk, marginTop: 'var(--gap-line)' }}>{noWidow(unit)}</div>
       <div className="mp-p" style={{ color: C.inkInverse, marginTop: 'var(--gap-line)' }}>{noWidow(`${ctx.primaryFirst || 'The applicant'} is applying${ctx.realtorName ? `, through ${ctx.realtorName}` : ''}.`)}</div>
-      {isGuarantor && <div className="mp-p" style={{ color: C.paper, marginTop: 'var(--gap-line)' }}>{noWidow(GUARANTOR_SENTENCE)}</div>}
+      {isGuarantor && <div className="mp-p" style={{ color: C.onInk, marginTop: 'var(--gap-line)' }}>{noWidow(GUARANTOR_SENTENCE)}</div>}
     </div>
   );
   if (phase === 'declined' || phase === 'withdrawn') return shell(<>

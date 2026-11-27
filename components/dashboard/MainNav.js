@@ -112,7 +112,7 @@ export default function MainNav({ current: onView, onNew = null }) {
         .mn :global(.mn-sr) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         /* The one main action: round, red, raised above the bar. */
         .mn :global(.mn-new-slot) { display: flex; justify-content: center; }
-        .mn :global(.mn-new) { display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; margin-top: -22px; border-radius: 50%; background: ${C.red}; color: ${C.paper}; border: 3px solid ${C.paper}; box-shadow: 0 8px 20px rgba(var(--c-red-rgb), 0.32), 0 2px 4px rgba(var(--c-shadow-rgb), 0.12); cursor: pointer; }
+        .mn :global(.mn-new) { display: inline-flex; align-items: center; justify-content: center; width: 60px; height: 60px; margin-top: -22px; border-radius: 50%; background: ${C.redFill}; color: ${C.onRed}; border: 3px solid ${C.paper}; box-shadow: 0 8px 20px rgba(var(--c-red-fill-rgb), 0.32), 0 2px 4px rgba(var(--c-shadow-rgb), 0.12); cursor: pointer; }
         .mn :global(.mn-new:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         @media (max-width: 344.98px) { .mn { left: 12px; right: 12px; } .mn :global(.mn-label) { font-size: 10px; } }
         @media (min-width: 1024px) { .mn { display: none; } }

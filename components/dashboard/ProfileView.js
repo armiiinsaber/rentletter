@@ -129,7 +129,7 @@ export default function ProfileView({ initialProfile }) {
         .pv-show { min-width: 0; margin: 0; }
         .pv-cap { font-size: var(--t-eyebrow); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: ${C.inkMute}; margin: 0 0 var(--s-2); }
         .pv-report { padding: var(--card-pad); }
-        .pv-hold { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; line-height: var(--lh-display); color: ${C.ruleDark}; }
+        .pv-hold { font-family: var(--f-display); font-size: var(--t-d2); font-weight: 600; line-height: var(--lh-display); color: ${C.sand}; }
         .pv-list { list-style: none; margin: 0; padding: 0; }
         /* From 1024px: the form at the left at a width that keeps its fields comfortable (about 560px
            at 1280 to 880px from 2000), the preview beside it taking the rest and never under 340px.

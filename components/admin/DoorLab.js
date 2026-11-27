@@ -152,7 +152,7 @@ export default function DoorLab() {
         @media (max-width: 360px) { .dr-chip { font-size: 13px; padding: 0 4px; } }
         .dr-chip.on { background: ${C.instText}; color: ${C.inst}; border-color: ${C.instText}; }
         .dr-chip:focus-visible, .dr-copy:focus-visible, .dr-range:focus-visible { outline: 2px solid ${C.instText}; outline-offset: 2px; }
-        .dr-range { display: block; width: 100%; height: 44px; margin: 0; accent-color: ${C.red}; cursor: pointer; }
+        .dr-range { display: block; width: 100%; height: 44px; margin: 0; accent-color: ${C.redFill}; cursor: pointer; }
         .dr-copyrow { display: flex; align-items: flex-end; }
         .dr-copy { min-height: 44px; width: 100%; padding: 0 20px; border-radius: ${R.pill}px; border: 0; background: ${C.paper}; color: ${C.ink}; font-size: 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
         .dr-copy:hover { background: ${C.card}; }

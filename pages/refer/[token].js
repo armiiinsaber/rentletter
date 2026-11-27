@@ -52,7 +52,7 @@ export default function ReferralConsent() {
 
   const from = data?.from?.name ? `${data.from.name}${data.from.brokerage ? ` (${data.from.brokerage})` : ''}` : 'Your realtor';
   const to = data?.to?.name ? `${data.to.name}${data.to.brokerage ? ` at ${data.to.brokerage}` : ''}` : 'another realtor';
-  const Eyebrow = ({ children, color = C.red }) => (
+  const Eyebrow = ({ children, color = C.redText }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
       <span aria-hidden="true" style={{ width: 22, height: 2, background: color, borderRadius: 1 }} />
       <span style={{ fontSize: 11, color, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>{children}</span>
@@ -84,7 +84,7 @@ export default function ReferralConsent() {
               <p style={{ fontSize: 15, color: C.inkSoft, lineHeight: 1.6 }}>
                 {data?.status === 'approved' ? 'If you change your mind, you can revoke it from your profile at any time.' : data?.status === 'declined' ? 'Nothing was shared. Your current application is unaffected.' : 'Referral links work once and expire after 7 days. If a realtor still wants to refer you, they can send a new request, and you can still decline it.'}
               </p>
-              <a href="/my-application" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18, color: C.red, fontWeight: 700, textDecoration: 'none' }}>My profile <Icon name="arrow" size={14} /></a>
+              <a href="/my-application" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18, color: C.redText, fontWeight: 700, textDecoration: 'none' }}>My profile <Icon name="arrow" size={14} /></a>
             </div>
           )}
 
@@ -99,7 +99,7 @@ export default function ReferralConsent() {
                   ? `${data?.to?.name || 'The receiving realtor'} gets a copy of your details to match against their listings. It appears in your profile as its own application, with its own lookup history, and you can revoke it there at any time, which removes their access going forward.`
                   : `${data?.from?.name || 'Your realtor'} will only see that you declined, no reason is collected. Your existing application with them is unchanged.`}
               </p>
-              <a href="/my-application" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18, color: C.red, fontWeight: 700, textDecoration: 'none' }}>Open my profile <Icon name="arrow" size={14} /></a>
+              <a href="/my-application" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginTop: 18, color: C.redText, fontWeight: 700, textDecoration: 'none' }}>Open my profile <Icon name="arrow" size={14} /></a>
             </div>
           )}
 
@@ -140,7 +140,7 @@ export default function ReferralConsent() {
                   <Pending busy={busy && deciding === 'decline'} label="Declining">Decline, don’t share</Pending>
                 </button>
                 <button type="button" onClick={() => decide('approve')} disabled={busy} className="rl-btn"
-                  style={{ background: C.ink, color: C.paper, border: `2px solid ${C.ink}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
+                  style={{ background: C.inkFill, color: C.onInk, border: `2px solid ${C.inkFill}`, borderRadius: 'var(--btn-radius)', padding: '15px var(--gap-card)', fontSize: 15, fontWeight: 800, cursor: busy ? 'wait' : 'pointer', minHeight: 54 }}>
                   <Pending busy={busy && deciding === 'approve'} label="Sharing your application" tone="ink">{`Approve, share with ${data.to?.name?.split(' ')[0] || 'them'}`}</Pending>
                 </button>
               </div>

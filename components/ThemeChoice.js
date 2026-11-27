@@ -34,7 +34,7 @@ export default function ThemeChoice({ variant = 'realtor' }) {
         .tc-realtor .tc-line { margin-top: 0; }
         .tc-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; max-width: 360px; margin-top: var(--gap-card); padding: 2px; border-radius: var(--btn-radius); border: 1px solid ${C.ruleDark}; background: ${C.card}; }
         .tc-seg button { min-width: 0; min-height: 44px; padding: 0 var(--s-2); border-radius: var(--btn-radius); font-family: inherit; font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; background: transparent; border: none; cursor: pointer; white-space: nowrap; }
-        .tc-seg button[aria-pressed='true'] { background: ${C.ink}; color: ${C.paper}; font-weight: 700; }
+        .tc-seg button[aria-pressed='true'] { background: ${C.inkFill}; color: ${C.onInk}; font-weight: 700; }
         .tc-seg button:focus-visible { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
       `}</style>
     </section>
