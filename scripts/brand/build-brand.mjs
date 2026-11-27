@@ -7,13 +7,16 @@
 //   lib/brand/logoPaths.js       the logo and the small mark as vector paths (the web, the PDF)
 //   public/brand/*               the logo as SVG and the email PNG
 //   public/icons/*, favicon.ico  the app icons and the favicon: the small mark, realtor palette
-//   public/splash/*              the iOS launch images (lib/brand/splash.js)
+//   public/splash/*              the iOS launch images, light and dark (lib/brand/splash.js,
+//                                components/brand/launchImages.js)
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { SPLASH, splashFile } from '../../lib/brand/splash.js';
+import { splashFileDark } from '../../components/brand/launchImages.js';
+import { DARK } from '../../components/theme.js';
 import { INK, PAPER, PALETTES, r2, logoSvg as drawLogo, markSvg as drawMark } from './draw.mjs';
 
 // npm run brand:kit: the brand kit only (scripts/brand/kit.mjs), drawn from the generated paths
@@ -106,11 +109,14 @@ let offset = head.length;
 entries.forEach(([px, data], i) => { const o = 6 + 16 * i; head.writeUInt8(px, o); head.writeUInt8(px, o + 1); head.writeUInt8(0, o + 2); head.writeUInt8(0, o + 3); head.writeUInt16LE(1, o + 4); head.writeUInt16LE(32, o + 6); head.writeUInt32LE(data.length, o + 8); head.writeUInt32LE(offset, o + 12); offset += data.length; });
 writeFileSync('public/favicon.ico', Buffer.concat([head, ...entries.map(([, d]) => d)]));
 
-// The launch images: paper, the full logo centred at half the screen's width.
+// The launch images: paper, the full logo centred at half the screen's width. The dark set the
+// same, on the dark theme's ground with the word and the bar in its colours (components/theme.js
+// DARK: the opening screen in dark, components/brand/AppStart.js).
 mkdirSync('public/splash', { recursive: true });
 for (const s of SPLASH) {
   const W = s.w * s.dpr, H = s.h * s.dpr; const lw = W * 0.5; const lh = lw * LOGO.h / LOGO.w;
   writeFileSync(`public${splashFile(s)}`, png(logoSvg({ height: lh, bg: PAPER, w: W, h: H })));
+  writeFileSync(`public${splashFileDark(s)}`, png(logoSvg({ height: lh, bg: DARK.paper, ink: DARK.ink, bar: DARK.red, w: W, h: H })));
 }
 // The offline page the service worker (public/sw.js) shows when a page cannot load: paper, the
 // logo, one sentence. It reloads by itself when the connection comes back. No script but that.
@@ -128,4 +134,4 @@ p { margin: 0; font-size: 16px; line-height: 1.5; max-width: 22em; text-wrap: ba
 <script>window.addEventListener('online', function () { location.reload(); });</script>
 </body></html>
 `);
-console.log(`logo ${LOGO.w} by ${LOGO.h} (cap 100), mark, ${icons.length} icons, favicon.ico, ${SPLASH.length} launch images, offline page`);
+console.log(`logo ${LOGO.w} by ${LOGO.h} (cap 100), mark, ${icons.length} icons, favicon.ico, ${SPLASH.length} launch images and ${SPLASH.length} dark, offline page`);

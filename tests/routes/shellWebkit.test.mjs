@@ -370,8 +370,16 @@ async function deskWalk(browser, tag) {
     assert.equal(await visible(phone, '[data-needs-you]'), false, `${tag}: Needs you is the bell's on a phone`);
     const tabs = await phone.locator('[data-main-nav]').evaluate((n) => { const r = n.getBoundingClientRect(); return { left: Math.round(r.left), right: Math.round(innerWidth - r.right), bottom: Math.round(innerHeight - r.bottom), height: Math.round(r.height), items: [...n.querySelectorAll('[data-nav], [data-tab-new]')].map((e) => e.getAttribute('data-nav') || 'new'), current: [...n.querySelectorAll('[aria-current="page"]')].map((e) => e.getAttribute('data-nav')), red: getComputedStyle(n.querySelector('[data-tab-new]')).backgroundColor }; });
     assert.deepEqual(tabs, { left: 16, right: 16, bottom: 16, height: 68, items: ['listings', 'pipeline', 'new', 'circle', 'profile'], current: ['listings'], red: 'rgb(215, 32, 39)' }, `${tag}: the tab bar`);
-    const t = await phone.evaluate(() => [...document.querySelectorAll('[data-status-board] [data-tile]')].map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)]; }));
-    assert.ok(t[0][1] === t[1][1] && t[2][1] === t[3][1] && t[2][1] > t[0][1] && t[0][0] === t[2][0], `${tag}: two by two (${JSON.stringify(t)})`);
+    // The report sent above: nothing waits, so the board is one compact row (fix/phone-standalone);
+    // with L1's report unsent again, the four tiles two by two.
+    const calm = await phone.evaluate(() => ({ row: !!document.querySelector('[data-board-calm]')?.getClientRects().length, tiles: [...document.querySelectorAll('[data-status-board] [data-tile]')].filter((e) => e.getClientRects().length).length }));
+    assert.deepEqual(calm, { row: true, tiles: 0 }, `${tag}: nothing waiting, the compact row`);
+    await fetch(`${BASE}/__fake/state?unsent=L1`);
+    try {
+      await open(phone);
+      const t = await phone.evaluate(() => [...document.querySelectorAll('[data-status-board] [data-tile]')].map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top)]; }));
+      assert.ok(t[0][1] === t[1][1] && t[2][1] === t[3][1] && t[2][1] > t[0][1] && t[0][0] === t[2][0], `${tag}: two by two (${JSON.stringify(t)})`);
+    } finally { await fetch(`${BASE}/__fake/state?unsent=0`); }
     // The names stay for a screen reader, drawn as nothing (a 1px clipped box).
     assert.ok(await phone.locator('[data-listing-card="L1"] .lc-seg-t').evaluateAll((els) => els.length === 6 && els.every((e) => e.getBoundingClientRect().width <= 1)), `${tag}: no names under the strip on a phone`);
     assert.match(await phone.locator('[data-listing-card="L1"] .lc-narrow').innerText(), /^\$2,600 · 2 bed · \d+ applicants$/);

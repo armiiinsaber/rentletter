@@ -310,10 +310,16 @@ export default function Sheet({
 // middle of what was on screen. From 1024px a sheet is a panel over the view and nothing behind it
 // moves: the sidebar and the header stay exactly where they were. Rendered once by GlobalStyle
 // (components/ui.js) through SHEET_PAGE_CSS.
+// A scale on the Next root makes it the box that anything floating inside it is placed against.
+// What floats fixed to the screen is drawn on the body, outside it (components/FloatLayer.js: the
+// phone's tab bar, the toasts). What floats sticky has to stay in the page: the tenant's top bar,
+// the strength bar and chips under it, and the bar for the cards picked. On a page that has one
+// the page behind a sheet only dims, as it does under reduced motion, so that bar holds its place.
+export const PAGE_STICKY = '[data-tenant-bar], [data-bulk-bar]';
 export const SHEET_PAGE_CSS = `
   html.rl-sheet-open { overscroll-behavior: none; }
   @media (prefers-reduced-motion: no-preference) and (max-width: 1023.98px) {
-    html.rl-sheet-open #__next, html.rl-sheet-closing #__next { transition: scale ${NATIVE.sheet}ms ${CURVE.ios}, border-radius ${NATIVE.sheet}ms ${CURVE.ios}; transform-origin: 50% calc(var(--rl-sheet-y, 0px) + 50vh); }
-    html.rl-sheet-open #__next { scale: 0.97; border-radius: ${R.modal}px; overflow: hidden; }
+    html.rl-sheet-open:not(:has(${PAGE_STICKY})) #__next, html.rl-sheet-closing:not(:has(${PAGE_STICKY})) #__next { transition: scale ${NATIVE.sheet}ms ${CURVE.ios}, border-radius ${NATIVE.sheet}ms ${CURVE.ios}; transform-origin: 50% calc(var(--rl-sheet-y, 0px) + 50vh); }
+    html.rl-sheet-open:not(:has(${PAGE_STICKY})) #__next { scale: 0.97; border-radius: ${R.modal}px; overflow: hidden; }
   }
 `;

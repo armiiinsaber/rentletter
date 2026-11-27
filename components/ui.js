@@ -101,9 +101,10 @@ export const GlobalStyle = () => (
     /* The surfaces that show inkSoft text: the strength, never under the inkSoft floor. */
     .tp-top.rl-glass, .rl-tbar.rl-glass:has(.rl-tbar-label), .rl-header.rl-glass, .al-head.rl-glass { --glass-alpha: max(var(--glass-fill), var(--glass-fill-soft)); }
     /* The realtor shell's floating surfaces (components/dashboard): the sidebar, the phone's tab bar,
-       the search and the bell, Needs you and the status board's tiles. Each shows
-       inkSoft text, so each holds the floor too. */
-    .ds-side.rl-glass, .mn.rl-glass, .rl-hdr-glass.rl-glass, .ny.rl-glass, .sb-tile.rl-glass { --glass-alpha: max(var(--glass-fill), var(--glass-fill-soft)); }
+       the search and the bell, Needs you, the status board's tiles and, on a phone with nothing
+       waiting, the compact row that stands for them. Each shows inkSoft text, so each holds the
+       floor too. */
+    .ds-side.rl-glass, .mn.rl-glass, .rl-hdr-glass.rl-glass, .ny.rl-glass, .sb-tile.rl-glass, .sb-calm.rl-glass { --glass-alpha: max(var(--glass-fill), var(--glass-fill-soft)); }
     /* Solid at the very top of the page and glass once the page scrolls under it (usePageScrolled
        below): a solid layer over the glass that fades out, and the blur only from then on. The
        bar's shadow is a layer of its own that fades in at the same time. */
@@ -534,6 +535,7 @@ const PATHS = {
   edit:     <path d="M4 20h4L18.5 9.5a2 2 0 0 0-2.8-2.8L5 17.2 4 20z" />,
   search:   <><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></>,
   sort:     <path d="M8 19V5M4.5 8.5L8 5l3.5 3.5M16 5v14M12.5 15.5L16 19l3.5-3.5" />,
+  select:   <><rect x="4" y="4" width="16" height="16" rx="4.5" /><path d="M8.5 12.3l2.4 2.4 4.6-5" /></>,
   link:     <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7L11.5 6.8M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7L12.5 17.2" />,
   plus:     <path d="M12 5v14M5 12h14" />,
   copy:     <><rect x="8.5" y="8.5" width="11" height="11" rx="1.5" /><path d="M5.5 15.5H5A1.5 1.5 0 0 1 3.5 14V5A1.5 1.5 0 0 1 5 3.5h9A1.5 1.5 0 0 1 15.5 5v.5" /></>,

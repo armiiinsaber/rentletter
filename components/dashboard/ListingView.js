@@ -38,6 +38,7 @@ import { synthesisLine } from '../../lib/applicantSynthesis';
 import { applicantState, stateLabel, processState, offersReconsider, offersShortlist, reconsideredLine, RECONSIDER_COPY, RECONSIDER_REASON_LABELS } from '../../lib/applicantState';
 import { DECISION_STATUS, DECISION_PRIORITY, isWithdrawn, isActive, isSetAside as isSetAsideApplicant, isFinalist } from '../../lib/listingApplicantsVocabulary';
 import ReferModal from '../../components/dashboard/ReferModal';
+import FloatLayer from '../FloatLayer';
 import ReferralCaution from '../../components/dashboard/ReferralCaution';
 import { OPEN_EVENT } from '../../components/dashboard/AssistantBell';
 import { GO_EVENT } from '../../components/dashboard/actionNav';
@@ -1693,8 +1694,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       </div>
       <DocumentViewer doc={viewer} onClose={() => setViewer(null)} />
       {/* A quick action that failed on the server: the screen already went back; this says so,
-          wherever the realtor is on the page. */}
-      <div role="status" aria-live="polite" className="lv-toast rl-glass rl-glass-ink" data-toast={toast ? '' : undefined}>{toast}</div>
+          wherever the realtor is on the page. Fixed to the screen, so drawn on the body, outside
+          the page that slides and scales (components/FloatLayer.js). */}
+      <FloatLayer><div role="status" aria-live="polite" className="lv-toast rl-glass rl-glass-ink" data-toast={toast ? '' : undefined}>{toast}</div></FloatLayer>
       <style jsx>{`
         @media (max-width: 344.98px) { :global(.lv-party-title) { --lv-title-ls: 0.03em; } }
         .lv-toast:empty { display: none; }

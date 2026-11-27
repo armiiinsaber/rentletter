@@ -416,7 +416,9 @@ export const STATES = [
     const again = await tableNow(p);
     if (JSON.stringify(again.sorted) !== '[["rent","descending"]]' || (await vis(p, '[data-sort-menu-open]').innerText()).trim() !== 'Rent high to low') throw new Error(`after a reload: ${JSON.stringify(again)}`);
     await p.setViewportSize({ width: 390, height: 844 }); await wait(p, 300);
-    if ((await vis(p, '[data-sort-open]').innerText()).trim() !== 'Rent high to low') throw new Error('the phone\'s Sort control does not read the order');
+    // On a phone the button says Sort and its name carries the order (fix/phone-standalone: the
+    // switch, Sort and Select keep one row at 320).
+    if ((await vis(p, '[data-sort-open]').getAttribute('aria-label')) !== 'Sort, Rent high to low') throw new Error('the phone\'s Sort control does not read the order');
   }, after: async (f, p) => { await clearSort(p); await f('/__fake/state?archive=0&many=0'); } },
   // The Sort sheet under 1024: the eight choices, Latest activity the one ticked; Rent low to high
   // puts the cards in that order at once, the sheet goes, the page is where it was and did not
@@ -437,10 +439,10 @@ export const STATES = [
     // each card's first fact.
     const cards = await p.evaluate(() => ({
       rents: [...document.querySelectorAll('[data-listing-cards] [data-listing-card]')].map((c) => c.querySelector('.lc-narrow .lc-fact').textContent.replace(/\s*·$/, '').trim()),
-      y: window.scrollY, mark: window.__sortMark || 0, label: [...document.querySelectorAll('[data-sort-open]')].find((b) => b.getClientRects().length).textContent.trim(),
+      y: window.scrollY, mark: window.__sortMark || 0, label: [...document.querySelectorAll('[data-sort-open]')].find((b) => b.getClientRects().length).getAttribute('aria-label'),
     }));
     const nums = cards.rents.filter((r) => r !== 'No rent set').map((r) => Number(r.replace(/[^\d]/g, '')));
-    if (cards.rents.length < 6 || JSON.stringify(nums) !== JSON.stringify([...nums].sort((a, b) => a - b)) || cards.rents[cards.rents.length - 1] !== 'No rent set' || cards.label !== 'Rent low to high') throw new Error(`the cards after Rent low to high: ${JSON.stringify(cards)}`);
+    if (cards.rents.length < 6 || JSON.stringify(nums) !== JSON.stringify([...nums].sort((a, b) => a - b)) || cards.rents[cards.rents.length - 1] !== 'No rent set' || cards.label !== 'Sort, Rent low to high') throw new Error(`the cards after Rent low to high: ${JSON.stringify(cards)}`);
     if (cards.mark !== 1 || Math.abs(cards.y - y0) > 1) throw new Error(`the choice moved the page: ${JSON.stringify({ ...cards, y0 })}`);
     await vis(p, '[data-sort-open]').click(); await p.locator('[data-sort-sheet]').waitFor({ timeout: 15000 }); await wait(p, 500);
     if (JSON.stringify((await choices()).filter(([, on]) => on === 'true')) !== '[["Rent low to high","true"]]') throw new Error('the sheet does not tick the order on view');
@@ -882,6 +884,26 @@ export const STATES = [
     await press(p, p.getByRole('button', { name: /^Details/ }).first()); await wait(p, 600);
     yield 'listing, three applicants, Details open';
   }, after: (f) => f('/__fake/state?three=0') },
+  // ── the realtor's dashboard on a phone in both themes (fix/phone-standalone), part 7 ──
+  // The board with work waiting (the four tiles), the controls on one row (Active and Archived, Sort,
+  // Select), the compact board with nothing waiting (L1 archived), and the page scrolled to its end
+  // over the tab bar; each light and dark, at 390 and 320.
+  ...['light', 'dark'].flatMap((scheme) => [
+    // L1's report unsent again (the states before sent it), so a report waits.
+    { name: `dashboard, phone, the board with work waiting, ${scheme}`, kind: 'realtor', phase: 'alone', go: async (p, f) => {
+      await f('/__fake/state?unsent=L1'); await p.emulateMedia({ colorScheme: scheme }); await open(p, '/dashboard'); await p.locator('[data-tile="toSend"][data-tile-live]').first().waitFor({ state: 'attached', timeout: 30000 }); await wait(p, 300);
+    }, after: (f) => f('/__fake/state?unsent=0') },
+    { name: `dashboard, phone, the controls row, ${scheme}`, kind: 'realtor', phase: 'alone', go: async (p, f) => {
+      await f('/__fake/state?archive=1'); await p.emulateMedia({ colorScheme: scheme }); await open(p, '/dashboard'); await vis(p, '[data-shelf]').waitFor({ timeout: 30000 }); await wait(p, 300);
+    }, after: (f) => f('/__fake/state?archive=0') },
+    { name: `dashboard, phone, the compact board, ${scheme}`, kind: 'realtor', phase: 'alone', go: async (p, f) => {
+      await f('/__fake/state?archive=1'); await p.emulateMedia({ colorScheme: scheme }); await open(p, '/dashboard'); await setArchived(p, true); await open(p, '/dashboard');
+      await vis(p, '[data-board-calm]').waitFor({ timeout: 30000 }); await wait(p, 300);
+    }, after: async (f, p) => { try { await setArchived(p, false); } catch (e) { /* the page is gone */ } await f('/__fake/state?archive=0'); } },
+    { name: `dashboard, phone, scrolled to the end, ${scheme}`, kind: 'realtor', phase: 'alone', go: async (p) => {
+      await p.emulateMedia({ colorScheme: scheme }); await open(p, '/dashboard'); await p.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })); await wait(p, 400);
+    } },
+  ]),
 ];
 
 // Every state (of states), in its phase, concurrency at a time; measure(page, name, kind) after

@@ -76,13 +76,15 @@ async function headAndAssets(browser, tag) {
         title: document.querySelector('meta[name=apple-mobile-web-app-title]')?.content,
         touch: document.querySelector('link[rel=apple-touch-icon]')?.getAttribute('href'),
         splash: document.querySelectorAll('link[rel=apple-touch-startup-image]').length,
+        // The dark set (components/brand/launchImages.js): one for every light one.
+        dark: [...document.querySelectorAll('link[rel=apple-touch-startup-image]')].filter((l) => /^\(prefers-color-scheme: dark\) and /.test(l.media) && /^\/splash\/splash-dark-/.test(l.getAttribute('href'))).length,
         favicon: [...document.querySelectorAll('link[rel=icon]')].map((l) => l.getAttribute('href')),
       }));
-      assert.deepEqual(head, { manifest: '/manifest.webmanifest', capable: 'yes', status: 'default', title: 'Rentletter', touch: '/icons/apple-touch-icon.png', splash: 11, favicon: ['/favicon.ico', '/icons/favicon-32.png', '/icons/favicon-16.png'] }, `${tag}: the app head on ${url}`);
+      assert.deepEqual(head, { manifest: '/manifest.webmanifest', capable: 'yes', status: 'default', title: 'Rentletter', touch: '/icons/apple-touch-icon.png', splash: 22, dark: 11, favicon: ['/favicon.ico', '/icons/favicon-32.png', '/icons/favicon-16.png'] }, `${tag}: the app head on ${url}`);
     }
     const man = await (await page.request.get('/manifest.webmanifest')).json();
     assert.equal(man.start_url, '/dashboard'); assert.equal(man.short_name, 'Rentletter');
-    for (const u of ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/favicon.ico', '/sw.js', '/offline.html', '/splash/splash-1170x2532.png', '/brand/rentletter-logo-email.png']) assert.equal((await page.request.get(u)).status(), 200, `${tag}: ${u}`);
+    for (const u of ['/icons/icon-192.png', '/icons/icon-512.png', '/icons/icon-maskable-512.png', '/icons/apple-touch-icon.png', '/favicon.ico', '/sw.js', '/offline.html', '/splash/splash-1170x2532.png', '/splash/splash-dark-1170x2532.png', '/brand/rentletter-logo-email.png']) assert.equal((await page.request.get(u)).status(), 200, `${tag}: ${u}`);
     assert.match(await (await page.request.get('/offline.html')).text(), /You're offline\. Rentletter will reconnect on its&nbsp;own\./);
     // Every page a realtor can add to the Home Screen links the manifest and the 180 touch icon in the
     // server rendered head (what iOS reads when it adds); no tenant or landlord page does.

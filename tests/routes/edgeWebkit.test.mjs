@@ -210,7 +210,7 @@ async function fuzz(browser, tag) {
     const where = rnd();
     let during = false;
     if (s.path === '/dashboard' && where < 0.85) {
-      const target = where < 0.55 ? page.locator('#__next [data-listing-card]').nth(Math.floor(rnd() * 2)) : page.locator('#__next [data-main-nav] [data-nav="profile"]').first();
+      const target = where < 0.55 ? page.locator('#__next [data-listing-card]').nth(Math.floor(rnd() * 2)) : page.locator('[data-main-nav][data-float="body"] [data-nav="profile"]').first(); // the page's own bar, on the body (components/FloatLayer.js), never the one in the picture beneath a swipe
       await tapAt(page, target).catch(() => {});
       during = rnd() < 0.3;
       if (during) await page.waitForTimeout(Math.floor(rnd() * 300)); // the drag lands while the screen is on its way

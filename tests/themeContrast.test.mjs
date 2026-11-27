@@ -53,6 +53,10 @@ export const PAIRS = [
   // Boundaries: a control's border (an input, a select, an outlined control), an ink border or
   // track, and a red filled control against the page.
   ...SURFACES.map((s) => [`a control border (ruleDark) on ${s}`, 'ruleDark', s, MARK]),
+  // The progress strip on a listing card (components/dashboard/ListingCard.js): a stage not reached
+  // yet is ruleDark on the card, and a skipped stage an ink outline on it.
+  ['the progress strip, a stage not reached yet, on the card', 'ruleDark', 'card', MARK],
+  ['the progress strip, a skipped stage\'s outline, on the card', 'ink', 'card', MARK],
   ...SURFACES.map((s) => [`an ink border or track against ${s}`, 'ink', s, MARK]),
   ...SURFACES.map((s) => [`a red control against ${s}`, 'redFill', s, MARK]),
 ];

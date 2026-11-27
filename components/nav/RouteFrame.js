@@ -45,6 +45,7 @@ import { routeOf, takeDirection, forgetData, settleAhead, alignAhead, trailLande
 import RouteLoader, { LOAD_WAIT } from './RouteLoader';
 import { installEdgeBack, captureScreen, Snapshot, PARALLAX, DIM } from './EdgeBack';
 import AppStart from '../brand/AppStart';
+import { FloatInPlace } from '../FloatLayer';
 import { markNavStart } from '../brand/Loader';
 import { C } from '../theme';
 import { DOOR, installPress, installHitAreas, installTapResolver, prefersReducedMotion, slideIn, TAP_TARGETS } from '../../lib/motion';
@@ -285,7 +286,8 @@ export default function RouteFrame({ children }) {
       {beneath && createPortal(
         <div data-edge-beneath="" aria-hidden="true" inert style={{ position: 'fixed', inset: 0, zIndex: 0, overflow: 'hidden', background: 'var(--paper)', pointerEvents: 'none' }}>
           <div ref={(el) => { beneathEls.current.shift = el; }} style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
-            {beneath.shot ? <Snapshot shot={beneath.shot} fixed /> : <RouteLoader route={beneath.route} />}
+            {/* Its tab bar stays in this picture, under the page (components/FloatLayer.js). */}
+            {beneath.shot ? <Snapshot shot={beneath.shot} fixed /> : <FloatInPlace.Provider value><RouteLoader route={beneath.route} /></FloatInPlace.Provider>}
           </div>
           {/* The dim is a shadow, never the ink: in dark the ink is light (components/theme.js). */}
           <div ref={(el) => { beneathEls.current.dim = el; }} style={{ position: 'absolute', inset: 0, background: C.shadow }} />

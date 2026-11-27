@@ -437,6 +437,10 @@ http.createServer(async (req, res) => {
       [['J41', 'A1', j1.doc_verifications || null, 3], ['J42', 'A2', null, 2], ['J43', 'A4', null, 1]].forEach(([id, app, docs, days]) => t.listing_applicants.push({ id, listing_id: 'L4', application_id: app, decision_status: 'none', decision_priority: null, decision_notes: '', decision_reason_code: null, decision_changed_at: null, added_via: 'invite', created_at: new Date(Date.now() - days * 86400000).toISOString(), doc_verifications: docs, reviewed_at: null, withdrawn_at: null, confirmations: {}, last_sent_at: null }));
     }
     if (q.get('three') === '0') { t.listings = t.listings.filter((l) => l.id !== 'L4'); t.listing_applicants = t.listing_applicants.filter((k) => k.listing_id !== 'L4'); }
+    // skip=1: the employer of L2's applicant (J6) called before their documents were read, so L2's
+    // strip has Documents skipped and Employer called done (components/dashboard/ListingCard.js
+    // segOf); skip=0 takes the call away again.
+    if (q.get('skip') === '1' || q.get('skip') === '0') { const j6 = t.listing_applicants.find((j) => j.id === 'J6'); if (j6) j6.confirmations = q.get('skip') === '1' ? { employer: { at: new Date(Date.now() - 86400000).toISOString(), by: 'You' } } : {}; }
     // longemail=1: a realtor whose email is far longer than a 320 screen (the office list holds it
     // on one line, cut short, the whole address on hover); longemail=0 takes them away.
     if (q.get('longemail') === '1' && !t.profiles.some((x) => x.id === 'long-email-realtor')) t.profiles.push({ id: 'long-email-realtor', email: 'alexandria.konstantinopoulou.residential.leasing@harbourfrontresidentialrealty.ca', full_name: 'Alexandria Konstantinopoulou', brokerage: 'Harbourfront Residential Realty Inc., Brokerage', plan: 'founding', province: 'ON', created_at: new Date(Date.now() - 86400000).toISOString(), signup_source: 'direct' });

@@ -12,9 +12,10 @@
 // The app is portrait only: the manifest says so, and UprightOverlay covers a landscape phone in
 // standalone (components/UprightOverlay.js). Opened from the Home Screen, the first paint continues
 // the launch image with the door turning until the first screen is ready (components/brand/
-// AppStart.js, hosted by components/nav/RouteFrame.js).
+// AppStart.js, hosted by components/nav/RouteFrame.js). The launch images come in two sets, light
+// and dark, each chosen by the device's own setting (components/brand/launchImages.js).
 import Head from 'next/head';
-import { SPLASH, splashFile, splashMedia } from '../lib/brand/splash';
+import { LAUNCH } from './brand/launchImages';
 import UprightOverlay from './UprightOverlay';
 
 export default function AppHead() {
@@ -27,7 +28,7 @@ export default function AppHead() {
       <meta key="rl-apple-status" name="apple-mobile-web-app-status-bar-style" content="default" />
       <meta key="rl-apple-title" name="apple-mobile-web-app-title" content="Rentletter" />
       <link key="rl-touch-icon" rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
-      {SPLASH.map((s) => <link key={`rl-splash-${s.w}-${s.h}-${s.dpr}`} rel="apple-touch-startup-image" href={splashFile(s)} media={splashMedia(s)} />)}
+      {LAUNCH.map(({ s, theme, href, media }) => <link key={`rl-splash-${theme}-${s.w}-${s.h}-${s.dpr}`} rel="apple-touch-startup-image" href={href} media={media} />)}
     </Head>
     <UprightOverlay />
     </>

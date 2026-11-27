@@ -14,9 +14,15 @@
 //   Active listings     the listings taking applications, and how many have no applicant yet. A
 //                       button: every listing again.
 // A tile with nothing to do loses its dot and its action line and turns quiet; Ready to send and
-// Documents to check are then buttons that show the listings they count (none). A number that
-// changes while the page is open rolls to its new value (transform and opacity, at once when motion
-// is reduced).
+// Documents to check are then buttons that show the listings they count (none). A tile at zero
+// always has one quiet line under its number, never an empty space: None waiting, None new this
+// week, None taking applications. A number that changes while the page is open rolls to its new
+// value (transform and opacity, at once when motion is reduced).
+// UNDER 1024, NOTHING WAITING: when Ready to send and Documents to check are both zero, the four
+// tiles give way to one compact row (data-board-calm): Nothing waiting, then the Applicants and
+// Active listings counts as two small figures, each the same button as its tile. With anything
+// waiting, the four tiles show, two by two. Both are in the markup and the width picks, so the
+// server's HTML is the first paint at any width; from 1024 the four tiles always show.
 import { useEffect, useRef, useState } from 'react';
 import { C } from '../theme';
 import { Icon } from '../ui';
@@ -61,24 +67,60 @@ export default function StatusBoard({ tiles, now, filter, onFilter, paths, onJum
       <>
         <span className="sb-label">{label}</span>
         <span className="sb-num"><Roll value={n} />{live ? <span className="sb-dot" aria-hidden="true" /> : null}</span>
-        {live ? <span className="sb-act">{act}<Icon name="arrow" size={16} strokeWidth={2} /></span> : line ? <span className="sb-line">{line}</span> : <span className="sb-line" aria-hidden="true">{' '}</span>}
+        {live ? <span className="sb-act">{act}<Icon name="arrow" size={16} strokeWidth={2} /></span> : line ? <span className="sb-line">{line}</span> : n === 0 ? <span className="sb-line">None waiting</span> : <span className="sb-line" aria-hidden="true">{' '}</span>}
       </>
     );
     return live
       ? <a key={key} href={actionHref(item, paths)} onClick={jump(item)} className={`${cls} sb-link`} data-tile={key} data-tile-live="" aria-label={`${n} ${label.toLowerCase()}. ${act}`}>{body}</a>
       : <button key={key} {...filterBtn(key)} className={cls} data-tile={key}>{body}</button>;
   };
+  // Nothing waiting on the realtor: under 1024 the compact row stands for the four tiles.
+  const calm = !(t.toSend > 0) && !(t.toCheck > 0);
+  const fig = (key, n, label, one) => (
+    <button key={key} {...filterBtn(key)} className="sb-fig" data-fig={key} aria-label={`${n} ${n === 1 ? one : label.toLowerCase()}`}>
+      <span className="sb-fig-n">{n}</span><span className="sb-fig-l">{label}</span>
+    </button>
+  );
   return (
-    <section className="sb" aria-label="Where your rentals stand" data-status-board="">
+    <section className={`sb${calm ? ' sb-calm-on' : ''}`} aria-label="Where your rentals stand" data-status-board="" data-calm={calm ? '' : undefined}>
       <p className="sb-date" data-board-date="" style={{ visibility: now == null ? 'hidden' : 'visible' }}>{dateLine(now) || ' '}</p>
+      {calm ? (
+        <div className="sb-calm rl-glass" role="group" aria-label="Your rentals" data-board-calm="">
+          <p className="sb-calm-line">Nothing waiting</p>
+          <span className="sb-figs">
+            {fig('applicants', t.applicants || 0, 'Applicants', 'applicant')}
+            {fig('all', t.active || 0, 'Active listings', 'active listing')}
+          </span>
+        </div>
+      ) : null}
       <div className="sb-tiles" role="group" aria-label="Your rentals">
         {tile('toSend', t.toSend || 0, 'Ready to send', { dark: true, act: 'Send report', item: t.oldestSend })}
         {tile('toCheck', t.toCheck || 0, 'Documents to check', { act: 'Check now', item: t.oldestCheck })}
-        {tile('applicants', t.applicants || 0, 'Applicants', { line: now == null ? null : t.newThisWeek ? `${t.newThisWeek} new this week` : 'None new this week' })}
+        {tile('applicants', t.applicants || 0, 'Applicants', { line: (t.applicants || 0) === 0 ? 'None new this week' : now == null ? null : t.newThisWeek ? `${t.newThisWeek} new this week` : 'None new this week' })}
         {tile('all', t.active || 0, 'Active listings', { line: t.active ? (t.withoutApplicants ? `${t.withoutApplicants} with no ${plural(t.withoutApplicants, 'applicant', 'applicants')}` : 'All have applicants') : 'None taking applications' })}
       </div>
       <style jsx>{`
         .sb { margin: 0 0 var(--gap-section); }
+        /* Nothing waiting, under 1024: one compact row in place of the four tiles. The line at the
+           left, the two figures at the right, each a 44px button: its number over its name. */
+        .sb-calm { display: none; }
+        @media (max-width: 1023.98px) {
+          .sb-calm-on .sb-tiles { display: none; }
+          .sb-calm { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-width: 0; padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); border-radius: 24px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.05); }
+          .sb-calm-on { margin-bottom: var(--s-6); }
+        }
+        .sb-calm-line { margin: 0; flex-shrink: 0; font-size: 15px; font-weight: 700; line-height: 1.25; color: ${C.ink}; white-space: nowrap; }
+        .sb-figs { display: inline-flex; align-items: stretch; gap: var(--s-1); flex-shrink: 0; }
+        /* The figures are built by a helper, outside the returned tree: their classes are global. */
+        .sb :global(.sb-fig) { display: inline-flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; min-width: 44px; min-height: 44px; margin: 0; padding: var(--s-1) var(--s-3); border: none; border-radius: 16px; background: transparent; color: ${C.ink}; font-family: inherit; text-align: left; cursor: pointer; }
+        .sb :global(.sb-fig[aria-pressed='true']) { box-shadow: inset 0 0 0 2px ${C.ink}; }
+        .sb :global(.sb-fig:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
+        .sb :global(.sb-fig-n) { font-family: var(--f-display); font-size: 22px; font-weight: 600; line-height: 1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+        .sb :global(.sb-fig-l) { font-size: 12px; font-weight: 600; line-height: 1.2; color: ${C.inkSoft}; white-space: nowrap; }
+        /* Under 390 the row keeps one line at every width down to 320: tighter, with the figures'
+           names at 11px (as the tab bar's), and under 345 the line at 13px. */
+        @media (max-width: 389.98px) { .sb-calm { padding-left: var(--s-3); padding-right: 6px; gap: var(--s-2); } .sb-calm-line { font-size: 14px; } .sb :global(.sb-fig) { padding: var(--s-1) 6px; } .sb :global(.sb-fig-l) { font-size: 11px; } .sb-figs { gap: 2px; } }
+        @media (max-width: 344.98px) { .sb-calm-line { font-size: 13px; } }
         .sb-date { margin: 0 0 var(--s-3); font-size: var(--t-body-2); font-weight: 600; color: ${C.inkSoft}; line-height: 1.3; }
         .sb-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-3); }
         @media (min-width: 1024px) { .sb-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-4); } }

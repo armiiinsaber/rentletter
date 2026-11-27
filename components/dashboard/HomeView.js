@@ -496,12 +496,14 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     </div>
   );
   // The Sort control: under 1024 a button that opens the sheet, at 1024 and wider a menu. Each reads
-  // the order on view; the choices are the same eight.
+  // the order on view; the choices are the same eight. On a phone the button says Sort and its name
+  // carries the order (Sort, Latest activity): the switch, Sort and Select keep one row at 320, where
+  // the longest order (Needs attention first) has no room; the sheet ticks the order on view.
   const sortLabel = sortName(sort);
   const sortChoices = choicesFor(sort);
   const sortButton = (
     <button type="button" className="ds-btn ds-btn-line hv-sort-btn hv-only-phone" aria-haspopup="dialog" aria-label={`Sort, ${sortLabel}`} data-sort-open="" onClick={() => setSortOpen(true)}>
-      <Icon name="sort" size={16} /><span>{sortLabel}</span>
+      <Icon name="sort" size={16} /><span>Sort</span>
     </button>
   );
   const sortMenu = (
@@ -521,9 +523,10 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
     </span>
   );
   // Select: a checkbox on every card, for the bar. The Compact table always has its checkboxes.
+  // Under 1024 a round icon button, its words (Select, Done) its name; from 1024 the words.
   const selectButton = (
     <button type="button" className={`ds-btn ${selecting ? 'ds-btn-ink' : 'ds-btn-line'} hv-select${mode === 'compact' ? ' hv-only-phone' : ''}`} aria-pressed={selecting ? 'true' : 'false'} onClick={() => { setSelecting((v) => !v); setPicked(new Set()); }} data-select-mode="">
-      {selecting ? 'Done' : 'Select'}
+      <span className="hv-select-i" aria-hidden="true"><Icon name="select" size={18} strokeWidth={selecting ? 2 : 1.7} /></span><span className="hv-select-t">{selecting ? 'Done' : 'Select'}</span>
     </button>
   );
   // The search, past eight listings in the view.
@@ -833,7 +836,11 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-cards { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
         .hv-rented { margin-top: var(--gap-section); }
         .hv-act-note { font-size: var(--t-body-2); color: ${C.inkSoft}; line-height: var(--lh-body); margin: 0 0 var(--s-3); text-wrap: balance; }
-        .hv-bulk { position: sticky; top: var(--s-2); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); border-radius: 999px; }
+        /* The bar for the cards picked stays on screen as the page scrolls, at every width: while it
+           is up, body and the Next root clip instead of hiding (components/ui.js makes each a scroll
+           box that never scrolls, inside which a sticky box never sticks). */
+        :global(:root:has([data-bulk-bar]) body), :global(#__next:has([data-bulk-bar])) { overflow-x: clip !important; }
+        .hv-bulk { position: sticky; top: calc(var(--s-2) + env(safe-area-inset-top, 0px)); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); border-radius: 999px; }
         .hv-bulk-n { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; margin-right: auto; font-variant-numeric: tabular-nums; }
         .hv-pipe { margin-top: var(--s-6); }
 
@@ -899,9 +906,23 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         @media (hover: hover) { :global(.hv-sort-opt:hover) { background: ${C.paper}; } :global(.hv-sort-opt[aria-checked='true']:hover) { background: ${C.paperDeep}; } }
         :global(.hv-menu .hv-sort-opt) { font-size: var(--t-body); }
         /* ── Phone and desktop: both are in the markup, the width picks one ── */
+        /* Select's icon shows under 1024 only; its words from 1024 (and to a screen reader always). */
+        :global(.hv-select-i) { display: none; }
         @media (max-width: 1023.98px) {
           .hv :global(.hv-only-desk) { display: none !important; }
-          .hv-tools { margin-left: 0; justify-content: flex-start; width: 100%; }
+          /* The controls: Active and Archived, Sort and Select on one row, never wrapping, each 44px
+             high, with tighter padding; Sort and Select at the right. */
+          .hv-tools { margin-left: 0; justify-content: flex-start; width: 100%; flex-wrap: nowrap; }
+          .hv-tools :global(.hv-seg button) { padding: 0 var(--s-3); }
+          .hv-tools :global(.hv-sort-btn) { margin-left: auto; padding: 0 var(--s-3); }
+          .hv-tools :global(.hv-select) { flex-shrink: 0; width: 44px; padding: 0; }
+          .hv-tools :global(.hv-select-i) { display: inline-flex; }
+          .hv-tools :global(.hv-select-t) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+        }
+        @media (max-width: 344.98px) {
+          .hv-tools { gap: 6px; }
+          .hv-tools :global(.hv-seg button) { padding: 0 10px; }
+          .hv-tools :global(.hv-sort-btn) { padding: 0 10px; gap: 6px; }
         }
 
         /* ── 1024 and wider: the main area's whole width, its sides the shell's padding; Needs you

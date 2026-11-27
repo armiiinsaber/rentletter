@@ -7,7 +7,9 @@
 //     link ("Copied" for a second); and the card's one main action as a dark pill with an arrow:
 //     Send report, Check documents, Ask for documents, Call the employer, or Open.
 //   the progress strip: six equal segments, Invited, Applied, Documents, Employer called, Report,
-//     Rented, with their names under them; done in ink, the current one red, the rest pale.
+//     Rented, with their names under them; done in ink, the current one red, a stage passed over
+//     (not done, a later one done) outlined in ink and read as skipped, the rest grey at 3 to 1
+//     or more against the card in both themes (ruleDark, tests/themeContrast.test.mjs).
 //   the status line: a red dot when the listing has something in Needs you, the next step in words,
 //     and how long it has waited (more weight past three days); quiet when nothing waits.
 // Under 1024px the same card is compact: the address, "rent · beds · N applicants", the copy
@@ -28,18 +30,29 @@ import { Pending } from '../brand/Loader';
 
 const money = (n) => (n ? `$${Number(n).toLocaleString('en-CA')}` : 'No rent set');
 
-// The six stages as a strip: names under the segments where there is room for them.
+// The six stages as a strip: names under the segments where there is room for them. A stage
+// before the furthest one done that is not done itself was skipped (components/dashboard/board.js
+// stageOf: a report sent before anyone called the employer leaves Employer called undone): it is
+// drawn outlined, never as a gap, and read as skipped.
+export const segOf = (stage, i) => {
+  if (!stage) return 'todo';
+  if (stage.current === i) return 'current';
+  if (stage.done && stage.done[i]) return 'done';
+  return stage.done && i < stage.done.lastIndexOf(true) ? 'skipped' : 'todo';
+};
+const SEG_CLASS = { current: ' lc-cur', done: ' lc-done', skipped: ' lc-skip', todo: '' };
+const SEG_SAID = { current: ', current', done: ', done', skipped: ', skipped', todo: ', not yet' };
 export function Strip({ stage, labels = true }) {
   const at = stage && stage.current != null ? STAGES[stage.current] : null;
   const said = stage && stage.rented ? 'Rented' : at ? `At ${at}` : 'Closed';
   return (
     <ol className={`lc-strip${labels ? '' : ' lc-strip-bare'}`} aria-label={`Progress. ${said}`} data-strip={stage && stage.current != null ? stage.current : stage && stage.rented ? 'rented' : 'closed'}>
       {STAGES.map((name, i) => {
-        const cur = stage && stage.current === i; const done = stage && stage.done[i];
+        const seg = segOf(stage, i);
         return (
-          <li key={name} className={`lc-seg${cur ? ' lc-cur' : done ? ' lc-done' : ''}`} aria-current={cur ? 'step' : undefined} data-seg={cur ? 'current' : done ? 'done' : 'todo'}>
+          <li key={name} className={`lc-seg${SEG_CLASS[seg]}`} aria-current={seg === 'current' ? 'step' : undefined} data-seg={seg}>
             <span className="lc-bar" aria-hidden="true" />
-            <span className="lc-seg-t">{name}<span className="lc-sr">{cur ? ', current' : done ? ', done' : ', not yet'}</span></span>
+            <span className="lc-seg-t">{name}<span className="lc-sr">{SEG_SAID[seg]}</span></span>
           </li>
         );
       })}
@@ -192,9 +205,13 @@ export function ListingCardStyles() {
          longest (Employer called) runs a little past its segment into the room its neighbours'
          shorter names leave, and never wraps. */
       .lc-seg { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
-      .lc-bar { display: block; align-self: stretch; height: 6px; border-radius: 999px; background: ${C.paperDeep}; }
+      /* Not reached yet: grey that holds 3 to 1 against the card in both themes (ruleDark). Done:
+         ink. The current stage: red. Skipped: outlined in ink, the card showing inside, so it
+         reads as a segment passed over and never as a gap. */
+      .lc-bar { display: block; align-self: stretch; height: 6px; border-radius: 999px; background: ${C.ruleDark}; }
       .lc-done .lc-bar { background: ${C.ink}; }
       .lc-cur .lc-bar { background: ${C.red}; }
+      .lc-skip .lc-bar { background: transparent; box-shadow: inset 0 0 0 1.5px ${C.ink}; }
       .lc-seg-t { width: max-content; font-size: 12px; font-weight: 600; color: ${C.inkSoft}; line-height: 1.25; white-space: nowrap; text-align: center; }
       .lc-done .lc-seg-t { color: ${C.ink}; }
       .lc-cur .lc-seg-t { color: ${C.ink}; font-weight: 800; }

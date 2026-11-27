@@ -23,6 +23,11 @@ export default function TenantBar({ children = null, label = null }) {
       {label ? <span className="rl-tbar-label">{label}</span> : children}
       <style jsx global>{`
         :root { --rl-tbar-h: calc(${TBAR_HEIGHT}px + env(safe-area-inset-top, 0px)); }
+        /* A sticky box never sticks inside a box that is overflow-x hidden (components/ui.js sets
+           it on body and the Next root, which makes each a scroll box that never scrolls); where
+           the bar is, those two clip instead: the same sideways edge, no scroll box, on every
+           tenant page with the bar (the profile's own shell does the same, ProfileLayout.js). */
+        :root:has([data-tenant-bar]) body, #__next:has([data-tenant-bar]) { overflow-x: clip !important; }
         /* Whatever is scrolled to (a section from the menu, a focused field) stops under the bar. */
         :root:has([data-tenant-bar]) { scroll-padding-top: calc(var(--rl-tbar-h) + var(--s-2)); }
         .rl-tbar { position: sticky; top: 0; z-index: 40; isolation: isolate; box-sizing: border-box; height: var(--rl-tbar-h);

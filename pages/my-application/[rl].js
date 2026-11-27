@@ -17,6 +17,7 @@ import { TENANT_LINES } from '../../lib/applicantState';
 import { APPLICATION_STATE } from '../../lib/application-state';
 import PartiesCard from '../../components/tenant/PartiesCard';
 import { Pending, ScreenLoader } from '../../components/brand/Loader';
+import FloatLayer from '../../components/FloatLayer';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -232,7 +233,8 @@ export default function ApplicationPage() {
             {showLog && <p className="mp-note" style={{ marginTop: 'var(--gap-card)' }}>{noWidow('Viewer identifiers are hashed. We do not store IP addresses.')}</p>}
           </section>
         </div>
-        {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast rl-glass rl-glass-ink">{toast}</div>}
+        {/* Fixed to the screen: drawn on the body, outside the page (components/FloatLayer.js). */}
+        {toast && <FloatLayer><div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast rl-glass rl-glass-ink">{toast}</div></FloatLayer>}
       </div>
     </>
   );

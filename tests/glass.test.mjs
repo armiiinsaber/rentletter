@@ -95,8 +95,9 @@ test('defined once, in components/ui.js, and only on what floats', () => {
   for (const u of uses) {
     assert.doesNotMatch(u.line, /<(button|input|select|textarea|table|tr|td)\b|rl-card|ds-btn|mp-btn/, `${u.at}: never on a card, a button, a field or a table`);
     // The realtor shell's own (feat/dashboard-2026): the floating sidebar, the phone's tab bar, the
-    // frames of the search and the bell, Needs you, the status board's tiles.
-    assert.match(u.line, /rl-tbar|tp-top|hv-bulk|rl-header|rl-sh-scrim|rl-sh-grab|al-head|mp-toast|lv-toast|position: 'fixed'|setToast|ds-side|"mn rl-glass"|rl-hdr-glass|"ny rl-glass"|sb-tile/, `${u.at}: a floating surface`);
+    // frames of the search and the bell, Needs you, the status board's tiles and the compact row
+    // that stands for them on a phone with nothing waiting (fix/phone-standalone).
+    assert.match(u.line, /rl-tbar|tp-top|hv-bulk|rl-header|rl-sh-scrim|rl-sh-grab|al-head|mp-toast|lv-toast|position: 'fixed'|setToast|ds-side|"mn rl-glass"|rl-hdr-glass|"ny rl-glass"|sb-tile|sb-calm/, `${u.at}: a floating surface`);
   }
 });
 

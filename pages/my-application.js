@@ -54,6 +54,7 @@ import { SOURCE } from '../lib/profileFacts';
 import { isApplicationNumber, isOwnerToken } from '../lib/applicationIds';
 import { Pending, ScreenLoader } from '../components/brand/Loader';
 import ThemeChoice from '../components/ThemeChoice';
+import FloatLayer from '../components/FloatLayer';
 
 const LS_APP = 'rentletter_app_number';
 const LS_TOKEN = 'rentletter_owner_token';
@@ -552,7 +553,8 @@ function ProfileHome({ profile, setProfile, loadProfile, post, noticeEl, signOut
         )}
       </div>
       <StrengthSheet open={sheet} onClose={() => setSheet(false)} strength={strength} onStep={goStep} vault={vault} />
-      {toast && <div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast rl-glass rl-glass-ink">{toast}</div>}
+      {/* Fixed to the screen: drawn on the body, outside the page (components/FloatLayer.js). */}
+      {toast && <FloatLayer><div role="status" data-tap="" onClick={() => setToast('')} className="mp-toast rl-glass rl-glass-ink">{toast}</div></FloatLayer>}
       <style jsx global>{`
         .tp-apply-form { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-3); margin-top: 10px; }
         .tp-apply .mp-p { font-size: 13px; line-height: 1.4; margin-top: 6px !important; }

@@ -10,9 +10,19 @@
 // caller's own id on the server) through useCirclePending, which the sidebar reads too: one request
 // for both. The sandbox draws it too, over its own sample Circle (lib/demoAdapter.js). No count, or
 // a failed read: no dot.
+// The bar is fixed to the screen at every moment: at rest, as the page scrolls, while a sheet is
+// up, as a screen pushes in or goes back, and after the theme changes. It is drawn on the body,
+// outside the page (components/FloatLayer.js), so nothing that moves the page can carry it, and
+// the page leaves room under its last card for the bar, its two 16px insets and the home
+// indicator (components/dashboard/DashShell.js .ds-tabbed). In a view transition it is a picture of
+// its own (view-transition-name rl-main-nav): it stays where it is while the page moves, and fades
+// where the next screen has no bar.
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { C } from '../theme';
 import { Icon } from '../ui';
+import { useFloating } from '../FloatLayer';
+import { NATIVE } from '../../lib/motion';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { linkProps, isHere, placeOf, useHeading, goView, routeOf } from '../nav/routes';
 
@@ -55,6 +65,8 @@ const plain = (e) => !(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrl
 export default function MainNav({ current: onView, onNew = null }) {
   const adapter = useAdapter();
   const pending = useCirclePending();
+  // The body, once the bar is drawn there (components/FloatLayer.js); null while in place.
+  const host = useFloating();
   // The tab tapped is marked at once (components/nav/RouteFrame.js), else the one on view.
   const heading = useHeading();
   const current = (heading && tabOf(placeOf(heading))) || tabOf(onView) || onView;
@@ -96,11 +108,11 @@ export default function MainNav({ current: onView, onNew = null }) {
       </a>
     );
   };
-  return (
-    <nav aria-label="Main" className="mn rl-glass" data-main-nav="" data-stuck="">
+  const bar = (
+    <nav aria-label="Main" className="mn rl-glass" data-main-nav="" data-float={host ? 'body' : 'in-place'}>
       {tabs.map(item)}
       <style jsx>{`
-        /* Fixed to the window: inset 16px from its sides and above the home indicator. */
+        /* Fixed to the screen: inset 16px from its sides and above the home indicator. */
         .mn { position: fixed; z-index: 70; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); height: 68px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px; border-radius: 999px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 10px 30px rgba(var(--c-shadow-rgb), 0.12); }
         .mn :global(.mn-item) { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; height: 56px; border-radius: 999px; color: ${C.inkSoft}; text-decoration: none; -webkit-tap-highlight-color: transparent; }
         .mn :global(.mn-item[aria-current='page']) { color: ${C.ink}; }
@@ -116,7 +128,14 @@ export default function MainNav({ current: onView, onNew = null }) {
         .mn :global(.mn-new:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         @media (max-width: 344.98px) { .mn { left: 12px; right: 12px; } .mn :global(.mn-label) { font-size: 10px; } }
         @media (min-width: 1024px) { .mn { display: none; } }
+        /* On the body, a picture of its own in a view transition: it holds still while the page
+           pushes or goes back, and fades in the page's own time where the next screen has none. */
+        .mn[data-float='body'] { view-transition-name: rl-main-nav; }
+        :global(html[data-nav='push']::view-transition-old(rl-main-nav)), :global(html[data-nav='push']::view-transition-new(rl-main-nav)),
+        :global(html[data-nav='back']::view-transition-old(rl-main-nav)), :global(html[data-nav='back']::view-transition-new(rl-main-nav)) { animation-duration: ${NATIVE.push}ms; }
+        :global(html[data-nav='fade']::view-transition-old(rl-main-nav)), :global(html[data-nav='fade']::view-transition-new(rl-main-nav)) { animation-duration: ${NATIVE.fade}ms; }
       `}</style>
     </nav>
   );
+  return host ? createPortal(bar, host) : bar;
 }
