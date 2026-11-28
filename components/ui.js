@@ -165,10 +165,16 @@ export const GlobalStyle = () => (
       scroll-behavior: smooth;
       overflow-x: hidden;
       -webkit-text-size-adjust: 100%;
-      /* Nothing drags past the last element: no rubber band past the page's end. On the root only:
-         body is a scroll box too (overflow-x hidden on both), and the same rule on it left Chrome
-         no way to hand a touch scroll up to the page, so the page did not scroll under a finger. */
-      overscroll-behavior-y: none;
+    }
+    /* Under 1024px the page bounces at its ends and a pull down at the top refreshes it, as a native
+       app does: the root keeps the browser's own overscroll. A sheet, the command menu and any
+       inner scroller keep overscroll-behavior of their own, so none of them pulls the page
+       (components/Sheet.js: the sheet's scroller, and the root while a sheet is open). From 1024px
+       nothing drags past the last element: no rubber band past the page's end. On the root only:
+       body is a scroll box too (overflow-x hidden on both), and the same rule on it left Chrome no
+       way to hand a touch scroll up to the page, so the page did not scroll under a finger. */
+    @media (min-width: 1024px) {
+      html { overscroll-behavior-y: none; }
     }
     /* The press (lib/motion.js), the page behind a sheet (components/Sheet.js), the push. */
     ${PRESS_CSS}

@@ -106,7 +106,13 @@ test('every sheet and modal on the realtor side is the one sheet', () => {
   assert.match(sheet, /<span className="rl-sh-handle" \/>/, 'a grab handle');
   assert.match(sheet, /transform: translateY\(100%\); transition: transform \$\{NATIVE\.sheet\}ms \$\{CURVE\.ios\}/, 'it rises over 320ms on the iOS curve');
   const ui = src('components/ui.js');
-  assert.match(ui, /html \{[^}]*overscroll-behavior-y: none;\s*\n\s*\}/, 'the page root never drags past its last element');
+  // Under 1024 the root keeps the browser's own overscroll (the bounce, pull to refresh); from 1024
+  // nothing drags past the last element; while a sheet is up the root holds still.
+  const desk = /@media \(min-width: 1024px\) \{\s*html \{ overscroll-behavior-y: none; \}\s*\}/;
+  assert.match(ui, desk, 'from 1024px the page root never drags past its last element');
+  assert.doesNotMatch(ui.replace(desk, ''), /html[^{]*\{[^}]*overscroll-behavior/, 'under 1024px the page root bounces at its ends: no other overscroll rule on it');
+  assert.match(sheet, /html\.rl-sheet-open \{ overscroll-behavior: none; \}/, 'while a sheet is up the page root never bounces');
+  assert.match(sheet, /const y = Math\.max\(0, window\.scrollY \|\| html\.scrollTop \|\| 0\);/, 'a sheet opened mid bounce pins the page at its top, never at an invalid top');
   assert.doesNotMatch(ui, /body \{[^}]*overscroll-behavior/, 'never on body: Chrome then could not scroll the page under a finger');
 });
 

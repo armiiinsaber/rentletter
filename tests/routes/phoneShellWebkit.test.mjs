@@ -21,11 +21,20 @@
 //        listing, which has none, above the home indicator); and nothing of the page ever shows in
 //        the gap under the tab bar or beside its round ends: those strips are the same picture at
 //        the top, halfway and at the end.
+//   3. The bounce (fix/phone-polish): at 320 and 390, light and dark, the root keeps the browser's
+//      own overscroll, so the page bounces at its ends; in Chrome a touch pull past the top and a
+//      push past the end leave the page at that end and each bar where it rests; with the Sort sheet
+//      or the command menu up, the root and the sheet hold still and every box that scrolls keeps its
+//      own overscroll (none or contain).
+//   4. The Landlord card's actions on a listing at 320, 390 and 1440, light and dark: Download PDF
+//      and Copy text two quiet buttons under Send, side by side, 44px, 8px apart; Copied in place.
+//      At 1440 the root still never drags past its last element.
 // Playwright cannot run a page as the installed app (standalone) and no browser under test reports
 // a safe area: the insets are stood in for through the two names every surface reads (--safe-top,
-// --safe-bottom, pages/_app.js). Tapping the status bar, the bounce and the real insets are not
-// walked; what holds there is that the page is the one scroller and nothing floats inside a box that
-// moves (tests/floatingSurfaces.test.mjs).
+// --safe-bottom, pages/_app.js). Tapping the status bar, the bounce as drawn and the real insets are
+// not walked (no engine here draws an overscroll from a synthetic gesture); what holds there is that
+// the page is the one scroller and nothing floats inside a box that moves
+// (tests/floatingSurfaces.test.mjs).
 // With PHONE_SHELL_SHOTS set to a folder, the WebKit walk saves Listings, Circle and Profile, light,
 // at the top and scrolled halfway, with the safe areas.
 // The pages are served from the run's one production build (tests/helpers/fakeBuild.mjs), in this
@@ -182,6 +191,7 @@ const SHELL = () => {
   }
   return {
     y: window.scrollY, iw, ih, safeTop, safeBottom, scrolled: document.documentElement.hasAttribute('data-scrolled'),
+    overscroll: [getComputedStyle(document.documentElement).overscrollBehaviorY, getComputedStyle(document.body).overscrollBehaviorY],
     bar: rect(bar), position: cs && cs.position, float: bar && bar.dataset.float,
     host: host ? { start: host.getAttribute('data-float-host') === 'start', onBody: host.parentElement === document.body, beforeRoot: !!(host.compareDocumentPosition(document.getElementById('__next')) & Node.DOCUMENT_POSITION_FOLLOWING) } : null,
     solid: before && before.opacity, blur: cs && (cs.backdropFilter || cs.webkitBackdropFilter || 'none'), covered,
@@ -222,6 +232,7 @@ async function shellWalk(browser, engine) {
         const s = await page.evaluate(SHELL);
         const at = `${tag}, ${where}`;
         assert.equal(s.safeTop, SAFE_TOP, `${at}: the top safe area stood in`); assert.equal(s.safeBottom, SAFE_BOTTOM, `${at}: the bottom safe area stood in`);
+        assert.deepEqual(s.overscroll, ['auto', 'auto'], `${at}: the page bounces at its ends (the root and body keep the browser's own overscroll)`);
         // The top bar: fixed, on the body before the page, nothing around it that would carry it.
         assert.equal(s.position, 'fixed', `${at}: the top bar is fixed`);
         assert.equal(s.float, 'body', `${at}: the top bar is drawn on the body`);
@@ -277,9 +288,165 @@ async function shellWalk(browser, engine) {
   }
 }
 
+// ── 3. The bounce ──────────────────────────────────────────────────────────────────────────────
+// Under 1024 the root keeps the browser's own overscroll, so the page bounces at its ends and a pull
+// at the top refreshes it (components/ui.js); a sheet and the command menu hold the root still while
+// they are up, and every box that scrolls by itself carries its own (none or contain), so none of
+// them pulls the page. No engine under test draws the bounce from a synthetic gesture (Chrome's touch
+// scroll past an end leaves the picture as it was; WebKit takes no wheel on a phone): walked here are
+// the rule at 320 and 390 in both themes and, in Chrome, a touch pull past the top and a push past the
+// end, after which the page is at that end and the top bar, the tab bar and its fade are where they
+// rest. From 1024 nothing changed: the root never drags past its last element.
+const OVERSCROLL = () => {
+  const name = (a) => `${a.tagName.toLowerCase()}${typeof a.className === 'string' && a.className ? `.${a.className.trim().split(/\s+/).filter((c) => !/^jsx-/.test(c)).join('.')}` : ''}`;
+  const own = [];
+  for (const el of document.querySelectorAll('body *')) {
+    const cs = getComputedStyle(el);
+    if (!['auto', 'scroll'].includes(cs.overflowY)) continue;
+    if (el.scrollHeight > el.clientHeight + 1 && el.getClientRects().length) own.push(`${name(el)} ${cs.overscrollBehaviorY}`);
+  }
+  const of = (sel) => { const el = document.querySelector(sel); return el ? getComputedStyle(el).overscrollBehaviorY : null; };
+  return { root: of('html'), body: of('body'), sheet: of('[data-sheet] .rl-sh-scroll'), list: of('.cm-list'), own };
+};
+const RESTING = () => {
+  const r = (s) => { const el = document.querySelector(s); if (!el) return null; const b = el.getBoundingClientRect(); return [b.top, b.bottom, b.left, b.right]; };
+  return { y: window.scrollY, end: document.documentElement.scrollHeight - window.innerHeight, bar: r('[data-shell-bar]'), nav: r('[data-main-nav]'), fade: r('[data-tab-fade]') };
+};
+async function bounceWalk(browser, engine) {
+  for (const scheme of ['light', 'dark']) {
+    for (const width of [320, 390]) {
+      const tag = `${engine} ${scheme} ${width}`;
+      walkStep(`${tag}: the bounce`);
+      const ctx = await browser.newContext({ baseURL: BASE, serviceWorkers: 'block', viewport: { width, height: 844 }, colorScheme: scheme, reducedMotion: 'reduce', userAgent: UA_PHONE, isMobile: true, hasTouch: true });
+      await blockSupabase(ctx); await ctx.addInitScript(SAFE_AREAS);
+      const page = await ctx.newPage(); const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+      await open(page, '/dashboard', '[data-listing-card]');
+      const o = await page.evaluate(OVERSCROLL);
+      assert.deepEqual([o.root, o.body], ['auto', 'auto'], `${tag}: the page bounces at its ends`);
+      assert.deepEqual(o.own, [], `${tag}: nothing else scrolls by itself`);
+      if (engine === 'Chrome') {
+        // A touch pull past the top, then a push past the end: the page at that end, each bar where it rests.
+        const cdp = await ctx.newCDPSession(page);
+        const rest = await page.evaluate(RESTING);
+        // The control: the same gesture mid page moves the page, so the pulls below are real input.
+        const mid = Math.round(rest.end / 2);
+        await instant(page, mid); await page.waitForTimeout(150);
+        await cdp.send('Input.synthesizeScrollGesture', { x: Math.round(width / 2), y: 360, yDistance: -200, speed: 800, gestureSourceType: 'touch', preventFling: true });
+        await page.waitForTimeout(400);
+        const moved = (await page.evaluate(RESTING)).y - mid;
+        assert.ok(moved > 100, `${tag}: a touch push mid page scrolls it (${moved}px)`);
+        for (const [where, y, pull] of [['pulled past the top', 0, 400], ['pushed past the end', rest.end, -400]]) {
+          await instant(page, y); await page.waitForTimeout(150);
+          await cdp.send('Input.synthesizeScrollGesture', { x: Math.round(width / 2), y: 360, yDistance: pull, speed: 800, gestureSourceType: 'touch', preventFling: true });
+          await page.waitForTimeout(400);
+          const s = await page.evaluate(RESTING);
+          assert.ok(near(s.y, y, 1), `${tag}, ${where}: the page at that end (${s.y}, want ${y})`);
+          for (const k of ['bar', 'nav', 'fade']) assert.ok(s[k].every((v, i) => near(v, rest[k][i])), `${tag}, ${where}: the ${k === 'bar' ? 'top bar' : k === 'nav' ? 'tab bar' : 'fade'} where it rests (${s[k]} at rest ${rest[k]})`);
+        }
+        await cdp.detach();
+      }
+      if (scheme === 'light') {
+        // A sheet up: the root and the sheet's scroller hold still; every box that scrolls carries its own.
+        await instant(page, 200); await page.waitForTimeout(150);
+        await page.locator('[data-sort-open]:visible').first().click(); await page.locator('[data-sort-sheet]').waitFor({ timeout: 15000 }); await page.waitForTimeout(500);
+        const sh = await page.evaluate(OVERSCROLL);
+        assert.deepEqual([sh.root, sh.sheet], ['none', 'none'], `${tag}: with the Sort sheet up, the page and the sheet hold still at their ends`);
+        assert.deepEqual(sh.own.filter((x) => !/ (none|contain)$/.test(x)), [], `${tag}: with the Sort sheet up, each box that scrolls keeps its own overscroll (${sh.own})`);
+        await page.keyboard.press('Escape'); await page.locator('[data-sort-sheet]').waitFor({ state: 'detached', timeout: 15000 }); await page.waitForTimeout(400);
+        assert.equal((await page.evaluate(OVERSCROLL)).root, 'auto', `${tag}: the sheet gone, the page bounces again`);
+        // The command menu: the root still, its list contained.
+        await page.locator('[data-command-open="phone"]').click(); await page.locator('.cm-list').waitFor({ timeout: 15000 }); await page.waitForTimeout(500);
+        const cm = await page.evaluate(OVERSCROLL);
+        assert.deepEqual([cm.root, cm.sheet, cm.list], ['none', 'none', 'contain'], `${tag}: with the command menu up, the page holds still and its list never pulls it`);
+        assert.deepEqual(cm.own.filter((x) => !/ (none|contain)$/.test(x)), [], `${tag}: with the command menu up, each box that scrolls keeps its own overscroll (${cm.own})`);
+        await page.keyboard.press('Escape'); await page.locator('.cm-list').waitFor({ state: 'detached', timeout: 15000 }); await page.waitForTimeout(400);
+        assert.equal((await page.evaluate(OVERSCROLL)).root, 'auto', `${tag}: the menu gone, the page bounces again`);
+      }
+      assert.deepEqual(errors, [], `${tag}: no page error`);
+      noSupabaseLeft(ctx, `${tag}: the bounce`);
+      await ctx.close();
+    }
+  }
+}
+
+// ── 4. The Landlord card's actions ─────────────────────────────────────────────────────────────
+// On a listing at 320, 390 and 1440, light and dark: Download PDF and Copy text are two quiet buttons
+// under Send (components/dashboard/ListingView.js lv-ll-acts), as the Profile's logo actions: side by
+// side and as wide as each other, 44px high, 8px apart and 8px under Send, Send's radius, the
+// buttons' padding (12px under 345, as the page's gutter), a faint ink tone, no underline, each
+// label inside its button's padding. Copy text reads
+// Copied in place (nothing moves) and Copy text again after. At 1440 the root still never bounces.
+const LANDLORD = () => {
+  const card = document.querySelector('#report'); const send = card.querySelector('[data-send-open]'); const acts = card.querySelector('[data-landlord-acts]');
+  const r = (e) => { const b = e.getBoundingClientRect(); return { top: b.top, bottom: b.bottom, left: b.left, right: b.right, width: b.width, height: b.height }; };
+  const btns = acts ? [...acts.children] : [];
+  return {
+    send: r(send), sendRadius: getComputedStyle(send).borderRadius, under: acts && acts.previousElementSibling && acts.previousElementSibling.contains(send),
+    root: getComputedStyle(document.documentElement).overscrollBehaviorY, ink: getComputedStyle(document.documentElement).getPropertyValue('--c-ink-rgb').trim(),
+    btns: btns.map((b) => {
+      const cs = getComputedStyle(b); const box = b.getBoundingClientRect(); const px = (v) => parseFloat(v) || 0;
+      // The label inside the button's content box: within its padding, never into it.
+      const label = (b.querySelector('[data-pending] > span') || b).getBoundingClientRect();
+      const inside = [box.left + px(cs.borderLeftWidth) + px(cs.paddingLeft), box.right - px(cs.borderRightWidth) - px(cs.paddingRight)];
+      return { tag: b.tagName.toLowerCase(), text: b.textContent, cls: b.className.split(' ').filter((c) => !/^jsx-/.test(c)).join('.'), ...r(b), radius: cs.borderRadius, pad: [cs.paddingLeft, cs.paddingRight], bg: cs.backgroundColor, deco: [cs.textDecorationLine, ...[...b.querySelectorAll('*')].map((k) => getComputedStyle(k).textDecorationLine)].filter((d) => d !== 'none'), label: [label.left, label.right], inside, fits: label.left >= inside[0] - 0.5 && label.right <= inside[1] + 0.5 };
+    }),
+  };
+};
+async function landlordWalk(browser, engine) {
+  for (const scheme of ['light', 'dark']) {
+    for (const width of [320, 390, 1440]) {
+      const tag = `${engine} ${scheme} ${width}`;
+      walkStep(`${tag}: the Landlord card's actions`);
+      const phoneSized = width < 1024;
+      const ctx = await browser.newContext({ baseURL: BASE, serviceWorkers: 'block', viewport: { width, height: phoneSized ? 844 : 900 }, colorScheme: scheme, reducedMotion: 'reduce', ...(phoneSized ? { userAgent: UA_PHONE, isMobile: true, hasTouch: true } : {}) });
+      await blockSupabase(ctx);
+      if (engine === 'Chrome') await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
+      const page = await ctx.newPage(); const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
+      await open(page, '/listing/L1', '#report [data-landlord-acts]');
+      const l = await page.evaluate(LANDLORD);
+      assert.equal(l.root, phoneSized ? 'auto' : 'none', `${tag}: ${phoneSized ? 'the page bounces at its ends' : 'the root never drags past its last element'}`);
+      assert.equal(l.under, true, `${tag}: the two buttons come straight after Send's row`);
+      assert.deepEqual(l.btns.map((b) => [b.tag, b.text, b.cls]), [['button', 'Download PDF', 'ds-btn.ds-btn-quiet'], ['button', 'Copy text', 'ds-btn.ds-btn-quiet']], `${tag}: Download PDF and Copy text, two quiet buttons`);
+      const [a, b] = l.btns;
+      for (const x of l.btns) {
+        assert.ok(near(x.height, 44), `${tag}: ${x.text} 44px high (${x.height})`);
+        assert.equal(x.radius, l.sendRadius, `${tag}: ${x.text} has Send's radius`);
+        const pad = width < 345 ? '12px' : '16px'; // the page's own step under 345 (components/ui.js)
+        assert.deepEqual(x.pad, [pad, pad], `${tag}: ${x.text} the buttons' padding, ${pad}`);
+        assert.equal(x.bg, `rgba(${l.ink.split(/\s*,\s*/).join(', ')}, 0.05)`, `${tag}: ${x.text} on a faint ink tone`);
+        assert.deepEqual(x.deco, [], `${tag}: ${x.text} never underlined`);
+        assert.ok(x.fits, `${tag}: ${x.text}'s label inside its button's padding (${x.label} in ${x.inside})`);
+      }
+      assert.ok(near(a.top, b.top) && near(a.width, b.width), `${tag}: side by side, as wide as each other (${a.width}, ${b.width})`);
+      assert.ok(near(b.left - a.right, 8), `${tag}: 8px apart (${b.left - a.right})`);
+      assert.ok(near(a.top - l.send.bottom, 8), `${tag}: 8px under Send (${a.top - l.send.bottom})`);
+      assert.ok(near(a.left, l.send.left) && near(b.right, l.send.right), `${tag}: the pair as wide as Send (${a.left} to ${b.right}, Send ${l.send.left} to ${l.send.right})`);
+      if (scheme === 'light') {
+        const copy = page.locator('#report [data-landlord-acts] > button').nth(1);
+        await copy.evaluate((e) => e.scrollIntoView({ block: 'center', behavior: 'instant' })); await page.waitForTimeout(200);
+        const before = await page.evaluate(LANDLORD);
+        await copy.click();
+        await page.waitForFunction(() => document.querySelectorAll('#report [data-landlord-acts] > button')[1].textContent === 'Copied', null, { timeout: 15000 }).catch(() => {});
+        const after = await page.evaluate(LANDLORD);
+        assert.deepEqual(after.btns.map((x) => x.text), ['Download PDF', 'Copied'], `${tag}: Copy text reads Copied`);
+        after.btns.forEach((x, i) => assert.ok(['top', 'left', 'width', 'height'].every((k) => near(x[k], before.btns[i][k])), `${tag}: ${before.btns[i].text} in place while Copied shows (${JSON.stringify(x)})`));
+        if (width === 390) {
+          await page.waitForFunction(() => document.querySelectorAll('#report [data-landlord-acts] > button')[1].textContent === 'Copy text', null, { timeout: 15000 }).catch(() => {});
+          assert.equal(await copy.textContent(), 'Copy text', `${tag}: and Copy text again after`);
+        }
+      }
+      assert.deepEqual(errors, [], `${tag}: no page error`);
+      noSupabaseLeft(ctx, `${tag}: the Landlord card`);
+      await ctx.close();
+    }
+  }
+}
+
 async function walk(browser, engine) {
   await scrollWalk(browser, engine);
   await shellWalk(browser, engine);
+  await bounceWalk(browser, engine);
+  await landlordWalk(browser, engine);
 }
 
 test('the phone shell: one page scroll, the top bar, the tab bar and its fade, walked in WebKit', { timeout: 600000 }, async () => {

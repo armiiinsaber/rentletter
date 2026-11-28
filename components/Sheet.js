@@ -40,7 +40,9 @@ export function lockPage() {
   if (typeof document === 'undefined') return () => {};
   const html = document.documentElement; const body = document.body;
   if (locks === 0) {
-    const y = window.scrollY || html.scrollTop || 0;
+    // Under 1024 the page bounces at its ends (components/ui.js): mid bounce at the top the scroll
+    // reads below 0, which would pin the body at an invalid top. The page is held at its top instead.
+    const y = Math.max(0, window.scrollY || html.scrollTop || 0);
     // What stays on screen as the page scrolls (data-stuck: the sidebar, the tenant's top bar, the
     // phone's strength bar, a side column): pinning the body drops each to where it sits in the
     // page, so each is moved back by exactly that much while the sheet is up, and nothing behind

@@ -1427,9 +1427,9 @@ export default function ListingView({ initialProfile, initialListing, initialApp
 
           </div>
           <aside className="lv-side" data-stuck="" aria-label="The landlord and the listing">
-          {/* LANDLORD (once anyone has applied): one button, the sent line, two text links. Signed by
-              and the landlord's details live in the Details fold under it. Red when no card owns
-              the red on this page, ink otherwise. */}
+          {/* LANDLORD (once anyone has applied): Send, the PDF and the text under it, then the sent
+              line. Signed by and the landlord's details live in the Details fold under it. Send is
+              red when no card owns the red on this page, ink otherwise. */}
           {totalApplicants > 0 && (
             <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', scrollMarginTop: 'calc(var(--ds-bar-h, 0px) + 16px)' }}>
               <h2 className="t-d2" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Landlord</h2>
@@ -1440,6 +1440,13 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                 </button>
                 <ReportDeparture token={departToken} onDone={() => setDepartToken(0)} />
               </div>
+              {/* From the latest snapshot once one exists; the live preview before any send. Two quiet
+                  buttons under Send, side by side at every width (as the Profile's logo actions,
+                  components/dashboard/ProfileEditorBody.js pe-acts): Copy text reads Copied in place. */}
+              <div className="lv-ll-acts" data-landlord-acts="">
+                <button type="button" onClick={downloadPdf} disabled={pdfBusy} className="ds-btn ds-btn-quiet"><Pending busy={pdfBusy} label="Building the report PDF">Download PDF</Pending></button>
+                <button type="button" onClick={copyText} disabled={textBusy} className="ds-btn ds-btn-quiet"><Pending busy={textBusy} label="Writing the report text">{textCopied ? 'Copied' : 'Copy text'}</Pending></button>
+              </div>
               {/* The latest frozen report: when it went, how often it was opened, how many want to meet. */}
               {l.snapshot && sentPills(l.snapshot) && (
                 <div style={{ marginTop: 'var(--s-2)', display: 'flex', alignItems: 'center', gap: 'var(--s-2) var(--s-3)', flexWrap: 'wrap' }}>
@@ -1447,11 +1454,6 @@ export default function ListingView({ initialProfile, initialListing, initialApp
                   <a href={`https://rentletter.ca/r/${l.snapshot.token}`} target="_blank" rel="noopener" onClick={() => setBrandHint(true)} style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>View as landlord</a>
                 </div>
               )}
-              {/* From the latest snapshot once one exists; the live preview before any send. */}
-              <div className="rl-ctrl-row">
-                <button type="button" onClick={downloadPdf} disabled={pdfBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: pdfBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={pdfBusy} label="Building the report PDF">Download PDF</Pending></button>
-                <button type="button" onClick={copyText} disabled={textBusy} style={{ minHeight: 44, padding: 0, background: 'transparent', border: 'none', color: C.ink, fontSize: 'var(--t-body-2)', fontWeight: 700, textDecoration: 'underline', cursor: textBusy ? 'wait' : 'pointer', fontFamily: 'inherit' }}><Pending busy={textBusy} label="Writing the report text">{textCopied ? 'Copied' : 'Copy text'}</Pending></button>
-              </div>
               {brandHint && needsBrandingHint(profile) && (
                 <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: 'var(--s-2) 0 0', textWrap: 'balance' }}>{BRANDING_HINT} <a {...linkProps(adapter.paths.profile)} style={{ color: C.ink, fontWeight: 700, textDecoration: 'underline' }}>{BRANDING_HINT_LINK}</a></p>
               )}
@@ -1705,6 +1707,18 @@ export default function ListingView({ initialProfile, initialListing, initialApp
         .lv-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), ${SH.raised}; }
         /* The right column: under 1280 it comes under the applicants, one card after another. */
         :global(.lv-side) { display: flex; flex-direction: column; gap: var(--gap-section); margin-top: var(--gap-section); min-width: 0; }
+        /* The Landlord card's PDF and text: two quiet buttons 8px under Send, side by side and as
+           wide as each other at every width, 44px high, 8px apart, on a faint ink tone so each reads
+           as a button, never as loose text (the Profile's logo actions,
+           components/dashboard/ProfileEditorBody.js pe-acts). Under 345px, where the page's gutter
+           and the card's padding step down to 12px (components/ui.js), the buttons' padding does
+           too, so Download PDF stays inside its button's padding. */
+        :global(.lv-ll-acts) { display: flex; gap: var(--s-2); margin-top: var(--s-2); }
+        :global(.lv-ll-acts > .ds-btn.ds-btn-quiet) { flex: 1 1 0; min-width: 0; min-height: 44px; background: rgba(var(--c-ink-rgb), 0.05); }
+        @media (max-width: 344.98px) { :global(.lv-ll-acts > .ds-btn.ds-btn-quiet) { padding: 0 var(--s-3); } }
+        @media (hover: hover) {
+          :global(.lv-ll-acts > .ds-btn.ds-btn-quiet:not(:disabled):hover) { background: rgba(var(--c-ink-rgb), 0.09); }
+        }
         /* The reference card's first toggle row needs no hairline above it. */
         :global(.lv-ref > button:first-child) { margin-top: 0 !important; border-top: none !important; }
         /* 1280 and wider: the main area's whole width in two columns, the right one 380 to 420px and
