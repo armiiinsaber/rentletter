@@ -169,7 +169,7 @@ test('only the realtor surfaces carry the app head; sign in autofills', () => {
     assert.doesNotMatch(src(page), /AppHead|AuthShell|DashboardHeader|manifest\.webmanifest|apple-touch-icon/, page);
   }
   const app = src('components/AppHead.js');
-  for (const s of ['rel="manifest" href="/manifest.webmanifest"', 'name="apple-mobile-web-app-capable" content="yes"', 'name="apple-mobile-web-app-status-bar-style" content="default"', 'name="apple-mobile-web-app-title" content="Rentletter"', 'rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png"', 'rel="apple-touch-startup-image"']) assert.ok(app.includes(s), s);
+  for (const s of ['rel="manifest" href="/manifest.webmanifest"', 'name="apple-mobile-web-app-capable" content="yes"', 'name="apple-mobile-web-app-status-bar-style" content="black-translucent"', 'name="apple-mobile-web-app-title" content="Rentletter"', 'rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png"', 'rel="apple-touch-startup-image"']) assert.ok(app.includes(s), s);
   const doc = src('pages/_document.js'); assert.ok(doc.includes('href="/favicon.ico"') && doc.includes('/icons/favicon-32.png') && doc.includes('/icons/favicon-16.png'));
   const signin = src('pages/signin.js');
   assert.match(signin, /id="email" name="username" type="email" inputMode="email" autoComplete="username"/);

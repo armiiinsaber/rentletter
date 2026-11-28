@@ -9,7 +9,8 @@
 //      dashboard): the address stays, and at 1440 the sidebar and the view behind keep their boxes,
 //      scrolled or not, and the page never scales back; Escape closes it where it was.
 //   d. The place already on view does nothing: no route, no data request, no scroll, the same nodes.
-//   e. Back and forward move between the views, each at its own address.
+//   e. At 1440 back and forward move between the views, each at its own address. At 390 the tabs
+//      are roots (fix/phone-app-feel): switching tabs adds no history entry.
 //   f. At 390 no transition between Listings and Circle; into a listing and back out still pushes
 //      and goes back.
 // And the glass (components/ui.js .rl-glass), on the floating layer only:
@@ -229,6 +230,9 @@ async function phone(browser, tag) {
       window.__slides = 0; const root = document.getElementById('__next');
       const f = () => { if (root.getAnimations().length) window.__slides++; requestAnimationFrame(f); }; requestAnimationFrame(f);
     });
+    // The history entry on view: how many there are, and its place (the Navigation API).
+    const entry = () => page.evaluate(() => ({ length: history.length, index: typeof navigation !== 'undefined' && navigation.currentEntry ? navigation.currentEntry.index : null, url: window.location.pathname + window.location.search }));
+    const first = await entry();
     // f, b: Listings and Circle, no transition either way, each tab marked as it is tapped.
     assert.deepEqual(await tab('circle'), ['circle'], `${tag} b: Circle marked the moment it is tapped`);
     await landed(page, '/circle', SHOWS['/circle']);
@@ -237,10 +241,9 @@ async function phone(browser, tag) {
     assert.deepEqual(await tab('listings'), ['listings'], `${tag} b: Listings marked the moment it is tapped`);
     await landed(page, '/dashboard', '[data-listing-card]');
     assert.deepEqual(await page.evaluate(() => [window.__vt, window.__slides]), [[], 0], `${tag} f: no transition between Listings and Circle`);
-    // e: back and forward between them.
-    await page.goBack(); await landed(page, '/circle', SHOWS['/circle']);
-    await page.goForward(); await landed(page, '/dashboard', '[data-listing-card]');
-    assert.deepEqual(await page.evaluate(() => [window.__vt, window.__slides]), [[], 0], `${tag} f: none on back and forward either`);
+    // e: on a phone the tabs are roots (fix/phone-app-feel, components/nav/routes.js): Circle and
+    // Listings took the same history entry, so a back never walks from one tab to the other.
+    assert.deepEqual(await entry(), first, `${tag} e: switching tabs adds no history entry`);
     // f: into a listing and back out still pushes and goes back.
     await page.locator('[data-listing-card]').first().click();
     await page.locator('section.rl-card h1').first().waitFor({ timeout: 30000 }); await page.waitForTimeout(400);

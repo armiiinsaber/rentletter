@@ -946,6 +946,21 @@ export const STATES = [
       yield `profile, phone, the logo's actions, removing the logo, ${scheme}`;
     }, after: async (f, p) => { if (p) await setLogo(p, null); } },
   ]),
+  // ── the end of every view on a phone (fix/phone-app-feel), part 9 ──
+  // Every realtor view and the tenant's own profile scrolled to the end, with a phone's safe areas
+  // (SAFE_AREAS), light and dark, at 430, 390 and 320: the last content 16px above the tab bar or
+  // the home indicator, and the fade 12px above the bar (the walk, tests/routes/phoneShellWebkit.test.mjs,
+  // measures the gap). The tenant is number 51, no other state's.
+  ...['light', 'dark'].flatMap((scheme) => [
+    ...PHONE_VIEWS.map(([view, path, ready]) => ({ name: `phone end, ${view}, ${scheme}`, kind: 'realtor', phase: 'alone', widths: [430, 390, 320], go: async (p) => {
+      await p.addInitScript(SAFE_AREAS); await p.emulateMedia({ colorScheme: scheme }); await open(p, path); await vis(p, ready).waitFor({ state: 'attached', timeout: 30000 }); await wait(p, 300);
+      await p.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })); await wait(p, 300);
+    } })),
+    { name: `phone end, the tenant profile, ${scheme}`, kind: 'tenant', phase: 'alone', widths: [430, 390, 320], go: async (p, f) => {
+      await p.addInitScript(SAFE_AREAS); await p.emulateMedia({ colorScheme: scheme }); await tenantProfile(p, f, 'who=51&docs=1');
+      await p.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })); await wait(p, 300);
+    } },
+  ]),
 ];
 
 // Every state (of states), in its phase, concurrency at a time; measure(page, name, kind) after

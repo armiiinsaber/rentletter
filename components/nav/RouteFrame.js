@@ -33,8 +33,11 @@
 //   test only the root (the moving picture), so the tap ends the transition at once and a click
 //   that landed on the root goes to the control under the finger.
 // In the installed app a swipe from the left edge goes back (components/nav/EdgeBack.js): only on a
-// realtor screen below the dashboard with a screen of the app behind it in history, never with a
-// sheet open or while a screen is still on its way. The screen beneath is the picture of how it was
+// screen pushed above a tab's root (a listing, an applicant) with a screen of the app behind it in
+// history, back to that screen; never on a tab's root (Listings, Pipeline, Shared with you, Circle,
+// Profile: routes.js isMainSection), where it does nothing at all, never with a sheet open and never
+// while a screen is still on its way. On a phone a tab never stacks an entry (routes.js toRoot), so
+// the screen behind a pushed screen is the root it was opened from. The screen beneath is the picture of how it was
 // left (routes.js rememberScreen), else its Loader. A completed swipe hands that picture to the
 // frame in the Loader's place, under the same watch, until the screen itself arrives, scrolled
 // where it was left.
@@ -195,7 +198,7 @@ export default function RouteFrame({ children }) {
     const page = () => document.getElementById('__next');
     const edgeAllowed = () => {
       if (!isStandalone() || QUIET.test(window.location.pathname)) return false;
-      const here = routeOf(at.current); if (!here || here.kind === 'demo' || here.depth === 0) return false; // never on the dashboard
+      const here = routeOf(at.current); if (!here || here.kind === 'demo' || isMainSection(here)) return false; // never on a tab's root
       if (active || shown || moving || html.dataset.nav || html.classList.contains('rl-sheet-open') || html.classList.contains('rl-sheet-closing')) return false;
       const prev = trailBack(); const back = prev && routeOf(prev.url);
       return !!back && back.kind !== 'demo';

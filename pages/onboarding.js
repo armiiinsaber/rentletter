@@ -11,6 +11,7 @@ import { GlobalStyle, Wordmark } from '../components/ui';
 import AppHead from '../components/AppHead';
 import { getSupabaseServerClient, isSupabaseConfigured } from '../lib/supabase/server';
 import { isOnboarded } from '../lib/onboarding';
+import { isStandalone } from '../lib/standalone';
 import { IdentityStep, OnboardingStyles } from '../components/onboarding/OnboardingFlow';
 
 export async function getServerSideProps(ctx) {
@@ -35,7 +36,9 @@ export default function Onboarding({ initialProfile }) {
       const r = await fetch('/api/profile/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(values) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || j?.error) return { error: j?.error || 'Could not save. Please try again.' };
-      router.push('/dashboard');
+      // In the installed app the dashboard takes this entry: a tab's root is the app's first entry,
+      // with nothing behind it to go back to (components/nav/routes.js). In a browser, as before.
+      if (isStandalone()) router.replace('/dashboard'); else router.push('/dashboard');
       return { ok: true };
     } catch (e) { return { error: 'Could not save. Please try again.' }; }
   };

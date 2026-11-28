@@ -801,6 +801,8 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         .hv-part-pipeline, .hv-part-shared { display: none; }
         .hv[data-view='pipeline'] .hv-part-pipeline, .hv[data-view='shared'] .hv-part-shared { display: block; }
         .hv[data-view='listings'] .hv-part-shared { display: block; margin-top: var(--gap-section); }
+        /* With nothing shared it holds nothing on Listings: no box, so no margin under the last card. */
+        .hv[data-view='listings'] .hv-part-shared:not(:has([data-shared-with-me])) { display: none; }
         .hv[data-view='listings'] .hv-shared-empty { display: none; }
         .hv:not([data-view='listings']) .hv-part-listings { display: none; }
         .hv-section { margin-top: var(--gap-section); }

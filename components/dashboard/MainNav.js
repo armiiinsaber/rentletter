@@ -13,13 +13,16 @@
 // The bar is fixed to the screen at every moment: at rest, as the page scrolls, while a sheet is
 // up, as a screen pushes in or goes back, and after the theme changes. It is drawn on the body,
 // outside the page (components/FloatLayer.js), so nothing that moves the page can carry it, and
-// the page leaves room under its last card for the bar, its two 16px insets, the fade above it and
-// the home indicator (TAB_ROOM, components/dashboard/DashShell.js .ds-tabbed). In a view
-// transition it is a picture of its own (view-transition-name rl-main-nav): it stays where it is
-// while the page moves, and fades where the next screen has no bar.
-// THE FADE behind it: fixed to the bottom of the screen, from FADE_ABOVE px above the bar to the
-// very bottom edge, the home indicator's area included, the page's own paper from clear at its top
-// to solid by the middle of the bar and under it, so what scrolls down to the bar fades out and
+// the page leaves room under its last card for the bar, its 16px inset, the home indicator and
+// END_GAP, so at the end of a view the last card ends 16px above the bar (TAB_ROOM,
+// components/dashboard/DashShell.js .ds-tabbed); a view shorter than the screen gets no more room
+// than that and does not scroll. In a view transition it is a picture of its own
+// (view-transition-name rl-main-nav): it stays where it is while the page moves, and fades where the
+// next screen has no bar.
+// THE FADE behind it: fixed to the bottom of the screen, from FADE_ABOVE px above the bar (12, less
+// than END_GAP, so at the end of a view it starts under the gap and never shows as an empty band) to
+// the very bottom edge, the home indicator's area included, the page's own paper from clear at its
+// top to solid by the middle of the bar and under it, so what scrolls down to the bar fades out and
 // nothing shows in the gap under the bar or around its round ends. Under the bar, never over it,
 // and never a target (pointer-events none); on the body with the bar, and in a view transition a
 // picture of its own (rl-main-fade) that holds still and fades with it.
@@ -34,9 +37,14 @@ import { linkProps, isHere, placeOf, useHeading, goView, routeOf } from '../nav/
 
 export const CIRCLE_PATH = '/circle';
 // The bar's height, its inset from the screen's sides and bottom, and the fade above it.
-export const TAB_H = 68; export const TAB_INSET = 16; export const FADE_ABOVE = 24;
-// The room a view leaves under its last card: the fade, the bar, the inset and the home indicator.
-export const TAB_ROOM = `calc(${FADE_ABOVE + TAB_H + TAB_INSET}px + var(--safe-bottom))`;
+export const TAB_H = 68; export const TAB_INSET = 16; export const FADE_ABOVE = 12;
+// Under 1024px, at the end of every view: the last content's bottom to the tab bar's top, or on a
+// screen with no tab bar (a listing) to the home indicator.
+export const END_GAP = 16;
+// The room a view leaves under its last card: the gap, the bar, the inset and the home indicator;
+// on a screen with no tab bar, the gap and the home indicator.
+export const TAB_ROOM = `calc(${END_GAP + TAB_H + TAB_INSET}px + var(--safe-bottom))`;
+export const END_ROOM = `calc(${END_GAP}px + var(--safe-bottom))`;
 // The count as last read this session, so the number does not blink between the two screens.
 let held = 0; const listeners = new Set();
 export function setCirclePending(n) { held = Math.max(0, Number(n) || 0); for (const l of listeners) l(held); }

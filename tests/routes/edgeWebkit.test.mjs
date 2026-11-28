@@ -8,6 +8,10 @@
 //   3. A vertical drag from the edge is left to the page: no swipe (and in Chrome, with real touches,
 //      the page scrolls).
 //   4. With a sheet open, on the dashboard, and outside the installed app (Safari): nothing happens.
+//      On a phone the tabs are roots (fix/phone-app-feel, components/nav/routes.js): switching
+//      between Listings, Pipeline, Circle and Profile adds no history entry, the swipe on each root
+//      does nothing at all (no movement, no peek, the same screen), and from a listing opened after
+//      them the swipe returns to Listings, on the root's own entry.
 //   5. Under reduced motion nothing follows the finger, and a flick goes back.
 //   6. Fifty random edge drags, from any screen, some during a transition: every one leaves the app
 //      on a real screen.
@@ -158,7 +162,8 @@ async function gestures(browser, tag) {
   await page.keyboard.press('Escape');
   await page.waitForFunction(() => !document.documentElement.classList.contains('rl-sheet-open') && !document.documentElement.classList.contains('rl-sheet-closing'), null, { timeout: 5000 });
   await page.waitForTimeout(200);
-  // 4b. The dashboard: nothing, even with screens behind it in history.
+  // 4b. The dashboard: nothing, even with a listing visited before it (All listings went back down
+  // to the dashboard's own entry, components/nav/routes.js toRoot).
   await tapAt(page, page.getByText('All listings', { exact: true }).first());
   r = await waitFor(page, onDashboard, 3000);
   assert.ok(r.ok, `${tag}: back on the dashboard: ${JSON.stringify(r.s)}`);
@@ -167,6 +172,28 @@ async function gestures(browser, tag) {
   await page.waitForTimeout(600);
   r = await waitFor(page, onDashboard, 1000);
   assert.ok(r.ok, `${tag}: still the dashboard: ${JSON.stringify(r.s)}`);
+  // 4c. The tabs are roots: no history entry, and no swipe on any of them.
+  const entry = () => page.evaluate(() => ({ length: history.length, index: typeof navigation !== 'undefined' && navigation.currentEntry ? navigation.currentEntry.index : null }));
+  const home = await entry();
+  for (const [key, url, ready] of [['pipeline', '/dashboard?view=pipeline', '[data-pipeline-head]'], ['circle', '/circle', '[data-circle-find]'], ['profile', '/profile', '#profile-field-full_name'], ['listings', '/dashboard', '[data-listing-card]']]) {
+    await tapAt(page, page.locator(`[data-main-nav][data-float="body"] [data-nav="${key}"]`).first());
+    await page.waitForFunction(({ u, sel }) => window.location.pathname + window.location.search === u && !!document.querySelector(`#__next ${sel}`) && !document.querySelector('[data-route-loading], [data-screen-loading]'), { u: url, sel: ready }, { timeout: 15000 });
+    await page.waitForTimeout(500);
+    assert.deepEqual(await entry(), home, `${tag}: ${key} from the tab bar adds no history entry`);
+    const tabRoot = await drag(page, { dx: 220, ms: 500 });
+    assert.ok(!tabRoot.beneath && Math.round(tabRoot.tx) === 0, `${tag}: no swipe on ${key}, no movement and no peek (${JSON.stringify(tabRoot)})`);
+    await page.waitForTimeout(600);
+    assert.equal(await page.evaluate(() => window.location.pathname + window.location.search), url, `${tag}: still ${key} after the swipe`);
+    assert.deepEqual(await entry(), home, `${tag}: the swipe on ${key} went nowhere in history`);
+  }
+  // 4d. A listing opened after them: the swipe returns to Listings, on the root's own entry.
+  await toListing(page, tag);
+  assert.ok(home.index != null, `${tag}: the Navigation API reads the entry's place`);
+  assert.equal((await entry()).index, home.index + 1, `${tag}: the listing pushed one entry`);
+  await drag(page, { dx: 220, ms: 500 });
+  r = await waitFor(page, onDashboard, 3000);
+  assert.ok(r.ok, `${tag}: the swipe on the listing returns to Listings: ${JSON.stringify(r.s)}`);
+  assert.equal((await entry()).index, home.index, `${tag}: back on the root's own entry`);
   assert.deepEqual(errors, []);
   await ctx.close();
 }

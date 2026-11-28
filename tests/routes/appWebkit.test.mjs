@@ -80,7 +80,7 @@ async function headAndAssets(browser, tag) {
         dark: [...document.querySelectorAll('link[rel=apple-touch-startup-image]')].filter((l) => /^\(prefers-color-scheme: dark\) and /.test(l.media) && /^\/splash\/splash-dark-/.test(l.getAttribute('href'))).length,
         favicon: [...document.querySelectorAll('link[rel=icon]')].map((l) => l.getAttribute('href')),
       }));
-      assert.deepEqual(head, { manifest: '/manifest.webmanifest', capable: 'yes', status: 'default', title: 'Rentletter', touch: '/icons/apple-touch-icon.png', splash: 22, dark: 11, favicon: ['/favicon.ico', '/icons/favicon-32.png', '/icons/favicon-16.png'] }, `${tag}: the app head on ${url}`);
+      assert.deepEqual(head, { manifest: '/manifest.webmanifest', capable: 'yes', status: 'black-translucent', title: 'Rentletter', touch: '/icons/apple-touch-icon.png', splash: 22, dark: 11, favicon: ['/favicon.ico', '/icons/favicon-32.png', '/icons/favicon-16.png'] }, `${tag}: the app head on ${url}`);
     }
     const man = await (await page.request.get('/manifest.webmanifest')).json();
     assert.equal(man.start_url, '/dashboard'); assert.equal(man.short_name, 'Rentletter');

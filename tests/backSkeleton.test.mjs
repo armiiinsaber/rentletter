@@ -66,7 +66,7 @@ test('the frame: a Loader only for the navigation in flight, its data forgotten 
   assert.match(f, /Router\.events\.on\('beforeHistoryChange', alignAhead\);/);
   const r = src('components/nav/routes.js');
   assert.match(r, /if \(!replace && r\.kind !== 'demo'\) writeAhead\(target\);/, 'the history entry is written with the tap');
-  assert.match(r, /if \(ahead\) window\.history\.replaceState\(entry\(as\), '', as\); else window\.history\.pushState\(entry\(as\), '', as\);/);
+  assert.match(r, /if \(ahead \|\| root\) \{\s*const key = root \? \(Router\.router && Router\.router\._key\) \|\| stateKey\(\) \|\| newKey\(\) : newKey\(\);\s*window\.history\.replaceState\(entry\(as, key\), '', as\); trailWrote\(key, as, true\);\s*\} else \{ const key = newKey\(\); window\.history\.pushState\(entry\(as, key\), '', as\); trailWrote\(key, as, false\); \}/, 'a second tap before the screen arrives, or a tab\'s root on a phone, takes the entry; anything else stacks one');
   assert.match(r, /Router\.router\.isFirstPopStateEvent = false;/, 'Next answers every back from then on');
 });
 

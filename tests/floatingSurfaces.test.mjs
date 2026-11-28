@@ -135,13 +135,13 @@ test('sticky surfaces: the page never scales around one, never slides with one, 
   assert.match(read('components/dashboard/HomeView.js'), /<div className="hv-bulk rl-glass" role="region" aria-label="Selected listings" data-bulk-bar="" data-stuck="">/);
   assert.match(read('pages/my-application.js'), /<TenantBar\b/);
   // The push and the edge swipe move the Next root only between realtor screens (components/nav/
-  // routes.js routeOf knows no tenant page), never on a quiet page, and the swipe never on the
-  // dashboard; the dashboard comes in with nothing picked, so the bar for the picked is never up
+  // routes.js routeOf knows no tenant page), never on a quiet page, and the swipe never on a tab's
+  // root; the dashboard comes in with nothing picked, so the bar for the picked is never up
   // while it slides in.
   const frame = read('components/nav/RouteFrame.js');
   assert.match(frame, /if \(!from \|\| !to \|\| QUIET\.test\(window\.location\.pathname\)\) return;/);
   assert.match(frame, /if \(!isStandalone\(\) \|\| QUIET\.test\(window\.location\.pathname\)\) return false;/);
-  assert.match(frame, /if \(!here \|\| here\.kind === 'demo' \|\| here\.depth === 0\) return false; \/\/ never on the dashboard/);
+  assert.match(frame, /if \(!here \|\| here\.kind === 'demo' \|\| isMainSection\(here\)\) return false; \/\/ never on a tab's root/);
   assert.match(frame, /const page = \(\) => document\.getElementById\('__next'\);/);
   const routes = read('components/nav/routes.js');
   const table = routes.slice(routes.indexOf('const ROUTES = ['), routes.indexOf('];', routes.indexOf('const ROUTES = [')));

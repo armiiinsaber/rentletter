@@ -36,7 +36,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { C } from '../theme';
 import { Wordmark, Icon } from '../ui';
 import DashboardHeader, { initialsOf } from './DashboardHeader';
-import MainNav, { useCirclePending, CIRCLE_PATH, TAB_ROOM, TAB_H, TAB_INSET } from './MainNav';
+import MainNav, { useCirclePending, CIRCLE_PATH, TAB_ROOM, END_ROOM, TAB_H, TAB_INSET } from './MainNav';
 import CommandMenu from './CommandMenu';
 import { logoProps } from './logoNav';
 import { actionHref } from '../../lib/actions.js';
@@ -203,15 +203,20 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
         .ds-main { min-width: 0; }
         .ds-side { display: none; }
         /* Under 1024px the page starts under the fixed top bar (components/dashboard/DashboardHeader.js
-           --ds-bar-h), and on the main places ends with room for the floating tab bar, its two 16px
-           insets, the fade above it and the home indicator (components/dashboard/MainNav.js
-           TAB_ROOM): at the end of the page the last card ends where the fade begins. A section
-           jumped to clears the top bar by its own scroll margin (calc(var(--ds-bar-h) + 16px)); no
-           scroll padding on the root, which would move the page when a closing sheet gives the focus
-           back to a control under the bar. */
+           --ds-bar-h), and ends with room for what is fixed under it and END_GAP: on the main places
+           the floating tab bar, its 16px inset and the home indicator (components/dashboard/MainNav.js
+           TAB_ROOM), elsewhere the home indicator (END_ROOM). At the end of the page the last card
+           ends 16px above the tab bar (or the home indicator), and the fade (12px above the bar)
+           starts under that gap. The room is the shell's alone: the view's own last box keeps no
+           padding or margin under its content, so the gap is the same on every view, and a view
+           shorter than the screen is not padded to fill it. A section jumped to clears the top bar
+           by its own scroll margin (calc(var(--ds-bar-h) + 16px)); no scroll padding on the root,
+           which would move the page when a closing sheet gives the focus back to a control under
+           the bar. */
         @media (max-width: 1023.98px) {
-          .ds-main { padding-top: var(--ds-bar-h); padding-bottom: var(--safe-bottom); }
+          .ds-main { padding-top: var(--ds-bar-h); padding-bottom: ${END_ROOM}; }
           .ds-tabbed .ds-main { padding-bottom: ${TAB_ROOM}; }
+          .ds-main > :global(:last-child) { padding-bottom: 0 !important; margin-bottom: 0 !important; }
           :global(:root:has(.ds-tabbed)) { --toast-bottom: calc(${TAB_INSET + TAB_H + 12}px + var(--safe-bottom)); }
         }
         .ds-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -15,12 +15,24 @@
 //        (what is under each point of it is the bar); solid at the top of the page (its solid layer
 //        on, no blur) and glass once the page scrolls under it (the layer off, the blur on); its
 //        bottom edge above the first content at the top;
+//        one surface (fix/phone-app-feel), read from the pixels of its two side gutters, where no
+//        control is, from the screen's top edge to under its bottom edge: at the top of the page the
+//        status bar's area and the bar's row are both the colour the browser is given for its own
+//        bars (theme-color, components/ThemeColor.js), every pixel, and under the bar nothing but
+//        the page; scrolled, the status bar's area and the row the same colour, with no step from one
+//        pixel row to the next anywhere in the bar (no line, no second tone), and under its bottom
+//        edge one hairline row with the page under it (no shadow);
 //        the tab bar (components/dashboard/MainNav.js) 16px and the safe area above the screen's
-//        bottom, and the fade behind it from 24px above it to the screen's bottom edge, under it,
-//        never a target, both in their box at the end of the body; the last content's bottom above the tab bar at the end (on a
-//        listing, which has none, above the home indicator); and nothing of the page ever shows in
-//        the gap under the tab bar or beside its round ends: those strips are the same picture at
-//        the top, halfway and at the end.
+//        bottom, and the fade behind it from 12px above it to the screen's bottom edge, under it,
+//        never a target, both in their box at the end of the body; and nothing of the page ever
+//        shows in the gap under the tab bar or beside its round ends: those strips are the same
+//        picture at the top, halfway and at the end.
+//      The end of every view (fix/phone-app-feel), at 320, 390 and 430: scrolled to the end, the
+//      gap from the bottom of the last thing the view draws (text, a control, a card) to the top
+//      of the tab bar, or on a listing, which has none, to the home indicator, is 16px give or take
+//      4 (failing above 20); a view shorter than the screen does not scroll, and its main area ends
+//      that same room under its content (nothing padded to fill the screen). The tenant's profile
+//      ends the same 16px above the home indicator.
 //   3. The bounce (fix/phone-polish): at 320 and 390, light and dark, the root keeps the browser's
 //      own overscroll, so the page bounces at its ends; in Chrome a touch pull past the top and a
 //      push past the end leave the page at that end and each bar where it rests; with the Sort sheet
@@ -59,7 +71,9 @@ const UA_PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWe
 const SHOTS = process.env.PHONE_SHELL_SHOTS || '';
 // The top bar's row under the safe area (components/dashboard/DashboardHeader.js SHELL_BAR), the tab
 // bar's height and inset and the fade above it (components/dashboard/MainNav.js).
-const BAR_ROW = 60; const TAB_H = 68; const TAB_INSET = 16; const FADE_ABOVE = 24;
+const BAR_ROW = 60; const TAB_H = 68; const TAB_INSET = 16; const FADE_ABOVE = 12;
+// The gap at the end of every view under 1024 (MainNav.js END_GAP), and how far it may be off.
+const END_GAP = 16; const END_SLACK = 4;
 
 let fake = null; let turn = false;
 const listeners = (port) => { try { return execSync(`lsof -tiTCP:${port} -sTCP:LISTEN`, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().split(/\s+/).filter(Boolean).map(Number); } catch (e) { return []; } };
@@ -203,6 +217,99 @@ const SHELL = () => {
     first, firstWho, last, lastWho,
   };
 };
+// ── The end of a view: the bottom of the last thing it draws ────────────────────────────────
+// Text (each line of it), a control, an image, or a box that paints (a fill, a border, a shadow),
+// as far as each shows (a box that clips cuts what is inside it); a wrapper that draws nothing is
+// not content, whatever its padding. inside: the view's area (the realtor shell's main area, the
+// tenant profile's grid). Answers that bottom, what it is, the main area's bottom, the screen.
+const END = (inside) => {
+  const main = document.querySelector(inside);
+  const clipOf = (el) => { let top = -Infinity; let bottom = Infinity; for (let a = el.parentElement; a && a !== main; a = a.parentElement) { const acs = getComputedStyle(a); if (acs.overflowX !== 'visible' || acs.overflowY !== 'visible') { const b = a.getBoundingClientRect(); top = Math.max(top, b.top); bottom = Math.min(bottom, b.bottom); } } return { top, bottom }; };
+  const alpha = (c) => { const m = String(c).match(/rgba?\(([^)]+)\)/); if (!m) return c === 'transparent' ? 0 : 1; const v = m[1].split(/[ ,/]+/).filter(Boolean); return v.length > 3 ? Number(v[3]) : 1; };
+  const paints = (el, cs) => /^(IMG|svg|CANVAS|VIDEO|INPUT|TEXTAREA|SELECT|BUTTON|HR)$/.test(el.tagName) || alpha(cs.backgroundColor) > 0.02 || cs.backgroundImage !== 'none' || cs.boxShadow !== 'none'
+    || ['Top', 'Bottom', 'Left', 'Right'].some((side) => parseFloat(cs[`border${side}Width`]) > 0 && cs[`border${side}Style`] !== 'none' && alpha(cs[`border${side}Color`]) > 0.02);
+  let last = 0; let who = '';
+  const take = (top, bottom, el, what) => { const c = clipOf(el); const b = Math.min(bottom, c.bottom); if (b - Math.max(top, c.top) < 1 || b <= last) return; last = b; who = `${el.tagName.toLowerCase()}.${String(el.className && el.className.baseVal != null ? el.className.baseVal : el.className).split(' ').filter((x) => x && !/^jsx-/.test(x))[0] || ''} ${what}`; };
+  for (const el of main.querySelectorAll('*')) {
+    if (el.closest('[data-float-host], [aria-hidden="true"]')) continue;
+    const cs = getComputedStyle(el); if (cs.display === 'none' || cs.visibility === 'hidden' || cs.position === 'fixed' || Number(cs.opacity) === 0) continue;
+    const r = el.getBoundingClientRect(); if (r.width < 1 || r.height < 1) continue;
+    if (paints(el, cs)) take(r.top, r.bottom, el, '(its box)');
+    for (const n of el.childNodes) if (n.nodeType === 3 && n.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(n); for (const rr of rg.getClientRects()) if (rr.width > 0) take(rr.top, rr.bottom, el, JSON.stringify(n.textContent.trim().slice(0, 24))); }
+  }
+  const nav = document.querySelector('[data-main-nav]'); const fade = document.querySelector('[data-tab-fade]');
+  const probe = document.createElement('div'); probe.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:var(--safe-bottom);visibility:hidden;pointer-events:none';
+  document.body.append(probe); const safeBottom = probe.getBoundingClientRect().height; probe.remove();
+  return { last, who, mainBottom: main.getBoundingClientRect().bottom, ih: window.innerHeight, iw: window.innerWidth, safeBottom, end: document.documentElement.scrollHeight - window.innerHeight, y: window.scrollY,
+    navTop: nav ? nav.getBoundingClientRect().top : null, fadeTop: fade ? fade.getBoundingClientRect().top : null };
+};
+// At the end of the view, at each width: the gap to the tab bar's top (or the home indicator's), 16px
+// give or take 4; a view shorter than the screen does not scroll and is not padded to fill it: its
+// main area ends the same room under its content. Answers the gap at each width, for the report.
+async function endGaps(page, tag, inside, widths = [390, 320, 430]) {
+  const gaps = {};
+  for (const width of widths) {
+    await page.setViewportSize({ width, height: 844 }); await page.waitForTimeout(250);
+    await instant(page, 1e6); await page.waitForTimeout(300);
+    const e = await page.evaluate(END, inside);
+    const at = `${tag} at ${width}`;
+    assert.equal(e.iw, width, `${at}: laid out at ${width}`);
+    const edge = e.navTop != null ? e.navTop : e.ih - e.safeBottom; // the tab bar's top, else the home indicator's
+    const room = e.ih - edge; // what is fixed under the gap: the bar, its inset and the home indicator
+    const gap = Math.round((edge - e.last) * 10) / 10;
+    if (e.end > 0) {
+      assert.ok(e.y >= e.end - 1, `${at}: scrolled to the end (${e.y} of ${e.end})`);
+      assert.ok(gap <= END_GAP + END_SLACK && gap >= END_GAP - END_SLACK, `${at}: at the end, the last content (${e.who}) ends ${gap}px above the ${e.navTop != null ? 'tab bar' : 'home indicator'}, not ${END_GAP} give or take ${END_SLACK}`);
+      gaps[width] = gap;
+    } else {
+      // Shorter than the screen: no scroll, and the main area ends the gap and the fixed room under
+      // its content, so nothing was padded or stretched to fill the screen.
+      assert.ok(e.end <= 0, `${at}: a view shorter than the screen does not scroll (${e.end})`);
+      const under = Math.round((e.mainBottom - e.last - room) * 10) / 10;
+      assert.ok(under <= END_GAP + END_SLACK && under >= END_GAP - END_SLACK, `${at}: shorter than the screen, its main area ends ${under}px plus the fixed room under its last content (${e.who}), not ${END_GAP}: nothing padded to fill the screen`);
+      gaps[width] = `${gap} (shorter than the screen, no scroll)`;
+    }
+    if (e.fadeTop != null) assert.ok(e.navTop - e.fadeTop <= 12 + 0.5, `${at}: the fade starts ${e.navTop - e.fadeTop}px above the tab bar, no more than 12`);
+  }
+  await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(200);
+  return gaps;
+}
+
+// ── The top bar as one surface, read from its pixels ────────────────────────────────────────
+// The colour the browser is given for its own bars, in the scheme in force (components/ThemeColor.js).
+const THEME_COLOR = () => { const m = [...document.querySelectorAll('meta[name="theme-color"]')].find((x) => !x.media || window.matchMedia(x.media).matches); const hex = m ? m.content : ''; const v = /^#([0-9a-f]{6})$/i.exec(hex); return v ? [0, 2, 4].map((i) => parseInt(v[1].slice(i, i + 2), 16)) : null; };
+const px = (img, x, y) => { const i = (y * img.width + x) * 4; return [img.rgba[i], img.rgba[i + 1], img.rgba[i + 2]]; };
+const off = (a, b) => Math.max(...a.map((v, i) => Math.abs(v - b[i])));
+const mean = (list) => [0, 1, 2].map((i) => Math.round(list.reduce((n, c) => n + c[i], 0) / list.length));
+// The two gutters (no control in either), from the screen's top edge to 8px under the bar.
+async function oneSurface(page, s, at, scrolled) {
+  const bottom = Math.round(s.bar.bottom);
+  const img = readPng(await page.screenshot({ clip: { x: 0, y: 0, width: s.iw, height: bottom + 8 } }));
+  const theme = await page.evaluate(THEME_COLOR);
+  assert.ok(theme, `${at}: a theme-color for the scheme in force`);
+  for (const x of [4, s.iw - 5]) {
+    const col = Array.from({ length: bottom }, (_, y) => px(img, x, y));
+    const status = col.slice(0, s.safeTop); const row = col.slice(s.safeTop, bottom);
+    const under = Array.from({ length: 6 }, (_, k) => px(img, x, bottom + 2 + k));
+    if (!scrolled) {
+      // At rest at the top: every pixel of the bar the browser's own colour for its bars.
+      const wrong = col.map((c, y) => ({ y, c })).filter(({ c }) => off(c, theme) > 1);
+      assert.deepEqual(wrong.slice(0, 3), [], `${at}, x ${x}: the status bar's area and the bar's row both the theme-color ${theme}, every pixel (${wrong.length} not)`);
+      assert.ok([px(img, x, bottom), px(img, x, bottom + 1), ...under].every((c) => off(c, theme) <= 1), `${at}, x ${x}: no edge under the bar at the top (${JSON.stringify([px(img, x, bottom), ...under])})`);
+    } else {
+      // Scrolled, at rest: one glass. The status bar's area and the row the same colour, no step
+      // from one pixel row to the next (no line, no second tone).
+      assert.ok(off(mean(status), mean(row)) <= 3, `${at}, x ${x}: the status bar's area ${mean(status)} and the bar's row ${mean(row)} the same colour`);
+      const steps = col.slice(1).map((c, y) => ({ y: y + 1, d: off(c, col[y]) })).filter((t) => t.d > 3);
+      assert.deepEqual(steps, [], `${at}, x ${x}: no line inside the bar`);
+      // Its bottom edge: one hairline row, the page under it.
+      const ground = mean(under);
+      assert.ok(off(px(img, x, bottom), ground) >= 6, `${at}, x ${x}: a hairline under the bar once scrolled (${px(img, x, bottom)} on ${ground})`);
+      assert.ok(under.every((c) => off(c, ground) <= 2), `${at}, x ${x}: one hairline, no shadow under it (${JSON.stringify(under)})`);
+    }
+  }
+}
+
 // The strips no page content may reach: under the tab bar to the screen's bottom edge, and beside
 // the lower half of the bar, outside its round ends.
 const strips = (s) => (s.nav ? [
@@ -216,6 +323,18 @@ const samePicture = (a, b) => {
   let off = 0; for (let i = 0; i < x.rgba.length; i += 4) if (Math.abs(x.rgba[i] - y.rgba[i]) + Math.abs(x.rgba[i + 1] - y.rgba[i + 1]) + Math.abs(x.rgba[i + 2] - y.rgba[i + 2]) > 6) off++;
   return { same: off === 0, off };
 };
+
+// Every gap measured, printed at the end of each engine's walk (the report reads it).
+const GAPS = {};
+// The tenant's profile, signed in as a tenant of the fake stack (GET /__fake/tenant, who 51: no other
+// walk's tenant), its documents in.
+async function tenantIn(page) {
+  const { token } = await (await fetch(`${BASE}/__fake/tenant?who=51&docs=1`)).json();
+  // Signed out first, so the cookie has the page's origin; settled, so leaving it cuts no request short.
+  await page.goto('/my-application', { waitUntil: 'load', timeout: 120000 }); await settle(page);
+  await page.context().addCookies([{ name: 'rl_tenant', value: encodeURIComponent(token), url: BASE, httpOnly: true, sameSite: 'Lax' }]);
+  await open(page, '/my-application', '[data-vault-documents]');
+}
 
 async function shellWalk(browser, engine) {
   for (const scheme of ['light', 'dark']) {
@@ -249,14 +368,15 @@ async function shellWalk(browser, engine) {
           assert.equal(s.scrolled, false, `${at}: not marked scrolled`);
           assert.equal(s.solid, '1', `${at}: solid at the top (its solid layer on)`); assert.equal(s.blur, 'none', `${at}: no blur at the top`);
           assert.ok(s.bar.bottom <= s.first + 0.5, `${at}: the top bar's bottom edge (${s.bar.bottom}) above the first content (${s.firstWho} at ${s.first})`);
+          await oneSurface(page, s, at, false);
         } else if (s.y > 8) {
           assert.equal(s.scrolled, true, `${at}: marked scrolled`);
           assert.equal(s.solid, '0', `${at}: glass once the page scrolls under it (its solid layer off)`); assert.match(s.blur, /blur/, `${at}: the glass's blur on`);
+          if (where === 'scrolled halfway') await oneSurface(page, s, at, true);
         }
         // The tab bar and the fade behind it, where the view has the tabs.
         if (view === 'a listing') {
           assert.equal(s.nav, null, `${at}: a listing has no tab bar`); assert.equal(s.fade, null, `${at}: and no fade`);
-          if (where === 'scrolled to the end') assert.ok(s.last <= s.ih - s.safeBottom + 0.5, `${at}: the last content (${s.lastWho}) ends at ${s.last}, above the home indicator (${s.ih - s.safeBottom})`);
         } else {
           assert.ok(near(s.nav.bottom, s.ih - TAB_INSET - s.safeBottom) && near(s.nav.height, TAB_H), `${at}: the tab bar ${TAB_INSET}px and the safe area above the screen's bottom (${JSON.stringify(s.nav)})`);
           assert.ok(near(s.fade.bottom, s.ih) && near(s.fade.top, s.nav.top - FADE_ABOVE) && near(s.fade.left, 0) && near(s.fade.right, s.iw), `${at}: the fade from ${FADE_ABOVE}px above the tab bar to the screen's bottom edge (${JSON.stringify(s.fade)}, the bar from ${s.nav.top})`);
@@ -264,7 +384,6 @@ async function shellWalk(browser, engine) {
           assert.equal(s.fadeHits, 'none', `${at}: the fade is never a target`);
           assert.deepEqual(s.tabBox, { endBox: true, onBody: true }, `${at}: the tab bar and the fade in their box at the end of the body`);
           assert.equal(s.fadeVt, 'rl-main-fade', `${at}: a picture of its own in a view transition`);
-          if (where === 'scrolled to the end') assert.ok(s.last <= s.nav.top + 0.5, `${at}: the last content (${s.lastWho}) ends at ${s.last}, above the tab bar (${s.nav.top})`);
           const shots = []; for (const clip of strips(s)) shots.push(await page.screenshot({ clip }));
           pictures.push({ where, shots });
         }
@@ -281,7 +400,12 @@ async function shellWalk(browser, engine) {
           assert.ok(c.same, `${tag}: ${['under the tab bar', 'beside its left end', 'beside its right end'][i]}, ${p.where} the same as at the top (${c.off} pixels differ)`);
         });
       }
+      // The end of the view at 390, 320 and 430.
+      GAPS[`${engine} ${scheme} ${view}`] = await endGaps(page, tag, '[data-shell] .ds-main');
     }
+    // The tenant's own profile: no tab bar, the last card 16px above the home indicator.
+    await tenantIn(page);
+    GAPS[`${engine} ${scheme} the tenant profile`] = await endGaps(page, `${engine} ${scheme} the tenant profile`, '.tp-grid');
     assert.deepEqual(errors, [], `${engine} ${scheme}: no page error`);
     noSupabaseLeft(ctx, `${engine} ${scheme}: the shell`);
     await ctx.close();
@@ -447,6 +571,7 @@ async function walk(browser, engine) {
   await shellWalk(browser, engine);
   await bounceWalk(browser, engine);
   await landlordWalk(browser, engine);
+  console.log(`# the gap at the end of each view, ${engine}:\n${Object.entries(GAPS).filter(([k]) => k.startsWith(engine)).map(([k, v]) => `#   ${k}: ${JSON.stringify(v)}`).join('\n')}`);
 }
 
 test('the phone shell: one page scroll, the top bar, the tab bar and its fade, walked in WebKit', { timeout: 600000 }, async () => {

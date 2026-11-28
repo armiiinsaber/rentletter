@@ -182,8 +182,9 @@ export const ProfileLayoutStyles = () => (
     .tp { --tp-pad: var(--s-4); --tbar-pad: var(--tp-pad); }
     .tp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
     .tp-grid { padding: var(--gap-card) var(--s-4) var(--s-7); max-width: 760px; margin: 0 auto; }
-    /* In the installed app the last card ends clear of the home indicator by the same 48px. */
-    @media (max-width: 1023.98px) { .tp-grid { padding-bottom: calc(var(--s-7) + var(--safe-bottom)); } }
+    /* Under 1024 the last card ends 16px above the home indicator, as every realtor view ends
+       (components/dashboard/MainNav.js END_GAP). */
+    @media (max-width: 1023.98px) { .tp-grid { padding-bottom: calc(var(--s-4) + var(--safe-bottom)); } }
     .tp-main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-section); min-width: 0; }
     .tp-group { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); min-width: 0; }
     .tp-menu, .tp-aside { display: none; }

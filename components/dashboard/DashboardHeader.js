@@ -34,11 +34,15 @@ import { NATIVE } from '../../lib/motion';
 // the page), so nothing that moves the page (a sheet's scale, the push, the edge swipe) can carry
 // it. It covers the status bar: its own height is the safe area at the top plus a 60px row (the
 // 44px controls with 8px above and below), --ds-bar-h, and the page starts under it
-// (components/dashboard/DashShell.js). Solid at the very top of the page, glass once the page
-// scrolls under it (components/ui.js .rl-glass-auto, usePageScrolled), with the glass's own tokens
-// in both themes; its edge is the glass's lift, which fades in with it. In a view transition (into
-// a listing and back) it is a picture of its own (view-transition-name rl-top-bar): it stays where
-// it is while the page moves under it, and the next screen's bar fades in over it.
+// (components/dashboard/DashShell.js). One element from the top of the screen to its bottom edge,
+// one background: solid at the very top of the page, one continuous glass once the page scrolls
+// under it (components/ui.js .rl-glass-auto, usePageScrolled), with the glass's own tokens in both
+// themes; no line or second tone inside it. The installed app runs under the status bar
+// (components/AppHead.js black-translucent), so the clock sits on this bar. Its bottom edge is one
+// soft hairline (the glass's edge), shown only once the page has scrolled under it. In a view
+// transition (into a listing and back) it is a picture of its own (view-transition-name
+// rl-top-bar): it stays where it is while the page moves under it, and the next screen's bar fades
+// in over it.
 // AT 1024 AND WIDER it stays in place in the shell's main area, as before.
 export const SHELL_BAR = 60;
 export const PHONE = '(max-width: 1023.98px)';
@@ -121,6 +125,9 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
           :global(:root) { --ds-bar-h: calc(${SHELL_BAR}px + var(--safe-top)); }
           :global(.rl-header.rl-glass[data-shell-bar]), :global(.rl-header.rl-glass[data-shell-bar].rl-shrink) { position: fixed; top: 0; left: 0; right: 0; z-index: 60; box-sizing: border-box; height: var(--ds-bar-h); padding-top: var(--safe-top); border-bottom: none; box-shadow: none; transition: none; }
           :global(.rl-header.rl-glass[data-shell-bar] .rl-header-inner), :global(.rl-header.rl-glass[data-shell-bar].rl-shrink .rl-header-inner) { box-sizing: border-box; height: ${SHELL_BAR}px; padding-top: 0; padding-bottom: 0; flex-wrap: nowrap; transition: none; }
+          /* Its bottom edge: one 1px hairline, no shadow, on the layer that fades in once the page has
+             scrolled under the bar (components/ui.js .rl-glass-auto::after). */
+          :global(.rl-header.rl-glass.rl-glass-auto[data-shell-bar]::after) { box-shadow: 0 1px 0 var(--glass-edge); }
           /* A picture of its own in a view transition, only where it is on the body. */
           :global(.rl-header[data-shell-bar][data-float='body']) { view-transition-name: rl-top-bar; }
         }

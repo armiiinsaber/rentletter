@@ -63,7 +63,7 @@ test('the gesture: where it starts, how it follows, how it ends', async () => {
   assert.doesNotMatch(e, /addEventListener\('scroll'/, 'nothing on scroll');
   const f = src('components/nav/RouteFrame.js');
   assert.match(f, /if \(!isStandalone\(\) \|\| QUIET\.test\(window\.location\.pathname\)\) return false;/, 'the installed app only, never a tenant or landlord page');
-  assert.match(f, /here\.depth === 0\) return false; \/\/ never on the dashboard/);
+  assert.match(f, /isMainSection\(here\)\) return false; \/\/ never on a tab's root/);
   assert.match(f, /if \(active \|\| shown \|\| moving \|\| html\.dataset\.nav \|\| html\.classList\.contains\('rl-sheet-open'\)/, 'never with a sheet open or a screen on its way');
   assert.match(f, /html\.dataset\.nav = 'fade';/, 'the 120ms crossfade under reduced motion');
   assert.match(f, /const id = \+\+seq; active = \{ id, url: prev\.url \}; arm\(id, prev\.url, 1\);/, 'a completed swipe is under the skeleton watch');

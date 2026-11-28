@@ -185,9 +185,19 @@ export function forgetData(as) {
 // ── The screens behind this one, in this session ─────────────────────────────────────────────
 // The app's own record of its history entries (each keyed by the key Next or writeAhead puts in the
 // entry's state), so the edge swipe (components/nav/EdgeBack.js) knows whether there is a screen of
-// the app to go back to, and which. An entry from before this session is unknown: no swipe back.
+// the app to go back to, and which, and a tab on a phone knows the root under a pushed screen
+// (toRoot below). An entry from before this session is unknown: no swipe back. An entry the app
+// writes itself (writeAhead) joins the trail the moment it is written.
 const trail = { list: [], at: -1 };
+// A way back down to a tab's root, in flight (toRoot below): { key, to, back, at }.
+let down = null;
+let watching = false;
 const stateKey = () => (typeof window !== 'undefined' && window.history.state && window.history.state.key) || null;
+const newKey = () => Math.random().toString(36).slice(2, 10);
+function trailWrote(key, url, replaced) {
+  if (replaced && trail.list[trail.at]) { trail.list[trail.at] = { key, url }; return; }
+  trail.list.splice(trail.at + 1); trail.list.push({ key, url }); trail.at = trail.list.length - 1;
+}
 // A screen arrived (the first load, then every completed navigation).
 export function trailLanded(url) {
   const k = stateKey(); const here = trail.list[trail.at];
@@ -196,8 +206,10 @@ export function trailLanded(url) {
 }
 // Next writes the first entry's key after the first paint: take it before the next entry is written.
 export function trailFix() { const here = trail.list[trail.at]; if (here && here.key == null) here.key = stateKey(); }
-// A back or a forward through the browser's history.
+// A back or a forward through the browser's history. Next has answered it by now (its listener
+// comes first), so a way down to a root (toRoot below) is over either way.
 export function trailPopped() {
+  down = null;
   const k = stateKey(); const i = k == null ? -1 : trail.list.findIndex((e) => e.key === k);
   if (i >= 0) { trail.at = i; return; }
   trail.list = [{ key: k, url: window.location.pathname + window.location.search }]; trail.at = 0;
@@ -221,15 +233,21 @@ export const seenScreen = (url) => { const r = routeOf(url); return (r && screen
 // form, so the URL and the back gesture always match the screen on view. Next then sees the URL
 // already in place and writes nothing more (router.js:1089). Until the screen arrives, a second tap
 // replaces the entry instead of stacking a screen that never showed.
+// On a phone a tab's root takes the entry on view instead (tabRoot below): its URL is written at once
+// with the key Next will write when it replaces the entry, so the trail and the entry agree.
 let ahead = null; // the URL written ahead of its screen
-const entry = (as) => ({ url: as, as, options: { scroll: true }, __N: true, key: Math.random().toString(36).slice(2, 10) });
+const entry = (as, key = newKey()) => ({ url: as, as, options: { scroll: true }, __N: true, key });
 function writeAhead(as) {
   const here = window.location.pathname + window.location.search;
   const there = parse(as); if (!there) return;
   if (there.pathname + there.search === here) return; // the same screen (a hash at most): Next keeps it
   try {
     trailFix();
-    if (ahead) window.history.replaceState(entry(as), '', as); else window.history.pushState(entry(as), '', as);
+    const root = tabRoot(as);
+    if (ahead || root) {
+      const key = root ? (Router.router && Router.router._key) || stateKey() || newKey() : newKey();
+      window.history.replaceState(entry(as, key), '', as); trailWrote(key, as, true);
+    } else { const key = newKey(); window.history.pushState(entry(as, key), '', as); trailWrote(key, as, false); }
     ahead = as;
     // From here on Next must answer every back: its shortcut for Safari reopening a page
     // (router.js:1657) ignores the first popstate whose entry matches the screen under the skeleton.
@@ -242,8 +260,56 @@ export const settleAhead = () => { ahead = null; };
 export function alignAhead(as) {
   if (!ahead || typeof window === 'undefined') return;
   const here = window.location.pathname + window.location.search + window.location.hash;
-  if (here !== as) { try { window.history.replaceState(entry(as), '', as); } catch (e) { /* Next writes its own */ } }
+  if (here !== as) { try { window.history.replaceState(entry(as, stateKey() || newKey()), '', as); } catch (e) { /* Next writes its own */ } }
   ahead = as;
+}
+
+// ── On a phone, the tabs are roots ───────────────────────────────────────────────────────────
+// Under 1024px the main sections (Listings, Pipeline, Shared with you, Circle, Profile) are the
+// roots of the tabs, as in an app: going to one never adds a history entry, so a back (Safari's own
+// swipe, the browser's button) never walks from one tab to another. On a tab's root the entry on
+// view is replaced. From a screen pushed above a root (a listing, an applicant), the app goes back
+// down to that root's entry, and if another section was asked for, that entry takes it, so the root
+// stays the first entry of the app under every pushed screen. Only going into one thing (a listing,
+// an applicant) pushes. At 1024 and wider every navigation pushes, as before, and the sandbox keeps
+// its own way.
+const phoneWidth = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 1023.98px)').matches;
+const tabRoot = (href) => { const r = routeOf(href); return !!r && r.kind !== 'demo' && isMainSection(r) && phoneWidth(); };
+// The entry on view in the trail: by its key; else the trail's own place when that is this screen
+// (the first load before Next wrote its key, or a listing that cleared its query and the state with
+// it, components/dashboard/ListingView.js).
+const trailHere = () => {
+  const k = stateKey(); const i = k == null ? -1 : trail.list.findIndex((e) => e.key === k);
+  if (i >= 0) return i;
+  const e = trail.list[trail.at]; const u = e && parse(e.url);
+  return e && (e.key == null || k == null) && u && u.pathname === window.location.pathname ? trail.at : -1;
+};
+// Next's own answer to a back is skipped where the entry gone back to must take another section: the
+// screen goes there in one step, replacing that entry, with no stop on the root between.
+const onPop = (state) => {
+  const d = down; down = null;
+  if (!d || Date.now() - d.at > 1500 || !state || state.key !== d.key) return true;
+  const want = parse(d.to); const got = parse(state.as);
+  if (want && got && want.pathname + want.search + want.hash === got.pathname + got.search + got.hash) return true; // the root itself
+  setTimeout(() => go(d.to, { back: d.back, replace: true }), 0);
+  return false;
+};
+// From a screen pushed above a tab's root: back down to that root's entry. Answers whether it went;
+// false on a root, or where no root of this session lies under the screen (the caller then replaces
+// the entry on view).
+function toRoot(target, back) {
+  if (down && Date.now() - down.at < 1500) { down.to = target; down.back = back; setHeading(target); return true; } // already going down: the latest tap wins
+  const here = routeOf(window.location.pathname + window.location.search);
+  if (!here || isMainSection(here)) return false;
+  const at = trailHere(); if (at < 1) return false;
+  let i = at - 1; while (i >= 0 && !isMainSection(routeOf(trail.list[i].url))) i--;
+  if (i < 0 || !trail.list[i].key) return false;
+  try { if (!watching && Router.router) { Router.beforePopState(onPop); watching = true; } } catch (e) { return false; }
+  down = { key: trail.list[i].key, to: target, back, at: Date.now() };
+  nextDirection = 'back'; // going down the stack is a back, whichever root it ends on
+  setHeading(target);
+  window.history.go(i - at);
+  return true;
 }
 
 // Go to a realtor screen through the router; anything else loads as a page.
@@ -251,23 +317,26 @@ export function go(href, { back = null, replace = false } = {}) {
   if (typeof window === 'undefined') return;
   const r = routeOf(href);
   if (!r) { window.location.href = href; return; }
-  nextDirection = back == null ? null : back ? 'back' : 'push';
   const u = parse(href);
   const target = u.pathname + u.search + u.hash;
+  const root = tabRoot(target);
+  if (root && toRoot(target, back)) return;
+  nextDirection = back == null ? null : back ? 'back' : 'push';
   setHeading(target); // marked in the same moment as the tap, before the router starts
   if (!replace && r.kind !== 'demo') writeAhead(target);
-  if (replace) Router.replace(target); else Router.push(target);
+  if (replace || root) Router.replace(target); else Router.push(target);
 }
 
 // Another view of the screen on view (the dashboard's Listings, Pipeline and Shared with you): the
 // address changes through the router with no data request and no transition (the frame skips a
 // shallow change on the same screen, components/nav/RouteFrame.js), and the page keeps its scroll.
+// On a phone each is a tab's root: the entry on view is replaced, never stacked.
 export function goView(href, { replace = false } = {}) {
   if (typeof window === 'undefined') return;
   const u = parse(href); if (!u) return;
   const to = u.pathname + u.search + u.hash;
   if (!replace) setHeading(to);
-  if (replace) Router.replace(to, undefined, { shallow: true, scroll: false }); else Router.push(to, undefined, { shallow: true, scroll: false });
+  if (replace || tabRoot(to)) Router.replace(to, undefined, { shallow: true, scroll: false }); else Router.push(to, undefined, { shallow: true, scroll: false });
 }
 
 // Props for anything that takes the realtor to a realtor screen: a real link (it still opens in a
