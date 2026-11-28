@@ -788,25 +788,15 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
         /* The canvas is painted at the root (components/ui.js var(--canvas)); this wrapper paints no
            tone of its own and stretches to the window so a short page still reads as one surface. */
         .dash-bg { min-height: 100vh; min-height: 100dvh; }
-        /* Under 1024px the dashboard's header is static, in flow: it scrolls away with the page, so
-           there is no fixed layer for content to pass under (the half cut title on iOS). Clear, so
-           the colour fields show through; its round controls are the glass. At 1024 and wider the
-           shell floats its search and bell (components/dashboard/DashShell.js). */
-        @media (max-width: 1023.98px) {
-          .dash-bg :global(.rl-header) {
-            position: static !important;
-            background: transparent !important;
-            -webkit-backdrop-filter: none !important;
-            backdrop-filter: none !important;
-            border-bottom-color: transparent !important;
-            box-shadow: none !important;
-            padding-top: env(safe-area-inset-top, 0px);
-          }
-          .dash-bg :global(.rl-header.rl-shrink .rl-header-inner) { padding-top: 18px; padding-bottom: 18px; }
-        }
+        /* Under 1024px the header is the phone's top bar, fixed over the status bar on every
+           realtor view (components/dashboard/DashboardHeader.js); the page starts under it
+           (components/dashboard/DashShell.js). At 1024 and wider the shell floats its search and
+           bell. */
 
         /* ── The page: its gutters, and room under it for the floating tab bar on a phone ── */
         .hv { padding: 0 var(--page-gutter) var(--s-5); }
+        /* Under the phone's top bar: the same 8px the loading board leaves (components/nav/RouteLoader.js). */
+        @media (max-width: 1023.98px) { .hv { padding-top: var(--s-2); } }
         .hv-only-desk { display: none; }
         .hv-part-pipeline, .hv-part-shared { display: none; }
         .hv[data-view='pipeline'] .hv-part-pipeline, .hv[data-view='shared'] .hv-part-shared { display: block; }
@@ -840,7 +830,7 @@ export default function HomeView({ userId, userEmail, initialProfile, initialLis
            is up, body and the Next root clip instead of hiding (components/ui.js makes each a scroll
            box that never scrolls, inside which a sticky box never sticks). */
         :global(:root:has([data-bulk-bar]) body), :global(#__next:has([data-bulk-bar])) { overflow-x: clip !important; }
-        .hv-bulk { position: sticky; top: calc(var(--s-2) + env(safe-area-inset-top, 0px)); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); border-radius: 999px; }
+        .hv-bulk { position: sticky; top: calc(var(--s-2) + var(--ds-bar-h, var(--safe-top))); z-index: 5; display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4); margin-bottom: var(--s-3); border-radius: 999px; }
         .hv-bulk-n { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; margin-right: auto; font-variant-numeric: tabular-nums; }
         .hv-pipe { margin-top: var(--s-6); }
 

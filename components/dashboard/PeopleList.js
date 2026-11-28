@@ -104,7 +104,7 @@ export default function PeopleList({ people, onChanged, className = '', style })
   const ctrl = { minHeight: 44, padding: '0 var(--gap-card)', background: C.card, color: C.ink, border: `1px solid ${C.ruleDark}`, borderRadius: 'var(--btn-radius)', fontSize: 'var(--t-body-2)', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', flexShrink: 0 };
 
   return (
-    <section id="people" className={className} aria-label="Pipeline" data-tap-card={rows.length ? '' : undefined} data-press={rows.length ? 'card' : undefined} onClick={rows.length ? onCard : undefined} style={{ cursor: rows.length ? 'pointer' : undefined, WebkitTapHighlightColor: 'transparent', background: C.card, color: C.ink, border: `1px solid ${C.rule}`, borderRadius: 'var(--card-radius)', padding: 'var(--card-pad)', scrollMarginTop: 'var(--s-4)', ...style }}>
+    <section id="people" className={className} aria-label="Pipeline" data-tap-card={rows.length ? '' : undefined} data-press={rows.length ? 'card' : undefined} onClick={rows.length ? onCard : undefined} style={{ cursor: rows.length ? 'pointer' : undefined, WebkitTapHighlightColor: 'transparent', background: C.card, color: C.ink, border: `1px solid ${C.rule}`, borderRadius: 'var(--card-radius)', padding: 'var(--card-pad)', scrollMarginTop: 'calc(var(--ds-bar-h, 0px) + var(--s-4))', ...style }}>
       {/* The header row: its band of the card opens and closes the list (with one person, that
           person); the title is the button a keyboard reaches. */}
       <div data-pipeline-head="" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 'var(--s-3)', marginBottom: rows.length ? (single || listOpen ? 'var(--s-2)' : 0) : 'var(--s-1)' }}>

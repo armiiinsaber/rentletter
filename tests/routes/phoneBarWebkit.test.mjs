@@ -99,7 +99,8 @@ const BAR = () => {
   const r = el.getBoundingClientRect(); const probe = document.createElement('div');
   probe.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:env(safe-area-inset-bottom, 0px);visibility:hidden;pointer-events:none';
   document.body.appendChild(probe); const safe = probe.getBoundingClientRect().height; probe.remove();
-  return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height, float: el.dataset.float, parent: el.parentElement === document.body ? 'body' : el.parentElement.tagName.toLowerCase(), want: window.innerHeight - 16 - safe, vt: getComputedStyle(el).viewTransitionName, y: window.scrollY, iw: window.innerWidth };
+  const box = el.parentElement;
+  return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, height: r.height, float: el.dataset.float, parent: box === document.body ? 'body' : box.getAttribute('data-float-host') === 'end' && box.parentElement === document.body ? 'its box on the body' : box.tagName.toLowerCase(), want: window.innerHeight - 16 - safe, vt: getComputedStyle(el).viewTransitionName, y: window.scrollY, iw: window.innerWidth };
 };
 const bar = (page) => page.evaluate(BAR);
 const near = (a, b, d = 0.5) => Math.abs(a - b) <= d;
@@ -131,7 +132,9 @@ async function barWalk(browser, engine) {
   const page = await ctx.newPage(); const errors = []; page.on('pageerror', (e) => errors.push(String(e)));
   await dashboard(page);
   const rest = await bar(page);
-  assert.equal(rest.float, 'body', `${engine}: the bar is drawn on the body`); assert.equal(rest.parent, 'body');
+  // In its box at the end of the body (components/FloatLayer.js, fix/phone-shell), whose one style
+  // is overflow-y auto: no box around the bar carries a containing block property (boxes, below).
+  assert.equal(rest.float, 'body', `${engine}: the bar is drawn on the body`); assert.equal(rest.parent, 'its box on the body');
   assert.ok(near(rest.bottom, rest.want), `${engine}: its bottom edge is the window's bottom less 16px and the safe area (${rest.bottom} against ${rest.want})`);
   assert.ok(near(rest.left, 16) && near(rest.right, rest.iw - 16) && near(rest.height, 68), `${engine}: 16px in, 68px tall (${JSON.stringify(rest)})`);
   assert.equal(rest.vt, 'rl-main-nav', `${engine}: a picture of its own in a view transition`);
@@ -309,7 +312,9 @@ async function stickyWalk(browser, engine) {
     await instant(page, 900); await page.waitForTimeout(300);
     const top = async () => page.evaluate(() => document.querySelector('[data-bulk-bar]').getBoundingClientRect().top);
     const t0 = await top();
-    assert.ok(near(t0, 8, 1), `${engine}: the bar for the picked stays at the top as the page scrolls (${t0} at ${await page.evaluate(() => window.scrollY)})`);
+    // 8px under the phone's top bar, which stays fixed over it (fix/phone-shell).
+    const under = await page.evaluate(() => document.querySelector('[data-shell-bar]').getBoundingClientRect().bottom);
+    assert.ok(near(t0, under + 8, 1), `${engine}: the bar for the picked stays 8px under the top bar as the page scrolls (${t0} under ${under} at ${await page.evaluate(() => window.scrollY)})`);
     assert.deepEqual(await boxes(page, '[data-bulk-bar]', true), [], `${engine}: the bar for the picked, scrolled`);
     await vis(page, '[data-bulk-delete]').click(); await page.locator('[role="dialog"], [role="alertdialog"]').last().waitFor({ timeout: 15000 }); await page.waitForTimeout(700);
     assert.equal(await page.evaluate(() => getComputedStyle(document.getElementById('__next')).scale), 'none', `${engine}: with the Delete sheet up the page behind is not scaled`);

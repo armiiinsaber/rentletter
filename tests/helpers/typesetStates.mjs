@@ -122,6 +122,23 @@ const yearsAgo = (n) => { const d = new Date(); d.setFullYear(d.getFullYear() - 
 const BC_UNDER_AGE = 'Applications in British Columbia are open to people 19 or older.';
 async function applyTo(p, step) { await applyStart(p); for (let i = 0; i < step - 1; i++) { await STEPS[i](p); await tap(p, 'Continue'); } }
 // L1 archived or restored by its realtor (POST /api/listings/archive), from this page.
+// A phone's safe areas in the installed app (an iPhone of 390 by 844: 59px at the top for the status
+// bar and the Dynamic Island, 34 at the bottom for the home indicator), stood in for the screen's own
+// through the two names every surface reads (pages/_app.js --safe-top, --safe-bottom); a browser
+// under test reports none. Run in the page before it loads (addInitScript).
+export const SAFE_TOP = 59; export const SAFE_BOTTOM = 34;
+export const SAFE_AREAS = `(() => { const add = () => { const s = document.createElement('style'); s.setAttribute('data-safe-areas', ''); s.textContent = ':root { --safe-top: ${SAFE_TOP}px !important; --safe-bottom: ${SAFE_BOTTOM}px !important; }'; document.head.appendChild(s); }; if (document.head) add(); else document.addEventListener('DOMContentLoaded', add); })();`;
+// The realtor's views on a phone: [name, address, what shows once it is in].
+export const PHONE_VIEWS = [
+  ['Listings', '/dashboard', '[data-listing-card]'],
+  ['Pipeline', '/dashboard?view=pipeline', '[data-pipeline-head]'],
+  ['Shared with you', '/dashboard?view=shared', '[data-shared-empty], [data-shared-with-me]'],
+  ['Circle', '/circle', '[data-circle-find]'],
+  ['Profile', '/profile', '#profile-field-full_name'],
+  ['a listing', '/listing/L1', '#report'],
+];
+// The realtor's logo, through the route the Profile uses; null takes it away.
+const setLogo = async (p, url) => { const status = await p.evaluate(async (u) => (await fetch('/api/profile/branding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ logo_url: u }) })).status, url); if (status !== 200) throw new Error(`the logo answered ${status}`); };
 const setArchived = async (p, archived) => { const status = await p.evaluate(async (a) => (await fetch('/api/listings/archive', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ listingIds: ['L1'], archived: a }) })).status, archived); if (status !== 200) throw new Error(`archive ${archived} answered ${status}`); };
 // The apply form after an archived refusal: the closed line in the alert above the answers, the
 // form still there with what was typed, and no Try again.
@@ -903,6 +920,31 @@ export const STATES = [
     { name: `dashboard, phone, scrolled to the end, ${scheme}`, kind: 'realtor', phase: 'alone', go: async (p) => {
       await p.emulateMedia({ colorScheme: scheme }); await open(p, '/dashboard'); await p.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })); await wait(p, 400);
     } },
+  ]),
+  // ── the phone's shell in the installed app (fix/phone-shell), part 8 ──
+  // Every realtor view under the fixed top bar and over the tab bar and its fade, with a phone's
+  // safe areas (59px at the top, 34 at the bottom, SAFE_AREAS), at the top, scrolled halfway and
+  // scrolled to the end, light and dark, at 390 (the walk, tests/routes/phoneShellWebkit.test.mjs,
+  // holds where each part sits); then the Profile's logo actions as one group (with a logo, the AI
+  // studio open, and the question before a removal), light and dark, at 390, 320, 1440 and 1920.
+  ...['light', 'dark'].flatMap((scheme) => [
+    ...PHONE_VIEWS.map(([view, path, ready]) => ({ name: `phone shell, ${view}, ${scheme}`, kind: 'realtor', phase: 'alone', widths: [390], go: async (p) => {
+      await p.addInitScript(SAFE_AREAS); await p.emulateMedia({ colorScheme: scheme }); await open(p, path); await vis(p, ready).waitFor({ state: 'attached', timeout: 30000 }); await wait(p, 300);
+    }, steps: async function* (p) {
+      await p.evaluate(() => window.scrollTo({ top: Math.round((document.documentElement.scrollHeight - window.innerHeight) / 2), behavior: 'instant' })); await wait(p, 300);
+      yield `phone shell, ${view}, ${scheme}, scrolled halfway`;
+      await p.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' })); await wait(p, 300);
+      yield `phone shell, ${view}, ${scheme}, scrolled to the end`;
+    } })),
+    { name: `profile, phone, the logo's actions, ${scheme}`, kind: 'realtor', phase: 'alone', widths: [390, 320, 1440, 1920], go: async (p) => {
+      await p.emulateMedia({ colorScheme: scheme }); await open(p, '/profile'); await setLogo(p, '/icons/favicon-32.png'); await open(p, '/profile');
+      await p.locator('[data-logo-row] [data-logo-remove]').waitFor({ timeout: 30000 }); await p.locator('[data-logo-row]').evaluate((n) => n.scrollIntoView({ block: 'center', behavior: 'instant' })); await wait(p, 300);
+    }, steps: async function* (p) {
+      await press(p, p.locator('[data-logo-row] .ds-btn-quiet').first()); await p.getByRole('button', { name: 'Hide AI studio' }).waitFor({ timeout: 15000 }); await wait(p, 500);
+      yield `profile, phone, the logo's actions, the AI studio open, ${scheme}`;
+      await press(p, p.getByRole('button', { name: 'Hide AI studio' })); await press(p, p.locator('[data-logo-remove]')); await p.locator('[data-logo-remove-ask]').waitFor({ timeout: 15000 }); await wait(p, 300);
+      yield `profile, phone, the logo's actions, removing the logo, ${scheme}`;
+    }, after: async (f, p) => { if (p) await setLogo(p, null); } },
   ]),
 ];
 

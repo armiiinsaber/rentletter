@@ -4,9 +4,9 @@
 //      edge within the page padding of the window's (the form at the left, the preview filling the
 //      rest), nothing sideways; the form and the preview side by side, the preview on screen as the
 //      page scrolls and showing what is typed before it saves, through the report's own brand block
-//      and the Circle card; one sentence on saving, the one ProfileView.js names; no back row where
-//      the sidebar is, the back row on a phone; the logo row one style, and Remove asking in the
-//      page, never in a browser dialog.
+//      and the Circle card; one sentence on saving, the one ProfileView.js names; no back row at
+//      any width (the sidebar's place, and on a phone the tab bar's tab); the logo row one style,
+//      and Remove asking in the page, never in a browser dialog.
 //   2. Circle (components/dashboard/CircleView.js) with five realtors and a request: the right edge
 //      the same at 1440, 1920 and 2560; the work at the left (Find a realtor, then Your circle with
 //      the request first), two cards across at 1280 and three or more from 1920, the column beside
@@ -143,11 +143,12 @@ async function profileWalk(browser) {
   noSupabaseLeft(ctx, 'Profile');
   await ctx.close();
 
-  // A phone: one column, the back row at its top, no preview beside it.
+  // A phone: one column, no back row (Profile is a tab), no preview beside it.
   const pctx = await phone(browser); const pp = await pctx.newPage();
   await pp.goto('/profile', { waitUntil: 'load', timeout: 120000 });
   await pp.locator('#profile-field-full_name').waitFor({ timeout: 60000 });
-  assert.ok(await visible(pp, '.pv-back'), 'the back row on a phone');
+  assert.equal(await pp.getByRole('link', { name: /^Dashboard$/ }).count(), 0, 'no back row on a phone: Profile is a tab');
+  assert.ok(await visible(pp, '[data-main-nav] [data-nav="listings"]'), 'the Listings tab is the way back');
   assert.equal(await visible(pp, '[data-profile-preview]'), false, 'no preview column on a phone');
   assert.equal(await pp.evaluate(() => document.documentElement.scrollWidth), 390, 'no sideways scroll');
   noSupabaseLeft(pctx, 'Profile 390');

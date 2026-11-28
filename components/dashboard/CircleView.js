@@ -237,7 +237,7 @@ export default function CircleView({ initialProfile, entitlement = null }) {
         <meta name="description" content="The realtors you work with." />
       </Head>
       <GlobalStyle />
-      <div className="cv" style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
+      <div className="cv" style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'clip' }}>
         <DashShell profile={profile} nav="circle" current="circle">
         {/* One column under 1024px; from there the main area's whole width (DashShell ds-fill). */}
         <div className="cv-page ds-fill">

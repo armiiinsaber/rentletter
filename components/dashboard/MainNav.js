@@ -13,10 +13,16 @@
 // The bar is fixed to the screen at every moment: at rest, as the page scrolls, while a sheet is
 // up, as a screen pushes in or goes back, and after the theme changes. It is drawn on the body,
 // outside the page (components/FloatLayer.js), so nothing that moves the page can carry it, and
-// the page leaves room under its last card for the bar, its two 16px insets and the home
-// indicator (components/dashboard/DashShell.js .ds-tabbed). In a view transition it is a picture of
-// its own (view-transition-name rl-main-nav): it stays where it is while the page moves, and fades
-// where the next screen has no bar.
+// the page leaves room under its last card for the bar, its two 16px insets, the fade above it and
+// the home indicator (TAB_ROOM, components/dashboard/DashShell.js .ds-tabbed). In a view
+// transition it is a picture of its own (view-transition-name rl-main-nav): it stays where it is
+// while the page moves, and fades where the next screen has no bar.
+// THE FADE behind it: fixed to the bottom of the screen, from FADE_ABOVE px above the bar to the
+// very bottom edge, the home indicator's area included, the page's own paper from clear at its top
+// to solid by the middle of the bar and under it, so what scrolls down to the bar fades out and
+// nothing shows in the gap under the bar or around its round ends. Under the bar, never over it,
+// and never a target (pointer-events none); on the body with the bar, and in a view transition a
+// picture of its own (rl-main-fade) that holds still and fades with it.
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { C } from '../theme';
@@ -27,6 +33,10 @@ import { useAdapter } from '../../lib/dashboardAdapter';
 import { linkProps, isHere, placeOf, useHeading, goView, routeOf } from '../nav/routes';
 
 export const CIRCLE_PATH = '/circle';
+// The bar's height, its inset from the screen's sides and bottom, and the fade above it.
+export const TAB_H = 68; export const TAB_INSET = 16; export const FADE_ABOVE = 24;
+// The room a view leaves under its last card: the fade, the bar, the inset and the home indicator.
+export const TAB_ROOM = `calc(${FADE_ABOVE + TAB_H + TAB_INSET}px + var(--safe-bottom))`;
 // The count as last read this session, so the number does not blink between the two screens.
 let held = 0; const listeners = new Set();
 export function setCirclePending(n) { held = Math.max(0, Number(n) || 0); for (const l of listeners) l(held); }
@@ -65,8 +75,9 @@ const plain = (e) => !(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrl
 export default function MainNav({ current: onView, onNew = null }) {
   const adapter = useAdapter();
   const pending = useCirclePending();
-  // The body, once the bar is drawn there (components/FloatLayer.js); null while in place.
-  const host = useFloating();
+  // Its box at the end of the body, once the bar is drawn there (components/FloatLayer.js); null
+  // while in place.
+  const host = useFloating({ where: 'end' });
   // The tab tapped is marked at once (components/nav/RouteFrame.js), else the one on view.
   const heading = useHeading();
   const current = (heading && tabOf(placeOf(heading))) || tabOf(onView) || onView;
@@ -109,11 +120,13 @@ export default function MainNav({ current: onView, onNew = null }) {
     );
   };
   const bar = (
+    <>
+    <div className="mn-fade" aria-hidden="true" data-tab-fade="" data-float={host ? 'body' : 'in-place'} />
     <nav aria-label="Main" className="mn rl-glass" data-main-nav="" data-float={host ? 'body' : 'in-place'}>
       {tabs.map(item)}
       <style jsx>{`
         /* Fixed to the screen: inset 16px from its sides and above the home indicator. */
-        .mn { position: fixed; z-index: 70; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); height: 68px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px; border-radius: 999px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 10px 30px rgba(var(--c-shadow-rgb), 0.12); }
+        .mn { position: fixed; z-index: 70; left: ${TAB_INSET}px; right: ${TAB_INSET}px; bottom: calc(${TAB_INSET}px + var(--safe-bottom)); height: ${TAB_H}px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: center; padding: 0 6px; border-radius: 999px; box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 10px 30px rgba(var(--c-shadow-rgb), 0.12); }
         .mn :global(.mn-item) { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-width: 0; height: 56px; border-radius: 999px; color: ${C.inkSoft}; text-decoration: none; -webkit-tap-highlight-color: transparent; }
         .mn :global(.mn-item[aria-current='page']) { color: ${C.ink}; }
         .mn :global(.mn-item:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.ink}; }
@@ -128,14 +141,24 @@ export default function MainNav({ current: onView, onNew = null }) {
         .mn :global(.mn-new:focus-visible) { outline: none; box-shadow: 0 0 0 2px ${C.paper}, 0 0 0 4px ${C.ink}; }
         @media (max-width: 344.98px) { .mn { left: 12px; right: 12px; } .mn :global(.mn-label) { font-size: 10px; } }
         @media (min-width: 1024px) { .mn { display: none; } }
+        /* The fade: the paper, clear FADE_ABOVE px over the bar, solid by the middle of the bar and
+           to the screen's bottom edge. The stops ease in, so it never reads as a band. */
+        :global(.mn-fade) { position: fixed; z-index: 69; left: 0; right: 0; bottom: 0; height: calc(${FADE_ABOVE + TAB_H + TAB_INSET}px + var(--safe-bottom)); pointer-events: none;
+          background: linear-gradient(to bottom, rgba(var(--c-paper-rgb), 0) 0, rgba(var(--c-paper-rgb), 0.38) ${FADE_ABOVE * 0.5}px, rgba(var(--c-paper-rgb), 0.7) ${FADE_ABOVE}px, rgba(var(--c-paper-rgb), 0.9) ${FADE_ABOVE + TAB_H * 0.3}px, ${C.paper} ${FADE_ABOVE + TAB_H * 0.5}px, ${C.paper} 100%); }
+        @media (min-width: 1024px) { :global(.mn-fade) { display: none; } }
+        :global(.mn-fade[data-float='body']) { view-transition-name: rl-main-fade; }
         /* On the body, a picture of its own in a view transition: it holds still while the page
            pushes or goes back, and fades in the page's own time where the next screen has none. */
         .mn[data-float='body'] { view-transition-name: rl-main-nav; }
         :global(html[data-nav='push']::view-transition-old(rl-main-nav)), :global(html[data-nav='push']::view-transition-new(rl-main-nav)),
-        :global(html[data-nav='back']::view-transition-old(rl-main-nav)), :global(html[data-nav='back']::view-transition-new(rl-main-nav)) { animation-duration: ${NATIVE.push}ms; }
-        :global(html[data-nav='fade']::view-transition-old(rl-main-nav)), :global(html[data-nav='fade']::view-transition-new(rl-main-nav)) { animation-duration: ${NATIVE.fade}ms; }
+        :global(html[data-nav='back']::view-transition-old(rl-main-nav)), :global(html[data-nav='back']::view-transition-new(rl-main-nav)),
+        :global(html[data-nav='push']::view-transition-old(rl-main-fade)), :global(html[data-nav='push']::view-transition-new(rl-main-fade)),
+        :global(html[data-nav='back']::view-transition-old(rl-main-fade)), :global(html[data-nav='back']::view-transition-new(rl-main-fade)) { animation-duration: ${NATIVE.push}ms; }
+        :global(html[data-nav='fade']::view-transition-old(rl-main-nav)), :global(html[data-nav='fade']::view-transition-new(rl-main-nav)),
+        :global(html[data-nav='fade']::view-transition-old(rl-main-fade)), :global(html[data-nav='fade']::view-transition-new(rl-main-fade)) { animation-duration: ${NATIVE.fade}ms; }
       `}</style>
     </nav>
+    </>
   );
   return host ? createPortal(bar, host) : bar;
 }

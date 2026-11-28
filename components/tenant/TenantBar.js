@@ -22,7 +22,7 @@ export default function TenantBar({ children = null, label = null }) {
       <a href="/" className="rl-mark" aria-label="Rentletter home"><Wordmark /></a>
       {label ? <span className="rl-tbar-label">{label}</span> : children}
       <style jsx global>{`
-        :root { --rl-tbar-h: calc(${TBAR_HEIGHT}px + env(safe-area-inset-top, 0px)); }
+        :root { --rl-tbar-h: calc(${TBAR_HEIGHT}px + var(--safe-top)); }
         /* A sticky box never sticks inside a box that is overflow-x hidden (components/ui.js sets
            it on body and the Next root, which makes each a scroll box that never scrolls); where
            the bar is, those two clip instead: the same sideways edge, no scroll box, on every
@@ -32,7 +32,7 @@ export default function TenantBar({ children = null, label = null }) {
         :root:has([data-tenant-bar]) { scroll-padding-top: calc(var(--rl-tbar-h) + var(--s-2)); }
         .rl-tbar { position: sticky; top: 0; z-index: 40; isolation: isolate; box-sizing: border-box; height: var(--rl-tbar-h);
           display: flex; justify-content: space-between; align-items: center; gap: var(--s-4);
-          padding: calc(var(--s-3) + env(safe-area-inset-top, 0px)) var(--tbar-pad, var(--s-4)) var(--s-3);
+          padding: calc(var(--s-3) + var(--safe-top)) var(--tbar-pad, var(--s-4)) var(--s-3);
           border-bottom: 1px solid var(--rule); }
         /* Its edge is the rule it always had, so the glass's own hairline ring is left off. */
         .rl-tbar.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi); }

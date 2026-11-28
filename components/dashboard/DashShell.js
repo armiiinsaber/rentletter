@@ -36,7 +36,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { C } from '../theme';
 import { Wordmark, Icon } from '../ui';
 import DashboardHeader, { initialsOf } from './DashboardHeader';
-import MainNav, { useCirclePending, CIRCLE_PATH } from './MainNav';
+import MainNav, { useCirclePending, CIRCLE_PATH, TAB_ROOM, TAB_H, TAB_INSET } from './MainNav';
 import CommandMenu from './CommandMenu';
 import { logoProps } from './logoNav';
 import { actionHref } from '../../lib/actions.js';
@@ -179,22 +179,41 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
       ) : null}
       <style jsx>{`
         .ds-alert { margin: 0 var(--ds-pad, clamp(16px, 4vw, 32px)) var(--s-3); padding: var(--s-3) var(--s-4); background: ${C.dangerTint}; border-left: 3px solid ${C.danger}; border-radius: var(--btn-radius); font-size: var(--t-body-2); color: ${C.ink}; }
-        /* The page's own background: the paper (the canvas, components/ui.js) with two radial colour
-           fields painted on the shell itself, decorative, behind everything: a faint red glow above
-           the top centre, a faint warm sand glow low on the left (the sand token), each at the
-           theme's own level (--glow-*, components/ui.js: in dark barely there). They scroll with the page, under
-           the glass that floats over it. Neither reaches the page's bottom edge, and nothing of the
-           page's own tone does (the sidebar floats 16px clear of it), so the page's last row is the
-           plain paper of the canvas and no band shows where the window runs past the page. */
-        .ds { position: relative;
-          background:
-            radial-gradient(ellipse 560px 400px at 58% -40px, var(--glow-red), var(--glow-red-soft) 55%, rgba(var(--c-red-rgb), 0) 100%),
-            radial-gradient(ellipse 640px 380px at -40px calc(100% - 420px), var(--glow-sand), var(--glow-sand-soft) 55%, rgba(var(--c-sand-rgb), 0) 100%);
-          background-repeat: no-repeat; }
+        /* The page's own background at 1024 and wider: the paper (the canvas, components/ui.js) with
+           two radial colour fields painted on the shell itself, decorative, behind everything: a
+           faint red glow above the top centre, a faint warm sand glow low on the left (the sand
+           token), each at the theme's own level (--glow-*, components/ui.js: in dark barely there).
+           They scroll with the page, under the glass that floats over it. Neither reaches the page's
+           bottom edge, and nothing of the page's own tone does (the sidebar floats 16px clear of
+           it), so the page's last row is the plain paper of the canvas and no band shows where the
+           window runs past the page.
+           Under 1024px there are none: the plain paper. A field that scrolls with the page ends in a
+           hard edge wherever the screen runs past the page, and one fixed to the screen cannot be
+           seamless in the installed app: the solid top bar cuts the red field with a step at its
+           bottom edge, and the page's own boxes would have to be clear to show a field behind them,
+           which shows the screen beneath through the page while an edge swipe drags it. */
+        .ds { position: relative; }
+        @media (min-width: 1024px) {
+          .ds {
+            background:
+              radial-gradient(ellipse 560px 400px at 58% -40px, var(--glow-red), var(--glow-red-soft) 55%, rgba(var(--c-red-rgb), 0) 100%),
+              radial-gradient(ellipse 640px 380px at -40px calc(100% - 420px), var(--glow-sand), var(--glow-sand-soft) 55%, rgba(var(--c-sand-rgb), 0) 100%);
+            background-repeat: no-repeat; }
+        }
         .ds-main { min-width: 0; }
         .ds-side { display: none; }
-        /* Under 1024px, room under the screen for the floating tab bar and the home indicator. */
-        @media (max-width: 1023.98px) { .ds-tabbed .ds-main { padding-bottom: calc(68px + 2 * 16px + env(safe-area-inset-bottom, 0px)); } }
+        /* Under 1024px the page starts under the fixed top bar (components/dashboard/DashboardHeader.js
+           --ds-bar-h), and on the main places ends with room for the floating tab bar, its two 16px
+           insets, the fade above it and the home indicator (components/dashboard/MainNav.js
+           TAB_ROOM): at the end of the page the last card ends where the fade begins. A section
+           jumped to clears the top bar by its own scroll margin (calc(var(--ds-bar-h) + 16px)); no
+           scroll padding on the root, which would move the page when a closing sheet gives the focus
+           back to a control under the bar. */
+        @media (max-width: 1023.98px) {
+          .ds-main { padding-top: var(--ds-bar-h); padding-bottom: var(--safe-bottom); }
+          .ds-tabbed .ds-main { padding-bottom: ${TAB_ROOM}; }
+          :global(:root:has(.ds-tabbed)) { --toast-bottom: calc(${TAB_INSET + TAB_H + 12}px + var(--safe-bottom)); }
+        }
         .ds-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
         @media (min-width: 1024px) {
           /* The whole window: the floating sidebar's column from its left edge, the main area to its right edge. */
@@ -233,13 +252,14 @@ export default function DashShell({ profile, signals = null, onAssistantAction, 
           /* A view in columns of its own: the main area's whole width, inside the same padding. */
           .ds-main :global(.ds-fill) { box-sizing: border-box !important; max-width: none !important; margin-left: 0 !important; margin-right: 0 !important; padding-left: var(--ds-pad) !important; padding-right: var(--ds-pad) !important; }
         }
-        /* The sidebar stays on screen as the page scrolls. The page's own boxes (body, the Next root,
-           the view's wrapper) are overflow-x hidden, which makes each a scroll box of its own that
-           never scrolls, and a sticky box inside one never sticks; clip holds the same sideways
-           edge without making a scroll box. Only where the shell is, and only at this width. */
-        @media (min-width: 1024px) {
-          :global(body:has([data-shell])), :global(#__next:has([data-shell])), :global(:has(> [data-shell])) { overflow-x: clip !important; }
-        }
+        /* One page scroll. The page's own boxes (body, the Next root, the view's wrapper) are
+           overflow-x hidden (components/ui.js), which makes each a scroll box of its own: a sticky
+           box inside one never sticks (the sidebar), and in the installed app on a phone Circle and
+           Profile scrolled a box of their own, its scroll indicator in the middle of the screen, so a
+           tap on the status bar did not go to the top. Clip holds the same sideways edge without
+           making a scroll box, so the page scrolls as the document itself. Where the shell is, at
+           every width. */
+        :global(body:has([data-shell])), :global(#__next:has([data-shell])), :global(:has(> [data-shell])) { overflow-x: clip !important; }
         @media (min-width: 1024px) and (hover: hover) {
           .ds-place:hover { background: rgba(var(--c-ink-rgb), 0.06); color: ${C.ink}; }
           .ds-place[aria-current='page']:hover { background: ${C.inkFill}; color: ${C.onInk}; }

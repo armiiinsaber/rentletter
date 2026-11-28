@@ -1,7 +1,7 @@
-// The wrapped text walk, part 7 of 7: the realtor's dashboard on a phone in both themes
+// The wrapped text walk, part 7 of 8: the realtor's dashboard on a phone in both themes
 // (fix/phone-standalone): the board with work waiting, the controls on one row, the compact board
 // with nothing waiting and the page scrolled to its end, each light and dark at 390 and 320, on the
-// servers part 6 left; the last part takes the servers down
+// servers part 6 left, for part 8 after it
 // (tests/helpers/typesetWalk.mjs describes the walk, its rules and how the parts run in order on
 // the same fake stack). A WebKit walk fails, never skips, when the binary is missing.
 import { test } from 'node:test';

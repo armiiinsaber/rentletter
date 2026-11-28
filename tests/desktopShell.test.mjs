@@ -137,10 +137,16 @@ test('the shell: a floating glass sidebar at 1024 and wider, the floating search
   assert.match(src('components/dashboard/HomeView.js'), /<div className="hv-lock ds-mid"/, 'HomeView: the paywall centred');
   // Under 1024 the tab bar: fixed, 16px in, 68px tall, round, above the home indicator, gone from 1024.
   const nav = code('components/dashboard/MainNav.js');
-  assert.match(nav, /\.mn \{ position: fixed; z-index: 70; left: 16px; right: 16px; bottom: calc\(16px \+ env\(safe-area-inset-bottom, 0px\)\); height: 68px;[^}]*border-radius: 999px;/);
+  assert.match(nav, /export const TAB_H = 68; export const TAB_INSET = 16; export const FADE_ABOVE = 24;/);
+  assert.match(nav, /\.mn \{ position: fixed; z-index: 70; left: \$\{TAB_INSET\}px; right: \$\{TAB_INSET\}px; bottom: calc\(\$\{TAB_INSET\}px \+ var\(--safe-bottom\)\); height: \$\{TAB_H\}px;[^}]*border-radius: 999px;/);
+  // The safe areas, one name each, the screen's own insets (pages/_app.js).
+  assert.match(src('pages/_app.js'), /:root \{ --safe-top: env\(safe-area-inset-top, 0px\); --safe-bottom: env\(safe-area-inset-bottom, 0px\); \}/);
   assert.match(nav, /@media \(min-width: 1024px\) \{ \.mn \{ display: none; \} \}/);
   assert.match(s, /\{nav && !locked \? <MainNav current=\{current\} onNew=\{newListing\} \/> : null\}/);
-  assert.match(s, /@media \(max-width: 1023\.98px\) \{ \.ds-tabbed \.ds-main \{ padding-bottom: calc\(68px \+ 2 \* 16px \+ env\(safe-area-inset-bottom, 0px\)\); \} \}/, 'the content scrolls under the bar with room to clear it');
+  // The content scrolls under the bar with room to clear it and the fade above it (fix/phone-shell):
+  // the fade, the bar, its bottom inset and the home indicator.
+  assert.match(nav, /export const TAB_ROOM = `calc\(\$\{FADE_ABOVE \+ TAB_H \+ TAB_INSET\}px \+ var\(--safe-bottom\)\)`;/);
+  assert.match(s, /@media \(max-width: 1023\.98px\) \{\s*\.ds-main \{ padding-top: var\(--ds-bar-h\); padding-bottom: var\(--safe-bottom\); \}\s*\.ds-tabbed \.ds-main \{ padding-bottom: \$\{TAB_ROOM\}; \}/, 'the content scrolls under the bar with room to clear it');
   // A view of the dashboard is chosen in place: a shallow route the frame does not animate.
   assert.match(s, /if \(HOME_VIEWS\.includes\(key\) && onDashboard\(\)\) \{ if \(current !== key\) goView\(href\); return; \}/);
   assert.match(nav, /if \(\(key === 'listings' \|\| key === 'pipeline'\) && onDashboard\(\)\) \{ e\.preventDefault\(\); goView\(href\);/);

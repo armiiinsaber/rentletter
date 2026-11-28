@@ -84,7 +84,8 @@ test('3. every field and action that was on the two screens is still there', () 
   assert.match(body, /The province you operate in\. Sets rules like the tenant age of majority \(Ontario 18, BC 19\)\./);
   for (const s of [/fileRef\.current\?\.click\(\)/, /setStudioOpen\(\(o\) => !o\)/, /data-destructive="" onClick=\{async \(\) => \{ await removeLogo\(\); setRemoveAsk\(false\); \}\}/, /<LogoStudio/, /PALETTE_ORDER\.map/, /FONT_PAIRINGS\.map/, /onClick=\{\(\) => selectFont\(fp\)\}/]) assert.match(body, s, String(s));
   assert.match(view, /<InviteRealtor \/>/); assert.match(view, /onClick=\{signOut\}/);
-  assert.match(view, /<a \{\.\.\.linkProps\(adapter\.paths\.home, \{ back: true \}\)\} className="pv-back"/, 'the back row, on a phone');
+  // No way back of its own (fix/phone-shell): on a phone Profile is a tab of the tab bar, from 1024px a place in the sidebar.
+  assert.doesNotMatch(view, /pv-back|linkProps\(adapter\.paths\.home/, 'no back row: Profile is a tab');
   const circle = code('components/dashboard/CircleView.js');
   for (const s of ['id="cv-search"', '>Add to circle</button>', '>Requested</button>', 'label="Accepting">Accept<', 'label="Declining">Decline<', '>Block</button>', '>Remove</button>', '>Cancel request</button>', "'Copy link'", '>Share by text</a>', 'Save and email them', 'Send again', 'label="Show me in search"', 'label="I do rentals"', 'Save areas', '>Unblock</button>', '>Try again</button>', '<InviteRealtor full />', 'Connected since', 'Your handoffs with them', 'Broker of record:', 'How you appear', 'Blocked']) assert.ok(circle.includes(s), s);
   for (const id of ['cv-b-name', 'cv-b-address', 'cv-b-phone', 'cv-b-broker', 'cv-b-email', 'cv-b-hst']) assert.ok(circle.includes(`id="${id}"`), id);
@@ -142,7 +143,8 @@ test('6. the layout: the main area\'s whole width from 1024px, two columns, a gr
   assert.match(code('components/dashboard/ProfileView.js'), /<div className="pv ds-fill">/);
   assert.match(code('components/dashboard/CircleView.js'), /<div className="cv-page ds-fill">/);
   const view = code('components/dashboard/ProfileView.js');
-  assert.match(view, /@media \(min-width: 1024px\) \{\s*\.pv-back \{ display: none !important; \}/, 'the sidebar does the back row\'s job');
+  // Its loading frame draws no back row either, so nothing moves when the screen arrives.
+  assert.match(code('components/nav/RouteLoader.js'), /profile: \{ maxWidth: 720, padding: 'var\(--gap-section\) var\(--s-4\) 0', back: null, label: 'Loading your profile' \},/, 'the profile\'s loading frame has no back row');
   assert.match(view, /\.pv-cols \{[^}]*grid-template-columns: minmax\(0, clamp\(560px, 44vw, 880px\)\) minmax\(340px, 1fr\);/, 'the form at a comfortable width, the preview the rest');
   assert.match(view, /\.pv-aside \{ display: block; min-width: 0; position: sticky; top: var\(--pv-top\); \}/);
   assert.match(view, /\.pv-aside \{ display: none; \}/, 'no preview column under 1024px');

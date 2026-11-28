@@ -253,11 +253,11 @@ export default function Sheet({
            dark tint; solid dim with reduced transparency. Only its opacity moves. */
         .rl-sh-scrim { position: absolute; inset: 0; opacity: 0; transition: opacity ${ms}ms ${CURVE.ios}; touch-action: none; }
         .rl-sh-shown .rl-sh-scrim { opacity: 1; }
-        .rl-sh-root .rl-sh-panel { position: relative; width: 100%; max-height: calc(100dvh - max(24px, env(safe-area-inset-top, 0px))); display: flex; flex-direction: column;
+        .rl-sh-root .rl-sh-panel { position: relative; width: 100%; max-height: calc(100dvh - max(24px, var(--safe-top))); display: flex; flex-direction: column;
           background: ${C.paper}; border-radius: ${R.modal}px ${R.modal}px 0 0; box-shadow: ${SH.modal}; outline: none;
           transform: translateY(100%); transition: transform ${NATIVE.sheet}ms ${CURVE.ios}; }
         .rl-sh-root.rl-sh-shown .rl-sh-panel { transform: translateY(0); }
-        .rl-sh-tall { height: calc(100dvh - max(24px, env(safe-area-inset-top, 0px))); }
+        .rl-sh-tall { height: calc(100dvh - max(24px, var(--safe-top))); }
         .rl-sh-root.rl-sh-reduced .rl-sh-panel { transform: none; opacity: 0; transition: opacity ${NATIVE.fade}ms linear; }
         .rl-sh-root.rl-sh-reduced.rl-sh-shown .rl-sh-panel { opacity: 1; }
         .rl-sh-grab { flex: none; display: flex; justify-content: center; align-items: center; height: 24px; touch-action: none; cursor: grab; }
@@ -265,7 +265,7 @@ export default function Sheet({
         .rl-sh-panel:not(.rl-sh-flushed) > .rl-sh-scroll { padding-top: 24px; border-radius: ${R.modal}px ${R.modal}px 0 0; }
         .rl-sh-handle { width: 36px; height: 5px; border-radius: 3px; background: ${C.sand}; }
         .rl-sh-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: none; -webkit-overflow-scrolling: touch;
-          padding-bottom: env(safe-area-inset-bottom, 0px); }
+          padding-bottom: var(--safe-bottom); }
         .rl-sh-scroll.rl-sh-nosafe { padding-bottom: 0; } /* its own last row carries the safe area */
         /* flush: the children lay out the height and scroll their own parts (each part scrolls with
            overscroll-behavior: none too). */

@@ -4,9 +4,11 @@
 // fixed or sticky element makes that box the one the element is placed against, in place of the
 // screen. In the installed app on an iPhone the tab bar then scrolled with the page and sat in the
 // middle of the screen, after a sheet had scaled the page behind it.
-//   FIXED (the phone's tab bar, the toast on a listing, the tenant's toast): drawn on the body,
-//     outside the Next root (components/FloatLayer.js), so the only boxes around one are body and
-//     html, and no rule or script anywhere sets one of those properties on either.
+//   FIXED (the phone's tab bar and the fade behind it, the phone's top bar, the toast on a listing,
+//     the logo studio's toast, the tenant's toast): drawn on the body, outside the Next root
+//     (components/FloatLayer.js), so the only boxes around one are body and html (and, for the two
+//     bars, a box of their own on the body, at its start or its end, whose one style is overflow-y
+//     auto), and no rule or script anywhere sets one of those properties on any of them.
 //   STICKY (the tenant's top bar, the strength bar and chips under it, the bar for the cards
 //     picked): in the page, so the Next root is around each. The one rule that scales the Next
 //     root (the page behind a sheet, components/Sheet.js) never applies while one is on the page;
@@ -62,16 +64,37 @@ for (const file of SOURCES) for (const [sel, decls] of rulesOf(read(file))) {
   for (const one of splitList(sel)) { const el = elementOf(subjectOf(one)); if (el) ROOT_RULES.push({ file, el, sel: one, props: props.map(([p]) => p) }); }
 }
 
-test('fixed surfaces are drawn on the body: the tab bar and the two toasts', () => {
+test('fixed surfaces are drawn on the body: the tab bar and its fade, the top bar and the three toasts', () => {
   const layer = read('components/FloatLayer.js');
   assert.match(layer, /export const FloatInPlace = createContext\(false\);/);
-  assert.match(layer, /setHost\(inPlace \? null : document\.body\);/, 'the body, once hydrated');
+  // The body once hydrated, in place inside the picture beneath an edge swipe; at the widths the
+  // surface names; at the end of the body, or for the top bar in a box of its own before the Next root.
+  assert.match(layer, /if \(inPlace\) \{ setHost\(null\); return undefined; \}/, 'in place beneath an edge swipe');
+  assert.match(layer, /if \(!media \|\| typeof window\.matchMedia !== 'function'\) \{ setHost\(hostOf\(where\)\); return undefined; \}/, 'the body, once hydrated');
+  assert.match(layer, /const pick = \(\) => setHost\(mq\.matches \? hostOf\(where\) : null\);/, 'at the widths it names');
+  assert.match(layer, /export function useFloating\(\{ media = null, where = 'body' \} = \{\}\) \{/, 'the body itself unless a surface names its box (the toasts)');
+  assert.match(layer, /if \(where !== 'start' && where !== 'end'\) return document\.body;/);
+  assert.match(layer, /if \(where === 'start'\) \{ if \(root && root\.parentNode === document\.body\) document\.body\.insertBefore\(box, root\);/, 'the top bar\'s box before the Next root');
+  assert.match(layer, /else if \(box\.parentNode !== document\.body\) document\.body\.appendChild\(box\);/, 'the tab bar\'s box at the end of the body');
+  // One style on each box, overflow-y auto: a scroller of its own for the hit areas (lib/motion.js
+  // applyHitAreas), never a containing block, never a class.
+  assert.deepEqual([...layer.matchAll(/box\.style\.(\w+)/g)].map((m) => m[1]), ['overflowY'], 'the boxes\' one style');
+  assert.match(layer, /box\.style\.overflowY = 'auto';/);
+  assert.doesNotMatch(layer, /box\.className|box\.classList/, 'no class on the boxes');
+  const header = read('components/dashboard/DashboardHeader.js');
+  assert.match(header, /const host = useFloating\(\{ media: PHONE, where: 'start' \}\);/);
+  assert.match(header, /export const PHONE = '\(max-width: 1023\.98px\)';/);
+  assert.match(header, /\{host \? createPortal\(bar, host\) : bar\}/, 'the top bar on the body under 1024px');
+  assert.match(header, /:global\(\.rl-header\[data-shell-bar\]\[data-float='body'\]\) \{ view-transition-name: rl-top-bar; \}/, 'a picture of its own, on itself');
+  assert.match(read('components/dashboard/LogoStudio.js'), /<FloatLayer>\s*<div role="status" data-tap="" onClick=\{\(\) => setToast\(''\)\} className="rl-glass rl-glass-ink" data-logo-toast=""/, 'the logo studio\'s toast');
   assert.match(layer, /return host \? createPortal\(children, host\) : children;/);
   const nav = read('components/dashboard/MainNav.js');
-  assert.match(nav, /const host = useFloating\(\);/);
+  assert.match(nav, /const host = useFloating\(\{ where: 'end' \}\);/, 'the tab bar in its box at the end of the body');
   assert.match(nav, /return host \? createPortal\(bar, host\) : bar;/, 'the tab bar on the body');
   assert.match(nav, /\.mn \{ position: fixed;/);
   assert.match(nav, /\.mn\[data-float='body'\] \{ view-transition-name: rl-main-nav; \}/, 'a picture of its own in a view transition, on itself, never on a box around it');
+  assert.match(nav, /<div className="mn-fade" aria-hidden="true" data-tab-fade="" data-float=\{host \? 'body' : 'in-place'\} \/>/, 'the fade, on the body with the bar');
+  assert.match(nav, /:global\(\.mn-fade\[data-float='body'\]\) \{ view-transition-name: rl-main-fade; \}/);
   assert.match(read('components/dashboard/ListingView.js'), /<FloatLayer><div role="status" aria-live="polite" className="lv-toast rl-glass rl-glass-ink"/);
   for (const p of ['pages/my-application.js', 'pages/my-application/[rl].js']) assert.match(read(p), /\{toast && <FloatLayer><div role="status" data-tap="" onClick=\{\(\) => setToast\(''\)\} className="mp-toast rl-glass rl-glass-ink">/, p);
   // In the screen drawn beneath an edge swipe the bar stays in that picture, under the page.

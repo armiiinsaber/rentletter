@@ -16,7 +16,9 @@
 //   • hover / press / focus micro-interactions on the avatar, sign-out, and bell
 //   • all motion is transform/opacity only and gated behind prefers-reduced-motion.
 import { useEffect, useState } from 'react';
-import { ScrollHeader, Wordmark, Icon } from '../ui';
+import { createPortal } from 'react-dom';
+import { ScrollHeader, Wordmark, Icon, usePageScrolled } from '../ui';
+import { useFloating } from '../FloatLayer';
 import AppHead from '../AppHead';
 import { registerServiceWorker } from '../../lib/serviceWorker';
 import { C, R } from '../theme';
@@ -25,6 +27,21 @@ import AssistantBell from './AssistantBell';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { linkProps } from '../nav/routes';
 import { logoProps } from './logoNav';
+import { NATIVE } from '../../lib/motion';
+
+// UNDER 1024px the header is the phone's top bar: fixed to the top of the screen on every realtor
+// view, drawn on the body (components/FloatLayer.js, in its box at the start of the body, before
+// the page), so nothing that moves the page (a sheet's scale, the push, the edge swipe) can carry
+// it. It covers the status bar: its own height is the safe area at the top plus a 60px row (the
+// 44px controls with 8px above and below), --ds-bar-h, and the page starts under it
+// (components/dashboard/DashShell.js). Solid at the very top of the page, glass once the page
+// scrolls under it (components/ui.js .rl-glass-auto, usePageScrolled), with the glass's own tokens
+// in both themes; its edge is the glass's lift, which fades in with it. In a view transition (into
+// a listing and back) it is a picture of its own (view-transition-name rl-top-bar): it stays where
+// it is while the page moves under it, and the next screen's bar fades in over it.
+// AT 1024 AND WIDER it stays in place in the shell's main area, as before.
+export const SHELL_BAR = 60;
+export const PHONE = '(max-width: 1023.98px)';
 
 export function initialsOf(profile) {
   const n = (profile?.full_name || '').trim();
@@ -46,10 +63,12 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
   // The hint names the key the platform uses: Command on a Mac, Control elsewhere. Known after mount.
   const [mac, setMac] = useState(null);
   useEffect(() => { try { setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '')); } catch (e) { setMac(false); } }, []);
-  return (
-    <>
-      <AppHead />
-      <ScrollHeader maxWidth={1100}>
+  // The phone's top bar: on the body under 1024px, in place from there (and in the picture beneath
+  // an edge swipe).
+  const host = useFloating({ media: PHONE, where: 'start' });
+  usePageScrolled();
+  const bar = (
+      <ScrollHeader maxWidth={1100} glass={host ? 'auto' : 'always'} data-shell-bar="" data-float={host ? 'body' : 'in-place'}>
         {/* LEFT, wordmark: Listings from any other view; on Listings, the top of the page, or nothing
             when already there (components/dashboard/logoNav.js). */}
         <a {...logoProps(adapter.paths.home)} aria-label="Rentletter dashboard" className="rl-hdr-mark rl-mark">
@@ -96,9 +115,19 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
             </a>
           ) : null}
         </div>
-      </ScrollHeader>
-
       <style jsx>{`
+        /* ── The phone's top bar (above): fixed, on the body, over the status bar, one row. ── */
+        @media (max-width: 1023.98px) {
+          :global(:root) { --ds-bar-h: calc(${SHELL_BAR}px + var(--safe-top)); }
+          :global(.rl-header.rl-glass[data-shell-bar]), :global(.rl-header.rl-glass[data-shell-bar].rl-shrink) { position: fixed; top: 0; left: 0; right: 0; z-index: 60; box-sizing: border-box; height: var(--ds-bar-h); padding-top: var(--safe-top); border-bottom: none; box-shadow: none; transition: none; }
+          :global(.rl-header.rl-glass[data-shell-bar] .rl-header-inner), :global(.rl-header.rl-glass[data-shell-bar].rl-shrink .rl-header-inner) { box-sizing: border-box; height: ${SHELL_BAR}px; padding-top: 0; padding-bottom: 0; flex-wrap: nowrap; transition: none; }
+          /* A picture of its own in a view transition, only where it is on the body. */
+          :global(.rl-header[data-shell-bar][data-float='body']) { view-transition-name: rl-top-bar; }
+        }
+        :global(html[data-nav='push']::view-transition-old(rl-top-bar)), :global(html[data-nav='push']::view-transition-new(rl-top-bar)),
+        :global(html[data-nav='back']::view-transition-old(rl-top-bar)), :global(html[data-nav='back']::view-transition-new(rl-top-bar)) { animation-duration: ${NATIVE.push}ms; }
+        :global(html[data-nav='fade']::view-transition-old(rl-top-bar)), :global(html[data-nav='fade']::view-transition-new(rl-top-bar)) { animation-duration: ${NATIVE.fade}ms; }
+
         /* The lead shows only in the desktop shell (components/dashboard/DashShell.js). */
         .rl-hdr-lead { display: none; }
         /* The search pill: at 1024 and wider only. The glass is the round or pill frame around each
@@ -175,6 +204,12 @@ export default function DashboardHeader({ profile, signals = null, onAssistantAc
         /* No movement of its own: the press is the shared one (lib/motion.js installPress). */
         }
       `}</style>
+      </ScrollHeader>
+  );
+  return (
+    <>
+      <AppHead />
+      {host ? createPortal(bar, host) : bar}
     </>
   );
 }

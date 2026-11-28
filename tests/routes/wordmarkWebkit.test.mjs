@@ -1,5 +1,5 @@
 // Where the wordmark goes, in WebKit at 390 by 844 with an iPhone user agent and in Chrome, on the
-// sandbox: from the profile page the back row lands on the dashboard with what was typed still
+// sandbox: from the profile page the Listings tab lands on the dashboard with what was typed still
 // there, the wordmark on a listing page lands on the dashboard, and the wordmark on the apply form
 // lands on the homepage. Every wordmark is a link with a 44px tap target. Skipped when
 // playwright-core or the browser binary is absent. The pages are served from the run's one
@@ -67,16 +67,17 @@ async function walk(browserType, launch, tag) {
   const shots = [];
   const shot = async (name) => { const p = `/tmp/wordmark-${tag}-${name}.png`; await page.screenshot({ path: p }); shots.push(p); };
   try {
-    // 1. The profile page: the back row lands on the dashboard, and what was typed is still there.
+    // 1. The profile page: the Listings tab lands on the dashboard (no back row on a tab's view,
+    //    fix/phone-shell), and what was typed is still there.
     await page.goto(`${BASE}/demo/dashboard?profile=1`, { waitUntil: 'networkidle' });
     await page.locator('#profile-field-full_name').waitFor({ timeout: 30000 });
     const typed = 'Sarah Chen Jr';
     await page.locator('#profile-field-full_name').fill(typed);
     await page.locator('#profile-field-brokerage').tap();   // the blur that saves
     await page.waitForTimeout(600);
-    const back = page.getByRole('link', { name: 'Dashboard' }).first();
+    const back = page.locator('[data-main-nav] [data-nav="listings"]');
     const backBox = await back.boundingBox();
-    assert.ok(backBox && Math.round(backBox.height) >= 44, `the back row is a 44px target (${JSON.stringify(backBox)})`);
+    assert.ok(backBox && Math.round(backBox.height) >= 44, `the Listings tab is a 44px target (${JSON.stringify(backBox)})`);
     await shot('1-profile');
     await back.tap();
     await page.waitForURL((u) => u.pathname === '/demo/dashboard' && !u.searchParams.has('profile'), { timeout: 30000 });

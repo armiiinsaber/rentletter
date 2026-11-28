@@ -58,7 +58,7 @@ const Page = ({ maxWidth, padding, children, label, waiting = true, nav = null, 
   <>
     <GlobalStyle />
     <style>{'@media (min-width: 1024px) { .rl-ld-narrow { display: none !important; } }'}</style>
-    <div style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }} data-route-loading={waiting ? label : undefined}>
+    <div style={{ minHeight: '100dvh', background: 'var(--paper)', overflowX: 'clip' }} data-route-loading={waiting ? label : undefined}>
       <DashShell profile={seenProfile() || {}} nav={nav} current={place}>
         <div className={fill ? 'ds-fill' : undefined} style={{ maxWidth, margin: '0 auto', padding }}>{children}</div>
       </DashShell>
@@ -97,7 +97,7 @@ export function CarriedTitle({ listing }) {
 const FRAMES = {
   listing: { maxWidth: 760, padding: 'var(--s-4) clamp(16px, 4vw, 32px) 0', back: 'All listings', label: 'Loading the listing' },
   dashboard: { maxWidth: 'none', padding: 'var(--s-2) var(--page-gutter) 0', back: null, label: 'Loading your workspace', fill: true },
-  profile: { maxWidth: 720, padding: 'var(--gap-section) var(--s-4) 0', back: 'Dashboard', label: 'Loading your profile' },
+  profile: { maxWidth: 720, padding: 'var(--gap-section) var(--s-4) 0', back: null, label: 'Loading your profile' },
   circle: { maxWidth: 720, padding: 'var(--s-2) var(--s-4) 0', back: null, label: 'Loading your circle' },
   page: { maxWidth: 720, padding: 'var(--gap-section) var(--s-4) 0', back: 'Dashboard', label: 'Loading' },
 };

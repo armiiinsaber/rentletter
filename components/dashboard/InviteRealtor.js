@@ -51,7 +51,7 @@ export default function InviteRealtor({ full = false }) {
   // On the profile page: the section's name, one line, and the way to the card in Circle.
   if (!full) {
     return (
-      <section id="invite-a-realtor" data-invite-realtor="" className="rl-card" aria-labelledby="invite-a-realtor-title" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
+      <section id="invite-a-realtor" data-invite-realtor="" className="rl-card" aria-labelledby="invite-a-realtor-title" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 'calc(var(--ds-bar-h, 0px) + 16px)' }}>
         <h2 id="invite-a-realtor-title" className="t-d3" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Invite a realtor</h2>
         <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-3)', textWrap: 'balance' }}>Your invite link is in Circle, with everyone who joined through it.</p>
         <a {...linkProps('/circle#invite-a-realtor')} data-invite-open-circle="" className="ds-btn ds-btn-line">Open Circle</a>
@@ -59,7 +59,7 @@ export default function InviteRealtor({ full = false }) {
     );
   }
   return (
-    <section id="invite-a-realtor" data-invite-realtor="" className="rl-card" aria-labelledby="invite-a-realtor-title" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 16 }}>
+    <section id="invite-a-realtor" data-invite-realtor="" className="rl-card" aria-labelledby="invite-a-realtor-title" style={{ padding: 'var(--card-pad)', marginTop: 'var(--gap-section)', scrollMarginTop: 'calc(var(--ds-bar-h, 0px) + 16px)' }}>
       <h2 id="invite-a-realtor-title" className="t-d3" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Invite a realtor</h2>
       <p style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, lineHeight: 'var(--lh-body)', margin: '0 0 var(--s-4)', textWrap: 'balance' }}>Share your link with a realtor you know. When they sign up from it, their name appears here.</p>
       <label htmlFor="invite-a-realtor-link" style={{ display: 'block', fontSize: 11, color: C.inkSoft, fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 6 }}>Your invite link</label>

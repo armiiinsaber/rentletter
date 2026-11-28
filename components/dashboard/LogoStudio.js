@@ -10,6 +10,7 @@ import { useState, useEffect, useRef } from 'react';
 import { C, LIGHT, R } from '../theme';
 import ColorWheel from './ColorWheel';
 import { Pending, ScreenLoader } from '../brand/Loader';
+import FloatLayer from '../FloatLayer';
 
 const isHex = (v) => /^#[0-9a-fA-F]{6}$/.test(String(v || ''));
 
@@ -459,12 +460,17 @@ export default function LogoStudio({ fullName, brokerage, primary, secondary, on
         </div>
       )}
 
-      {/* Toast, fixed to the viewport so it's visible no matter which card was saved or how far down the realtor scrolled */}
+      {/* Toast, fixed to the viewport so it's visible no matter which card was saved or how far down
+          the realtor scrolled. Drawn on the body (components/FloatLayer.js), never inside the page
+          that slides and scales; clear of the home indicator, and on a phone with the tab bar 12px
+          above the bar (--toast-bottom, components/dashboard/DashShell.js). */}
       {toast && (
-        <div role="status" data-tap="" onClick={() => setToast('')} className="rl-glass rl-glass-ink"
-          style={{ position: 'fixed', left: '50%', bottom: 'max(20px, env(safe-area-inset-bottom))', transform: 'translateX(-50%)', zIndex: 3000, color: C.instInk, padding: '12px 20px', borderRadius: R.pill, boxShadow: 'inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
+        <FloatLayer>
+        <div role="status" data-tap="" onClick={() => setToast('')} className="rl-glass rl-glass-ink" data-logo-toast=""
+          style={{ position: 'fixed', left: '50%', bottom: 'var(--toast-bottom, max(20px, calc(12px + var(--safe-bottom))))', transform: 'translateX(-50%)', zIndex: 3000, color: C.instInk, padding: '12px 20px', borderRadius: R.pill, boxShadow: 'inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.22)', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 9, maxWidth: '92vw', cursor: 'pointer' }}>
           <span style={{ fontSize: 15 }}>✓</span> {toast}
         </div>
+        </FloatLayer>
       )}
 
     </div>

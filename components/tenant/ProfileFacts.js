@@ -172,7 +172,7 @@ function ProfileSection({ id, title, rows, lead, editing, onEdit, onCancel, onSa
 export const ProfileStyles = () => (
   <style jsx global>{`
     .mp-page { min-height: 100vh; background: ${C.paperDeep}; }
-    .mp-header { border-bottom: 1px solid var(--rule); background: ${C.paper}; padding: var(--s-3) var(--s-4); padding-top: calc(var(--s-3) + env(safe-area-inset-top, 0px)); display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); min-height: 60px; }
+    .mp-header { border-bottom: 1px solid var(--rule); background: ${C.paper}; padding: var(--s-3) var(--s-4); padding-top: calc(var(--s-3) + var(--safe-top)); display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); min-height: 60px; }
     .mp-wrap { max-width: 760px; margin: 0 auto; padding: var(--gap-section) var(--s-4) var(--s-7); }
     .mp-sections > * + * { margin-top: var(--gap-section); }
     .mp-stack { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap-card); }
@@ -239,7 +239,7 @@ export const ProfileStyles = () => (
     .mp-step { font-size: var(--t-body-2); font-weight: 700; color: ${C.ink}; line-height: var(--lh-body); }
     .mp-progress { height: 2px; background: var(--rule); border-radius: 1px; margin-top: var(--gap-line); overflow: hidden; }
     .mp-progress > span { display: block; height: 100%; background: ${C.ink}; }
-    .mp-toast { position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 300; color: ${C.instInk}; padding: var(--s-3) var(--s-4); border-radius: ${R.ctrl}px; font-size: var(--t-body-2); font-weight: 600; max-width: calc(100vw - 32px); text-align: center; cursor: pointer; }
+    .mp-toast { position: fixed; left: 50%; bottom: max(20px, calc(12px + var(--safe-bottom))); transform: translateX(-50%); z-index: 300; color: ${C.instInk}; padding: var(--s-3) var(--s-4); border-radius: ${R.ctrl}px; font-size: var(--t-body-2); font-weight: 600; max-width: calc(100vw - 32px); text-align: center; cursor: pointer; }
     /* A toast floats over the page: the ink glass (components/ui.js), with its own lift. */
     .mp-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), 0 8px 24px rgba(var(--c-shadow-rgb), 0.22); }
     .mp-sub { padding-left: var(--s-4); border-left: 2px solid var(--rule); display: grid; gap: var(--gap-card); }

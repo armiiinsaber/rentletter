@@ -93,7 +93,7 @@ export function ScreenLoader({ label, since = navStartedAt(), onShow, tone = 'pa
     const t = setTimeout(() => setShown(true), Math.max(0, DOOR.loaderDelayMs - (performance.now() - since)));
     return () => clearTimeout(t);
   }, [shown]); // eslint-disable-line react-hooks/exhaustive-deps
-  const height = !fill ? undefined : top === null ? '70vh' : `calc(100dvh - ${Math.round(top)}px - env(safe-area-inset-bottom, 0px))`;
+  const height = !fill ? undefined : top === null ? '70vh' : `calc(100dvh - ${Math.round(top)}px - var(--safe-bottom))`;
   return (
     <div ref={ref} data-screen-loading={label} style={{ minHeight: height, padding: fill ? undefined : 'var(--s-6) 0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       {shown ? <Loader label={label} tone={tone} size={SCREEN_LOADER} /> : null}

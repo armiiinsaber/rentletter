@@ -108,12 +108,12 @@ async function walk(browserType, launch, viewport, phone) {
     assert.equal(c.requests, 0, 'c: no request');
     assert.equal(c.url, '/demo/dashboard', 'c: the address is unchanged');
 
-    // b. Listings scrolled down: a smooth scroll to the top, nothing else. On a desktop the sidebar's
-    // logo stays on screen however far down the page is; on a phone the header scrolls away with
-    // the page, so the logo can be pressed only while some of it still shows.
+    // b. Listings scrolled down: a smooth scroll to the top, nothing else. The logo stays on screen
+    // however far down the page is: on a desktop the sidebar's, on a phone the top bar's, fixed to
+    // the top of the screen (fix/phone-shell).
     const height = await page.evaluate(() => document.documentElement.scrollHeight - window.innerHeight);
     assert.ok(height > 200, `b: the page is tall enough to scroll (${height})`);
-    const from = phone ? 40 : Math.min(height, 900);
+    const from = Math.min(height, 900);
     await page.evaluate((y) => window.scrollTo({ top: y, left: 0, behavior: 'instant' }), from);
     await page.waitForTimeout(400);
     const marker2 = await page.evaluate(WATCH);

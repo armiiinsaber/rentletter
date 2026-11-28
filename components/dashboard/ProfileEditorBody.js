@@ -360,7 +360,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
       {removeAsk ? (
         <div className="pe-ask" data-logo-remove-ask="">
           <p className="pe-ask-line">Remove your logo? Your reports show your name without it.</p>
-          <div className="rl-ctrl-row">
+          <div className="rl-ctrl-row pe-acts">
             <button type="button" data-destructive="" onClick={async () => { await removeLogo(); setRemoveAsk(false); }} disabled={logoBusy} className="ds-btn pe-btn-danger">
               <Pending busy={logoBusy} label="Removing your logo" tone="red">Remove logo</Pending>
             </button>
@@ -368,7 +368,7 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
           </div>
         </div>
       ) : (
-        <div className="rl-ctrl-row" data-logo-row="">
+        <div className="rl-ctrl-row pe-acts pe-acts-lead" data-logo-row="">
           <button type="button" onClick={() => fileRef.current?.click()} disabled={logoBusy} className="ds-btn ds-btn-ink">
             <Pending busy={logoBusy} label="Uploading your logo" tone="ink">{logoUrl ? 'Replace with upload' : 'Upload a logo'}</Pending>
           </button>
@@ -424,6 +424,18 @@ export default function ProfileEditorBody({ profile, onSaved, onClose, onDirtyCh
         .pe-ask { padding: var(--s-3) var(--s-4); background: ${C.paperDeep}; border-radius: var(--card-radius); }
         .pe-ask-line { font-size: var(--t-body-2); font-weight: 600; color: ${C.ink}; line-height: var(--lh-body); margin: 0 0 var(--s-3); text-wrap: balance; }
         .pe-btn-danger { background: ${C.danger}; color: ${C.paper}; border: 1px solid ${C.danger}; }
+        /* Under 1024px the logo's actions are one group: the upload filled, the group's whole width;
+           the AI studio and Remove quiet under it, side by side and about as wide as each other
+           (each wraps whole to a row of its own only where the two cannot share one), all 44px
+           high, 8px apart both ways, the quiet ones on a faint ink tone so each reads as a button,
+           never as loose text. The question before a removal: its two buttons side by side, the
+           same way. */
+        @media (max-width: 1023.98px) {
+          .rl-ctrl-row.pe-acts { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+          .rl-ctrl-row.pe-acts > .ds-btn { flex: 1 1 0; min-width: max-content; width: auto; min-height: 44px; }
+          .rl-ctrl-row.pe-acts-lead > .ds-btn:first-child { flex-basis: 100%; }
+          .rl-ctrl-row.pe-acts > .ds-btn-quiet { background: rgba(var(--c-ink-rgb), 0.05); }
+        }
         /* From 1024px a group wide enough holds two fields a row; a long value keeps the whole row.
            The small brand card gives way to the preview beside the form. */
         @media (min-width: 1024px) {

@@ -26,6 +26,11 @@ export default function App({ Component, pageProps, router }) {
       <style jsx global>{`
         ${THEME_CSS}
         html { text-wrap: balance; }
+        /* THE SAFE AREAS: the screen's own edges in the installed app (viewport-fit=cover), the
+           status bar and the Dynamic Island at the top and the home indicator at the bottom. One
+           name each, so every surface that clears them reads the same value, and a walk can stand
+           a phone's insets in for them (a browser under test reports none). */
+        :root { --safe-top: env(safe-area-inset-top, 0px); --safe-bottom: env(safe-area-inset-bottom, 0px); }
       `}</style>
       <Head>
         <meta

@@ -152,7 +152,7 @@ export default function ScreeningChecklist({ applicant, listing, profile, onChan
   });
 
   return (
-    <div id={`checklist-${applicant.linkId}`} style={{ marginTop: 'var(--s-4)', scrollMarginTop: 72 }}>
+    <div id={`checklist-${applicant.linkId}`} style={{ marginTop: 'var(--s-4)', scrollMarginTop: 'max(72px, calc(var(--ds-bar-h, 0px) + 16px))' }}>
       <div style={{ marginBottom: 'var(--s-2)' }}>
         <div style={{ fontSize: 'var(--t-eyebrow)', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.inkMute }}>Screening checklist</div>
         <div style={{ fontSize: 'var(--t-body-2)', color: C.inkSoft, marginTop: 'var(--s-1)', textWrap: 'balance' }}>We match the documents, and you verify the facts.</div>

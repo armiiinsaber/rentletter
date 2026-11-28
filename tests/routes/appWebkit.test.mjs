@@ -5,7 +5,7 @@
 //      pages carry none of it.
 //   2. In standalone (navigator.standalone, as iOS sets it in the installed app) every realtor screen
 //      has its own way back or forward, and the walk takes each one: the header logo, All
-//      listings, Dashboard, Back to ranked list, Cancel, Keep it, Close, and the links between the
+//      listings, the Listings tab from the profile, Back to ranked list, Cancel, Keep it, Close, and the links between the
 //      sign in screens. No install hint in standalone.
 //   3. The hint: in iOS Safari on the dashboard until dismissed once on this device; never on a
 //      tenant or landlord page; never in another browser.
@@ -141,7 +141,8 @@ async function standaloneWays(browser, tag) {
     await way('new listing: Cancel', async () => { await tap(page, page.getByRole('button', { name: /New listing|Add your first listing/ })); await tap(page, page.getByRole('button', { name: /^Cancel$/ })); assert.equal(await page.getByText('New listing', { exact: true }).filter({ visible: true }).count() <= 1, true); });
     await way('the bell panel: Close', async () => { await tap(page, page.getByRole('button', { name: /^Next,/ })); await tap(page, page.locator('[role=dialog]').getByRole('button', { name: 'Close' })); assert.equal(await page.locator('[role=dialog]').count(), 0); });
     // The phone's way to the profile: the tab bar's Profile (feat/dashboard-2026; the header's avatar is on screens with no tab bar).
-    await way('profile: Dashboard, back', async () => { await tap(page, page.locator('[data-main-nav] [data-nav="profile"]')); assert.match(path(page), /profile=1/); await tap(page, page.getByRole('link', { name: /^Dashboard$/ })); assert.equal(path(page), DEMO); });
+    // From the profile the way back is the Listings tab (fix/phone-shell: no back row on a tab's view).
+    await way('profile: Listings, back', async () => { await tap(page, page.locator('[data-main-nav] [data-nav="profile"]')); assert.match(path(page), /profile=1/); await tap(page, page.locator('[data-main-nav] [data-nav="listings"]')); assert.equal(path(page), DEMO); });
     await open(page, '/signin');
     await way('sign in: Create an account, forward', async () => { await tap(page, page.getByRole('link', { name: 'Create an account' })); assert.equal(path(page), '/signup'); });
     await way('sign up: Sign in, back', async () => { await tap(page, page.getByRole('link', { name: 'Sign in' })); assert.equal(path(page), '/signin'); });

@@ -1214,7 +1214,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       </Head>
       <GlobalStyle />
       <MotionStyles />
-      <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
+      <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'clip' }}>
         {/* The shell (components/dashboard/DashShell.js): a listing has red actions of its own, so New listing is outlined here. */}
         <DashShell profile={profile} onAssistantAction={onNoticeAction} current="listings" newPrimary={false} locked={locked}>
 
@@ -1431,7 +1431,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
               and the landlord's details live in the Details fold under it. Red when no card owns
               the red on this page, ink otherwise. */}
           {totalApplicants > 0 && (
-            <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', scrollMarginTop: 16 }}>
+            <section id="report" className="rl-card" style={{ padding: 'var(--card-pad)', scrollMarginTop: 'calc(var(--ds-bar-h, 0px) + 16px)' }}>
               <h2 className="t-d2" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Landlord</h2>
               <div className="rl-ctrl-row">
                 <button type="button" onClick={openSend} aria-haspopup="dialog" className="rl-btn" data-send-open=""
@@ -1700,7 +1700,7 @@ export default function ListingView({ initialProfile, initialListing, initialApp
       <style jsx>{`
         @media (max-width: 344.98px) { :global(.lv-party-title) { --lv-title-ls: 0.03em; } }
         .lv-toast:empty { display: none; }
-        .lv-toast { position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); text-wrap: balance; }
+        .lv-toast { position: fixed; left: 50%; bottom: calc(16px + var(--safe-bottom)); translate: -50% 0; z-index: 900; max-width: min(520px, calc(100vw - 32px)); padding: 12px 16px; border-radius: ${R.card}px; color: ${C.instText}; font-size: var(--t-body-2); line-height: var(--lh-body); text-wrap: balance; }
         /* A toast floats over the page: the ink glass (components/ui.js), with its own lift. */
         .lv-toast.rl-glass { box-shadow: inset 0 1px 0 var(--glass-hi), 0 0 0 1px var(--glass-edge), ${SH.raised}; }
         /* The right column: under 1280 it comes under the applicants, one card after another. */

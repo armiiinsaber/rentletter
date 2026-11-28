@@ -120,6 +120,7 @@ export const GlobalStyle = () => (
     /* The page's side gutter: 16px on a phone to 32px wide. Below 345px (a 320 screen) the gutter
        and a card's padding are 12px, not 16: the text inside gains 16px. */
     :root { --page-gutter: clamp(16px, 4vw, 32px); }
+    /* The safe areas (--safe-top, --safe-bottom) are set for every page in pages/_app.js. */
     @media (max-width: 344.98px) { :root { --card-pad: 12px; --page-gutter: 12px; } }
     /* An email address is set whole, like a link: on one line, and below 345px a size down so a
        long one fits a 320 screen (components/dashboard/FormDataSheet.js). */
@@ -249,7 +250,7 @@ export const GlobalStyle = () => (
     /* ── Sticky scroll-shrink header — site-wide ── */
     /* It floats over the page as it scrolls, so it is the glass (.rl-glass above); the homepage's is
        solid at the very top (.rl-glass-auto). The dashboard's own is static and solid (HomeView.js). */
-    .rl-header { position: sticky; top: 0; z-index: 60; padding-top: env(safe-area-inset-top, 0px);
+    .rl-header { position: sticky; top: 0; z-index: 60; padding-top: var(--safe-top);
       border-bottom: 1px solid transparent;
       transition: box-shadow 280ms ease, border-color 280ms ease; }
     .rl-header.rl-glass { box-shadow: none; }
@@ -392,7 +393,8 @@ export function usePageScrolled() {
 // Sticky header that gains a hairline + shadow and tightens its padding once
 // the page scrolls. Pass header content as children (left + right groups).
 // glass 'auto': solid at the very top of the page and glass once it scrolls under (the homepage).
-export const ScrollHeader = ({ children, maxWidth = 1200, glass = 'always' }) => {
+// Any other prop (a data attribute) goes on the header itself.
+export const ScrollHeader = ({ children, maxWidth = 1200, glass = 'always', ...rest }) => {
   const ref = useRef(null);
   useEffect(() => {
     const el = ref.current;
@@ -405,7 +407,7 @@ export const ScrollHeader = ({ children, maxWidth = 1200, glass = 'always' }) =>
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
   return (
-    <header ref={ref} className={`rl-header rl-glass${glass === 'auto' ? ' rl-glass-auto' : ''}`} data-stuck="">
+    <header ref={ref} {...rest} className={`rl-header rl-glass${glass === 'auto' ? ' rl-glass-auto' : ''}`} data-stuck="">
       <div className="rl-header-inner" style={{ maxWidth }}>{children}</div>
     </header>
   );

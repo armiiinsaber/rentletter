@@ -10,14 +10,15 @@
 // a landlord report (components/ReportBrand.js, as pages/r/[token].js shows it, the name through
 // lib/reportSignature.js as the report signs it) and the card other realtors see in Circle search
 // (components/dashboard/RealtorCard.js, with the name, brokerage and initials lib/circle.js gives
-// it). Under 1024px it is one column, the back row to the dashboard at its top.
+// it). Under 1024px it is one column, with no way back of its own: it is a tab of the phone's tab
+// bar (components/dashboard/MainNav.js).
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
-import { GlobalStyle, Icon } from '../ui';
+import { GlobalStyle } from '../ui';
 import { useAdapter } from '../../lib/dashboardAdapter';
 import { signingName } from '../../lib/reportSignature';
-import { linkProps, rememberProfile, rememberScreenView, useTakeOver } from '../nav/routes';
+import { rememberProfile, rememberScreenView, useTakeOver } from '../nav/routes';
 import { C } from '../theme';
 import ReportBrand from '../ReportBrand';
 import ThemeChoice from '../ThemeChoice';
@@ -68,20 +69,18 @@ export default function ProfileView({ initialProfile }) {
         <meta name="description" content="Your realtor profile and branding." />
       </Head>
       <GlobalStyle />
-      <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'hidden' }}>
+      <div style={{ minHeight: '100vh', minHeight: '100dvh', background: 'var(--paper)', overflowX: 'clip' }}>
         <DashShell profile={profile} nav="profile" current="profile">
         {/* One column under 1024px; from there the main area's whole width (DashShell ds-fill). */}
         <div className="pv ds-fill">
-          {/* The same row the listing page carries at its top; from 1024px the sidebar does its job. */}
-          <a {...linkProps(adapter.paths.home, { back: true })} className="pv-back" style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--s-1)', minHeight: 44, fontSize: 'var(--t-body-2)', color: C.inkSoft, textDecoration: 'none' }}>
-            <span style={{ transform: 'rotate(180deg)', display: 'inline-flex' }}><Icon name="arrow" size={15} /></span> Dashboard
-          </a>
-          <h1 className="t-d1 pv-title" style={{ color: C.ink, margin: 'var(--s-4) 0 var(--gap-line)' }}>Profile</h1>
-          <p data-profile-saving="" style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--gap-section)', textWrap: 'balance' }}>{SAVE_LINE}</p>
+          {/* No way back of its own: Profile is a tab (components/dashboard/MainNav.js), and from
+              1024px a place in the sidebar. */}
+          <h1 className="t-d1 pv-title" style={{ color: C.ink, margin: '0 0 var(--gap-line)' }}>Profile</h1>
+          <p data-profile-saving="" className="pv-saving" style={{ fontSize: 'var(--t-body-2)', color: C.inkMute, lineHeight: 'var(--lh-body)', margin: '0 0 var(--gap-section)', textWrap: 'balance' }}>{SAVE_LINE}</p>
           <div className="pv-cols">
             <div className="pv-form">
               {/* Identity, brokerage, logo, brand colours and fonts: one form in three groups. */}
-              <div id="branding" style={{ scrollMarginTop: 16 }}>
+              <div id="branding" style={{ scrollMarginTop: 'calc(var(--ds-bar-h, 0px) + 16px)' }}>
                 <ProfileEditorBody profile={profile} onSaved={setProfile} onLive={onLive} previewBeside />
               </div>
               {/* Invite a realtor: the realtor's own invite link and who joined through it. */}
@@ -120,6 +119,9 @@ export default function ProfileView({ initialProfile }) {
       <style jsx>{`
         .pv { max-width: 720px; margin: 0 auto; padding: var(--gap-section) var(--s-4) 64px; }
         .pv-aside { display: none; }
+        /* On a phone the line on how changes save sits with the form it is about: a card's gap above
+           the first group, not a section's. */
+        @media (max-width: 1023.98px) { .pv-saving { margin-bottom: var(--gap-card) !important; } }
         .pv-stage { background: ${C.paperDeep}; border: 1px solid ${C.rule}; border-radius: var(--card-radius); padding: var(--s-4); }
         .pv-h { font-family: var(--f-display); font-size: var(--t-d3); font-weight: 600; letter-spacing: -0.01em; line-height: var(--lh-display); color: ${C.ink}; margin: 0 0 var(--s-4); }
         /* The two previews one under the other, side by side from 2200px where each has about
@@ -136,8 +138,6 @@ export default function ProfileView({ initialProfile }) {
            The preview's top clears the header row (a 44px row with 16px above and below it) by 24px
            and it stays there as the page scrolls, as tall as the window. */
         @media (min-width: 1024px) {
-          .pv-back { display: none !important; }
-          .pv-title { margin-top: 0 !important; }
           .pv-cols { --pv-top: calc(44px + 2 * var(--s-4) + var(--s-5)); display: grid; grid-template-columns: minmax(0, clamp(560px, 44vw, 880px)) minmax(340px, 1fr); column-gap: var(--ds-pad); align-items: start; }
           .pv-form { min-width: 0; }
           .pv-aside { display: block; min-width: 0; position: sticky; top: var(--pv-top); }
